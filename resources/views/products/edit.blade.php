@@ -1,4 +1,19 @@
 <x-app-layout>
+    @php
+        $profileOptions = $purityProfiles->mapWithKeys(function ($profiles, $metalType) {
+            return [
+                $metalType => $profiles->map(function ($profile) {
+                    $value = rtrim(rtrim(number_format((float) $profile->purity_value, 3, '.', ''), '0'), '.');
+
+                    return [
+                        'value' => $value,
+                        'label' => $profile->label,
+                    ];
+                })->values(),
+            ];
+        });
+    @endphp
+
     <x-page-header>
         <div>
             <h1 class="page-title">Edit Product</h1>
@@ -131,6 +146,16 @@
                                     @endforeach
                                 </select>
                             </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Metal Type <span class="text-red-500">*</span></label>
+                                <select name="metal_type" id="metal_type"
+                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500" required>
+                                    <option value="">Select metal</option>
+                                    <option value="gold" @selected(old('metal_type', $product->metal_type ?? 'gold') === 'gold')>Gold</option>
+                                    <option value="silver" @selected(old('metal_type', $product->metal_type) === 'silver')>Silver</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
@@ -140,13 +165,12 @@
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Default Purity</label>
-                                <select name="default_purity" class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
-                                    <option value="">Select</option>
-                                    <option value="24" @selected(old('default_purity', $product->default_purity) == 24)>24K (999)</option>
-                                    <option value="22" @selected(old('default_purity', $product->default_purity) == 22)>22K (916)</option>
-                                    <option value="18" @selected(old('default_purity', $product->default_purity) == 18)>18K (750)</option>
-                                    <option value="14" @selected(old('default_purity', $product->default_purity) == 14)>14K (585)</option>
+                                <select name="default_purity" id="default_purity"
+                                        data-initial-value="{{ old('default_purity', rtrim(rtrim(number_format((float) ($product->default_purity ?? 0), 3, '.', ''), '0'), '.')) }}"
+                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                    <option value="">Select metal type first</option>
                                 </select>
+                                <p class="text-xs text-gray-500 mt-1">Defaults come from your shared shop purity catalog.</p>
                             </div>
                             
                             <div>
@@ -212,6 +236,8 @@
     </div>
 
     <script>
+        const purityProfiles = @json($profileOptions);
+
         // Image modal
         function openImageModal(src, caption) {
             document.getElementById('modalImage').src = src;
@@ -257,7 +283,9 @@
         const categorySelect = document.getElementById('category_id');
         const subCategorySelect = document.getElementById('sub_category_id');
         const allSubOptions = [...subCategorySelect.querySelectorAll('option[data-category]')];
-        
+        const metalTypeSelect = document.getElementById('metal_type');
+        const defaultPuritySelect = document.getElementById('default_purity');
+
         function filterSubCategories() {
             const selectedCategory = categorySelect.value;
             const currentSubValue = subCategorySelect.value;
@@ -276,10 +304,39 @@
                 }
             });
         }
+
+        function normalizePurityValue(value) {
+            const number = Number.parseFloat(value);
+            if (!Number.isFinite(number)) {
+                return '';
+            }
+
+            return number.toFixed(3).replace(/\.?0+$/, '');
+        }
+
+        function populatePurityOptions() {
+            const metalType = metalTypeSelect.value;
+            const currentValue = normalizePurityValue(defaultPuritySelect.dataset.initialValue || defaultPuritySelect.value);
+            const profiles = purityProfiles[metalType] || [];
+
+            defaultPuritySelect.innerHTML = '<option value="">Select</option>';
+
+            profiles.forEach((profile) => {
+                const option = document.createElement('option');
+                option.value = profile.value;
+                option.textContent = profile.label;
+                option.selected = profile.value === currentValue;
+                defaultPuritySelect.appendChild(option);
+            });
+
+            defaultPuritySelect.dataset.initialValue = '';
+        }
         
         categorySelect.addEventListener('change', filterSubCategories);
+        metalTypeSelect.addEventListener('change', populatePurityOptions);
         
         // Initial filter
         filterSubCategories();
+        populatePurityOptions();
     </script>
 </x-app-layout>

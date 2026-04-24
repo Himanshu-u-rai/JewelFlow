@@ -3577,8 +3577,8 @@
             }
         @endphp
 
-        <div class="dash-top-grid">
-            <div class="dash-block dash-col-quick dash-quick-strip">
+        <div class="dash-top-grid" style="grid-template-columns: repeat(4, 1fr); gap: 16px;">
+            <div class="dash-block dash-col-quick dash-quick-strip" style="grid-column: span 4;">
                 <div class="dash-quick-list">
                     <a href="/pos" class="dash-quick-item dash-quick-sale">
                         <span class="dash-quick-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
@@ -3599,10 +3599,10 @@
                 </div>
             </div>
 
-            <div class="dash-block dash-col-shop dash-shop-card">
-                <div class="dash-shop-card-head">
-                    <div class="dash-shop-brand">
-                        <div class="dash-logo-box">
+            <div class="dash-block dash-shop-card" style="padding: 18px;">
+                <div class="dash-shop-card-head" style="gap: 6px;">
+                    <div class="dash-shop-brand" style="gap: 6px;">
+                        <div class="dash-logo-box" style="width: 40px; height: 40px; font-size: 12px;">
                             @if($shopLogo)
                                 <img src="{{ $shopLogo }}" alt="{{ $shop?->name ?? 'Shop' }}">
                             @else
@@ -3610,29 +3610,52 @@
                             @endif
                         </div>
                         <div class="min-w-0">
-                            <p class="dash-shop-meta-label">Shop Profile</p>
-                            <h2 class="dash-shop-name truncate">{{ $shop?->name ?? 'Your Shop' }}</h2>
+                            <p class="dash-shop-meta-label" style="font-size: 9px;">Shop Profile</p>
+                            <h2 class="dash-shop-name truncate" style="font-size: 16px;">{{ $shop?->name ?? 'Your Shop' }}</h2>
                         </div>
                     </div>
                     <span class="dash-badge">{{ $shopType }}</span>
                 </div>
 
                 <div class="dash-shop-info">
-                    <p class="dash-meta"><strong>Owner</strong>{{ $ownerName !== '' ? $ownerName : ($shop?->owner_mobile ?? '—') }}</p>
-                    <p class="dash-meta"><strong>Phone</strong>{{ $shop?->phone ?? '—' }}</p>
+                    <p class="dash-meta" style="font-size: 11px;"><strong>Owner</strong>{{ $ownerName !== '' ? $ownerName : ($shop?->owner_mobile ?? '—') }}</p>
+                    <p class="dash-meta" style="font-size: 11px;"><strong>Phone</strong>{{ $shop?->phone ?? '—' }}</p>
                     @if($shop?->city || $shop?->state)
-                        <p class="dash-meta"><strong>Location</strong>{{ $shop?->city }}{{ $shop?->state ? ', ' . $shop->state : '' }}</p>
+                        <p class="dash-meta" style="font-size: 11px;"><strong>Location</strong>{{ $shop?->city }}{{ $shop?->state ? ', ' . $shop->state : '' }}</p>
                     @endif
                 </div>
 
-                <div class="dash-shop-actions">
-                    <a href="{{ route('settings.edit', ['tab' => 'shop']) }}" class="dash-btn dash-btn-muted">Edit Shop</a>
-                    <a href="/inventory/items" class="dash-btn dash-btn-primary">View Inventory</a>
+                <div class="dash-shop-actions" style="gap: 6px;">
+                    <a href="{{ route('settings.edit', ['tab' => 'shop']) }}" class="dash-btn dash-btn-muted" style="min-height: 32px; font-size: 11px;">Edit Shop</a>
+                    <a href="/inventory/items" class="dash-btn dash-btn-primary" style="min-height: 32px; font-size: 11px;">View Inventory</a>
+                </div>
+            </div>
+            <div class="dash-block dash-top-kpi dash-top-kpi-revenue" style="padding: 18px;">
+                <div class="dash-top-kpi-head">
+                    <span class="dash-top-kpi-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><text x="6" y="17" font-size="14">₹</text></svg>
+                    </span>
+                    <p class="dash-top-kpi-meta">Today's Metal Rates</p>
+                </div>
+                <div class="dash-kpi-value dash-skel dash-top-kpi-value" style="font-size: 16px; font-weight: 500; color: #8f5c00;">
+                    @php
+                        $todayRate = app('App\\Services\\ShopPricingService')->currentDailyRate($shop);
+                    @endphp
+                    @if($todayRate)
+                        <div><span style="font-weight: 600;">Gold 24K:</span> ₹{{ number_format((float) $todayRate->gold_24k_rate_per_gram, 4) }}/g</div>
+                        <div style="margin-top: 2px;"><span style="font-weight: 600;">Silver 999:</span> ₹{{ number_format((float) $todayRate->silver_999_rate_per_gram, 4) }}/g</div>
+                    @else
+                        <div>No rates set for today.</div>
+                    @endif
+                </div>
+                <div class="dash-top-kpi-foot">
+                    <p class="dash-top-kpi-title">24K Gold & Silver</p>
+                    <p class="dash-top-kpi-note">User provided rates</p>
                 </div>
             </div>
 
             @if($isRetailer ?? false)
-                <div class="dash-block dash-col-revenue dash-top-kpi dash-top-kpi-revenue">
+                <div class="dash-block dash-top-kpi dash-top-kpi-revenue" style="padding: 18px;">
                     <div class="dash-top-kpi-head">
                         <span class="dash-top-kpi-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -3649,7 +3672,7 @@
                         <p class="dash-top-kpi-note">Gross billed</p>
                     </div>
                 </div>
-                <div class="dash-block dash-col-profit dash-top-kpi dash-top-kpi-profit {{ ($todaysProfit ?? 0) < 0 ? 'is-loss' : '' }}">
+                <div class="dash-block dash-top-kpi dash-top-kpi-profit {{ ($todaysProfit ?? 0) < 0 ? 'is-loss' : '' }}" style="padding: 18px;">
                     <div class="dash-top-kpi-head">
                         <span class="dash-top-kpi-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">

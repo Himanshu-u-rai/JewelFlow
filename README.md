@@ -346,6 +346,12 @@ Front-end build sanity:
 npm run build
 ```
 
+Safer production-style asset check:
+
+```bash
+npm run build:verify
+```
+
 Type-check mobile app:
 
 ```bash
@@ -370,6 +376,7 @@ Useful maintenance commands:
 
 ```bash
 php artisan route:list --except-vendor
+php artisan assets:verify-fresh
 php artisan optimize:clear
 php artisan config:clear
 php artisan cache:clear

@@ -17,6 +17,7 @@ class ShopPreferences extends Model
         'date_format',
         'currency_symbol',
         'language',
+        'pricing_timezone',
         'low_stock_threshold',
         'round_off_nearest',
         'loyalty_points_per_hundred',
@@ -51,6 +52,7 @@ class ShopPreferences extends Model
         'auto_logout_minutes'  => 0,
         'loyalty_welcome_bonus'=> 0,
         'credit_days'          => 0,
+        'pricing_timezone'     => 'UTC',
     ];
 
     public function shop(): BelongsTo

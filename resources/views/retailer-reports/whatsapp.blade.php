@@ -930,10 +930,19 @@
                 </div>
                 <div class="wa-field category">
                     <label for="category">Category</label>
-                    <select id="category" name="category" class="wa-select" onchange="this.form.submit()">
+                    <select id="category" name="category" class="wa-select" onchange="document.getElementById('sub_category').value=''; this.form.submit()">
                         <option value="">All Categories</option>
                         @foreach($categories as $cat)
                             <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="wa-field category">
+                    <label for="sub_category">Sub Category</label>
+                    <select id="sub_category" name="sub_category" class="wa-select" onchange="this.form.submit()">
+                        <option value="">All Sub Categories</option>
+                        @foreach($subCategories as $subCategory)
+                            <option value="{{ $subCategory }}" {{ request('sub_category') === $subCategory ? 'selected' : '' }}>{{ $subCategory }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -950,7 +959,7 @@
                 </div>
                 <div class="wa-field wa-field-actions">
                     <button type="submit" class="wa-btn wa-btn-copy wa-filter-btn">Apply</button>
-                    @if(request()->hasAny(['search', 'category']))
+                    @if(request()->hasAny(['search', 'category', 'sub_category']))
                         <a href="{{ route('catalog.index') }}" class="wa-btn wa-btn-copy wa-filter-btn wa-filter-btn-clear">Clear</a>
                     @endif
                 </div>
@@ -1068,7 +1077,7 @@
                 <div class="wa-empty" style="grid-column: 1 / -1;">
                     <div style="font-size:15px;font-weight:700;color:#334155;">No in-stock items found.</div>
                     <div style="font-size:13px;margin-top:4px;">
-                        {{ request()->hasAny(['search', 'category']) ? 'Try clearing filters or search text.' : 'Add stock items first, then share catalog messages.' }}
+                        {{ request()->hasAny(['search', 'category', 'sub_category']) ? 'Try clearing filters or search text.' : 'Add stock items first, then share catalog messages.' }}
                     </div>
                 </div>
             @endforelse

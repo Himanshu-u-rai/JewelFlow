@@ -11,6 +11,7 @@ use App\Models\AuditLog;
 use App\Services\CatalogShareService;
 use App\Services\ItemManufacturingService;
 use App\Services\RetailerReportService;
+use App\Services\ShopPricingService;
 use App\Http\Concerns\RespondsDynamically;
 use App\Support\ShopEdition;
 use Illuminate\Http\Request;
@@ -22,7 +23,10 @@ class ItemController extends Controller
 {
     use RespondsDynamically;
 
-    public function __construct(private CatalogShareService $catalog) {}
+    public function __construct(
+        private CatalogShareService $catalog,
+        private ShopPricingService $pricing
+    ) {}
     /**
      * Display all items (stock)
      */
@@ -33,7 +37,9 @@ class ItemController extends Controller
         $isRetailer = $shop->isRetailer();
 
         // Categories for filter — loaded once, reused for name lookup below
-        $categories = Category::where('shop_id', $shopId)->get();
+        $categories = Category::where('shop_id', $shopId)
+            ->with('subCategories')
+            ->get();
 
         $query = Item::where('shop_id', $shopId);
 
@@ -55,9 +61,8 @@ class ItemController extends Controller
         }
 
         // Filter by purity — validate against allowlist
-        $allowedPurities = [14, 18, 22, 24];
-        if ($request->filled('purity') && in_array((int) $request->purity, $allowedPurities, true)) {
-            $query->where('purity', (int) $request->purity);
+        if ($request->filled('purity') && is_numeric($request->purity) && (float) $request->purity > 0) {
+            $query->where('purity', (float) $request->purity);
         }
 
         // Search
@@ -96,21 +101,14 @@ class ItemController extends Controller
             $metalRows = DB::table('items')
                 ->where('shop_id', $shopId)
                 ->where('status', 'in_stock')
-                ->selectRaw("
-                    CASE
-                        WHEN LOWER(category) LIKE '%silver%' THEN 'silver'
-                        WHEN LOWER(category) LIKE '%platinum%' THEN 'platinum'
-                        ELSE 'gold'
-                    END as metal,
-                    COALESCE(SUM(net_metal_weight), 0) as total_weight
-                ")
+                ->whereNotNull('metal_type')
+                ->selectRaw('metal_type as metal, COALESCE(SUM(net_metal_weight), 0) as total_weight')
                 ->groupBy('metal')
                 ->pluck('total_weight', 'metal');
 
             $stats['metal_holdings'] = [
                 'gold'     => (float) ($metalRows['gold']     ?? 0),
                 'silver'   => (float) ($metalRows['silver']   ?? 0),
-                'platinum' => (float) ($metalRows['platinum'] ?? 0),
             ];
         } else {
             $stats['total_fine_gold'] = (float) $rawStats->total_fine_gold;
@@ -141,12 +139,27 @@ class ItemController extends Controller
     {
         $shopId = auth()->user()->shop_id;
         $shop = auth()->user()->shop;
-        $categories = Category::where('shop_id', $shopId)->get();
+        $categories = Category::where('shop_id', $shopId)
+            ->with('subCategories')
+            ->get();
 
         // Retailer edition: simple form — no lots, no wastage
         if ($shop->isRetailer()) {
+            if (! auth()->user()->isOwner() && ! $this->pricing->hasCurrentDailyRates($shop)) {
+                return redirect()->route('inventory.items.index')
+                    ->with('error', 'Today\'s retailer pricing is missing. Ask the owner to save today\'s Pricing rates first.');
+            }
+
             $vendors = Vendor::where('shop_id', $shopId)->active()->orderBy('name')->get();
-            return view('inventory.items.create-retailer', compact('categories', 'vendors'));
+            $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
+            $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
+
+            return view('inventory.items.create-retailer', compact(
+                'categories',
+                'vendors',
+                'purityProfiles',
+                'resolvedRates'
+            ));
         }
 
         // Manufacturer edition: full form with lots, products, wastage
@@ -244,11 +257,12 @@ class ItemController extends Controller
             ],
             'design' => 'nullable|string|max:255',
             'category' => 'required|string|max:255',
+            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
             'sub_category' => 'nullable|string|max:255',
             'gross_weight' => 'required|numeric|min:0.001',
             'stone_weight' => 'nullable|numeric|min:0',
-            'purity' => 'required|numeric|min:1|max:24',
-            'cost_price' => 'required|numeric|min:0',
+            'purity' => 'required|numeric|min:0.001|max:1000',
+            'cost_price' => 'nullable|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
@@ -263,22 +277,27 @@ class ItemController extends Controller
             $imagePath = $request->file('image')->store('items', 'public');
         }
 
-        $netMetalWeight = $validated['gross_weight'] - ($validated['stone_weight'] ?? 0);
+        try {
+            $pricing = $this->pricing->computeRetailerCostPayload(auth()->user()->shop, $validated);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['pricing' => $e->getMessage()])->withInput();
+        }
 
-        $item = DB::transaction(function () use ($shopId, $validated, $netMetalWeight, $imagePath) {
+        $item = DB::transaction(function () use ($shopId, $validated, $pricing, $imagePath) {
             $item = Item::create([
                 'shop_id' => $shopId,
                 'barcode' => $validated['barcode'],
                 'design' => $validated['design'] ?? null,
                 'category' => $validated['category'],
+                'metal_type' => $pricing['metal_type'],
                 'sub_category' => $validated['sub_category'] ?? null,
                 'gross_weight' => $validated['gross_weight'],
                 'stone_weight' => $validated['stone_weight'] ?? 0,
-                'net_metal_weight' => $netMetalWeight,
-                'purity' => $validated['purity'],
+                'net_metal_weight' => $pricing['net_metal_weight'],
+                'purity' => $pricing['purity'],
                 'making_charges' => $validated['making_charges'] ?? 0,
                 'stone_charges' => $validated['stone_charges'] ?? 0,
-                'cost_price' => $validated['cost_price'],
+                'cost_price' => $pricing['cost_price'],
                 'selling_price' => $validated['selling_price'],
                 'vendor_id' => $validated['vendor_id'] ?? null,
                 'huid' => $validated['huid'] ?? null,
@@ -286,6 +305,7 @@ class ItemController extends Controller
                 'source' => 'purchased',
                 'status' => 'in_stock',
                 'image' => $imagePath,
+                'pricing_review_required' => false,
             ]);
 
             AuditLog::create([
@@ -294,13 +314,14 @@ class ItemController extends Controller
                 'action' => 'item_created',
                 'model_type' => 'item',
                 'model_id' => $item->id,
-                'data' => [
-                    'barcode' => $item->barcode,
-                    'source' => 'purchased',
-                    'selling_price' => $item->selling_price,
-                    'cost_price' => $item->cost_price,
-                ],
-            ]);
+            'data' => [
+                'barcode' => $item->barcode,
+                'source' => 'purchased',
+                'selling_price' => $item->selling_price,
+                'cost_price' => $item->cost_price,
+                'client_cost_price_ignored' => array_key_exists('cost_price', $validated),
+            ],
+        ]);
 
             return $item;
         });
@@ -324,7 +345,7 @@ class ItemController extends Controller
         }
 
         $token          = $this->catalog->ensureItemHasToken($item);
-        $publicShareUrl = $this->catalog->buildItemUrl($token);
+        $publicShareUrl = $this->catalog->buildPreferredProductUrl($shop, $token);
         $isRetailer     = $shop->isRetailer();
 
         return view('inventory.items.show', compact('item', 'lot', 'publicShareUrl', 'isRetailer'));
@@ -348,8 +369,22 @@ class ItemController extends Controller
         $categories = Category::where('shop_id', $shopId)->get();
 
         if ($shop->isRetailer()) {
+            if (! auth()->user()->isOwner() && ! $this->pricing->hasCurrentDailyRates($shop)) {
+                return redirect()->route('inventory.items.show', $item)
+                    ->with('error', 'Today\'s retailer pricing is missing. Ask the owner to save today\'s Pricing rates first.');
+            }
+
             $vendors = Vendor::where('shop_id', $shopId)->active()->orderBy('name')->get();
-            return view('inventory.items.edit-retailer', compact('item', 'categories', 'vendors'));
+            $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
+            $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
+
+            return view('inventory.items.edit-retailer', compact(
+                'item',
+                'categories',
+                'vendors',
+                'purityProfiles',
+                'resolvedRates'
+            ));
         }
 
         return view('inventory.items.edit', compact('item', 'categories'));
@@ -438,7 +473,10 @@ class ItemController extends Controller
             'action' => 'item_updated',
             'model_type' => 'item',
             'model_id' => $item->id,
-            'data' => $validated,
+            'data' => array_merge($validated, [
+                'cost_price' => $item->cost_price,
+                'client_cost_price_ignored' => array_key_exists('cost_price', $validated),
+            ]),
         ]);
 
         return redirect()->route('inventory.items.show', $item)
@@ -462,11 +500,12 @@ class ItemController extends Controller
             ],
             'design' => 'nullable|string|max:255',
             'category' => 'required|string|max:255',
+            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
             'sub_category' => 'nullable|string|max:255',
             'gross_weight' => 'required|numeric|min:0.001',
             'stone_weight' => 'nullable|numeric|min:0',
-            'purity' => 'required|numeric|min:1|max:24',
-            'cost_price' => 'required|numeric|min:0',
+            'purity' => 'required|numeric|min:0.001|max:1000',
+            'cost_price' => 'nullable|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
@@ -490,18 +529,23 @@ class ItemController extends Controller
             $imagePath = null;
         }
 
-        $netMetalWeight = $validated['gross_weight'] - ($validated['stone_weight'] ?? 0);
+        try {
+            $pricing = $this->pricing->computeRetailerCostPayload(auth()->user()->shop, $validated);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['pricing' => $e->getMessage()])->withInput();
+        }
 
         $item->update([
             'barcode' => $validated['barcode'],
             'design' => $validated['design'] ?? null,
             'category' => $validated['category'],
+            'metal_type' => $pricing['metal_type'],
             'sub_category' => $validated['sub_category'] ?? null,
             'gross_weight' => $validated['gross_weight'],
             'stone_weight' => $validated['stone_weight'] ?? 0,
-            'net_metal_weight' => $netMetalWeight,
-            'purity' => $validated['purity'],
-            'cost_price' => $validated['cost_price'],
+            'net_metal_weight' => $pricing['net_metal_weight'],
+            'purity' => $pricing['purity'],
+            'cost_price' => $pricing['cost_price'],
             'selling_price' => $validated['selling_price'],
             'making_charges' => $validated['making_charges'] ?? 0,
             'stone_charges' => $validated['stone_charges'] ?? 0,
@@ -509,6 +553,8 @@ class ItemController extends Controller
             'huid' => $validated['huid'] ?? null,
             'hallmark_date' => $validated['hallmark_date'] ?? null,
             'image' => $imagePath,
+            'pricing_review_required' => false,
+            'pricing_review_notes' => null,
         ]);
 
         AuditLog::create([
@@ -522,6 +568,26 @@ class ItemController extends Controller
 
         return redirect()->route('inventory.items.show', $item)
             ->with('success', 'Item updated successfully.');
+    }
+
+    private function buildRetailerResolvedRateMap($shop, $purityProfiles): array
+    {
+        $resolvedRates = [];
+
+        foreach ($purityProfiles as $metalType => $profiles) {
+            foreach ($profiles as $profile) {
+                $resolvedRates[$metalType][$this->pricing->normalizePurityString((float) $profile->purity_value)] = [
+                    'label' => $profile->label,
+                    'rate_per_gram' => $this->pricing->resolvedRateForToday(
+                        $shop,
+                        $metalType,
+                        (float) $profile->purity_value
+                    ),
+                ];
+            }
+        }
+
+        return $resolvedRates;
     }
 
     /**

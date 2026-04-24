@@ -15,6 +15,9 @@ class MetalRate extends Model
 
     protected $casts = [
         'rate_per_gram' => 'decimal:4',
+        'purity_value' => 'decimal:3',
+        'business_date' => 'date',
+        'is_override' => 'boolean',
         'fetched_at' => 'datetime',
         'created_at' => 'datetime',
     ];
@@ -53,6 +56,22 @@ class MetalRate extends Model
         }
 
         return $query
+            ->orderByDesc('fetched_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    public static function latestResolvedForDay(
+        int $shopId,
+        string $businessDate,
+        string $metalType,
+        float $purityValue
+    ): ?self {
+        return static::query()
+            ->where('shop_id', $shopId)
+            ->where('business_date', $businessDate)
+            ->where('metal_type', $metalType)
+            ->where('purity_value', (float) number_format($purityValue, 3, '.', ''))
             ->orderByDesc('fetched_at')
             ->orderByDesc('id')
             ->first();

@@ -3,7 +3,9 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "assets:verify": "php artisan assets:verify-fresh",
         "build": "vite build",
+        "build:verify": "vite build && php artisan assets:verify-fresh",
         "dev": "vite"
     },
     "devDependencies": {

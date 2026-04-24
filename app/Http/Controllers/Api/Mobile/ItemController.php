@@ -10,16 +10,21 @@ use App\Models\Shop;
 use App\Models\Vendor;
 use App\Services\CatalogShareService;
 use App\Services\PosSearchCacheService;
+use App\Services\ShopPricingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use LogicException;
 
 class ItemController extends Controller
 {
-    public function __construct(private CatalogShareService $catalog) {}
+    public function __construct(
+        private CatalogShareService $catalog,
+        private ShopPricingService $pricing
+    ) {}
 
     public function search(Request $request): JsonResponse
     {
@@ -85,11 +90,18 @@ class ItemController extends Controller
         ];
 
         if ($isRetailer) {
+            try {
+                $this->pricing->assertRetailerPricingReady($shop);
+            } catch (LogicException $e) {
+                return $this->retailerPricingBlockedResponse($e->getMessage());
+            }
+
             $rules = array_merge($rules, [
                 'gross_weight' => 'sometimes|required|numeric|min:0.001',
                 'stone_weight' => 'nullable|numeric|min:0',
-                'purity' => 'sometimes|required|numeric|min:1|max:24',
-                'cost_price' => 'sometimes|required|numeric|min:0',
+                'metal_type' => ['sometimes', 'required', Rule::in(['gold', 'silver'])],
+                'purity' => 'sometimes|required|numeric|min:0.001|max:1000',
+                'cost_price' => 'sometimes|nullable|numeric|min:0',
                 'selling_price' => 'sometimes|required|numeric|min:0',
                 'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
                 'huid' => [
@@ -101,6 +113,24 @@ class ItemController extends Controller
         }
 
         $validated = $request->validate($rules);
+        $retailerPricing = null;
+
+        if ($isRetailer) {
+            $pricingAttributes = [
+                'metal_type' => $validated['metal_type'] ?? $item->metal_type,
+                'purity' => $validated['purity'] ?? $item->purity,
+                'gross_weight' => $validated['gross_weight'] ?? $item->gross_weight,
+                'stone_weight' => array_key_exists('stone_weight', $validated) ? $validated['stone_weight'] : $item->stone_weight,
+                'making_charges' => array_key_exists('making_charges', $validated) ? $validated['making_charges'] : $item->making_charges,
+                'stone_charges' => array_key_exists('stone_charges', $validated) ? $validated['stone_charges'] : $item->stone_charges,
+            ];
+
+            try {
+                $retailerPricing = $this->pricing->computeRetailerCostPayload($shop, $pricingAttributes);
+            } catch (\Throwable $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+        }
 
         $newImagePath = null;
         $clearImage = false;
@@ -127,7 +157,7 @@ class ItemController extends Controller
         // Drop the transport-only fields so they don't leak into the model update.
         unset($validated['image_base64'], $validated['remove_image']);
 
-        DB::transaction(function () use ($item, $validated, $isRetailer, $newImagePath, $clearImage) {
+        DB::transaction(function () use ($item, $validated, $isRetailer, $retailerPricing, $newImagePath, $clearImage) {
             $previousImage = $item->image;
             $updates = array_filter([
                 'barcode' => $validated['barcode'] ?? null,
@@ -146,16 +176,21 @@ class ItemController extends Controller
             }
 
             if ($isRetailer) {
-                if (array_key_exists('gross_weight', $validated)) {
-                    $updates['gross_weight'] = $validated['gross_weight'];
-                    $updates['stone_weight'] = $validated['stone_weight'] ?? 0;
-                    $updates['net_metal_weight'] = $validated['gross_weight'] - ($validated['stone_weight'] ?? 0);
+                if ($retailerPricing) {
+                    $updates['metal_type'] = $retailerPricing['metal_type'];
+                    $updates['gross_weight'] = $validated['gross_weight'] ?? $item->gross_weight;
+                    $updates['stone_weight'] = array_key_exists('stone_weight', $validated) ? $validated['stone_weight'] : $item->stone_weight;
+                    $updates['net_metal_weight'] = $retailerPricing['net_metal_weight'];
+                    $updates['purity'] = $retailerPricing['purity'];
+                    $updates['cost_price'] = $retailerPricing['cost_price'];
+                    $updates['pricing_review_required'] = false;
+                    $updates['pricing_review_notes'] = null;
                 }
-                foreach (['purity', 'cost_price', 'selling_price'] as $numeric) {
-                    if (array_key_exists($numeric, $validated)) {
-                        $updates[$numeric] = $validated[$numeric];
-                    }
+
+                if (array_key_exists('selling_price', $validated)) {
+                    $updates['selling_price'] = $validated['selling_price'];
                 }
+
                 foreach (['vendor_id', 'huid', 'hallmark_date'] as $nullable) {
                     if (array_key_exists($nullable, $validated)) {
                         $updates[$nullable] = $validated[$nullable];
@@ -192,6 +227,7 @@ class ItemController extends Controller
                 'model_id' => $item->id,
                 'data' => array_merge(['source' => 'mobile_app'], $validated, [
                     'image_changed' => $newImagePath !== null || $clearImage,
+                    'client_cost_price_ignored' => $isRetailer && array_key_exists('cost_price', $validated),
                 ]),
             ]);
         });
@@ -215,10 +251,12 @@ class ItemController extends Controller
             'design' => $item->design,
             'category' => $item->category,
             'sub_category' => $item->sub_category,
+            'metal_type' => $item->metal_type,
             'gross_weight' => (float) $item->gross_weight,
             'stone_weight' => (float) $item->stone_weight,
             'net_metal_weight' => (float) $item->net_metal_weight,
             'purity' => (float) $item->purity,
+            'purity_label' => $item->purity_label,
             'cost_price' => (float) $item->cost_price,
             'selling_price' => (float) $item->selling_price,
             'making_charges' => (float) $item->making_charges,
@@ -235,8 +273,18 @@ class ItemController extends Controller
     public function store(Request $request): JsonResponse
     {
         $shopId = (int) $request->user()->shop_id;
+        $shop = $request->user()->shop;
+        $isRetailer = $shop && $shop->isRetailer();
 
-        $validated = $request->validate([
+        if ($isRetailer) {
+            try {
+                $this->pricing->assertRetailerPricingReady($shop);
+            } catch (LogicException $e) {
+                return $this->retailerPricingBlockedResponse($e->getMessage());
+            }
+        }
+
+        $rules = [
             'barcode' => [
                 'required', 'string', 'max:100',
                 Rule::unique('items', 'barcode')->where('shop_id', $shopId),
@@ -246,8 +294,8 @@ class ItemController extends Controller
             'sub_category' => 'nullable|string|max:255',
             'gross_weight' => 'required|numeric|min:0.001',
             'stone_weight' => 'nullable|numeric|min:0',
-            'purity' => 'required|numeric|min:1|max:24',
-            'cost_price' => 'required|numeric|min:0',
+            'purity' => $isRetailer ? 'required|numeric|min:0.001|max:1000' : 'required|numeric|min:1|max:24',
+            'cost_price' => $isRetailer ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
@@ -258,7 +306,13 @@ class ItemController extends Controller
             ],
             'hallmark_date' => 'nullable|date',
             'image_base64' => 'nullable|string',
-        ]);
+        ];
+
+        if ($isRetailer) {
+            $rules['metal_type'] = ['required', Rule::in(['gold', 'silver'])];
+        }
+
+        $validated = $request->validate($rules);
 
         $imagePath = null;
         if (! empty($validated['image_base64'])) {
@@ -278,22 +332,32 @@ class ItemController extends Controller
             }
         }
 
-        $netMetalWeight = $validated['gross_weight'] - ($validated['stone_weight'] ?? 0);
+        $pricingPayload = null;
+        if ($isRetailer) {
+            try {
+                $pricingPayload = $this->pricing->computeRetailerCostPayload($shop, $validated);
+            } catch (\Throwable $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+        }
 
-        $item = DB::transaction(function () use ($shopId, $validated, $netMetalWeight, $imagePath) {
+        $netMetalWeight = $pricingPayload['net_metal_weight'] ?? ($validated['gross_weight'] - ($validated['stone_weight'] ?? 0));
+
+        $item = DB::transaction(function () use ($shopId, $validated, $isRetailer, $pricingPayload, $netMetalWeight, $imagePath) {
             $item = Item::create([
                 'shop_id' => $shopId,
                 'barcode' => $validated['barcode'],
                 'design' => $validated['design'] ?? null,
                 'category' => $validated['category'],
                 'sub_category' => $validated['sub_category'] ?? null,
+                'metal_type' => $pricingPayload['metal_type'] ?? null,
                 'gross_weight' => $validated['gross_weight'],
                 'stone_weight' => $validated['stone_weight'] ?? 0,
                 'net_metal_weight' => $netMetalWeight,
-                'purity' => $validated['purity'],
+                'purity' => $pricingPayload['purity'] ?? $validated['purity'],
                 'making_charges' => $validated['making_charges'] ?? 0,
                 'stone_charges' => $validated['stone_charges'] ?? 0,
-                'cost_price' => $validated['cost_price'],
+                'cost_price' => $pricingPayload['cost_price'] ?? $validated['cost_price'],
                 'selling_price' => $validated['selling_price'],
                 'vendor_id' => $validated['vendor_id'] ?? null,
                 'huid' => $validated['huid'] ?? null,
@@ -301,6 +365,8 @@ class ItemController extends Controller
                 'source' => 'purchased',
                 'status' => 'in_stock',
                 'image' => $imagePath,
+                'pricing_review_required' => false,
+                'pricing_review_notes' => null,
             ]);
 
             AuditLog::create([
@@ -314,20 +380,17 @@ class ItemController extends Controller
                     'category' => $item->category,
                     'selling_price' => $item->selling_price,
                     'source' => 'mobile_app',
+                    'client_cost_price_ignored' => $isRetailer && array_key_exists('cost_price', $validated),
                 ],
             ]);
 
             return $item;
         });
 
-        return response()->json([
-            'id' => $item->id,
-            'barcode' => $item->barcode,
-            'design' => $item->design,
-            'category' => $item->category,
-            'selling_price' => (float) $item->selling_price,
-            'message' => 'Item registered successfully.',
-        ], 201);
+        return response()->json(array_merge(
+            $this->itemPayload($request, $item->fresh()),
+            ['message' => 'Item registered successfully.']
+        ), 201);
     }
 
     public function categories(Request $request): JsonResponse
@@ -349,10 +412,11 @@ class ItemController extends Controller
 
     private function buildProductShareUrl(?Shop $shop, string $token): string
     {
-        if ((bool) ($shop && !blank($shop->catalog_slug) && $shop->catalogWebsiteSettings?->is_enabled)) {
-            return $this->catalog->buildCatalogProductUrl($shop, $token);
-        }
+        return $this->catalog->buildPreferredProductUrl($shop, $token);
+    }
 
-        return $this->catalog->buildItemUrl($token);
+    private function retailerPricingBlockedResponse(string $message): JsonResponse
+    {
+        return response()->json(['message' => $message], 409);
     }
 }

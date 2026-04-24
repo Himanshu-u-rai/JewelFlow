@@ -192,29 +192,12 @@ class CatalogController extends Controller
 
     private function buildProductShareUrl(?Shop $shop, string $token): string
     {
-        if ($this->isCatalogWebsiteEnabled($shop)) {
-            return $this->catalog->buildCatalogProductUrl($shop, $token);
-        }
-
-        return $this->catalog->buildItemUrl($token);
+        return $this->catalog->buildPreferredProductUrl($shop, $token);
     }
 
     private function buildCollectionShareUrl(?Shop $shop, string $token): string
     {
-        if ($this->isCatalogWebsiteEnabled($shop)) {
-            return $this->catalog->buildCatalogCollectionUrl($shop, $token);
-        }
-
-        return $this->catalog->buildCollectionUrl($token);
-    }
-
-    private function isCatalogWebsiteEnabled(?Shop $shop): bool
-    {
-        return (bool) (
-            $shop
-            && !blank($shop->catalog_slug)
-            && $shop->catalogWebsiteSettings?->is_enabled
-        );
+        return $this->catalog->buildPreferredCollectionUrl($shop, $token);
     }
 
     private function defaultHeader(string $shopName): string

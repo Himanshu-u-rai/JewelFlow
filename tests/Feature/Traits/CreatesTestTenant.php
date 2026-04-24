@@ -12,6 +12,8 @@ use App\Models\Role;
 use App\Models\Shop;
 use App\Models\ShopBillingSettings;
 use App\Models\User;
+use App\Services\ShopPricingService;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -194,11 +196,27 @@ trait CreatesTestTenant
             'cost_price' => 50000.00,
             'selling_price' => 55000.00,
             'status' => 'in_stock',
+            'metal_type' => 'gold',
             'metal_lot_id' => $metalLotId,
+            'pricing_review_required' => false,
+            'pricing_review_notes' => null,
             'source' => 'manufactured',
         ], $attrs));
         $item->save();
 
         return $item;
+    }
+
+    protected function seedRetailerPricing(Shop $shop, User|int $user, array $rates = []): void
+    {
+        $userId = $user instanceof User ? $user->id : (int) $user;
+        $service = app(ShopPricingService::class);
+
+        TenantContext::runFor($shop->id, function () use ($service, $shop, $userId, $rates): void {
+            $service->saveTodayBaseRates($shop, $userId, array_merge([
+                'gold_24k_rate_per_gram' => 7200,
+                'silver_999_rate_per_gram' => 92,
+            ], $rates));
+        });
     }
 }

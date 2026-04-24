@@ -90,7 +90,15 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-2">
-                                    <span class="font-medium text-gray-900">{{ $product->name }}</span>
+                                    <div class="font-medium text-gray-900">{{ $product->name }}</div>
+                                    @if($product->metal_type || $product->default_purity)
+                                        <div class="text-xs text-gray-500 mt-0.5">
+                                            {{ $product->metal_type ? ucfirst($product->metal_type) : 'Metal pending' }}
+                                            @if($product->default_purity)
+                                                • {{ $product->default_purity_label }}
+                                            @endif
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-2">
                                     <span class="font-mono text-sm text-gray-600">{{ $product->design_code }}</span>

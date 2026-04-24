@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CatalogCollectionItem;
+use App\Models\CatalogWebsiteSettings;
 use App\Models\Item;
 use App\Models\PublicCatalogCollection;
 use App\Models\Shop;
@@ -106,6 +107,69 @@ class CatalogShareService
             'slug'  => $shop->catalog_slug,
             'token' => $token,
         ]);
+    }
+
+    /**
+     * Ensure a shop has the minimum storefront config required for catalog links.
+     */
+    public function ensureCatalogWebsiteConfigured(?Shop $shop): ?Shop
+    {
+        if (! $shop) {
+            return null;
+        }
+
+        if (blank($shop->catalog_slug)) {
+            $shop->forceFill([
+                'catalog_slug' => Shop::generateUniqueCatalogSlug((string) $shop->name, $shop->id),
+            ])->save();
+        }
+
+        $settings = CatalogWebsiteSettings::withoutTenant()->firstOrCreate(
+            ['shop_id' => $shop->id],
+            [
+                'is_enabled'      => true,
+                'social_whatsapp' => $shop->shop_whatsapp ?: $shop->phone ?: null,
+            ]
+        );
+
+        if (! $settings->is_enabled) {
+            $settings->forceFill(['is_enabled' => true])->save();
+        }
+
+        $shop->setRelation('catalogWebsiteSettings', $settings);
+
+        return $shop;
+    }
+
+    public function canUseCatalogWebsite(?Shop $shop): bool
+    {
+        return (bool) (
+            $shop
+            && ! blank($shop->catalog_slug)
+            && $shop->catalogWebsiteSettings?->is_enabled
+        );
+    }
+
+    public function buildPreferredProductUrl(?Shop $shop, string $token): string
+    {
+        $shop = $this->ensureCatalogWebsiteConfigured($shop);
+
+        if ($this->canUseCatalogWebsite($shop)) {
+            return $this->buildCatalogProductUrl($shop, $token);
+        }
+
+        return $this->buildItemUrl($token);
+    }
+
+    public function buildPreferredCollectionUrl(?Shop $shop, string $token): string
+    {
+        $shop = $this->ensureCatalogWebsiteConfigured($shop);
+
+        if ($this->canUseCatalogWebsite($shop)) {
+            return $this->buildCatalogCollectionUrl($shop, $token);
+        }
+
+        return $this->buildCollectionUrl($token);
     }
 
     // ──────────────────────────────────────────────

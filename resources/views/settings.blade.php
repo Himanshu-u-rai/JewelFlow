@@ -184,9 +184,9 @@
     .logo-upload-wrap {
         position: relative;
         display: grid;
-        grid-template-columns: 180px minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
         gap: 16px;
-        align-items: start;
+        align-items: center;
         padding: 16px;
         border: 1px dashed rgba(15, 23, 42, 0.22);
         border-radius: 18px;
@@ -225,22 +225,29 @@
     }
 
     .logo-preview-shell {
+        position: relative;
+        flex-shrink: 0;
         width: 180px;
         height: 180px;
+        min-width: 180px;
         border-radius: 16px;
         border: 1px solid rgba(15, 23, 42, 0.12);
         background: #ffffff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: grid;
+        place-items: center;
         overflow: hidden;
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
     }
 
     .logo-preview {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        margin: 0 !important;
+        object-fit: contain !important;
+        object-position: center center !important;
         background: radial-gradient(circle at center, #ffffff 0%, #f8fafc 100%);
     }
 
@@ -309,19 +316,52 @@
         word-break: break-all;
     }
 
-    .logo-remove {
-        margin-top: 8px;
+    .logo-delete-btn {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 2;
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 6px;
-        font-size: 12px;
-        color: #475569;
+        padding: 5px 8px;
+        border: 1px solid #fecaca;
+        border-radius: 9999px;
+        background: #fff1f2;
+        font-size: 10px;
+        line-height: 1;
+        font-weight: 700;
+        color: #b91c1c;
+        transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
 
-    .logo-upload-wrap [data-skip-dropzone-click="true"],
-    .logo-upload-wrap .logo-remove,
-    .logo-upload-wrap .logo-remove * {
+    .logo-delete-btn:hover {
+        background: #ffe4e6;
+        border-color: #fda4af;
+    }
+
+    .logo-delete-btn.is-pending {
+        border-color: #fdba74;
+        background: #fff7ed;
+        color: #c2410c;
+    }
+
+    .logo-delete-note {
+        margin-top: 6px;
+        font-size: 11px;
+        color: #b45309;
+    }
+
+    .logo-upload-wrap [data-skip-dropzone-click="true"] {
         cursor: default;
+    }
+
+    .logo-upload-wrap .logo-browse-btn,
+    .logo-upload-wrap .logo-browse-btn *,
+    .logo-upload-wrap .logo-delete-btn,
+    .logo-upload-wrap .logo-delete-btn * {
+        cursor: pointer;
     }
 
     .logo-placeholder-text {
@@ -710,8 +750,13 @@
     }
 
     .logo-upload-meta-col {
-        flex: 1;
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 180px;
         min-width: 0;
+        padding-right: 84px;
     }
 
     .field-input-readonly {
@@ -993,6 +1038,10 @@
             height: 140px;
         }
 
+        .logo-upload-meta-col {
+            padding-right: 0;
+        }
+
         .roles-container {
             grid-template-columns: 1fr;
         }
@@ -1019,6 +1068,11 @@
         .logo-upload-wrap {
             padding: 12px;
             border-radius: 14px;
+        }
+
+        .logo-delete-btn {
+            top: 10px;
+            right: 10px;
         }
 
         .logo-preview-shell {
@@ -1080,6 +1134,11 @@
             <a href="{{ route('settings.edit', ['tab' => 'preferences']) }}" class="nav-item {{ $activeTab === 'preferences' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span> {{ __('Preferences') }}
             </a>
+            @if($shop->isRetailer())
+            <a href="{{ route('settings.edit', ['tab' => 'pricing']) }}" class="nav-item {{ $activeTab === 'pricing' ? 'active' : '' }}" data-turbo-frame="settings-content">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/><path d="M12 1a5 5 0 0 0 0 22"/></svg></span> {{ __('Pricing') }}
+            </a>
+            @endif
             <a href="{{ route('settings.edit', ['tab' => 'website']) }}" class="nav-item {{ $activeTab === 'website' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> {{ __('Catalog Website') }}
             </a>
@@ -1217,10 +1276,20 @@
                                     </div>
                                     <div id="shop-logo-file-name" class="logo-name">{{ $shop->logo_path ? basename($shop->logo_path) : '' }}</div>
                                     @if($shop->logo_path)
-                                        <label class="logo-remove">
-                                            <input id="shop-logo-remove" type="checkbox" name="remove_logo" value="1">
-                                            <span>{{ __('Remove current logo') }}</span>
-                                        </label>
+                                        <input id="shop-logo-remove" type="hidden" name="remove_logo" value="{{ old('remove_logo', 0) ? 1 : 0 }}">
+                                        <button
+                                            type="button"
+                                            id="shop-logo-delete-btn"
+                                            class="logo-delete-btn {{ old('remove_logo', 0) ? 'is-pending' : '' }}"
+                                            data-skip-dropzone-click="true"
+                                            aria-pressed="{{ old('remove_logo', 0) ? 'true' : 'false' }}"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                            <span id="shop-logo-delete-label">{{ old('remove_logo', 0) ? __('Undo') : __('Delete') }}</span>
+                                        </button>
+                                        <div id="shop-logo-delete-note" class="logo-delete-note" @if(!old('remove_logo', 0)) style="display:none;" @endif>
+                                            {{ __('Logo will be deleted after you save changes.') }}
+                                        </div>
                                     @endif
                                 </div>
                             </div>
@@ -1930,6 +1999,10 @@
                 </form>
             @endif
 
+            @if($activeTab === 'pricing' && $shop->isRetailer())
+                @include('partials.settings.pricing-tab')
+            @endif
+
             @if($activeTab === 'roles')
                 <div class="settings-header">
                     <h2 class="settings-title">{{ __('Roles & Permissions') }}</h2>
@@ -2327,9 +2400,13 @@ document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(l
     const placeholder = document.getElementById('shop-logo-placeholder');
     const stateText = document.getElementById('shop-logo-state-text');
     const fileName = document.getElementById('shop-logo-file-name');
-    const removeCheckbox = document.getElementById('shop-logo-remove');
+    const removeInput = document.getElementById('shop-logo-remove');
+    const deleteBtn = document.getElementById('shop-logo-delete-btn');
+    const deleteLabel = document.getElementById('shop-logo-delete-label');
+    const deleteNote = document.getElementById('shop-logo-delete-note');
     const initialPreviewSrc = (preview.getAttribute('src') || '').trim();
     const initialFileName = (fileName.textContent || '').trim();
+    const initialDeletePending = removeInput ? removeInput.value === '1' : false;
     const maxFileBytes = 2 * 1024 * 1024;
 
     if (!dropzone || !browseBtn || !input || !preview || !placeholder || !stateText || !fileName) {
@@ -2347,6 +2424,27 @@ document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(l
         preview.style.display = 'block';
         placeholder.style.display = 'none';
         stateText.textContent = status;
+    };
+
+    const setDeleteIntent = (enabled) => {
+        if (!removeInput) {
+            return;
+        }
+
+        removeInput.value = enabled ? '1' : '0';
+
+        if (deleteBtn) {
+            deleteBtn.classList.toggle('is-pending', enabled);
+            deleteBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        }
+
+        if (deleteLabel) {
+            deleteLabel.textContent = enabled ? 'Undo' : 'Delete';
+        }
+
+        if (deleteNote) {
+            deleteNote.style.display = enabled ? 'block' : 'none';
+        }
     };
 
     const openPicker = () => {
@@ -2373,9 +2471,7 @@ document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(l
         }
 
         fileName.textContent = file.name;
-        if (removeCheckbox) {
-            removeCheckbox.checked = false;
-        }
+        setDeleteIntent(false);
 
         const reader = new FileReader();
         reader.onload = (e) => showPreview(e.target?.result || '');
@@ -2441,8 +2537,8 @@ document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(l
         const file = event.target.files && event.target.files[0];
         if (!file) {
             fileName.textContent = '';
-            if (removeCheckbox && removeCheckbox.checked) {
-                showPlaceholder();
+            if (removeInput && removeInput.value === '1') {
+                showPlaceholder('Will be deleted after save');
                 return;
             }
             if (initialPreviewSrc) {
@@ -2457,12 +2553,17 @@ document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(l
         applyFile(file);
     });
 
-    if (removeCheckbox) {
-        removeCheckbox.addEventListener('change', (event) => {
-            if (event.target.checked) {
+    if (deleteBtn && removeInput) {
+        deleteBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+
+            const willDelete = removeInput.value !== '1';
+            setDeleteIntent(willDelete);
+
+            if (willDelete) {
                 input.value = '';
                 fileName.textContent = '';
-                showPlaceholder();
+                showPlaceholder('Will be deleted after save');
                 return;
             }
 
@@ -2478,6 +2579,10 @@ document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(l
                 showPlaceholder();
             }
         });
+    }
+
+    if (initialDeletePending) {
+        showPlaceholder('Will be deleted after save');
     }
 })();
 </script>

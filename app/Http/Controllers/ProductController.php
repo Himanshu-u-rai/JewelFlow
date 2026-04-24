@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Services\ShopPricingService;
 
 class ProductController extends Controller
 {
+    public function __construct(private ShopPricingService $pricing) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -36,8 +39,11 @@ class ProductController extends Controller
     public function create()
     {
         $shopId = auth()->user()->shop_id;
-        $categories = \App\Models\Category::where('shop_id', $shopId)->get();
-        return view('products.create', compact('categories'));
+        $shop = auth()->user()->shop;
+        $categories = \App\Models\Category::where('shop_id', $shopId)->with('subCategories')->get();
+        $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
+
+        return view('products.create', compact('categories', 'purityProfiles'));
     }
 
     /**
@@ -46,6 +52,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $shopId = auth()->user()->shop_id;
+        $shop = auth()->user()->shop;
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'design_code' => ['nullable', 'string', 'max:100', Rule::unique('products', 'design_code')->where('shop_id', $shopId)],
@@ -57,13 +64,20 @@ class ProductController extends Controller
                 'required',
                 Rule::exists('sub_categories', 'id')->where('shop_id', $shopId),
             ],
-            'default_purity' => 'nullable|integer|min:1|max:24',
+            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
+            'default_purity' => 'nullable|numeric|min:0.001|max:1000',
             'approx_weight' => 'nullable|numeric|min:0',
             'default_making' => 'nullable|numeric|min:0',
             'default_stone' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
             'image' => 'nullable|file|mimetypes:image/jpeg,image/png,image/gif,image/webp|max:5120',
         ]);
+
+        if (! empty($validated['default_purity']) && ! $this->pricing->profileForPurity($shop, $validated['metal_type'], (float) $validated['default_purity'])) {
+            return back()->withErrors([
+                'default_purity' => 'Select an active purity profile for the chosen metal type.',
+            ])->withInput();
+        }
         
         // Auto-generate design_code if not provided
         if (empty($validated['design_code'])) {
@@ -97,9 +111,12 @@ class ProductController extends Controller
     public function edit($id)
     {
         $shopId = auth()->user()->shop_id;
+        $shop = auth()->user()->shop;
         $product = \App\Models\Product::where('shop_id', $shopId)->findOrFail($id);
         $categories = \App\Models\Category::where('shop_id', $shopId)->with('subCategories')->get();
-        return view('products.edit', compact('product', 'categories'));
+        $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
+
+        return view('products.edit', compact('product', 'categories', 'purityProfiles'));
     }
 
     /**
@@ -108,6 +125,7 @@ class ProductController extends Controller
     public function update(Request $request, $id)
     {
         $shopId = auth()->user()->shop_id;
+        $shop = auth()->user()->shop;
         $product = \App\Models\Product::where('shop_id', $shopId)->findOrFail($id);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -120,13 +138,20 @@ class ProductController extends Controller
                 'required',
                 Rule::exists('sub_categories', 'id')->where('shop_id', $shopId),
             ],
-            'default_purity' => 'nullable|integer|min:1|max:24',
+            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
+            'default_purity' => 'nullable|numeric|min:0.001|max:1000',
             'approx_weight' => 'nullable|numeric|min:0',
             'default_making' => 'nullable|numeric|min:0',
             'default_stone' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
             'image' => 'nullable|file|mimetypes:image/jpeg,image/png,image/gif,image/webp|max:5120',
         ]);
+
+        if (! empty($validated['default_purity']) && ! $this->pricing->profileForPurity($shop, $validated['metal_type'], (float) $validated['default_purity'])) {
+            return back()->withErrors([
+                'default_purity' => 'Select an active purity profile for the chosen metal type.',
+            ])->withInput();
+        }
         
         // Handle image upload
         if ($request->hasFile('image')) {

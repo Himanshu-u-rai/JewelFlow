@@ -21,6 +21,7 @@ use App\Http\Controllers\ReorderController;
 use App\Http\Controllers\TagPrintController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\RetailerDashboardController;
+use App\Http\Controllers\PricingSettingsController;
 use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\PublicCatalogController;
 
@@ -289,6 +290,12 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/settings/preferences', [SettingsController::class, 'updatePreferences'])->middleware('role:owner')->name('settings.update.preferences');
     Route::post('/settings/whatsapp-template', [SettingsController::class, 'saveWhatsappTemplate'])->middleware('role:owner')->name('settings.whatsapp.template');
     Route::patch('/settings/roles/{role}', [SettingsController::class, 'updateRolePermissions'])->middleware('role:owner')->name('settings.update.role');
+    Route::patch('/settings/pricing/timezone', [PricingSettingsController::class, 'updateTimezone'])->middleware('role:owner')->name('settings.pricing.update-timezone');
+    Route::post('/settings/pricing/daily-rates', [PricingSettingsController::class, 'saveTodayRates'])->middleware('role:owner')->name('settings.pricing.save-rates');
+    Route::post('/settings/pricing/purity-profiles', [PricingSettingsController::class, 'storeProfile'])->middleware('role:owner')->name('settings.pricing.profiles.store');
+    Route::patch('/settings/pricing/purity-profiles/{profile}', [PricingSettingsController::class, 'updateProfile'])->middleware('role:owner')->name('settings.pricing.profiles.update');
+    Route::post('/settings/pricing/purity-profiles/{profile}/override', [PricingSettingsController::class, 'storeOverride'])->middleware('role:owner')->name('settings.pricing.overrides.store');
+    Route::patch('/settings/pricing/legacy-items/{item}', [PricingSettingsController::class, 'resolveLegacyItem'])->middleware('role:owner')->name('settings.pricing.legacy.resolve');
 
     // Catalog Website settings
     Route::patch('/settings/catalog-website', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'updateSettings'])->middleware('role:owner')->name('settings.update.catalog-website');

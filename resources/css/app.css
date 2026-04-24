@@ -1064,6 +1064,32 @@ body.drawer-open {
     touch-action: none;
 }
 
+.pricing-shell-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.pricing-shell-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.pricing-shell-modal__panel {
+    position: relative;
+    z-index: 1;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100svh - 2rem);
+    overflow: auto;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .sidebar {

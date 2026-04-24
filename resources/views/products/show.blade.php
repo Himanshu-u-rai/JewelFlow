@@ -28,10 +28,14 @@
                 </div>
 
                 <div class="lg:col-span-2 p-6">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                        <div class="rounded-md border border-gray-200 p-3">
+                            <p class="text-xs text-gray-500 uppercase">Metal</p>
+                            <p class="text-lg font-semibold text-gray-900 mt-1">{{ $product->metal_type ? ucfirst($product->metal_type) : '-' }}</p>
+                        </div>
                         <div class="rounded-md border border-gray-200 p-3">
                             <p class="text-xs text-gray-500 uppercase">Purity</p>
-                            <p class="text-lg font-semibold text-gray-900 mt-1">{{ $product->default_purity ? $product->default_purity . 'K' : '-' }}</p>
+                            <p class="text-lg font-semibold text-gray-900 mt-1">{{ $product->default_purity ? $product->default_purity_label : '-' }}</p>
                         </div>
                         <div class="rounded-md border border-gray-200 p-3">
                             <p class="text-xs text-gray-500 uppercase">Approx Weight</p>

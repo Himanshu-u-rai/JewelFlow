@@ -15,12 +15,17 @@ class Product extends Model
         'design_code',
         'category_id',
         'sub_category_id',
+        'metal_type',
         'default_purity',
         'approx_weight',
         'default_making',
         'default_stone',
         'notes',
         'image',
+    ];
+
+    protected $casts = [
+        'default_purity' => 'decimal:3',
     ];
 
     public function shop()
@@ -41,5 +46,20 @@ class Product extends Model
     public function items()
     {
         return $this->hasMany(Item::class);
+    }
+
+    public function getDefaultPurityLabelAttribute(): ?string
+    {
+        if ($this->default_purity === null) {
+            return null;
+        }
+
+        $value = rtrim(rtrim(number_format((float) $this->default_purity, 3, '.', ''), '0'), '.');
+
+        if ($this->metal_type === 'silver') {
+            return $value;
+        }
+
+        return $value . 'K';
     }
 }

@@ -1,4 +1,26 @@
 <x-app-layout>
+    @php
+        $profileOptions = $purityProfiles->mapWithKeys(function ($profiles, $metalType) {
+            return [
+                $metalType => $profiles->map(function ($profile) {
+                    $value = rtrim(rtrim(number_format((float) $profile->purity_value, 3, '.', ''), '0'), '.');
+
+                    return [
+                        'value' => $value,
+                        'label' => $profile->label,
+                    ];
+                })->values(),
+            ];
+        });
+
+        $categoriesData = $categories->mapWithKeys(fn ($category) => [
+            (string) $category->id => $category->subCategories->map(fn ($subCategory) => [
+                'id' => $subCategory->id,
+                'name' => $subCategory->name,
+            ])->values(),
+        ]);
+    @endphp
+
     <x-page-header>
         <div>
             <h1 class="page-title">Add New Product</h1>
@@ -112,6 +134,16 @@
                                     <option value="">Select category first</option>
                                 </select>
                             </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Metal Type <span class="text-red-500">*</span></label>
+                                <select name="metal_type" id="metal_type"
+                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500" required>
+                                    <option value="">Select metal</option>
+                                    <option value="gold" @selected(old('metal_type', 'gold') === 'gold')>Gold</option>
+                                    <option value="silver" @selected(old('metal_type') === 'silver')>Silver</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
             
@@ -122,13 +154,11 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Default Purity</label>
-                                <select name="default_purity" class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
-                                    <option value="">Select</option>
-                                    <option value="24" {{ old('default_purity') == '24' ? 'selected' : '' }}>24K (999)</option>
-                                    <option value="22" {{ old('default_purity') == '22' ? 'selected' : '' }}>22K (916)</option>
-                                    <option value="18" {{ old('default_purity') == '18' ? 'selected' : '' }}>18K (750)</option>
-                                    <option value="14" {{ old('default_purity') == '14' ? 'selected' : '' }}>14K (585)</option>
+                                <select name="default_purity" id="default_purity" data-initial-value="{{ old('default_purity') }}"
+                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                    <option value="">Select metal type first</option>
                                 </select>
+                                <p class="text-xs text-gray-500 mt-1">Defaults come from your shared shop purity catalog.</p>
                             </div>
                             
                             <div>
@@ -197,6 +227,9 @@
     </div>
 
     <script>
+        const categoryOptions = @json($categoriesData);
+        const purityProfiles = @json($profileOptions);
+
         // Image modal
         function openImageModal(src, caption) {
             document.getElementById('modalImage').src = src;
@@ -244,26 +277,63 @@
             const random = Math.random().toString(36).substring(2, 6).toUpperCase();
             document.getElementById('design_code').value = `PRD-${timestamp}-${random}`;
         }
-        
-        document.getElementById('category_id').addEventListener('change', function() {
-            var categoryId = this.value;
-            var subCatSelect = document.getElementById('sub_category_id');
-            subCatSelect.innerHTML = '<option value="">Loading...</option>';
-            
-            if (!categoryId) {
+
+        function normalizePurityValue(value) {
+            const number = Number.parseFloat(value);
+            if (!Number.isFinite(number)) {
+                return '';
+            }
+
+            return number.toFixed(3).replace(/\.?0+$/, '');
+        }
+
+        function populateSubCategories() {
+            const categoryId = document.getElementById('category_id').value;
+            const subCatSelect = document.getElementById('sub_category_id');
+            const currentValue = subCatSelect.dataset.initialValue || subCatSelect.value || @json(old('sub_category_id'));
+
+            if (!categoryId || !categoryOptions[categoryId]) {
                 subCatSelect.innerHTML = '<option value="">Select category first</option>';
                 return;
             }
-            
-            fetch('/api/sub-categories?category_id=' + categoryId)
-                .then(response => response.json())
-                .then(data => {
-                    let options = '<option value="">Select Sub-category</option>';
-                    data.forEach(function(sub) {
-                        options += `<option value="${sub.id}">${sub.name}</option>`;
-                    });
-                    subCatSelect.innerHTML = options;
-                });
+
+            subCatSelect.innerHTML = '<option value="">Select Sub-category</option>';
+            categoryOptions[categoryId].forEach((subCategory) => {
+                const option = document.createElement('option');
+                option.value = subCategory.id;
+                option.textContent = subCategory.name;
+                option.selected = String(subCategory.id) === String(currentValue);
+                subCatSelect.appendChild(option);
+            });
+
+            subCatSelect.dataset.initialValue = '';
+        }
+
+        function populatePurityOptions() {
+            const metalType = document.getElementById('metal_type').value;
+            const puritySelect = document.getElementById('default_purity');
+            const currentValue = normalizePurityValue(puritySelect.dataset.initialValue || puritySelect.value);
+            const profiles = purityProfiles[metalType] || [];
+
+            puritySelect.innerHTML = '<option value="">Select</option>';
+
+            profiles.forEach((profile) => {
+                const option = document.createElement('option');
+                option.value = profile.value;
+                option.textContent = profile.label;
+                option.selected = profile.value === currentValue;
+                puritySelect.appendChild(option);
+            });
+
+            puritySelect.dataset.initialValue = '';
+        }
+
+        document.getElementById('category_id').addEventListener('change', populateSubCategories);
+        document.getElementById('metal_type').addEventListener('change', populatePurityOptions);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            populateSubCategories();
+            populatePurityOptions();
         });
     </script>
 </x-app-layout>

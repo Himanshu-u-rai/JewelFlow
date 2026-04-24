@@ -24,6 +24,7 @@ class Item extends Model
         'design',
         'image',
         'category',
+        'metal_type',
         'sub_category',
         'gross_weight',
         'stone_weight',
@@ -42,6 +43,8 @@ class Item extends Model
         'huid',
         'hallmark_date',
         'share_token',
+        'pricing_review_required',
+        'pricing_review_notes',
     ];
 
     protected $casts = [
@@ -55,6 +58,7 @@ class Item extends Model
         'cost_price' => 'decimal:2',
         'selling_price' => 'decimal:2',
         'hallmark_date' => 'date',
+        'pricing_review_required' => 'boolean',
     ];
 
     public function product()
@@ -90,5 +94,20 @@ class Item extends Model
     public function scopeHasShareToken($query)
     {
         return $query->whereNotNull('share_token');
+    }
+
+    public function getPurityLabelAttribute(): ?string
+    {
+        if ($this->purity === null) {
+            return null;
+        }
+
+        $value = rtrim(rtrim(number_format((float) $this->purity, 3, '.', ''), '0'), '.');
+
+        if ($this->metal_type === 'silver') {
+            return $value;
+        }
+
+        return $value . 'K';
     }
 }

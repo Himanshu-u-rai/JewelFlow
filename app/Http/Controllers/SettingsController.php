@@ -13,6 +13,8 @@ use App\Models\ShopCounter;
 use App\Models\Invoice;
 use App\Models\AuditLog;
 use App\Services\BusinessIdentifierService;
+use App\Services\ShopPricingService;
+use DateTimeZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -81,7 +83,63 @@ class SettingsController extends Controller
             ];
         }
 
-        return view('settings', compact('shop', 'rules', 'billing', 'preferences', 'roles', 'permissions', 'permissionGroups', 'staff', 'staffLimit', 'staffCount', 'activeTab', 'logs', 'stats', 'catalogWebsiteSettings', 'catalogPages'));
+        $pricingData = null;
+        $pricingTimezones = [];
+        if ($activeTab === 'pricing' && $shop->isRetailer()) {
+            $pricing = app(ShopPricingService::class);
+            $allPurityProfiles = $pricing->allPurityProfiles($shop);
+            $historyFilters = $pricing->normalizeResolvedRateHistoryFilters([
+                'date_from' => $request->query('history_date_from'),
+                'date_to' => $request->query('history_date_to'),
+                'metal_type' => $request->query('history_metal_type'),
+                'purity_value' => $request->query('history_purity_value'),
+                'entry_type' => $request->query('history_entry_type'),
+                'sort_by' => $request->query('history_sort_by'),
+                'sort_dir' => $request->query('history_sort_dir'),
+            ]);
+            $pricingData = [
+                'timezone' => $pricing->pricingTimezone($shop),
+                'business_date' => $pricing->businessDateString($shop),
+                'today_rate' => $pricing->currentDailyRate($shop),
+                'profiles' => $allPurityProfiles->groupBy('metal_type'),
+                'resolved_rates' => $pricing->resolvedRateGrid($shop),
+                'legacy_items' => $pricing->legacyItemsNeedingReview($shop),
+                'rates_ready' => $pricing->hasCurrentDailyRates($shop),
+                'history_filters' => $historyFilters,
+                'history_rows' => $pricing->resolvedRateHistory($shop, $historyFilters, 50),
+                'history_purity_options' => $allPurityProfiles
+                    ->map(function ($profile) use ($pricing): array {
+                        return [
+                            'metal_type' => (string) $profile->metal_type,
+                            'value' => $pricing->normalizePurityString((float) $profile->purity_value),
+                            'label' => (string) $profile->label,
+                        ];
+                    })
+                    ->unique(fn (array $option): string => $option['metal_type'] . ':' . $option['value'])
+                    ->values(),
+            ];
+            $pricingTimezones = DateTimeZone::listIdentifiers();
+        }
+
+        return view('settings', compact(
+            'shop',
+            'rules',
+            'billing',
+            'preferences',
+            'roles',
+            'permissions',
+            'permissionGroups',
+            'staff',
+            'staffLimit',
+            'staffCount',
+            'activeTab',
+            'logs',
+            'stats',
+            'catalogWebsiteSettings',
+            'catalogPages',
+            'pricingData',
+            'pricingTimezones'
+        ));
     }
 
     /**

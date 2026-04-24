@@ -11,15 +11,24 @@ use App\Models\Scheme;
 use App\Services\SalesService;
 use App\Services\RetailerSalesService;
 use App\Services\ExchangeService;
+use App\Services\ShopPricingService;
 use App\Services\SchemeService;
+use LogicException;
 use Illuminate\Validation\ValidationException;
 
 class PosController extends Controller
 {
+    public function __construct(private ShopPricingService $pricing) {}
+
     public function index(Request $request)
     {
         $shop = auth()->user()->shop;
         $shopId = auth()->user()->shop_id;
+
+        if ($shop->isRetailer() && ($redirect = $this->retailerPricingRedirectIfMissing($shop))) {
+            return $redirect;
+        }
+
         $eagerLoads = $shop?->isManufacturer() ? ['metalLot', 'product'] : ['product'];
 
         $items = Item::where('shop_id', $shopId)
@@ -54,6 +63,10 @@ class PosController extends Controller
         $shop = auth()->user()->shop;
 
         $this->authorize('view', $customer);
+
+        if ($shop->isRetailer() && ($redirect = $this->retailerPricingRedirectIfMissing($shop))) {
+            return $redirect;
+        }
 
         $items = Item::where('shop_id', $shopId)
             ->where('status', 'in_stock')
@@ -154,6 +167,14 @@ class PosController extends Controller
      */
     private function sellRetailer(Request $request)
     {
+        try {
+            $this->pricing->assertRetailerPricingReady(auth()->user()->shop);
+        } catch (LogicException $e) {
+            throw ValidationException::withMessages([
+                'pricing' => $e->getMessage(),
+            ]);
+        }
+
         $validated = $request->validate([
             'customer_id' => [
                 'required',
@@ -257,6 +278,23 @@ class PosController extends Controller
         ]);
     }
 
+    private function retailerPricingRedirectIfMissing($shop)
+    {
+        if (! $shop->isRetailer() || $this->pricing->hasCurrentDailyRates($shop)) {
+            return null;
+        }
+
+        $message = 'Today\'s retailer pricing is missing. Ask the owner to save today\'s Pricing rates first.';
+
+        if (auth()->user()->isOwner()) {
+            return redirect()->route('settings.edit', ['tab' => 'pricing'])
+                ->with('error', $message);
+        }
+
+        return redirect()->route('dashboard')
+            ->with('error', $message);
+    }
+
     public function exchange(Request $request)
     {
         $request->validate([
@@ -320,6 +358,14 @@ class PosController extends Controller
 
         // === Retailer preview: simple selling-price based ===
         if ($shop->isRetailer()) {
+            try {
+                $this->pricing->assertRetailerPricingReady($shop);
+            } catch (LogicException $e) {
+                throw ValidationException::withMessages([
+                    'pricing' => $e->getMessage(),
+                ]);
+            }
+
             $sellingPrice = (float) $item->selling_price;
             $gst = round($sellingPrice * ($gstRate / 100), 2);
             $total = round($sellingPrice + $gst - $discount + $roundOff, 2);

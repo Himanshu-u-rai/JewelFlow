@@ -32,13 +32,20 @@
             $hasDhiran = (bool) $authShop?->hasDhiran();
             $dhiranOnly = $hasDhiran && ! $hasRetailer && ! $hasManufacturer;
             $onDhiranHost = str_starts_with(request()->getHost(), 'dhiran.');
-            $homeRoute = ($dhiranOnly || $onDhiranHost) ? 'dhiran.dashboard' : 'dashboard';
-            $dhiranChrome = $dhiranOnly || $onDhiranHost;
+            $onDhiranRoute = request()->routeIs('dhiran.*');
+            $dhiranChrome = $dhiranOnly || $onDhiranHost || $onDhiranRoute;
+            $homeRoute = $dhiranChrome ? 'dhiran.dashboard' : 'dashboard';
+            $brandName = $dhiranChrome ? __('Dhiran') : 'JewelFlow';
+            $brandSubtitle = $dhiranChrome ? __('Gold Loan Suite') : __('Enterprise System');
+            $settingsRoute = $dhiranChrome ? 'dhiran.settings' : 'settings.edit';
+            // Keep the "Open Dhiran" entry point on the working in-app route
+            // until a real dhiran.* host is provisioned and resolvable.
+            $dhiranOpenUrl = route('dhiran.dashboard');
         @endphp
         @php
-            // On the dhiran subdomain, hide retailer/manufacturer sections regardless
-            // of the shop's edition set — the subdomain is Dhiran-branded.
-            if ($onDhiranHost) {
+            // Dhiran routes should render as a Dhiran-first workspace even on the
+            // main host, because the dedicated dhiran.* host is not provisioned yet.
+            if ($dhiranChrome) {
                 $hasRetailer = false;
                 $hasManufacturer = false;
             }
@@ -47,6 +54,82 @@
         <div id="global-toast" class="global-toast" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true"></div>
         <div id="turbo-stream-toasts" style="display:none"></div>
 
+        @php
+            $viewErrors = $errors ?? new \Illuminate\Support\ViewErrorBag();
+            $pricingModalErrors = $viewErrors->getBag('pricingModal');
+            $pricingTodayRate = $pricingShellState['today_rate'] ?? null;
+        @endphp
+        @if(($pricingShellState['show_owner_modal'] ?? false) === true)
+            <div class="pricing-shell-modal">
+                <div class="pricing-shell-modal__backdrop"></div>
+                <div class="pricing-shell-modal__panel relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+                    <div class="px-8 py-7 border-b border-slate-200">
+                        <div class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">{{ __('Retailer Pricing Required') }}</div>
+                        <h2 class="mt-2 text-2xl font-bold text-slate-900">{{ __('Enter Today\'s Metal Rates') }}</h2>
+                        <p class="mt-2 text-sm text-slate-600">
+                            {{ __('The owner must save today\'s retailer pricing before the rest of the team can continue with pricing-sensitive stock and POS actions.') }}
+                        </p>
+                        <p class="mt-3 text-sm font-medium text-slate-800">
+                            {{ __('Business date:') }} {{ $pricingShellState['business_date'] ?? '—' }}
+                            <span class="text-slate-500">({{ $pricingShellState['timezone'] ?? config('app.timezone', 'UTC') }})</span>
+                        </p>
+                    </div>
+                    <form method="POST" action="{{ route('settings.pricing.save-rates') }}" class="px-8 py-7">
+                        @csrf
+                        <input type="hidden" name="context" value="modal">
+                        <input type="hidden" name="redirect_to" value="{{ url()->full() }}">
+
+                        @if($pricingModalErrors->any())
+                            <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                <ul class="list-disc list-inside space-y-1">
+                                    @foreach($pricingModalErrors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">{{ __('24K Gold Price / Gram') }}</label>
+                                <input
+                                    type="number"
+                                    step="0.0001"
+                                    min="0.0001"
+                                    name="gold_24k_rate_per_gram"
+                                    value="{{ old('gold_24k_rate_per_gram', $pricingTodayRate ? (float) $pricingTodayRate->gold_24k_rate_per_gram : null) }}"
+                                    class="w-full rounded-2xl border-slate-300 focus:border-amber-500 focus:ring-amber-500"
+                                    required
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">{{ __('Silver 999 Price / Kg') }}</label>
+                                <input
+                                    type="number"
+                                    step="0.0001"
+                                    min="0.0001"
+                                    name="silver_999_rate_per_kg"
+                                    value="{{ old('silver_999_rate_per_kg', $pricingTodayRate ? round((float) $pricingTodayRate->silver_999_rate_per_gram * 1000, 4) : null) }}"
+                                    class="w-full rounded-2xl border-slate-300 focus:border-amber-500 focus:ring-amber-500"
+                                    required
+                                >
+                                <p class="mt-2 text-xs text-slate-500">{{ __('We convert silver to a per-gram internal rate automatically.') }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex items-center justify-between gap-4">
+                            <div class="text-xs text-slate-500">
+                                {{ __('Saving today\'s rates will refresh current per-purity pricing and queue an in-stock retailer repricing job.') }}
+                            </div>
+                            <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white hover:bg-amber-700">
+                                {{ __('Save Today\'s Rates') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
+
         <div class="sidebar-overlay" data-mobile-menu-overlay="tenant" data-mobile-drawer-overlay="tenant"></div>
         <div class="workspace">
             <!-- Left Sidebar -->
@@ -54,9 +137,9 @@
                 <div class="sidebar-header">
                     <div class="sidebar-header-main">
                         <a href="{{ route($homeRoute) }}" class="sidebar-logo">
-                            <span>JewelFlow</span>
+                            <span>{{ $brandName }}</span>
                         </a>
-                        <div class="sidebar-subtitle">{{ __('Enterprise System') }}</div>
+                        <div class="sidebar-subtitle">{{ $brandSubtitle }}</div>
                     </div>
                     <button type="button" class="sidebar-close-btn" data-mobile-menu-toggle="tenant" aria-controls="main-sidebar" aria-expanded="false" aria-label="Close navigation">
                         <span class="drawer-toggle-icon drawer-toggle-icon-menu" aria-hidden="true">
@@ -209,6 +292,12 @@
                     @can('dhiran.view')
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Gold Loans') }}</div>
+                        @if(! $dhiranChrome)
+                        <a href="{{ $dhiranOpenUrl }}" class="nav-link" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+                            {{ __('Open Dhiran Site') }}
+                        </a>
+                        @endif
                         <a href="{{ route('dhiran.dashboard') }}" class="nav-link">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v4"/><path d="M12 14v4"/><path d="M16 14v4"/></svg>
                             {{ __('Dashboard') }}
@@ -259,7 +348,7 @@
                 </div>
                 
                 <div class="sidebar-footer">
-                    <a href="{{ route('settings.edit') }}" class="sidebar-footer-link">
+                    <a href="{{ route($settingsRoute) }}" class="sidebar-footer-link">
                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3"/></svg>
                         {{ __('Settings') }}
                         <span class="sidebar-footer-role">{{ $authUser?->isOwner() ? __('Owner') : ($authUser ? __('Cashier') : __('Guest')) }}</span>

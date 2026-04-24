@@ -77,6 +77,16 @@ class Shop extends Model
         return $this->hasOne(ShopPreferences::class);
     }
 
+    public function metalPurityProfiles(): HasMany
+    {
+        return $this->hasMany(ShopMetalPurityProfile::class);
+    }
+
+    public function dailyMetalRates(): HasMany
+    {
+        return $this->hasMany(ShopDailyMetalRate::class);
+    }
+
     public function catalogWebsiteSettings(): HasOne
     {
         return $this->hasOne(CatalogWebsiteSettings::class);

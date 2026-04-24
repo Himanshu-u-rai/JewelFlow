@@ -128,9 +128,15 @@
                         </div>
 
                         <div class="mt-3 grid grid-cols-1 gap-2">
+                            @if($isRetailer && $item->metal_type)
+                                <div class="rounded-lg bg-gray-50 border border-gray-100 p-2.5">
+                                    <div class="text-[11px] text-gray-500">Metal</div>
+                                    <div class="text-sm font-semibold text-slate-700">{{ ucfirst($item->metal_type) }}</div>
+                                </div>
+                            @endif
                             <div class="rounded-lg bg-gray-50 border border-gray-100 p-2.5">
                                 <div class="text-[11px] text-gray-500">Purity</div>
-                                <div class="text-sm font-semibold text-yellow-700">{{ $item->purity }}K</div>
+                                <div class="text-sm font-semibold text-yellow-700">{{ $item->purity_label }}</div>
                             </div>
                             <div class="rounded-lg bg-gray-50 border border-gray-100 p-2.5">
                                 <div class="text-[11px] text-gray-500">Net</div>
@@ -405,7 +411,7 @@
             <div style="font-size: 10px; font-weight: bold; margin-bottom: 2mm;">{{ auth()->user()->shop->shop_name ?? 'JewelFlow' }}</div>
             <svg id="barcode-svg"></svg>
             <div style="font-size: 9px; margin-top: 1mm;">{{ $item->barcode }}</div>
-            <div style="font-size: 8px; color: #666;">{{ $item->category }} | {{ $item->purity }}K | {{ number_format($item->gross_weight, 3) }}g</div>
+            <div style="font-size: 8px; color: #666;">{{ $item->category }} | {{ $item->purity_label }} | {{ number_format($item->gross_weight, 3) }}g</div>
         </div>
     </div>
 

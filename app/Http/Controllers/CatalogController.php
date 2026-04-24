@@ -40,6 +40,10 @@ class CatalogController extends Controller
             $query->where('category', $request->category);
         }
 
+        if ($request->filled('sub_category')) {
+            $query->where('sub_category', $request->sub_category);
+        }
+
         $allMatchingIds = (clone $query)->pluck('id')->map(fn ($id) => (string) $id)->values()->toArray();
 
         $items = $query->latest()->paginate(20);
@@ -54,8 +58,21 @@ class CatalogController extends Controller
 
         $categories = Item::where('shop_id', $shop->id)
             ->where('status', 'in_stock')
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
             ->distinct()
             ->pluck('category')
+            ->filter()
+            ->sort()
+            ->values();
+
+        $subCategories = Item::where('shop_id', $shop->id)
+            ->where('status', 'in_stock')
+            ->whereNotNull('sub_category')
+            ->where('sub_category', '!=', '')
+            ->when($request->filled('category'), fn ($q) => $q->where('category', $request->category))
+            ->distinct()
+            ->pluck('sub_category')
             ->filter()
             ->sort()
             ->values();
@@ -66,7 +83,7 @@ class CatalogController extends Controller
         $savedWaFooter = $preferences->wa_custom_footer ?? null;
 
         return view('retailer-reports.whatsapp', compact(
-            'items', 'categories', 'savedWaHeader', 'savedWaBody', 'savedWaFooter', 'allMatchingIds'
+            'items', 'categories', 'subCategories', 'savedWaHeader', 'savedWaBody', 'savedWaFooter', 'allMatchingIds'
         ));
     }
 
@@ -117,28 +134,11 @@ class CatalogController extends Controller
 
     private function buildProductShareUrl(?Shop $shop, string $token): string
     {
-        if ($this->isCatalogWebsiteEnabled($shop)) {
-            return $this->catalog->buildCatalogProductUrl($shop, $token);
-        }
-
-        return $this->catalog->buildItemUrl($token);
+        return $this->catalog->buildPreferredProductUrl($shop, $token);
     }
 
     private function buildCollectionShareUrl(?Shop $shop, string $token): string
     {
-        if ($this->isCatalogWebsiteEnabled($shop)) {
-            return $this->catalog->buildCatalogCollectionUrl($shop, $token);
-        }
-
-        return $this->catalog->buildCollectionUrl($token);
-    }
-
-    private function isCatalogWebsiteEnabled(?Shop $shop): bool
-    {
-        return (bool) (
-            $shop
-            && !blank($shop->catalog_slug)
-            && $shop->catalogWebsiteSettings?->is_enabled
-        );
+        return $this->catalog->buildPreferredCollectionUrl($shop, $token);
     }
 }

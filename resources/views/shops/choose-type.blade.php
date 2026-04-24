@@ -371,12 +371,9 @@
 
     cards.forEach(card => {
         const cb = card.querySelector('input[type="checkbox"]');
-        card.addEventListener('click', (e) => {
-            if (e.target !== cb) {
-                cb.checked = !cb.checked;
-            }
-            sync();
-        });
+        // Card is a <label>, so browser toggles checkbox by default.
+        // Listen to checkbox changes only to avoid double-toggle.
+        cb.addEventListener('change', sync);
     });
 
     sync();

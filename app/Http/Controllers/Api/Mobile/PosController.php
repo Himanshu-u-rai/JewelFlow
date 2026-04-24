@@ -10,18 +10,23 @@ use App\Services\OfferEngineService;
 use App\Services\RetailerSalesService;
 use App\Services\SalesService;
 use App\Services\SchemeService;
+use App\Services\ShopPricingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use LogicException;
 
 class PosController extends Controller
 {
+    public function __construct(private ShopPricingService $pricing) {}
+
     public function bootstrap(Request $request): JsonResponse
     {
         $shop = $request->user()->shop;
         $shopId = (int) $request->user()->shop_id;
+        $pricingReady = ! $shop->isRetailer() || $this->pricing->hasCurrentDailyRates($shop);
 
         $customerId = (int) $request->integer('customer_id', 0);
         $customer = null;
@@ -57,6 +62,8 @@ class PosController extends Controller
             ] : null,
             'offers' => [],
             'redeemable_enrollments' => [],
+            'pricing_ready' => $pricingReady,
+            'pricing_business_date' => $shop->isRetailer() ? $this->pricing->businessDateString($shop) : null,
         ];
 
         if ($shop->isRetailer() && $customer) {
@@ -121,6 +128,12 @@ class PosController extends Controller
         $gstRate = (float) ($shop->gst_rate ?? config('business.gst_rate_default'));
 
         if ($shop->isRetailer()) {
+            try {
+                $this->pricing->assertRetailerPricingReady($shop);
+            } catch (LogicException $e) {
+                return $this->retailerPricingBlockedResponse($e->getMessage());
+            }
+
             $validated = $request->validate([
                 'customer_id' => [
                     'required',
@@ -313,6 +326,12 @@ class PosController extends Controller
         $shopId = (int) $request->user()->shop_id;
 
         if ($shop->isRetailer()) {
+            try {
+                $this->pricing->assertRetailerPricingReady($shop);
+            } catch (LogicException $e) {
+                return $this->retailerPricingBlockedResponse($e->getMessage());
+            }
+
             $validated = $request->validate([
                 'customer_id' => [
                     'required',
@@ -469,5 +488,10 @@ class PosController extends Controller
         }
 
         return response()->json($responseData);
+    }
+
+    private function retailerPricingBlockedResponse(string $message): JsonResponse
+    {
+        return response()->json(['message' => $message], 409);
     }
 }

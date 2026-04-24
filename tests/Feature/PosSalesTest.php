@@ -225,6 +225,7 @@ class PosSalesTest extends TestCase
     public function test_retailer_can_sell_items_with_cash_payment(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
         $customer = $this->createCustomer($shop->id);
         $item1 = $this->createItem($shop->id, null, [
             'selling_price' => 10000,
@@ -279,6 +280,7 @@ class PosSalesTest extends TestCase
     public function test_retailer_sale_validates_at_least_one_item(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
         $customer = $this->createCustomer($shop->id);
 
         $response = $this->actingAs($user)->postJson('/pos/sell', [
@@ -295,6 +297,8 @@ class PosSalesTest extends TestCase
     {
         [$user1, $shop1] = $this->createRetailerTenant();
         [$user2, $shop2] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop1, $user1);
+        $this->seedRetailerPricing($shop2, $user2);
 
         $customer = $this->createCustomer($shop1->id);
         $item = $this->createItem($shop2->id, null, ['selling_price' => 10000]);
@@ -312,6 +316,7 @@ class PosSalesTest extends TestCase
     public function test_retailer_requires_payment_or_scheme_redemption(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
         $customer = $this->createCustomer($shop->id);
         $item = $this->createItem($shop->id, null, ['selling_price' => 10000]);
 
@@ -416,6 +421,7 @@ class PosSalesTest extends TestCase
     public function test_retailer_price_preview_returns_selling_price_based(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
         $customer = $this->createCustomer($shop->id);
         $item = $this->createItem($shop->id, null, ['selling_price' => 20000]);
 

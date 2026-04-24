@@ -94,9 +94,9 @@
             @php
                 $mh = $stats['metal_holdings'] ?? ['gold'=>0,'silver'=>0,'platinum'=>0];
                 $metals = collect([
-                    ['key'=>'gold','label'=>'Gold','dot'=>'#f59e0b','weight'=>$mh['gold']],
-                    ['key'=>'silver','label'=>'Silver','dot'=>'#94a3b8','weight'=>$mh['silver']],
-                    ['key'=>'platinum','label'=>'Platinum','dot'=>'#64748b','weight'=>$mh['platinum']],
+                    ['key'=>'gold','label'=>'Gold','dot'=>'#f59e0b','weight'=>(float) ($mh['gold'] ?? 0)],
+                    ['key'=>'silver','label'=>'Silver','dot'=>'#94a3b8','weight'=>(float) ($mh['silver'] ?? 0)],
+                    ['key'=>'platinum','label'=>'Platinum','dot'=>'#64748b','weight'=>(float) ($mh['platinum'] ?? 0)],
                 ])->filter(fn($m) => $m['weight'] > 0)->values();
             @endphp
             <section class="items-kpi-card items-kpi-charcoal items-kpi-card-value items-kpi-card-metals" aria-label="Metal holdings KPI"
@@ -189,13 +189,19 @@
                 </div>
                 <div class="ui-filter-field-sm ui-filter-field--purity">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Purity</label>
-                    <select name="purity" class="w-full border-gray-300 text-sm">
-                        <option value="">All</option>
-                        <option value="24" {{ request('purity') == '24' ? 'selected' : '' }}>24K</option>
-                        <option value="22" {{ request('purity') == '22' ? 'selected' : '' }}>22K</option>
-                        <option value="18" {{ request('purity') == '18' ? 'selected' : '' }}>18K</option>
-                        <option value="14" {{ request('purity') == '14' ? 'selected' : '' }}>14K</option>
-                    </select>
+                    @if($isRetailer)
+                        <input type="text" name="purity" value="{{ request('purity') }}"
+                               placeholder="22, 925, 19.5"
+                               class="w-full border-gray-300 text-sm">
+                    @else
+                        <select name="purity" class="w-full border-gray-300 text-sm">
+                            <option value="">All</option>
+                            <option value="24" {{ request('purity') == '24' ? 'selected' : '' }}>24K</option>
+                            <option value="22" {{ request('purity') == '22' ? 'selected' : '' }}>22K</option>
+                            <option value="18" {{ request('purity') == '18' ? 'selected' : '' }}>18K</option>
+                            <option value="14" {{ request('purity') == '14' ? 'selected' : '' }}>14K</option>
+                        </select>
+                    @endif
                 </div>
                 <div class="ui-filter-field ui-filter-field--search">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
@@ -261,13 +267,18 @@
                                         <div>
                                             <div class="text-sm font-semibold text-gray-900">{{ $item->design ?: 'N/A' }}</div>
                                             <div class="font-mono text-xs text-gray-500">{{ $item->barcode }}</div>
-                                            <div class="text-xs text-gray-500">{{ $item->category }}</div>
+                                            <div class="text-xs text-gray-500">
+                                                {{ $item->category }}
+                                                @if($isRetailer && $item->metal_type)
+                                                    • {{ ucfirst($item->metal_type) }}
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 text-center">
                                     <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800">
-                                        {{ $item->purity }}K
+                                        {{ $item->purity_label }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right text-sm text-gray-700">{{ number_format($item->gross_weight, 3) }} g</td>

@@ -19,7 +19,10 @@ use LogicException;
 
 class BulkImportService
 {
-    public function __construct(private ItemManufacturingService $manufacturingService)
+    public function __construct(
+        private ItemManufacturingService $manufacturingService,
+        private ShopPricingService $pricing
+    )
     {
     }
 
@@ -32,6 +35,9 @@ class BulkImportService
         }
         $this->assertImportTypeAllowed($shopId, $type);
         $this->assertFinancialLock($shopId);
+        if ($type === Import::TYPE_STOCK) {
+            $this->assertRetailerStockPricingReady($shopId);
+        }
 
         $storedPath = $file->store('imports');
         $rows = $this->readCsvRows($storedPath);
@@ -44,7 +50,7 @@ class BulkImportService
         $required = match ($type) {
             Import::TYPE_CATALOG => ['design_code', 'name', 'category', 'sub_category', 'default_purity', 'approx_weight', 'default_making', 'stone_type', 'notes'],
             Import::TYPE_MANUFACTURE => ['barcode', 'design_code', 'lot_number', 'gross_weight', 'stone_weight', 'purity', 'wastage_percent', 'making_charge', 'stone_charge'],
-            Import::TYPE_STOCK => ['barcode', 'category', 'sub_category', 'gross_weight', 'stone_weight', 'purity', 'making_charge', 'stone_charge', 'huid'],
+            Import::TYPE_STOCK => ['barcode', 'category', 'sub_category', 'metal_type', 'gross_weight', 'stone_weight', 'purity', 'making_charge', 'stone_charge', 'huid'],
             default => throw new LogicException('Unknown import type.'),
         };
 
@@ -540,7 +546,7 @@ class BulkImportService
                 'name' => $payload['name'],
                 'category_id' => $category->id,
                 'sub_category_id' => $sub->id,
-                'default_purity' => $payload['default_purity'] !== '' ? (int) $payload['default_purity'] : null,
+                'default_purity' => $payload['default_purity'] !== '' ? (float) $payload['default_purity'] : null,
                 'approx_weight' => $payload['approx_weight'] !== '' ? (float) $payload['approx_weight'] : null,
                 'default_making' => $payload['default_making'] !== '' ? (float) $payload['default_making'] : null,
                 'default_stone' => null,
@@ -555,6 +561,7 @@ class BulkImportService
             'barcode' => trim((string) ($payload['barcode'] ?? '')),
             'category' => trim((string) ($payload['category'] ?? '')),
             'sub_category' => trim((string) ($payload['sub_category'] ?? '')),
+            'metal_type' => trim((string) ($payload['metal_type'] ?? '')),
             'gross_weight' => (float) ($payload['gross_weight'] ?? 0),
             'stone_weight' => (float) ($payload['stone_weight'] ?? 0),
             'purity' => (float) ($payload['purity'] ?? 0),
@@ -588,10 +595,10 @@ class BulkImportService
             return ['valid' => false, 'normalized' => $normalized, 'error' => 'Gross weight must be greater than zero.'];
         }
 
-        $isSilver = str_contains(mb_strtolower($normalized['category']), 'silver');
-        $maxPurity = $isSilver ? 999 : 24;
-        if ($normalized['purity'] <= 0 || $normalized['purity'] > $maxPurity) {
-            return ['valid' => false, 'normalized' => $normalized, 'error' => "Purity must be between 0 and {$maxPurity}."];
+        try {
+            $normalized['metal_type'] = $this->pricing->normalizeMetalType($normalized['metal_type']);
+        } catch (LogicException $e) {
+            return ['valid' => false, 'normalized' => $normalized, 'error' => $e->getMessage()];
         }
 
         if ($normalized['stone_weight'] < 0 || $normalized['stone_weight'] >= $normalized['gross_weight']) {
@@ -611,12 +618,32 @@ class BulkImportService
         }
 
         $metadata = $this->resolveMetadataForPreview($shopId, $normalized['category'], $normalized['sub_category']);
+        $shop = Shop::find($shopId);
+
+        if (! $shop) {
+            return ['valid' => false, 'normalized' => $normalized, 'error' => 'Shop not found.'];
+        }
+
+        try {
+            $pricingPayload = $this->pricing->computeRetailerCostPayload($shop, [
+                'metal_type' => $normalized['metal_type'],
+                'purity' => $normalized['purity'],
+                'gross_weight' => $normalized['gross_weight'],
+                'stone_weight' => $normalized['stone_weight'],
+                'making_charges' => $normalized['making_charge'],
+                'stone_charges' => $normalized['stone_charge'],
+            ]);
+        } catch (\Throwable $e) {
+            return ['valid' => false, 'normalized' => $normalized, 'error' => $e->getMessage()];
+        }
 
         return [
             'valid' => true,
             'normalized' => $normalized,
             'computed' => [
                 'net_metal_weight' => $net,
+                'resolved_rate_per_gram' => $pricingPayload['resolved_rate_per_gram'],
+                'cost_price' => $pricingPayload['cost_price'],
                 'will_create_category' => $metadata['will_create_category'],
                 'will_create_sub_category' => $metadata['will_create_sub_category'],
             ],
@@ -633,10 +660,17 @@ class BulkImportService
 
         $grossWeight = (float) $payload['gross_weight'];
         $stoneWeight = (float) $payload['stone_weight'];
-        $netWeight = round($grossWeight - $stoneWeight, 6);
-        $purity = (float) $payload['purity'];
         $makingCharge = (float) $payload['making_charge'];
         $stoneCharge = (float) $payload['stone_charge'];
+        $shop = Shop::findOrFail($shopId);
+        $pricingPayload = $this->pricing->computeRetailerCostPayload($shop, [
+            'metal_type' => (string) ($payload['metal_type'] ?? ''),
+            'purity' => (float) $payload['purity'],
+            'gross_weight' => $grossWeight,
+            'stone_weight' => $stoneWeight,
+            'making_charges' => $makingCharge,
+            'stone_charges' => $stoneCharge,
+        ]);
 
         // Resolve or auto-create vendor
         $vendorId = $payload['vendor_id'] ?? null;
@@ -661,18 +695,21 @@ class BulkImportService
             'design' => $payload['design'] ?: null,
             'category' => $category->name,
             'sub_category' => $subCategory->name,
+            'metal_type' => $pricingPayload['metal_type'],
             'gross_weight' => $grossWeight,
             'stone_weight' => $stoneWeight,
-            'net_metal_weight' => $netWeight,
-            'purity' => $purity,
+            'net_metal_weight' => $pricingPayload['net_metal_weight'],
+            'purity' => $pricingPayload['purity'],
             'making_charges' => $makingCharge,
             'stone_charges' => $stoneCharge,
-            'cost_price' => ((float) ($payload['cost_price'] ?? 0)) ?: null,
+            'cost_price' => $pricingPayload['cost_price'],
             'selling_price' => ((float) ($payload['selling_price'] ?? 0)) ?: null,
             'huid' => $payload['huid'] ?: null,
             'vendor_id' => $vendorId,
             'source' => 'import',
             'status' => 'in_stock',
+            'pricing_review_required' => false,
+            'pricing_review_notes' => null,
         ]);
     }
 
@@ -926,6 +963,17 @@ class BulkImportService
         if ($shopType === 'manufacturer' && $type === Import::TYPE_STOCK) {
             throw new LogicException('Stock import is available only in retailer edition.');
         }
+    }
+
+    private function assertRetailerStockPricingReady(int $shopId): void
+    {
+        $shop = Shop::find($shopId);
+
+        if (! $shop) {
+            throw new LogicException('Shop not found.');
+        }
+
+        $this->pricing->assertRetailerPricingReady($shop);
     }
 
     private function humanizeError(string $message): string

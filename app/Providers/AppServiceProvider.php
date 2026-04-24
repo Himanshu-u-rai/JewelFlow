@@ -38,6 +38,7 @@ use App\Policies\VendorPolicy;
 use App\Models\CatalogPage;
 use App\Policies\CatalogPagePolicy;
 use App\Services\AdminImpersonationService;
+use App\Services\ShopPricingService;
 use App\Services\ReorderAlertService;
 use App\Services\TenantHealthService;
 use Illuminate\Support\Facades\Auth;
@@ -195,11 +196,21 @@ class AppServiceProvider extends ServiceProvider
 
             // Reorder alert count badge — only computed for authenticated retailer users.
             $reorderAlertCount = 0;
+            $pricingShellState = null;
             $user = Auth::user();
             if ($user && $user->shop_id && $user->shop?->isRetailer()) {
                 $reorderAlertCount = app(ReorderAlertService::class)->alertCount($user->shop_id);
+
+                $pricing = app(ShopPricingService::class);
+                $pricingShellState = [
+                    'show_owner_modal' => $user->isOwner() && ! $pricing->hasCurrentDailyRates($user->shop),
+                    'business_date' => $pricing->businessDateString($user->shop),
+                    'timezone' => $pricing->pricingTimezone($user->shop),
+                    'today_rate' => $pricing->currentDailyRate($user->shop),
+                ];
             }
             $view->with('reorderAlertCount', $reorderAlertCount);
+            $view->with('pricingShellState', $pricingShellState);
         });
 
         View::composer('super-admin.dashboard', function ($view): void {
