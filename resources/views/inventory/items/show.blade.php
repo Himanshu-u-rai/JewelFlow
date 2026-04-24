@@ -311,6 +311,19 @@
                         </div>
                     </div>
                     @endif
+                    @if($item->stock_purchase_id)
+                    <div class="mt-3">
+                        <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-center justify-between gap-3">
+                            <div>
+                                <div class="text-[11px] text-amber-700">Source Purchase</div>
+                                <a href="{{ route('inventory.purchases.show', $item->stock_purchase_id) }}" class="text-sm font-semibold text-amber-700 hover:underline font-mono">
+                                    {{ $item->stockPurchase?->purchase_number ?? "PUR-{$item->stock_purchase_id}" }}
+                                </a>
+                            </div>
+                            <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                    </div>
+                    @endif
                 @else
                     {{-- Manufacturer: Source Lot --}}
                     <div class="mt-3">

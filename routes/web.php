@@ -24,6 +24,7 @@ use App\Http\Controllers\RetailerDashboardController;
 use App\Http\Controllers\PricingSettingsController;
 use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\PublicCatalogController;
+use App\Http\Controllers\StockPurchaseController;
 
 /*
 |--------------------------------------------------------------------------
@@ -351,6 +352,16 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::delete('/staff/{staff}', [\App\Http\Controllers\StaffController::class, 'destroy'])->middleware('role:owner')->name('staff.destroy');
 
     // ======= RETAILER FEATURES (edition:retailer) =======
+
+    // --- Stock Purchases / Inward ---
+    Route::get('/inventory/purchases', [StockPurchaseController::class, 'index'])->middleware('edition:retailer')->name('inventory.purchases.index');
+    Route::get('/inventory/purchases/create', [StockPurchaseController::class, 'create'])->middleware('edition:retailer')->name('inventory.purchases.create');
+    Route::post('/inventory/purchases', [StockPurchaseController::class, 'store'])->middleware('edition:retailer')->name('inventory.purchases.store');
+    Route::get('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'show'])->middleware('edition:retailer')->name('inventory.purchases.show');
+    Route::get('/inventory/purchases/{purchase}/edit', [StockPurchaseController::class, 'edit'])->middleware('edition:retailer')->name('inventory.purchases.edit');
+    Route::put('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'update'])->middleware('edition:retailer')->name('inventory.purchases.update');
+    Route::patch('/inventory/purchases/{purchase}/confirm', [StockPurchaseController::class, 'confirm'])->middleware('edition:retailer')->name('inventory.purchases.confirm');
+    Route::delete('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'destroy'])->middleware('edition:retailer')->name('inventory.purchases.destroy');
 
     // --- Vendors / Suppliers ---
     Route::get('/vendors', [VendorController::class, 'index'])->middleware('edition:retailer')->name('vendors.index');

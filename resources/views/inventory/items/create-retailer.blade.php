@@ -182,31 +182,73 @@
                     </div>
 
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-6">Pricing</h2>
+                        <h2 class="text-lg font-semibold text-gray-900 mb-1">Pricing</h2>
+                        <p class="text-xs text-gray-500 mb-6">Metal cost is calculated from today&apos;s rates. Enter the applicable charges — the total becomes the selling price / MRP.</p>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Cost Price (₹) <span class="text-red-500">*</span>
-                                </label>
-                                <input type="number" name="cost_price" id="cost_price" readonly required
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Metal Cost (₹)</label>
+                                <input type="number" name="cost_price" id="cost_price" readonly
                                        value="{{ old('cost_price') }}"
                                        step="0.01" min="0"
                                        class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700"
                                        placeholder="Calculated from today&apos;s rates">
-                                <p class="mt-1 text-xs text-gray-500">Calculated from today&apos;s saved retailer metal rates. Manual cost input is ignored.</p>
+                                <p class="mt-1 text-xs text-gray-500">Net weight × today&apos;s resolved rate. Auto-updates daily.</p>
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Selling Price / MRP (₹) <span class="text-red-500">*</span>
-                                </label>
-                                <input type="number" name="selling_price" id="selling_price" required
-                                       value="{{ old('selling_price') }}"
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Making Charges (₹)</label>
+                                <input type="number" name="making_charges" id="making_charges"
+                                       value="{{ old('making_charges', '0') }}"
                                        step="0.01" min="0"
                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
-                                       placeholder="Tag price / MRP">
-                                <p class="mt-1 text-xs text-gray-500">Selling price remains fully manual.</p>
+                                       placeholder="0.00">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Stone Charges (₹)</label>
+                                <input type="number" name="stone_charges" id="stone_charges"
+                                       value="{{ old('stone_charges', '0') }}"
+                                       step="0.01" min="0"
+                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       placeholder="0.00">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Hallmark Charges (₹)</label>
+                                <input type="number" name="hallmark_charges" id="hallmark_charges"
+                                       value="{{ old('hallmark_charges', '0') }}"
+                                       step="0.01" min="0"
+                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       placeholder="0.00">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Rhodium Charges (₹)</label>
+                                <input type="number" name="rhodium_charges" id="rhodium_charges"
+                                       value="{{ old('rhodium_charges', '0') }}"
+                                       step="0.01" min="0"
+                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       placeholder="0.00">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Other Charges (₹)</label>
+                                <input type="number" name="other_charges" id="other_charges"
+                                       value="{{ old('other_charges', '0') }}"
+                                       step="0.01" min="0"
+                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       placeholder="0.00">
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Selling Price / MRP (₹)</label>
+                                <input type="number" id="selling_price_display" readonly
+                                       step="0.01" min="0"
+                                       class="w-full rounded-lg bg-amber-50 border-amber-200 text-amber-800 font-semibold text-base"
+                                       placeholder="Sum of all charges above">
+                                <input type="hidden" name="selling_price" id="selling_price" value="{{ old('selling_price', '0') }}">
+                                <p class="mt-1 text-xs text-gray-500">Auto-calculated: Metal Cost + Making + Stone + Hallmark + Rhodium + Other.</p>
                             </div>
                         </div>
                     </div>
@@ -239,35 +281,6 @@
                         </div>
                     </div>
 
-                    <div x-data="{ open: {{ old('making_charges') || old('stone_charges') ? 'true' : 'false' }} }" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <button type="button" @click="open = !open" class="flex items-center justify-between w-full text-left">
-                            <h2 class="text-lg font-semibold text-gray-900">Cost Breakdown <span class="text-sm font-normal text-gray-400">(optional)</span></h2>
-                            <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        <p class="text-xs text-gray-500 mt-1">These charges are added on top of the resolved metal cost.</p>
-
-                        <div x-show="open" x-cloak class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Making Charges (₹)</label>
-                                <input type="number" name="making_charges" id="making_charges"
-                                       value="{{ old('making_charges', '0') }}"
-                                       step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
-                                       placeholder="0.00">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Stone Charges (₹)</label>
-                                <input type="number" name="stone_charges" id="stone_charges"
-                                       value="{{ old('stone_charges', '0') }}"
-                                       step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
-                                       placeholder="0.00">
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="lg:col-span-1">
@@ -281,42 +294,50 @@
                                     <dd class="font-medium text-gray-900" id="summaryMetal">—</dd>
                                 </div>
                                 <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Gross Weight</dt>
+                                    <dt class="text-gray-500">Gross / Net</dt>
                                     <dd class="font-medium text-gray-900" id="summaryGross">—</dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Net Metal</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryNet">—</dd>
                                 </div>
                                 <div class="flex justify-between gap-4">
                                     <dt class="text-gray-500">Purity</dt>
                                     <dd class="font-medium text-gray-900" id="summaryPurity">—</dd>
                                 </div>
                                 <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Resolved Rate</dt>
+                                    <dt class="text-gray-500">Rate / g</dt>
                                     <dd class="font-medium text-gray-900" id="summaryRate">—</dd>
                                 </div>
 
                                 <hr class="border-gray-200">
 
                                 <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Cost Price</dt>
+                                    <dt class="text-gray-500">Metal Cost</dt>
                                     <dd class="font-medium text-gray-900" id="summaryCost">₹ 0.00</dd>
                                 </div>
                                 <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Selling Price</dt>
-                                    <dd class="font-semibold text-amber-600 text-base" id="summarySelling">₹ 0.00</dd>
+                                    <dt class="text-gray-500">Making</dt>
+                                    <dd class="text-gray-700" id="summaryMaking">₹ 0.00</dd>
+                                </div>
+                                <div class="flex justify-between gap-4">
+                                    <dt class="text-gray-500">Stone</dt>
+                                    <dd class="text-gray-700" id="summaryStone">₹ 0.00</dd>
+                                </div>
+                                <div class="flex justify-between gap-4">
+                                    <dt class="text-gray-500">Hallmark</dt>
+                                    <dd class="text-gray-700" id="summaryHallmark">₹ 0.00</dd>
+                                </div>
+                                <div class="flex justify-between gap-4">
+                                    <dt class="text-gray-500">Rhodium</dt>
+                                    <dd class="text-gray-700" id="summaryRhodium">₹ 0.00</dd>
+                                </div>
+                                <div class="flex justify-between gap-4">
+                                    <dt class="text-gray-500">Other</dt>
+                                    <dd class="text-gray-700" id="summaryOther">₹ 0.00</dd>
                                 </div>
 
                                 <hr class="border-gray-200">
 
                                 <div class="flex justify-between items-center gap-4">
-                                    <dt class="text-gray-500">Profit Margin</dt>
-                                    <dd id="summaryProfit" class="font-bold text-green-600">₹ 0.00</dd>
-                                </div>
-                                <div class="flex justify-between items-center gap-4">
-                                    <dt class="text-gray-500">Margin %</dt>
-                                    <dd id="summaryMarginPct" class="text-green-600 font-medium">0%</dd>
+                                    <dt class="text-gray-600 font-medium">Selling Price / MRP</dt>
+                                    <dd class="font-bold text-amber-600 text-base" id="summarySelling">₹ 0.00</dd>
                                 </div>
                             </dl>
                         </div>
@@ -408,42 +429,37 @@
             const metalType = document.getElementById('metal_type').value;
             const purity = normalizePurityValue(document.getElementById('purity').value);
             const gross = Number.parseFloat(document.getElementById('gross_weight').value) || 0;
-            const stone = Number.parseFloat(document.getElementById('stone_weight').value) || 0;
+            const stoneWt = Number.parseFloat(document.getElementById('stone_weight').value) || 0;
             const making = Number.parseFloat(document.getElementById('making_charges').value) || 0;
             const stoneCharges = Number.parseFloat(document.getElementById('stone_charges').value) || 0;
-            const selling = Number.parseFloat(document.getElementById('selling_price').value) || 0;
-            const net = Math.max(0, gross - stone);
+            const hallmark = Number.parseFloat(document.getElementById('hallmark_charges').value) || 0;
+            const rhodium = Number.parseFloat(document.getElementById('rhodium_charges').value) || 0;
+            const other = Number.parseFloat(document.getElementById('other_charges').value) || 0;
+            const net = Math.max(0, gross - stoneWt);
 
             const rateEntry = resolvedRates[metalType] ? resolvedRates[metalType][purity] : null;
             const rate = rateEntry ? Number.parseFloat(rateEntry.rate_per_gram) || 0 : 0;
             const purityLabel = rateEntry ? rateEntry.label : (purity ? (metalType === 'gold' ? purity + 'K' : purity) : '—');
-            const cost = rate > 0 ? ((net * rate) + making + stoneCharges) : 0;
-            const profit = selling - cost;
-            const marginPct = cost > 0 ? ((profit / cost) * 100) : 0;
+            const metalCost = rate > 0 ? (net * rate) : 0;
+            const selling = rate > 0 ? (metalCost + making + stoneCharges + hallmark + rhodium + other) : 0;
 
             document.getElementById('net_weight_display').value = net.toFixed(3);
             document.getElementById('resolved_rate_display').value = rate > 0 ? formatCurrency(rate) : 'Unavailable';
-            document.getElementById('cost_price').value = rate > 0 ? cost.toFixed(2) : '';
+            document.getElementById('cost_price').value = rate > 0 ? metalCost.toFixed(2) : '';
+            document.getElementById('selling_price').value = selling.toFixed(2);
+            document.getElementById('selling_price_display').value = selling > 0 ? selling.toFixed(2) : '';
 
             document.getElementById('summaryMetal').textContent = metalType ? metalType.charAt(0).toUpperCase() + metalType.slice(1) : '—';
-            document.getElementById('summaryGross').textContent = gross > 0 ? gross.toFixed(3) + 'g' : '—';
-            document.getElementById('summaryNet').textContent = net > 0 ? net.toFixed(3) + 'g' : '—';
+            document.getElementById('summaryGross').textContent = gross > 0 ? gross.toFixed(3) + 'g / ' + net.toFixed(3) + 'g' : '—';
             document.getElementById('summaryPurity').textContent = purityLabel;
             document.getElementById('summaryRate').textContent = rate > 0 ? formatCurrency(rate) : '—';
-            document.getElementById('summaryCost').textContent = formatCurrency(cost);
+            document.getElementById('summaryCost').textContent = formatCurrency(metalCost);
+            document.getElementById('summaryMaking').textContent = formatCurrency(making);
+            document.getElementById('summaryStone').textContent = formatCurrency(stoneCharges);
+            document.getElementById('summaryHallmark').textContent = formatCurrency(hallmark);
+            document.getElementById('summaryRhodium').textContent = formatCurrency(rhodium);
+            document.getElementById('summaryOther').textContent = formatCurrency(other);
             document.getElementById('summarySelling').textContent = formatCurrency(selling);
-            document.getElementById('summaryProfit').textContent = formatCurrency(profit);
-            document.getElementById('summaryMarginPct').textContent = marginPct.toFixed(1) + '%';
-
-            const profitEl = document.getElementById('summaryProfit');
-            const pctEl = document.getElementById('summaryMarginPct');
-            if (profit < 0) {
-                profitEl.className = 'font-bold text-red-600';
-                pctEl.className = 'text-red-600 font-medium';
-            } else {
-                profitEl.className = 'font-bold text-green-600';
-                pctEl.className = 'text-green-600 font-medium';
-            }
         }
 
         document.getElementById('image')?.addEventListener('change', function (event) {
@@ -474,7 +490,9 @@
                 'stone_weight',
                 'making_charges',
                 'stone_charges',
-                'selling_price',
+                'hallmark_charges',
+                'rhodium_charges',
+                'other_charges',
             ];
 
             document.getElementById('metal_type')?.addEventListener('change', function () {

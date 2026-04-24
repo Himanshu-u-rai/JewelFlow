@@ -35,6 +35,9 @@ class Item extends Model
         'wastage',
         'making_charges',
         'stone_charges',
+        'hallmark_charges',
+        'rhodium_charges',
+        'other_charges',
         'cost_price',
         'selling_price',
         'source',
@@ -45,6 +48,7 @@ class Item extends Model
         'share_token',
         'pricing_review_required',
         'pricing_review_notes',
+        'stock_purchase_id',
     ];
 
     protected $casts = [
@@ -55,6 +59,9 @@ class Item extends Model
         'wastage' => 'decimal:6',
         'making_charges' => 'decimal:2',
         'stone_charges' => 'decimal:2',
+        'hallmark_charges' => 'decimal:2',
+        'rhodium_charges' => 'decimal:2',
+        'other_charges' => 'decimal:2',
         'cost_price' => 'decimal:2',
         'selling_price' => 'decimal:2',
         'hallmark_date' => 'date',
@@ -79,6 +86,11 @@ class Item extends Model
     public function vendor()
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    public function stockPurchase()
+    {
+        return $this->belongsTo(StockPurchase::class, 'stock_purchase_id');
     }
 
     public function scopeInStock($query)

@@ -16,6 +16,7 @@ class BusinessIdentifierService
     public const KEY_INVOICE = 'invoice';
     public const KEY_QUICK_BILL = 'quick_bill';
     public const KEY_DHIRAN = 'dhiran';
+    public const KEY_PURCHASE = 'purchase';
 
     public static function nextCounter(int $shopId, string $counterKey): int
     {
@@ -178,6 +179,19 @@ class BusinessIdentifierService
         return [
             'sequence' => $sequence,
             'number'   => 'QB-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+        ];
+    }
+
+    /**
+     * @return array{sequence:int, number:string}
+     */
+    public static function nextPurchaseIdentifier(int $shopId): array
+    {
+        $sequence = self::nextCounter($shopId, self::KEY_PURCHASE);
+
+        return [
+            'sequence' => $sequence,
+            'number'   => 'PUR-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
         ];
     }
 }

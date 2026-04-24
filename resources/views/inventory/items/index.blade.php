@@ -236,9 +236,7 @@
                             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Gross Wt</th>
                             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Net Metal Wt</th>
                             @if($isRetailer)
-                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Selling Price</th>
-                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Cost Price</th>
-                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Margin</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Pricing</th>
                             @else
                                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Fine Gold</th>
                                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Cost Price</th>
@@ -251,8 +249,6 @@
                         @forelse($items as $item)
                             @php
                                 $fineGold = $item->net_metal_weight * ($item->purity / 24);
-                                $margin = $item->selling_price - $item->cost_price;
-                                $marginPct = $item->cost_price > 0 ? ($margin / $item->cost_price) * 100 : 0;
                             @endphp
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4">
@@ -285,11 +281,6 @@
                                 <td class="px-6 py-4 text-right text-sm text-gray-700">{{ number_format($item->net_metal_weight, 3) }} g</td>
                                 @if($isRetailer)
                                     <td class="px-6 py-4 text-right text-sm font-semibold text-amber-600">₹{{ number_format($item->selling_price, 2) }}</td>
-                                    <td class="px-6 py-4 text-right text-sm text-gray-700">₹{{ number_format($item->cost_price, 2) }}</td>
-                                    <td class="px-6 py-4 text-right text-sm font-semibold {{ $margin >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                        ₹{{ number_format($margin, 2) }}
-                                        <span class="text-xs font-normal">({{ number_format($marginPct, 1) }}%)</span>
-                                    </td>
                                 @else
                                     <td class="px-6 py-4 text-right text-sm font-semibold text-yellow-600">{{ number_format($fineGold, 3) }} g</td>
                                     <td class="px-6 py-4 text-right text-sm font-semibold text-gray-900">₹{{ number_format($item->cost_price, 2) }}</td>
@@ -327,7 +318,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $isRetailer ? 9 : 8 }}" class="px-6 py-12 text-center">
+                                <td colspan="{{ $isRetailer ? 7 : 8 }}" class="px-6 py-12 text-center">
                                     <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                     </svg>

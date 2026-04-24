@@ -263,9 +263,11 @@ class ItemController extends Controller
             'stone_weight' => 'nullable|numeric|min:0',
             'purity' => 'required|numeric|min:0.001|max:1000',
             'cost_price' => 'nullable|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
+            'hallmark_charges' => 'nullable|numeric|min:0',
+            'rhodium_charges' => 'nullable|numeric|min:0',
+            'other_charges' => 'nullable|numeric|min:0',
             'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
             'huid' => ['nullable', 'string', 'max:30', Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')],
             'hallmark_date' => 'nullable|date',
@@ -297,8 +299,11 @@ class ItemController extends Controller
                 'purity' => $pricing['purity'],
                 'making_charges' => $validated['making_charges'] ?? 0,
                 'stone_charges' => $validated['stone_charges'] ?? 0,
+                'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
+                'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
+                'other_charges' => $validated['other_charges'] ?? 0,
                 'cost_price' => $pricing['cost_price'],
-                'selling_price' => $validated['selling_price'],
+                'selling_price' => $pricing['selling_price'],
                 'vendor_id' => $validated['vendor_id'] ?? null,
                 'huid' => $validated['huid'] ?? null,
                 'hallmark_date' => $validated['hallmark_date'] ?? null,
@@ -341,7 +346,7 @@ class ItemController extends Controller
         $lot  = $shop->isManufacturer() ? MetalLot::find($item->metal_lot_id) : null;
 
         if ($shop->isRetailer()) {
-            $item->load('vendor');
+            $item->load('vendor', 'stockPurchase');
         }
 
         $token          = $this->catalog->ensureItemHasToken($item);
@@ -506,9 +511,11 @@ class ItemController extends Controller
             'stone_weight' => 'nullable|numeric|min:0',
             'purity' => 'required|numeric|min:0.001|max:1000',
             'cost_price' => 'nullable|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
+            'hallmark_charges' => 'nullable|numeric|min:0',
+            'rhodium_charges' => 'nullable|numeric|min:0',
+            'other_charges' => 'nullable|numeric|min:0',
             'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
             'huid' => ['nullable', 'string', 'max:30', Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')->ignore($item->id)],
             'hallmark_date' => 'nullable|date',
@@ -546,9 +553,12 @@ class ItemController extends Controller
             'net_metal_weight' => $pricing['net_metal_weight'],
             'purity' => $pricing['purity'],
             'cost_price' => $pricing['cost_price'],
-            'selling_price' => $validated['selling_price'],
+            'selling_price' => $pricing['selling_price'],
             'making_charges' => $validated['making_charges'] ?? 0,
             'stone_charges' => $validated['stone_charges'] ?? 0,
+            'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
+            'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
+            'other_charges' => $validated['other_charges'] ?? 0,
             'vendor_id' => $validated['vendor_id'] ?? null,
             'huid' => $validated['huid'] ?? null,
             'hallmark_date' => $validated['hallmark_date'] ?? null,

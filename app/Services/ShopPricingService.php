@@ -417,16 +417,9 @@ class ShopPricingService
 
     public function costPriceFromResolvedRate(
         float $netMetalWeight,
-        float $resolvedRatePerGram,
-        float $makingCharges = 0,
-        float $stoneCharges = 0
+        float $resolvedRatePerGram
     ): float {
-        return round(
-            ($netMetalWeight * $resolvedRatePerGram)
-            + max(0, $makingCharges)
-            + max(0, $stoneCharges),
-            2
-        );
+        return round($netMetalWeight * $resolvedRatePerGram, 2);
     }
 
     public function computeRetailerCostPayload(Shop $shop, array $attributes, ?CarbonInterface $now = null): array
@@ -459,20 +452,25 @@ class ShopPricingService
             throw new LogicException('Could not resolve today\'s rate for the selected purity.');
         }
 
-        $makingCharges = round((float) ($attributes['making_charges'] ?? 0), 2);
-        $stoneCharges = round((float) ($attributes['stone_charges'] ?? 0), 2);
+        $makingCharges   = round((float) ($attributes['making_charges']   ?? 0), 2);
+        $stoneCharges    = round((float) ($attributes['stone_charges']    ?? 0), 2);
+        $hallmarkCharges = round((float) ($attributes['hallmark_charges'] ?? 0), 2);
+        $rhodiumCharges  = round((float) ($attributes['rhodium_charges']  ?? 0), 2);
+        $otherCharges    = round((float) ($attributes['other_charges']    ?? 0), 2);
+
+        $metalCost    = $this->costPriceFromResolvedRate($netMetalWeight, $resolvedRate);
+        $sellingPrice = round(
+            $metalCost + $makingCharges + $stoneCharges + $hallmarkCharges + $rhodiumCharges + $otherCharges,
+            2
+        );
 
         return [
-            'metal_type' => $metalType,
-            'purity' => $purityValue,
-            'net_metal_weight' => $netMetalWeight,
+            'metal_type'           => $metalType,
+            'purity'               => $purityValue,
+            'net_metal_weight'     => $netMetalWeight,
             'resolved_rate_per_gram' => $resolvedRate,
-            'cost_price' => $this->costPriceFromResolvedRate(
-                $netMetalWeight,
-                $resolvedRate,
-                $makingCharges,
-                $stoneCharges
-            ),
+            'cost_price'           => $metalCost,
+            'selling_price'        => $sellingPrice,
         ];
     }
 
@@ -502,12 +500,15 @@ class ShopPricingService
                 foreach ($items as $item) {
                     try {
                         $payload = $this->computeRetailerCostPayload($shop, [
-                            'metal_type' => $item->metal_type,
-                            'purity' => $item->purity,
-                            'gross_weight' => $item->gross_weight,
-                            'stone_weight' => $item->stone_weight,
-                            'making_charges' => $item->making_charges,
-                            'stone_charges' => $item->stone_charges,
+                            'metal_type'       => $item->metal_type,
+                            'purity'           => $item->purity,
+                            'gross_weight'     => $item->gross_weight,
+                            'stone_weight'     => $item->stone_weight,
+                            'making_charges'   => $item->making_charges,
+                            'stone_charges'    => $item->stone_charges,
+                            'hallmark_charges' => $item->hallmark_charges ?? 0,
+                            'rhodium_charges'  => $item->rhodium_charges  ?? 0,
+                            'other_charges'    => $item->other_charges    ?? 0,
                         ]);
                     } catch (\Throwable) {
                         continue;
@@ -517,8 +518,9 @@ class ShopPricingService
                         ->where('id', $item->id)
                         ->update([
                             'net_metal_weight' => $payload['net_metal_weight'],
-                            'cost_price' => $payload['cost_price'],
-                            'updated_at' => now(),
+                            'cost_price'       => $payload['cost_price'],
+                            'selling_price'    => $payload['selling_price'],
+                            'updated_at'       => now(),
                         ]);
 
                     $updated++;
@@ -564,16 +566,20 @@ class ShopPricingService
         $shop = Shop::query()->findOrFail($shopId);
         if ($shop->isRetailer() && $item->status === 'in_stock' && $this->hasCurrentDailyRates($shop)) {
             $payload = $this->computeRetailerCostPayload($shop, [
-                'metal_type' => $metalType,
-                'purity' => $item->purity,
-                'gross_weight' => $item->gross_weight,
-                'stone_weight' => $item->stone_weight,
-                'making_charges' => $item->making_charges,
-                'stone_charges' => $item->stone_charges,
+                'metal_type'       => $metalType,
+                'purity'           => $item->purity,
+                'gross_weight'     => $item->gross_weight,
+                'stone_weight'     => $item->stone_weight,
+                'making_charges'   => $item->making_charges,
+                'stone_charges'    => $item->stone_charges,
+                'hallmark_charges' => $item->hallmark_charges ?? 0,
+                'rhodium_charges'  => $item->rhodium_charges  ?? 0,
+                'other_charges'    => $item->other_charges    ?? 0,
             ]);
 
             $updates['net_metal_weight'] = $payload['net_metal_weight'];
-            $updates['cost_price'] = $payload['cost_price'];
+            $updates['cost_price']       = $payload['cost_price'];
+            $updates['selling_price']    = $payload['selling_price'];
         }
 
         Item::withoutTenant()->where('id', $item->id)->update(array_merge($updates, [
