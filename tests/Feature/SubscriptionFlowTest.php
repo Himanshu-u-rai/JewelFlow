@@ -20,8 +20,8 @@ class SubscriptionFlowTest extends TestCase
 
     protected function setUp(): void
     {
-        parent::setUp();
         $this->skipIfNotPostgres();
+        parent::setUp();
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
     }
 

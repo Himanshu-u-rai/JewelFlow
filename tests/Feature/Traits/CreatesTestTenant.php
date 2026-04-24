@@ -21,7 +21,7 @@ trait CreatesTestTenant
 {
     protected function skipIfNotPostgres(): void
     {
-        if (DB::getDriverName() !== 'pgsql') {
+        if (env('DB_CONNECTION', 'sqlite') !== 'pgsql') {
             $this->markTestSkipped('These tests require PostgreSQL.');
         }
     }

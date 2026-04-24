@@ -33,7 +33,10 @@ class PricingSettingsController extends Controller
             'silver_999_rate_per_gram' => round(((float) $validated['silver_999_rate_per_kg']) / 1000, 4),
         ]);
 
-        $redirectTo = $validated['redirect_to'] ?? route('settings.edit', ['tab' => 'pricing']);
+        $raw = $validated['redirect_to'] ?? null;
+        $redirectTo = ($raw && str_starts_with($raw, url('/')))
+            ? $raw
+            : route('settings.edit', ['tab' => 'pricing']);
 
         return redirect()->to($redirectTo)
             ->with('success', 'Today\'s pricing rates were saved and stock repricing has been queued.');
