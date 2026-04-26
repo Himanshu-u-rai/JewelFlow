@@ -85,7 +85,7 @@ class QuickBillController extends Controller
 
     public function show(QuickBill $quickBill): JsonResponse
     {
-        $quickBill->load('customer', 'items', 'payments', 'creator');
+        $quickBill->load('customer', 'items', 'payments.paymentMethod', 'creator');
 
         return response()->json($this->transformDetail($quickBill));
     }
@@ -128,7 +128,7 @@ class QuickBillController extends Controller
 
     public function template(QuickBill $quickBill): JsonResponse
     {
-        $quickBill->load('customer', 'items', 'payments');
+        $quickBill->load('customer', 'items', 'payments.paymentMethod');
 
         $html = view('quick-bills.print', [
             'quickBill' => $quickBill,
@@ -177,6 +177,7 @@ class QuickBillController extends Controller
             'items.*.line_discount' => 'nullable|numeric|min:0|max:9999999.99',
             'payments' => 'nullable|array',
             'payments.*.payment_mode' => 'nullable|string|max:30',
+            'payments.*.payment_method_id' => ['nullable', 'integer', Rule::exists('shop_payment_methods', 'id')->where('shop_id', $shopId)],
             'payments.*.reference_no' => 'nullable|string|max:100',
             'payments.*.amount' => 'nullable|numeric|min:0|max:9999999.99',
             'payments.*.notes' => 'nullable|string|max:500',
@@ -208,7 +209,7 @@ class QuickBillController extends Controller
 
     private function transformDetail(QuickBill $quickBill): array
     {
-        $quickBill->loadMissing('customer', 'items', 'payments', 'creator');
+        $quickBill->loadMissing('customer', 'items', 'payments.paymentMethod', 'creator');
 
         return [
             'id' => (int) $quickBill->id,
@@ -267,6 +268,8 @@ class QuickBillController extends Controller
             'payments' => $quickBill->payments->map(fn ($payment) => [
                 'id' => (int) $payment->id,
                 'payment_mode' => (string) $payment->payment_mode,
+                'payment_method_id' => $payment->payment_method_id ? (int) $payment->payment_method_id : null,
+                'payment_method_label' => $payment->paymentMethod?->account_label,
                 'reference_no' => $payment->reference_no,
                 'amount' => (float) ($payment->amount ?? 0),
                 'paid_at' => optional($payment->paid_at)?->toIso8601String(),

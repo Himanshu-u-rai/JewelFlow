@@ -21,4 +21,9 @@ class QuickBillPayment extends Model
     {
         return $this->belongsTo(QuickBill::class);
     }
+
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(ShopPaymentMethod::class, 'payment_method_id');
+    }
 }

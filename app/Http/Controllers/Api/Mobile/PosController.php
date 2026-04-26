@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Scheme;
+use App\Models\ShopPaymentMethod;
 use App\Services\OfferEngineService;
 use App\Services\RetailerSalesService;
 use App\Services\SalesService;
@@ -49,11 +50,13 @@ class PosController extends Controller
                 'cash',
                 'upi',
                 'bank',
+                'wallet',
                 'old_gold',
                 'old_silver',
                 'other',
                 'emi',
             ],
+            'payment_methods' => $this->groupedPaymentMethodsForShop($shopId),
             'customer' => $customer ? [
                 'id' => (int) $customer->id,
                 'name' => (string) $customer->name,
@@ -347,7 +350,8 @@ class PosController extends Controller
                 'round_off' => 'nullable|numeric',
                 'ignore_auto_offer' => 'nullable|boolean',
                 'payments' => 'nullable|array|min:1',
-                'payments.*.mode' => 'required_with:payments|in:cash,upi,bank,old_gold,old_silver,other,emi',
+                'payments.*.mode' => 'required_with:payments|in:cash,upi,bank,wallet,old_gold,old_silver,other,emi',
+                'payments.*.payment_method_id' => 'nullable|integer',
                 'payments.*.amount' => 'required_with:payments|numeric|min:0',
                 'payments.*.reference' => 'nullable|string|max:100',
                 'payments.*.metal_gross_weight' => 'nullable|numeric|min:0',
@@ -380,6 +384,8 @@ class PosController extends Controller
                     'payments' => 'Add at least one payment mode or apply scheme redemption.',
                 ]);
             }
+
+            $this->validateMobilePosPaymentMethods($payments, $shopId);
 
             $hasEmiMode = collect($payments)
                 ->contains(fn ($payment) => ($payment['mode'] ?? null) === 'emi');
@@ -458,7 +464,8 @@ class PosController extends Controller
             'discount' => 'nullable|numeric|min:0|max:999999',
             'round_off' => 'nullable|numeric',
             'payments' => 'required|array|min:1',
-            'payments.*.mode' => 'required|in:cash,upi,bank,old_gold,old_silver,other',
+            'payments.*.mode' => 'required|in:cash,upi,bank,wallet,old_gold,old_silver,other',
+            'payments.*.payment_method_id' => 'nullable|integer',
             'payments.*.amount' => 'required|numeric|min:0',
             'payments.*.reference' => 'nullable|string|max:100',
             'payments.*.metal_gross_weight' => 'nullable|numeric|min:0',
@@ -466,6 +473,8 @@ class PosController extends Controller
             'payments.*.metal_test_loss' => 'nullable|numeric|min:0|max:100',
             'payments.*.metal_rate_per_gram' => 'nullable|numeric|min:0',
         ]);
+
+        $this->validateMobilePosPaymentMethods($validated['payments'], $shopId);
 
         $invoice = SalesService::sellItem(
             (int) $validated['customer_id'],
@@ -488,6 +497,129 @@ class PosController extends Controller
         }
 
         return response()->json($responseData);
+    }
+
+    private function groupedPaymentMethodsForShop(int $shopId): array
+    {
+        $methods = ShopPaymentMethod::query()
+            ->where('shop_id', $shopId)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get([
+                'id',
+                'type',
+                'name',
+                'upi_id',
+                'bank_name',
+                'account_number',
+                'wallet_id',
+            ]);
+
+        $grouped = [
+            ShopPaymentMethod::TYPE_UPI => [],
+            ShopPaymentMethod::TYPE_BANK => [],
+            ShopPaymentMethod::TYPE_WALLET => [],
+        ];
+
+        foreach ($methods as $method) {
+            if (!isset($grouped[$method->type])) {
+                continue;
+            }
+
+            $base = [
+                'id' => (int) $method->id,
+                'type' => (string) $method->type,
+                'name' => (string) $method->name,
+                'account_label' => (string) $method->account_label,
+            ];
+
+            if ($method->type === ShopPaymentMethod::TYPE_UPI) {
+                $base['upi_id'] = $method->upi_id;
+            } elseif ($method->type === ShopPaymentMethod::TYPE_BANK) {
+                $base['bank_name'] = $method->bank_name;
+                $base['account_number'] = $method->account_number;
+            } elseif ($method->type === ShopPaymentMethod::TYPE_WALLET) {
+                $base['wallet_id'] = $method->wallet_id;
+            }
+
+            $grouped[$method->type][] = $base;
+        }
+
+        return [
+            'upi' => $grouped[ShopPaymentMethod::TYPE_UPI],
+            'bank' => $grouped[ShopPaymentMethod::TYPE_BANK],
+            'wallet' => $grouped[ShopPaymentMethod::TYPE_WALLET],
+        ];
+    }
+
+    private function validateMobilePosPaymentMethods(array $payments, int $shopId): void
+    {
+        $restrictedDuplicateModes = ['old_gold', 'old_silver', 'emi'];
+        $modeCounts = [];
+
+        foreach ($payments as $payment) {
+            $mode = (string) ($payment['mode'] ?? '');
+            if (!in_array($mode, $restrictedDuplicateModes, true)) {
+                continue;
+            }
+            $modeCounts[$mode] = ($modeCounts[$mode] ?? 0) + 1;
+        }
+
+        foreach ($modeCounts as $mode => $count) {
+            if ($count > 1) {
+                throw ValidationException::withMessages([
+                    'payments' => "Duplicate payment mode \"{$mode}\" is not allowed.",
+                ]);
+            }
+        }
+
+        $paymentMethodIds = collect($payments)
+            ->pluck('payment_method_id')
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($paymentMethodIds->isEmpty()) {
+            return;
+        }
+
+        $methodsById = ShopPaymentMethod::query()
+            ->where('shop_id', $shopId)
+            ->whereIn('id', $paymentMethodIds)
+            ->get(['id', 'type'])
+            ->keyBy('id');
+
+        $modeTypeMap = [
+            'upi' => ShopPaymentMethod::TYPE_UPI,
+            'bank' => ShopPaymentMethod::TYPE_BANK,
+            'wallet' => ShopPaymentMethod::TYPE_WALLET,
+        ];
+
+        foreach ($payments as $index => $payment) {
+            $methodId = $payment['payment_method_id'] ?? null;
+            if ($methodId === null || $methodId === '') {
+                continue;
+            }
+
+            $methodId = (int) $methodId;
+            $mode = (string) ($payment['mode'] ?? '');
+            $method = $methodsById->get($methodId);
+
+            if (!$method) {
+                throw ValidationException::withMessages([
+                    "payments.{$index}.payment_method_id" => 'Selected payment method is invalid for this shop.',
+                ]);
+            }
+
+            $expectedType = $modeTypeMap[$mode] ?? null;
+            if ($expectedType === null || $method->type !== $expectedType) {
+                throw ValidationException::withMessages([
+                    "payments.{$index}.payment_method_id" => "Payment method type must match mode \"{$mode}\".",
+                ]);
+            }
+        }
     }
 
     private function retailerPricingBlockedResponse(string $message): JsonResponse

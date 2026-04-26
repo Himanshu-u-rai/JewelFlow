@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\CashTransaction;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
+use App\Models\ShopPaymentMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -78,7 +79,8 @@ class InvoiceController extends Controller
             'customer:id,first_name,last_name,mobile,customer_code',
             'items:id,invoice_id,item_id,weight,rate,making_charges,stone_amount,line_total,gst_rate,gst_amount,created_at',
             'items.item:id,barcode,design,category,purity,huid',
-            'payments:id,invoice_id,mode,amount,reference,metal_type,metal_gross_weight,metal_purity,metal_fine_weight,metal_rate_per_gram,created_at',
+            'payments:id,invoice_id,payment_method_id,mode,amount,reference,metal_type,metal_gross_weight,metal_purity,metal_fine_weight,metal_rate_per_gram,created_at',
+            'payments.paymentMethod:id,type,name,upi_id,bank_name,account_number,wallet_id',
         ]);
 
         $paidAmount = (float) $invoice->payments->sum('amount');
@@ -132,6 +134,8 @@ class InvoiceController extends Controller
                     'mode' => (string) $payment->mode,
                     'amount' => (float) ($payment->amount ?? 0),
                     'reference' => $payment->reference,
+                    'payment_method_id' => $payment->payment_method_id ? (int) $payment->payment_method_id : null,
+                    'payment_method_label' => $payment->paymentMethod?->account_label,
                     'metal_type' => $payment->metal_type,
                     'metal_gross_weight' => $payment->metal_gross_weight !== null ? (float) $payment->metal_gross_weight : null,
                     'metal_purity' => $payment->metal_purity !== null ? (float) $payment->metal_purity : null,
@@ -163,15 +167,11 @@ class InvoiceController extends Controller
             }
         }
 
-        $validated = $request->validate([
-            'mode'      => 'required|in:cash,upi,bank,other',
-            'amount'    => 'required|numeric|min:0.01|max:99999999.99',
-            'reference' => 'nullable|string|max:100',
-        ]);
-
         $shopId = (int) $request->user()->shop_id;
+        $payments = $this->normalizePaymentPayload($request);
+        $this->validatePaymentMethods($payments, $shopId);
 
-        $response = DB::transaction(function () use ($validated, $invoice, $shopId, $request) {
+        $response = DB::transaction(function () use ($payments, $invoice, $shopId, $request) {
             $locked = Invoice::query()->where('id', $invoice->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== Invoice::STATUS_FINALIZED) {
@@ -191,35 +191,50 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            $amount = round((float) $validated['amount'], 2);
-            if ($amount > $outstanding) {
+            $requestedTotal = round(collect($payments)->sum(fn ($payment) => (float) $payment['amount']), 2);
+            if ($requestedTotal > $outstanding) {
                 throw ValidationException::withMessages([
-                    'amount' => 'Amount exceeds outstanding balance of ' . number_format($outstanding, 2),
+                    'payments' => 'Total payment amount exceeds outstanding balance of ' . number_format($outstanding, 2),
                 ]);
             }
 
-            $payment = InvoicePayment::record([
-                'invoice_id' => $locked->id,
-                'shop_id'    => $shopId,
-                'mode'       => $validated['mode'],
-                'amount'     => $amount,
-                'reference'  => $validated['reference'] ?? null,
-            ]);
+            $createdPaymentIds = [];
+            foreach ($payments as $paymentInput) {
+                $amount = round((float) $paymentInput['amount'], 2);
 
-            if ($validated['mode'] === InvoicePayment::MODE_CASH) {
-                CashTransaction::record([
-                    'shop_id'        => $shopId,
-                    'user_id'        => (int) $request->user()->id,
-                    'type'           => 'in',
-                    'amount'         => $amount,
-                    'source_type'    => 'invoice',
-                    'source_id'      => $locked->id,
-                    'invoice_id'     => $locked->id,
-                    'description'    => 'Invoice payment - ' . $locked->invoice_number,
-                    'reference_type' => 'invoice',
-                    'reference_id'   => $locked->id,
+                $payment = InvoicePayment::record([
+                    'invoice_id' => $locked->id,
+                    'shop_id' => $shopId,
+                    'mode' => $paymentInput['mode'],
+                    'amount' => $amount,
+                    'reference' => $paymentInput['reference'] ?? null,
+                    'payment_method_id' => $paymentInput['payment_method_id'] ?? null,
                 ]);
+
+                $createdPaymentIds[] = (int) $payment->id;
+
+                if ($paymentInput['mode'] === InvoicePayment::MODE_CASH) {
+                    CashTransaction::record([
+                        'shop_id' => $shopId,
+                        'user_id' => (int) $request->user()->id,
+                        'type' => 'in',
+                        'amount' => $amount,
+                        'source_type' => 'invoice',
+                        'source_id' => $locked->id,
+                        'invoice_id' => $locked->id,
+                        'payment_mode' => InvoicePayment::MODE_CASH,
+                        'description' => 'Invoice payment - ' . $locked->invoice_number,
+                        'reference_type' => 'invoice',
+                        'reference_id' => $locked->id,
+                    ]);
+                }
             }
+
+            $createdPayments = InvoicePayment::query()
+                ->whereIn('id', $createdPaymentIds)
+                ->with('paymentMethod:id,type,name,upi_id,bank_name,account_number,wallet_id')
+                ->orderBy('id')
+                ->get();
 
             AuditLog::create([
                 'shop_id'     => $shopId,
@@ -231,23 +246,30 @@ class InvoiceController extends Controller
                 'data'        => [
                     'source'         => 'mobile_app',
                     'invoice_number' => $locked->invoice_number,
-                    'payment_id'     => (int) $payment->id,
-                    'mode'           => $payment->mode,
-                    'amount'         => $amount,
+                    'payment_ids'    => $createdPaymentIds,
+                    'payment_count'  => count($createdPaymentIds),
+                    'amount'         => $requestedTotal,
                 ],
             ]);
 
-            $newPaid = round($paidAmount + $amount, 2);
+            $newPaid = round($paidAmount + $requestedTotal, 2);
             $newOutstanding = round(((float) $locked->total) - $newPaid, 2);
 
-            return [
-                'payment' => [
-                    'id'         => (int) $payment->id,
-                    'mode'       => (string) $payment->mode,
-                    'amount'     => (float) $payment->amount,
-                    'reference'  => $payment->reference,
+            $paymentsPayload = $createdPayments->map(function (InvoicePayment $payment) {
+                return [
+                    'id' => (int) $payment->id,
+                    'mode' => (string) $payment->mode,
+                    'amount' => (float) $payment->amount,
+                    'reference' => $payment->reference,
+                    'payment_method_id' => $payment->payment_method_id ? (int) $payment->payment_method_id : null,
+                    'payment_method_label' => $payment->paymentMethod?->account_label,
                     'created_at' => optional($payment->created_at)?->toIso8601String(),
-                ],
+                ];
+            })->values()->all();
+
+            return [
+                'payment' => $paymentsPayload[0] ?? null,
+                'payments' => $paymentsPayload,
                 'totals' => [
                     'total'              => (float) $locked->total,
                     'paid_amount'        => $newPaid,
@@ -261,6 +283,90 @@ class InvoiceController extends Controller
         }
 
         return response()->json($response, 201);
+    }
+
+    private function normalizePaymentPayload(Request $request): array
+    {
+        if ($request->has('payments')) {
+            $validated = $request->validate([
+                'payments' => 'required|array|min:1',
+                'payments.*.mode' => 'required|in:cash,upi,bank,other',
+                'payments.*.amount' => 'required|numeric|min:0.01|max:99999999.99',
+                'payments.*.reference' => 'nullable|string|max:100',
+                'payments.*.payment_method_id' => 'nullable|integer',
+            ]);
+
+            return array_map(function (array $payment): array {
+                return [
+                    'mode' => (string) $payment['mode'],
+                    'amount' => (float) $payment['amount'],
+                    'reference' => $payment['reference'] ?? null,
+                    'payment_method_id' => $payment['payment_method_id'] ?? null,
+                ];
+            }, $validated['payments']);
+        }
+
+        $validated = $request->validate([
+            'mode' => 'required|in:cash,upi,bank,other',
+            'amount' => 'required|numeric|min:0.01|max:99999999.99',
+            'reference' => 'nullable|string|max:100',
+            'payment_method_id' => 'nullable|integer',
+        ]);
+
+        return [[
+            'mode' => (string) $validated['mode'],
+            'amount' => (float) $validated['amount'],
+            'reference' => $validated['reference'] ?? null,
+            'payment_method_id' => $validated['payment_method_id'] ?? null,
+        ]];
+    }
+
+    private function validatePaymentMethods(array $payments, int $shopId): void
+    {
+        $paymentMethodIds = collect($payments)
+            ->pluck('payment_method_id')
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($paymentMethodIds->isEmpty()) {
+            return;
+        }
+
+        $methodsById = ShopPaymentMethod::query()
+            ->where('shop_id', $shopId)
+            ->whereIn('id', $paymentMethodIds)
+            ->get(['id', 'type'])
+            ->keyBy('id');
+
+        $modeTypeMap = [
+            InvoicePayment::MODE_UPI => ShopPaymentMethod::TYPE_UPI,
+            InvoicePayment::MODE_BANK => ShopPaymentMethod::TYPE_BANK,
+        ];
+
+        foreach ($payments as $index => $payment) {
+            $methodId = $payment['payment_method_id'] ?? null;
+            if ($methodId === null || $methodId === '') {
+                continue;
+            }
+
+            $methodId = (int) $methodId;
+            $method = $methodsById->get($methodId);
+            if (!$method) {
+                throw ValidationException::withMessages([
+                    "payments.{$index}.payment_method_id" => 'Selected payment method is invalid for this shop.',
+                ]);
+            }
+
+            $mode = (string) ($payment['mode'] ?? '');
+            $expectedType = $modeTypeMap[$mode] ?? null;
+            if ($expectedType === null || $method->type !== $expectedType) {
+                throw ValidationException::withMessages([
+                    "payments.{$index}.payment_method_id" => "Payment method type must match mode \"{$mode}\".",
+                ]);
+            }
+        }
     }
 
     public function template(Invoice $invoice): JsonResponse

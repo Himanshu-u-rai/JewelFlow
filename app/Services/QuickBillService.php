@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\QuickBill;
+use App\Models\ShopPaymentMethod;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Support\Arr;
@@ -112,7 +113,7 @@ class QuickBillService
                 ],
             ]);
 
-            return $quickBill->fresh(['customer', 'items', 'payments']);
+            return $quickBill->fresh(['customer', 'items', 'payments.paymentMethod']);
         });
     }
 
@@ -175,7 +176,7 @@ class QuickBillService
             $total = round($taxable + $gst + $roundOff, 2);
         }
 
-        $payments = $this->normalizePayments($payload['payments'] ?? []);
+        $payments = $this->normalizePayments($payload['payments'] ?? [], (int) $shop->id);
         $paidAmount = round(array_sum(array_column($payments, 'amount')), 2);
         if ($paidAmount - $total > 0.01) {
             throw ValidationException::withMessages([
@@ -246,6 +247,7 @@ class QuickBillService
                 'shop_id' => $shop->id,
                 'quick_bill_id' => $quickBill->id,
                 'payment_mode' => $payment['payment_mode'],
+                'payment_method_id' => $payment['payment_method_id'],
                 'reference_no' => $payment['reference_no'],
                 'amount' => $payment['amount'],
                 'paid_at' => $payment['paid_at'],
@@ -254,7 +256,7 @@ class QuickBillService
             $entry->save();
         }
 
-        return $quickBill->fresh(['customer', 'items', 'payments']);
+        return $quickBill->fresh(['customer', 'items', 'payments.paymentMethod']);
     }
 
     private function normalizeItems(array $rawItems): array
@@ -301,18 +303,62 @@ class QuickBillService
         return $normalized;
     }
 
-    private function normalizePayments(array $rawPayments): array
+    private function normalizePayments(array $rawPayments, int $shopId): array
     {
         $normalized = [];
+        $methodIds = collect($rawPayments)
+            ->pluck('payment_method_id')
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
 
-        foreach ($rawPayments as $payment) {
+        $methodsById = $methodIds->isEmpty()
+            ? collect()
+            : ShopPaymentMethod::query()
+                ->where('shop_id', $shopId)
+                ->whereIn('id', $methodIds)
+                ->get(['id', 'type'])
+                ->keyBy('id');
+
+        $modeTypeMap = [
+            ShopPaymentMethod::TYPE_UPI => ShopPaymentMethod::TYPE_UPI,
+            ShopPaymentMethod::TYPE_BANK => ShopPaymentMethod::TYPE_BANK,
+            ShopPaymentMethod::TYPE_WALLET => ShopPaymentMethod::TYPE_WALLET,
+        ];
+
+        foreach ($rawPayments as $index => $payment) {
             $amount = round(max(0, (float) Arr::get($payment, 'amount', 0)), 2);
             if ($amount <= 0) {
                 continue;
             }
 
+            $paymentMethodId = Arr::get($payment, 'payment_method_id');
+            $paymentMethodId = $paymentMethodId !== null && $paymentMethodId !== '' ? (int) $paymentMethodId : null;
+            $paymentMode = strtolower(trim((string) Arr::get($payment, 'payment_mode', 'cash')));
+            if ($paymentMode === '') {
+                $paymentMode = 'cash';
+            }
+
+            if ($paymentMethodId !== null) {
+                $method = $methodsById->get($paymentMethodId);
+                if (!$method) {
+                    throw ValidationException::withMessages([
+                        "payments.{$index}.payment_method_id" => 'Selected payment method is invalid for this shop.',
+                    ]);
+                }
+
+                $expectedType = $modeTypeMap[$paymentMode] ?? null;
+                if ($expectedType !== null && $method->type !== $expectedType) {
+                    throw ValidationException::withMessages([
+                        "payments.{$index}.payment_method_id" => "Payment method type must match mode \"{$paymentMode}\".",
+                    ]);
+                }
+            }
+
             $normalized[] = [
-                'payment_mode' => trim((string) Arr::get($payment, 'payment_mode', 'Cash')) ?: 'Cash',
+                'payment_mode' => $paymentMode,
+                'payment_method_id' => $paymentMethodId,
                 'reference_no' => $this->nullableText(Arr::get($payment, 'reference_no')),
                 'amount' => $amount,
                 'paid_at' => $payment['paid_at'] ?? now(),

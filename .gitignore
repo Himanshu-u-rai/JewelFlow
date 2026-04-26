@@ -11,11 +11,15 @@
 /.phpunit.cache
 /.vscode
 /.zed
+/.agents
+/.augment
+/.claude/worktrees
 /auth.json
 /node_modules
 /public/build
 /public/hot
 /public/storage
+skills-lock.json
 /storage/*.key
 /storage/pail
 /vendor
