@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Item;
 use App\Models\Customer;
 use App\Models\Scheme;
+use App\Models\ShopPaymentMethod;
 use App\Services\SalesService;
 use App\Services\RetailerSalesService;
 use App\Services\ExchangeService;
@@ -99,10 +100,17 @@ class PosController extends Controller
                 })
                 ->values();
 
+            $paymentMethods = ShopPaymentMethod::where('shop_id', $shopId)
+                ->active()
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get()
+                ->groupBy('type');
+
             return view('pos_customer_retailer', compact(
                 'customer', 'items', 'roundOffNearest',
                 'loyaltyPointsPerHundred', 'loyaltyPointValue', 'customerLoyaltyPoints',
-                'offerSchemes', 'redeemableEnrollments'
+                'offerSchemes', 'redeemableEnrollments', 'paymentMethods'
             ));
         }
 
@@ -136,7 +144,7 @@ class PosController extends Controller
 
             // Split payments
             'payments'                       => 'required|array|min:1',
-            'payments.*.mode'                => 'required|in:cash,upi,bank,old_gold,old_silver,other',
+            'payments.*.mode'                => 'required|in:cash,upi,bank,wallet,old_gold,old_silver,other',
             'payments.*.amount'              => 'required|numeric|min:0',
             'payments.*.reference'           => 'nullable|string|max:100',
             'payments.*.metal_gross_weight'  => 'nullable|numeric|min:0',
@@ -190,7 +198,8 @@ class PosController extends Controller
             'round_off' => 'nullable|numeric',
 
             'payments'             => 'nullable|array|min:1',
-            'payments.*.mode'      => 'required_with:payments|in:cash,upi,bank,old_gold,old_silver,other,emi',
+            'payments.*.mode'              => 'required_with:payments|in:cash,upi,bank,wallet,old_gold,old_silver,other,emi',
+            'payments.*.payment_method_id' => 'nullable|integer',
             'payments.*.amount'    => 'required_with:payments|numeric|min:0',
             'payments.*.reference' => 'nullable|string|max:100',
             'payments.*.metal_gross_weight'  => 'nullable|numeric|min:0',

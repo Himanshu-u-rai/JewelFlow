@@ -38,13 +38,8 @@
             $brandName = $dhiranChrome ? __('Dhiran') : 'JewelFlow';
             $brandSubtitle = $dhiranChrome ? __('Gold Loan Suite') : __('Enterprise System');
             $settingsRoute = $dhiranChrome ? 'dhiran.settings' : 'settings.edit';
-            // Keep the "Open Dhiran" entry point on the working in-app route
-            // until a real dhiran.* host is provisioned and resolvable.
-            $dhiranOpenUrl = route('dhiran.dashboard');
         @endphp
         @php
-            // Dhiran routes should render as a Dhiran-first workspace even on the
-            // main host, because the dedicated dhiran.* host is not provisioned yet.
             if ($dhiranChrome) {
                 $hasRetailer = false;
                 $hasManufacturer = false;
@@ -211,6 +206,28 @@
                     @endif
 
                     @if($hasRetailer)
+                    <div class="nav-section">
+                        <div class="nav-section-title">{{ __('Job Work') }}</div>
+                        <a href="{{ route('vault.index') }}" class="nav-link {{ request()->routeIs('vault.*') ? 'active' : '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16.5" r="1"/></svg>
+                            {{ __('Bullion Vault') }}
+                        </a>
+                        <a href="{{ route('karigars.index') }}" class="nav-link {{ request()->routeIs('karigars.*') ? 'active' : '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                            {{ __('Karigars') }}
+                        </a>
+                        <a href="{{ route('job-orders.index') }}" class="nav-link {{ request()->routeIs('job-orders.*') ? 'active' : '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H3v10h6V11z"/><path d="M21 3h-6v18h6V3z"/><path d="M15 11H9V3h6v8z"/></svg>
+                            {{ __('Job Orders') }}
+                        </a>
+                        <a href="{{ route('karigar-invoices.index') }}" class="nav-link {{ request()->routeIs('karigar-invoices.*') ? 'active' : '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            {{ __('Karigar Invoices') }}
+                        </a>
+                    </div>
+                    @endif
+
+                    @if($hasRetailer)
                     {{-- Retailers: simplified "Reports" section --}}
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Reports') }}</div>
@@ -225,6 +242,10 @@
                         <a href="{{ route('report.gst') }}" class="nav-link">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
                             {{ __('GST Reports') }}
+                        </a>
+                        <a href="{{ route('report.metal-exchange') }}" class="nav-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            {{ __('Metal Exchange') }}
                         </a>
                     </div>
                     @elseif($hasManufacturer)
@@ -263,6 +284,12 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                             {{ __('Gold Report') }}
                         </a>
+                        @if($hasRetailer)
+                        <a href="{{ route('report.metal-exchange') }}" class="nav-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            {{ __('Metal Exchange') }}
+                        </a>
+                        @endif
                     </div>
                     @endif
                     
@@ -295,15 +322,10 @@
                     </div>
                     @endif
 
+                    @if($onDhiranHost)
                     @can('dhiran.view')
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Gold Loans') }}</div>
-                        @if(! $dhiranChrome)
-                        <a href="{{ $dhiranOpenUrl }}" class="nav-link" target="_blank" rel="noopener noreferrer">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
-                            {{ __('Open Dhiran Site') }}
-                        </a>
-                        @endif
                         <a href="{{ route('dhiran.dashboard') }}" class="nav-link">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v4"/><path d="M12 14v4"/><path d="M16 14v4"/></svg>
                             {{ __('Dashboard') }}
@@ -322,6 +344,7 @@
                         </a>
                     </div>
                     @endcan
+                    @endif
 
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('System') }}</div>
@@ -432,6 +455,45 @@
         })();
         </script>
         @endif
+        <script>
+        // ── Browser default fixes ────────────────────────────────────────────
+
+        // 1. Mouse wheel: don't increment number inputs
+        document.addEventListener('wheel', function () {
+            if (document.activeElement && document.activeElement.type === 'number') {
+                document.activeElement.blur();
+            }
+        }, { passive: true });
+
+        // 2. Autocomplete off + spellcheck off on all inputs (except password/login)
+        function applyInputFixes(root) {
+            root.querySelectorAll('input:not([type="password"]):not([type="email"])').forEach(function (el) {
+                if (!el.hasAttribute('autocomplete')) el.setAttribute('autocomplete', 'off');
+                el.setAttribute('spellcheck', 'false');
+            });
+            root.querySelectorAll('select').forEach(function (el) {
+                el.setAttribute('spellcheck', 'false');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            applyInputFixes(document);
+        });
+
+        // Handle Alpine.js / Turbo dynamically added inputs
+        new MutationObserver(function (mutations) {
+            mutations.forEach(function (m) {
+                m.addedNodes.forEach(function (node) {
+                    if (node.nodeType === 1) applyInputFixes(node);
+                });
+            });
+        }).observe(document.documentElement, { childList: true, subtree: true });
+
+        // 3. Prevent accidental text-drag from input fields
+        document.addEventListener('dragstart', function (e) {
+            if (e.target.matches('input, textarea')) e.preventDefault();
+        });
+        </script>
         <footer class="app-footer">
             &copy; {{ date('Y') }} JewelFlow. All rights reserved.
         </footer>

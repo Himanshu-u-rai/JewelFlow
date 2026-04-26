@@ -10,8 +10,12 @@ trait ImmutableLedger
     protected static function bootImmutableLedger(): void
     {
         static::updating(function ($model) {
-            static::logMutationAttempt($model, 'update_blocked');
-            throw new LogicException(static::class . ' is append-only and cannot be updated.');
+            $allowed = $model->allowedUpdateColumns ?? [];
+            $blocked = array_diff(array_keys($model->getDirty()), $allowed);
+            if (! empty($blocked)) {
+                static::logMutationAttempt($model, 'update_blocked');
+                throw new LogicException(static::class . ' is append-only and cannot be updated.');
+            }
         });
 
         static::deleting(function ($model) {

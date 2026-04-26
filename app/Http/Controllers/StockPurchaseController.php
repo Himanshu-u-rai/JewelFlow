@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Category;
+use App\Models\MetalLot;
+use App\Models\MetalMovement;
 use App\Models\StockPurchase;
 use App\Models\StockPurchaseItem;
 use App\Models\Vendor;
@@ -32,7 +34,7 @@ class StockPurchaseController extends Controller
             ->with('vendor')
             ->withCount('lines');
 
-        if ($request->filled('status') && in_array($request->status, ['draft', 'confirmed'], true)) {
+        if ($request->filled('status') && in_array($request->status, ['draft', 'confirmed', 'stocked'], true)) {
             $query->where('status', $request->status);
         }
 
@@ -104,6 +106,18 @@ class StockPurchaseController extends Controller
         $purchase = DB::transaction(function () use ($validated, $shopId, $request) {
             $identifier = BusinessIdentifierService::nextPurchaseIdentifier($shopId);
 
+            // Create a new vendor from supplier details if requested
+            if ($request->boolean('save_as_vendor') && ! empty($validated['supplier_name'])) {
+                $vendor = Vendor::create([
+                    'shop_id'    => $shopId,
+                    'name'       => $validated['supplier_name'],
+                    'gst_number' => $validated['supplier_gstin'] ?? null,
+                    'is_active'  => true,
+                ]);
+                $validated['vendor_id']     = $vendor->id;
+                $validated['supplier_name'] = null;
+            }
+
             $imagePath = null;
             if ($request->hasFile('invoice_image')) {
                 $imagePath = $request->file('invoice_image')->store('purchases', 'public');
@@ -145,9 +159,122 @@ class StockPurchaseController extends Controller
     {
         $this->authorizeShop($purchase);
 
-        $purchase->load(['lines.item', 'vendor', 'enteredBy', 'confirmedBy']);
+        $purchase->load(['lines.item', 'lines.metalLot', 'vendor', 'enteredBy', 'confirmedBy']);
 
         return view('inventory.purchases.show', compact('purchase'));
+    }
+
+    public function vaultLineForm(StockPurchase $purchase, StockPurchaseItem $line)
+    {
+        $this->authorizeShop($purchase);
+        abort_unless($line->stock_purchase_id === $purchase->id, 404);
+        abort_unless($line->line_type === 'bullion_reserve', 422);
+        abort_unless($line->metal_lot_id === null, 422);
+        abort_unless(! $purchase->isDraft(), 422);
+
+        $existingLots = MetalLot::query()
+            ->where('shop_id', $purchase->shop_id)
+            ->where('metal_type', $line->metal_type)
+            ->orderByDesc('id')
+            ->get(['id', 'lot_number', 'purity', 'fine_weight_remaining', 'metal_type']);
+
+        return view('inventory.purchases.vault-line', compact('purchase', 'line', 'existingLots'));
+    }
+
+    public function vaultLine(StockPurchase $purchase, StockPurchaseItem $line, Request $request)
+    {
+        $this->authorizeShop($purchase);
+        abort_unless($line->stock_purchase_id === $purchase->id, 404);
+        abort_unless($line->line_type === 'bullion_reserve', 422);
+        abort_unless($line->metal_lot_id === null, 422);
+        abort_unless(! $purchase->isDraft(), 422);
+
+        $shopId = $purchase->shop_id;
+
+        $validated = $request->validate([
+            'vault_action'  => 'required|in:new_lot,existing_lot',
+            'metal_lot_id'  => 'required_if:vault_action,existing_lot|nullable|integer',
+            'notes'         => 'nullable|string|max:500',
+        ]);
+
+        if ($validated['vault_action'] === 'existing_lot') {
+            $targetLot = MetalLot::where('shop_id', $shopId)
+                ->findOrFail($validated['metal_lot_id']);
+        }
+
+        $metalType  = $line->metal_type;
+        $purity     = (float) $line->purity;
+        $gross      = (float) $line->gross_weight;
+        $fineWeight = $metalType === 'silver'
+            ? round($gross * ($purity / 1000), 6)
+            : round($gross * ($purity / 24), 6);
+        $totalCost      = (float) $line->purchase_line_amount;
+        $costPerFineGram = $fineWeight > 0 ? round($totalCost / $fineWeight, 2) : 0;
+        $userId = (int) auth()->id();
+
+        $targetLot = $targetLot ?? null;
+
+        DB::transaction(function () use (
+            $purchase, $line, $validated, $shopId, $userId,
+            $metalType, $purity, $fineWeight, $totalCost, $costPerFineGram,
+            $targetLot
+        ) {
+            if ($validated['vault_action'] === 'new_lot') {
+                $lot = MetalLot::create([
+                    'shop_id'                => $shopId,
+                    'vendor_id'              => $purchase->vendor_id,
+                    'metal_type'             => $metalType,
+                    'source'                 => 'purchase',
+                    'purity'                 => $purity,
+                    'fine_weight_total'      => $fineWeight,
+                    'fine_weight_remaining'  => $fineWeight,
+                    'cost_per_fine_gram'     => $costPerFineGram,
+                    'notes'                  => $validated['notes'] ?? null,
+                ]);
+            } else {
+                $lot = $targetLot;
+                $lot->lockForUpdate();
+                $lot->fine_weight_total     += $fineWeight;
+                $lot->fine_weight_remaining += $fineWeight;
+                if ($lot->cost_per_fine_gram == 0 && $costPerFineGram > 0) {
+                    $lot->cost_per_fine_gram = $costPerFineGram;
+                }
+                $lot->save();
+            }
+
+            MetalMovement::record([
+                'shop_id'        => $shopId,
+                'from_lot_id'    => null,
+                'to_lot_id'      => $lot->id,
+                'fine_weight'    => $fineWeight,
+                'type'           => 'purchase',
+                'reference_type' => 'stock_purchase',
+                'reference_id'   => $purchase->id,
+                'user_id'        => $userId,
+            ]);
+
+            $line->metal_lot_id = $lot->id;
+            $line->save();
+
+            AuditLog::create([
+                'shop_id'    => $shopId,
+                'user_id'    => $userId,
+                'action'     => 'bullion_vaulted_from_purchase',
+                'model_type' => 'stock_purchase_item',
+                'model_id'   => $line->id,
+                'data'       => [
+                    'purchase_number' => $purchase->purchase_number,
+                    'lot_number'      => $lot->lot_number,
+                    'fine_weight'     => $fineWeight,
+                    'action'          => $validated['vault_action'],
+                ],
+            ]);
+        });
+
+        $lotNumber = MetalLot::find($line->fresh()->metal_lot_id)?->lot_number ?? '?';
+
+        return redirect()->route('inventory.purchases.show', $purchase)
+            ->with('success', "Bullion added to vault → Lot #{$lotNumber} (" . number_format($fineWeight, 3) . 'g fine).');
     }
 
     public function edit(StockPurchase $purchase)
@@ -184,6 +311,17 @@ class StockPurchaseController extends Controller
         $validated = $this->validatePurchaseRequest($request, $shopId);
 
         DB::transaction(function () use ($purchase, $validated, $request): void {
+            if ($request->boolean('save_as_vendor') && ! empty($validated['supplier_name'])) {
+                $vendor = Vendor::create([
+                    'shop_id'    => $purchase->shop_id,
+                    'name'       => $validated['supplier_name'],
+                    'gst_number' => $validated['supplier_gstin'] ?? null,
+                    'is_active'  => true,
+                ]);
+                $validated['vendor_id']     = $vendor->id;
+                $validated['supplier_name'] = null;
+            }
+
             if ($request->hasFile('invoice_image')) {
                 if ($purchase->invoice_image) {
                     Storage::disk('public')->delete($purchase->invoice_image);
@@ -228,10 +366,23 @@ class StockPurchaseController extends Controller
                 ->with('error', $e->getMessage());
         }
 
-        $itemCount = $purchase->lines()->whereNotNull('item_id')->count();
+        return redirect()->route('inventory.purchases.show', $purchase)
+            ->with('success', "Purchase {$purchase->purchase_number} confirmed. You can now add items to shop inventory.");
+    }
+
+    public function addToInventory(StockPurchase $purchase)
+    {
+        $this->authorizeShop($purchase);
+
+        try {
+            $itemCount = $this->purchaseService->addToInventory($purchase, auth()->id());
+        } catch (LogicException $e) {
+            return redirect()->route('inventory.purchases.show', $purchase)
+                ->with('error', $e->getMessage());
+        }
 
         return redirect()->route('inventory.purchases.show', $purchase)
-            ->with('success', "Purchase {$purchase->purchase_number} confirmed. {$itemCount} item(s) added to stock.");
+            ->with('success', "{$itemCount} item(s) from purchase {$purchase->purchase_number} added to shop inventory.");
     }
 
     public function destroy(StockPurchase $purchase)

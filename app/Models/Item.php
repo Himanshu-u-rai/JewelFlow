@@ -49,6 +49,7 @@ class Item extends Model
         'pricing_review_required',
         'pricing_review_notes',
         'stock_purchase_id',
+        'job_order_id',
     ];
 
     protected $casts = [
@@ -91,6 +92,11 @@ class Item extends Model
     public function stockPurchase()
     {
         return $this->belongsTo(StockPurchase::class, 'stock_purchase_id');
+    }
+
+    public function jobOrder()
+    {
+        return $this->belongsTo(JobOrder::class, 'job_order_id');
     }
 
     public function scopeInStock($query)

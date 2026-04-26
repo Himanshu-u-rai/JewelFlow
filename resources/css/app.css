@@ -8691,3 +8691,48 @@ input::-webkit-calendar-picker-indicator {
         margin-left: 0;
     }
 }
+
+/* Remove native number input spinners app-wide */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* ── Browser default fixes ──────────────────────────────────────────────── */
+
+/* Spell-check off on all inputs (red squiggles on barcodes, IFSCs, UPI IDs) */
+input, select {
+    spellcheck: false; /* handled via JS — declaration is a hint */
+    -webkit-user-drag: none;
+}
+
+/* iOS: prevent page zoom when tapping inputs (needs font-size >= 16px on mobile) */
+@media screen and (max-width: 1024px) {
+    input:not([type="range"]),
+    select,
+    textarea {
+        font-size: max(16px, 1em) !important;
+    }
+}
+
+/* Scroll chaining: when a scrollable container hits its edge, stop bleeding into page */
+.sidebar,
+.sidebar-nav,
+.settings-nav,
+.modal,
+[class*="dropdown"],
+[data-dropdown],
+.content-inner,
+.overflow-x-auto {
+    overscroll-behavior: contain;
+}
+
+/* Date input — normalize across browsers (remove inner calendar icon gap on Firefox) */
+input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+}

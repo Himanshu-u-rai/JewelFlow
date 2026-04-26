@@ -10,10 +10,19 @@
                 </a>
                 <form method="POST" action="{{ route('inventory.purchases.confirm', $purchase) }}" class="inline">
                     @csrf @method('PATCH')
-                    <button type="submit" onclick="return confirm('Confirm this purchase and add items to stock?')"
-                            class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
+                    <button type="submit" onclick="return confirm('Confirm this purchase? This will lock the invoice details.')"
+                            class="inline-flex items-center gap-2 rounded-xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         Confirm Purchase
+                    </button>
+                </form>
+            @elseif($purchase->isConfirmed())
+                <form method="POST" action="{{ route('inventory.purchases.stock', $purchase) }}" class="inline">
+                    @csrf @method('PATCH')
+                    <button type="submit" onclick="return confirm('Add items from this purchase to shop inventory? This cannot be undone.')"
+                            class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        Add to Shop Inventory
                     </button>
                 </form>
             @endif
@@ -31,8 +40,10 @@
                     <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Purchase Details</h3>
                     @if($purchase->isDraft())
                         <span class="inline-flex items-center rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">Draft</span>
+                    @elseif($purchase->isConfirmed())
+                        <span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">Confirmed — Pending Inventory</span>
                     @else
-                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Confirmed</span>
+                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Added to Inventory</span>
                     @endif
                 </div>
 
@@ -83,10 +94,16 @@
                         <dt class="text-[11px] uppercase tracking-[0.15em] text-slate-400 mb-0.5">Entered By</dt>
                         <dd class="text-slate-600">{{ $purchase->enteredBy?->name ?? '—' }}</dd>
                     </div>
-                    @if($purchase->isConfirmed())
+                    @if($purchase->confirmed_at)
                     <div>
                         <dt class="text-[11px] uppercase tracking-[0.15em] text-slate-400 mb-0.5">Confirmed By</dt>
-                        <dd class="text-slate-600">{{ $purchase->confirmedBy?->name ?? '—' }} on {{ $purchase->confirmed_at?->format('d M Y') }}</dd>
+                        <dd class="text-slate-600">{{ $purchase->confirmedBy?->name ?? '—' }} on {{ $purchase->confirmed_at->format('d M Y') }}</dd>
+                    </div>
+                    @endif
+                    @if($purchase->stocked_at)
+                    <div>
+                        <dt class="text-[11px] uppercase tracking-[0.15em] text-slate-400 mb-0.5">Added to Inventory By</dt>
+                        <dd class="text-slate-600">{{ $purchase->stockedBy?->name ?? '—' }} on {{ $purchase->stocked_at->format('d M Y') }}</dd>
                     </div>
                     @endif
                 </dl>
@@ -241,9 +258,25 @@
                                 @if($line->item)
                                     <a href="{{ route('inventory.items.show', $line->item) }}" class="font-mono text-xs text-amber-600 hover:underline">{{ $line->item->barcode }}</a>
                                 @elseif($line->line_type === 'bullion_reserve')
-                                    <span class="text-xs text-slate-400 italic">Reserve only</span>
-                                @else
+                                    @if($line->metalLot)
+                                        <a href="{{ route('vault.lots.show', $line->metalLot) }}"
+                                           class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                            Lot #{{ $line->metalLot->lot_number }}
+                                        </a>
+                                    @elseif(! $purchase->isDraft())
+                                        <a href="{{ route('inventory.purchases.vault-line.form', [$purchase, $line]) }}"
+                                           class="inline-flex items-center gap-1.5 rounded-lg bg-yellow-400 hover:bg-yellow-500 border border-yellow-500 px-2.5 py-1 text-xs font-semibold text-yellow-900 transition-colors whitespace-nowrap shadow-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                            Add to Vault
+                                        </a>
+                                    @else
+                                        <span class="text-xs text-slate-400 italic">Reserve only</span>
+                                    @endif
+                                @elseif($purchase->isDraft())
                                     <span class="text-xs text-slate-400 italic">Pending confirm</span>
+                                @else
+                                    <span class="text-xs text-amber-600 italic">Pending inventory</span>
                                 @endif
                             </td>
                         </tr>
@@ -257,8 +290,8 @@
             </div>
         </div>
 
-        {{-- Items Added to Stock (confirmed only) --}}
-        @if($purchase->isConfirmed())
+        {{-- Items Added to Stock (stocked only) --}}
+        @if($purchase->isStocked())
         @php $itemLines = $purchase->lines->filter(fn($l) => $l->item !== null); @endphp
         @if($itemLines->count() > 0)
         <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">

@@ -11,6 +11,7 @@ class StockPurchaseItem extends Model
         'stock_purchase_id',
         'shop_id',
         'item_id',
+        'metal_lot_id',
         'line_type',
         'barcode',
         'design',
@@ -58,5 +59,10 @@ class StockPurchaseItem extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function metalLot(): BelongsTo
+    {
+        return $this->belongsTo(MetalLot::class);
     }
 }

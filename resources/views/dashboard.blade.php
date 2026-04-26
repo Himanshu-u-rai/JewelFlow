@@ -889,6 +889,12 @@
             color: #8f5c00;
         }
 
+        /* Metal divider — horizontal by default, vertical on mobile */
+        .dash-metal-divider {
+            height: 1px;
+            background: rgba(217,139,0,0.15);
+        }
+
         .dash-top-kpi-profit {
             background: #ffffff;
         }
@@ -2432,6 +2438,7 @@
 
             .dash-top-grid {
                 gap: 10px;
+                grid-template-columns: 1fr 1fr !important;
             }
 
             .dash-col-shop {
@@ -2448,6 +2455,30 @@
                 grid-column: span 6;
                 padding: 12px;
                 order: 3;
+            }
+
+            .dash-col-metal {
+                grid-column: 1 / -1;
+                padding: 12px;
+                order: 2;
+            }
+
+            .dash-col-metal .dash-top-kpi-value {
+                flex-direction: row !important;
+                align-items: center;
+                gap: 12px !important;
+            }
+
+            .dash-col-metal .dash-top-kpi-value > div:first-child,
+            .dash-col-metal .dash-top-kpi-value > div:last-child {
+                flex: 1;
+            }
+
+            .dash-metal-divider {
+                width: 1px !important;
+                height: 36px !important;
+                background: rgba(217,139,0,0.2) !important;
+                flex: none;
             }
 
             .dash-col-revenue .dash-kpi-value,
@@ -3630,28 +3661,50 @@
                     <a href="/inventory/items" class="dash-btn dash-btn-primary" style="min-height: 32px; font-size: 11px;">View Inventory</a>
                 </div>
             </div>
-            <div class="dash-block dash-top-kpi dash-top-kpi-revenue" style="padding: 18px;">
+            <div class="dash-block dash-top-kpi dash-top-kpi-revenue dash-col-metal" style="padding: 18px;">
+                @php
+                    $todayRate = app('App\\Services\\ShopPricingService')->currentDailyRate($shop);
+                @endphp
                 <div class="dash-top-kpi-head">
                     <span class="dash-top-kpi-icon" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><text x="6" y="17" font-size="14">₹</text></svg>
+                        {{-- Gold bullion bar --}}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            {{-- Outer bar body --}}
+                            <polygon points="3,17 21,17 19,8 5,8" />
+                            {{-- Top face bevel --}}
+                            <polygon points="5,8 19,8 17,5 7,5" />
+                            {{-- Shine lines on front face --}}
+                            <line x1="7" y1="11" x2="17" y2="11" stroke-width="1" opacity="0.6"/>
+                            <line x1="6" y1="14" x2="18" y2="14" stroke-width="1" opacity="0.6"/>
+                        </svg>
                     </span>
                     <p class="dash-top-kpi-meta">Today's Metal Rates</p>
                 </div>
-                <div class="dash-kpi-value dash-skel dash-top-kpi-value" style="font-size: 16px; font-weight: 500; color: #8f5c00;">
-                    @php
-                        $todayRate = app('App\\Services\\ShopPricingService')->currentDailyRate($shop);
-                    @endphp
-                    @if($todayRate)
-                        <div><span style="font-weight: 600;">Gold 24K:</span> ₹{{ number_format((float) $todayRate->gold_24k_rate_per_gram, 4) }}/g</div>
-                        <div style="margin-top: 2px;"><span style="font-weight: 600;">Silver 999:</span> ₹{{ number_format((float) $todayRate->silver_999_rate_per_gram, 4) }}/g</div>
-                    @else
-                        <div>No rates set for today.</div>
-                    @endif
-                </div>
-                <div class="dash-top-kpi-foot">
-                    <p class="dash-top-kpi-title">24K Gold & Silver</p>
-                    <p class="dash-top-kpi-note">User provided rates</p>
-                </div>
+                @if($todayRate)
+                    <div class="dash-top-kpi-value" style="display:flex; flex-direction:column; gap:6px; justify-content:center;">
+                        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
+                            <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#986000; white-space:nowrap;">Gold 24K</span>
+                            <span class="dash-kpi-value dash-skel" style="font-size:20px; margin-top:0; color:#986000;">₹{{ number_format((float) $todayRate->gold_24k_rate_per_gram, 2) }}<span style="font-size:11px; font-weight:600;">/g</span></span>
+                        </div>
+                        <div class="dash-metal-divider"></div>
+                        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
+                            <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#64748b; white-space:nowrap;">Silver 999</span>
+                            <span class="dash-kpi-value dash-skel" style="font-size:20px; margin-top:0; color:#475569;">₹{{ number_format((float) $todayRate->silver_999_rate_per_gram, 2) }}<span style="font-size:11px; font-weight:600;">/g</span></span>
+                        </div>
+                    </div>
+                    <div class="dash-top-kpi-foot">
+                        <p class="dash-top-kpi-title">24K Gold &amp; Silver 999</p>
+                        <p class="dash-top-kpi-note">User provided rates</p>
+                    </div>
+                @else
+                    <div class="dash-top-kpi-value" style="display:flex; align-items:center;">
+                        <span style="font-size:13px; color:#94a3b8; font-weight:500;">No rates set for today</span>
+                    </div>
+                    <div class="dash-top-kpi-foot">
+                        <p class="dash-top-kpi-title">24K Gold &amp; Silver 999</p>
+                        <p class="dash-top-kpi-note">User provided rates</p>
+                    </div>
+                @endif
             </div>
 
             @if($isRetailer ?? false)

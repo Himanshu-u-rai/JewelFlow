@@ -375,6 +375,8 @@
         border: 1px solid var(--border); border-radius: 12px; background: #fff; color: var(--muted);
     }
     .pay-row-ref:focus { outline: none; border-color: var(--accent); }
+    .pay-row-ref-required { border-color: #f87171 !important; background: #fff5f5 !important; color: #dc2626 !important; }
+    .pay-row-ref-required:focus { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239,68,68,0.15); }
     .pay-row-remove {
         background: none; border: none; color: var(--danger); font-size: 20px;
         cursor: pointer; padding: 4px; border-radius: 8px; line-height: 1;
@@ -836,20 +838,30 @@
                     <span><span class="card-title-icon"></span> Payment</span>
                 </div>
 
-                <!-- Mode buttons -->
+                <!-- Mode buttons: Cash/Other/EMI always shown; UPI/Bank/Wallet only if configured -->
                 <div class="pay-mode-grid">
                     <button type="button" class="pay-mode-btn" @click="addPayment('cash')"
                             :class="{'active': payments.some(p => p.mode === 'cash')}">
                         <span class="pay-mode-icon"></span> Cash
                     </button>
-                    <button type="button" class="pay-mode-btn" @click="addPayment('upi')"
-                            :class="{'active': payments.some(p => p.mode === 'upi')}">
-                        <span class="pay-mode-icon"></span> UPI
-                    </button>
-                    <button type="button" class="pay-mode-btn" @click="addPayment('bank')"
-                            :class="{'active': payments.some(p => p.mode === 'bank')}">
-                        <span class="pay-mode-icon"></span> Bank
-                    </button>
+                    <template x-if="methodsForType('upi').length > 0">
+                        <button type="button" class="pay-mode-btn" @click="addPayment('upi')"
+                                :class="{'active': payments.some(p => p.mode === 'upi')}">
+                            <span class="pay-mode-icon"></span> UPI
+                        </button>
+                    </template>
+                    <template x-if="methodsForType('bank').length > 0">
+                        <button type="button" class="pay-mode-btn" @click="addPayment('bank')"
+                                :class="{'active': payments.some(p => p.mode === 'bank')}">
+                            <span class="pay-mode-icon"></span> Bank
+                        </button>
+                    </template>
+                    <template x-if="methodsForType('wallet').length > 0">
+                        <button type="button" class="pay-mode-btn" @click="addPayment('wallet')"
+                                :class="{'active': payments.some(p => p.mode === 'wallet')}">
+                            <span class="pay-mode-icon"></span> Wallet
+                        </button>
+                    </template>
                     <button type="button" class="pay-mode-btn" @click="addPayment('old_gold')"
                             :class="{'active': payments.some(p => p.mode === 'old_gold')}">
                         <span class="pay-mode-icon"></span> Old Gold
@@ -872,7 +884,7 @@
                 <template x-for="(pay, idx) in payments" :key="idx">
                     <div>
                         <div class="pay-row">
-                            <span class="pay-row-label" x-text="pay.mode.replace('_',' ')"></span>
+                            <span class="pay-row-label" x-text="pay.reference && methodsForType(pay.mode).length > 1 ? pay.reference : pay.mode.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())"></span>
                             <template x-if="pay.mode !== 'emi'">
                                 <input type="number" class="pay-row-input" x-model.number="pay.amount"
                                        placeholder="₹ Amount" step="1" min="0" @input="recalcPayments()">
@@ -882,8 +894,26 @@
                                     Continue to EMI form for down payment + first EMI details
                                 </div>
                             </template>
-                            <template x-if="['upi','bank','other'].includes(pay.mode)">
-                                <input type="text" class="pay-row-ref" x-model="pay.reference" placeholder="Ref #">
+                            {{-- Reference field: dropdown when multiple accounts, text input otherwise --}}
+                            <template x-if="!['old_gold','old_silver','emi'].includes(pay.mode)">
+                                <span>
+                                    <template x-if="methodsForType(pay.mode).length > 1">
+                                        <select class="pay-row-ref"
+                                                :class="{ 'pay-row-ref-required': !pay.payment_method_id }"
+                                                @change="onMethodSelect(pay, $event)">
+                                            <option value="">— Select account * —</option>
+                                            <template x-for="m in methodsForType(pay.mode)" :key="m.id">
+                                                <option :value="m.id" x-text="m.account_label" :selected="pay.payment_method_id == m.id"></option>
+                                            </template>
+                                        </select>
+                                    </template>
+                                    <template x-if="methodsForType(pay.mode).length === 1">
+                                        <input type="text" class="pay-row-ref" x-model="pay.reference" placeholder="Ref #">
+                                    </template>
+                                    <template x-if="methodsForType(pay.mode).length === 0">
+                                        <input type="text" class="pay-row-ref" x-model="pay.reference" placeholder="Ref #">
+                                    </template>
+                                </span>
                             </template>
                             <button class="pay-row-remove" @click="removePayment(idx)" title="Remove">&times;</button>
                         </div>
@@ -997,6 +1027,7 @@
                 <span x-show="selling">Processing…</span>
             </button>
 
+            <p x-show="missingAccountSelection()" class="text-sm text-red-600 mt-2 text-center">Select an account for all UPI / Bank / Wallet payments.</p>
             <p x-show="saleError" class="text-sm text-red-600 mt-3 text-center" x-text="saleError"></p>
         </div>
     </div>
@@ -1059,6 +1090,9 @@ function retailerPos() {
         roundOffNearest: {{ $roundOffNearest ?? 1 }},
         loyaltyPointsPerHundred: {{ $loyaltyPointsPerHundred ?? 1 }},
         total: 0,
+
+        // Payment methods (configured by shop owner)
+        paymentMethods: @json($paymentMethods),
 
         // Payments
         payments: [],
@@ -1390,17 +1424,41 @@ function retailerPos() {
             return Math.min(Math.max(0, Number(this.schemeRedemptionAmount || 0)), max);
         },
 
+        /* ── Payment helpers ─────────────────────── */
+        methodsForType(type) {
+            return this.paymentMethods[type] || [];
+        },
+
+        onMethodSelect(pay, event) {
+            const methodId = parseInt(event.target.value) || null;
+            pay.payment_method_id = methodId;
+            if (methodId) {
+                const m = this.methodsForType(pay.mode).find(x => x.id == methodId);
+                pay.reference = m ? m.account_label : '';
+            } else {
+                pay.reference = '';
+            }
+        },
+
         /* ── Payments ────────────────────────────── */
         addPayment(mode) {
-            if (this.payments.some(p => p.mode === mode)) return;
-            const pay = { mode, amount: 0, reference: '' };
+            // These modes can only appear once per sale
+            if (['old_gold', 'old_silver', 'emi'].includes(mode) && this.payments.some(p => p.mode === mode)) return;
+
+            const pay = { mode, amount: 0, reference: '', payment_method_id: null };
             if (mode === 'old_gold' || mode === 'old_silver') {
                 pay.metal_gross_weight = 0;
                 pay.metal_purity = mode === 'old_gold' ? 22 : 925;
                 pay.metal_test_loss = 0;
                 pay.metal_rate_per_gram = 0;
             }
-            // Auto-fill remaining for first or single payment
+            // Auto-fill single configured account
+            const methods = this.methodsForType(mode);
+            if (methods.length === 1) {
+                pay.payment_method_id = methods[0].id;
+                pay.reference = methods[0].account_label;
+            }
+            // Auto-fill remaining amount when this is the first payment row
             if (this.payments.length === 0 && mode !== 'emi') {
                 pay.amount = Math.max(0, this.remaining());
             }
@@ -1438,6 +1496,18 @@ function retailerPos() {
         },
 
         /* ── Sale ────────────────────────────────── */
+        accountRequired(pay) {
+            return ['upi', 'bank', 'wallet'].includes(pay.mode) && methodsForType && this.methodsForType(pay.mode).length > 0;
+        },
+
+        missingAccountSelection() {
+            return this.payments.some(p =>
+                ['upi', 'bank', 'wallet'].includes(p.mode)
+                && this.methodsForType(p.mode).length > 0
+                && !p.payment_method_id
+            );
+        },
+
         canSell() {
             if (!(this.items.length > 0
                 && this.total > 0
@@ -1447,6 +1517,8 @@ function retailerPos() {
 
             const hasAnySettlement = this.payments.length > 0 || this.appliedRedemptionAmount() > 0;
             if (!hasAnySettlement) return false;
+
+            if (this.missingAccountSelection()) return false;
 
             if (this.hasEmiMode()) {
                 const hasOnlyEmi = this.payments.length === 1 && this.payments[0].mode === 'emi';
@@ -1484,6 +1556,7 @@ function retailerPos() {
                             mode: p.mode,
                             amount: parseFloat(p.amount) || 0,
                             reference: p.reference || null,
+                            payment_method_id: p.payment_method_id || null,
                             metal_gross_weight: p.metal_gross_weight || null,
                             metal_purity: p.metal_purity || null,
                             metal_test_loss: p.metal_test_loss || null,

@@ -38,12 +38,15 @@ class StockPurchase extends Model
         'entered_by_user_id',
         'confirmed_at',
         'confirmed_by_user_id',
+        'stocked_at',
+        'stocked_by_user_id',
     ];
 
     protected $casts = [
         'invoice_date'      => 'date',
         'purchase_date'     => 'date',
         'confirmed_at'      => 'datetime',
+        'stocked_at'        => 'datetime',
         'labour_discount'   => 'decimal:2',
         'subtotal_amount'   => 'decimal:2',
         'cgst_rate'         => 'decimal:2',
@@ -76,6 +79,11 @@ class StockPurchase extends Model
         return $this->belongsTo(User::class, 'confirmed_by_user_id');
     }
 
+    public function stockedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'stocked_by_user_id');
+    }
+
     public function scopeDraft($query)
     {
         return $query->where('status', 'draft');
@@ -86,6 +94,11 @@ class StockPurchase extends Model
         return $query->where('status', 'confirmed');
     }
 
+    public function scopeStocked($query)
+    {
+        return $query->where('status', 'stocked');
+    }
+
     public function isDraft(): bool
     {
         return $this->status === 'draft';
@@ -94,6 +107,11 @@ class StockPurchase extends Model
     public function isConfirmed(): bool
     {
         return $this->status === 'confirmed';
+    }
+
+    public function isStocked(): bool
+    {
+        return $this->status === 'stocked';
     }
 
     public function getSupplierLabelAttribute(): string

@@ -11,12 +11,20 @@ class MetalLot extends Model
     use BelongsToShop;
 
     protected $fillable = [
+        'vendor_id',
+        'metal_type',
         'source',
         'purity',
         'fine_weight_total',
         'fine_weight_remaining',
         'cost_per_fine_gram',
+        'notes',
     ];
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
 
     protected $casts = [
         'lot_number' => 'integer',

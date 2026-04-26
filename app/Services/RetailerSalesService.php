@@ -168,12 +168,13 @@ class RetailerSalesService
                 $paymentTotal += $amount;
 
                 $attrs = [
-                    'invoice_id' => $invoice->id,
-                    'shop_id'    => $shopId,
-                    'mode'       => $mode,
-                    'amount'     => $amount,
-                    'reference'  => $p['reference'] ?? null,
-                    'note'       => $p['note'] ?? null,
+                    'invoice_id'        => $invoice->id,
+                    'shop_id'           => $shopId,
+                    'mode'              => $mode,
+                    'amount'            => $amount,
+                    'reference'         => $p['reference'] ?? null,
+                    'note'              => $p['note'] ?? null,
+                    'payment_method_id' => $p['payment_method_id'] ?? null,
                 ];
 
                 // Old-gold / old-silver payments (accepted even by retailers)
@@ -198,7 +199,7 @@ class RetailerSalesService
                 InvoicePayment::record($attrs);
 
                 // Create CashTransaction per non-metal payment mode
-                if (in_array($mode, ['cash', 'upi', 'bank', 'other'])) {
+                if (in_array($mode, ['cash', 'upi', 'bank', 'wallet', 'other'])) {
                     CashTransaction::record([
                         'shop_id'      => $shopId,
                         'user_id'      => auth()->id(),

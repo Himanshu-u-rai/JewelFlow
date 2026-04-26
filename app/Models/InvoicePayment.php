@@ -24,6 +24,7 @@ class InvoicePayment extends Model
     public const MODE_CASH       = 'cash';
     public const MODE_UPI        = 'upi';
     public const MODE_BANK       = 'bank';
+    public const MODE_WALLET     = 'wallet';
     public const MODE_OLD_GOLD   = 'old_gold';
     public const MODE_OLD_SILVER = 'old_silver';
     public const MODE_OTHER      = 'other';
@@ -34,6 +35,7 @@ class InvoicePayment extends Model
         self::MODE_CASH,
         self::MODE_UPI,
         self::MODE_BANK,
+        self::MODE_WALLET,
         self::MODE_OLD_GOLD,
         self::MODE_OLD_SILVER,
         self::MODE_OTHER,
@@ -55,6 +57,11 @@ class InvoicePayment extends Model
     public function invoice()
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(ShopPaymentMethod::class, 'payment_method_id');
     }
 
     /**

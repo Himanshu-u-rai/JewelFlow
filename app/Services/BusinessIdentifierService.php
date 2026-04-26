@@ -17,6 +17,9 @@ class BusinessIdentifierService
     public const KEY_QUICK_BILL = 'quick_bill';
     public const KEY_DHIRAN = 'dhiran';
     public const KEY_PURCHASE = 'purchase';
+    public const KEY_JOB_ORDER = 'job_order';
+    public const KEY_CHALLAN = 'challan';
+    public const KEY_JOB_RECEIPT = 'job_receipt';
 
     public static function nextCounter(int $shopId, string $counterKey): int
     {
@@ -192,6 +195,45 @@ class BusinessIdentifierService
         return [
             'sequence' => $sequence,
             'number'   => 'PUR-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+        ];
+    }
+
+    /**
+     * @return array{sequence:int, number:string}
+     */
+    public static function nextJobOrderIdentifier(int $shopId): array
+    {
+        $sequence = self::nextCounter($shopId, self::KEY_JOB_ORDER);
+
+        return [
+            'sequence' => $sequence,
+            'number'   => 'JO-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+        ];
+    }
+
+    /**
+     * @return array{sequence:int, number:string}
+     */
+    public static function nextChallanIdentifier(int $shopId): array
+    {
+        $sequence = self::nextCounter($shopId, self::KEY_CHALLAN);
+
+        return [
+            'sequence' => $sequence,
+            'number'   => 'DC-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+        ];
+    }
+
+    /**
+     * @return array{sequence:int, number:string}
+     */
+    public static function nextJobReceiptIdentifier(int $shopId): array
+    {
+        $sequence = self::nextCounter($shopId, self::KEY_JOB_RECEIPT);
+
+        return [
+            'sequence' => $sequence,
+            'number'   => 'JR-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
         ];
     }
 }

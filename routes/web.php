@@ -25,6 +25,7 @@ use App\Http\Controllers\PricingSettingsController;
 use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\PublicCatalogController;
 use App\Http\Controllers\StockPurchaseController;
+use App\Http\Controllers\PaymentMethodController;
 
 /*
 |--------------------------------------------------------------------------
@@ -263,8 +264,49 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/repairs/{repair}/deliver', [\App\Http\Controllers\RepairController::class, 'deliver'])->name('repairs.deliver');
     Route::delete('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'destroy'])->name('repairs.destroy');
 
+    // ======= JOB WORK (Retailer) =======
+    Route::middleware('edition:retailer')->group(function () {
+        Route::get('/vault', [\App\Http\Controllers\BullionVaultController::class, 'index'])->name('vault.index');
+        Route::get('/vault/ledger', [\App\Http\Controllers\BullionVaultController::class, 'ledger'])->name('vault.ledger');
+        Route::get('/vault/lots/create', [\App\Http\Controllers\BullionVaultController::class, 'createLot'])->name('vault.lots.create');
+        Route::post('/vault/lots', [\App\Http\Controllers\BullionVaultController::class, 'storeLot'])->name('vault.lots.store');
+        Route::get('/vault/lots/{metalLot}', [\App\Http\Controllers\BullionVaultController::class, 'showLot'])->name('vault.lots.show');
+
+        Route::get('/karigars', [\App\Http\Controllers\KarigarController::class, 'index'])->name('karigars.index');
+        Route::get('/karigars/create', [\App\Http\Controllers\KarigarController::class, 'create'])->name('karigars.create');
+        Route::post('/karigars', [\App\Http\Controllers\KarigarController::class, 'store'])->name('karigars.store');
+        Route::get('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'show'])->name('karigars.show');
+        Route::get('/karigars/{karigar}/edit', [\App\Http\Controllers\KarigarController::class, 'edit'])->name('karigars.edit');
+        Route::put('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'update'])->name('karigars.update');
+        Route::delete('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'destroy'])->name('karigars.destroy');
+        Route::patch('/karigars/{karigar}/toggle', [\App\Http\Controllers\KarigarController::class, 'toggle'])->name('karigars.toggle');
+
+        Route::get('/job-orders', [\App\Http\Controllers\JobOrderController::class, 'index'])->name('job-orders.index');
+        Route::get('/job-orders/create', [\App\Http\Controllers\JobOrderController::class, 'create'])->name('job-orders.create');
+        Route::post('/job-orders', [\App\Http\Controllers\JobOrderController::class, 'store'])->name('job-orders.store');
+        Route::get('/job-orders/{jobOrder}', [\App\Http\Controllers\JobOrderController::class, 'show'])->name('job-orders.show');
+        Route::post('/job-orders/{jobOrder}/cancel', [\App\Http\Controllers\JobOrderController::class, 'cancel'])->name('job-orders.cancel');
+        Route::get('/job-orders/{jobOrder}/challan', [\App\Http\Controllers\JobOrderController::class, 'challan'])->name('job-orders.challan');
+        Route::get('/job-orders/{jobOrder}/return-doc', [\App\Http\Controllers\JobOrderController::class, 'returnDoc'])->name('job-orders.return-doc');
+        Route::get('/job-orders/{jobOrder}/receive', [\App\Http\Controllers\JobOrderController::class, 'receiveForm'])->name('job-orders.receive.form');
+        Route::post('/job-orders/{jobOrder}/receive', [\App\Http\Controllers\JobOrderController::class, 'storeReceipt'])->name('job-orders.receive.store');
+        Route::post('/job-orders/{jobOrder}/leftover-return', [\App\Http\Controllers\JobOrderController::class, 'leftoverReturn'])->name('job-orders.leftover');
+        Route::post('/job-orders/{jobOrder}/acknowledge', [\App\Http\Controllers\JobOrderController::class, 'acknowledge'])->name('job-orders.acknowledge');
+
+        Route::get('/karigar-invoices', [\App\Http\Controllers\KarigarInvoiceController::class, 'index'])->name('karigar-invoices.index');
+        Route::get('/karigar-invoices/create', [\App\Http\Controllers\KarigarInvoiceController::class, 'create'])->name('karigar-invoices.create');
+        Route::post('/karigar-invoices', [\App\Http\Controllers\KarigarInvoiceController::class, 'store'])->name('karigar-invoices.store');
+        Route::get('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'show'])->name('karigar-invoices.show');
+        Route::get('/karigar-invoices/{karigarInvoice}/edit', [\App\Http\Controllers\KarigarInvoiceController::class, 'edit'])->name('karigar-invoices.edit');
+        Route::put('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'update'])->name('karigar-invoices.update');
+        Route::delete('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'destroy'])->name('karigar-invoices.destroy');
+        Route::get('/karigar-invoices/{karigarInvoice}/print', [\App\Http\Controllers\KarigarInvoiceController::class, 'print'])->name('karigar-invoices.print');
+        Route::post('/karigar-invoices/{karigarInvoice}/payments', [\App\Http\Controllers\KarigarInvoiceController::class, 'recordPayment'])->name('karigar-invoices.pay');
+    });
+
     // ======= REPORTS =======
     Route::get('/report/gold', [ReportController::class, 'gold'])->middleware('role:owner')->name('report.gold');
+    Route::get('/report/metal-exchange', [\App\Http\Controllers\MetalExchangeReportController::class, 'index'])->middleware('edition:retailer')->name('report.metal-exchange');
     Route::get('/report/daily', [\App\Http\Controllers\DailyReportController::class, 'index'])->middleware('role:owner')->name('report.daily');
     Route::get('/report/cash', [\App\Http\Controllers\CashReportController::class, 'index'])->middleware('role:owner')->name('report.cash');
     Route::get('/report/pnl', [\App\Http\Controllers\PnlController::class, 'index'])->middleware('role:owner')->name('report.pnl');
@@ -297,6 +339,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/settings/pricing/purity-profiles/{profile}', [PricingSettingsController::class, 'updateProfile'])->middleware('role:owner')->name('settings.pricing.profiles.update');
     Route::post('/settings/pricing/purity-profiles/{profile}/override', [PricingSettingsController::class, 'storeOverride'])->middleware('role:owner')->name('settings.pricing.overrides.store');
     Route::patch('/settings/pricing/legacy-items/{item}', [PricingSettingsController::class, 'resolveLegacyItem'])->middleware('role:owner')->name('settings.pricing.legacy.resolve');
+
+    // Payment Methods settings
+    Route::get('/settings/payment-methods', [PaymentMethodController::class, 'index'])->middleware('role:owner')->name('settings.payment-methods.index');
+    Route::post('/settings/payment-methods', [PaymentMethodController::class, 'store'])->middleware('role:owner')->name('settings.payment-methods.store');
+    Route::put('/settings/payment-methods/{method}', [PaymentMethodController::class, 'update'])->middleware('role:owner')->name('settings.payment-methods.update');
+    Route::delete('/settings/payment-methods/{method}', [PaymentMethodController::class, 'destroy'])->middleware('role:owner')->name('settings.payment-methods.destroy');
+    Route::patch('/settings/payment-methods/{method}/toggle', [PaymentMethodController::class, 'toggle'])->middleware('role:owner')->name('settings.payment-methods.toggle');
 
     // Catalog Website settings
     Route::patch('/settings/catalog-website', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'updateSettings'])->middleware('role:owner')->name('settings.update.catalog-website');
@@ -361,6 +410,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/inventory/purchases/{purchase}/edit', [StockPurchaseController::class, 'edit'])->middleware('edition:retailer')->name('inventory.purchases.edit');
     Route::put('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'update'])->middleware('edition:retailer')->name('inventory.purchases.update');
     Route::patch('/inventory/purchases/{purchase}/confirm', [StockPurchaseController::class, 'confirm'])->middleware('edition:retailer')->name('inventory.purchases.confirm');
+    Route::patch('/inventory/purchases/{purchase}/stock', [StockPurchaseController::class, 'addToInventory'])->middleware('edition:retailer')->name('inventory.purchases.stock');
+    Route::get('/inventory/purchases/{purchase}/vault/{line}', [StockPurchaseController::class, 'vaultLineForm'])->middleware('edition:retailer')->name('inventory.purchases.vault-line.form');
+    Route::post('/inventory/purchases/{purchase}/vault/{line}', [StockPurchaseController::class, 'vaultLine'])->middleware('edition:retailer')->name('inventory.purchases.vault-line');
     Route::delete('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'destroy'])->middleware('edition:retailer')->name('inventory.purchases.destroy');
 
     // --- Vendors / Suppliers ---
@@ -423,6 +475,14 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/report/whatsapp/collection-link', [CatalogController::class, 'storeCollection'])->middleware('edition:retailer')->name('report.whatsapp.collection-link');
 
     // ======= DHIRAN (Gold Loan / Pledge Module) =======
+    // On the main domain, redirect all /dhiran/* to the dedicated subdomain
+    Route::get('/dhiran/{any?}', function () {
+        if (! str_starts_with(request()->getHost(), 'dhiran.')) {
+            return redirect('https://dhiran.jewelflows.com/' . request()->path(), 301);
+        }
+        abort(404);
+    })->where('any', '.*');
+
     Route::prefix('dhiran')->name('dhiran.')->group(function () {
         // Dashboard & Activation — no dhiran.enabled check (dashboard shows activation page)
         Route::get('/', [\App\Http\Controllers\DhiranController::class, 'dashboard'])->middleware('can:dhiran.view')->name('dashboard');

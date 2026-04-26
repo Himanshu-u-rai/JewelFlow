@@ -92,7 +92,7 @@
                                 <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Supplier</label>
                                 <div class="flex gap-2 mb-2">
                                     <button type="button" @click="mode='vendor'" :class="mode==='vendor' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition">From Vendors</button>
-                                    <button type="button" @click="mode='other'" :class="mode==='other' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition">Free Text</button>
+                                    <button type="button" @click="mode='other'" :class="mode==='other' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition">New Supplier</button>
                                 </div>
                                 <div x-show="mode==='vendor'">
                                     <select name="vendor_id"
@@ -114,8 +114,12 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div x-show="mode==='other'">
+                                <div x-show="mode==='other'" class="space-y-2">
                                     <input type="text" name="supplier_name" @input="scheduleSave()" value="{{ old('supplier_name', $isEdit ? $purchase->supplier_name : '') }}" placeholder="Supplier name" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
+                                    <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-600 font-medium">
+                                        <input type="checkbox" name="save_as_vendor" value="1" {{ old('save_as_vendor') ? 'checked' : '' }} class="rounded border-slate-300 text-amber-500 focus:ring-amber-500">
+                                        Save this supplier to my Vendors list
+                                    </label>
                                 </div>
                             </div>
 
@@ -143,6 +147,18 @@
                                 <input type="date" name="purchase_date" @change="scheduleSave()" value="{{ old('purchase_date', $isEdit ? $purchase->purchase_date->format('Y-m-d') : date('Y-m-d')) }}" required class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
+                            {{-- Invoice Reference Number (IRN) --}}
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Invoice Reference Number (IRN)</label>
+                                <input type="text" name="irn_number" @input="scheduleSave()" value="{{ old('irn_number', $isEdit ? $purchase->irn_number : '') }}" placeholder="64-character IRN from GST portal" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-amber-500 focus:ring-amber-500">
+                            </div>
+
+                            {{-- Acknowledgement Number (ACK) --}}
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Acknowledgement Number (ACK)</label>
+                                <input type="text" name="ack_number" @input="scheduleSave()" value="{{ old('ack_number', $isEdit ? $purchase->ack_number : '') }}" placeholder="ACK number from GST portal" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-amber-500 focus:ring-amber-500">
+                            </div>
+
                             {{-- Invoice Image / PDF --}}
                             <div>
                                 <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Invoice PDF / Image</label>
@@ -152,30 +168,6 @@
                                 @endif
                             </div>
 
-                        </div>
-
-                        {{-- IRN / ACK collapsible --}}
-                        <div x-data="{ open: {{ ($isEdit && ($purchase->irn_number || $purchase->ack_number)) ? 'true' : 'false' }} }" class="mt-4">
-                            <button type="button" @click="open=!open" class="text-xs text-slate-500 hover:text-slate-700 font-semibold flex items-center gap-1">
-                                <svg class="w-3 h-3 transition-transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                Government e-Invoice Numbers (optional)
-                            </button>
-                            <div x-show="open" x-cloak class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Invoice Reference Number (IRN)</label>
-                                    <input type="text" name="irn_number" @input="scheduleSave()" value="{{ old('irn_number', $isEdit ? $purchase->irn_number : '') }}" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-amber-500 focus:ring-amber-500">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Acknowledgement Number (ACK)</label>
-                                    <input type="text" name="ack_number" @input="scheduleSave()" value="{{ old('ack_number', $isEdit ? $purchase->ack_number : '') }}" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-amber-500 focus:ring-amber-500">
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Notes --}}
-                        <div class="mt-4">
-                            <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Notes</label>
-                            <textarea name="notes" @input="scheduleSave()" rows="2" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">{{ old('notes', $isEdit ? $purchase->notes : '') }}</textarea>
                         </div>
                     </div>
 
@@ -264,10 +256,10 @@
                                             <input type="number" step="0.001" :name="`lines[${idx}][stone_weight]`" x-model="line.stone_weight" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.000">
                                         </div>
 
-                                        {{-- Net Weight (read-only) --}}
+                                        {{-- Net Weight (editable, auto-fills from gross−stone) --}}
                                         <div>
                                             <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Net Wt (g)</label>
-                                            <input type="number" step="0.000001" :name="`lines[${idx}][net_metal_weight]`" :value="line.net_metal_weight" readonly class="w-full rounded-lg border-slate-100 bg-slate-100 px-2 py-2 text-sm text-slate-500 cursor-not-allowed">
+                                            <input type="number" step="0.001" :name="`lines[${idx}][net_metal_weight]`" x-model="line.net_metal_weight" @input="recalcLineFromNet(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.000">
                                         </div>
 
                                         {{-- Rate per gram --}}
@@ -611,23 +603,32 @@
                     const rate = this.resolvedRates[metal][best]?.rate_per_gram;
                     if (rate && !line.purchase_rate_per_gram) {
                         line.purchase_rate_per_gram = rate;
-                        this.recalcLine(line);
+                        this._recalcLineTotal(line);
                     }
                 }
             },
 
             recalcLine(line) {
-                const gross   = parseFloat(line.gross_weight   || 0);
-                const stone   = parseFloat(line.stone_weight   || 0);
-                const net     = Math.max(0, gross - stone);
-                line.net_metal_weight = net.toFixed(6);
+                const gross = parseFloat(line.gross_weight || 0);
+                const stone = parseFloat(line.stone_weight || 0);
+                // Auto-fill net from gross−stone only when gross or stone changes
+                line.net_metal_weight = Math.max(0, gross - stone).toFixed(3);
+                this._recalcLineTotal(line);
+            },
 
-                const rate    = parseFloat(line.purchase_rate_per_gram || 0);
-                const making  = parseFloat(line.making_charges          || 0);
-                const stoneC  = parseFloat(line.stone_charges           || 0);
-                const hallC   = parseFloat(line.hallmark_charges        || 0);
-                const rhodC   = parseFloat(line.rhodium_charges         || 0);
-                const otherC  = parseFloat(line.other_charges           || 0);
+            recalcLineFromNet(line) {
+                // User typed net directly — just recalc the line total
+                this._recalcLineTotal(line);
+            },
+
+            _recalcLineTotal(line) {
+                const net    = parseFloat(line.net_metal_weight  || 0);
+                const rate   = parseFloat(line.purchase_rate_per_gram || 0);
+                const making = parseFloat(line.making_charges    || 0);
+                const stoneC = parseFloat(line.stone_charges     || 0);
+                const hallC  = parseFloat(line.hallmark_charges  || 0);
+                const rhodC  = parseFloat(line.rhodium_charges   || 0);
+                const otherC = parseFloat(line.other_charges     || 0);
 
                 const lineTotal = Math.round((net * rate + making + stoneC + hallC + rhodC + otherC) * 100) / 100;
                 line.purchase_line_amount = lineTotal.toFixed(2);
