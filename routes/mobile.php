@@ -40,6 +40,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware('throttle:api-pos-read');
         Route::get('/items/barcode/{barcode}', [ItemController::class, 'findByBarcode'])
             ->middleware('throttle:api-pos-read');
+        Route::get('/items/retailer-pricing-meta', [ItemController::class, 'retailerPricingMeta'])
+            ->middleware('throttle:api-pos-read');
         Route::post('/items', [ItemController::class, 'store'])
             ->middleware('throttle:api-pos-sale');
         Route::get('/items/{item}', [ItemController::class, 'show'])

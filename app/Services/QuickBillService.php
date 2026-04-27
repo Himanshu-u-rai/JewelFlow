@@ -340,6 +340,20 @@ class QuickBillService
                 $paymentMode = 'cash';
             }
 
+            $expectedType = $modeTypeMap[$paymentMode] ?? null;
+
+            if ($expectedType !== null && $paymentMethodId === null) {
+                throw ValidationException::withMessages([
+                    "payments.{$index}.payment_method_id" => "Payment method is required for mode \"{$paymentMode}\".",
+                ]);
+            }
+
+            if ($expectedType === null && $paymentMethodId !== null) {
+                throw ValidationException::withMessages([
+                    "payments.{$index}.payment_method_id" => "Payment method is not allowed for mode \"{$paymentMode}\".",
+                ]);
+            }
+
             if ($paymentMethodId !== null) {
                 $method = $methodsById->get($paymentMethodId);
                 if (!$method) {
@@ -348,7 +362,6 @@ class QuickBillService
                     ]);
                 }
 
-                $expectedType = $modeTypeMap[$paymentMode] ?? null;
                 if ($expectedType !== null && $method->type !== $expectedType) {
                     throw ValidationException::withMessages([
                         "payments.{$index}.payment_method_id" => "Payment method type must match mode \"{$paymentMode}\".",

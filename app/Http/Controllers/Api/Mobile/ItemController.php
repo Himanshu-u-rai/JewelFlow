@@ -13,6 +13,7 @@ use App\Services\PosSearchCacheService;
 use App\Services\ShopPricingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -102,13 +103,16 @@ class ItemController extends Controller
                 'metal_type' => ['sometimes', 'required', Rule::in(['gold', 'silver'])],
                 'purity' => 'sometimes|required|numeric|min:0.001|max:1000',
                 'cost_price' => 'sometimes|nullable|numeric|min:0',
-                'selling_price' => 'sometimes|required|numeric|min:0',
+                'selling_price' => 'sometimes|nullable|numeric|min:0',
                 'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
                 'huid' => [
                     'nullable', 'string', 'max:30',
                     Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')->ignore($item->id),
                 ],
                 'hallmark_date' => 'nullable|date',
+                'hallmark_charges' => 'nullable|numeric|min:0',
+                'rhodium_charges' => 'nullable|numeric|min:0',
+                'other_charges' => 'nullable|numeric|min:0',
             ]);
         }
 
@@ -123,6 +127,9 @@ class ItemController extends Controller
                 'stone_weight' => array_key_exists('stone_weight', $validated) ? $validated['stone_weight'] : $item->stone_weight,
                 'making_charges' => array_key_exists('making_charges', $validated) ? $validated['making_charges'] : $item->making_charges,
                 'stone_charges' => array_key_exists('stone_charges', $validated) ? $validated['stone_charges'] : $item->stone_charges,
+                'hallmark_charges' => array_key_exists('hallmark_charges', $validated) ? $validated['hallmark_charges'] : $item->hallmark_charges,
+                'rhodium_charges' => array_key_exists('rhodium_charges', $validated) ? $validated['rhodium_charges'] : $item->rhodium_charges,
+                'other_charges' => array_key_exists('other_charges', $validated) ? $validated['other_charges'] : $item->other_charges,
             ];
 
             try {
@@ -183,12 +190,12 @@ class ItemController extends Controller
                     $updates['net_metal_weight'] = $retailerPricing['net_metal_weight'];
                     $updates['purity'] = $retailerPricing['purity'];
                     $updates['cost_price'] = $retailerPricing['cost_price'];
+                    $updates['selling_price'] = $retailerPricing['selling_price'];
+                    $updates['hallmark_charges'] = array_key_exists('hallmark_charges', $validated) ? $validated['hallmark_charges'] : $item->hallmark_charges;
+                    $updates['rhodium_charges'] = array_key_exists('rhodium_charges', $validated) ? $validated['rhodium_charges'] : $item->rhodium_charges;
+                    $updates['other_charges'] = array_key_exists('other_charges', $validated) ? $validated['other_charges'] : $item->other_charges;
                     $updates['pricing_review_required'] = false;
                     $updates['pricing_review_notes'] = null;
-                }
-
-                if (array_key_exists('selling_price', $validated)) {
-                    $updates['selling_price'] = $validated['selling_price'];
                 }
 
                 foreach (['vendor_id', 'huid', 'hallmark_date'] as $nullable) {
@@ -228,6 +235,7 @@ class ItemController extends Controller
                 'data' => array_merge(['source' => 'mobile_app'], $validated, [
                     'image_changed' => $newImagePath !== null || $clearImage,
                     'client_cost_price_ignored' => $isRetailer && array_key_exists('cost_price', $validated),
+                    'client_selling_price_ignored' => $isRetailer && array_key_exists('selling_price', $validated),
                 ]),
             ]);
         });
@@ -244,6 +252,7 @@ class ItemController extends Controller
         if ($shop) {
             $shop->loadMissing('catalogWebsiteSettings');
         }
+        $resolvedRatePerGram = $this->resolvedRatePerGramForItem($shop, $item);
 
         return [
             'id' => $item->id,
@@ -261,6 +270,10 @@ class ItemController extends Controller
             'selling_price' => (float) $item->selling_price,
             'making_charges' => (float) $item->making_charges,
             'stone_charges' => (float) $item->stone_charges,
+            'hallmark_charges' => (float) $item->hallmark_charges,
+            'rhodium_charges' => (float) $item->rhodium_charges,
+            'other_charges' => (float) $item->other_charges,
+            'resolved_rate_per_gram' => $resolvedRatePerGram,
             'status' => $item->status,
             'huid' => $item->huid,
             'hallmark_date' => $item->hallmark_date?->toDateString(),
@@ -296,9 +309,12 @@ class ItemController extends Controller
             'stone_weight' => 'nullable|numeric|min:0',
             'purity' => $isRetailer ? 'required|numeric|min:0.001|max:1000' : 'required|numeric|min:1|max:24',
             'cost_price' => $isRetailer ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0',
+            'selling_price' => $isRetailer ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
+            'hallmark_charges' => 'nullable|numeric|min:0',
+            'rhodium_charges' => 'nullable|numeric|min:0',
+            'other_charges' => 'nullable|numeric|min:0',
             'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
             'huid' => [
                 'nullable', 'string', 'max:30',
@@ -357,8 +373,15 @@ class ItemController extends Controller
                 'purity' => $pricingPayload['purity'] ?? $validated['purity'],
                 'making_charges' => $validated['making_charges'] ?? 0,
                 'stone_charges' => $validated['stone_charges'] ?? 0,
-                'cost_price' => $pricingPayload['cost_price'] ?? $validated['cost_price'],
-                'selling_price' => $validated['selling_price'],
+                'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
+                'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
+                'other_charges' => $validated['other_charges'] ?? 0,
+                'cost_price' => $isRetailer
+                    ? $pricingPayload['cost_price']
+                    : $validated['cost_price'],
+                'selling_price' => $isRetailer
+                    ? $pricingPayload['selling_price']
+                    : $validated['selling_price'],
                 'vendor_id' => $validated['vendor_id'] ?? null,
                 'huid' => $validated['huid'] ?? null,
                 'hallmark_date' => $validated['hallmark_date'] ?? null,
@@ -381,6 +404,7 @@ class ItemController extends Controller
                     'selling_price' => $item->selling_price,
                     'source' => 'mobile_app',
                     'client_cost_price_ignored' => $isRetailer && array_key_exists('cost_price', $validated),
+                    'client_selling_price_ignored' => $isRetailer && array_key_exists('selling_price', $validated),
                 ],
             ]);
 
@@ -391,6 +415,34 @@ class ItemController extends Controller
             $this->itemPayload($request, $item->fresh()),
             ['message' => 'Item registered successfully.']
         ), 201);
+    }
+
+    public function retailerPricingMeta(Request $request): JsonResponse
+    {
+        $shop = $request->user()->shop;
+
+        if (! $shop || ! $shop->isRetailer()) {
+            return response()->json([
+                'message' => 'Retailer pricing metadata is only available for retailer shops.',
+            ], 404);
+        }
+
+        try {
+            $this->pricing->assertRetailerPricingReady($shop);
+        } catch (LogicException $e) {
+            return $this->retailerPricingBlockedResponse($e->getMessage());
+        }
+
+        $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
+
+        return response()->json([
+            'business_date' => $this->pricing->businessDateString($shop),
+            'purity_profiles' => [
+                'gold' => $this->purityProfileOptions($purityProfiles->get('gold', collect())),
+                'silver' => $this->purityProfileOptions($purityProfiles->get('silver', collect())),
+            ],
+            'resolved_rates' => $this->buildRetailerResolvedRateMap($shop, $purityProfiles),
+        ]);
     }
 
     public function categories(Request $request): JsonResponse
@@ -413,6 +465,53 @@ class ItemController extends Controller
     private function buildProductShareUrl(?Shop $shop, string $token): string
     {
         return $this->catalog->buildPreferredProductUrl($shop, $token);
+    }
+
+    private function resolvedRatePerGramForItem(?Shop $shop, Item $item): ?float
+    {
+        if (! $shop || ! $shop->isRetailer() || ! is_string($item->metal_type) || $item->metal_type === '' || $item->purity === null) {
+            return null;
+        }
+
+        try {
+            return $this->pricing->resolvedRateForToday($shop, $item->metal_type, (float) $item->purity);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function purityProfileOptions(Collection $profiles): array
+    {
+        return $profiles
+            ->map(fn ($profile) => [
+                'value' => $this->pricing->normalizePurityString((float) $profile->purity_value),
+                'label' => (string) $profile->label,
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function buildRetailerResolvedRateMap(Shop $shop, Collection $purityProfiles): array
+    {
+        $resolvedRates = [
+            'gold' => [],
+            'silver' => [],
+        ];
+
+        foreach ($purityProfiles as $metalType => $profiles) {
+            foreach ($profiles as $profile) {
+                $resolvedRates[$metalType][$this->pricing->normalizePurityString((float) $profile->purity_value)] = [
+                    'label' => $profile->label,
+                    'rate_per_gram' => $this->pricing->resolvedRateForToday(
+                        $shop,
+                        $metalType,
+                        (float) $profile->purity_value
+                    ),
+                ];
+            }
+        }
+
+        return $resolvedRates;
     }
 
     private function retailerPricingBlockedResponse(string $message): JsonResponse

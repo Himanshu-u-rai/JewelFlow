@@ -330,15 +330,13 @@ class InvoiceController extends Controller
             ->unique()
             ->values();
 
-        if ($paymentMethodIds->isEmpty()) {
-            return;
-        }
-
-        $methodsById = ShopPaymentMethod::query()
-            ->where('shop_id', $shopId)
-            ->whereIn('id', $paymentMethodIds)
-            ->get(['id', 'type'])
-            ->keyBy('id');
+        $methodsById = $paymentMethodIds->isEmpty()
+            ? collect()
+            : ShopPaymentMethod::query()
+                ->where('shop_id', $shopId)
+                ->whereIn('id', $paymentMethodIds)
+                ->get(['id', 'type'])
+                ->keyBy('id');
 
         $modeTypeMap = [
             InvoicePayment::MODE_UPI => ShopPaymentMethod::TYPE_UPI,
@@ -346,22 +344,35 @@ class InvoiceController extends Controller
         ];
 
         foreach ($payments as $index => $payment) {
+            $mode = (string) ($payment['mode'] ?? '');
+            $expectedType = $modeTypeMap[$mode] ?? null;
             $methodId = $payment['payment_method_id'] ?? null;
-            if ($methodId === null || $methodId === '') {
+            $hasMethodId = !($methodId === null || $methodId === '');
+
+            if ($expectedType !== null && !$hasMethodId) {
+                throw ValidationException::withMessages([
+                    "payments.{$index}.payment_method_id" => "Payment method is required for mode \"{$mode}\".",
+                ]);
+            }
+
+            if ($expectedType === null) {
+                if ($hasMethodId) {
+                    throw ValidationException::withMessages([
+                        "payments.{$index}.payment_method_id" => "Payment method is not allowed for mode \"{$mode}\".",
+                    ]);
+                }
+
                 continue;
             }
 
-            $methodId = (int) $methodId;
-            $method = $methodsById->get($methodId);
+            $method = $methodsById->get((int) $methodId);
             if (!$method) {
                 throw ValidationException::withMessages([
                     "payments.{$index}.payment_method_id" => 'Selected payment method is invalid for this shop.',
                 ]);
             }
 
-            $mode = (string) ($payment['mode'] ?? '');
-            $expectedType = $modeTypeMap[$mode] ?? null;
-            if ($expectedType === null || $method->type !== $expectedType) {
+            if ($method->type !== $expectedType) {
                 throw ValidationException::withMessages([
                     "payments.{$index}.payment_method_id" => "Payment method type must match mode \"{$mode}\".",
                 ]);
