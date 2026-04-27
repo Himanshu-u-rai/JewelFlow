@@ -17,10 +17,17 @@
         box-shadow: none;
     }
 
+    #settings-content {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
     /* Sidebar */
     .settings-nav {
         background: #ffffff;
-        border: 1px solid rgba(15, 23, 42, 0.08);
+        border: 2px solid #0f766e;
         border-radius: 16px;
         padding: 10px;
         display: flex;
@@ -31,6 +38,13 @@
         top: 92px;
         overflow: auto;
         box-shadow: 0 14px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    /* Apply only to screens 768px wide or smaller */
+    @media (max-width: 768px) {
+      nav.settings-nav {
+        margin-top: 20px;
+      }
     }
 
     .nav-item {
@@ -82,9 +96,21 @@
         border: 1px solid rgba(15, 23, 42, 0.08);
         border-radius: 16px;
         padding: 24px 28px;
-        overflow-y: auto;
+        overflow: visible;
         min-width: 0;
+        max-width: 100%;
         box-shadow: 0 18px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    /* Pricing tab needs visible overflow for table wrappers + custom dropdown menus. */
+    .content-inner.settings-shell .settings-content.settings-content-pricing {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        padding-left: 18px !important;
+        padding-right: 18px !important;
     }
 
     .settings-header {
@@ -1007,6 +1033,15 @@
         .settings-layout {
             grid-template-columns: 1fr;
             gap: 14px;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        #settings-content {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            overflow: visible;
         }
 
         .settings-nav {
@@ -1054,6 +1089,18 @@
 
         .settings-content {
             padding: 18px;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .settings-content-pricing {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            padding-inline: 0;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
         }
 
         .form-row {
@@ -1158,7 +1205,7 @@
 
         <!-- Content Area -->
         <turbo-frame id="settings-content">
-        <div class="settings-content">
+        <div class="settings-content {{ $activeTab === 'pricing' ? 'settings-content-pricing' : '' }}">
             @if($activeTab === 'general')
                 <div class="settings-header">
                     <h2 class="settings-title">{{ __('General Settings') }}</h2>

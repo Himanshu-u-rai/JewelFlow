@@ -1,4 +1,105 @@
 <x-app-layout>
+    <style>
+        .purchase-shell {
+            max-width: 1500px;
+        }
+
+        .purchase-card {
+            border: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 18px;
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+        }
+
+        .purchase-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .purchase-card-title {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        .purchase-card-subtitle {
+            margin-top: 2px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .purchase-field-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        .purchase-line-card {
+            border: 1px solid #dbe3ee;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+        }
+
+        .purchase-line-head {
+            border-bottom: 1px solid #eef2f7;
+            padding-bottom: 12px;
+        }
+
+        .purchase-summary {
+            border: 1px solid #dbe3ee;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 18px;
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+        }
+
+        .purchase-total-row {
+            border-radius: 14px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            padding: 12px;
+        }
+
+        @media (max-width: 640px) {
+            .purchase-shell {
+                padding-inline: 10px;
+            }
+
+            .purchase-card,
+            .purchase-summary {
+                border-radius: 14px;
+                padding: 14px !important;
+            }
+
+            .purchase-card-header {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+
+            .purchase-card-header .purchase-add-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .purchase-line-card {
+                border-radius: 14px;
+                padding: 12px !important;
+            }
+        }
+    </style>
+
     @php
         $isEdit = isset($purchase);
         $title  = $isEdit ? "Edit Purchase {$purchase->purchase_number}" : 'New Stock Purchase';
@@ -43,7 +144,7 @@
         $existingLinesJson = json_encode($existingLines);
     @endphp
 
-    <div class="content-inner"
+    <div class="content-inner purchase-shell"
          x-data="purchaseForm({{ $ratesJson }}, {{ $existingLinesJson }})"
          x-init="init()">
 
@@ -77,22 +178,27 @@
             @csrf
             @if($isEdit) @method('PUT') @endif
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 xl:gap-6">
 
                 {{-- ── Main Column ───────────────────────────────────────── --}}
-                <div class="lg:col-span-2 space-y-6">
+                <div class="space-y-5 xl:space-y-6">
 
                     {{-- Invoice Header --}}
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 mb-4">Invoice Details</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="purchase-card p-5">
+                        <div class="purchase-card-header">
+                            <div>
+                                <h3 class="purchase-card-title">Invoice Details</h3>
+                                <p class="purchase-card-subtitle">Supplier, invoice reference, dates, and attachment.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                             {{-- Vendor --}}
                             <div x-data="{ mode: '{{ old('vendor_id', $isEdit ? ($purchase->vendor_id ? 'vendor' : 'other') : 'vendor') }}' }">
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Supplier</label>
-                                <div class="flex gap-2 mb-2">
-                                    <button type="button" @click="mode='vendor'" :class="mode==='vendor' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition">From Vendors</button>
-                                    <button type="button" @click="mode='other'" :class="mode==='other' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition">New Supplier</button>
+                                <label class="purchase-field-label">Supplier</label>
+                                <div class="grid grid-cols-2 gap-2 mb-2 rounded-xl bg-slate-100 p-1">
+                                    <button type="button" @click="mode='vendor'" :class="mode==='vendor' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'" class="rounded-lg px-3 py-2 text-xs font-semibold transition">From Vendors</button>
+                                    <button type="button" @click="mode='other'" :class="mode==='other' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'" class="rounded-lg px-3 py-2 text-xs font-semibold transition">New Supplier</button>
                                 </div>
                                 <div x-show="mode==='vendor'">
                                     <select name="vendor_id"
@@ -125,43 +231,43 @@
 
                             {{-- Supplier GSTIN --}}
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Supplier GST Number (GSTIN)</label>
+                                <label class="purchase-field-label">Supplier GST Number (GSTIN)</label>
                                 <input type="text" name="supplier_gstin" id="supplier_gstin_input" @input="scheduleSave()" value="{{ old('supplier_gstin', $isEdit ? $purchase->supplier_gstin : '') }}" placeholder="22AAAAA0000A1Z5" maxlength="20" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             {{-- Invoice Number --}}
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Invoice Number</label>
+                                <label class="purchase-field-label">Invoice Number</label>
                                 <input type="text" name="invoice_number" @input="scheduleSave()" value="{{ old('invoice_number', $isEdit ? $purchase->invoice_number : '') }}" placeholder="Vendor's invoice #" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             {{-- Invoice Date --}}
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Invoice Date</label>
+                                <label class="purchase-field-label">Invoice Date</label>
                                 <input type="date" name="invoice_date" @change="scheduleSave()" value="{{ old('invoice_date', $isEdit ? $purchase->invoice_date?->format('Y-m-d') : '') }}" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             {{-- Purchase Date --}}
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Purchase Date <span class="text-red-500">*</span></label>
+                                <label class="purchase-field-label">Purchase Date <span class="text-red-500">*</span></label>
                                 <input type="date" name="purchase_date" @change="scheduleSave()" value="{{ old('purchase_date', $isEdit ? $purchase->purchase_date->format('Y-m-d') : date('Y-m-d')) }}" required class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             {{-- Invoice Reference Number (IRN) --}}
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Invoice Reference Number (IRN)</label>
+                                <label class="purchase-field-label">Invoice Reference Number (IRN)</label>
                                 <input type="text" name="irn_number" @input="scheduleSave()" value="{{ old('irn_number', $isEdit ? $purchase->irn_number : '') }}" placeholder="64-character IRN from GST portal" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             {{-- Acknowledgement Number (ACK) --}}
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Acknowledgement Number (ACK)</label>
+                                <label class="purchase-field-label">Acknowledgement Number (ACK)</label>
                                 <input type="text" name="ack_number" @input="scheduleSave()" value="{{ old('ack_number', $isEdit ? $purchase->ack_number : '') }}" placeholder="ACK number from GST portal" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             {{-- Invoice Image / PDF --}}
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Invoice PDF / Image</label>
+                                <label class="purchase-field-label">Invoice PDF / Image</label>
                                 <input type="file" name="invoice_image" accept="image/jpeg,image/png,application/pdf" class="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-amber-700 hover:file:bg-amber-100">
                                 @if($isEdit && $purchase->invoice_image)
                                     <p class="mt-1 text-xs text-slate-500">Current: <a href="{{ Storage::url($purchase->invoice_image) }}" target="_blank" class="text-amber-600 underline">View</a></p>
@@ -172,10 +278,13 @@
                     </div>
 
                     {{-- Line Items --}}
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Line Items</h3>
-                            <button type="button" @click="addLine()" class="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">
+                    <div class="purchase-card p-5">
+                        <div class="purchase-card-header">
+                            <div>
+                                <h3 class="purchase-card-title">Line Items</h3>
+                                <p class="purchase-card-subtitle">Add ornaments, sale bullion, or reserve bullion from this purchase.</p>
+                            </div>
+                            <button type="button" @click="addLine()" class="purchase-add-btn inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                                 Add Item
                             </button>
@@ -189,22 +298,22 @@
 
                         <div class="space-y-4">
                             <template x-for="(line, idx) in lines" :key="line._key">
-                                <div class="relative rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="purchase-line-card relative p-4">
                                     <input type="hidden" :name="`lines[${idx}][id]`" :value="line.id || ''">
 
                                     {{-- Row header --}}
-                                    <div class="flex items-center justify-between mb-3">
-                                        <span class="text-xs font-bold text-slate-600 uppercase tracking-wider" x-text="`Item ${idx + 1}`"></span>
-                                        <button type="button" @click="removeLine(idx)" class="text-red-400 hover:text-red-600">
+                                    <div class="purchase-line-head flex items-center justify-between mb-4">
+                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700" x-text="`Item ${idx + 1}`"></span>
+                                        <button type="button" @click="removeLine(idx)" class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
                                     </div>
 
-                                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
 
                                         {{-- Line Type --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Type</label>
+                                            <label class="purchase-field-label">Type</label>
                                             <select :name="`lines[${idx}][line_type]`" x-model="line.line_type" @change="scheduleSave()" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500">
                                                 <option value="ornament">Ornament</option>
                                                 <option value="bullion_for_sale">Bullion (Sale)</option>
@@ -214,7 +323,7 @@
 
                                         {{-- Metal Type --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Metal</label>
+                                            <label class="purchase-field-label">Metal</label>
                                             <select :name="`lines[${idx}][metal_type]`" x-model="line.metal_type" @change="prefillRate(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500">
                                                 <option value="gold">Gold</option>
                                                 <option value="silver">Silver</option>
@@ -223,19 +332,19 @@
 
                                         {{-- Purity --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Purity (KT/‰)</label>
+                                            <label class="purchase-field-label">Purity (KT/‰)</label>
                                             <input type="number" step="0.001" :name="`lines[${idx}][purity]`" x-model="line.purity" @input="prefillRate(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="18 / 22 / 925">
                                         </div>
 
                                         {{-- Design / Description --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Design / Desc.</label>
+                                            <label class="purchase-field-label">Design / Desc.</label>
                                             <input type="text" :name="`lines[${idx}][design]`" x-model="line.design" @input="scheduleSave()" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="e.g. Bangles">
                                         </div>
 
                                         {{-- Category --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Category</label>
+                                            <label class="purchase-field-label">Category</label>
                                             <select :name="`lines[${idx}][category]`" x-model="line.category" @change="scheduleSave()" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500">
                                                 <option value="">— Select —</option>
                                                 @foreach($categories as $cat)
@@ -246,81 +355,81 @@
 
                                         {{-- Gross Weight --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Gross Wt (g)</label>
+                                            <label class="purchase-field-label">Gross Wt (g)</label>
                                             <input type="number" step="0.001" :name="`lines[${idx}][gross_weight]`" x-model="line.gross_weight" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.000">
                                         </div>
 
                                         {{-- Stone Weight --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Stone Wt (g)</label>
+                                            <label class="purchase-field-label">Stone Wt (g)</label>
                                             <input type="number" step="0.001" :name="`lines[${idx}][stone_weight]`" x-model="line.stone_weight" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.000">
                                         </div>
 
                                         {{-- Net Weight (editable, auto-fills from gross−stone) --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Net Wt (g)</label>
+                                            <label class="purchase-field-label">Net Wt (g)</label>
                                             <input type="number" step="0.001" :name="`lines[${idx}][net_metal_weight]`" x-model="line.net_metal_weight" @input="recalcLineFromNet(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.000">
                                         </div>
 
                                         {{-- Rate per gram --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Rate/g (₹)</label>
+                                            <label class="purchase-field-label">Rate/g (₹)</label>
                                             <input type="number" step="0.01" :name="`lines[${idx}][purchase_rate_per_gram]`" x-model="line.purchase_rate_per_gram" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.00">
                                         </div>
 
                                         {{-- Making Charges --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Making (₹)</label>
+                                            <label class="purchase-field-label">Making (₹)</label>
                                             <input type="number" step="0.01" :name="`lines[${idx}][making_charges]`" x-model="line.making_charges" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.00">
                                         </div>
 
                                         {{-- Stone Charges --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Stone (₹)</label>
+                                            <label class="purchase-field-label">Stone (₹)</label>
                                             <input type="number" step="0.01" :name="`lines[${idx}][stone_charges]`" x-model="line.stone_charges" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.00">
                                         </div>
 
                                         {{-- Hallmark Charges --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Hallmark (₹)</label>
+                                            <label class="purchase-field-label">Hallmark (₹)</label>
                                             <input type="number" step="0.01" :name="`lines[${idx}][hallmark_charges]`" x-model="line.hallmark_charges" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.00">
                                         </div>
 
                                         {{-- Other Charges --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Other (₹)</label>
+                                            <label class="purchase-field-label">Other (₹)</label>
                                             <input type="number" step="0.01" :name="`lines[${idx}][other_charges]`" x-model="line.other_charges" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.00">
                                         </div>
 
                                         {{-- Line Total --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Line Total (₹)</label>
+                                            <label class="purchase-field-label">Line Total (₹)</label>
                                             <input type="number" step="0.01" :name="`lines[${idx}][purchase_line_amount]`" x-model="line.purchase_line_amount" @input="recalcSummary()" class="w-full rounded-lg border-amber-200 bg-amber-50 px-2 py-2 text-sm font-semibold text-amber-700 focus:border-amber-500 focus:ring-amber-500">
                                         </div>
 
                                         {{-- HUID (hidden for bullion) --}}
                                         <template x-if="line.line_type === 'ornament'">
                                             <div>
-                                                <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Hallmark Unique ID (HUID)</label>
+                                                <label class="purchase-field-label">Hallmark Unique ID (HUID)</label>
                                                 <input type="text" :name="`lines[${idx}][huid]`" x-model="line.huid" @input="scheduleSave()" maxlength="30" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm font-mono focus:border-amber-500 focus:ring-amber-500" placeholder="6-char code">
                                             </div>
                                         </template>
 
                                         {{-- HSN Code --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">HSN Code (Product Category Code)</label>
+                                            <label class="purchase-field-label">HSN Code (Product Category Code)</label>
                                             <input type="text" :name="`lines[${idx}][hsn_code]`" x-model="line.hsn_code" @input="scheduleSave()" maxlength="20" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm font-mono focus:border-amber-500 focus:ring-amber-500" placeholder="711319">
                                         </div>
 
                                         {{-- Barcode (optional, auto-generated on confirm if blank) --}}
                                         <div>
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Barcode (opt.)</label>
+                                            <label class="purchase-field-label">Barcode (opt.)</label>
                                             <input type="text" :name="`lines[${idx}][barcode]`" x-model="line.barcode" @input="scheduleSave()" maxlength="100" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm font-mono focus:border-amber-500 focus:ring-amber-500" placeholder="Auto on confirm">
                                         </div>
 
                                         {{-- Notes --}}
-                                        <div class="col-span-2 sm:col-span-3 lg:col-span-4">
-                                            <label class="block text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 mb-1">Line Notes</label>
+                                        <div class="sm:col-span-2 xl:col-span-4">
+                                            <label class="purchase-field-label">Line Notes</label>
                                             <input type="text" :name="`lines[${idx}][notes]`" x-model="line.notes" @input="scheduleSave()" maxlength="500" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="Optional note">
                                         </div>
 
@@ -331,32 +440,37 @@
                     </div>
 
                     {{-- Invoice Totals --}}
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 mb-4">Invoice Totals</h3>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div class="purchase-card p-5">
+                        <div class="purchase-card-header">
+                            <div>
+                                <h3 class="purchase-card-title">Invoice Totals</h3>
+                                <p class="purchase-card-subtitle">Tax and discount values applied to this purchase.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
 
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Labour Discount (₹)</label>
+                                <label class="purchase-field-label">Labour Discount (₹)</label>
                                 <input type="number" step="0.01" name="labour_discount" x-model="labourDiscount" @input="recalcSummary()" value="{{ old('labour_discount', $isEdit ? $purchase->labour_discount : 0) }}" min="0" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Central GST (CGST) %</label>
+                                <label class="purchase-field-label">Central GST (CGST) %</label>
                                 <input type="number" step="0.01" name="cgst_rate" x-model="cgstRate" @input="recalcSummary()" value="{{ old('cgst_rate', $isEdit ? $purchase->cgst_rate : 0) }}" min="0" max="100" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">State GST (SGST) %</label>
+                                <label class="purchase-field-label">State GST (SGST) %</label>
                                 <input type="number" step="0.01" name="sgst_rate" x-model="sgstRate" @input="recalcSummary()" value="{{ old('sgst_rate', $isEdit ? $purchase->sgst_rate : 0) }}" min="0" max="100" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Integrated GST (IGST) %</label>
+                                <label class="purchase-field-label">Integrated GST (IGST) %</label>
                                 <input type="number" step="0.01" name="igst_rate" x-model="igstRate" @input="recalcSummary()" value="{{ old('igst_rate', $isEdit ? $purchase->igst_rate : 0) }}" min="0" max="100" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">Tax Collected at Source — TCS (₹)</label>
+                                <label class="purchase-field-label">Tax Collected at Source — TCS (₹)</label>
                                 <input type="number" step="0.01" name="tcs_amount" x-model="tcsAmount" @input="recalcSummary()" value="{{ old('tcs_amount', $isEdit ? $purchase->tcs_amount : 0) }}" min="0" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
@@ -365,9 +479,9 @@
                 </div>
 
                 {{-- ── Sidebar ───────────────────────────────────────────── --}}
-                <div class="lg:col-span-1">
-                    <div class="sticky top-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 mb-4">Summary</h3>
+                <div>
+                    <div class="purchase-summary xl:sticky xl:top-6 p-5">
+                        <h3 class="purchase-card-title mb-4">Purchase Summary</h3>
 
                         <div class="space-y-2 text-sm mb-4">
                             <div class="flex justify-between text-slate-600">
@@ -410,7 +524,7 @@
                                 <span>Tax Collected at Source (TCS)</span>
                                 <span x-text="'₹' + parseFloat(tcsAmount || 0).toFixed(2)"></span>
                             </div>
-                            <div class="border-t border-slate-200 pt-2 flex justify-between text-base font-bold text-amber-700">
+                            <div class="purchase-total-row flex justify-between text-base font-bold text-amber-700">
                                 <span>Grand Total</span>
                                 <span x-text="'₹' + grandTotal.toFixed(2)"></span>
                             </div>

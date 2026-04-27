@@ -34,7 +34,7 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner">
+    <div class="content-inner inventory-item-create-dropdowns">
         @if($errors->any())
             <div class="mb-6 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
                 <ul class="list-disc list-inside">
@@ -45,7 +45,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('inventory.items.store') }}" class="space-y-6" id="createItemForm" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('inventory.items.store') }}" class="space-y-6" id="createItemForm" enctype="multipart/form-data" data-enhance-selects="true" data-enhance-selects-variant="standard">
             @csrf
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -384,6 +384,12 @@
             });
         }
 
+        function refreshCreateDropdown(select) {
+            if (window.refreshEnhancedFilterSelect) {
+                window.refreshEnhancedFilterSelect(select);
+            }
+        }
+
         function populatePurityOptions() {
             const metalType = document.getElementById('metal_type').value;
             const puritySelect = document.getElementById('purity');
@@ -401,6 +407,7 @@
             });
 
             puritySelect.dataset.initialValue = '';
+            refreshCreateDropdown(puritySelect);
         }
 
         function handleCategoryChange() {
@@ -423,6 +430,7 @@
             }
 
             subCategorySelect.dataset.initialValue = '';
+            refreshCreateDropdown(subCategorySelect);
         }
 
         function refreshRetailerPricing() {

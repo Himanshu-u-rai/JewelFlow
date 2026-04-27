@@ -989,6 +989,11 @@ function initSearchSuggestions() {
 const _enhancedFilterSelectInited = new WeakSet();
 let _enhancedFilterBindingsDone = false;
 
+window.refreshEnhancedFilterSelect = function (nativeSelect) {
+    if (!nativeSelect || typeof nativeSelect._refreshEnhancedFilterSelect !== 'function') return;
+    nativeSelect._refreshEnhancedFilterSelect();
+};
+
 function closeAllEnhancedFilterSelects() {
     document.querySelectorAll('.ui-filter-select-menu.is-open').forEach((menu) => {
         menu.classList.remove('is-open');
@@ -1011,6 +1016,37 @@ function placeEnhancedFilterMenu(shell) {
     const roomBelow = viewportHeight - triggerRect.bottom;
     const roomAbove = triggerRect.top;
     const menuHeight = Math.min(menu.scrollHeight || 240, Math.floor(viewportHeight * 0.42));
+
+    const useViewportPlacement = shell.closest('.inventory-item-create-dropdowns') && window.matchMedia('(min-width: 769px)').matches;
+    if (useViewportPlacement) {
+        const gap = 8;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+        const spaceBelow = Math.max(120, roomBelow - gap - 12);
+        const spaceAbove = Math.max(120, roomAbove - gap - 12);
+        const opensUp = roomBelow < menuHeight + gap && roomAbove > roomBelow;
+        const availableHeight = opensUp ? spaceAbove : spaceBelow;
+        const fixedMenuHeight = Math.min(menu.scrollHeight || 280, availableHeight, Math.floor(viewportHeight * 0.56));
+
+        shell.classList.toggle('open-up', opensUp);
+        menu.style.position = 'fixed';
+        menu.style.left = `${Math.max(12, Math.min(triggerRect.left, viewportWidth - triggerRect.width - 12))}px`;
+        menu.style.right = 'auto';
+        menu.style.width = `${triggerRect.width}px`;
+        menu.style.maxHeight = `${fixedMenuHeight}px`;
+        menu.style.top = opensUp
+            ? `${Math.max(12, triggerRect.top - fixedMenuHeight - gap)}px`
+            : `${Math.min(triggerRect.bottom + gap, viewportHeight - fixedMenuHeight - 12)}px`;
+        menu.style.bottom = 'auto';
+        return;
+    }
+
+    menu.style.position = '';
+    menu.style.left = '';
+    menu.style.right = '';
+    menu.style.width = '';
+    menu.style.maxHeight = '';
+    menu.style.top = '';
+    menu.style.bottom = '';
 
     if (roomBelow < menuHeight + 14 && roomAbove > roomBelow) {
         shell.classList.add('open-up');
@@ -1074,36 +1110,49 @@ function initEnhancedFilterSelects() {
             chevron.appendChild(chevronPath);
             trigger.appendChild(chevron);
 
-            const options = [];
-            Array.from(nativeSelect.options).forEach((opt) => {
-                const optionEl = document.createElement('button');
-                optionEl.type = 'button';
-                optionEl.className = 'ui-filter-select-option';
-                optionEl.textContent = opt.textContent;
-                optionEl.dataset.value = opt.value;
-                optionEl.setAttribute('role', 'option');
-                optionEl.setAttribute('aria-selected', 'false');
+            let options = [];
 
-                optionEl.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    nativeSelect.value = opt.value;
-                    nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                    closeAllEnhancedFilterSelects();
-                    trigger.focus();
+            const rebuildOptions = () => {
+                menu.innerHTML = '';
+                options = [];
+
+                Array.from(nativeSelect.options).forEach((opt) => {
+                    const optionEl = document.createElement('button');
+                    optionEl.type = 'button';
+                    optionEl.className = 'ui-filter-select-option';
+                    optionEl.textContent = opt.textContent;
+                    optionEl.dataset.value = opt.value;
+                    optionEl.setAttribute('role', 'option');
+                    optionEl.setAttribute('aria-selected', 'false');
+
+                    optionEl.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        nativeSelect.value = opt.value;
+                        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        closeAllEnhancedFilterSelects();
+                        trigger.focus();
+                    });
+
+                    menu.appendChild(optionEl);
+                    options.push(optionEl);
                 });
-
-                menu.appendChild(optionEl);
-                options.push(optionEl);
-            });
+            };
 
             const syncFromNative = () => {
                 const selectedOption = nativeSelect.options[nativeSelect.selectedIndex] || nativeSelect.options[0] || null;
+                trigger.disabled = nativeSelect.disabled;
+                trigger.classList.toggle('is-disabled', nativeSelect.disabled);
                 triggerText.textContent = selectedOption ? selectedOption.textContent : 'Select';
                 options.forEach((optionEl) => {
                     const selected = optionEl.dataset.value === nativeSelect.value;
                     optionEl.classList.toggle('is-selected', selected);
                     optionEl.setAttribute('aria-selected', selected ? 'true' : 'false');
                 });
+            };
+
+            nativeSelect._refreshEnhancedFilterSelect = () => {
+                rebuildOptions();
+                syncFromNative();
             };
 
             const openMenu = () => {
@@ -1164,6 +1213,7 @@ function initEnhancedFilterSelects() {
                 }
             });
 
+            rebuildOptions();
             nativeSelect.addEventListener('change', syncFromNative);
             syncFromNative();
 
@@ -1182,7 +1232,13 @@ function initEnhancedFilterSelects() {
     });
 
     window.addEventListener('resize', closeAllEnhancedFilterSelects);
-    window.addEventListener('scroll', closeAllEnhancedFilterSelects, true);
+    window.addEventListener('scroll', (event) => {
+        if (event.target instanceof Element && event.target.closest('.ui-filter-select-menu')) {
+            return;
+        }
+
+        closeAllEnhancedFilterSelects();
+    }, true);
 }
 
 // ─── Event Listeners ────────────────────────────────────────────

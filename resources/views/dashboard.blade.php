@@ -511,6 +511,11 @@
             padding: 14px;
         }
 
+        .dash-col-metal {
+            grid-column: span 6;
+            padding: 14px;
+        }
+
         .dash-col-revenue,
         .dash-col-profit {
             grid-column: span 3;
@@ -519,6 +524,13 @@
 
         .dash-col-quick {
             grid-column: 1 / -1;
+        }
+
+        .dash-top-grid.dash-top-grid-retailer .dash-col-shop,
+        .dash-top-grid.dash-top-grid-retailer .dash-col-metal,
+        .dash-top-grid.dash-top-grid-retailer .dash-col-revenue,
+        .dash-top-grid.dash-top-grid-retailer .dash-col-profit {
+            grid-column: span 3;
         }
 
         .dash-email-verify {
@@ -889,10 +901,152 @@
             color: #8f5c00;
         }
 
-        /* Metal divider — horizontal by default, vertical on mobile */
-        .dash-metal-divider {
-            height: 1px;
-            background: rgba(217,139,0,0.15);
+        .dash-metal-card {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        }
+
+        .dash-metal-card .dash-top-kpi-head {
+            align-items: center;
+        }
+
+        .dash-metal-card .dash-top-kpi-meta {
+            color: #475569;
+            text-align: left;
+        }
+
+        .dash-metal-rates {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0;
+            min-width: 0;
+            width: 100%;
+        }
+
+        .dash-metal-rate-row {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            padding: 9px 0;
+            border-top: 1px solid #e4ebf4;
+        }
+
+        .dash-metal-coin {
+            width: 40px;
+            height: 40px;
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0;
+            line-height: 1;
+            border: 1px solid transparent;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.72),
+                inset 0 -5px 10px rgba(15, 23, 42, 0.14),
+                0 5px 10px rgba(15, 23, 42, 0.13);
+            flex-shrink: 0;
+        }
+
+        .dash-metal-coin::before,
+        .dash-metal-coin::after {
+            content: '';
+            position: absolute;
+            border-radius: inherit;
+            pointer-events: none;
+        }
+
+        .dash-metal-coin::before {
+            inset: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+            z-index: 0;
+        }
+
+        .dash-metal-coin::after {
+            inset: 0;
+            background:
+                linear-gradient(135deg, rgba(255, 255, 255, 0.68) 0%, rgba(255, 255, 255, 0.18) 28%, transparent 44%),
+                radial-gradient(circle at 70% 78%, rgba(15, 23, 42, 0.14), transparent 42%);
+            z-index: 0;
+        }
+
+        .dash-metal-coin span {
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+        }
+
+        .dash-metal-coin.gold {
+            color: #6f4700;
+            border-color: #c99023;
+            background:
+                conic-gradient(from 210deg, #a96805, #f4ca5f, #fff0a8, #d89d21, #8f5c00, #f1c456, #a96805),
+                radial-gradient(circle at 34% 28%, #fff4bd 0%, #e6b33d 58%, #9c6508 100%);
+        }
+
+        .dash-metal-coin.silver {
+            color: #334155;
+            border-color: #a8b3c3;
+            background:
+                conic-gradient(from 210deg, #94a3b8, #f8fafc, #cbd5e1, #ffffff, #94a3b8, #e2e8f0, #94a3b8),
+                radial-gradient(circle at 34% 28%, #ffffff 0%, #e2e8f0 58%, #94a3b8 100%);
+        }
+
+        .dash-metal-rate-copy {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 3px;
+        }
+
+        .dash-metal-rate-value {
+            margin-top: 0;
+            font-size: 27px;
+            line-height: 1;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: baseline;
+            justify-content: flex-end;
+            gap: 1px;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0;
+            min-width: 0;
+            text-align: right;
+        }
+
+        .dash-metal-rate-value.gold {
+            color: #986000;
+        }
+
+        .dash-metal-rate-value.silver {
+            color: #475569;
+        }
+
+        .dash-metal-rate-unit {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .dash-metal-rate-subtitle {
+            margin: 0;
+            color: #94a3b8;
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1.1;
+            opacity: 0.72;
+            text-align: right;
+        }
+
+        .dash-metal-card .dash-top-kpi-value {
+            width: 100%;
         }
 
         .dash-top-kpi-profit {
@@ -2442,6 +2596,7 @@
             }
 
             .dash-col-shop {
+                grid-column: 1 / -1;
                 padding: 12px;
                 order: 1;
             }
@@ -2463,22 +2618,24 @@
                 order: 2;
             }
 
-            .dash-col-metal .dash-top-kpi-value {
-                flex-direction: row !important;
-                align-items: center;
-                gap: 12px !important;
+            .dash-col-metal .dash-metal-rate-row {
+                gap: 9px;
+                padding: 8px 0;
             }
 
-            .dash-col-metal .dash-top-kpi-value > div:first-child,
-            .dash-col-metal .dash-top-kpi-value > div:last-child {
-                flex: 1;
+            .dash-col-metal .dash-metal-coin {
+                width: 36px;
+                height: 36px;
+                font-size: 10px;
             }
 
-            .dash-metal-divider {
-                width: 1px !important;
-                height: 36px !important;
-                background: rgba(217,139,0,0.2) !important;
-                flex: none;
+            .dash-col-metal .dash-metal-rate-value {
+                font-size: 24px;
+                line-height: 1.1;
+            }
+
+            .dash-col-metal .dash-metal-rate-unit {
+                font-size: 10px;
             }
 
             .dash-col-revenue .dash-kpi-value,
@@ -2971,6 +3128,24 @@
             .dash-col-profit .dash-kpi-value,
             .dash-mini-value {
                 font-size: 20px;
+            }
+
+            .dash-col-metal .dash-metal-rate-value {
+                font-size: 22px;
+            }
+
+            .dash-col-metal .dash-metal-coin {
+                width: 34px;
+                height: 34px;
+                font-size: 9px;
+            }
+
+            .dash-col-metal .dash-metal-rate-unit {
+                font-size: 9px;
+            }
+
+            .dash-col-metal .dash-metal-rates {
+                gap: 0;
             }
 
             .dash-shop-actions .dash-btn,
@@ -3608,8 +3783,8 @@
             }
         @endphp
 
-        <div class="dash-top-grid" style="grid-template-columns: repeat(4, 1fr); gap: 16px;">
-            <div class="dash-block dash-col-quick dash-quick-strip" style="grid-column: span 4;">
+        <div class="dash-top-grid {{ ($isRetailer ?? false) ? 'dash-top-grid-retailer' : '' }}">
+            <div class="dash-block dash-col-quick dash-quick-strip">
                 <div class="dash-quick-list">
                     <a href="/pos" class="dash-quick-item dash-quick-sale">
                         <span class="dash-quick-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
@@ -3630,7 +3805,7 @@
                 </div>
             </div>
 
-            <div class="dash-block dash-shop-card" style="padding: 18px;">
+            <div class="dash-block dash-shop-card dash-col-shop" style="padding: 18px;">
                 <div class="dash-shop-card-head" style="gap: 6px;">
                     <div class="dash-shop-brand" style="gap: 6px;">
                         <div class="dash-logo-box" style="width: 40px; height: 40px; font-size: 12px;">
@@ -3661,54 +3836,39 @@
                     <a href="/inventory/items" class="dash-btn dash-btn-primary" style="min-height: 32px; font-size: 11px;">View Inventory</a>
                 </div>
             </div>
-            <div class="dash-block dash-top-kpi dash-top-kpi-revenue dash-col-metal" style="padding: 18px;">
+            <div class="dash-block dash-top-kpi dash-metal-card dash-col-metal" style="padding: 18px;">
                 @php
                     $todayRate = app('App\\Services\\ShopPricingService')->currentDailyRate($shop);
                 @endphp
                 <div class="dash-top-kpi-head">
-                    <span class="dash-top-kpi-icon" aria-hidden="true">
-                        {{-- Gold bullion bar --}}
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                            {{-- Outer bar body --}}
-                            <polygon points="3,17 21,17 19,8 5,8" />
-                            {{-- Top face bevel --}}
-                            <polygon points="5,8 19,8 17,5 7,5" />
-                            {{-- Shine lines on front face --}}
-                            <line x1="7" y1="11" x2="17" y2="11" stroke-width="1" opacity="0.6"/>
-                            <line x1="6" y1="14" x2="18" y2="14" stroke-width="1" opacity="0.6"/>
-                        </svg>
-                    </span>
                     <p class="dash-top-kpi-meta">Today's Metal Rates</p>
                 </div>
                 @if($todayRate)
-                    <div class="dash-top-kpi-value" style="display:flex; flex-direction:column; gap:6px; justify-content:center;">
-                        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
-                            <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#986000; white-space:nowrap;">Gold 24K</span>
-                            <span class="dash-kpi-value dash-skel" style="font-size:20px; margin-top:0; color:#986000;">₹{{ number_format((float) $todayRate->gold_24k_rate_per_gram, 2) }}<span style="font-size:11px; font-weight:600;">/g</span></span>
+                    <div class="dash-top-kpi-value dash-metal-rates">
+                        <div class="dash-metal-rate-row">
+                            <span class="dash-metal-coin gold" aria-label="Gold 24K"><span>24K</span></span>
+                            <div class="dash-metal-rate-copy">
+                                <span class="dash-kpi-value dash-skel dash-metal-rate-value gold">₹{{ number_format((float) $todayRate->gold_24k_rate_per_gram, 2) }}<span class="dash-metal-rate-unit">/g</span></span>
+                                <span class="dash-metal-rate-subtitle">24K gold price</span>
+                            </div>
                         </div>
-                        <div class="dash-metal-divider"></div>
-                        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px;">
-                            <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#64748b; white-space:nowrap;">Silver 999</span>
-                            <span class="dash-kpi-value dash-skel" style="font-size:20px; margin-top:0; color:#475569;">₹{{ number_format((float) $todayRate->silver_999_rate_per_gram, 2) }}<span style="font-size:11px; font-weight:600;">/g</span></span>
+                        <div class="dash-metal-rate-row">
+                            <span class="dash-metal-coin silver" aria-label="Silver 999"><span>999</span></span>
+                            <div class="dash-metal-rate-copy">
+                                <span class="dash-kpi-value dash-skel dash-metal-rate-value silver">₹{{ number_format((float) $todayRate->silver_999_rate_per_gram, 2) }}<span class="dash-metal-rate-unit">/g</span></span>
+                                <span class="dash-metal-rate-subtitle">Silver 999 price</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="dash-top-kpi-foot">
-                        <p class="dash-top-kpi-title">24K Gold &amp; Silver 999</p>
-                        <p class="dash-top-kpi-note">User provided rates</p>
                     </div>
                 @else
                     <div class="dash-top-kpi-value" style="display:flex; align-items:center;">
                         <span style="font-size:13px; color:#94a3b8; font-weight:500;">No rates set for today</span>
                     </div>
-                    <div class="dash-top-kpi-foot">
-                        <p class="dash-top-kpi-title">24K Gold &amp; Silver 999</p>
-                        <p class="dash-top-kpi-note">User provided rates</p>
-                    </div>
                 @endif
             </div>
 
             @if($isRetailer ?? false)
-                <div class="dash-block dash-top-kpi dash-top-kpi-revenue" style="padding: 18px;">
+                <div class="dash-block dash-top-kpi dash-top-kpi-revenue dash-col-revenue" style="padding: 18px;">
                     <div class="dash-top-kpi-head">
                         <span class="dash-top-kpi-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
@@ -3725,7 +3885,7 @@
                         <p class="dash-top-kpi-note">Gross billed</p>
                     </div>
                 </div>
-                <div class="dash-block dash-top-kpi dash-top-kpi-profit {{ ($todaysProfit ?? 0) < 0 ? 'is-loss' : '' }}" style="padding: 18px;">
+                <div class="dash-block dash-top-kpi dash-top-kpi-profit dash-col-profit {{ ($todaysProfit ?? 0) < 0 ? 'is-loss' : '' }}" style="padding: 18px;">
                     <div class="dash-top-kpi-head">
                         <span class="dash-top-kpi-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">

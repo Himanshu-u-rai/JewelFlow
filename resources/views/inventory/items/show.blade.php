@@ -71,7 +71,15 @@
             $isRetailer = auth()->user()->shop?->isRetailer();
             $makingCharges = (float) ($item->making_charges ?? 0);
             $stoneCharges = (float) ($item->stone_charges ?? 0);
+            $hallmarkCharges = (float) ($item->hallmark_charges ?? 0);
+            $rhodiumCharges = (float) ($item->rhodium_charges ?? 0);
+            $otherCharges = (float) ($item->other_charges ?? 0);
             $goldPortion = max(0, (float) $item->cost_price - $makingCharges - $stoneCharges);
+            $retailerChargeTotal = $makingCharges + $stoneCharges + $hallmarkCharges + $rhodiumCharges + $otherCharges;
+            $retailerMetalBase = round((float) $item->cost_price - $retailerChargeTotal, 2);
+            if (abs($retailerMetalBase) < 0.01) {
+                $retailerMetalBase = 0.0;
+            }
 
             if (!$isRetailer) {
                 $fineGoldBase = (float) ($item->net_metal_weight * ($item->purity / 24));
@@ -212,22 +220,32 @@
                             <span class="text-gray-600">Profit / Margin</span>
                             <span class="font-bold {{ $margin >= 0 ? 'text-green-600' : 'text-red-600' }}">₹{{ number_format($margin, 2) }}</span>
                         </div>
-                        @if($makingCharges > 0 || $stoneCharges > 0)
-                            <hr class="border-gray-200">
-                            <div class="text-[11px] text-gray-400 uppercase tracking-wider">Cost Breakdown (records)</div>
-                            @if($makingCharges > 0)
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">Making</span>
-                                <span class="text-gray-700">₹{{ number_format($makingCharges, 2) }}</span>
-                            </div>
-                            @endif
-                            @if($stoneCharges > 0)
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">Stone</span>
-                                <span class="text-gray-700">₹{{ number_format($stoneCharges, 2) }}</span>
-                            </div>
-                            @endif
-                        @endif
+                        <hr class="border-gray-200">
+                        <div class="text-[11px] text-gray-400 uppercase tracking-wider">Cost Breakdown (records)</div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Metal (Base)</span>
+                            <span class="text-gray-700">₹{{ number_format($retailerMetalBase, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Making</span>
+                            <span class="text-gray-700">₹{{ number_format($makingCharges, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Stone</span>
+                            <span class="text-gray-700">₹{{ number_format($stoneCharges, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Hallmark</span>
+                            <span class="text-gray-700">₹{{ number_format($hallmarkCharges, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Rhodium</span>
+                            <span class="text-gray-700">₹{{ number_format($rhodiumCharges, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Other</span>
+                            <span class="text-gray-700">₹{{ number_format($otherCharges, 2) }}</span>
+                        </div>
                     </div>
                 @else
                     {{-- Manufacturer: Gold/Making/Stone breakdown with lot rate --}}

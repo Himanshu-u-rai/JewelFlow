@@ -1,16 +1,16 @@
 <x-app-layout>
-    <x-page-header title="Add Karigar Invoice" subtitle="Capture a tax invoice received from a karigar" />
+    <x-page-header title="Add Karigar Invoice" />
 
     <div class="content-inner">
         <x-app-alerts class="mb-4" />
 
-        <form method="POST" action="{{ route('karigar-invoices.store') }}" enctype="multipart/form-data" class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <form method="POST" action="{{ route('karigar-invoices.store') }}" enctype="multipart/form-data" class="ki-form-shell">
             @csrf
             @include('karigar-invoices._form')
 
-            <div class="flex items-center gap-3 mt-4">
-                <button type="submit" class="btn btn-success btn-sm">Save Invoice</button>
-                <a href="{{ route('karigar-invoices.index') }}" class="text-sm text-gray-500">Cancel</a>
+            <div class="ki-form-actions">
+                <button type="submit" class="ki-submit">Save Invoice</button>
+                <a href="{{ route('karigar-invoices.index') }}" class="ki-cancel">Cancel</a>
             </div>
         </form>
     </div>

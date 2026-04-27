@@ -163,9 +163,19 @@
                                     <img id="uploadPreview" src="" alt="Selected image preview" class="rounded-lg object-cover border border-gray-200 w-full max-w-[200px] max-h-52">
                                 </div>
                                 @if($item->image)
-                                    <div class="mt-3 flex items-center gap-2">
-                                        <input type="checkbox" name="remove_image" value="1" id="removeImage" class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-                                        <label for="removeImage" class="text-sm text-red-600">Remove current image</label>
+                                    <div class="mt-3">
+                                        <input type="hidden" name="remove_image" value="0" id="removeImage">
+                                        <button
+                                            type="button"
+                                            id="removeImageButton"
+                                            data-remove-image-state="0"
+                                            class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 12h8l1-12"/>
+                                            </svg>
+                                            <span id="removeImageButtonLabel">Delete current image</span>
+                                        </button>
                                     </div>
                                 @endif
                             </div>
@@ -317,6 +327,44 @@
     </div>
     
     <script>
+        function setRemoveImageState(shouldRemove) {
+            const removeInput = document.getElementById('removeImage');
+            const removeButton = document.getElementById('removeImageButton');
+            const removeButtonLabel = document.getElementById('removeImageButtonLabel');
+            const preview = document.getElementById('imagePreview');
+            const placeholder = document.getElementById('imagePlaceholder');
+
+            if (!removeInput || !removeButton || !removeButtonLabel) {
+                return;
+            }
+
+            removeInput.value = shouldRemove ? '1' : '0';
+            removeButton.dataset.removeImageState = shouldRemove ? '1' : '0';
+            removeButtonLabel.textContent = shouldRemove ? 'Undo image removal' : 'Delete current image';
+            removeButton.classList.toggle('bg-red-600', shouldRemove);
+            removeButton.classList.toggle('border-red-600', shouldRemove);
+            removeButton.classList.toggle('text-white', shouldRemove);
+            removeButton.classList.toggle('hover:bg-red-700', shouldRemove);
+            removeButton.classList.toggle('border-red-200', !shouldRemove);
+            removeButton.classList.toggle('text-red-600', !shouldRemove);
+            removeButton.classList.toggle('hover:bg-red-50', !shouldRemove);
+
+            if (!preview) {
+                return;
+            }
+
+            if (shouldRemove) {
+                preview.classList.add('hidden');
+                placeholder?.classList.remove('hidden');
+                return;
+            }
+
+            if (preview.src) {
+                preview.classList.remove('hidden');
+                placeholder?.classList.add('hidden');
+            }
+        }
+
         // Update preview when file is selected
         document.getElementById('imageFileInput')?.addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -336,31 +384,17 @@
                     if (placeholder) placeholder.classList.add('hidden');
                     uploadPreview.src = event.target.result;
                     uploadWrap.classList.remove('hidden');
+                    setRemoveImageState(false);
                 };
                 reader.readAsDataURL(file);
             }
         });
         
-        // Handle remove image checkbox
-        const removeCheckbox = document.getElementById('removeImage');
-        if (removeCheckbox) {
-            removeCheckbox.addEventListener('change', function(e) {
-                const preview = document.getElementById('imagePreview');
-                const placeholder = document.getElementById('imagePlaceholder');
-                
-                if (e.target.checked) {
-                    preview.classList.add('hidden');
-                    if (placeholder) {
-                        placeholder.classList.remove('hidden');
-                    }
-                } else {
-                    if (preview.src) {
-                        preview.classList.remove('hidden');
-                        if (placeholder) {
-                            placeholder.classList.add('hidden');
-                        }
-                    }
-                }
+        const removeButton = document.getElementById('removeImageButton');
+        if (removeButton) {
+            removeButton.addEventListener('click', function () {
+                const shouldRemove = removeButton.dataset.removeImageState !== '1';
+                setRemoveImageState(shouldRemove);
             });
         }
     </script>

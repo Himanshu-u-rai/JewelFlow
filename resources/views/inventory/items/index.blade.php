@@ -20,7 +20,7 @@
         {{-- View Toggle for Retailers --}}
         @if($isRetailer)
         <div class="mb-6">
-            <div class="ui-toggle-strip items-view-toggle inline-flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+            <div class="ui-toggle-strip items-view-toggle inline-flex flex-wrap items-center gap-1">
             <button @click="view = 'items'" :class="view === 'items' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                 Stock Items
@@ -162,7 +162,7 @@
         </div>
 
         <!-- Filters -->
-        <div class="bg-white shadow-sm border border-gray-200 p-4 mb-6 items-filter-wrap">
+        <div class="items-filter-wrap items-filter-panel mb-6">
             @php
                 $statusToggles = [
                     'in_stock' => 'In Stock',
@@ -170,17 +170,26 @@
                 ];
                 $toggleBaseParams = request()->except(['status', 'page']);
             @endphp
-            <div class="items-status-toggle mb-3">
-                @foreach($statusToggles as $value => $label)
-                    @php $url = route('inventory.items.index', array_merge($toggleBaseParams, ['status' => $value])); @endphp
-                    <a href="{{ $url }}" class="items-status-toggle-btn {{ $statusFilter === $value ? 'is-active' : '' }}">{{ $label }}</a>
-                @endforeach
+            <div class="items-filter-panel-head">
+                <div>
+                    <p class="items-filter-kicker">Inventory Lens</p>
+                    <h2 class="items-filter-title">Browse by category, purity, and barcode</h2>
+                </div>
+                <div class="items-status-toggle">
+                    @foreach($statusToggles as $value => $label)
+                        @php $url = route('inventory.items.index', array_merge($toggleBaseParams, ['status' => $value])); @endphp
+                        <a href="{{ $url }}" class="items-status-toggle-btn {{ $statusFilter === $value ? 'is-active' : '' }}">
+                            <span class="items-status-dot" aria-hidden="true"></span>
+                            {{ $label }}
+                        </a>
+                    @endforeach
+                </div>
             </div>
             <form method="GET" action="{{ route('inventory.items.index') }}" class="ui-filter-bar ui-filter-bar--items" data-enhance-selects="true" data-enhance-selects-variant="standard">
                 <input type="hidden" name="status" value="{{ $statusFilter }}">
                 <div class="ui-filter-field-sm ui-filter-field--category">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select name="category" class="w-full border-gray-300 text-sm">
+                    <label class="items-filter-label">Category</label>
+                    <select name="category" class="items-filter-input">
                         <option value="">All</option>
                         @foreach($categories as $cat)
                             <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
@@ -188,13 +197,13 @@
                     </select>
                 </div>
                 <div class="ui-filter-field-sm ui-filter-field--purity">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Purity</label>
+                    <label class="items-filter-label">Purity</label>
                     @if($isRetailer)
                         <input type="text" name="purity" value="{{ request('purity') }}"
                                placeholder="22, 925, 19.5"
-                               class="w-full border-gray-300 text-sm">
+                               class="items-filter-input">
                     @else
-                        <select name="purity" class="w-full border-gray-300 text-sm">
+                        <select name="purity" class="items-filter-input">
                             <option value="">All</option>
                             <option value="24" {{ request('purity') == '24' ? 'selected' : '' }}>24K</option>
                             <option value="22" {{ request('purity') == '22' ? 'selected' : '' }}>22K</option>
@@ -204,19 +213,19 @@
                     @endif
                 </div>
                 <div class="ui-filter-field ui-filter-field--search">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                    <label class="items-filter-label">Search</label>
                           <input type="text" name="search" value="{{ request('search') }}"
-                              placeholder="Barcode, design..." class="w-full border-gray-300 text-sm"
+                              placeholder="Barcode, design..." class="items-filter-input"
                               data-suggest="items" autocomplete="off">
                 </div>
                 <div class="ui-filter-actions">
                     @if(request()->hasAny(['status', 'category', 'purity', 'search']))
-                        <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary btn-sm inline-flex items-center gap-1">
+                        <a href="{{ route('inventory.items.index') }}" class="items-filter-clear">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             Clear
                         </a>
                     @else
-                        <button type="submit" class="btn btn-dark btn-sm inline-flex items-center gap-1.5">
+                        <button type="submit" class="items-filter-submit">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
                             Filter
                         </button>
@@ -226,7 +235,19 @@
         </div>
 
         <!-- Items Table -->
-        <div class="bg-white shadow-sm border border-gray-200 items-table-card items-table-card--stock">
+        <div class="items-table-card items-table-card--stock">
+            <div class="items-table-header">
+                <div>
+                    <p class="items-filter-kicker">Stock Register</p>
+                    <h2 class="items-table-title">{{ $items->total() }} {{ Str::plural('item', $items->total()) }} found</h2>
+                </div>
+                <p class="items-table-subtitle">
+                    Showing {{ str_replace('_', ' ', $statusFilter) }} inventory
+                    @if(request('search'))
+                        for "{{ request('search') }}"
+                    @endif
+                </p>
+            </div>
             <div class="overflow-x-auto ui-table-shell items-stock-table-shell">
                 <table class="w-full items-data-table items-data-table--stock">
                     <thead class="bg-gray-50 border-b border-gray-200">
@@ -351,82 +372,82 @@
                 $buckets = $stockAgingData;
                 $agingSummary = $buckets['__summary'] ?? ['avg_days' => 0, 'aged_pct' => 0, 'aged_count' => 0];
                 $buckets = collect($buckets)->except('__summary')->toArray();
-                $colors = [
-                    '0-30 days' => ['bg' => 'bg-green-100', 'text' => 'text-green-700', 'border' => 'border-green-200'],
-                    '31-60 days' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-700', 'border' => 'border-blue-200'],
-                    '61-90 days' => ['bg' => 'bg-amber-100', 'text' => 'text-amber-700', 'border' => 'border-amber-200'],
-                    '91-180 days' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-700', 'border' => 'border-orange-200'],
-                    '180+ days' => ['bg' => 'bg-rose-100', 'text' => 'text-rose-700', 'border' => 'border-rose-200'],
+                $agingTones = [
+                    '0-30 days' => ['class' => 'is-fresh', 'label' => 'Fresh arrivals'],
+                    '31-60 days' => ['class' => 'is-watch', 'label' => 'Watch list'],
+                    '61-90 days' => ['class' => 'is-warm', 'label' => 'Needs review'],
+                    '91-180 days' => ['class' => 'is-risk', 'label' => 'Slow moving'],
+                    '180+ days' => ['class' => 'is-critical', 'label' => 'Critical aging'],
                 ];
                 $totalItems = collect($buckets)->sum('count');
             @endphp
 
-            <div class="items-aging-kpi-grid mb-6">
-                @foreach($buckets as $label => $data)
-                <div class="items-kpi-card items-kpi-charcoal items-aging-kpi-card">
-                    <div class="items-kpi-head">
-                        <span class="items-kpi-icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-                        </span>
-                        <span class="items-aging-badge {{ $colors[$label]['bg'] }} {{ $colors[$label]['text'] }}">{{ $label }}</span>
-                    </div>
-                    <p class="items-kpi-value">{{ number_format($data['count']) }}</p>
-                    <div class="items-kpi-foot">
-                        <p class="items-kpi-title">Items in bucket</p>
-                        <p class="items-kpi-note">₹{{ number_format($data['value'], 0) }}</p>
-                    </div>
+            <section class="items-aging-shell">
+                <div class="items-aging-buckets" aria-label="Stock aging buckets">
+                    @foreach($buckets as $label => $data)
+                        @php
+                            $count = (int) ($data['count'] ?? 0);
+                            $value = (float) ($data['value'] ?? 0);
+                            $share = $totalItems > 0 ? min(100, ($count / $totalItems) * 100) : 0;
+                            $tone = $agingTones[$label] ?? ['class' => 'is-neutral', 'label' => 'Stock bucket'];
+                        @endphp
+                        <article class="items-aging-bucket {{ $tone['class'] }}">
+                            <div class="items-aging-bucket-top">
+                                <span class="items-aging-bucket-label">{{ $label }}</span>
+                                <span class="items-aging-bucket-tag">{{ $tone['label'] }}</span>
+                            </div>
+                            <div class="items-aging-bucket-value">
+                                <strong>{{ number_format($count) }}</strong>
+                                <span>items</span>
+                            </div>
+                            <div class="items-aging-bucket-progress" aria-hidden="true">
+                                <span style="width: {{ $share }}%"></span>
+                            </div>
+                            <div class="items-aging-bucket-foot">
+                                <span>{{ number_format($share, 1) }}% of stock</span>
+                                <span>₹{{ number_format($value, 0) }}</span>
+                            </div>
+                        </article>
+                    @endforeach
                 </div>
-                @endforeach
-            </div>
 
-            <div class="items-aging-kpi-grid items-aging-kpi-grid--summary mb-6">
-                <div class="items-kpi-card items-kpi-charcoal items-aging-kpi-card">
-                    <div class="items-kpi-head">
-                        <span class="items-kpi-icon" aria-hidden="true">
+                <div class="items-aging-summary">
+                    <article>
+                        <span class="items-aging-summary-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18"/><path d="M6 7V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13h10l1-13"/></svg>
                         </span>
-                        <p class="items-kpi-meta">Stock health</p>
-                    </div>
-                    <p class="items-kpi-value">{{ number_format($totalItems) }}</p>
-                    <div class="items-kpi-foot">
-                        <p class="items-kpi-title">Total Items in Stock</p>
-                    </div>
-                </div>
-                <div class="items-kpi-card items-kpi-charcoal items-aging-kpi-card">
-                    <div class="items-kpi-head">
-                        <span class="items-kpi-icon" aria-hidden="true">
+                        <div>
+                            <p>Stock Health</p>
+                            <strong>{{ number_format($totalItems) }}</strong>
+                            <span>Total items in stock</span>
+                        </div>
+                    </article>
+                    <article>
+                        <span class="items-aging-summary-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
                         </span>
-                        <p class="items-kpi-meta">Inventory velocity</p>
-                    </div>
-                    <p class="items-kpi-value">{{ $agingSummary['avg_days'] }}<span class="items-kpi-value-unit"> d</span></p>
-                    <div class="items-kpi-foot">
-                        <p class="items-kpi-title">Avg Days in Stock</p>
-                        <p class="items-kpi-note">Mean age across in-stock items</p>
-                    </div>
-                </div>
-                <div class="items-kpi-card items-kpi-charcoal items-aging-kpi-card">
-                    <div class="items-kpi-head">
-                        <span class="items-kpi-icon" aria-hidden="true">
+                        <div>
+                            <p>Inventory Velocity</p>
+                            <strong>{{ $agingSummary['avg_days'] }}<small>d</small></strong>
+                            <span>Mean age across in-stock items</span>
+                        </div>
+                    </article>
+                    <article>
+                        <span class="items-aging-summary-icon items-aging-summary-icon--risk" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
                         </span>
-                        <p class="items-kpi-meta">Aging risk</p>
-                    </div>
-                    <p class="items-kpi-value">{{ number_format($agingSummary['aged_pct'], 1) }}<span class="items-kpi-value-unit">%</span></p>
-                    <div class="items-kpi-foot">
-                        <p class="items-kpi-title">% Aged ({{ '>' }}90 days)</p>
-                        <p class="items-kpi-note">{{ $agingSummary['aged_count'] }} of {{ $totalItems }} items</p>
-                    </div>
+                        <div>
+                            <p>Aging Risk</p>
+                            <strong>{{ number_format($agingSummary['aged_pct'], 1) }}<small>%</small></strong>
+                            <span>{{ $agingSummary['aged_count'] }} of {{ $totalItems }} items above 90 days</span>
+                        </div>
+                    </article>
                 </div>
-            </div>
+            </section>
 
-            @php $slowItems = collect($buckets['91-180 days']['items'])->merge($buckets['180+ days']['items']); @endphp
+            @php $slowItems = collect($buckets['91-180 days']['items'] ?? [])->merge($buckets['180+ days']['items'] ?? []); @endphp
             @if($slowItems->count())
-            <div class="bg-white shadow-sm border border-gray-200 overflow-hidden items-table-card items-table-card--slow">
-                <div class="p-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">Slow-Moving Stock (90+ days)</h3>
-                    <p class="text-sm text-gray-500">{{ $slowItems->count() }} items need attention</p>
-                </div>
+            <div class="items-table-card items-table-card--slow items-aging-slow-card">
                 <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--slow">
                     <table class="w-full items-data-table items-data-table--slow">
                         <thead class="bg-gray-50 border-b border-gray-200">
@@ -468,12 +489,12 @@
                 $sellerWeakCategory = collect($worst ?? [])->sortBy('sold_count')->first();
             @endphp
 
-            <div class="bg-white shadow-sm border border-gray-200 p-4 mb-6 ui-filter-enhanced-wrap items-seller-period-wrap">
+            <div class="ui-filter-enhanced-wrap items-seller-period-wrap items-seller-period-panel mb-6">
                 <form method="GET" action="{{ route('inventory.items.index') }}" class="flex flex-wrap gap-3 items-end items-seller-period-filter" data-enhance-selects="true" data-enhance-selects-variant="compact">
                     <input type="hidden" name="view" value="sellers">
                     <div class="items-seller-period-field">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Period</label>
-                        <select name="seller_period" class="border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 items-seller-period-select">
+                        <label class="items-filter-label">Period</label>
+                        <select name="seller_period" class="items-filter-input items-seller-period-select">
                             <option value="7" {{ $sellerPeriod === '7' ? 'selected' : '' }}>Last 7 days</option>
                             <option value="30" {{ $sellerPeriod === '30' ? 'selected' : '' }}>Last 30 days</option>
                             <option value="90" {{ $sellerPeriod === '90' ? 'selected' : '' }}>Last 90 days</option>
@@ -481,15 +502,15 @@
                         </select>
                     </div>
                     @if(request()->has('seller_period'))
-                        <a href="{{ route('inventory.items.index', ['view' => 'sellers']) }}" class="btn btn-secondary btn-sm items-seller-period-apply"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</a>
+                        <a href="{{ route('inventory.items.index', ['view' => 'sellers']) }}" class="items-filter-clear items-seller-period-apply"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</a>
                     @else
-                        <button type="submit" class="btn btn-secondary btn-sm items-seller-period-apply"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Apply</button>
+                        <button type="submit" class="items-filter-submit items-seller-period-apply"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>Apply</button>
                     @endif
                 </form>
             </div>
 
-            <div class="items-sellers-kpi-grid mb-6">
-                <section class="items-kpi-card items-kpi-charcoal items-sellers-kpi-card">
+            <div class="items-sellers-kpi-grid items-sellers-metrics mb-6">
+                <section class="items-kpi-card items-seller-metric items-seller-metric--period">
                     <div class="items-kpi-head">
                         <span class="items-kpi-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>
@@ -503,7 +524,7 @@
                         <p class="items-kpi-title">Sell Trend Window</p>
                     </div>
                 </section>
-                <section class="items-kpi-card items-kpi-charcoal items-sellers-kpi-card">
+                <section class="items-kpi-card items-seller-metric items-seller-metric--sold">
                     <div class="items-kpi-head">
                         <span class="items-kpi-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
@@ -515,7 +536,7 @@
                         <p class="items-kpi-title">Total Units Sold</p>
                     </div>
                 </section>
-                <section class="items-kpi-card items-kpi-charcoal items-sellers-kpi-card">
+                <section class="items-kpi-card items-seller-metric items-seller-metric--revenue">
                     <div class="items-kpi-head">
                         <span class="items-kpi-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -527,7 +548,7 @@
                         <p class="items-kpi-title">Trend Revenue</p>
                     </div>
                 </section>
-                <section class="items-kpi-card items-kpi-charcoal items-sellers-kpi-card">
+                <section class="items-kpi-card items-seller-metric items-seller-metric--top">
                     <div class="items-kpi-head">
                         <span class="items-kpi-icon" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M7 7l-4 5 4 5"/><path d="M17 7l4 5-4 5"/></svg>
@@ -544,9 +565,9 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {{-- Best Sellers by Category --}}
-                <div class="bg-white shadow-sm border border-gray-200 overflow-hidden items-table-card items-table-card--best-cat">
+                <div class="items-table-card items-table-card--best-cat items-seller-table-card">
                     <div class="p-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-green-800">Best Sellers — by Category</h3>
+                        <h3 class="items-seller-table-title">Best Sellers — by Category</h3>
                     </div>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
                         <table class="w-full items-data-table items-data-table--sellers">
@@ -575,9 +596,9 @@
                 </div>
 
                 {{-- Best Sellers by Sub-Category --}}
-                <div class="bg-white shadow-sm border border-gray-200 overflow-hidden items-table-card items-table-card--best-sub">
+                <div class="items-table-card items-table-card--best-sub items-seller-table-card">
                     <div class="p-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-amber-800">Best Sellers — by Sub-Category</h3>
+                        <h3 class="items-seller-table-title">Best Sellers — by Sub-Category</h3>
                     </div>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
                         <table class="w-full items-data-table items-data-table--sellers">
@@ -608,9 +629,9 @@
                 </div>
 
                 {{-- Worst Sellers --}}
-                <div class="lg:col-span-2 bg-white shadow-sm border border-gray-200 overflow-hidden items-table-card items-table-card--worst">
+                <div class="lg:col-span-2 items-table-card items-table-card--worst items-seller-table-card">
                     <div class="p-4 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-rose-800">Worst Sellers — Lowest Movement Categories</h3>
+                        <h3 class="items-seller-table-title">Worst Sellers — Lowest Movement Categories</h3>
                     </div>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
                         <table class="w-full items-data-table items-data-table--sellers">

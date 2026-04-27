@@ -13,6 +13,7 @@
         @endif
 
         <title>{{ config('app.name', 'JewelFlow') }}</title>
+        @include('partials.favicon')
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

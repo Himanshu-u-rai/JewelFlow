@@ -15,7 +15,7 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner">
+    <div class="content-inner inventory-item-create-dropdowns">
         @if($errors->any())
             <div class="mb-6 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm" style="border-radius:16px;">
                 <ul class="list-disc list-inside">
@@ -26,7 +26,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('inventory.items.store') }}" class="space-y-6" id="createItemForm" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('inventory.items.store') }}" class="space-y-6" id="createItemForm" enctype="multipart/form-data" data-enhance-selects="true" data-enhance-selects-variant="standard">
             @csrf
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -325,6 +325,12 @@
         let selectedLotCost = 0;
         let pendingSubCategorySelection = @json(old('sub_category'));
 
+        function refreshCreateDropdown(select) {
+            if (window.refreshEnhancedFilterSelect) {
+                window.refreshEnhancedFilterSelect(select);
+            }
+        }
+
         function generateBarcode() {
             const timestamp = Date.now().toString(36).toUpperCase();
             const random = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -350,6 +356,7 @@
                 // Set purity to match lot purity
                 const puritySelect = document.getElementById('purity');
                 puritySelect.value = selectedLotPurity;
+                refreshCreateDropdown(puritySelect);
             } else {
                 selectedLotPurity = 0;
                 selectedLotRemaining = 0;
@@ -435,6 +442,7 @@
                 if (categorySelect.options[i].value === category) {
                     categorySelect.selectedIndex = i;
                     selectedCategoryId = categorySelect.options[i].dataset.categoryId || '';
+                    refreshCreateDropdown(categorySelect);
                     break;
                 }
             }
@@ -451,6 +459,7 @@
             for (let i = 0; i < puritySelect.options.length; i++) {
                 if (puritySelect.options[i].value === purity) {
                     puritySelect.selectedIndex = i;
+                    refreshCreateDropdown(puritySelect);
                     break;
                 }
             }
@@ -539,9 +548,11 @@
         async function loadSubCategories(categoryId, selectedSubName = null) {
             const subCategorySelect = document.getElementById('sub_category');
             subCategorySelect.innerHTML = '<option value="">Select sub category</option>';
+            refreshCreateDropdown(subCategorySelect);
 
             if (!categoryId) {
                 subCategorySelect.disabled = true;
+                refreshCreateDropdown(subCategorySelect);
                 return;
             }
 
@@ -569,6 +580,7 @@
                     }
                     subCategorySelect.appendChild(option);
                 });
+                refreshCreateDropdown(subCategorySelect);
             } catch (error) {
                 // Silent fail: form remains usable with category only
             }
