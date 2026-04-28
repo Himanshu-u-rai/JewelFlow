@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Services\DashboardMetricsService;
+use App\Services\ShopPricingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, ShopPricingService $pricing): JsonResponse
     {
+        $shop = $request->user()->shop;
         $metrics = DashboardMetricsService::build($request->user()->shop_id);
+        $dailyRate = $shop ? $pricing->currentDailyRate($shop) : null;
 
         return response()->json([
             'today' => [
@@ -31,6 +34,15 @@ class DashboardController extends Controller
             ],
             'trend' => $metrics['trendData'] ?? [],
             'is_retailer' => (bool) ($metrics['isRetailer'] ?? false),
+            'metal_rates' => [
+                'gold' => $dailyRate ? (float) $dailyRate->gold_24k_rate_per_gram : null,
+                'silver' => $dailyRate ? (float) $dailyRate->silver_999_rate_per_gram : null,
+                'gold_rate' => $dailyRate ? (float) $dailyRate->gold_24k_rate_per_gram : null,
+                'silver_rate' => $dailyRate ? (float) $dailyRate->silver_999_rate_per_gram : null,
+                'business_date' => $dailyRate?->business_date?->toDateString(),
+                'source' => 'owner_daily_rates',
+                'is_set' => (bool) $dailyRate,
+            ],
         ]);
     }
 }
