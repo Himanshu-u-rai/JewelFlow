@@ -17,6 +17,7 @@ use App\Services\InvoiceAccountingService;
 use App\Services\SubscriptionGateService;
 use App\Services\OfferEngineService;
 use App\Services\SchemeService;
+use Illuminate\Validation\ValidationException;
 
 class RetailerSalesService
 {
@@ -53,12 +54,16 @@ class RetailerSalesService
                 ->get();
 
             if ($items->count() !== count($itemIds)) {
-                throw new \Exception("One or more items not found");
+                throw ValidationException::withMessages([
+                    'item_ids' => 'One or more items are not available for sale.',
+                ]);
             }
 
             foreach ($items as $item) {
                 if ($item->status !== 'in_stock') {
-                    throw new \Exception("Item {$item->barcode} is not available for sale");
+                    throw ValidationException::withMessages([
+                        'item_ids' => 'One or more items are not available for sale.',
+                    ]);
                 }
             }
 
@@ -327,12 +332,16 @@ class RetailerSalesService
                 ->get();
 
             if ($items->count() !== count($itemIds)) {
-                throw new \Exception('One or more items not found');
+                throw ValidationException::withMessages([
+                    'item_ids' => 'One or more items are not available for sale.',
+                ]);
             }
 
             foreach ($items as $item) {
                 if ($item->status !== 'in_stock') {
-                    throw new \Exception("Item {$item->barcode} is not available for sale");
+                    throw ValidationException::withMessages([
+                        'item_ids' => 'One or more items are not available for sale.',
+                    ]);
                 }
             }
 

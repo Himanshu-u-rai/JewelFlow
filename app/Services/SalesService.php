@@ -13,6 +13,7 @@ use App\Models\CashTransaction;
 use App\Models\CustomerGoldTransaction;
 use App\Services\InvoiceAccountingService;
 use App\Services\SubscriptionGateService;
+use Illuminate\Validation\ValidationException;
 
 class SalesService
 {
@@ -57,7 +58,9 @@ class SalesService
                 ->findOrFail($itemId);
 
             if ($item->status !== 'in_stock') {
-                throw new \Exception("Item is not available for sale");
+                throw ValidationException::withMessages([
+                    'item_id' => 'Item is not available for sale.',
+                ]);
             }
 
             $fineGold = $item->net_metal_weight * ($item->purity / 24);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Mobile\MobileSessionSeatService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +16,7 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    public function login(Request $request): JsonResponse
+    public function login(Request $request, MobileSessionSeatService $seatService): JsonResponse
     {
         $request->validate([
             'mobile_number' => ['required', 'string', 'digits:10'],
@@ -61,6 +62,17 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
+
+        $seat = $seatService->evaluate($shop, $user);
+        if (! $seat['allowed']) {
+            return response()->json([
+                'code' => 'mobile_session_limit_reached',
+                'message' => 'Mobile session limit reached for this shop plan.',
+                'session_limit' => $seat['session_limit'],
+                'active_sessions' => $seat['active_sessions'],
+                'seat_scope' => $seat['seat_scope'],
+            ], 403);
+        }
 
         // Revoke existing mobile tokens for this user
         $user->tokens()->where('name', 'mobile-app')->delete();

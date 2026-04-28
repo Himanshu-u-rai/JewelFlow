@@ -17,7 +17,7 @@ class ScanSessionController extends Controller
     private const RENEW_THRESHOLD_MINUTES = 30; // renew when less than 30 min left
 
     /**
-     * Create (or renew) a scan session for this shop.
+     * Create a scan session for this shop.
      * Called by POS via AJAX. QR code is generated client-side.
      */
     public function create(Request $request)
@@ -28,11 +28,6 @@ class ScanSessionController extends Controller
         if (!$shopId) {
             return response()->json(['error' => 'No shop associated with your account.'], 422);
         }
-
-        // Expire any existing active sessions for this shop
-        ScanSession::where('shop_id', $shopId)
-            ->where('status', 'active')
-            ->update(['status' => 'expired']);
 
         $token     = Str::random(48);
         $expiresAt = now()->addMinutes(self::SESSION_MINUTES);

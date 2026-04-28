@@ -115,7 +115,8 @@ class PosSalesTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(500);
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['item_id']);
     }
 
     public function test_manufacturer_sale_validates_required_fields(): void
