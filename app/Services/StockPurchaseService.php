@@ -21,6 +21,12 @@ class StockPurchaseService
         }
 
         DB::transaction(function () use ($purchase, $userId): void {
+            // Re-fetch with row lock so concurrent requests don't both confirm.
+            $purchase = StockPurchase::where('id', $purchase->id)->lockForUpdate()->firstOrFail();
+            if (! $purchase->isDraft()) {
+                throw new LogicException('Purchase was already confirmed by another request.');
+            }
+
             $purchase->load('lines');
 
             $subtotal    = $purchase->lines->sum(fn ($l) => (float) $l->purchase_line_amount);
@@ -63,6 +69,12 @@ class StockPurchaseService
         $itemsCreated = 0;
 
         DB::transaction(function () use ($purchase, $userId, &$itemsCreated): void {
+            // Re-fetch with row lock so concurrent requests don't both stock.
+            $purchase = StockPurchase::where('id', $purchase->id)->lockForUpdate()->firstOrFail();
+            if (! $purchase->isConfirmed()) {
+                throw new LogicException('Purchase is no longer in confirmed state.');
+            }
+
             $purchase->load('lines');
 
             foreach ($purchase->lines as $index => $line) {

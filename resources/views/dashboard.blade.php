@@ -125,19 +125,22 @@
             width: clamp(220px, 34vw, 420px);
             max-width: 100%;
             padding: 0 14px;
-            border: 2px solid transparent;
+            border: 1px solid #dfddd5;
             border-radius: 8px;
-            background: #f3f3f4;
-            color: #0d0c22;
+            background: linear-gradient(180deg, #fcfcfa 0%, #f4f2ed 100%);
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+            color: #314155;
             cursor: text;
             transition: 0.3s ease;
         }
 
         .dash-command-desktop-trigger:hover,
         .dash-command-desktop-trigger:focus {
-            border-color: rgba(244, 163, 0, 0.4);
+            border-color: rgba(199, 154, 61, 0.32);
             background: #ffffff;
-            box-shadow: 0 0 0 4px rgba(244, 163, 0, 0.1);
+            box-shadow:
+                0 0 0 4px rgba(199, 154, 61, 0.08),
+                0 10px 20px rgba(15, 23, 42, 0.06);
         }
 
         .dash-command-trigger-copy {
@@ -146,7 +149,7 @@
             text-align: left;
             font-size: 13px;
             font-weight: 400;
-            color: #9e9ea7;
+            color: #727b89;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -162,13 +165,13 @@
             justify-content: center;
             min-height: 22px;
             padding: 0 7px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #ded9cd;
             border-bottom-width: 2px;
             border-radius: 6px;
-            background: #f8fafc;
+            background: rgba(255, 255, 255, 0.92);
             font-size: 11px;
             font-weight: 600;
-            color: #94a3b8;
+            color: #8a877a;
             letter-spacing: 0.02em;
         }
 
@@ -182,10 +185,10 @@
             min-height: 40px;
             padding: 0 !important;
             gap: 0 !important;
-            border: 2px solid transparent;
+            border: 1px solid #dfddd5;
             border-radius: 8px;
-            background: #f3f3f4 !important;
-            color: #9e9ea7 !important;
+            background: linear-gradient(180deg, #fcfcfa 0%, #f4f2ed 100%) !important;
+            color: #727b89 !important;
             cursor: pointer;
             transition: 0.3s ease;
         }
@@ -195,8 +198,8 @@
             height: 16px;
             display: block;
             flex-shrink: 0;
-            fill: #9e9ea7;
-            color: #9e9ea7;
+            fill: #727b89;
+            color: #727b89;
         }
 
         .dash-header .page-actions .dash-command-mobile-trigger .dash-command-icon {
@@ -222,19 +225,22 @@
             position: absolute;
             inset: 0;
             border: 0;
-            background: rgba(15, 23, 42, 0.42);
-            backdrop-filter: blur(3px);
-            -webkit-backdrop-filter: blur(3px);
+            background: rgba(11, 19, 38, 0.48);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             cursor: pointer;
         }
 
         .dash-command-card {
             position: relative;
-            width: min(740px, 100%);
-            border: 1px solid var(--dash-line, #d7dee8);
-            border-radius: 14px;
-            background: var(--dash-card, #ffffff);
-            box-shadow: 0 24px 52px rgba(15, 23, 42, 0.24);
+            width: min(760px, 100%);
+            border: 1px solid rgba(214, 224, 237, 0.92);
+            border-radius: 24px;
+            background:
+                linear-gradient(180deg, rgba(250, 252, 255, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
+            box-shadow:
+                0 28px 72px rgba(15, 23, 42, 0.22),
+                0 8px 24px rgba(15, 23, 42, 0.08);
             overflow: hidden;
         }
 
@@ -242,78 +248,261 @@
             display: grid;
             grid-template-columns: auto minmax(0, 1fr) auto;
             align-items: center;
-            gap: 10px;
-            padding: 12px 14px;
-            border-bottom: 1px solid #e4ebf4;
+            gap: 12px;
+            padding: 16px 18px 12px;
+            border-bottom: 1px solid #e7eef7;
+            background:
+                linear-gradient(180deg, rgba(245, 248, 253, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
+        }
+
+        .dash-command-input-row > svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            color: #71839f;
         }
 
         .dash-command-input {
             width: 100%;
-            border: 0;
-            background: transparent;
-            font-size: 15px;
+            min-height: 48px;
+            padding: 0 14px;
+            border: 1px solid #d9e3ef;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+            font-size: 17px;
+            font-weight: 500;
             color: var(--dash-ink);
             outline: none;
+        }
+
+        .dash-command-input::placeholder {
+            color: #93a1b7;
+            font-weight: 400;
+        }
+
+        .dash-command-input:focus {
+            border-color: rgba(59, 130, 246, 0.36);
+            box-shadow:
+                0 0 0 4px rgba(59, 130, 246, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.85);
         }
 
         .dash-command-close {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 26px;
-            padding: 0 8px;
-            border: 1px solid var(--dash-line);
-            border-radius: 8px;
-            background: var(--dash-bg);
-            color: var(--dash-slate);
+            min-height: 32px;
+            padding: 0 10px;
+            border: 1px solid #d9e3ef;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.98);
+            color: #52627c;
             font-size: 11px;
             font-weight: 700;
+            letter-spacing: 0.04em;
             cursor: pointer;
         }
 
         .dash-command-helper {
-            padding: 8px 14px;
-            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 11px 18px;
+            border-bottom: 1px solid #ecf1f7;
+            background: rgba(251, 253, 255, 0.92);
+        }
+
+        .dash-command-helper-copy {
+            min-width: 0;
             color: var(--dash-muted);
-            border-bottom: 1px solid #eaf0f7;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .dash-command-helper-meta {
+            color: #8090aa;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
         }
 
         .dash-command-results {
-            max-height: min(58vh, 520px);
+            max-height: min(56vh, 520px);
             overflow: auto;
-            padding: 6px;
+            padding: 10px;
             margin: 0;
             list-style: none;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 252, 255, 0.96) 100%);
+            scrollbar-width: thin;
+            scrollbar-color: #cfd8e4 transparent;
+        }
+
+        .dash-command-results::-webkit-scrollbar {
+            width: 9px;
+        }
+
+        .dash-command-results::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .dash-command-results::-webkit-scrollbar-thumb {
+            border: 2px solid transparent;
+            border-radius: 999px;
+            background: #cfdae6;
+            background-clip: padding-box;
         }
 
         .dash-command-item {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
-            gap: 6px;
-            padding: 9px 10px;
-            border-radius: 10px;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 13px;
+            border-radius: 18px;
             text-decoration: none;
             border: 1px solid transparent;
+            transition:
+                border-color 0.16s ease,
+                background-color 0.16s ease,
+                box-shadow 0.16s ease,
+                transform 0.16s ease;
         }
 
         .dash-command-item:hover,
         .dash-command-item.is-active {
-            background: var(--dash-bg);
-            border-color: var(--dash-line);
+            background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+            border-color: #dbe6f2;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            transform: translateY(-1px);
+        }
+
+        .dash-command-item-main {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .dash-command-item-copy {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .dash-command-item-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 14px;
+            flex-shrink: 0;
+            border: 1px solid #dde7f2;
+            background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
+            color: #24334f;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+        }
+
+        .dash-command-item-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+        }
+
+        .dash-command-item[data-result-type="page"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #eef7ff 0%, #ffffff 100%);
+            color: #1d4ed8;
+            border-color: rgba(59, 130, 246, 0.18);
+        }
+
+        .dash-command-item[data-result-type="customer"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #f1fcfb 0%, #ffffff 100%);
+            color: #0f766e;
+            border-color: rgba(13, 148, 136, 0.18);
+        }
+
+        .dash-command-item[data-result-type="invoice"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #fffaf1 0%, #ffffff 100%);
+            color: #b45309;
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .dash-command-item[data-result-type="item"] .dash-command-item-icon,
+        .dash-command-item[data-result-type="product"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #f7f8ff 0%, #ffffff 100%);
+            color: #4338ca;
+            border-color: rgba(99, 102, 241, 0.16);
+        }
+
+        .dash-command-item[data-result-type="vendor"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+            color: #0f766e;
+            border-color: rgba(14, 165, 233, 0.16);
+        }
+
+        .dash-command-item[data-result-type="quick-bill"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+            color: #c2410c;
+            border-color: rgba(249, 115, 22, 0.18);
+        }
+
+        .dash-command-item[data-result-type="repair"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #effbfd 0%, #ffffff 100%);
+            color: #0f766e;
+            border-color: rgba(20, 184, 166, 0.2);
+        }
+
+        .dash-command-item[data-result-type="karigar"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #f4f8ff 0%, #ffffff 100%);
+            color: #1d4ed8;
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .dash-command-item[data-result-type="job-order"] .dash-command-item-icon,
+        .dash-command-item[data-result-type="karigar-invoice"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #fffaf1 0%, #ffffff 100%);
+            color: #b45309;
+            border-color: rgba(245, 158, 11, 0.22);
+        }
+
+        .dash-command-item[data-result-type="stock-purchase"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #f7f8ff 0%, #ffffff 100%);
+            color: #4338ca;
+            border-color: rgba(99, 102, 241, 0.18);
+        }
+
+        .dash-command-item[data-result-type="scheme"] .dash-command-item-icon,
+        .dash-command-item[data-result-type="emi-plan"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #fff4f7 0%, #ffffff 100%);
+            color: #be185d;
+            border-color: rgba(244, 114, 182, 0.2);
+        }
+
+        .dash-command-item[data-result-type="reorder-rule"] .dash-command-item-icon {
+            background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+            color: #c2410c;
+            border-color: rgba(249, 115, 22, 0.2);
         }
 
         .dash-command-item-title {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 700;
             color: var(--dash-ink);
-            line-height: 1.2;
+            line-height: 1.3;
         }
 
         .dash-command-item-sub {
-            margin-top: 2px;
+            display: block;
+            margin-top: 3px;
             font-size: 12px;
             color: var(--dash-muted);
-            line-height: 1.25;
+            line-height: 1.45;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .dash-command-item-type {
@@ -321,13 +510,21 @@
             font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
             color: #0f766e;
-            background: #ecfdf5;
-            border: 1px solid #a7f3d0;
+            background: #effaf6;
+            border: 1px solid #b7edd8;
             border-radius: 999px;
-            padding: 3px 7px;
+            padding: 5px 8px;
             white-space: nowrap;
+        }
+
+        .dash-command-empty {
+            padding: 22px 16px;
+            text-align: center;
+            color: #7c8aa3;
+            font-size: 13px;
+            line-height: 1.6;
         }
 
         .dash-btn {
@@ -2570,20 +2767,56 @@
             }
 
             .dash-command-card {
-                width: min(460px, 100%);
-                border-radius: 12px;
+                width: min(520px, 100%);
+                border-radius: 22px;
             }
 
             .dash-command-input-row {
-                padding: 10px 11px;
+                gap: 10px;
+                padding: 14px 14px 10px;
             }
 
             .dash-command-input {
+                min-height: 44px;
+                padding: 0 12px;
                 font-size: 14px;
+                border-radius: 14px;
+            }
+
+            .dash-command-helper {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 10px 14px;
+                gap: 4px;
+            }
+
+            .dash-command-helper-meta {
+                font-size: 10px;
             }
 
             .dash-command-results {
-                max-height: 62vh;
+                max-height: 64vh;
+                padding: 8px;
+            }
+
+            .dash-command-item {
+                padding: 11px 12px;
+                border-radius: 16px;
+            }
+
+            .dash-command-item-icon {
+                width: 34px;
+                height: 34px;
+                border-radius: 12px;
+            }
+
+            .dash-command-item-title {
+                font-size: 13px;
+            }
+
+            .dash-command-item-sub {
+                font-size: 11px;
+                white-space: normal;
             }
 
             .dash-mobile-fab {
@@ -3112,12 +3345,21 @@
 
             .dash-command-input-row {
                 gap: 8px;
-                padding: 9px 10px;
+                padding: 12px 12px 8px;
             }
 
             .dash-command-helper {
-                padding: 7px 10px;
+                padding: 8px 12px;
+            }
+
+            .dash-command-helper-copy {
                 font-size: 11px;
+            }
+
+            .dash-command-close {
+                min-height: 28px;
+                padding: 0 8px;
+                font-size: 10px;
             }
 
             .dash-header .page-title {
@@ -3200,6 +3442,11 @@
     </script>
 
     @php
+        $dashUser = auth()->user();
+        $isRetailer = (bool) $dashUser?->shop?->isRetailer();
+        $isOwner = (bool) $dashUser?->isOwner();
+        $isManager = (bool) $dashUser?->isManager();
+
         $dashCommandPages = [
             ['label' => 'Dashboard', 'sub' => 'Overview and KPIs', 'url' => route('dashboard'), 'keywords' => 'home overview metrics kpi'],
             ['label' => 'Start Sale (POS)', 'sub' => 'Open billing counter', 'url' => route('pos.index'), 'keywords' => 'pos billing sale invoice'],
@@ -3208,20 +3455,72 @@
             ['label' => 'Stock / Items', 'sub' => 'Inventory list', 'url' => route('inventory.items.index'), 'keywords' => 'items stock inventory product'],
             ['label' => 'Quick Bills', 'sub' => 'Fast billing register', 'url' => route('quick-bills.index'), 'keywords' => 'quick bill register'],
             ['label' => 'Cash Ledger', 'sub' => 'Cashbook entries', 'url' => route('cashbook.index'), 'keywords' => 'cashbook cash ledger'],
-            ['label' => 'Daily Closing', 'sub' => 'Closing summary', 'url' => route('report.closing'), 'keywords' => 'closing report day end'],
             ['label' => 'Repairs', 'sub' => 'Repair workflow', 'url' => route('repairs.index'), 'keywords' => 'repair service jobs'],
-            ['label' => 'Settings', 'sub' => 'Shop configuration', 'url' => route('settings.edit'), 'keywords' => 'settings config preferences'],
+            ['label' => 'Categories', 'sub' => 'Category master list', 'url' => route('categories.index'), 'keywords' => 'category product master'],
+            ['label' => 'Sub Categories', 'sub' => 'Sub category mappings', 'url' => route('sub-categories.index'), 'keywords' => 'sub category catalog'],
+            ['label' => 'Subscription', 'sub' => 'Plan and billing status', 'url' => route('subscription.status'), 'keywords' => 'subscription plan billing'],
+            ['label' => 'Profile', 'sub' => 'User profile settings', 'url' => route('profile.edit'), 'keywords' => 'profile account'],
         ];
 
-        if (auth()->user()->shop?->isRetailer()) {
-            $dashCommandPages[] = ['label' => 'WhatsApp Catalog', 'sub' => 'Share catalog links', 'url' => route('catalog.index'), 'keywords' => 'catalog whatsapp share'];
-            $dashCommandPages[] = ['label' => 'Vendors', 'sub' => 'Supplier management', 'url' => route('vendors.index'), 'keywords' => 'vendors suppliers'];
-            $dashCommandPages[] = ['label' => 'GST Report', 'sub' => 'Tax summary', 'url' => route('report.gst'), 'keywords' => 'gst tax report'];
+        if ($isOwner || $isManager) {
+            $dashCommandPages[] = ['label' => 'Exports', 'sub' => 'Export data files', 'url' => route('export.index'), 'keywords' => 'export data reports'];
+            $dashCommandPages[] = ['label' => 'Bulk Imports', 'sub' => 'Import stock and catalog files', 'url' => route('imports.index'), 'keywords' => 'import uploads csv excel'];
         }
 
-        $dashCommandTypes = ['customers', 'invoices', 'items', 'products', 'quick-bills'];
-        if (auth()->user()->shop?->isRetailer()) {
+        if ($isOwner) {
+            $dashCommandPages[] = ['label' => 'Daily Closing', 'sub' => 'Closing summary', 'url' => route('report.closing'), 'keywords' => 'closing report day end'];
+            $dashCommandPages[] = ['label' => 'Gold Report', 'sub' => 'Gold ledger insights', 'url' => route('report.gold'), 'keywords' => 'gold report'];
+            $dashCommandPages[] = ['label' => 'Daily Report', 'sub' => 'Business day report', 'url' => route('report.daily'), 'keywords' => 'daily report'];
+            $dashCommandPages[] = ['label' => 'Cash Report', 'sub' => 'Cash transaction report', 'url' => route('report.cash'), 'keywords' => 'cash report'];
+            $dashCommandPages[] = ['label' => 'P&L Report', 'sub' => 'Profit and loss summary', 'url' => route('report.pnl'), 'keywords' => 'pnl profit loss'];
+            $dashCommandPages[] = ['label' => 'Repairs Report', 'sub' => 'Repairs analytics', 'url' => route('report.repairs'), 'keywords' => 'repairs analytics report'];
+            $dashCommandPages[] = ['label' => 'Services Settings', 'sub' => 'Manage editions and service requests', 'url' => route('settings.services'), 'keywords' => 'settings services editions modules plans'];
+            $dashCommandPages[] = ['label' => 'Settings · General', 'sub' => 'Business basics and account defaults', 'url' => route('settings.edit', ['tab' => 'general']), 'keywords' => 'settings general profile defaults'];
+            $dashCommandPages[] = ['label' => 'Settings · Shop', 'sub' => 'Shop identity and branding setup', 'url' => route('settings.edit', ['tab' => 'shop']), 'keywords' => 'settings shop logo gst address'];
+            $dashCommandPages[] = ['label' => 'Settings · Rules', 'sub' => 'Pricing, buyback and GST rules', 'url' => route('settings.edit', ['tab' => 'rules']), 'keywords' => 'settings rules pricing buyback gst'];
+            $dashCommandPages[] = ['label' => 'Settings · Billing', 'sub' => 'Invoice, signature and print defaults', 'url' => route('settings.edit', ['tab' => 'billing']), 'keywords' => 'settings billing invoice print terms'];
+            $dashCommandPages[] = ['label' => 'Settings · Preferences', 'sub' => 'Operational and POS preferences', 'url' => route('settings.edit', ['tab' => 'preferences']), 'keywords' => 'settings preferences pos workflow'];
+            $dashCommandPages[] = ['label' => 'Settings · Pricing', 'sub' => 'Daily rates and purity profiles', 'url' => route('settings.edit', ['tab' => 'pricing']), 'keywords' => 'settings pricing daily rates purity'];
+            $dashCommandPages[] = ['label' => 'Settings · Website', 'sub' => 'Catalog website and CMS pages', 'url' => route('settings.edit', ['tab' => 'website']), 'keywords' => 'settings website catalog cms'];
+            $dashCommandPages[] = ['label' => 'Settings · Roles', 'sub' => 'Role permissions and access matrix', 'url' => route('settings.edit', ['tab' => 'roles']), 'keywords' => 'settings roles permissions access'];
+            $dashCommandPages[] = ['label' => 'Settings · Staff', 'sub' => 'Staff tab in settings panel', 'url' => route('settings.edit', ['tab' => 'staff']), 'keywords' => 'settings staff users team'];
+            $dashCommandPages[] = ['label' => 'Settings · Audit', 'sub' => 'Audit logs and activity timeline', 'url' => route('settings.edit', ['tab' => 'audit']), 'keywords' => 'settings audit logs activity'];
+            $dashCommandPages[] = ['label' => 'Payment Methods', 'sub' => 'Manage payment modes', 'url' => route('settings.payment-methods.index'), 'keywords' => 'payment methods settings'];
+            $dashCommandPages[] = ['label' => 'Settings', 'sub' => 'Shop configuration', 'url' => route('settings.edit'), 'keywords' => 'settings config preferences'];
+            $dashCommandPages[] = ['label' => 'Staff', 'sub' => 'Team management', 'url' => route('staff.index'), 'keywords' => 'staff team users'];
+        }
+
+        if ($isRetailer) {
+            $dashCommandPages[] = ['label' => 'WhatsApp Catalog', 'sub' => 'Share catalog links', 'url' => route('catalog.index'), 'keywords' => 'catalog whatsapp share'];
+            $dashCommandPages[] = ['label' => 'Vendors', 'sub' => 'Supplier management', 'url' => route('vendors.index'), 'keywords' => 'vendors suppliers'];
+            $dashCommandPages[] = ['label' => 'Stock Purchases', 'sub' => 'Purchase inward register', 'url' => route('inventory.purchases.index'), 'keywords' => 'stock purchase inward supplier'];
+            $dashCommandPages[] = ['label' => 'Schemes', 'sub' => 'Offers and savings plans', 'url' => route('schemes.index'), 'keywords' => 'schemes offers promotions'];
+            $dashCommandPages[] = ['label' => 'Installments', 'sub' => 'EMI plans and collections', 'url' => route('installments.index'), 'keywords' => 'installments emi plans'];
+            $dashCommandPages[] = ['label' => 'Reorder Alerts', 'sub' => 'Low stock rules', 'url' => route('reorder.index'), 'keywords' => 'reorder low stock alert'];
+            $dashCommandPages[] = ['label' => 'Tag Printing', 'sub' => 'Print labels and tags', 'url' => route('tags.index'), 'keywords' => 'tags labels print'];
+            $dashCommandPages[] = ['label' => 'Bullion Vault', 'sub' => 'Vault lots and balances', 'url' => route('vault.index'), 'keywords' => 'bullion vault lots'];
+            $dashCommandPages[] = ['label' => 'Karigars', 'sub' => 'Artisan directory', 'url' => route('karigars.index'), 'keywords' => 'karigar artisans job work'];
+            $dashCommandPages[] = ['label' => 'Job Orders', 'sub' => 'Issue and receive jobs', 'url' => route('job-orders.index'), 'keywords' => 'job orders issue receive'];
+            $dashCommandPages[] = ['label' => 'Karigar Invoices', 'sub' => 'Job-work billing', 'url' => route('karigar-invoices.index'), 'keywords' => 'karigar invoices billing'];
+            $dashCommandPages[] = ['label' => 'Stock Aging', 'sub' => 'Stock aging buckets', 'url' => route('report.stock-aging'), 'keywords' => 'stock aging inventory'];
+            $dashCommandPages[] = ['label' => 'Sell Trend', 'sub' => 'Sales movement trends', 'url' => route('report.sellers'), 'keywords' => 'sell trend best sellers'];
+            $dashCommandPages[] = ['label' => 'Occasions Report', 'sub' => 'Occasion-wise sales report', 'url' => route('report.occasions'), 'keywords' => 'occasion report'];
+            $dashCommandPages[] = ['label' => 'Metal Exchange', 'sub' => 'Old metal exchange report', 'url' => route('report.metal-exchange'), 'keywords' => 'metal exchange old gold silver'];
+            if ($isOwner) {
+                $dashCommandPages[] = ['label' => 'GST Report', 'sub' => 'Tax summary', 'url' => route('report.gst'), 'keywords' => 'gst tax report'];
+            }
+        }
+
+        $dashCommandTypes = ['customers', 'invoices', 'items', 'products', 'quick-bills', 'repairs'];
+        if ($isRetailer) {
             $dashCommandTypes[] = 'vendors';
+            $dashCommandTypes[] = 'stock-purchases';
+            $dashCommandTypes[] = 'schemes';
+            $dashCommandTypes[] = 'installments';
+            $dashCommandTypes[] = 'reorder-rules';
+            $dashCommandTypes[] = 'karigars';
+            $dashCommandTypes[] = 'job-orders';
+            $dashCommandTypes[] = 'karigar-invoices';
         }
     @endphp
 
@@ -3233,7 +3532,7 @@
         <x-slot:actions>
             <button type="button" class="dash-command-desktop-trigger" data-dash-command-trigger aria-label="Search pages and records">
                 <svg class="dash-command-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 0 4.74 13.31l4.22 4.21a.75.75 0 1 0 1.06-1.06l-4.2-4.22A7.5 7.5 0 0 0 10.5 3Zm-6 7.5a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z"/></svg>
-                <span class="dash-command-trigger-copy dash-command-trigger-copy-full">Search pages, customers, invoices, products...</span>
+                <span class="dash-command-trigger-copy dash-command-trigger-copy-full">Search pages, lists, records, reports...</span>
                 <span class="dash-command-trigger-copy dash-command-trigger-copy-short">Search</span>
                 <span class="dash-command-trigger-kbd">Ctrl+K</span>
             </button>
@@ -3263,10 +3562,13 @@
         <section class="dash-command-card" role="dialog" aria-modal="true" aria-label="Dashboard search">
             <div class="dash-command-input-row">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" class="dash-command-input" data-dash-command-input placeholder="Search pages, customers, invoices, items..." autocomplete="off" spellcheck="false">
+                <input type="text" class="dash-command-input" data-dash-command-input placeholder="Search pages, lists, records, reports..." autocomplete="off" spellcheck="false">
                 <button type="button" class="dash-command-close" data-dash-command-close>Esc</button>
             </div>
-            <div class="dash-command-helper" data-dash-command-helper>Jump to common pages. Type to search customers, invoices, products, and more.</div>
+            <div class="dash-command-helper">
+                <span class="dash-command-helper-copy" data-dash-command-helper>Jump to pages, lists, reports, and records across your SaaS.</span>
+                <span class="dash-command-helper-meta">↑↓ Navigate · Enter Open</span>
+            </div>
             <ul class="dash-command-results" data-dash-command-results></ul>
         </section>
     </div>
@@ -3293,6 +3595,14 @@
                 products: 'Product',
                 vendors: 'Vendor',
                 'quick-bills': 'Quick Bill',
+                repairs: 'Repair',
+                karigars: 'Karigar',
+                'job-orders': 'Job Order',
+                'karigar-invoices': 'Karigar Invoice',
+                'stock-purchases': 'Stock Purchase',
+                schemes: 'Scheme',
+                installments: 'EMI Plan',
+                'reorder-rules': 'Reorder Rule',
             };
 
             let debounceId = null;
@@ -3301,6 +3611,43 @@
             let searchVersion = 0;
 
             const normalize = (value) => String(value || '').toLowerCase().trim();
+            const typeKey = (value) => normalize(value).replace(/[^a-z0-9]+/g, '-');
+
+            const commandIcon = (type) => {
+                switch (typeKey(type)) {
+                    case 'page':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="M7 8h10"></path><path d="M7 12h10"></path><path d="M7 16h6"></path></svg>';
+                    case 'customer':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="3.2"></circle><path d="M17 11a3 3 0 1 0 0-6"></path></svg>';
+                    case 'invoice':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l4 4v14H4V3z"></path><path d="M8 11h8"></path><path d="M8 15h6"></path><path d="M16 3v5h5"></path></svg>';
+                    case 'item':
+                    case 'product':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5-8 4.5-8-4.5L12 3z"></path><path d="M4 7.5V16.5L12 21l8-4.5V7.5"></path><path d="M12 12v9"></path></svg>';
+                    case 'vendor':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 10h1"></path><path d="M14 10h1"></path><path d="M9 14h1"></path><path d="M14 14h1"></path></svg>';
+                    case 'quick-bill':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h10l3 3v15l-3-1.8L13 21l-3-1.8L7 21l-1-1.8L5 21V3z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path><path d="M9 16h4"></path></svg>';
+                    case 'repair':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m14.7 6.3 3 3"></path><path d="m3 21 6.6-6.6"></path><path d="M11.7 8.2a4 4 0 1 0 4.1 4.1"></path><path d="m19.2 2.8 2 2a2 2 0 0 1 0 2.8l-5.7 5.7a2 2 0 0 1-2.8 0l-2-2"></path></svg>';
+                    case 'karigar':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="3.2"></circle><path d="M17 11a3 3 0 1 0 0-6"></path></svg>';
+                    case 'job-order':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 7h8"></path><path d="M8 11h8"></path><path d="M8 15h6"></path></svg>';
+                    case 'karigar-invoice':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l4 4v14H4V3z"></path><path d="M8 11h8"></path><path d="M8 15h6"></path><path d="M16 3v5h5"></path></svg>';
+                    case 'stock-purchase':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h15l3 4v6h-2"></path><path d="M3 7v10h2"></path><path d="M7 17h8"></path><circle cx="7" cy="17" r="2"></circle><circle cx="17" cy="17" r="2"></circle></svg>';
+                    case 'scheme':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v8a1 1 0 0 1-1 1h-5v-7H10v7H5a1 1 0 0 1-1-1v-8"></path><path d="M2 10l10-7 10 7"></path></svg>';
+                    case 'emi-plan':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M8 2v4"></path><path d="M16 2v4"></path><path d="M3 10h18"></path><path d="M8 15h4"></path><path d="M8 18h8"></path></svg>';
+                    case 'reorder-rule':
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>';
+                    default:
+                        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>';
+                }
+            };
 
             const pageMatches = (query) => {
                 const q = normalize(query);
@@ -3345,7 +3692,7 @@
 
                 if (!currentResults.length) {
                     const empty = document.createElement('li');
-                    empty.className = 'dash-command-helper';
+                    empty.className = 'dash-command-empty';
                     empty.textContent = 'No matches found.';
                     resultsList.appendChild(empty);
                     return;
@@ -3360,17 +3707,24 @@
                     link.href = result.url;
                     link.className = 'dash-command-item';
                     link.dataset.index = String(index);
+                    link.dataset.resultType = typeKey(result.type);
 
+                    const main = document.createElement('span');
+                    const icon = document.createElement('span');
                     const copyWrap = document.createElement('span');
                     const title = document.createElement('span');
-                    const sub = document.createElement('span');
                     const type = document.createElement('span');
 
+                    main.className = 'dash-command-item-main';
+                    icon.className = 'dash-command-item-icon';
+                    icon.innerHTML = commandIcon(result.type);
+                    copyWrap.className = 'dash-command-item-copy';
                     title.className = 'dash-command-item-title';
                     title.textContent = result.label;
                     copyWrap.appendChild(title);
 
                     if (result.sub) {
+                        const sub = document.createElement('span');
                         sub.className = 'dash-command-item-sub';
                         sub.textContent = result.sub;
                         copyWrap.appendChild(sub);
@@ -3379,7 +3733,9 @@
                     type.className = 'dash-command-item-type';
                     type.textContent = result.type;
 
-                    link.appendChild(copyWrap);
+                    main.appendChild(icon);
+                    main.appendChild(copyWrap);
+                    link.appendChild(main);
                     link.appendChild(type);
 
                     link.addEventListener('mouseenter', () => setActive(index));
@@ -3428,7 +3784,7 @@
 
                 if (!query) {
                     currentResults = pages;
-                    setHelper('Jump to common pages. Type to search customers, invoices, products, and more.');
+                    setHelper('Jump to pages, lists, reports, and records across your SaaS.');
                     renderResults();
                     return;
                 }

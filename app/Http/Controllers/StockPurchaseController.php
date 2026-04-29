@@ -219,6 +219,10 @@ class StockPurchaseController extends Controller
             $metalType, $purity, $fineWeight, $totalCost, $costPerFineGram,
             $targetLot
         ) {
+            // Re-acquire line with row lock to prevent concurrent vault requests.
+            $line = StockPurchaseItem::where('id', $line->id)->lockForUpdate()->firstOrFail();
+            abort_if($line->metal_lot_id !== null, 422, 'Already vaulted by a concurrent request.');
+
             if ($validated['vault_action'] === 'new_lot') {
                 $lot = MetalLot::create([
                     'shop_id'                => $shopId,
@@ -411,7 +415,7 @@ class StockPurchaseController extends Controller
 
     private function validatePurchaseRequest(Request $request, int $shopId): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'vendor_id'       => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
             'supplier_name'   => 'nullable|string|max:255',
             'supplier_gstin'  => 'nullable|string|max:20',
@@ -451,6 +455,17 @@ class StockPurchaseController extends Controller
             'lines.*.barcode'                => 'nullable|string|max:100',
             'lines.*.notes'                  => 'nullable|string|max:500',
         ]);
+
+        $igst = (float) ($validated['igst_rate'] ?? 0);
+        $cgst = (float) ($validated['cgst_rate'] ?? 0);
+        $sgst = (float) ($validated['sgst_rate'] ?? 0);
+        if ($igst > 0 && ($cgst > 0 || $sgst > 0)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'igst_rate' => 'Use either IGST (inter-state) or CGST + SGST (intra-state) — not both.',
+            ]);
+        }
+
+        return $validated;
     }
 
     private function syncLines(StockPurchase $purchase, array $lines): void
@@ -483,7 +498,15 @@ class StockPurchaseController extends Controller
                 'rhodium_charges'        => $lineData['rhodium_charges'] ?? 0,
                 'other_charges'          => $lineData['other_charges'] ?? 0,
                 'purchase_rate_per_gram' => $lineData['purchase_rate_per_gram'] ?? 0,
-                'purchase_line_amount'   => $lineData['purchase_line_amount'] ?? 0,
+                'purchase_line_amount'   => round(
+                    $netWeight * (float) ($lineData['purchase_rate_per_gram'] ?? 0)
+                    + (float) ($lineData['making_charges']   ?? 0)
+                    + (float) ($lineData['stone_charges']    ?? 0)
+                    + (float) ($lineData['hallmark_charges'] ?? 0)
+                    + (float) ($lineData['rhodium_charges']  ?? 0)
+                    + (float) ($lineData['other_charges']    ?? 0),
+                    2
+                ),
                 'barcode'                => $lineData['barcode'] ?? null,
                 'notes'                  => $lineData['notes'] ?? null,
                 'sort_order'             => $index,

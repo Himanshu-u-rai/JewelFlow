@@ -124,15 +124,24 @@ class ScanSessionController extends Controller
         // Auto-renew session if expiring soon (less than 30 min left)
         $this->renewIfExpiringSoon($session);
 
-        $events = ScanEvent::where('scan_session_id', $session->id)
-            ->whereRaw('NOT processed')
-            ->orderBy('id')
-            ->get();
+        // Atomically claim unprocessed events so concurrent polls don't deliver
+        // the same barcode twice (two browser tabs on the same POS).
+        $events = DB::transaction(function () use ($session) {
+            $rows = ScanEvent::where('scan_session_id', $session->id)
+                ->whereRaw('NOT processed')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            if ($rows->isNotEmpty()) {
+                ScanEvent::whereIn('id', $rows->pluck('id'))
+                    ->update(['processed' => DB::raw('true')]);
+            }
+
+            return $rows;
+        });
 
         if ($events->isNotEmpty()) {
-            ScanEvent::whereIn('id', $events->pluck('id'))
-                ->update(['processed' => DB::raw('true')]);
-
             AuditLog::create([
                 'shop_id' => $shopId,
                 'user_id' => (int) Auth::id(),
@@ -211,20 +220,31 @@ class ScanSessionController extends Controller
             return response()->json(['error' => 'Session expired or invalid.'], 410);
         }
 
-        // Debounce: ignore same barcode scanned within last 2 seconds
-        $recent = ScanEvent::where('scan_session_id', $session->id)
-            ->where('barcode', $request->barcode)
-            ->where('created_at', '>=', now()->subSeconds(2))
-            ->exists();
+        // Debounce: ignore same barcode scanned within last 2 seconds.
+        // Wrapped in a transaction with a lock so two simultaneous POSTs for the
+        // same barcode can't both pass the existence check.
+        $debounced = false;
+        DB::transaction(function () use ($session, $request, &$debounced) {
+            $recent = ScanEvent::where('scan_session_id', $session->id)
+                ->where('barcode', $request->barcode)
+                ->where('created_at', '>=', now()->subSeconds(2))
+                ->lockForUpdate()
+                ->exists();
 
-        if ($recent) {
+            if ($recent) {
+                $debounced = true;
+                return;
+            }
+
+            ScanEvent::create([
+                'scan_session_id' => $session->id,
+                'barcode'         => $request->barcode,
+            ]);
+        });
+
+        if ($debounced) {
             return response()->json(['status' => 'debounced']);
         }
-
-        ScanEvent::create([
-            'scan_session_id' => $session->id,
-            'barcode'         => $request->barcode,
-        ]);
 
         return response()->json(['status' => 'ok']);
     }

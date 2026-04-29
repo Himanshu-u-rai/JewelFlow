@@ -1,3 +1,5 @@
+@import "flatpickr/dist/flatpickr.min.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9690,9 +9692,452 @@ input::-webkit-calendar-picker-indicator {
         grid-template-columns: 1fr 1fr;
     }
 
-    .metal-exchange-filter-btn {
+.metal-exchange-filter-btn {
         grid-column: 1 / -1;
         width: 100%;
+    }
+}
+
+/* Karigars index */
+.karigars-index-page {
+    --karigar-ink: #0f172a;
+    --karigar-muted: #64748b;
+    --karigar-line: #dbe3ee;
+    --karigar-soft: #f8fafc;
+    --karigar-teal: #0f766e;
+    --karigar-teal-soft: #f0fdfa;
+    --karigar-amber: #d97706;
+    --karigar-navy: #1e3a5f;
+}
+
+.karigars-index-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 8% 10%, rgba(15, 118, 110, 0.06), transparent 24%),
+        radial-gradient(circle at 92% 12%, rgba(217, 119, 6, 0.06), transparent 22%),
+        linear-gradient(180deg, #f8fafc 0%, #ffffff 40%, #f8fafc 100%);
+}
+
+.karigars-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.karigars-kpi-card,
+.karigars-surface-card {
+    border: 1px solid rgba(219, 227, 238, 0.96);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.07);
+}
+
+.karigars-kpi-card {
+    min-height: 124px;
+    padding: 16px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)),
+        radial-gradient(circle at 0% 0%, rgba(15, 118, 110, 0.08), transparent 38%);
+}
+
+.karigars-kpi-card--total {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)),
+        radial-gradient(circle at 0% 0%, rgba(30, 58, 95, 0.09), transparent 42%);
+}
+
+.karigars-kpi-card--active {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)),
+        radial-gradient(circle at 0% 0%, rgba(15, 118, 110, 0.1), transparent 42%);
+}
+
+.karigars-kpi-card--jobs {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)),
+        radial-gradient(circle at 0% 0%, rgba(217, 119, 6, 0.1), transparent 42%);
+}
+
+.karigars-kpi-card--invoices {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)),
+        radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.08), transparent 42%);
+}
+
+.karigars-kpi-label {
+    display: block;
+    color: var(--karigar-muted);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.karigars-kpi-card strong {
+    display: block;
+    margin-top: 10px;
+    color: var(--karigar-ink);
+    font-size: clamp(26px, 3vw, 34px);
+    font-weight: 950;
+    letter-spacing: -0.05em;
+    line-height: 1;
+}
+
+.karigars-kpi-card p {
+    margin: 8px 0 0;
+    color: var(--karigar-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.karigars-surface-card {
+    overflow: hidden;
+}
+
+.karigars-surface-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 16px 18px;
+    background:
+        linear-gradient(135deg, #ffffff, #f8fafc),
+        radial-gradient(circle at 100% 0%, rgba(15, 118, 110, 0.06), transparent 32%);
+}
+
+.karigars-surface-head h2 {
+    margin: 0;
+    color: var(--karigar-ink);
+    font-size: 16px;
+    font-weight: 950;
+    letter-spacing: -0.02em;
+}
+
+.karigars-surface-head p {
+    margin: 3px 0 0;
+    color: var(--karigar-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.karigars-surface-head > span {
+    flex: 0 0 auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #475569;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 850;
+}
+
+.karigars-empty-state {
+    padding: 64px 18px;
+    text-align: center;
+    color: #94a3b8;
+}
+
+.karigars-empty-state p {
+    margin: 0 0 10px;
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.karigars-empty-link {
+    color: var(--karigar-teal);
+    font-size: 13px;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.karigars-empty-link:hover {
+    text-decoration: underline;
+}
+
+.karigars-table-shell {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.karigars-table {
+    width: 100%;
+    min-width: 880px;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: #334155;
+    font-size: 13px;
+}
+
+.karigars-table thead {
+    background: #f8fafc;
+}
+
+.karigars-table th {
+    padding: 12px 14px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.karigars-table td {
+    border-top: 1px solid #edf2f7;
+    padding: 13px 14px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.karigars-table .text-right {
+    text-align: right;
+}
+
+.karigars-table .text-center {
+    text-align: center;
+}
+
+.karigars-table-row {
+    cursor: pointer;
+    transition: background-color 0.16s ease;
+}
+
+.karigars-table-row:hover {
+    background: #f8fafc;
+}
+
+.karigars-name-cell {
+    display: grid;
+    gap: 2px;
+}
+
+.karigars-name-link {
+    color: var(--karigar-teal);
+    font-weight: 900;
+    text-decoration: none;
+}
+
+.karigars-name-link:hover {
+    text-decoration: underline;
+}
+
+.karigars-name-cell span {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.karigars-mono {
+    color: #475569;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.karigars-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.karigars-status-pill--active {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.karigars-status-pill--inactive {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.karigars-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.karigars-row-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    border-radius: 999px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 850;
+    text-decoration: none;
+    transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.karigars-row-btn--muted {
+    border: 1px solid #dbe3ee;
+    background: #ffffff;
+    color: #475569;
+}
+
+.karigars-row-btn--edit {
+    border: 1px solid rgba(15, 118, 110, 0.18);
+    background: var(--karigar-teal-soft);
+    color: var(--karigar-teal);
+}
+
+.karigars-mobile-list {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .karigars-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .karigars-index-page {
+        padding-inline: 10px;
+    }
+
+    .karigars-kpi-grid {
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .karigars-kpi-card {
+        min-height: 100px;
+        border-radius: 16px;
+        padding: 13px;
+    }
+
+    .karigars-kpi-card strong {
+        margin-top: 8px;
+        font-size: 24px;
+    }
+
+    .karigars-surface-card {
+        border-radius: 16px;
+    }
+
+    .karigars-surface-head {
+        flex-direction: column;
+        padding: 14px;
+    }
+
+    .karigars-table-shell {
+        display: none;
+    }
+
+    .karigars-mobile-list {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .karigars-mobile-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 15px;
+        background: #ffffff;
+        padding: 13px;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+        cursor: pointer;
+    }
+
+    .karigars-mobile-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .karigars-mobile-head p {
+        margin: 3px 0 0;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .karigars-mobile-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin: 0;
+    }
+
+    .karigars-mobile-meta div {
+        min-width: 0;
+    }
+
+    .karigars-mobile-meta dt {
+        color: #94a3b8;
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .karigars-mobile-meta dd {
+        margin: 4px 0 0;
+        color: #1e293b;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .karigars-mobile-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .karigars-mobile-actions form,
+    .karigars-mobile-actions a,
+    .karigars-mobile-actions button {
+        width: 100%;
+    }
+
+    .karigars-mobile-actions .karigars-row-btn {
+        min-height: 34px;
+    }
+}
+
+@media (max-width: 420px) {
+    .karigars-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .karigars-kpi-card {
+        min-height: 88px;
+        border-radius: 14px;
+        padding: 11px;
+    }
+
+    .karigars-kpi-card strong {
+        margin-top: 6px;
+        font-size: 21px;
+    }
+
+    .karigars-kpi-card p {
+        margin-top: 6px;
+        font-size: 11px;
+    }
+
+    .karigars-mobile-meta,
+    .karigars-mobile-actions {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -10010,4 +10455,170 @@ input, select {
 input[type="date"] {
     -webkit-appearance: none;
     appearance: none;
+}
+
+.jf-date-picker-input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%2364758b' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 16px !important;
+    padding-right: 40px !important;
+    cursor: pointer;
+}
+
+.flatpickr-calendar.jf-date-calendar {
+    width: min(320px, calc(100vw - 24px));
+    border: 1px solid var(--jf-border);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 22px 48px rgba(15, 23, 42, 0.16);
+    padding: 10px;
+}
+
+.flatpickr-calendar.jf-date-calendar.open {
+    animation: jfDateCalendarIn 0.16s ease-out;
+}
+
+@keyframes jfDateCalendarIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.flatpickr-calendar.jf-date-calendar::before,
+.flatpickr-calendar.jf-date-calendar::after {
+    display: none;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-months {
+    margin-bottom: 8px;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-month {
+    height: 40px;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-prev-month,
+.flatpickr-calendar.jf-date-calendar .flatpickr-next-month {
+    top: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    color: var(--jf-ink);
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-prev-month:hover,
+.flatpickr-calendar.jf-date-calendar .flatpickr-next-month:hover {
+    background: var(--jf-surface-soft);
+    color: var(--jf-ink);
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-current-month {
+    left: 42px;
+    right: 42px;
+    width: auto;
+    height: 40px;
+    padding-top: 2px;
+    color: var(--jf-ink);
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-current-month .cur-month,
+.flatpickr-calendar.jf-date-calendar .flatpickr-current-month input.cur-year {
+    font-weight: 900;
+    color: var(--jf-ink);
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-current-month .cur-month:hover,
+.flatpickr-calendar.jf-date-calendar .flatpickr-current-month input.cur-year:hover {
+    background: transparent;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-weekdays {
+    height: auto;
+    margin-bottom: 4px;
+}
+
+.flatpickr-calendar.jf-date-calendar span.flatpickr-weekday {
+    color: var(--jf-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-days,
+.flatpickr-calendar.jf-date-calendar .dayContainer {
+    width: 100%;
+    min-width: 100%;
+    max-width: none;
+}
+
+.flatpickr-calendar.jf-date-calendar .dayContainer {
+    justify-content: space-between;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-day {
+    border-radius: 12px;
+    color: var(--jf-ink);
+    font-size: 13px;
+    font-weight: 700;
+    max-width: none;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-day:hover {
+    border-color: transparent;
+    background: var(--jf-surface-soft);
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-day.today {
+    border-color: rgba(245, 158, 11, 0.35);
+    color: var(--jf-gold-deep);
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-day.selected,
+.flatpickr-calendar.jf-date-calendar .flatpickr-day.startRange,
+.flatpickr-calendar.jf-date-calendar .flatpickr-day.endRange {
+    border-color: #0f172a;
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-day.inRange {
+    box-shadow: none;
+    background: rgba(15, 23, 42, 0.08);
+    border-color: transparent;
+}
+
+.flatpickr-calendar.jf-date-calendar .flatpickr-day.prevMonthDay,
+.flatpickr-calendar.jf-date-calendar .flatpickr-day.nextMonthDay {
+    color: #cbd5e1;
+}
+
+@media (max-width: 768px) {
+    .flatpickr-calendar.jf-date-calendar {
+        width: min(320px, calc(100vw - 18px));
+        padding: 8px;
+        border-radius: 18px;
+    }
+
+    .flatpickr-calendar.jf-date-calendar .flatpickr-prev-month,
+    .flatpickr-calendar.jf-date-calendar .flatpickr-next-month {
+        top: 8px;
+    }
+
+    .flatpickr-calendar.jf-date-calendar .flatpickr-current-month {
+        font-size: 15px;
+    }
+
+    .flatpickr-calendar.jf-date-calendar .flatpickr-day {
+        height: 38px;
+        line-height: 38px;
+    }
 }

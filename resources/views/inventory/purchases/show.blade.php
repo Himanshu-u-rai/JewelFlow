@@ -503,4 +503,9 @@
         @endif
 
     </div>
+
+    {{-- Clear the new-purchase draft from localStorage once the user lands on the show page --}}
+    <script>
+        try { localStorage.removeItem('jf_purchase_draft_{{ auth()->id() }}'); } catch (_) {}
+    </script>
 </x-app-layout>

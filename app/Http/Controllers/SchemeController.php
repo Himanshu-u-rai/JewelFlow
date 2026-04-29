@@ -34,6 +34,17 @@ class SchemeController extends Controller
 
         $query = Scheme::where('shop_id', $shopId);
 
+        if ($request->filled('search')) {
+            $term = trim((string) $request->search);
+            $operator = $query->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+
+            $query->where(function ($schemeQuery) use ($term, $operator) {
+                $schemeQuery
+                    ->where('name', $operator, "%{$term}%")
+                    ->orWhere('description', $operator, "%{$term}%");
+            });
+        }
+
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }

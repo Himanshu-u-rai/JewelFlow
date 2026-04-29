@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\Web\WebSessionSeatService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +24,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request, WebSessionSeatService $seatService): RedirectResponse
     {
         try {
             $request->authenticate();
@@ -67,10 +68,26 @@ class AuthenticatedSessionController extends Controller
         if ($legacyUnpaidShop) {
             return redirect()->route('subscription.plans')->with('error', 'Please choose a plan and complete payment to reactivate your shop.');
         }
-        
+
         // After successful login, redirect based on whether user has a shop
         if (auth()->user()->shop_id === null) {
             return redirect()->route('shops.create');
+        }
+
+        // Enforce concurrent web session seat limit (owner is always exempt).
+        if ($shop) {
+            $seat = $seatService->evaluate($shop, auth()->user());
+            if (! $seat['allowed']) {
+                Auth::guard('web')->logout();
+                $request->session()->regenerate();
+                $request->session()->regenerateToken();
+
+                return redirect('/login')
+                    ->with('login_modal', 'web_session_limit_reached')
+                    ->withErrors([
+                        'mobile_number' => "All {$seat['session_limit']} web seats are in use. Ask an active user to log out, then try again.",
+                    ]);
+            }
         }
 
         // Dhiran-only shops land on the Dhiran dashboard.

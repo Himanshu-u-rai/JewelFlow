@@ -66,127 +66,319 @@
     @endphp
 
     <style>
-        .sub-wrap {
+        .sub-status-page {
+            --sub-border: #d9e2ef;
+            --sub-border-strong: #c8d5e7;
+            --sub-surface: #ffffff;
+            --sub-surface-soft: #f7f9fc;
+            --sub-text: #16213d;
+            --sub-text-soft: #64748b;
+            --sub-accent: #0d9488;
+            --sub-accent-soft: rgba(13, 148, 136, 0.1);
+            --sub-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
+        }
+
+        .sub-status-page .sub-status-wrap {
             display: flex;
             flex-direction: column;
             gap: 16px;
         }
 
-        .sub-alert {
+        .sub-status-page .sub-alert {
             border: 1px solid transparent;
             padding: 12px 14px;
+            border-radius: 18px;
             font-size: 13px;
-            border-radius: 16px;
+            font-weight: 600;
         }
 
-        .sub-alert.success {
+        .sub-status-page .sub-alert.success {
             background: #ecfdf5;
             border-color: #a7f3d0;
             color: #065f46;
         }
 
-        .sub-alert.error {
+        .sub-status-page .sub-alert.error {
             background: #fef2f2;
             border-color: #fecaca;
             color: #991b1b;
         }
 
-        .sub-grid {
-            display: grid;
-            grid-template-columns: 1.25fr .95fr;
-            gap: 16px;
+        .sub-status-page .sub-hero,
+        .sub-status-page .sub-card {
+            border: 1px solid var(--sub-border);
+            border-radius: 24px;
+            background: var(--sub-surface);
+            box-shadow: var(--sub-shadow);
         }
 
-        .sub-card {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-            border-radius: 16px;
+        .sub-status-page .sub-hero {
+            padding: 20px;
         }
 
-        .sub-card-head {
-            padding: 16px 18px;
-            border-bottom: 1px solid #e2e8f0;
+        .sub-status-page .sub-hero-top {
             display: flex;
+            align-items: flex-start;
             justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .sub-status-page .sub-kicker {
+            margin: 0 0 6px;
+            color: var(--sub-text-soft);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        .sub-status-page .sub-plan-name {
+            margin: 0;
+            color: var(--sub-text);
+            font-size: 30px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        .sub-status-page .sub-plan-copy {
+            margin: 8px 0 0;
+            color: var(--sub-text-soft);
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        .sub-status-page .sub-status-pill {
+            display: inline-flex;
             align-items: center;
-            gap: 12px;
+            justify-content: center;
+            min-height: 36px;
+            padding: 0 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
-        .sub-card-body {
-            padding: 18px;
-        }
-
-        .sub-kpi-grid {
+        .sub-status-page .sub-kpi-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
             margin-bottom: 16px;
         }
 
-        .sub-kpi {
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            padding: 12px;
-            border-radius: 12px;
+        .sub-status-page .sub-kpi {
+            border: 1px solid #e5edf6;
+            background: #fbfcfe;
+            padding: 14px;
+            border-radius: 18px;
         }
 
-        .sub-kpi-label {
+        .sub-status-page .sub-kpi-label {
+            margin: 0 0 6px;
+            color: var(--sub-text-soft);
             font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: #64748b;
-            margin: 0 0 4px;
             font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
         }
 
-        .sub-kpi-value {
+        .sub-status-page .sub-kpi-value {
             margin: 0;
-            color: #0f172a;
-            font-weight: 700;
-            font-size: 18px;
+            color: var(--sub-text);
+            font-size: 20px;
+            font-weight: 800;
             line-height: 1.2;
         }
 
-        .sub-progress-track {
+        .sub-status-page .sub-health {
+            border: 1px solid #e5edf6;
+            border-radius: 20px;
+            background: linear-gradient(180deg, #fbfcfe 0%, #ffffff 100%);
+            padding: 16px;
+        }
+
+        .sub-status-page .sub-health-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .sub-status-page .sub-health-title {
+            margin: 0;
+            color: var(--sub-text);
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        .sub-status-page .sub-health-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 30px;
+            padding: 0 10px;
+            border-radius: 999px;
+            border: 1px solid #d6e5e2;
+            background: var(--sub-accent-soft);
+            color: #0f766e;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .sub-status-page .sub-health-copy {
+            margin: 0;
+            color: var(--sub-text-soft);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .sub-status-page .sub-progress-track {
             width: 100%;
             height: 10px;
+            margin-top: 10px;
+            border-radius: 999px;
             background: #e2e8f0;
-            border-radius: 9999px;
             overflow: hidden;
-            margin-top: 8px;
         }
 
-        .sub-progress-fill {
+        .sub-status-page .sub-progress-fill {
             height: 100%;
+            border-radius: 999px;
             background: linear-gradient(90deg, #0d9488 0%, #14b8a6 100%);
-            border-radius: 9999px;
         }
 
-        .sub-actions {
+        .sub-status-page .sub-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+            gap: 16px;
+        }
+
+        .sub-status-page .sub-card-head {
+            padding: 18px 20px 0;
+        }
+
+        .sub-status-page .sub-card-title {
+            margin: 0;
+            color: var(--sub-text);
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .sub-status-page .sub-card-copy {
+            margin: 6px 0 0;
+            color: var(--sub-text-soft);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .sub-status-page .sub-card-body {
+            padding: 18px 20px 20px;
+        }
+
+        .sub-status-page .sub-detail-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .sub-status-page .sub-detail-item {
             display: flex;
-            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 13px 14px;
+            border: 1px solid #e5edf6;
+            border-radius: 16px;
+            background: #fbfcfe;
+        }
+
+        .sub-status-page .sub-detail-label {
+            margin: 0;
+            color: var(--sub-text-soft);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        .sub-status-page .sub-detail-value {
+            margin: 4px 0 0;
+            color: var(--sub-text);
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.45;
+            text-align: right;
+        }
+
+        .sub-status-page .sub-note {
+            margin-top: 14px;
+            padding: 13px 14px;
+            border: 1px solid #e5edf6;
+            border-radius: 16px;
+            background: #fbfcfe;
+            color: var(--sub-text-soft);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .sub-status-page .sub-feature-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
-            margin-top: 18px;
+        }
+
+        .sub-status-page .sub-feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            min-width: 0;
+            padding: 12px 13px;
+            border: 1px solid #e5edf6;
+            border-radius: 16px;
+            background: #fbfcfe;
+            color: #334155;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .sub-status-page .sub-dot {
+            width: 16px;
+            height: 16px;
+            margin-top: 1px;
+            color: var(--sub-accent);
+            flex-shrink: 0;
         }
 
         .sub-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 10px 14px;
+            min-height: 42px;
+            padding: 0 14px;
             border: 1px solid transparent;
+            border-radius: 14px;
             font-size: 13px;
             font-weight: 700;
             text-decoration: none;
-            border-radius: 10px;
-            transition: all .15s ease;
+            transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+        }
+
+        .sub-btn:hover {
+            transform: translateY(-1px);
         }
 
         .sub-btn.primary {
-            background: #0d9488;
+            background: var(--sub-accent, #0d9488);
             color: #fff;
-            box-shadow: 0 8px 18px rgba(13, 148, 136, .25);
+            box-shadow: 0 10px 24px rgba(13, 148, 136, 0.2);
         }
 
         .sub-btn.primary:hover {
@@ -195,63 +387,96 @@
 
         .sub-btn.secondary {
             background: #fff;
-            color: #0f172a;
-            border-color: #cbd5e1;
+            color: var(--sub-text, #16213d);
+            border-color: var(--sub-border-strong, #c8d5e7);
         }
 
         .sub-btn.secondary:hover {
-            background: #f8fafc;
+            background: var(--sub-surface-soft, #f7f9fc);
         }
 
-        .sub-feature-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: grid;
-            gap: 8px;
-            max-height: 420px;
-            overflow: auto;
-        }
+        @media (max-width: 1100px) {
+            .sub-status-page .sub-kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
 
-        .sub-feature-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            padding: 8px 10px;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            border-radius: 8px;
-            font-size: 13px;
-            color: #334155;
-        }
-
-        .sub-dot {
-            width: 16px;
-            height: 16px;
-            margin-top: 1px;
-            flex-shrink: 0;
-            color: #0d9488;
-        }
-
-        .sub-note {
-            margin-top: 12px;
-            padding: 10px 12px;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            font-size: 12px;
-            color: #475569;
-            border-radius: 8px;
-        }
-
-        @media (max-width: 980px) {
-            .sub-grid {
+            .sub-status-page .sub-grid {
                 grid-template-columns: 1fr;
             }
         }
 
-        @media (max-width: 640px) {
-            .sub-kpi-grid {
+        @media (max-width: 767px) {
+            .sub-status-page .sub-hero,
+            .sub-status-page .sub-card,
+            .sub-status-page .sub-alert {
+                border-radius: 20px;
+            }
+
+            .sub-status-page .sub-hero {
+                padding: 16px;
+            }
+
+            .sub-status-page .sub-hero-top {
+                flex-direction: column;
+                align-items: flex-start;
+                margin-bottom: 14px;
+            }
+
+            .sub-status-page .sub-plan-name {
+                font-size: 24px;
+            }
+
+            .sub-status-page .sub-plan-copy {
+                font-size: 13px;
+            }
+
+            .sub-status-page .sub-kpi-grid {
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+
+            .sub-status-page .sub-kpi {
+                padding: 12px;
+                border-radius: 16px;
+            }
+
+            .sub-status-page .sub-kpi-value {
+                font-size: 17px;
+            }
+
+            .sub-status-page .sub-health {
+                padding: 14px;
+                border-radius: 18px;
+            }
+
+            .sub-status-page .sub-health-head {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .sub-status-page .sub-card-head {
+                padding: 16px 16px 0;
+            }
+
+            .sub-status-page .sub-card-title {
+                font-size: 18px;
+            }
+
+            .sub-status-page .sub-card-body {
+                padding: 16px;
+            }
+
+            .sub-status-page .sub-detail-item {
+                flex-direction: column;
+            }
+
+            .sub-status-page .sub-detail-value {
+                text-align: left;
+            }
+
+            .sub-status-page .sub-feature-list {
                 grid-template-columns: 1fr;
+                gap: 8px;
             }
         }
     </style>
@@ -267,8 +492,8 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner ops-treatment-page">
-        <div class="sub-wrap">
+    <div class="content-inner sub-status-page">
+        <div class="sub-status-wrap">
             @if(session('success'))
                 <div class="sub-alert success">{{ session('success') }}</div>
             @endif
@@ -277,94 +502,137 @@
                 <div class="sub-alert error">{{ session('error') }}</div>
             @endif
 
+            <section class="sub-hero">
+                <div class="sub-hero-top">
+                    <div>
+                        <p class="sub-kicker">Current Plan</p>
+                        <h2 class="sub-plan-name">{{ $plan->name }}</h2>
+                        <p class="sub-plan-copy">Billed {{ strtolower($billingCycle) }} with your current access, renewal timeline, and plan limits shown below.</p>
+                    </div>
+                    <span class="sub-status-pill" style="border:1px solid {{ $statusTone['border'] }}; background: {{ $statusTone['bg'] }}; color: {{ $statusTone['text'] }};">
+                        {{ $statusLabel }}
+                    </span>
+                </div>
+
+                <div class="sub-kpi-grid">
+                    <div class="sub-kpi">
+                        <p class="sub-kpi-label">Plan Amount</p>
+                        <p class="sub-kpi-value">
+                            @if($pricePaid !== null)
+                                ₹{{ number_format((float) $pricePaid, 2) }}
+                            @else
+                                -
+                            @endif
+                        </p>
+                    </div>
+                    <div class="sub-kpi">
+                        <p class="sub-kpi-label">Billing Cycle</p>
+                        <p class="sub-kpi-value">{{ $billingCycle }}</p>
+                    </div>
+                    <div class="sub-kpi">
+                        <p class="sub-kpi-label">Start Date</p>
+                        <p class="sub-kpi-value">{{ $startsAt ? $startsAt->format('d M Y') : '-' }}</p>
+                    </div>
+                    <div class="sub-kpi">
+                        <p class="sub-kpi-label">
+                            @if($isInGrace)
+                                Grace Ends
+                            @elseif($isExpired)
+                                Expired On
+                            @else
+                                Renews On
+                            @endif
+                        </p>
+                        <p class="sub-kpi-value">
+                            @if($isInGrace)
+                                {{ $graceEnd ? $graceEnd->format('d M Y') : '-' }}
+                            @else
+                                {{ $endsAt ? $endsAt->format('d M Y') : '-' }}
+                            @endif
+                        </p>
+                    </div>
+                </div>
+
+                <div class="sub-health">
+                    <div class="sub-health-head">
+                        <h3 class="sub-health-title">Plan health</h3>
+                        @if($daysRemaining !== null && $daysRemaining >= 0)
+                            <span class="sub-health-pill">{{ $daysRemaining }} day{{ $daysRemaining === 1 ? '' : 's' }} left</span>
+                        @elseif($isInGrace)
+                            <span class="sub-health-pill" style="border-color:#f3d7a3; background:#fff7ed; color:#9a3412;">Grace active</span>
+                        @else
+                            <span class="sub-health-pill" style="border-color:#fecaca; background:#fef2f2; color:#991b1b;">Renew required</span>
+                        @endif
+                    </div>
+
+                    @if($daysRemaining !== null && $daysRemaining >= 0)
+                        <p class="sub-health-copy">About <strong style="color:var(--sub-text);">{{ $daysRemaining }}</strong> days remain before your next renewal date.</p>
+                        <div class="sub-progress-track">
+                            <div class="sub-progress-fill" style="width: {{ $usedPercent }}%;"></div>
+                        </div>
+                    @elseif($isInGrace)
+                        <p class="sub-health-copy" style="color:#92400e;">Subscription expired, but grace access stays available until {{ $graceEnd ? $graceEnd->format('d M, Y') : '-' }}.</p>
+                        <div class="sub-progress-track">
+                            <div class="sub-progress-fill" style="width:100%; background:#f59e0b;"></div>
+                        </div>
+                    @else
+                        <p class="sub-health-copy" style="color:#991b1b;">Subscription access has expired. Renew the plan to restore uninterrupted usage.</p>
+                        <div class="sub-progress-track">
+                            <div class="sub-progress-fill" style="width:100%; background:#dc2626;"></div>
+                        </div>
+                    @endif
+                </div>
+            </section>
+
             <div class="sub-grid">
                 <section class="sub-card">
                     <div class="sub-card-head">
-                        <div>
-                            <h2 style="margin:0; font-size:24px; line-height:1.2; font-weight:800; color:#0f172a;">{{ $plan->name }}</h2>
-                            <p style="margin:4px 0 0; font-size:13px; color:#64748b;">Billed {{ $billingCycle }}</p>
-                        </div>
-                        <span style="display:inline-flex; align-items:center; padding:6px 10px; border:1px solid {{ $statusTone['border'] }}; background: {{ $statusTone['bg'] }}; color: {{ $statusTone['text'] }}; font-size:12px; font-weight:700; border-radius:9999px;">
-                            {{ $statusLabel }}
-                        </span>
+                        <h3 class="sub-card-title">Billing overview</h3>
+                        <p class="sub-card-copy">A compact summary of your current access state, renewal timing, and support path.</p>
                     </div>
-
                     <div class="sub-card-body">
-                        <div class="sub-kpi-grid">
-                            <div class="sub-kpi ops-kpi-card">
-                                <p class="sub-kpi-label">Plan Amount</p>
-                                <p class="sub-kpi-value">
-                                    @if($pricePaid !== null)
-                                        ₹{{ number_format((float) $pricePaid, 2) }}
-                                    @else
-                                        -
-                                    @endif
-                                </p>
+                        <div class="sub-detail-list">
+                            <div class="sub-detail-item">
+                                <div>
+                                    <p class="sub-detail-label">Current Status</p>
+                                    <p class="sub-detail-value">{{ $statusLabel }}</p>
+                                </div>
                             </div>
-                            <div class="sub-kpi ops-kpi-card">
-                                <p class="sub-kpi-label">Billing Cycle</p>
-                                <p class="sub-kpi-value">{{ $billingCycle }}</p>
-                            </div>
-                            <div class="sub-kpi ops-kpi-card">
-                                <p class="sub-kpi-label">Start Date</p>
-                                <p class="sub-kpi-value">{{ $startsAt ? $startsAt->format('d M Y') : '-' }}</p>
-                            </div>
-                            <div class="sub-kpi ops-kpi-card">
-                                <p class="sub-kpi-label">
-                                    @if($isInGrace)
-                                        Grace Ends
-                                    @elseif($isExpired)
-                                        Expired On
-                                    @else
-                                        Renews On
-                                    @endif
-                                </p>
-                                <p class="sub-kpi-value">
-                                    @if($isInGrace)
-                                        {{ $graceEnd ? $graceEnd->format('d M Y') : '-' }}
-                                    @else
+                            <div class="sub-detail-item">
+                                <div>
+                                    <p class="sub-detail-label">Active Window</p>
+                                    <p class="sub-detail-value">
+                                        {{ $startsAt ? $startsAt->format('d M Y') : '-' }}
+                                        <span style="color:var(--sub-text-soft); font-weight:600;">to</span>
                                         {{ $endsAt ? $endsAt->format('d M Y') : '-' }}
-                                    @endif
-                                </p>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="sub-detail-item">
+                                <div>
+                                    <p class="sub-detail-label">Renewal Mode</p>
+                                    <p class="sub-detail-value">{{ $billingCycle }} billing</p>
+                                </div>
+                            </div>
+                            <div class="sub-detail-item">
+                                <div>
+                                    <p class="sub-detail-label">Support</p>
+                                    <p class="sub-detail-value">support@jewelflow.io</p>
+                                </div>
                             </div>
                         </div>
 
-                        <div style="border:1px solid #e2e8f0; background:#ffffff; padding:12px; border-radius:16px;">
-                            <p style="margin:0; font-size:13px; color:#334155; font-weight:700;">Plan Health</p>
-
-                            @if($daysRemaining !== null && $daysRemaining >= 0)
-                                <p style="margin:6px 0 0; font-size:13px; color:#64748b;">About <strong style="color:#0f172a;">{{ $daysRemaining }}</strong> days remaining before renewal.</p>
-                                <div class="sub-progress-track">
-                                    <div class="sub-progress-fill" style="width: {{ $usedPercent }}%;"></div>
-                                </div>
-                            @elseif($isInGrace)
-                                <p style="margin:6px 0 0; font-size:13px; color:#92400e;">Subscription expired. Grace period active until {{ $graceEnd ? $graceEnd->format('d M, Y') : '-' }}.</p>
-                                <div class="sub-progress-track">
-                                    <div class="sub-progress-fill" style="width: 100%; background: #f59e0b;"></div>
-                                </div>
-                            @else
-                                <p style="margin:6px 0 0; font-size:13px; color:#991b1b;">Subscription is expired. Renew plan to restore uninterrupted access.</p>
-                                <div class="sub-progress-track">
-                                    <div class="sub-progress-fill" style="width: 100%; background: #dc2626;"></div>
-                                </div>
-                            @endif
-                        </div>
-
-                        <div class="sub-actions">
-                            <a href="{{ route('subscription.plans') }}" class="sub-btn primary">Upgrade / Renew</a>
-                            <a href="mailto:support@jewelflow.io" class="sub-btn secondary">Need Help?</a>
+                        <div class="sub-note">
+                            Need a different plan structure, custom limits, or renewal help? Contact support and reference your current plan name for faster help.
                         </div>
                     </div>
                 </section>
 
                 <aside class="sub-card">
                     <div class="sub-card-head">
-                        <div>
-                            <h3 style="margin:0; font-size:18px; font-weight:800; color:#0f172a;">Included Features</h3>
-                            <p style="margin:4px 0 0; font-size:12px; color:#64748b;">Enabled tools in your current plan</p>
-                        </div>
+                        <h3 class="sub-card-title">Included features</h3>
+                        <p class="sub-card-copy">The tools and limits enabled under your current subscription.</p>
                     </div>
-
                     <div class="sub-card-body">
                         <ul class="sub-feature-list">
                             @forelse($planFeatures as $feature => $value)
@@ -394,10 +662,6 @@
                                 <li class="sub-feature-item" style="color:#64748b;">No features configured for this plan.</li>
                             @endforelse
                         </ul>
-
-                        <div class="sub-note">
-                            Need a custom plan? Contact support for enterprise features, custom limits, and billing terms.
-                        </div>
                     </div>
                 </aside>
             </div>

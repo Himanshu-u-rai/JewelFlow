@@ -37,7 +37,7 @@
 
         .jo-filter-menu {
             position: absolute;
-            z-index: 40;
+            z-index: 2400;
             top: calc(100% + 8px);
             left: 0;
             right: 0;
@@ -48,8 +48,13 @@
             box-shadow: 0 18px 36px rgba(15, 23, 42, .16);
         }
 
+        .jo-filter-menu[data-open-up="true"] {
+            top: auto;
+            bottom: calc(100% + 8px);
+        }
+
         .jo-filter-list {
-            max-height: 240px;
+            max-height: var(--jo-filter-list-max-height, 240px);
             overflow-y: auto;
             padding: 6px;
         }
@@ -73,7 +78,8 @@
 
         .jo-filter-card {
             position: relative;
-            z-index: 30;
+            z-index: 2200;
+            isolation: isolate;
             overflow: visible;
         }
 
@@ -91,6 +97,7 @@
         .jo-table-card {
             position: relative;
             z-index: 1;
+            overflow: visible;
         }
 
         .jo-table-wrap {
@@ -227,36 +234,84 @@
         <form method="GET" class="jo-filter-card bg-white border border-gray-200 rounded-xl p-4 mb-4 flex flex-wrap items-end gap-3"
               x-data="{
                   statusOpen: false,
+                  statusMenuStyle: '',
                   status: @js($filterStatus ?? ''),
                   statusName: @js($filterStatus ? ($statusLabels[$filterStatus] ?? str_replace('_', ' ', $filterStatus)) : ''),
                   karigarOpen: false,
+                  karigarMenuStyle: '',
                   karigarId: @js((string) ($filterKarigar ?? '')),
                   karigarName: @js($selectedKarigar?->name ?? ''),
                   setStatus(value, label) {
                       this.status = value;
                       this.statusName = value ? label : '';
                       this.statusOpen = false;
+                      this.statusMenuStyle = '';
                   },
                   setKarigar(value, label) {
                       this.karigarId = value;
                       this.karigarName = value ? label : '';
                       this.karigarOpen = false;
+                      this.karigarMenuStyle = '';
+                  },
+                  toggleDropdown(which, trigger) {
+                      const openKey = which + 'Open';
+                      const nextState = !this[openKey];
+                      this.closeDropdowns();
+                      if (!nextState) {
+                          return;
+                      }
+
+                      this[openKey] = true;
+                      this.$nextTick(() => this.positionDropdown(which, trigger));
+                  },
+                  positionDropdown(which, trigger) {
+                      const styleKey = which + 'MenuStyle';
+                      const menu = trigger?.parentElement?.querySelector('.jo-filter-menu');
+                      if (!menu || window.innerWidth <= 680) {
+                          this[styleKey] = '';
+                          if (menu) {
+                              menu.dataset.openUp = 'false';
+                          }
+                          return;
+                      }
+
+                      const gutter = 12;
+                      const triggerRect = trigger.getBoundingClientRect();
+                      const preferredHeight = Math.min(menu.scrollHeight || 240, 280);
+                      const spaceBelow = window.innerHeight - triggerRect.bottom - gutter;
+                      const spaceAbove = triggerRect.top - gutter;
+                      const openUp = spaceBelow < Math.min(preferredHeight, 220) && spaceAbove > spaceBelow;
+                      const maxHeight = Math.max(140, Math.min(preferredHeight, openUp ? spaceAbove : spaceBelow));
+                      const width = Math.max(triggerRect.width, 180);
+                      const left = Math.min(
+                          Math.max(gutter, triggerRect.left),
+                          Math.max(gutter, window.innerWidth - gutter - width)
+                      );
+                      const top = openUp
+                          ? Math.max(gutter, triggerRect.top - maxHeight - 8)
+                          : Math.min(window.innerHeight - gutter - maxHeight, triggerRect.bottom + 8);
+
+                      menu.dataset.openUp = openUp ? 'true' : 'false';
+                      this[styleKey] = `position: fixed; left: ${left}px; top: ${top}px; width: ${width}px; --jo-filter-list-max-height: ${maxHeight}px;`;
                   },
                   closeDropdowns() {
                       this.statusOpen = false;
                       this.karigarOpen = false;
+                      this.statusMenuStyle = '';
+                      this.karigarMenuStyle = '';
                   }
               }"
-              @keydown.escape.window="closeDropdowns()">
+              @keydown.escape.window="closeDropdowns()"
+              @resize.window="closeDropdowns()">
             <div class="jo-filter-field">
                 <label class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Status</label>
-                <div class="jo-filter-select" @click.outside="statusOpen = false">
+                <div class="jo-filter-select" @click.outside="statusOpen = false; statusMenuStyle = ''">
                     <input type="hidden" name="status" x-model="status">
-                    <button type="button" class="jo-filter-trigger" @click="statusOpen = ! statusOpen" :aria-expanded="statusOpen.toString()">
+                    <button type="button" class="jo-filter-trigger" @click="toggleDropdown('status', $el)" :aria-expanded="statusOpen.toString()">
                         <span :class="statusName ? '' : 'jo-filter-placeholder'" x-text="statusName || 'All statuses'">All statuses</span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
-                    <div class="jo-filter-menu" x-show="statusOpen" x-transition.origin.top x-cloak>
+                    <div class="jo-filter-menu" x-show="statusOpen" :style="statusMenuStyle" x-transition.origin.top x-cloak>
                         <div class="jo-filter-list">
                             <button type="button" class="jo-filter-option" @click="setStatus('', 'All statuses')">All statuses</button>
                             @foreach($statusLabels as $value => $label)
@@ -271,13 +326,13 @@
             </div>
             <div class="jo-filter-field">
                 <label class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Karigar</label>
-                <div class="jo-filter-select" @click.outside="karigarOpen = false">
+                <div class="jo-filter-select" @click.outside="karigarOpen = false; karigarMenuStyle = ''">
                     <input type="hidden" name="karigar_id" x-model="karigarId">
-                    <button type="button" class="jo-filter-trigger" @click="karigarOpen = ! karigarOpen" :aria-expanded="karigarOpen.toString()">
+                    <button type="button" class="jo-filter-trigger" @click="toggleDropdown('karigar', $el)" :aria-expanded="karigarOpen.toString()">
                         <span :class="karigarName ? '' : 'jo-filter-placeholder'" x-text="karigarName || 'All karigars'">All karigars</span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
-                    <div class="jo-filter-menu" x-show="karigarOpen" x-transition.origin.top x-cloak>
+                    <div class="jo-filter-menu" x-show="karigarOpen" :style="karigarMenuStyle" x-transition.origin.top x-cloak>
                         <div class="jo-filter-list">
                             <button type="button" class="jo-filter-option" @click="setKarigar('', 'All karigars')">All karigars</button>
                             @foreach($karigars as $k)
@@ -301,7 +356,7 @@
             <button type="submit" class="btn btn-secondary btn-sm" style="height:34px;">Filter</button>
         </form>
 
-        <div class="jo-table-card bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="jo-table-card bg-white rounded-xl border border-gray-200 shadow-sm">
             @if($orders->isEmpty())
                 <div class="py-16 text-center text-gray-400">
                     <p class="text-sm mb-3">No job orders match your filter.</p>

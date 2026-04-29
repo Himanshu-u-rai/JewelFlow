@@ -1,5 +1,6 @@
 import './bootstrap';
 import * as Turbo from '@hotwired/turbo';
+import flatpickr from 'flatpickr';
 
 import Alpine from 'alpinejs';
 
@@ -985,6 +986,123 @@ function initSearchSuggestions() {
     });
 }
 
+// ─── Global custom date picker layer ───────────────────────────────────────
+const DATE_PICKER_SELECTOR = 'input[type="date"]:not([data-native-date])';
+let _datePickerObserver = null;
+
+function styleDatePickerInput(nativeInput, instance) {
+    const displayInput = instance?.altInput;
+    if (!displayInput) return;
+
+    displayInput.classList.add('jf-date-picker-input');
+    displayInput.setAttribute('autocomplete', 'off');
+    displayInput.readOnly = true;
+
+    if (nativeInput.className) {
+        nativeInput.className.split(/\s+/).filter(Boolean).forEach((className) => {
+            displayInput.classList.add(className);
+        });
+    }
+
+    if (nativeInput.getAttribute('aria-label')) {
+        displayInput.setAttribute('aria-label', nativeInput.getAttribute('aria-label'));
+    }
+
+    displayInput.placeholder = nativeInput.placeholder || 'dd/mm/yyyy';
+}
+
+function dispatchDatePickerChange(nativeInput) {
+    nativeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    nativeInput.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function buildDatePickerOptions(nativeInput) {
+    return {
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd/m/Y',
+        allowInput: false,
+        disableMobile: true,
+        prevArrow: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+        nextArrow: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+        onReady: (_selectedDates, _dateStr, instance) => {
+            nativeInput.dataset.jfDatePicker = 'true';
+            instance.calendarContainer.classList.add('jf-date-calendar');
+            styleDatePickerInput(nativeInput, instance);
+        },
+        onOpen: (_selectedDates, _dateStr, instance) => {
+            instance.calendarContainer.classList.add('jf-date-calendar');
+            styleDatePickerInput(nativeInput, instance);
+        },
+        onValueUpdate: (_selectedDates, dateStr) => {
+            nativeInput.value = dateStr || '';
+        },
+        onChange: (_selectedDates, dateStr) => {
+            nativeInput.value = dateStr || '';
+            dispatchDatePickerChange(nativeInput);
+        },
+    };
+}
+
+function initDatePickers(root = document) {
+    const nodes = [];
+
+    if (root instanceof Element && root.matches(DATE_PICKER_SELECTOR)) {
+        nodes.push(root);
+    }
+
+    if (root.querySelectorAll) {
+        nodes.push(...root.querySelectorAll(DATE_PICKER_SELECTOR));
+    }
+
+    nodes.forEach((nativeInput) => {
+        if (!(nativeInput instanceof HTMLInputElement)) return;
+        if (nativeInput.dataset.jfDatePicker === 'true' && nativeInput._flatpickr) return;
+        if (nativeInput._flatpickr) return;
+
+        flatpickr(nativeInput, buildDatePickerOptions(nativeInput));
+    });
+}
+
+function destroyDatePickers(root = document) {
+    const nodes = [];
+
+    if (root instanceof Element && root.dataset.jfDatePicker === 'true') {
+        nodes.push(root);
+    }
+
+    if (root.querySelectorAll) {
+        nodes.push(...root.querySelectorAll('[data-jf-date-picker="true"]'));
+    }
+
+    nodes.forEach((nativeInput) => {
+        if (!(nativeInput instanceof HTMLInputElement)) return;
+        if (nativeInput._flatpickr) {
+            nativeInput._flatpickr.destroy();
+        }
+        delete nativeInput.dataset.jfDatePicker;
+    });
+}
+
+function ensureDatePickerObserver() {
+    if (_datePickerObserver || !document.body) return;
+
+    _datePickerObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (!(node instanceof Element)) return;
+                initDatePickers(node);
+            });
+        });
+    });
+
+    _datePickerObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+window.initDatePickers = function (root = document) {
+    initDatePickers(root);
+};
+
 // ─── Scoped custom selects for opt-in filter/forms ─────────────────────────
 const _enhancedFilterSelectInited = new WeakSet();
 let _enhancedFilterBindingsDone = false;
@@ -992,6 +1110,10 @@ let _enhancedFilterBindingsDone = false;
 window.refreshEnhancedFilterSelect = function (nativeSelect) {
     if (!nativeSelect || typeof nativeSelect._refreshEnhancedFilterSelect !== 'function') return;
     nativeSelect._refreshEnhancedFilterSelect();
+};
+
+window.initEnhancedFilterSelects = function () {
+    initEnhancedFilterSelects();
 };
 
 function closeAllEnhancedFilterSelects() {
@@ -1287,6 +1409,7 @@ document.addEventListener('turbo:before-cache', () => {
     closeAllMobileDrawers();
     cleanupMobileHeaderActionFabs();
     closeAllEnhancedFilterSelects();
+    destroyDatePickers();
     document.querySelectorAll('[data-dashboard-shell]').forEach((shell) => shell.classList.remove('dash-loading'));
     document.querySelectorAll('.jf-skeleton-host').forEach((host) => host.classList.remove('is-loading'));
 
@@ -1336,6 +1459,8 @@ document.addEventListener('turbo:load', () => {
     initSearchAutoSubmit();
     initLiveFilter();
     initSearchSuggestions();
+    initDatePickers();
+    ensureDatePickerObserver();
     initEnhancedFilterSelects();
     initMobileTableScrollShells();
     initMobileHeaderActionFabs();
@@ -1352,6 +1477,7 @@ document.addEventListener('turbo:load', () => {
 
 document.addEventListener('turbo:frame-render', () => {
     showFlashToasts();
+    initDatePickers();
 });
 
 // Watch for Turbo Stream toast messages
@@ -1381,6 +1507,8 @@ if (document.readyState !== 'loading') {
     initSearchAutoSubmit();
     initLiveFilter();
     initSearchSuggestions();
+    initDatePickers();
+    ensureDatePickerObserver();
     initEnhancedFilterSelects();
     initMobileTableScrollShells();
     initMobileHeaderActionFabs();
@@ -1401,6 +1529,8 @@ if (document.readyState !== 'loading') {
         initSearchAutoSubmit();
         initLiveFilter();
         initSearchSuggestions();
+        initDatePickers();
+        ensureDatePickerObserver();
         initEnhancedFilterSelects();
         initMobileTableScrollShells();
         initMobileHeaderActionFabs();

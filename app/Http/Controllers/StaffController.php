@@ -131,7 +131,9 @@ class StaffController extends Controller
             'email' => 'nullable|email|max:255|unique:users,email,' . $staff->id,
             'role_id' => [
                 'required',
-                Rule::exists('roles', 'id')->where('shop_id', auth()->user()->shop_id),
+                Rule::exists('roles', 'id')
+                    ->where('shop_id', auth()->user()->shop_id)
+                    ->where('name', '!=', 'owner'),
             ],
             'password' => ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()],
         ]);

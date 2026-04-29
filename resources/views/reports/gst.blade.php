@@ -76,9 +76,9 @@
 
         <!-- Summary Cards -->
         <div class="gst-screen-summary grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 ops-kpi-card">
+            <div class="gst-kpi-card gst-kpi-card--sales bg-white rounded-lg shadow-sm border border-gray-200 p-4 ops-kpi-card">
                 <div class="flex items-center gap-3">
-                    <div class="bg-slate-100 text-slate-700 rounded-lg p-2">
+                    <div class="gst-kpi-icon rounded-lg p-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4M9 17H7a2 2 0 01-2-2V7a2 2 0 012-2h6l6 6v4a2 2 0 01-2 2h-2" />
                         </svg>
@@ -90,9 +90,9 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 ops-kpi-card">
+            <div class="gst-kpi-card gst-kpi-card--taxable bg-white rounded-lg shadow-sm border border-gray-200 p-4 ops-kpi-card">
                 <div class="flex items-center gap-3">
-                    <div class="bg-blue-100 text-blue-700 rounded-lg p-2">
+                    <div class="gst-kpi-icon rounded-lg p-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m-6 4h6m-6 4h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
                         </svg>
@@ -104,9 +104,9 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 ops-kpi-card">
+            <div class="gst-kpi-card gst-kpi-card--gst bg-white rounded-lg shadow-sm border border-gray-200 p-4 ops-kpi-card">
                 <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-lg p-2">
+                    <div class="gst-kpi-icon rounded-lg p-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -118,9 +118,9 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 ops-kpi-card">
+            <div class="gst-kpi-card gst-kpi-card--invoices bg-white rounded-lg shadow-sm border border-gray-200 p-4 ops-kpi-card">
                 <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-lg p-2">
+                    <div class="gst-kpi-icon rounded-lg p-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m2 9H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -379,6 +379,50 @@
         .gst-print-subhead,
         .gst-print-summary {
             display: none;
+        }
+
+        .gst-kpi-card {
+            border-radius: 18px;
+        }
+
+        .gst-kpi-card--sales {
+            border-color: rgba(13, 148, 136, 0.18) !important;
+            background: linear-gradient(180deg, #f1fcfb 0%, #ffffff 100%);
+        }
+
+        .gst-kpi-card--sales .gst-kpi-icon {
+            background: rgba(13, 148, 136, 0.1);
+            color: #0f766e;
+        }
+
+        .gst-kpi-card--taxable {
+            border-color: rgba(59, 130, 246, 0.16) !important;
+            background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+        }
+
+        .gst-kpi-card--taxable .gst-kpi-icon {
+            background: rgba(59, 130, 246, 0.12);
+            color: #1d4ed8;
+        }
+
+        .gst-kpi-card--gst {
+            border-color: rgba(245, 158, 11, 0.22) !important;
+            background: linear-gradient(180deg, #fffaf1 0%, #ffffff 100%);
+        }
+
+        .gst-kpi-card--gst .gst-kpi-icon {
+            background: rgba(245, 158, 11, 0.14);
+            color: #b45309;
+        }
+
+        .gst-kpi-card--invoices {
+            border-color: rgba(99, 102, 241, 0.16) !important;
+            background: linear-gradient(180deg, #f7f8ff 0%, #ffffff 100%);
+        }
+
+        .gst-kpi-card--invoices .gst-kpi-icon {
+            background: rgba(99, 102, 241, 0.12);
+            color: #4338ca;
         }
 
         .gst-page-header .gst-action-icon {

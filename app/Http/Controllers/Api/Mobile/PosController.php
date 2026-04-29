@@ -315,18 +315,19 @@ class PosController extends Controller
 
     public function sell(Request $request): JsonResponse
     {
-        // Idempotency: prevent duplicate sales from mobile app retries
+        // Idempotency: prevent duplicate sales from mobile app retries.
+        // Key is scoped to the authenticated user so another user's key can't
+        // return a different user's invoice.
         $idempotencyKey = $request->header('X-Idempotency-Key');
+        $shop = $request->user()->shop;
+        $shopId = (int) $request->user()->shop_id;
         if ($idempotencyKey) {
-            $cacheKey = "pos_sell_idempotency:{$idempotencyKey}";
+            $cacheKey = "pos_sell_idempotency:{$shopId}:{$request->user()->id}:{$idempotencyKey}";
             $cached = Cache::get($cacheKey);
             if ($cached) {
                 return response()->json($cached);
             }
         }
-
-        $shop = $request->user()->shop;
-        $shopId = (int) $request->user()->shop_id;
 
         if ($shop->isRetailer()) {
             try {
@@ -443,7 +444,7 @@ class PosController extends Controller
             ];
 
             if ($idempotencyKey) {
-                Cache::put("pos_sell_idempotency:{$idempotencyKey}", $responseData, now()->addHours(24));
+                Cache::put("pos_sell_idempotency:{$shopId}:{$request->user()->id}:{$idempotencyKey}", $responseData, now()->addHours(24));
             }
 
             return response()->json($responseData);
@@ -493,7 +494,7 @@ class PosController extends Controller
         ];
 
         if ($idempotencyKey) {
-            Cache::put("pos_sell_idempotency:{$idempotencyKey}", $responseData, now()->addHours(24));
+            Cache::put("pos_sell_idempotency:{$shopId}:{$request->user()->id}:{$idempotencyKey}", $responseData, now()->addHours(24));
         }
 
         return response()->json($responseData);

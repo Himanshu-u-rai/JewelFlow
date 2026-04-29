@@ -6,17 +6,22 @@
     <style>
         @page { size: A4; margin: 10mm; }
         * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
         body { font-family: 'Helvetica', sans-serif; font-size: 10px; color: #000; }
         h1 { font-size: 18px; margin: 0; }
         .small { font-size: 9px; color: #555; }
+        .invoice-sheet { min-height: 277mm; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 6px; margin-bottom: 6px; }
         .invoice-title { text-align: center; font-size: 12px; font-weight: bold; padding: 4px; background: #f3f4f6; border: 1px solid #333; margin-bottom: 6px; }
         .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
         .meta-block { border: 1px solid #888; padding: 6px; }
         .meta-block .label { font-size: 8px; text-transform: uppercase; color: #555; }
         table { width: 100%; border-collapse: collapse; }
+        .items-table { table-layout: fixed; }
         th, td { border: 1px solid #333; padding: 4px 6px; vertical-align: middle; font-size: 10px; }
         th { background: #f3f4f6; font-size: 9px; }
+        .line-row td { height: 26px; }
+        .filler-row td { height: 28px; }
         .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
         .totals-table td { padding: 3px 6px; }
         .word-row { font-style: italic; }
@@ -28,6 +33,7 @@
 <body>
     <button class="print-btn" onclick="window.print()">Print</button>
 
+    <div class="invoice-sheet">
     <div class="header">
         <div>
             <h1>{{ $invoice->karigar?->name ?? 'Karigar' }}</h1>
@@ -63,7 +69,13 @@
         </div>
     </div>
 
-    <table>
+    @php
+        $lineCount = $invoice->lines->count();
+        $minimumLineRows = 16;
+        $fillerRows = max(0, $minimumLineRows - $lineCount);
+    @endphp
+
+    <table class="items-table">
         <thead>
             <tr>
                 <th style="width:5%;">Sr.</th>
@@ -81,7 +93,7 @@
         </thead>
         <tbody>
             @foreach($invoice->lines as $idx => $line)
-                <tr>
+                <tr class="line-row">
                     <td style="text-align:center;">{{ $idx + 1 }}</td>
                     <td>{{ $line->description }}</td>
                     <td>{{ $line->hsn_code }}</td>
@@ -95,6 +107,21 @@
                     <td style="text-align:right; font-weight:bold;">{{ number_format($line->line_total, 0) }}</td>
                 </tr>
             @endforeach
+            @for($fillerIndex = 0; $fillerIndex < $fillerRows; $fillerIndex++)
+                <tr class="filler-row">
+                    <td style="text-align:center;">&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td style="text-align:right;">&nbsp;</td>
+                    <td style="text-align:right;">&nbsp;</td>
+                    <td style="text-align:right;">&nbsp;</td>
+                    <td style="text-align:right;">&nbsp;</td>
+                    <td style="text-align:right;">&nbsp;</td>
+                    <td style="text-align:right;">&nbsp;</td>
+                    <td style="text-align:right;">&nbsp;</td>
+                    <td style="text-align:right;">&nbsp;</td>
+                </tr>
+            @endfor
             <tr style="background:#f9fafb;">
                 <td colspan="3" style="font-weight:bold;">Note: {{ $invoice->lines->first()?->note ?: '—' }}</td>
                 <td style="text-align:right; font-weight:bold;">{{ $invoice->total_pieces }}</td>
@@ -173,6 +200,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 </body>
 </html>

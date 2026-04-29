@@ -1,5 +1,9 @@
 <x-app-layout>
     <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
         .ki-shell {
             max-width: 1500px;
         }
@@ -65,6 +69,10 @@
             gap: 12px;
             align-items: end;
             padding: 16px;
+            position: relative;
+            z-index: 2200;
+            isolation: isolate;
+            overflow: visible;
         }
 
         .ki-label {
@@ -90,6 +98,78 @@
         .ki-control:focus {
             border-color: #0f766e;
             box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+        }
+
+        .ki-filter-select {
+            position: relative;
+            min-width: 0;
+        }
+
+        .ki-filter-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid #cbd5e1;
+            border-radius: 13px;
+            background: #f8fafc;
+            padding: 8px 12px;
+            color: #0f172a;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .ki-filter-trigger:focus {
+            outline: none;
+            border-color: #0f766e;
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+        }
+
+        .ki-filter-placeholder {
+            color: #64748b;
+        }
+
+        .ki-filter-menu {
+            position: absolute;
+            z-index: 2400;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            overflow: hidden;
+            border: 1px solid #dbe3ee;
+            border-radius: 14px;
+            background: #ffffff;
+            box-shadow: 0 18px 36px rgba(15, 23, 42, .16);
+        }
+
+        .ki-filter-menu[data-open-up="true"] {
+            top: auto;
+            bottom: calc(100% + 8px);
+        }
+
+        .ki-filter-list {
+            max-height: var(--ki-filter-list-max-height, 240px);
+            overflow-y: auto;
+            padding: 6px;
+        }
+
+        .ki-filter-option {
+            display: block;
+            width: 100%;
+            border-radius: 10px;
+            padding: 9px 10px;
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 800;
+            text-align: left;
+        }
+
+        .ki-filter-option:hover,
+        .ki-filter-option-selected {
+            background: #f0fdfa;
+            color: #0f766e;
         }
 
         .ki-filter-button {
@@ -193,6 +273,12 @@
             font-weight: 900;
         }
 
+        .ki-register {
+            position: relative;
+            z-index: 1;
+            overflow: visible;
+        }
+
         @media (max-width: 980px) {
             .ki-top-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -235,6 +321,46 @@
                 padding: 14px;
             }
 
+            .ki-filter-trigger,
+            .ki-filter-button {
+                min-height: 48px;
+                border-radius: 12px;
+                font-size: 15px;
+            }
+
+            .ki-filter-menu {
+                position: fixed;
+                top: auto;
+                right: 14px;
+                bottom: 16px;
+                left: 14px;
+                max-height: 55vh;
+                border: 1.5px solid #0f766e;
+                border-radius: 16px;
+                box-shadow: 0 18px 36px rgba(15, 23, 42, .24), 0 0 0 4px rgba(15, 118, 110, .08);
+            }
+
+            .ki-filter-list {
+                max-height: 55vh;
+                padding: 8px;
+            }
+
+            .ki-filter-option {
+                border: 1px solid #e2e8f0;
+                margin-bottom: 7px;
+                background: #ffffff;
+            }
+
+            .ki-filter-option:last-child {
+                margin-bottom: 0;
+            }
+
+            .ki-filter-option:hover,
+            .ki-filter-option-selected {
+                border-color: #0f766e;
+                background: #f0fdfa;
+            }
+
             .ki-head {
                 flex-direction: column;
                 gap: 10px;
@@ -262,6 +388,12 @@
         $partialCount = $pageInvoices->where('payment_status', 'partial')->count();
         $unpaidCount = $pageInvoices->where('payment_status', 'unpaid')->count();
         $pageTotal = (float) $pageInvoices->sum('total_after_tax');
+        $statusLabels = [
+            'unpaid' => 'Unpaid',
+            'partial' => 'Partial',
+            'paid' => 'Paid',
+        ];
+        $selectedKarigar = $karigars->firstWhere('id', (int) $filterKarigar);
     @endphp
 
     <x-page-header title="Karigar Invoices" subtitle="Tax invoices received from karigars">
@@ -295,31 +427,126 @@
             </div>
         </section>
 
-        <form method="GET" class="ki-card ki-filter">
-            <label>
-                <span class="ki-label">Payment Status</span>
-                <select name="payment_status" class="ki-control">
-                    <option value="">All statuses</option>
-                    @foreach(['unpaid','partial','paid'] as $s)
-                        <option value="{{ $s }}" {{ $filterStatus === $s ? 'selected' : '' }}>{{ ucfirst($s) }}</option>
-                    @endforeach
-                </select>
-            </label>
+        <form method="GET" class="ki-card ki-filter"
+              x-data="{
+                  paymentOpen: false,
+                  paymentMenuStyle: '',
+                  paymentStatus: @js($filterStatus ?? ''),
+                  paymentStatusName: @js($filterStatus ? ($statusLabels[$filterStatus] ?? ucfirst($filterStatus)) : ''),
+                  karigarOpen: false,
+                  karigarMenuStyle: '',
+                  karigarId: @js((string) ($filterKarigar ?? '')),
+                  karigarName: @js($selectedKarigar?->name ?? ''),
+                  setPayment(value, label) {
+                      this.paymentStatus = value;
+                      this.paymentStatusName = value ? label : '';
+                      this.paymentOpen = false;
+                      this.paymentMenuStyle = '';
+                  },
+                  setKarigar(value, label) {
+                      this.karigarId = value;
+                      this.karigarName = value ? label : '';
+                      this.karigarOpen = false;
+                      this.karigarMenuStyle = '';
+                  },
+                  toggleDropdown(which, trigger) {
+                      const openKey = which + 'Open';
+                      const nextState = !this[openKey];
+                      this.closeDropdowns();
+                      if (!nextState) {
+                          return;
+                      }
 
-            <label>
+                      this[openKey] = true;
+                      this.$nextTick(() => this.positionDropdown(which, trigger));
+                  },
+                  positionDropdown(which, trigger) {
+                      const styleKey = which + 'MenuStyle';
+                      const menu = trigger?.parentElement?.querySelector('.ki-filter-menu');
+                      if (!menu || window.innerWidth <= 680) {
+                          this[styleKey] = '';
+                          if (menu) {
+                              menu.dataset.openUp = 'false';
+                          }
+                          return;
+                      }
+
+                      const gutter = 12;
+                      const triggerRect = trigger.getBoundingClientRect();
+                      const preferredHeight = Math.min(menu.scrollHeight || 240, 280);
+                      const spaceBelow = window.innerHeight - triggerRect.bottom - gutter;
+                      const spaceAbove = triggerRect.top - gutter;
+                      const openUp = spaceBelow < Math.min(preferredHeight, 220) && spaceAbove > spaceBelow;
+                      const maxHeight = Math.max(140, Math.min(preferredHeight, openUp ? spaceAbove : spaceBelow));
+                      const width = Math.max(triggerRect.width, 180);
+                      const left = Math.min(
+                          Math.max(gutter, triggerRect.left),
+                          Math.max(gutter, window.innerWidth - gutter - width)
+                      );
+                      const top = openUp
+                          ? Math.max(gutter, triggerRect.top - maxHeight - 8)
+                          : Math.min(window.innerHeight - gutter - maxHeight, triggerRect.bottom + 8);
+
+                      menu.dataset.openUp = openUp ? 'true' : 'false';
+                      this[styleKey] = `position: fixed; left: ${left}px; top: ${top}px; width: ${width}px; --ki-filter-list-max-height: ${maxHeight}px;`;
+                  },
+                  closeDropdowns() {
+                      this.paymentOpen = false;
+                      this.karigarOpen = false;
+                      this.paymentMenuStyle = '';
+                      this.karigarMenuStyle = '';
+                  }
+              }"
+              @keydown.escape.window="closeDropdowns()"
+              @resize.window="closeDropdowns()">
+            <div>
+                <span class="ki-label">Payment Status</span>
+                <div class="ki-filter-select" @click.outside="paymentOpen = false; paymentMenuStyle = ''">
+                    <input type="hidden" name="payment_status" x-model="paymentStatus">
+                    <button type="button" class="ki-filter-trigger" @click="toggleDropdown('payment', $el)" :aria-expanded="paymentOpen.toString()">
+                        <span :class="paymentStatusName ? '' : 'ki-filter-placeholder'" x-text="paymentStatusName || 'All statuses'">All statuses</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div class="ki-filter-menu" x-show="paymentOpen" :style="paymentMenuStyle" x-transition.origin.top x-cloak>
+                        <div class="ki-filter-list">
+                            <button type="button" class="ki-filter-option" @click="setPayment('', 'All statuses')">All statuses</button>
+                            @foreach($statusLabels as $value => $label)
+                                <button type="button"
+                                        class="ki-filter-option"
+                                        :class="paymentStatus === '{{ $value }}' ? 'ki-filter-option-selected' : ''"
+                                        @click="setPayment('{{ $value }}', @js($label))">{{ $label }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
                 <span class="ki-label">Karigar</span>
-                <select name="karigar_id" class="ki-control">
-                    <option value="">All karigars</option>
-                    @foreach($karigars as $k)
-                        <option value="{{ $k->id }}" {{ (string) $filterKarigar === (string) $k->id ? 'selected' : '' }}>{{ $k->name }}</option>
-                    @endforeach
-                </select>
-            </label>
+                <div class="ki-filter-select" @click.outside="karigarOpen = false; karigarMenuStyle = ''">
+                    <input type="hidden" name="karigar_id" x-model="karigarId">
+                    <button type="button" class="ki-filter-trigger" @click="toggleDropdown('karigar', $el)" :aria-expanded="karigarOpen.toString()">
+                        <span :class="karigarName ? '' : 'ki-filter-placeholder'" x-text="karigarName || 'All karigars'">All karigars</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div class="ki-filter-menu" x-show="karigarOpen" :style="karigarMenuStyle" x-transition.origin.top x-cloak>
+                        <div class="ki-filter-list">
+                            <button type="button" class="ki-filter-option" @click="setKarigar('', 'All karigars')">All karigars</button>
+                            @foreach($karigars as $k)
+                                <button type="button"
+                                        class="ki-filter-option"
+                                        :class="karigarId === '{{ $k->id }}' ? 'ki-filter-option-selected' : ''"
+                                        @click="setKarigar('{{ $k->id }}', @js($k->name))">{{ $k->name }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <button type="submit" class="ki-filter-button">Filter Invoices</button>
         </form>
 
-        <section class="ki-card overflow-hidden">
+        <section class="ki-card ki-register">
             <div class="ki-head">
                 <div>
                     <h2 class="ki-title">Invoice Register</h2>
@@ -382,7 +609,11 @@
 
                 <div class="ki-mobile space-y-3">
                     @foreach($invoices as $inv)
-                        <article class="ki-mobile-card">
+                        <article class="ki-mobile-card cursor-pointer"
+                                 role="link"
+                                 tabindex="0"
+                                 onclick="window.location='{{ route('karigar-invoices.show', $inv) }}'"
+                                 onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location='{{ route('karigar-invoices.show', $inv) }}'; }">
                             <div class="mb-3 flex items-start justify-between gap-3">
                                 <div>
                                     <a href="{{ route('karigar-invoices.show', $inv) }}" class="font-mono text-sm font-black text-teal-700">{{ $inv->karigar_invoice_number }}</a>
@@ -407,7 +638,7 @@
                                 <div>
                                     <p class="ki-mobile-label">Job Order</p>
                                     @if($inv->jobOrder)
-                                        <a href="{{ route('job-orders.show', $inv->jobOrder) }}" class="font-mono text-xs font-bold text-teal-700">{{ $inv->jobOrder->job_order_number }}</a>
+                                        <a href="{{ route('job-orders.show', $inv->jobOrder) }}" onclick="event.stopPropagation()" class="font-mono text-xs font-bold text-teal-700">{{ $inv->jobOrder->job_order_number }}</a>
                                     @else
                                         <span class="text-slate-400">—</span>
                                     @endif

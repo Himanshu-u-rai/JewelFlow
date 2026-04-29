@@ -47,6 +47,12 @@
     if ($showHuid)  $colCount++;
     if ($showStone) $colCount += 2; // StoneWt + StoneVal
     if ($showPurity) $colCount++;
+    $minimumRowsByPaper = [
+        'a4' => 32,
+        'a5' => 20,
+        'thermal' => 0,
+    ];
+    $minimumPrintableRows = $minimumRowsByPaper[$paperKey] ?? 32;
 
     // ── Invoice calculations ───────────────────────────────────────────────
     $customer       = $invoice->customer;
@@ -106,6 +112,22 @@
         ? array_slice(array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $termsRaw)))), 0, 6)
         : $defaultTerms;
 
+    $subtitle  = $billing->shop_subtitle   ?: 'GOLD • SILVER • DIAMOND';
+    $tagline   = $billing->custom_tagline  ?? '';
+    $copyLabel = $billing->invoice_copy_label ?? 'Original';
+    $secondSig = $billing->second_signature_label ?? '';
+    $showDigitalSignature = (bool) ($billing?->show_digital_signature && !empty($billing?->digital_signature_path));
+    $stateCode = trim((string) ($shop?->state_code ?? ''));
+    $stateName = trim((string) ($shop?->state ?? ''));
+    $stateAndCode = $stateCode !== '' && $stateName !== ''
+        ? "{$stateCode} - {$stateName}"
+        : ($stateName !== '' ? $stateName : ($stateCode !== '' ? $stateCode : '—'));
+
+    $hasPaymentDetails = !empty($billing?->upi_id)
+        || !empty($billing?->bank_name)
+        || !empty($billing?->bank_account_number)
+        || !empty($billing?->bank_details);
+
     // HSN helper: map item category to HSN code
     $hsnFor = function (?string $category) use ($billing): string {
         $cat = strtolower((string) $category);
@@ -114,10 +136,6 @@
         return $billing->hsn_gold ?? '7113';
     };
 
-    $subtitle  = $billing->shop_subtitle   ?: 'GOLD • SILVER • DIAMOND';
-    $tagline   = $billing->custom_tagline  ?? '';
-    $copyLabel = $billing->invoice_copy_label ?? 'Original';
-    $secondSig = $billing->second_signature_label ?? '';
 @endphp
     <style>
         @page { size: {{ $pageSize }}; margin: {{ $margin }}; }
@@ -133,7 +151,12 @@
             flex-direction: column;
         }
         .invoice-body { flex: 1; }
-        .invoice-footer { margin-top: auto; padding-top: 4px; }
+        .invoice-footer {
+            margin-top: 2px;
+            padding-top: 2px;
+            page-break-inside: avoid;
+            break-inside: avoid-page;
+        }
 
         .copy-break { page-break-before: always; margin-top: 0; }
 
@@ -148,7 +171,7 @@
             border-bottom: 2px solid {{ $accent }};
             padding-bottom: 6px;
         }
-        .shop-title    { margin: 0; font-size: {{ $tier['title'] }}; line-height: 1.15; font-weight: 800; letter-spacing: 0.3px; }
+        .shop-title    { margin: 0; font-size: calc({{ $tier['title'] }} + 6px); line-height: 1.15; font-weight: 900; letter-spacing: 0.3px; }
         .shop-subtitle { margin: 3px 0 2px; font-size: {{ $tier['sub'] }}; font-weight: 700; letter-spacing: 0.5px; }
         .shop-meta     { margin: 2px 0; font-size: {{ $tier['meta'] }}; }
         .shop-tagline  { margin: 2px 0; font-size: {{ $tier['meta'] }}; color: #555; font-style: italic; }
@@ -165,6 +188,16 @@
         .items-table th,
         .items-table td { border: 1px solid {{ $accent }}; padding: 4px; vertical-align: top; overflow-wrap: break-word; }
         .items-table th { font-weight: 700; background: #f3f3f3; text-align: center; white-space: nowrap; }
+        .items-spacer-row td {
+            height: 12px;
+            padding-top: 0;
+            padding-bottom: 0;
+            border-top: 0;
+            border-bottom: 0;
+        }
+        .items-spacer-row.is-last td {
+            border-bottom: 1px solid {{ $accent }};
+        }
 
         .text-left   { text-align: left; }
         .text-center { text-align: center; }
@@ -172,20 +205,40 @@
         .strong      { font-weight: 700; }
 
         .bottom-wrap { display: flex; gap: 10px; margin-top: 6px; }
-        .left-notes  { flex: 1; border-top: 1px solid #111; padding-top: 6px; min-height: 80px; }
+        .left-notes  { flex: 1; border-top: 1px solid #111; padding-top: 4px; min-height: 60px; }
         .amount-words { font-size: {{ $fontSize }}; margin-bottom: 8px; }
-        .payment-note { min-height: 34px; border-bottom: 1px dotted #111; margin-bottom: 8px; }
+        .payment-note { min-height: 16px; border-bottom: 1px dotted #111; margin-bottom: 4px; }
+        .note-meta {
+            border-top: 1px solid #111;
+            padding-top: 4px;
+            margin-top: 4px;
+            page-break-inside: avoid;
+            break-inside: avoid-page;
+        }
+        .note-meta-block { margin-bottom: 4px; }
+        .note-meta-block:last-child { margin-bottom: 0; }
+        .note-meta-title {
+            margin: 0 0 3px;
+            font-size: {{ $tier['terms'] }};
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .note-meta-body {
+            min-height: 14px;
+            font-size: {{ $tier['terms'] }};
+            line-height: 1.15;
+            padding-left: 2px;
+        }
+        .note-meta-body > div { margin: 0 0 2px; }
+        .note-meta-body > div:last-child { margin-bottom: 0; }
 
         .totals-box { width: 42%; border: 1px solid #111; border-collapse: collapse; align-self: flex-start; }
         .totals-box td { border: 1px solid #111; padding: 5px 6px; font-size: {{ $fontSize }}; }
 
-        .sign-row   { display: flex; gap: 10px; margin-top: 14px; font-size: {{ $fontSize }}; }
+        .sign-row   { display: flex; gap: 10px; margin-top: 4px; font-size: {{ $fontSize }}; }
         .sign-block { flex: 1; text-align: right; }
-        .sign-line  { margin-top: 28px; font-weight: 700; }
-
-        .terms-title { margin: 0 0 3px; font-size: {{ $tier['terms'] }}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
-        .terms-list  { margin: 0; padding-left: 14px; font-size: {{ $tier['terms'] }}; }
-        .terms-list li { margin: 1px 0; }
+        .sign-line  { margin-top: 4px; font-weight: 700; }
 
         .header-center { flex: 1; text-align: center; }
         .invoice-kind  { font-weight: 700; font-size: {{ $tier['kind'] }}; margin: 0 0 2px; letter-spacing: 0.5px; }
@@ -277,10 +330,10 @@
                 line-height: 1.45;
             }
 
-            .terms-title { font-size: 10.5px; }
-            .terms-list {
+            .note-meta-body {
+                min-height: 28px;
                 font-size: 10px;
-                line-height: 1.4;
+                line-height: 1.35;
             }
         }
 
@@ -307,7 +360,6 @@
             </div>
             @endif
             <div class="header-center">
-                <p class="invoice-kind">GST INVOICE</p>
                 <h1 class="shop-title">{{ $shop?->name ?? 'Jewellery Store' }}</h1>
                 <p class="shop-subtitle">{{ $subtitle }}</p>
                 @if($tagline)<p class="shop-tagline">{{ $tagline }}</p>@endif
@@ -340,8 +392,9 @@
                 @endif
             </div>
             <div class="bill-col right">
-                <div class="kv"><div class="k">Bill No.</div><div class="v">: {{ $invoice->invoice_number }}</div></div>
-                <div class="kv"><div class="k">Date</div><div class="v">: {{ $invoice->created_at?->format('d/m/Y') }}</div></div>
+                <div class="kv"><div class="k">Invoice No.</div><div class="v">: {{ $invoice->invoice_number }}</div></div>
+                <div class="kv"><div class="k">Invoice Date</div><div class="v">: {{ $invoice->created_at?->format('d/m/Y') }}</div></div>
+                <div class="kv"><div class="k">State & Code</div><div class="v">: {{ $stateAndCode }}</div></div>
                 <div class="kv"><div class="k">Time</div><div class="v">: {{ $invoice->created_at?->format('h:i A') }}</div></div>
                 <div class="kv"><div class="k">Mode</div><div class="v">: {{ $invoice->status === \App\Models\Invoice::STATUS_CANCELLED ? 'Cancelled' : 'Sale' }}</div></div>
             </div>
@@ -385,6 +438,26 @@
                         <td class="text-right">{{ number_format((float) $invoice->subtotal, 2) }}</td>
                         <td class="text-right strong">{{ number_format((float) $invoice->total, 2) }}</td>
                     </tr>
+                    @php
+                        $fillerRows = max(0, $minimumPrintableRows - 1);
+                    @endphp
+                    @for($fillerIndex = 0; $fillerIndex < $fillerRows; $fillerIndex++)
+                    <tr class="items-spacer-row{{ $fillerIndex === ($fillerRows - 1) ? ' is-last' : '' }}">
+                        <td class="text-center">&nbsp;</td>
+                        <td class="text-left">&nbsp;</td>
+                        @if($showHuid)<td class="text-center">&nbsp;</td>@endif
+                        <td class="text-center">&nbsp;</td>
+                        <td class="text-right">&nbsp;</td>
+                        @if($showStone)
+                        <td class="text-right">&nbsp;</td>
+                        <td class="text-right">&nbsp;</td>
+                        @endif
+                        <td class="text-right">&nbsp;</td>
+                        @if($showPurity)<td class="text-center">&nbsp;</td>@endif
+                        <td class="text-right">&nbsp;</td>
+                        <td class="text-right">&nbsp;</td>
+                    </tr>
+                    @endfor
                 @else
                     @forelse($invoice->items as $idx => $line)
                         @php
@@ -412,8 +485,51 @@
                             <td class="text-right">{{ number_format((float) $line->rate, 2) }}</td>
                             <td class="text-right strong">{{ number_format((float) $line->line_total, 2) }}</td>
                         </tr>
+                        @php
+                            $isLastItemRow = $idx === ($invoice->items->count() - 1);
+                            $fillerRows = $isLastItemRow ? max(0, $minimumPrintableRows - $invoice->items->count()) : 0;
+                        @endphp
+                        @if($isLastItemRow && $fillerRows > 0)
+                            @for($fillerIndex = 0; $fillerIndex < $fillerRows; $fillerIndex++)
+                            <tr class="items-spacer-row{{ $fillerIndex === ($fillerRows - 1) ? ' is-last' : '' }}">
+                                <td class="text-center">&nbsp;</td>
+                                <td class="text-left">&nbsp;</td>
+                                @if($showHuid)<td class="text-center">&nbsp;</td>@endif
+                                <td class="text-center">&nbsp;</td>
+                                <td class="text-right">&nbsp;</td>
+                                @if($showStone)
+                                <td class="text-right">&nbsp;</td>
+                                <td class="text-right">&nbsp;</td>
+                                @endif
+                                <td class="text-right">&nbsp;</td>
+                                @if($showPurity)<td class="text-center">&nbsp;</td>@endif
+                                <td class="text-right">&nbsp;</td>
+                                <td class="text-right">&nbsp;</td>
+                            </tr>
+                            @endfor
+                        @endif
                     @empty
                         <tr><td colspan="{{ $colCount }}" class="text-center">No items found.</td></tr>
+                        @php
+                            $fillerRows = max(0, $minimumPrintableRows - 1);
+                        @endphp
+                        @for($fillerIndex = 0; $fillerIndex < $fillerRows; $fillerIndex++)
+                        <tr class="items-spacer-row{{ $fillerIndex === ($fillerRows - 1) ? ' is-last' : '' }}">
+                            <td class="text-center">&nbsp;</td>
+                            <td class="text-left">&nbsp;</td>
+                            @if($showHuid)<td class="text-center">&nbsp;</td>@endif
+                            <td class="text-center">&nbsp;</td>
+                            <td class="text-right">&nbsp;</td>
+                            @if($showStone)
+                            <td class="text-right">&nbsp;</td>
+                            <td class="text-right">&nbsp;</td>
+                            @endif
+                            <td class="text-right">&nbsp;</td>
+                            @if($showPurity)<td class="text-center">&nbsp;</td>@endif
+                            <td class="text-right">&nbsp;</td>
+                            <td class="text-right">&nbsp;</td>
+                        </tr>
+                        @endfor
                     @endforelse
                 @endif
             </tbody>
@@ -424,6 +540,46 @@
                 <div class="amount-words"><span class="strong">₹:</span> {{ $amountToWords((float) $invoice->total) }}</div>
                 <div class="strong" style="margin-bottom: 4px;">Total Receipt / Payment Note:</div>
                 <div class="payment-note"></div>
+                <div class="note-meta">
+                    <div class="note-meta-block">
+                        <h4 class="note-meta-title">Payment Details:</h4>
+                        <div class="note-meta-body payment">
+                            @if(!empty($billing?->upi_id))
+                                <div><span class="strong">UPI:</span> {{ $billing->upi_id }}</div>
+                            @endif
+                            @if(!empty($billing?->bank_name) || !empty($billing?->bank_account_number))
+                                @if(!empty($billing->bank_account_holder))
+                                    <div><span class="strong">A/C Holder:</span> {{ $billing->bank_account_holder }}</div>
+                                @endif
+                                @if(!empty($billing->bank_name))
+                                    <div><span class="strong">Bank:</span> {{ $billing->bank_name }}</div>
+                                @endif
+                                @if(!empty($billing->bank_account_number))
+                                    <div><span class="strong">A/C No:</span> {{ $billing->bank_account_number }}</div>
+                                @endif
+                                @if(!empty($billing->bank_ifsc))
+                                    <div><span class="strong">IFSC:</span> {{ $billing->bank_ifsc }}</div>
+                                @endif
+                                @if(!empty($billing->bank_account_type))
+                                    <div><span class="strong">Type:</span> {{ ucfirst($billing->bank_account_type) }}</div>
+                                @endif
+                                @if(!empty($billing->bank_branch))
+                                    <div><span class="strong">Branch:</span> {{ $billing->bank_branch }}</div>
+                                @endif
+                            @elseif(!empty($billing?->bank_details))
+                                <div style="white-space: pre-line;"><span class="strong">Bank:</span> {{ $billing->bank_details }}</div>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="note-meta-block">
+                        <h4 class="note-meta-title">T &amp; C Apply:</h4>
+                        <div class="note-meta-body">
+                            @foreach($terms as $term)
+                                <div>{{ $term }}</div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <table class="totals-box">
@@ -488,7 +644,7 @@
             @endif
             <div class="sign-block">
                 <div class="strong">FOR {{ $shop?->name ?? 'Jewellery Store' }}</div>
-                @if($billing?->show_digital_signature && $billing?->digital_signature_path)
+                @if($showDigitalSignature)
                 <div style="margin-top: 6px;">
                     <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($billing->digital_signature_path) }}"
                          style="max-height: 60px; max-width: 160px;" alt="Signature">
@@ -499,46 +655,6 @@
             </div>
         </div>
 
-        <div style="display:flex; gap:16px; border-top:1px solid #111; margin-top:10px; padding-top:8px;">
-            <div style="flex:1;">
-                <h4 class="terms-title">T &amp; C Apply:</h4>
-                <ul class="terms-list">
-                    @foreach($terms as $term)
-                        <li>{{ $term }}</li>
-                    @endforeach
-                </ul>
-            </div>
-            @if(!empty($billing?->upi_id) || !empty($billing?->bank_name) || !empty($billing?->bank_account_number) || !empty($billing?->bank_details))
-            <div style="flex:1; border-left:1px dashed #aaa; padding-left:14px; font-size:10.5px;">
-                <div class="strong" style="margin-bottom:4px;">Payment Details:</div>
-                @if(!empty($billing?->upi_id))
-                    <div style="margin:2px 0;"><span class="strong">UPI:</span> {{ $billing->upi_id }}</div>
-                @endif
-                @if(!empty($billing?->bank_name) || !empty($billing?->bank_account_number))
-                    @if(!empty($billing->bank_account_holder))
-                        <div style="margin:2px 0;"><span class="strong">A/C Holder:</span> {{ $billing->bank_account_holder }}</div>
-                    @endif
-                    @if(!empty($billing->bank_name))
-                        <div style="margin:2px 0;"><span class="strong">Bank:</span> {{ $billing->bank_name }}</div>
-                    @endif
-                    @if(!empty($billing->bank_account_number))
-                        <div style="margin:2px 0;"><span class="strong">A/C No:</span> {{ $billing->bank_account_number }}</div>
-                    @endif
-                    @if(!empty($billing->bank_ifsc))
-                        <div style="margin:2px 0;"><span class="strong">IFSC:</span> {{ $billing->bank_ifsc }}</div>
-                    @endif
-                    @if(!empty($billing->bank_account_type))
-                        <div style="margin:2px 0;"><span class="strong">Type:</span> {{ ucfirst($billing->bank_account_type) }}</div>
-                    @endif
-                    @if(!empty($billing->bank_branch))
-                        <div style="margin:2px 0;"><span class="strong">Branch:</span> {{ $billing->bank_branch }}</div>
-                    @endif
-                @elseif(!empty($billing?->bank_details))
-                    <div style="margin:2px 0; white-space:pre-line;"><span class="strong">Bank:</span> {{ $billing->bank_details }}</div>
-                @endif
-            </div>
-            @endif
-        </div>
     </div>{{-- end .invoice-footer --}}
 </div>
 @endfor

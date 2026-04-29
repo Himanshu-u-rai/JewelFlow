@@ -174,7 +174,7 @@
         <form method="POST"
               action="{{ $isEdit ? route('inventory.purchases.update', $purchase) : route('inventory.purchases.store') }}"
               enctype="multipart/form-data"
-              @submit="clearDraft()">
+>
             @csrf
             @if($isEdit) @method('PUT') @endif
 
@@ -407,11 +407,17 @@
                                             <input type="number" step="0.01" :name="`lines[${idx}][purchase_line_amount]`" x-model="line.purchase_line_amount" @input="recalcSummary()" class="w-full rounded-lg border-amber-200 bg-amber-50 px-2 py-2 text-sm font-semibold text-amber-700 focus:border-amber-500 focus:ring-amber-500">
                                         </div>
 
-                                        {{-- HUID (hidden for bullion) --}}
+                                        {{-- HUID + Hallmark Date (ornaments only) --}}
                                         <template x-if="line.line_type === 'ornament'">
                                             <div>
                                                 <label class="purchase-field-label">Hallmark Unique ID (HUID)</label>
                                                 <input type="text" :name="`lines[${idx}][huid]`" x-model="line.huid" @input="scheduleSave()" maxlength="30" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm font-mono focus:border-amber-500 focus:ring-amber-500" placeholder="6-char code">
+                                            </div>
+                                        </template>
+                                        <template x-if="line.line_type === 'ornament'">
+                                            <div>
+                                                <label class="purchase-field-label">Hallmark Date</label>
+                                                <input type="date" :name="`lines[${idx}][hallmark_date]`" x-model="line.hallmark_date" @change="scheduleSave()" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500">
                                             </div>
                                         </template>
 
@@ -467,6 +473,10 @@
                             <div>
                                 <label class="purchase-field-label">Integrated GST (IGST) %</label>
                                 <input type="number" step="0.01" name="igst_rate" x-model="igstRate" @input="recalcSummary()" value="{{ old('igst_rate', $isEdit ? $purchase->igst_rate : 0) }}" min="0" max="100" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
+                                <p x-show="igstRate > 0 && (cgstRate > 0 || sgstRate > 0)" x-cloak
+                                   class="mt-1 text-xs font-semibold text-rose-600">
+                                    IGST cannot be used with CGST/SGST. Use one or the other.
+                                </p>
                             </div>
 
                             <div>
@@ -544,7 +554,7 @@
     <script>
     function purchaseForm(resolvedRates, existingLines) {
         const IS_EDIT = {{ $isEdit ? 'true' : 'false' }};
-        const DRAFT_KEY = 'jf_purchase_draft_new';
+        const DRAFT_KEY = 'jf_purchase_draft_{{ auth()->id() }}';
 
         return {
             resolvedRates,
@@ -610,7 +620,12 @@
                             fields.forEach(name => {
                                 if (saved.inputs[name] === undefined) return;
                                 const el = form.querySelector(`[name="${name}"]`);
-                                if (el) el.value = saved.inputs[name];
+                                if (!el) return;
+                                el.value = saved.inputs[name];
+                                // For selects, verify the option actually exists; clear if not.
+                                if (el.tagName === 'SELECT' && el.value !== String(saved.inputs[name])) {
+                                    el.value = '';
+                                }
                             });
                         });
                     }
@@ -715,7 +730,7 @@
                 }
                 if (best && bestDiff < 0.5) {
                     const rate = this.resolvedRates[metal][best]?.rate_per_gram;
-                    if (rate && !line.purchase_rate_per_gram) {
+                    if (rate) {
                         line.purchase_rate_per_gram = rate;
                         this._recalcLineTotal(line);
                     }

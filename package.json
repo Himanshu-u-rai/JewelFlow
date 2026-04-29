@@ -21,6 +21,7 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
-        "@hotwired/turbo": "^8.0.23"
+        "@hotwired/turbo": "^8.0.23",
+        "flatpickr": "^4.6.13"
     }
 }

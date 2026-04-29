@@ -212,6 +212,7 @@ class Shop extends Model
     public function currentStaffCount(): int
     {
         return $this->users()
+            ->active()
             ->whereHas('role', fn ($q) => $q->where('name', '!=', 'owner'))
             ->count();
     }
