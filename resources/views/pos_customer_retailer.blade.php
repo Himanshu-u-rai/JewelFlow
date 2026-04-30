@@ -419,6 +419,25 @@
         align-items: stretch;
     }
 
+    .discount-percent-wrap {
+        position: relative;
+    }
+
+    .discount-percent-input {
+        padding-right: 34px;
+    }
+
+    .discount-percent-symbol {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--muted);
+        pointer-events: none;
+    }
+
     .roundoff-input {
         flex: 1;
         min-width: 0;
@@ -753,10 +772,28 @@
                 <div class="card-title">
                     <span><span class="card-title-icon"></span> Discount & Round-off</span>
                 </div>
-                <div class="field-row field-row-2">
+                <div class="field-row field-row-3">
                     <div class="field">
                         <label class="field-label">Manual Discount (₹)</label>
-                        <input type="number" class="field-input" x-model.number="discount" step="1" min="0" @input="recalc()">
+                        <input type="number"
+                               class="field-input"
+                               x-model.number="discount"
+                               step="0.01"
+                               min="0"
+                               @input="onDiscountAmountInput($event.target.value)">
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Percentage Discount (%)</label>
+                        <div class="discount-percent-wrap">
+                            <input type="number"
+                                   class="field-input discount-percent-input"
+                                   x-model.number="discountPercent"
+                                   step="0.01"
+                                   min="0"
+                                   max="100"
+                                   @input="onDiscountPercentInput($event.target.value)">
+                            <span class="discount-percent-symbol">%</span>
+                        </div>
                     </div>
                     <div class="field">
                         <label class="field-label">Round-off (₹)</label>
@@ -1086,6 +1123,8 @@ function retailerPos() {
         gstRate: {{ auth()->user()->shop->gst_rate ?? 3 }},
         gst: 0,
         discount: 0,
+        discountPercent: 0,
+        discountInputSource: 'amount',
         roundOff: 0,
         roundOffNearest: {{ $roundOffNearest ?? 1 }},
         loyaltyPointsPerHundred: {{ $loyaltyPointsPerHundred ?? 1 }},
@@ -1254,10 +1293,56 @@ function retailerPos() {
             this.barcodeDropUp = false;
         },
 
+        round2(value) {
+            return Math.round(Number(value || 0) * 100) / 100;
+        },
+
+        clampPercent(value) {
+            return Math.min(100, Math.max(0, this.round2(value)));
+        },
+
+        syncDiscountFromAmount() {
+            this.discount = Math.max(0, this.round2(this.discount));
+            if (this.sellingPrice > 0) {
+                this.discountPercent = this.clampPercent((this.discount / this.sellingPrice) * 100);
+                return;
+            }
+
+            this.discountPercent = 0;
+        },
+
+        syncDiscountFromPercent() {
+            this.discountPercent = this.clampPercent(this.discountPercent);
+            if (this.sellingPrice > 0) {
+                this.discount = Math.max(0, this.round2(this.sellingPrice * (this.discountPercent / 100)));
+                return;
+            }
+
+            this.discount = 0;
+        },
+
+        onDiscountAmountInput(value) {
+            this.discount = Math.max(0, this.round2(value));
+            this.discountInputSource = 'amount';
+            this.recalc();
+        },
+
+        onDiscountPercentInput(value) {
+            this.discountPercent = this.clampPercent(value);
+            this.discountInputSource = 'percent';
+            this.recalc();
+        },
+
         /* ── Price calculation ──────────────────── */
         recalc() {
-            this.discount = Math.max(0, Number(this.discount || 0));
             this.sellingPrice = this.items.reduce((sum, i) => sum + i.selling, 0);
+
+            if (this.discountInputSource === 'percent') {
+                this.syncDiscountFromPercent();
+            } else {
+                this.syncDiscountFromAmount();
+            }
+
             const totalDiscount = Math.min(this.sellingPrice, this.discount + this.offerDiscountAmount());
             const taxable = Math.max(this.sellingPrice - totalDiscount, 0);
             this.gst = Math.round(taxable * (this.gstRate / 100) * 100) / 100;
