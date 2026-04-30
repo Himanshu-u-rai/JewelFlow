@@ -83,6 +83,10 @@ class KarigarInvoiceService
     public function update(KarigarInvoice $invoice, array $data, array $lines, ?UploadedFile $invoiceFile): KarigarInvoice
     {
         return DB::transaction(function () use ($invoice, $data, $lines, $invoiceFile) {
+            if ($invoice->payment_status !== KarigarInvoice::PAYMENT_UNPAID) {
+                throw new LogicException('Cannot edit an invoice that has recorded payments.');
+            }
+
             $invoice->fill([
                 'mode' => $data['mode'] ?? $invoice->mode,
                 'karigar_invoice_number' => $data['karigar_invoice_number'] ?? $invoice->karigar_invoice_number,
@@ -212,7 +216,7 @@ class KarigarInvoiceService
         }
 
         if ($invoice->job_order_id) {
-            $jo = JobOrder::find($invoice->job_order_id);
+            $jo = JobOrder::query()->where('shop_id', $invoice->shop_id)->find($invoice->job_order_id);
             if ($jo) {
                 if ($jo->karigar_id !== $invoice->karigar_id) {
                     $flags[] = 'KARIGAR_MISMATCH';
@@ -244,6 +248,7 @@ class KarigarInvoiceService
         $lineTotal = round($metalAmount + $making + $wastage + $extra, 2);
 
         return KarigarInvoiceLine::create([
+            'shop_id' => $invoice->shop_id,
             'karigar_invoice_id' => $invoice->id,
             'linked_receipt_item_id' => $line['linked_receipt_item_id'] ?? null,
             'description' => $line['description'] ?? 'Item',

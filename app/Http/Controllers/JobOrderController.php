@@ -81,7 +81,7 @@ class JobOrderController extends Controller
             'issuances.*.purity'           => 'required|numeric|min:1|max:1000',
             'advance_amount'               => 'nullable|numeric|min:0',
             'advance_mode'                 => 'nullable|string|max:20',
-            'advance_payment_method_id'    => 'nullable|integer',
+            'advance_payment_method_id'    => ['nullable', \Illuminate\Validation\Rule::exists('shop_payment_methods', 'id')->where('shop_id', auth()->user()->shop_id)],
         ]);
 
         $karigar = Karigar::query()->where('id', $validated['karigar_id'])->first();
@@ -113,7 +113,12 @@ class JobOrderController extends Controller
     public function cancel(JobOrder $jobOrder)
     {
         $this->authorizeShop($jobOrder);
-        $this->service->cancel($jobOrder, (int) auth()->id());
+
+        try {
+            $this->service->cancel($jobOrder, (int) auth()->id());
+        } catch (\LogicException $e) {
+            return redirect()->route('job-orders.show', $jobOrder)->with('error', $e->getMessage());
+        }
 
         return redirect()->route('job-orders.show', $jobOrder)
             ->with('success', "Job Order {$jobOrder->job_order_number} cancelled and bullion returned to vault.");
@@ -188,7 +193,12 @@ class JobOrderController extends Controller
     public function acknowledge(JobOrder $jobOrder)
     {
         $this->authorizeShop($jobOrder);
-        $this->service->acknowledgeAndComplete($jobOrder);
+
+        try {
+            $this->service->acknowledgeAndComplete($jobOrder);
+        } catch (\LogicException $e) {
+            return redirect()->route('job-orders.show', $jobOrder)->with('error', $e->getMessage());
+        }
 
         return redirect()->route('job-orders.show', $jobOrder)
             ->with('success', 'Discrepancy acknowledged. Job order completed.');

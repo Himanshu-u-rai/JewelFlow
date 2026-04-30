@@ -8,6 +8,7 @@ use App\Models\ShopMetalPurityProfile;
 use App\Models\ShopPreferences;
 use App\Services\ShopPricingService;
 use DateTimeZone;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -22,7 +23,6 @@ class PricingSettingsController extends Controller
         $validated = Validator::make($request->all(), [
             'gold_24k_rate_per_gram' => 'required|numeric|min:0.0001|max:999999.9999',
             'silver_999_rate_per_kg' => 'required|numeric|min:0.0001|max:999999999.9999',
-            'redirect_to' => 'nullable|string|max:2000',
         ])->validateWithBag($bag);
 
         $shop = $request->user()->shop;
@@ -33,12 +33,7 @@ class PricingSettingsController extends Controller
             'silver_999_rate_per_gram' => round(((float) $validated['silver_999_rate_per_kg']) / 1000, 4),
         ]);
 
-        $raw = $validated['redirect_to'] ?? null;
-        $redirectTo = ($raw && str_starts_with($raw, url('/')))
-            ? $raw
-            : route('settings.edit', ['tab' => 'pricing']);
-
-        return redirect()->to($redirectTo)
+        return redirect()->route('settings.edit', ['tab' => 'pricing'])
             ->with('success', 'Today\'s pricing rates were saved and stock repricing has been queued.');
     }
 
@@ -72,13 +67,20 @@ class PricingSettingsController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        $pricing->upsertPurityProfile($shop, array_merge($validated, [
-            'is_active' => $request->boolean('is_active', true),
-        ]));
+        try {
+            $pricing->upsertPurityProfile($shop, array_merge($validated, [
+                'is_active' => $request->boolean('is_active', true),
+            ]));
+        } catch (QueryException $e) {
+            if (str_contains($e->getMessage(), 'Duplicate entry') || str_contains($e->getMessage(), 'unique') || $e->getCode() === '23000') {
+                return back()->withErrors(['purity_value' => 'A profile with this metal type and purity value already exists.'])->withInput();
+            }
+            throw $e;
+        }
 
         if ($dailyRate = $pricing->currentDailyRate($shop)) {
             $pricing->resolveAndRecordCurrentDayRates($dailyRate, true);
-            RepriceRetailerInventoryJob::dispatch((int) $shop->id);
+            RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
         }
 
         return redirect()->route('settings.edit', ['tab' => 'pricing'])
@@ -102,13 +104,20 @@ class PricingSettingsController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        $pricing->upsertPurityProfile($shop, array_merge($validated, [
-            'is_active' => $request->boolean('is_active'),
-        ]), $profile);
+        try {
+            $pricing->upsertPurityProfile($shop, array_merge($validated, [
+                'is_active' => $request->boolean('is_active'),
+            ]), $profile);
+        } catch (QueryException $e) {
+            if (str_contains($e->getMessage(), 'Duplicate entry') || str_contains($e->getMessage(), 'unique') || $e->getCode() === '23000') {
+                return back()->withErrors(['purity_value' => 'A profile with this metal type and purity value already exists.'])->withInput();
+            }
+            throw $e;
+        }
 
         if ($dailyRate = $pricing->currentDailyRate($shop)) {
             $pricing->resolveAndRecordCurrentDayRates($dailyRate, true);
-            RepriceRetailerInventoryJob::dispatch((int) $shop->id);
+            RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
         }
 
         return redirect()->route('settings.edit', ['tab' => 'pricing'])

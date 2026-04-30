@@ -55,7 +55,9 @@ class MetalLot extends Model
 
     public function movements()
     {
+        // orWhere on a hasMany leaks across tenants when eager-loaded.
+        // Use a whereIn on both FK columns inside a grouped OR instead.
         return $this->hasMany(MetalMovement::class, 'from_lot_id')
-            ->orWhere('to_lot_id', $this->id);
+            ->orWhere(fn ($q) => $q->where('to_lot_id', $this->id));
     }
 }

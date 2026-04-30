@@ -39,10 +39,12 @@ class Item extends Model
         'rhodium_charges',
         'other_charges',
         'cost_price',
+        'overhead_cost',
         'selling_price',
         'source',
         'product_id',
         'vendor_id',
+        'karigar_id',
         'huid',
         'hallmark_date',
         'share_token',
@@ -64,6 +66,7 @@ class Item extends Model
         'rhodium_charges' => 'decimal:2',
         'other_charges' => 'decimal:2',
         'cost_price' => 'decimal:2',
+        'overhead_cost' => 'decimal:2',
         'selling_price' => 'decimal:2',
         'hallmark_date' => 'date',
         'pricing_review_required' => 'boolean',
@@ -87,6 +90,11 @@ class Item extends Model
     public function vendor()
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    public function karigar()
+    {
+        return $this->belongsTo(Karigar::class);
     }
 
     public function stockPurchase()

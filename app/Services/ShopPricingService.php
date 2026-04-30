@@ -291,7 +291,7 @@ class ShopPricingService
             return $dailyRate;
         });
 
-        RepriceRetailerInventoryJob::dispatch((int) $shop->id);
+        RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
 
         return $dailyRate->fresh();
     }
@@ -318,7 +318,7 @@ class ShopPricingService
         }
 
         $rate = $this->recordResolvedRate($profile, $dailyRate->business_date->toDateString(), $ratePerGram, true);
-        RepriceRetailerInventoryJob::dispatch((int) $shop->id);
+        RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
 
         return $rate;
     }
@@ -459,18 +459,17 @@ class ShopPricingService
         $otherCharges    = round((float) ($attributes['other_charges']    ?? 0), 2);
 
         $metalCost    = $this->costPriceFromResolvedRate($netMetalWeight, $resolvedRate);
-        $sellingPrice = round(
-            $metalCost + $makingCharges + $stoneCharges + $hallmarkCharges + $rhodiumCharges + $otherCharges,
-            2
-        );
+        $overheadCost = round($makingCharges + $stoneCharges + $hallmarkCharges + $rhodiumCharges + $otherCharges, 2);
+        $sellingPrice = round($metalCost + $overheadCost, 2);
 
         return [
-            'metal_type'           => $metalType,
-            'purity'               => $purityValue,
-            'net_metal_weight'     => $netMetalWeight,
+            'metal_type'             => $metalType,
+            'purity'                 => $purityValue,
+            'net_metal_weight'       => $netMetalWeight,
             'resolved_rate_per_gram' => $resolvedRate,
-            'cost_price'           => $metalCost,
-            'selling_price'        => $sellingPrice,
+            'cost_price'             => $metalCost,
+            'overhead_cost'          => $overheadCost,
+            'selling_price'          => $sellingPrice,
         ];
     }
 
@@ -510,7 +509,13 @@ class ShopPricingService
                             'rhodium_charges'  => $item->rhodium_charges  ?? 0,
                             'other_charges'    => $item->other_charges    ?? 0,
                         ]);
-                    } catch (\Throwable) {
+                    } catch (\Throwable $e) {
+                        // Flag for owner review so stale prices are visible, not silent.
+                        DB::table('items')->where('id', $item->id)->update([
+                            'pricing_review_required' => $this->databaseBoolean(true),
+                            'pricing_review_notes'    => 'Auto-reprice failed: ' . $e->getMessage(),
+                            'updated_at'              => now(),
+                        ]);
                         continue;
                     }
 
@@ -520,6 +525,7 @@ class ShopPricingService
                             'net_metal_weight' => $payload['net_metal_weight'],
                             'cost_price'       => $payload['cost_price'],
                             'selling_price'    => $payload['selling_price'],
+                            'overhead_cost'    => $payload['overhead_cost'],
                             'updated_at'       => now(),
                         ]);
 
@@ -579,6 +585,7 @@ class ShopPricingService
 
             $updates['net_metal_weight'] = $payload['net_metal_weight'];
             $updates['cost_price']       = $payload['cost_price'];
+            $updates['overhead_cost']    = $payload['overhead_cost'];
             $updates['selling_price']    = $payload['selling_price'];
         }
 
@@ -586,7 +593,7 @@ class ShopPricingService
             'updated_at' => now(),
         ]));
 
-        return Item::withoutTenant()->findOrFail($item->id);
+        return Item::withoutTenant()->where('shop_id', $shopId)->findOrFail($item->id);
     }
 
     public function resolvedRateGrid(Shop|int $shop): Collection
@@ -806,7 +813,11 @@ class ShopPricingService
         $purityValue = (float) $profile->purity_value;
 
         if ($profile->metal_type === self::METAL_GOLD) {
-            return round(((float) $dailyRate->gold_24k_rate_per_gram * $purityValue) / 24, 4);
+            // karat_24 basis: purity is 0–24 (e.g. 22 = 22K)  → divide by 24
+            // millesimal_1000 basis: purity is 0–1000 (e.g. 916 = BIS 22K) → divide by 1000
+            $divisor = $profile->basis === self::BASIS_SILVER ? 1000.0 : 24.0;
+
+            return round(((float) $dailyRate->gold_24k_rate_per_gram * $purityValue) / $divisor, 4);
         }
 
         return round(((float) $dailyRate->silver_999_rate_per_gram * $purityValue) / 1000, 4);
@@ -818,20 +829,37 @@ class ShopPricingService
         float $ratePerGram,
         bool $isOverride
     ): MetalRate {
-        return MetalRate::record([
-            'shop_id' => (int) $profile->shop_id,
-            'business_date' => $businessDate,
+        // Upsert by the natural key (shop, profile, date, is_override) so that saving
+        // rates multiple times in a day only keeps one row per purity per entry type,
+        // preventing unbounded table growth. fetched_at tracks the last update time.
+        $key = [
+            'shop_id'                      => (int) $profile->shop_id,
             'shop_metal_purity_profile_id' => (int) $profile->id,
-            'metal_type' => $profile->metal_type,
-            'purity' => $this->normalizePurityString((float) $profile->purity_value),
+            'business_date'                => $businessDate,
+            'is_override'                  => $isOverride,
+        ];
+
+        $payload = array_merge($key, [
+            'metal_type'   => $profile->metal_type,
+            'purity'       => $this->normalizePurityString((float) $profile->purity_value),
             'purity_value' => $this->normalizePurityValue((float) $profile->purity_value),
             'purity_basis' => $profile->basis,
             'rate_per_gram' => round($ratePerGram, 4),
-            'source' => 'manual',
-            'is_override' => $isOverride,
-            'fetched_at' => now(),
-            'created_at' => now(),
+            'source'       => 'manual',
+            'fetched_at'   => now(),
+            'created_at'   => now(),
         ]);
+
+        DB::table('metal_rates')->upsert(
+            [$payload],
+            array_keys($key),
+            ['rate_per_gram', 'fetched_at']
+        );
+
+        return MetalRate::query()
+            ->where($key)
+            ->orderByDesc('id')
+            ->firstOrFail();
     }
 
     private function latestCurrentDayOverrides(int $shopId, string $businessDate): Collection

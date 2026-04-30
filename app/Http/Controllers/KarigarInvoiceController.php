@@ -82,7 +82,12 @@ class KarigarInvoiceController extends Controller
             'karigar_id' => 'required|integer',
             'job_order_id' => 'nullable|integer',
             'mode' => 'required|in:purchase,job_work',
-            'karigar_invoice_number' => 'required|string|max:100',
+            'karigar_invoice_number' => [
+                'required', 'string', 'max:100',
+                \Illuminate\Validation\Rule::unique('karigar_invoices')
+                    ->where('shop_id', auth()->user()->shop_id)
+                    ->where('karigar_id', (int) $request->input('karigar_id')),
+            ],
             'karigar_invoice_date' => 'required|date',
             'state_code' => 'nullable|string|max:5',
             'is_interstate' => 'nullable|boolean',
@@ -167,7 +172,13 @@ class KarigarInvoiceController extends Controller
 
         $validated = $request->validate([
             'mode' => 'required|in:purchase,job_work',
-            'karigar_invoice_number' => 'required|string|max:100',
+            'karigar_invoice_number' => [
+                'required', 'string', 'max:100',
+                \Illuminate\Validation\Rule::unique('karigar_invoices')
+                    ->where('shop_id', auth()->user()->shop_id)
+                    ->where('karigar_id', $karigarInvoice->karigar_id)
+                    ->ignore($karigarInvoice->id),
+            ],
             'karigar_invoice_date' => 'required|date',
             'state_code' => 'nullable|string|max:5',
             'is_interstate' => 'nullable|boolean',
@@ -195,7 +206,11 @@ class KarigarInvoiceController extends Controller
             'lines.*.note' => 'nullable|string|max:255',
         ]);
 
-        $this->service->update($karigarInvoice, $validated, $validated['lines'], $request->file('invoice_file'));
+        try {
+            $this->service->update($karigarInvoice, $validated, $validated['lines'], $request->file('invoice_file'));
+        } catch (\LogicException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('karigar-invoices.show', $karigarInvoice)->with('success', 'Invoice updated.');
     }
@@ -238,7 +253,7 @@ class KarigarInvoiceController extends Controller
             'payments'                      => 'required|array|min:1',
             'payments.*.amount'             => 'required|numeric|min:0.01',
             'payments.*.mode'               => 'required|string|max:20',
-            'payments.*.payment_method_id'  => 'nullable|integer',
+            'payments.*.payment_method_id'  => ['nullable', \Illuminate\Validation\Rule::exists('shop_payment_methods', 'id')->where('shop_id', auth()->user()->shop_id)],
             'payments.*.reference'          => 'nullable|string|max:255',
             'payments.*.paid_on'            => 'required|date',
         ]);

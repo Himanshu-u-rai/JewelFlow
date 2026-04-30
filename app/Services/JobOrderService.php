@@ -286,11 +286,13 @@ class JobOrderService
      */
     public function recordLeftoverReturn(JobOrder $jobOrder, array $data, int $userId): MetalMovement
     {
-        if (! $jobOrder->isOpen()) {
-            throw new LogicException('Cannot accept leftover return for a closed job order.');
-        }
-
         return DB::transaction(function () use ($jobOrder, $data, $userId) {
+            $jobOrder = JobOrder::query()->where('id', $jobOrder->id)->lockForUpdate()->firstOrFail();
+
+            if (! $jobOrder->isOpen()) {
+                throw new LogicException('Cannot accept leftover return for a closed job order.');
+            }
+
             $fine = (float) ($data['fine_weight'] ?? 0);
             if ($fine <= 0) {
                 throw new LogicException('Leftover fine weight must be greater than zero.');
@@ -342,14 +344,18 @@ class JobOrderService
      */
     public function cancel(JobOrder $jobOrder, int $userId): JobOrder
     {
-        if ($jobOrder->status !== JobOrder::STATUS_ISSUED) {
-            throw new LogicException('Only freshly-issued job orders can be cancelled.');
-        }
-        if ($jobOrder->receipts()->exists()) {
-            throw new LogicException('Cannot cancel a job order that has receipts.');
-        }
-
         return DB::transaction(function () use ($jobOrder, $userId) {
+            // Re-fetch with a row lock so two concurrent cancel requests can't
+            // both pass the guard and double-credit the source lots.
+            $jobOrder = JobOrder::query()->where('id', $jobOrder->id)->lockForUpdate()->firstOrFail();
+
+            if ($jobOrder->status !== JobOrder::STATUS_ISSUED) {
+                throw new LogicException('Only freshly-issued job orders can be cancelled.');
+            }
+            if ($jobOrder->receipts()->exists()) {
+                throw new LogicException('Cannot cancel a job order that has receipts.');
+            }
+
             foreach ($jobOrder->issuances as $issuance) {
                 if (! $issuance->metal_lot_id) {
                     continue;
@@ -390,16 +396,20 @@ class JobOrderService
      */
     public function acknowledgeAndComplete(JobOrder $jobOrder): JobOrder
     {
-        if (! $jobOrder->isOpen()) {
-            throw new LogicException('Job order is not open.');
-        }
+        return DB::transaction(function () use ($jobOrder) {
+            $jobOrder = JobOrder::query()->where('id', $jobOrder->id)->lockForUpdate()->firstOrFail();
 
-        $jobOrder->discrepancy_acknowledged = true;
-        $jobOrder->status       = JobOrder::STATUS_COMPLETED;
-        $jobOrder->completed_at = now();
-        $jobOrder->save();
+            if (! $jobOrder->isOpen()) {
+                throw new LogicException('Job order is not open.');
+            }
 
-        return $jobOrder->fresh();
+            $jobOrder->discrepancy_acknowledged = true;
+            $jobOrder->status       = JobOrder::STATUS_COMPLETED;
+            $jobOrder->completed_at = now();
+            $jobOrder->save();
+
+            return $jobOrder->fresh();
+        });
     }
 
     /**

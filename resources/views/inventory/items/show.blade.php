@@ -74,12 +74,12 @@
             $hallmarkCharges = (float) ($item->hallmark_charges ?? 0);
             $rhodiumCharges = (float) ($item->rhodium_charges ?? 0);
             $otherCharges = (float) ($item->other_charges ?? 0);
-            $goldPortion = max(0, (float) $item->cost_price - $makingCharges - $stoneCharges);
-            $retailerChargeTotal = $makingCharges + $stoneCharges + $hallmarkCharges + $rhodiumCharges + $otherCharges;
-            $retailerMetalBase = round((float) $item->cost_price - $retailerChargeTotal, 2);
-            if (abs($retailerMetalBase) < 0.01) {
-                $retailerMetalBase = 0.0;
-            }
+            // cost_price = metal value only; overhead_cost = all charges combined.
+            // Use overhead_cost directly now that charges are no longer mixed into cost_price.
+            $retailerChargeTotal = (float) ($item->overhead_cost
+                ?? ($makingCharges + $stoneCharges + $hallmarkCharges + $rhodiumCharges + $otherCharges));
+            $goldPortion = max(0, (float) $item->cost_price);
+            $retailerMetalBase = (float) $item->cost_price;
 
             if (!$isRetailer) {
                 $fineGoldBase = (float) ($item->net_metal_weight * ($item->purity / 24));
@@ -89,9 +89,10 @@
                 $estimatedGoldCost = $lotRate > 0 ? ($fineGoldUsed * $lotRate) : null;
             }
 
-            // Retail-specific
-            $margin = (float) $item->selling_price - (float) $item->cost_price;
-            $marginPct = $item->cost_price > 0 ? ($margin / $item->cost_price) * 100 : 0;
+            // True margin = selling_price minus both metal cost and overhead charges.
+            $margin = (float) $item->selling_price - (float) $item->cost_price - $retailerChargeTotal;
+            $totalCost = (float) $item->cost_price + $retailerChargeTotal;
+            $marginPct = $totalCost > 0 ? ($margin / $totalCost) * 100 : 0;
         @endphp
 
         <div class="grid grid-cols-12 items-start gap-3 sm:gap-4">

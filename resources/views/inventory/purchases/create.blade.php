@@ -265,6 +265,14 @@
                                 <input type="text" name="ack_number" @input="scheduleSave()" value="{{ old('ack_number', $isEdit ? $purchase->ack_number : '') }}" placeholder="ACK number from GST portal" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-amber-500 focus:ring-amber-500">
                             </div>
 
+                            {{-- Notes --}}
+                            <div class="md:col-span-2">
+                                <label class="purchase-field-label">Notes</label>
+                                <textarea name="notes" @input="scheduleSave()" rows="2" maxlength="2000"
+                                          class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500"
+                                          placeholder="Optional purchase notes">{{ old('notes', $isEdit ? $purchase->notes : '') }}</textarea>
+                            </div>
+
                             {{-- Invoice Image / PDF --}}
                             <div>
                                 <label class="purchase-field-label">Invoice PDF / Image</label>
@@ -393,6 +401,12 @@
                                         <div>
                                             <label class="purchase-field-label">Hallmark (₹)</label>
                                             <input type="number" step="0.01" :name="`lines[${idx}][hallmark_charges]`" x-model="line.hallmark_charges" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.00">
+                                        </div>
+
+                                        {{-- Rhodium Charges --}}
+                                        <div>
+                                            <label class="purchase-field-label">Rhodium (₹)</label>
+                                            <input type="number" step="0.01" :name="`lines[${idx}][rhodium_charges]`" x-model="line.rhodium_charges" @input="recalcLine(line)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-2 text-sm focus:border-amber-500 focus:ring-amber-500" placeholder="0.00">
                                         </div>
 
                                         {{-- Other Charges --}}

@@ -199,6 +199,7 @@ class StockPurchaseController extends Controller
 
         if ($validated['vault_action'] === 'existing_lot') {
             $targetLot = MetalLot::where('shop_id', $shopId)
+                ->where('metal_type', $line->metal_type)
                 ->findOrFail($validated['metal_lot_id']);
         }
 
@@ -236,8 +237,9 @@ class StockPurchaseController extends Controller
                     'notes'                  => $validated['notes'] ?? null,
                 ]);
             } else {
-                $lot = $targetLot;
-                $lot->lockForUpdate();
+                // Re-fetch with a row lock inside the transaction — calling lockForUpdate()
+                // on a model instance has no effect; the lock must be on the query builder.
+                $lot = MetalLot::where('id', $targetLot->id)->lockForUpdate()->firstOrFail();
                 $lot->fine_weight_total     += $fineWeight;
                 $lot->fine_weight_remaining += $fineWeight;
                 if ($lot->cost_per_fine_gram == 0 && $costPerFineGram > 0) {

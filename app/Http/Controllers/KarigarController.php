@@ -71,8 +71,8 @@ class KarigarController extends Controller
     {
         $this->authorizeShop($karigar);
 
-        if ($karigar->jobOrders()->exists() || $karigar->invoices()->exists()) {
-            return back()->with('error', "Cannot delete \"{$karigar->name}\" — there are job orders or invoices linked. Disable instead.");
+        if ($karigar->jobOrders()->exists() || $karigar->invoices()->exists() || $karigar->payments()->exists()) {
+            return back()->with('error', "Cannot delete \"{$karigar->name}\" — there are job orders, invoices, or payments linked. Disable instead.");
         }
 
         $name = $karigar->name;

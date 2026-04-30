@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\InvoicePayment;
+use App\Models\JobOrder;
+use App\Models\KarigarPayment;
+use App\Models\QuickBillPayment;
 use App\Models\ShopPaymentMethod;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -54,9 +57,13 @@ class PaymentMethodController extends Controller
     {
         $this->authorizeShop($method);
 
-        $inUse = InvoicePayment::where('payment_method_id', $method->id)->exists();
+        $inUse = InvoicePayment::where('payment_method_id', $method->id)->exists()
+            || KarigarPayment::withoutTenant()->where('payment_method_id', $method->id)->exists()
+            || QuickBillPayment::where('payment_method_id', $method->id)->exists()
+            || JobOrder::withoutTenant()->where('advance_payment_method_id', $method->id)->exists();
+
         if ($inUse) {
-            return back()->with('error', "Cannot delete \"{$method->name}\" — it has been used in past invoices.");
+            return back()->with('error', "Cannot delete \"{$method->name}\" — it has been used in past transactions.");
         }
 
         $name = $method->name;
@@ -89,7 +96,13 @@ class PaymentMethodController extends Controller
     {
         return $request->validate([
             'type'            => ['required', Rule::in(ShopPaymentMethod::TYPES)],
-            'name'            => 'required|string|max:100',
+            'name'            => [
+                'required', 'string', 'max:100',
+                Rule::unique('shop_payment_methods')
+                    ->where('shop_id', $shopId)
+                    ->where('type', $request->input('type'))
+                    ->ignore($ignoreId),
+            ],
             'upi_id'          => 'nullable|string|max:100',
             'bank_name'       => 'nullable|string|max:100',
             'account_holder'  => 'nullable|string|max:100',

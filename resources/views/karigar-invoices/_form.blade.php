@@ -45,7 +45,6 @@
             ];
         }
     }
-    $prefillJson = json_encode($prefillLines);
     $initialMode = $isEdit ? $invoice->mode : 'purchase';
     $modeLabel = $initialMode === 'job_work' ? 'Job Work (making + wastage only)' : 'Purchase (full metal + making)';
     $selectedKarigarId = (string) ($jobOrder?->karigar_id ?? $receipt?->jobOrder?->karigar_id ?? '');
@@ -472,7 +471,7 @@
     }
 </style>
 
-<div x-data="invoiceForm({{ $prefillJson }}, @js($initialMode), {{ $advancesByKarigar ?? '{}' }}, @js($selectedKarigarId), @js($selectedKarigar?->name ?? ''), @js($modeLabel))"
+<div x-data="invoiceForm(@json($prefillLines), @js($initialMode), {!! $advancesByKarigar ?? '{}' !!}, @js($selectedKarigarId), @js($selectedKarigar?->name ?? ''), @js($modeLabel))"
      @keydown.escape.window="closeDropdowns()">
     <div class="ki-form-grid">
         <div class="ki-card">
@@ -684,7 +683,7 @@
                     <div class="space-y-2">
                         <template x-for="adv in karigarAdvances" :key="adv.id">
                             <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm hover:border-blue-400">
-                                <input type="checkbox" :name="'advance_payment_ids[]'" :value="adv.id" class="rounded border-gray-300 text-blue-600">
+                                <input type="checkbox" :name="'advance_payment_ids[]'" :value="adv.id" :checked="checkedAdvanceIds.includes(adv.id)" @change="toggleAdvance(adv.id)" class="rounded border-gray-300 text-blue-600">
                                 <span class="font-mono font-semibold text-blue-800" x-text="formatRupees(adv.amount)"></span>
                                 <span class="text-xs text-gray-500" x-text="adv.paid_on"></span>
                                 <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-semibold uppercase text-gray-600" x-text="adv.mode"></span>
@@ -747,6 +746,7 @@
             selectedKarigarId: selectedKarigarId || '',
             selectedKarigarName: selectedKarigarName || '',
             allAdvances: allAdvances || {},
+            checkedAdvanceIds: [],
             closeDropdowns() {
                 this.modeOpen = false;
                 this.karigarOpen = false;
@@ -759,14 +759,20 @@
             onKarigarSelect(value, label) {
                 this.selectedKarigarId = value;
                 this.selectedKarigarName = value ? label : '';
+                this.checkedAdvanceIds = [];
                 this.karigarOpen = false;
+            },
+            toggleAdvance(id) {
+                const idx = this.checkedAdvanceIds.indexOf(id);
+                if (idx === -1) this.checkedAdvanceIds.push(id);
+                else this.checkedAdvanceIds.splice(idx, 1);
             },
             get karigarAdvances() {
                 return this.allAdvances[this.selectedKarigarId] || [];
             },
             get selectedAdvanceTotal() {
                 return this.karigarAdvances
-                    .filter(a => document.querySelector(`input[value="${a.id}"][type="checkbox"]`)?.checked)
+                    .filter(a => this.checkedAdvanceIds.includes(a.id))
                     .reduce((s, a) => s + a.amount, 0);
             },
             get subtotal() { return this.lines.reduce((s, l) => s + this.lineTotal(l), 0); },

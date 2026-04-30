@@ -114,7 +114,7 @@ class BullionVaultController extends Controller
             'gross_weight' => 'required|numeric|min:0.001',
             'purity' => 'required|numeric|min:1|max:1000',
             'cost_per_gram' => 'nullable|numeric|min:0',
-            'vendor_id' => 'nullable|exists:vendors,id',
+            'vendor_id' => ['nullable', \Illuminate\Validation\Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
             'notes' => 'nullable|string',
         ]);
 

@@ -26,6 +26,7 @@ use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\PublicCatalogController;
 use App\Http\Controllers\StockPurchaseController;
 use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\TransactionHistoryReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -219,6 +220,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/inventory/items', [ItemController::class, 'index'])->name('inventory.items.index');
     Route::get('/inventory/items/create', [ItemController::class, 'create'])->name('inventory.items.create');
     Route::post('/inventory/items', [ItemController::class, 'store'])->name('inventory.items.store');
+    Route::post('/inventory/items/quick-add-purity', [ItemController::class, 'quickAddPurity'])->name('inventory.items.quick-add-purity');
+    Route::post('/inventory/items/quick-add-category', [ItemController::class, 'quickAddCategory'])->name('inventory.items.quick-add-category');
+    Route::post('/inventory/items/quick-add-sub-category', [ItemController::class, 'quickAddSubCategory'])->name('inventory.items.quick-add-sub-category');
+    Route::post('/inventory/items/quick-add-karigar', [ItemController::class, 'quickAddKarigar'])->name('inventory.items.quick-add-karigar');
     Route::get('/inventory/items/{item}', [ItemController::class, 'show'])->name('inventory.items.show');
     Route::get('/inventory/items/{item}/edit', [ItemController::class, 'edit'])->name('inventory.items.edit');
     Route::put('/inventory/items/{item}', [ItemController::class, 'update'])->name('inventory.items.update');
@@ -312,6 +317,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/pnl', [\App\Http\Controllers\PnlController::class, 'index'])->middleware('role:owner')->name('report.pnl');
     Route::get('/report/gst', [\App\Http\Controllers\GstController::class, 'index'])->middleware('role:owner')->name('report.gst');
     Route::get('/report/closing', [\App\Http\Controllers\ClosingController::class, 'index'])->middleware('role:owner')->name('report.closing');
+    Route::get('/report/transactions', [TransactionHistoryReportController::class, 'index'])->middleware('role:owner')->name('report.transactions');
     Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware('role:owner')->name('report.repairs');
     Route::get('/report/audit', function () {
         return redirect()->route('settings.edit', ['tab' => 'audit']);

@@ -79,6 +79,7 @@
                         <option value="">All</option>
                         <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Confirmed</option>
+                        <option value="stocked" {{ request('status') === 'stocked' ? 'selected' : '' }}>Stocked</option>
                     </select>
                 </div>
                 <div>
@@ -138,8 +139,10 @@
                             <td class="px-4 py-3 text-center">
                                 @if($purchase->isDraft())
                                     <span class="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">Draft</span>
+                                @elseif($purchase->isStocked())
+                                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">Stocked</span>
                                 @else
-                                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">Confirmed</span>
+                                    <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">Confirmed</span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-right">

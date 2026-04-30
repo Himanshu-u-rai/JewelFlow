@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\MetalLot;
 use App\Models\MetalMovement;
 use App\Models\Category;
+use App\Models\SubCategory;
 use App\Models\Vendor;
 use App\Models\AuditLog;
 use App\Services\CatalogShareService;
@@ -151,12 +152,14 @@ class ItemController extends Controller
             }
 
             $vendors = Vendor::where('shop_id', $shopId)->active()->orderBy('name')->get();
+            $karigars = \App\Models\Karigar::where('shop_id', $shopId)->active()->orderBy('name')->get();
             $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
             $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
 
             return view('inventory.items.create-retailer', compact(
                 'categories',
                 'vendors',
+                'karigars',
                 'purityProfiles',
                 'resolvedRates'
             ));
@@ -269,6 +272,7 @@ class ItemController extends Controller
             'rhodium_charges' => 'nullable|numeric|min:0',
             'other_charges' => 'nullable|numeric|min:0',
             'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+            'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
             'huid' => ['nullable', 'string', 'max:30', Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')],
             'hallmark_date' => 'nullable|date',
             'image' => 'nullable|file|mimes:jpeg,png,gif,webp|max:5120',
@@ -305,6 +309,7 @@ class ItemController extends Controller
                 'cost_price' => $pricing['cost_price'],
                 'selling_price' => $pricing['selling_price'],
                 'vendor_id' => $validated['vendor_id'] ?? null,
+                'karigar_id' => $validated['karigar_id'] ?? null,
                 'huid' => $validated['huid'] ?? null,
                 'hallmark_date' => $validated['hallmark_date'] ?? null,
                 'source' => 'purchased',
@@ -343,7 +348,7 @@ class ItemController extends Controller
         $this->authorize('view', $item);
 
         $shop = auth()->user()->shop;
-        $lot  = $shop->isManufacturer() ? MetalLot::find($item->metal_lot_id) : null;
+        $lot  = $shop->isManufacturer() ? MetalLot::where('shop_id', auth()->user()->shop_id)->find($item->metal_lot_id) : null;
 
         if ($shop->isRetailer()) {
             $item->load('vendor', 'stockPurchase');
@@ -380,6 +385,7 @@ class ItemController extends Controller
             }
 
             $vendors = Vendor::where('shop_id', $shopId)->active()->orderBy('name')->get();
+            $karigars = \App\Models\Karigar::where('shop_id', $shopId)->active()->orderBy('name')->get();
             $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
             $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
 
@@ -387,6 +393,7 @@ class ItemController extends Controller
                 'item',
                 'categories',
                 'vendors',
+                'karigars',
                 'purityProfiles',
                 'resolvedRates'
             ));
@@ -463,7 +470,7 @@ class ItemController extends Controller
         ]);
 
         // Recalculate cost price if charges changed (lot may have been deleted)
-        $lot = MetalLot::find($item->metal_lot_id);
+        $lot = MetalLot::where('shop_id', auth()->user()->shop_id)->find($item->metal_lot_id);
         if ($lot) {
             $fineGold = $item->net_metal_weight * ($item->purity / 24) + ($item->wastage ?? 0);
             $goldCost = $fineGold * ($lot->cost_per_fine_gram ?? 0);
@@ -517,6 +524,7 @@ class ItemController extends Controller
             'rhodium_charges' => 'nullable|numeric|min:0',
             'other_charges' => 'nullable|numeric|min:0',
             'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+            'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
             'huid' => ['nullable', 'string', 'max:30', Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')->ignore($item->id)],
             'hallmark_date' => 'nullable|date',
             'image' => 'nullable|file|mimes:jpeg,png,gif,webp|max:5120',
@@ -560,6 +568,7 @@ class ItemController extends Controller
             'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
             'other_charges' => $validated['other_charges'] ?? 0,
             'vendor_id' => $validated['vendor_id'] ?? null,
+            'karigar_id' => $validated['karigar_id'] ?? null,
             'huid' => $validated['huid'] ?? null,
             'hallmark_date' => $validated['hallmark_date'] ?? null,
             'image' => $imagePath,
@@ -578,6 +587,130 @@ class ItemController extends Controller
 
         return redirect()->route('inventory.items.show', $item)
             ->with('success', 'Item updated successfully.');
+    }
+
+    /**
+     * Quick-add a custom purity profile from the item create/edit form.
+     * Creates the profile, derives today's rate immediately, and returns
+     * the new option data as JSON so the form can inject it without a page reload.
+     */
+    public function quickAddPurity(Request $request)
+    {
+        $shop = auth()->user()->shop;
+        abort_unless($shop && $shop->isRetailer(), 404);
+
+        $validated = $request->validate([
+            'metal_type'  => ['required', Rule::in(['gold', 'silver'])],
+            'purity_value' => 'required|numeric|min:0.001|max:1000',
+        ]);
+
+        $metalType   = $validated['metal_type'];
+        $purityValue = (float) $validated['purity_value'];
+
+        // Validate range: gold ≤ 24 (karat), silver ≤ 1000 (millesimal)
+        if ($metalType === 'gold' && $purityValue > 24) {
+            return response()->json(['error' => 'Gold purity cannot exceed 24K.'], 422);
+        }
+        if ($metalType === 'silver' && $purityValue > 1000) {
+            return response()->json(['error' => 'Silver purity cannot exceed 1000.'], 422);
+        }
+
+        try {
+            $profile = $this->pricing->createObservedProfileIfMissing(
+                (int) $shop->id,
+                $metalType,
+                $purityValue
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        // Derive today's rate for the new profile immediately so the form
+        // can start calculating without the nightly reprice job.
+        $ratePerGram = null;
+        $dailyRate = $this->pricing->currentDailyRate($shop);
+        if ($dailyRate) {
+            $ratePerGram = $this->pricing->resolvedRateForToday($shop, $metalType, $purityValue);
+        }
+
+        $normalizedValue = $this->pricing->normalizePurityString($purityValue);
+
+        return response()->json([
+            'value'        => $normalizedValue,
+            'label'        => $profile->label,
+            'rate_per_gram' => $ratePerGram,
+        ]);
+    }
+
+    public function quickAddCategory(Request $request)
+    {
+        $shopId = auth()->user()->shop_id;
+        abort_unless($shopId, 403);
+
+        $validated = $request->validate([
+            'name' => [
+                'required', 'string', 'max:255',
+                Rule::unique('categories', 'name')->where('shop_id', $shopId),
+            ],
+        ]);
+
+        $category = Category::create([
+            'shop_id' => $shopId,
+            'name'    => $validated['name'],
+        ]);
+
+        return response()->json([
+            'id'   => $category->id,
+            'name' => $category->name,
+        ]);
+    }
+
+    public function quickAddSubCategory(Request $request)
+    {
+        $shopId = auth()->user()->shop_id;
+        abort_unless($shopId, 403);
+
+        $validated = $request->validate([
+            'category_id' => [
+                'required',
+                Rule::exists('categories', 'id')->where('shop_id', $shopId),
+            ],
+            'name' => [
+                'required', 'string', 'max:255',
+                Rule::unique('sub_categories')
+                    ->where('shop_id', $shopId)
+                    ->where('category_id', $request->input('category_id')),
+            ],
+        ]);
+
+        $sub = SubCategory::create([
+            'category_id' => $validated['category_id'],
+            'name'        => $validated['name'],
+        ]);
+
+        return response()->json([
+            'name' => $sub->name,
+        ]);
+    }
+
+    public function quickAddKarigar(Request $request)
+    {
+        $shopId = auth()->user()->shop_id;
+        abort_unless($shopId, 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $karigar = \App\Models\Karigar::create([
+            'shop_id'   => $shopId,
+            'name'      => $validated['name'],
+        ]);
+
+        return response()->json([
+            'id'   => $karigar->id,
+            'name' => $karigar->name,
+        ]);
     }
 
     private function buildRetailerResolvedRateMap($shop, $purityProfiles): array
@@ -607,53 +740,58 @@ class ItemController extends Controller
     {
         $this->authorize('delete', $item);
 
-        // Only allow deleting in_stock items
-        if ($item->status !== 'in_stock') {
-            return $this->dynamicRedirect('inventory.items.show', [$item], 'Only items in stock can be deleted.', 'error');
-        }
-
         $shopId = auth()->user()->shop_id;
         $barcode = $item->barcode;
         $shop = auth()->user()->shop;
 
-        DB::transaction(function () use ($item, $shopId, $barcode, $shop) {
-            $fineGoldUsed = 0;
+        try {
+            DB::transaction(function () use ($item, $shopId, $barcode, $shop) {
+                // Re-fetch with a row lock so concurrent deletes can't both double-credit the lot
+                $item = Item::where('shop_id', $shopId)->where('id', $item->id)->lockForUpdate()->firstOrFail();
 
-            // For manufacturer items with a lot, return gold to lot
-            if ($shop->isManufacturer() && $item->metal_lot_id) {
-                $lot = MetalLot::find($item->metal_lot_id);
-                if ($lot) {
-                    $fineGoldUsed = $item->net_metal_weight * ($item->purity / 24) + ($item->wastage ?? 0);
-                    $lot->fine_weight_remaining += $fineGoldUsed;
-                    $lot->save();
-
-                    MetalMovement::record([
-                        'shop_id' => $shopId,
-                        'from_lot_id' => null,
-                        'to_lot_id' => $lot->id,
-                        'fine_weight' => $fineGoldUsed,
-                        'type' => 'item_deleted',
-                        'reference_type' => 'item',
-                        'reference_id' => $item->id,
-                        'user_id' => auth()->id(),
-                    ]);
+                if ($item->status !== 'in_stock') {
+                    throw new \LogicException('Only items in stock can be deleted.');
                 }
-            }
 
-            AuditLog::create([
-                'shop_id' => $shopId,
-                'user_id' => auth()->id(),
-                'action' => 'item_deleted',
-                'model_type' => 'item',
-                'model_id' => $item->id,
-                'data' => [
-                    'barcode' => $barcode,
-                    'gold_returned' => $fineGoldUsed,
-                ],
-            ]);
+                $fineGoldUsed = 0;
 
-            $item->delete();
-        });
+                if ($shop->isManufacturer() && $item->metal_lot_id) {
+                    $lot = MetalLot::where('shop_id', $shopId)->where('id', $item->metal_lot_id)->lockForUpdate()->first();
+                    if ($lot) {
+                        $fineGoldUsed = $item->net_metal_weight * ($item->purity / 24) + ($item->wastage ?? 0);
+                        $lot->fine_weight_remaining += $fineGoldUsed;
+                        $lot->save();
+
+                        MetalMovement::record([
+                            'shop_id' => $shopId,
+                            'from_lot_id' => null,
+                            'to_lot_id' => $lot->id,
+                            'fine_weight' => $fineGoldUsed,
+                            'type' => 'item_deleted',
+                            'reference_type' => 'item',
+                            'reference_id' => $item->id,
+                            'user_id' => auth()->id(),
+                        ]);
+                    }
+                }
+
+                AuditLog::create([
+                    'shop_id' => $shopId,
+                    'user_id' => auth()->id(),
+                    'action' => 'item_deleted',
+                    'model_type' => 'item',
+                    'model_id' => $item->id,
+                    'data' => [
+                        'barcode' => $barcode,
+                        'gold_returned' => $fineGoldUsed,
+                    ],
+                ]);
+
+                $item->delete();
+            });
+        } catch (\LogicException $e) {
+            return $this->dynamicRedirect('inventory.items.show', [$item], $e->getMessage(), 'error');
+        }
 
         $msg = $shop->isRetailer()
             ? "Item {$barcode} deleted from stock."

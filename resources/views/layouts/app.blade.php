@@ -240,6 +240,10 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                             {{ __('Daily Closing') }}
                         </a>
+                        <a href="{{ route('report.transactions') }}" class="nav-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15h3"/><path d="M7 11h5"/><path d="M7 7h7"/><path d="M17 17h.01"/></svg>
+                            {{ __('Transaction History') }}
+                        </a>
                         <a href="{{ route('report.gst') }}" class="nav-link">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
                             {{ __('GST Reports') }}
@@ -260,6 +264,10 @@
                         <a href="{{ route('report.cash') }}" class="nav-link">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                             {{ __('Cash Flow Dashboard') }}
+                        </a>
+                        <a href="{{ route('report.transactions') }}" class="nav-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15h3"/><path d="M7 11h5"/><path d="M7 7h7"/><path d="M17 17h.01"/></svg>
+                            {{ __('Transaction History') }}
                         </a>
                         <a href="{{ route('report.pnl') }}" class="nav-link">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -495,8 +503,5 @@
             if (e.target.matches('input, textarea')) e.preventDefault();
         });
         </script>
-        <footer class="app-footer">
-            &copy; {{ date('Y') }} JewelFlow. All rights reserved.
-        </footer>
     </body>
 </html>

@@ -3472,6 +3472,7 @@
             $dashCommandPages[] = ['label' => 'Gold Report', 'sub' => 'Gold ledger insights', 'url' => route('report.gold'), 'keywords' => 'gold report'];
             $dashCommandPages[] = ['label' => 'Daily Report', 'sub' => 'Business day report', 'url' => route('report.daily'), 'keywords' => 'daily report'];
             $dashCommandPages[] = ['label' => 'Cash Report', 'sub' => 'Cash transaction report', 'url' => route('report.cash'), 'keywords' => 'cash report'];
+            $dashCommandPages[] = ['label' => 'Transaction History', 'sub' => 'All incoming and outgoing transactions', 'url' => route('report.transactions'), 'keywords' => 'transaction history ledger incoming outgoing payment modes'];
             $dashCommandPages[] = ['label' => 'P&L Report', 'sub' => 'Profit and loss summary', 'url' => route('report.pnl'), 'keywords' => 'pnl profit loss'];
             $dashCommandPages[] = ['label' => 'Repairs Report', 'sub' => 'Repairs analytics', 'url' => route('report.repairs'), 'keywords' => 'repairs analytics report'];
             $dashCommandPages[] = ['label' => 'Services Settings', 'sub' => 'Manage editions and service requests', 'url' => route('settings.services'), 'keywords' => 'settings services editions modules plans'];
