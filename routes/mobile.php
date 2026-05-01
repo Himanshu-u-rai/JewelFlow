@@ -83,11 +83,11 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware('throttle:api-pos-sale')
             ->whereNumber('vendor');
         Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy'])
-            ->middleware('throttle:api-pos-sale')
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager'])
             ->whereNumber('vendor')
             ->name('mobile.vendors.destroy');
         Route::get('/vendors/{vendor}/ledger', [VendorController::class, 'ledger'])
-            ->middleware('throttle:api-pos-read')
+            ->middleware(['throttle:api-pos-read', 'role:owner,manager'])
             ->whereNumber('vendor')
             ->name('mobile.vendors.ledger');
 
@@ -151,9 +151,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::get('/catalog/template', [CatalogController::class, 'template'])
             ->middleware('throttle:api-pos-read');
         Route::put('/catalog/template', [CatalogController::class, 'updateTemplate'])
-            ->middleware('throttle:api-pos-sale');
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager']);
         Route::post('/catalog/collections', [CatalogController::class, 'storeCollection'])
-            ->middleware('throttle:api-pos-sale');
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager']);
 
         // Mobile POS
         Route::get('/pos/bootstrap', [PosController::class, 'bootstrap'])
