@@ -217,6 +217,7 @@ class ShopController extends Controller
             $user->forceFill([
                 'shop_id' => $shop->id,
                 'role_id' => $ownerRole?->id,
+                'name'    => trim($data['owner_first_name'] . ' ' . $data['owner_last_name']),
             ])->save();
 
             $subscriptionId = session('pending_subscription_id') ?? $pendingSubscription?->id;
