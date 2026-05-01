@@ -27,22 +27,46 @@ class MobileSessionSeatService
 
         $this->pruneStaleTokens();
 
+        // Owners always allowed — one web + one mobile simultaneously.
+        if ($this->isOwner($loginUser)) {
+            return [
+                'allowed'         => true,
+                'active_sessions' => 0,
+                'session_limit'   => $sessionLimit,
+                'reason_code'     => null,
+                'seat_scope'      => self::SEAT_SCOPE,
+            ];
+        }
+
+        // Non-owners: kill any active web sessions for this user so only
+        // one session (the new mobile one) remains.
+        $this->killWebSessionsForUser($loginUser);
+
         $activeOtherUsers = $this->activeSeatUsersQuery($shop)
             ->where('users.id', '!=', $loginUser->id)
             ->distinct('users.id')
             ->count('users.id');
 
-        $allowed = $sessionLimit === -1
-            || $this->isOwner($loginUser)
-            || $activeOtherUsers < $sessionLimit;
+        $allowed = $sessionLimit === -1 || $activeOtherUsers < $sessionLimit;
 
         return [
-            'allowed' => $allowed,
+            'allowed'         => $allowed,
             'active_sessions' => $activeOtherUsers,
-            'session_limit' => $sessionLimit,
-            'reason_code' => $allowed ? null : 'mobile_session_limit_reached',
-            'seat_scope' => self::SEAT_SCOPE,
+            'session_limit'   => $sessionLimit,
+            'reason_code'     => $allowed ? null : 'mobile_session_limit_reached',
+            'seat_scope'      => self::SEAT_SCOPE,
         ];
+    }
+
+    /**
+     * Kill all web sessions for a non-owner user so their web browser
+     * is logged out the moment they sign in on mobile.
+     */
+    private function killWebSessionsForUser(User $user): void
+    {
+        DB::table('sessions')
+            ->where('user_id', $user->id)
+            ->delete();
     }
 
     private function pruneStaleTokens(): void
