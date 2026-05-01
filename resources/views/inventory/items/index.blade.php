@@ -5,6 +5,21 @@
 
     <x-page-header class="inventory-items-header" title="Stock / Items" subtitle="Manage jewellery items ready for sale">
         <x-slot:actions>
+            @if($isRetailer && $pricingAlertCount > 0)
+            <button type="button"
+                    id="pricing-alert-bell"
+                    onclick="window.__pricingAlerts && window.__pricingAlerts.open()"
+                    class="relative inline-flex items-center justify-center w-9 h-9 rounded-lg border border-amber-300 bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
+                    title="Pricing alerts — {{ $pricingAlertCount }} item(s) need attention">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
+                    {{ $pricingAlertCount > 99 ? '99+' : $pricingAlertCount }}
+                </span>
+            </button>
+            @endif
                 <a href="{{ route('inventory.items.create') }}"
                     class="btn btn-success btn-sm inventory-items-create-btn">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -14,6 +29,156 @@
             </a>
         </x-slot:actions>
     </x-page-header>
+
+    @if($isRetailer && $pricingAlertCount > 0)
+    {{-- Pricing Alert Drawer — Alpine component, scoped outside the main x-data div --}}
+    <div
+        id="pricing-alert-drawer"
+        x-data="pricingAlertDrawer({{ $pricingAlertCount }}, '{{ route('inventory.items.pricing-alerts') }}', 'pa_dismissed_{{ auth()->user()->shop_id }}_{{ now()->toDateString() }}')"
+        x-init="init()"
+        @keydown.escape.window="close()"
+    >
+        {{-- Backdrop --}}
+        <div
+            x-show="isOpen"
+            x-cloak
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click="close()"
+            class="fixed inset-0 bg-gray-900/40 z-40"
+            aria-hidden="true"
+        ></div>
+
+        {{-- Slide-over panel --}}
+        <div
+            x-show="isOpen"
+            x-cloak
+            x-transition:enter="transition ease-out duration-250"
+            x-transition:enter-start="translate-x-full"
+            x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="translate-x-0"
+            x-transition:leave-end="translate-x-full"
+            class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col transform"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pricing-alert-title"
+        >
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-amber-50">
+                <div class="flex items-center gap-3">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <h2 id="pricing-alert-title" class="text-sm font-semibold text-gray-900">Pricing Alerts</h2>
+                        <p class="text-xs text-amber-700"><span x-text="count"></span> item(s) could not be repriced today</p>
+                    </div>
+                </div>
+                <button @click="close()" class="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+
+            {{-- Info banner --}}
+            <div class="px-5 py-3 bg-amber-50 border-b border-amber-100 text-xs text-amber-800">
+                These items have <strong>stale prices</strong>. Click an item to edit it and fix the metal type or purity profile, then save today's rates again to reprice.
+            </div>
+
+            {{-- Item list --}}
+            <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
+                <template x-if="loading">
+                    <div class="flex items-center justify-center py-12 text-gray-400 text-sm">Loading…</div>
+                </template>
+                <template x-if="!loading && items.length === 0">
+                    <div class="flex flex-col items-center justify-center py-12 gap-2 text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <span>All items repriced successfully!</span>
+                    </div>
+                </template>
+                <template x-for="item in items" :key="item.id">
+                    <a :href="item.edit_url" class="flex items-start gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
+                        <span class="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-red-50 text-red-400 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600" x-text="item.barcode"></p>
+                            <p class="text-xs text-gray-500 truncate" x-text="[item.design, item.category].filter(Boolean).join(' · ') || 'No description'"></p>
+                            <p class="mt-0.5 text-xs text-red-600 line-clamp-2" x-text="item.pricing_review_notes || 'No metal type assigned'"></p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-1 text-gray-300 group-hover:text-indigo-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </a>
+                </template>
+            </div>
+
+            {{-- Footer --}}
+            <div class="px-5 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-3">
+                <p class="text-xs text-gray-400">Dismiss to check later via the <strong>bell icon</strong> in the header.</p>
+                <button @click="close()" class="flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-md bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function pricingAlertDrawer(initialCount, alertsUrl, storageKey) {
+        return {
+            isOpen: false,
+            loading: false,
+            count: initialCount,
+            items: [],
+            _storageKey: storageKey,
+
+            init() {
+                // Expose open() so the bell button (outside this x-data scope) can call it
+                window.__pricingAlerts = this;
+
+                // Auto-open once per day unless already dismissed
+                if (this.count > 0 && !localStorage.getItem(this._storageKey)) {
+                    this.$nextTick(() => this.open());
+                }
+            },
+
+            open() {
+                this.isOpen = true;
+                if (this.items.length === 0) {
+                    this.fetchItems();
+                }
+            },
+
+            close() {
+                this.isOpen = false;
+                // Remember dismissal for today so it doesn't auto-open again on refresh
+                localStorage.setItem(this._storageKey, '1');
+            },
+
+            fetchItems() {
+                this.loading = true;
+                fetch(alertsUrl, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    this.count = data.count;
+                    this.items = data.items;
+                })
+                .catch(() => {
+                    // Silent fail — the page-level data is already shown via the badge
+                })
+                .finally(() => { this.loading = false; });
+            },
+        };
+    }
+    </script>
+    @endif
 
     <div class="content-inner inventory-items-page jf-skeleton-host is-loading" x-data="{ view: '{{ $viewDefault }}' }">
 

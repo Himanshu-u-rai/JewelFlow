@@ -118,6 +118,7 @@ class ItemController extends Controller
         // Stock aging & sellers data for retailers
         $stockAgingData = null;
         $sellersData = null;
+        $pricingAlertCount = 0;
         if ($isRetailer) {
             $reportService = app(RetailerReportService::class);
             $stockAgingData = $reportService->stockAging();
@@ -128,9 +129,41 @@ class ItemController extends Controller
                 'worst' => $reportService->worstSellers(10, $period),
                 'period' => $period,
             ];
+
+            $pricingAlertCount = $this->pricing->pricingAlerts($shop)['count'];
         }
 
-        return view('inventory.items.index', compact('items', 'stats', 'categories', 'stockAgingData', 'sellersData', 'isRetailer', 'statusFilter'));
+        return view('inventory.items.index', compact('items', 'stats', 'categories', 'stockAgingData', 'sellersData', 'isRetailer', 'statusFilter', 'pricingAlertCount'));
+    }
+
+    /**
+     * JSON endpoint for the pricing alert drawer.
+     * Returns items whose price was not updated in the last reprice run.
+     * Retailer-only; scoped to the authenticated shop.
+     */
+    public function pricingAlerts()
+    {
+        $shop = auth()->user()->shop;
+
+        if (! $shop || ! $shop->isRetailer()) {
+            return response()->json(['count' => 0, 'items' => []]);
+        }
+
+        $alerts = $this->pricing->pricingAlerts($shop);
+
+        return response()->json([
+            'count' => $alerts['count'],
+            'items' => $alerts['items']->map(fn ($item) => [
+                'id'       => $item->id,
+                'barcode'  => $item->barcode,
+                'design'   => $item->design ?: null,
+                'category' => $item->category ?: null,
+                'purity'   => $item->purity,
+                'metal_type'           => $item->metal_type,
+                'pricing_review_notes' => $item->pricing_review_notes,
+                'edit_url' => route('inventory.items.edit', $item->id),
+            ])->values(),
+        ]);
     }
 
     /**

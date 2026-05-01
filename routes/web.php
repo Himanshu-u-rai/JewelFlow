@@ -218,6 +218,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // ======= ITEMS / STOCK =======
     Route::get('/inventory/items', [ItemController::class, 'index'])->name('inventory.items.index');
+    Route::get('/inventory/items/pricing-alerts', [ItemController::class, 'pricingAlerts'])->name('inventory.items.pricing-alerts')->middleware('edition:retailer');
     Route::get('/inventory/items/create', [ItemController::class, 'create'])->name('inventory.items.create');
     Route::post('/inventory/items', [ItemController::class, 'store'])->name('inventory.items.store');
     Route::post('/inventory/items/quick-add-purity', [ItemController::class, 'quickAddPurity'])->name('inventory.items.quick-add-purity');

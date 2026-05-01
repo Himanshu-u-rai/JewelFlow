@@ -543,6 +543,35 @@ class ShopPricingService
         return $updated;
     }
 
+    /**
+     * Items whose price was NOT updated in the last reprice run — either
+     * because metal_type is missing or computeRetailerCostPayload() threw.
+     * Returns [count, items] where items is a Collection of lightweight rows
+     * suitable for the alert drawer (id, barcode, design, category, purity,
+     * pricing_review_notes).
+     */
+    public function pricingAlerts(Shop|int $shop): array
+    {
+        if (! $this->hasRetailerPricingItemColumns()) {
+            return ['count' => 0, 'items' => collect()];
+        }
+
+        $shopId = $shop instanceof Shop ? (int) $shop->id : (int) $shop;
+
+        $items = Item::withoutTenant()
+            ->where('shop_id', $shopId)
+            ->where('status', 'in_stock')
+            ->where(function ($query): void {
+                $query->whereNull('metal_type')
+                    ->orWhereRaw($this->booleanComparisonSql('pricing_review_required', true));
+            })
+            ->orderByDesc('updated_at')
+            ->limit(100)
+            ->get(['id', 'barcode', 'design', 'category', 'purity', 'metal_type', 'pricing_review_notes']);
+
+        return ['count' => $items->count(), 'items' => $items];
+    }
+
     public function legacyItemsNeedingReview(Shop|int $shop): Collection
     {
         if (! $this->hasRetailerPricingItemColumns()) {
