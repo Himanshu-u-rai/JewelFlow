@@ -8,7 +8,7 @@
             @if($isRetailer && $pricingAlertCount > 0)
             <button type="button"
                     id="pricing-alert-bell"
-                    onclick="window.__pricingAlerts && window.__pricingAlerts.open()"
+                    onclick="if(window.__pricingAlerts){window.__pricingAlerts.open();}else{document.addEventListener('alpine:initialized',function(){window.__pricingAlerts&&window.__pricingAlerts.open();},{once:true});}"
                     class="relative inline-flex items-center justify-center w-9 h-9 rounded-lg border border-amber-300 bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors"
                     title="Pricing alerts — {{ $pricingAlertCount }} item(s) need attention">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -31,10 +31,11 @@
     </x-page-header>
 
     @if($isRetailer && $pricingAlertCount > 0)
-    {{-- Pricing Alert Drawer — Alpine component, scoped outside the main x-data div --}}
+    @php $paStorageKey = 'pa_dismissed_' . (int) auth()->user()->shop_id . '_' . now()->toDateString(); @endphp
+    {{-- Pricing Alert Drawer — own Alpine scope so it doesn't interfere with page x-data --}}
     <div
         id="pricing-alert-drawer"
-        x-data="pricingAlertDrawer({{ $pricingAlertCount }}, '{{ route('inventory.items.pricing-alerts') }}', 'pa_dismissed_{{ auth()->user()->shop_id }}_{{ now()->toDateString() }}')"
+        x-data="pricingAlertDrawer({{ $pricingAlertCount }}, '{{ route('inventory.items.pricing-alerts') }}', '{{ $paStorageKey }}')"
         x-init="init()"
         @keydown.escape.window="close()"
     >
@@ -111,7 +112,7 @@
                         <div class="min-w-0 flex-1">
                             <p class="text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600" x-text="item.barcode"></p>
                             <p class="text-xs text-gray-500 truncate" x-text="[item.design, item.category].filter(Boolean).join(' · ') || 'No description'"></p>
-                            <p class="mt-0.5 text-xs text-red-600 line-clamp-2" x-text="item.pricing_review_notes || 'No metal type assigned'"></p>
+                            <p class="mt-0.5 text-xs text-red-600 overflow-hidden" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" x-text="item.pricing_review_notes || 'No metal type assigned'"></p>
                         </div>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-1 text-gray-300 group-hover:text-indigo-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                     </a>
@@ -138,12 +139,13 @@
             _storageKey: storageKey,
 
             init() {
-                // Expose open() so the bell button (outside this x-data scope) can call it
+                // Expose open() on window so the bell button (rendered outside this
+                // x-data scope in x-page-header) can call it after Alpine initialises.
                 window.__pricingAlerts = this;
 
-                // Auto-open once per day unless already dismissed
+                // Auto-open once per day — skip if already dismissed this session
                 if (this.count > 0 && !localStorage.getItem(this._storageKey)) {
-                    this.$nextTick(() => this.open());
+                    this.open();
                 }
             },
 
@@ -156,22 +158,30 @@
 
             close() {
                 this.isOpen = false;
-                // Remember dismissal for today so it doesn't auto-open again on refresh
                 localStorage.setItem(this._storageKey, '1');
             },
 
             fetchItems() {
                 this.loading = true;
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
                 fetch(alertsUrl, {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                    },
                 })
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
                 .then(data => {
-                    this.count = data.count;
-                    this.items = data.items;
+                    this.count = data.count ?? 0;
+                    this.items = Array.isArray(data.items) ? data.items : [];
                 })
                 .catch(() => {
-                    // Silent fail — the page-level data is already shown via the badge
+                    // Network / server error — badge count on the bell is still visible
+                    this.items = [];
                 })
                 .finally(() => { this.loading = false; });
             },
