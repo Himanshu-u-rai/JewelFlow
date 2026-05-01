@@ -59,10 +59,12 @@ class StaffController extends Controller
             return back()->with('error', "Staff limit reached ({$limit} accounts allowed on your plan).");
         }
 
+        $shopId = auth()->user()->shop_id;
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'mobile_number' => 'required|string|max:20|unique:users,mobile_number',
-            'email' => 'nullable|email|max:255|unique:users,email',
+            'mobile_number' => ['required', 'digits:10', Rule::unique('users', 'mobile_number')->where('shop_id', $shopId)],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->where('shop_id', $shopId)],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
             'role_id' => [
                 'required',
@@ -72,7 +74,6 @@ class StaffController extends Controller
             ],
         ]);
 
-        $shopId = auth()->user()->shop_id;
         $role = Role::where('shop_id', $shopId)->find($validated['role_id']);
         
         $user = User::create([
@@ -125,10 +126,12 @@ class StaffController extends Controller
             abort(403);
         }
         
+        $shopId = auth()->user()->shop_id;
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'mobile_number' => 'required|string|max:20|unique:users,mobile_number,' . $staff->id,
-            'email' => 'nullable|email|max:255|unique:users,email,' . $staff->id,
+            'mobile_number' => ['required', 'digits:10', Rule::unique('users', 'mobile_number')->where('shop_id', $shopId)->ignore($staff->id)],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->where('shop_id', $shopId)->ignore($staff->id)],
             'role_id' => [
                 'required',
                 Rule::exists('roles', 'id')
@@ -175,6 +178,7 @@ class StaffController extends Controller
         }
         
         $name = $staff->name ?? $staff->mobile_number;
+        $staff->tokens()->delete();
         $staff->delete();
         
         AuditLog::create([

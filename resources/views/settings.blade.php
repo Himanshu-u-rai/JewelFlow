@@ -2144,7 +2144,7 @@
                             <span>+</span> {{ __('Add Staff') }}
                         </span>
                     @else
-                        <a href="{{ route('staff.create') }}" class="btn-add">
+                        <a href="{{ route('staff.create') }}" class="btn-add" data-turbo-frame="_top">
                             <span>+</span> {{ __('Add Staff') }}
                         </a>
                     @endif
@@ -2168,7 +2168,7 @@
                                 </div>
                                 @if($member->role && $member->role->name !== 'owner')
                                     <div class="staff-actions">
-                                        <a href="{{ route('staff.edit', $member) }}" title="{{ __('Edit') }}"></a>
+                                        <a href="{{ route('staff.edit', $member) }}" title="{{ __('Edit') }}" data-turbo-frame="_top"></a>
                                             <form method="POST" action="{{ route('staff.destroy', $member) }}"
                                                 data-confirm-message="{{ __('Delete this staff member?') }}"
                                                 data-ajax-delete>
@@ -2186,7 +2186,7 @@
                         <div class="empty-icon"></div>
                         <p class="empty-text">{{ __('No staff members yet') }}</p>
                         @if(!$atLimit)
-                        <a href="{{ route('staff.create') }}" class="btn-add">
+                        <a href="{{ route('staff.create') }}" class="btn-add" data-turbo-frame="_top">
                             <span>+</span> {{ __('Add Your First Staff') }}
                         </a>
                         @endif
