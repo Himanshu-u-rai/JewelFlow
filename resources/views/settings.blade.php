@@ -708,13 +708,13 @@
     }
 
     .staff-role.manager {
-        background: #e0f2fe;
-        color: #0369a1;
+        background: #bfdbfe;
+        color: #1d4ed8;
     }
 
     .staff-role.staff {
-        background: #e2e8f0;
-        color: #475569;
+        background: #d1d5db;
+        color: #374151;
     }
 
     .staff-actions {
