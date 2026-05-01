@@ -233,6 +233,23 @@
                         <td class="text-left">
                             <div class="strong">{{ $item->description }}</div>
                             <div style="font-size: 10px; color: #444;">{{ $item->metal_type ?: 'Jewellery' }}</div>
+                            @php
+                                $chargeBreakup = [
+                                    'Mk' => (float) ($item->making_charge ?? 0),
+                                    'St' => (float) ($item->stone_charge ?? 0),
+                                    'Hm' => (float) ($item->hallmark_charge ?? 0),
+                                    'Rh' => (float) ($item->rhodium_charge ?? 0),
+                                    'Ot' => (float) ($item->other_charge ?? 0),
+                                ];
+                                $chargeParts = collect($chargeBreakup)
+                                    ->filter(fn ($value) => $value > 0)
+                                    ->map(fn ($value, $label) => $label . ': ' . number_format($value, 2))
+                                    ->values()
+                                    ->all();
+                            @endphp
+                            @if(!empty($chargeParts))
+                                <div style="font-size: 9px; color: #444;">{{ implode(' | ', $chargeParts) }}</div>
+                            @endif
                         </td>
                         <td class="text-center">{{ $item->hsn_code ?: '—' }}</td>
                         <td class="text-center">{{ $item->pcs }}</td>

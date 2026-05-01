@@ -139,7 +139,7 @@ class QuickBillController extends Controller
     private function validatedPayload(Request $request): array
     {
         return $request->validate([
-            'customer_id' => ['nullable', Rule::exists('customers', 'id')],
+            'customer_id' => ['nullable', Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id)],
             'customer_name' => 'nullable|string|max:255',
             'customer_mobile' => 'nullable|string|max:20',
             'customer_address' => 'nullable|string|max:1000',
@@ -164,6 +164,9 @@ class QuickBillController extends Controller
             'items.*.rate' => 'nullable|numeric|min:0|max:9999999.99',
             'items.*.making_charge' => 'nullable|numeric|min:0|max:9999999.99',
             'items.*.stone_charge' => 'nullable|numeric|min:0|max:9999999.99',
+            'items.*.hallmark_charge' => 'nullable|numeric|min:0|max:9999999.99',
+            'items.*.rhodium_charge' => 'nullable|numeric|min:0|max:9999999.99',
+            'items.*.other_charge' => 'nullable|numeric|min:0|max:9999999.99',
             'items.*.wastage_percent' => 'nullable|numeric|min:0|max:1000',
             'items.*.line_discount' => 'nullable|numeric|min:0|max:9999999.99',
             'payments' => 'nullable|array',
@@ -194,6 +197,9 @@ class QuickBillController extends Controller
                 'rate' => (float) $item->rate,
                 'making_charge' => (float) $item->making_charge,
                 'stone_charge' => (float) $item->stone_charge,
+                'hallmark_charge' => (float) ($item->hallmark_charge ?? 0),
+                'rhodium_charge' => (float) ($item->rhodium_charge ?? 0),
+                'other_charge' => (float) ($item->other_charge ?? 0),
                 'wastage_percent' => (float) $item->wastage_percent,
                 'line_discount' => (float) $item->line_discount,
             ])->values()->all()
@@ -209,6 +215,9 @@ class QuickBillController extends Controller
                 'rate' => 0,
                 'making_charge' => 0,
                 'stone_charge' => 0,
+                'hallmark_charge' => 0,
+                'rhodium_charge' => 0,
+                'other_charge' => 0,
                 'wastage_percent' => 0,
                 'line_discount' => 0,
             ]]);
@@ -216,6 +225,7 @@ class QuickBillController extends Controller
         $initialPayments = old('payments', $quickBill->exists
             ? $quickBill->payments->map(fn ($payment) => [
                 'payment_mode' => $payment->payment_mode,
+                'payment_method_id' => $payment->payment_method_id,
                 'reference_no' => $payment->reference_no,
                 'amount' => (float) $payment->amount,
                 'notes' => $payment->notes,

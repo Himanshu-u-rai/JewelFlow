@@ -105,7 +105,26 @@
                                         <td class="px-6 py-4 text-sm text-slate-700">{{ number_format((float) $item->gross_weight, 3) }}</td>
                                         <td class="px-6 py-4 text-sm text-slate-700">{{ number_format((float) $item->net_weight, 3) }}</td>
                                         <td class="px-6 py-4 text-sm text-slate-700">₹{{ number_format((float) $item->rate, 2) }}</td>
-                                        <td class="px-6 py-4 text-right text-sm font-semibold text-slate-800">₹{{ number_format((float) $item->line_total, 2) }}</td>
+                                        <td class="px-6 py-4 text-right text-sm font-semibold text-slate-800">
+                                            <div>₹{{ number_format((float) $item->line_total, 2) }}</div>
+                                            @php
+                                                $extraCharges = [
+                                                    'Mk' => (float) ($item->making_charge ?? 0),
+                                                    'St' => (float) ($item->stone_charge ?? 0),
+                                                    'Hm' => (float) ($item->hallmark_charge ?? 0),
+                                                    'Rh' => (float) ($item->rhodium_charge ?? 0),
+                                                    'Ot' => (float) ($item->other_charge ?? 0),
+                                                ];
+                                                $visibleChargeParts = collect($extraCharges)
+                                                    ->filter(fn ($value) => $value > 0)
+                                                    ->map(fn ($value, $label) => $label . ': ₹' . number_format($value, 2))
+                                                    ->values()
+                                                    ->all();
+                                            @endphp
+                                            @if(!empty($visibleChargeParts))
+                                                <div class="mt-1 text-[10px] font-medium text-slate-500">{{ implode(' · ', $visibleChargeParts) }}</div>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>

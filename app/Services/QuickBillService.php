@@ -74,7 +74,7 @@ class QuickBillService
     public function void(QuickBill $quickBill, User $user, ?string $reason = null): QuickBill
     {
         return DB::transaction(function () use ($quickBill, $user, $reason): QuickBill {
-            $quickBill->lockForUpdate();
+            $quickBill = QuickBill::lockForUpdate()->findOrFail($quickBill->id);
 
             if ($quickBill->status === QuickBill::STATUS_VOID) {
                 throw ValidationException::withMessages([
@@ -276,11 +276,14 @@ class QuickBillService
             $rate = round(max(0, (float) Arr::get($item, 'rate', 0)), 2);
             $making = round(max(0, (float) Arr::get($item, 'making_charge', 0)), 2);
             $stoneCharge = round(max(0, (float) Arr::get($item, 'stone_charge', 0)), 2);
+            $hallmarkCharge = round(max(0, (float) Arr::get($item, 'hallmark_charge', 0)), 2);
+            $rhodiumCharge = round(max(0, (float) Arr::get($item, 'rhodium_charge', 0)), 2);
+            $otherCharge = round(max(0, (float) Arr::get($item, 'other_charge', 0)), 2);
             $wastagePercent = round(max(0, (float) Arr::get($item, 'wastage_percent', 0)), 2);
             $lineDiscount = round(max(0, (float) Arr::get($item, 'line_discount', 0)), 2);
             $metalValue = round($netWeight * $rate, 2);
             $wastageAmount = round($metalValue * ($wastagePercent / 100), 2);
-            $lineTotal = round(max(0, $metalValue + $making + $stoneCharge + $wastageAmount - $lineDiscount), 2);
+            $lineTotal = round(max(0, $metalValue + $making + $stoneCharge + $hallmarkCharge + $rhodiumCharge + $otherCharge + $wastageAmount - $lineDiscount), 2);
 
             $normalized[] = [
                 'description' => $description,
@@ -294,6 +297,9 @@ class QuickBillService
                 'rate' => $rate,
                 'making_charge' => $making,
                 'stone_charge' => $stoneCharge,
+                'hallmark_charge' => $hallmarkCharge,
+                'rhodium_charge' => $rhodiumCharge,
+                'other_charge' => $otherCharge,
                 'wastage_percent' => $wastagePercent,
                 'line_discount' => $lineDiscount,
                 'line_total' => $lineTotal,
