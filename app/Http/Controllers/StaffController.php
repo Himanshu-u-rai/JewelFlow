@@ -17,18 +17,7 @@ class StaffController extends Controller
 
     public function index()
     {
-        $shop   = auth()->user()->shop;
-        $shopId = $shop->id;
-
-        $staff = User::with('role')
-            ->where('shop_id', $shopId)
-            ->orderByRaw('COALESCE(name, mobile_number) ASC')
-            ->get();
-
-        $staffLimit = $shop->staffLimit();
-        $staffCount = $shop->currentStaffCount();
-
-        return view('staff.index', compact('staff', 'staffLimit', 'staffCount'));
+        return redirect()->route('settings.edit', ['tab' => 'staff']);
     }
     
     public function create()
@@ -37,7 +26,7 @@ class StaffController extends Controller
 
         if (!$shop->canAddStaff()) {
             $limit = $shop->staffLimit();
-            return redirect()->route('staff.index')
+            return redirect()->route('settings.edit', ['tab' => 'staff'])
                 ->with('error', "Staff limit reached ({$limit} accounts allowed on your plan). Remove an existing member or upgrade your plan.");
         }
 
@@ -94,13 +83,7 @@ class StaffController extends Controller
             'description' => "Added staff: " . ($user->name ?? $user->mobile_number) . " ({$role->display_name})",
         ]);
         
-        // Check if coming from settings page
-        if (str_contains(url()->previous(), 'settings')) {
-            return redirect()->route('settings.edit', ['tab' => 'staff'])
-                ->with('success', 'Staff member added successfully.');
-        }
-        
-        return redirect()->route('staff.index')
+        return redirect()->route('settings.edit', ['tab' => 'staff'])
             ->with('success', 'Staff member added successfully.');
     }
     
@@ -161,7 +144,7 @@ class StaffController extends Controller
             'description' => "Updated staff: " . ($staff->name ?? $staff->mobile_number),
         ]);
         
-        return redirect()->route('staff.index')
+        return redirect()->route('settings.edit', ['tab' => 'staff'])
             ->with('success', 'Staff member updated successfully.');
     }
     
@@ -174,7 +157,7 @@ class StaffController extends Controller
         
         // Cannot delete yourself
         if ($staff->id === auth()->id()) {
-            return $this->dynamicRedirect('staff.index', [], 'You cannot delete your own account.', 'error');
+            return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], 'You cannot delete your own account.', 'error');
         }
         
         $name = $staff->name ?? $staff->mobile_number;
@@ -190,6 +173,6 @@ class StaffController extends Controller
             'description' => "Removed staff: {$name}",
         ]);
         
-        return $this->dynamicRedirect('staff.index', [], 'Staff member removed successfully.');
+        return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], 'Staff member removed successfully.');
     }
 }

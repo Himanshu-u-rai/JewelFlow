@@ -1195,7 +1195,7 @@
             <a href="{{ route('settings.edit', ['tab' => 'roles']) }}" class="nav-item {{ $activeTab === 'roles' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> {{ __('Roles') }}
             </a>
-            <a href="{{ route('staff.index') }}" class="nav-item" data-turbo-frame="_top">
+            <a href="{{ route('settings.edit', ['tab' => 'staff']) }}" class="nav-item {{ $activeTab === 'staff' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> {{ __('Staff') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'audit']) }}" class="nav-item {{ $activeTab === 'audit' ? 'active' : '' }}" data-turbo-frame="settings-content">
@@ -2105,6 +2105,105 @@
                 </div>
             @endif
 
+
+            @if($activeTab === 'staff')
+                <div class="settings-header">
+                    <h2 class="settings-title">{{ __('Staff Members') }}</h2>
+                    <p class="settings-desc">{{ __('Manage your shop\'s employees and their access') }}</p>
+                </div>
+
+                @php
+                    $atLimit  = $staffLimit !== -1 && $staffCount >= $staffLimit;
+                    $pct      = $staffLimit > 0 ? min(100, round($staffCount / $staffLimit * 100)) : 0;
+                    $barColor = $pct >= 100 ? '#ef4444' : ($pct >= 80 ? '#f59e0b' : '#0d9488');
+                @endphp
+
+                {{-- Limit bar --}}
+                <div class="mb-4 flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg text-sm">
+                    <span class="text-gray-600 font-medium whitespace-nowrap">{{ __('Staff accounts:') }}</span>
+                    @if($staffLimit === -1)
+                        <span class="text-gray-700">{{ $staffCount }} {{ __('used') }} &nbsp;<span class="text-green-600 font-semibold">· {{ __('Unlimited') }}</span></span>
+                    @else
+                        <div class="flex-1 flex items-center gap-3">
+                            <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div style="width:{{ $pct }}%; background:{{ $barColor }};" class="h-full rounded-full transition-all"></div>
+                            </div>
+                            <span class="whitespace-nowrap font-semibold {{ $atLimit ? 'text-red-600' : 'text-gray-700' }}">
+                                {{ $staffCount }} / {{ $staffLimit }}
+                                @if($atLimit) — {{ __('Limit reached') }} @endif
+                            </span>
+                        </div>
+                    @endif
+                    <div class="ml-auto">
+                        @if($atLimit)
+                            <span class="btn btn-secondary btn-sm opacity-50 cursor-not-allowed">+ {{ __('Add Staff') }}</span>
+                        @else
+                            <a href="{{ route('staff.create') }}" class="btn btn-primary btn-sm" data-turbo-frame="_top">+ {{ __('Add Staff') }}</a>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Staff cards --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    @forelse($staff as $member)
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold">
+                                        {{ strtoupper(substr($member->name ?? $member->mobile_number, 0, 1)) }}
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-gray-900 text-sm">{{ $member->name ?? $member->mobile_number }}</p>
+                                        @if($member->name)
+                                            <p class="text-xs text-gray-500">{{ $member->mobile_number }}</p>
+                                        @endif
+                                        @if($member->email)
+                                            <p class="text-xs text-gray-400">{{ $member->email }}</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                @php
+                                    $roleName = $member->role?->name ?? 'staff';
+                                    $roleColors = ['owner' => 'bg-purple-100 text-purple-800', 'manager' => 'bg-blue-100 text-blue-800', 'staff' => 'bg-gray-100 text-gray-700'];
+                                @endphp
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ $roleColors[$roleName] ?? 'bg-gray-100 text-gray-700' }}">
+                                    {{ $member->role?->display_name ?? 'Staff' }}
+                                </span>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                <span class="text-xs text-gray-400">{{ __('Joined') }} {{ $member->created_at->format('d M Y') }}</span>
+                                @if($member->role?->name !== 'owner')
+                                    <div class="flex gap-2">
+                                        <a href="{{ route('staff.edit', $member) }}" data-turbo-frame="_top"
+                                           class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            {{ __('Edit') }}
+                                        </a>
+                                        <form method="POST" action="{{ route('staff.destroy', $member) }}"
+                                              data-confirm-message="{{ __('Remove :name?', ['name' => $member->name ?? $member->mobile_number]) }}">
+                                            @csrf @method('DELETE')
+                                            <button type="submit"
+                                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                                {{ __('Remove') }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                @else
+                                    <span class="text-xs text-gray-400 italic">{{ __('You') }}</span>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <div class="col-span-2 text-center py-10 text-gray-400">
+                            <p class="mb-3">{{ __('No staff members yet') }}</p>
+                            @if(!$atLimit)
+                                <a href="{{ route('staff.create') }}" class="btn btn-primary btn-sm" data-turbo-frame="_top">+ {{ __('Add Staff') }}</a>
+                            @endif
+                        </div>
+                    @endforelse
+                </div>
+            @endif
 
             @if($activeTab === 'audit')
                 <div class="settings-header">
