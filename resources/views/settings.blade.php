@@ -1195,7 +1195,7 @@
             <a href="{{ route('settings.edit', ['tab' => 'roles']) }}" class="nav-item {{ $activeTab === 'roles' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> {{ __('Roles') }}
             </a>
-            <a href="{{ route('settings.edit', ['tab' => 'staff']) }}" class="nav-item {{ $activeTab === 'staff' ? 'active' : '' }}" data-turbo-frame="settings-content">
+            <a href="{{ route('staff.index') }}" class="nav-item" data-turbo-frame="_top">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> {{ __('Staff') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'audit']) }}" class="nav-item {{ $activeTab === 'audit' ? 'active' : '' }}" data-turbo-frame="settings-content">
@@ -2105,98 +2105,6 @@
                 </div>
             @endif
 
-            @if($activeTab === 'staff')
-                <div class="settings-header">
-                    <h2 class="settings-title">{{ __('Staff Members') }}</h2>
-                    <p class="settings-desc">{{ __('Manage your shop\'s employees') }}</p>
-                </div>
-
-                @php
-                    $atLimit  = $staffLimit !== -1 && $staffCount >= $staffLimit;
-                    $pct      = $staffLimit > 0 ? min(100, round($staffCount / $staffLimit * 100)) : 0;
-                    $barColor = $pct >= 100 ? '#ef4444' : ($pct >= 80 ? '#f59e0b' : '#22c55e');
-                @endphp
-
-                {{-- Limit usage bar --}}
-                <div class="settings-staff-limit-card">
-                    <div class="settings-staff-limit-head">
-                        <span class="settings-staff-limit-title">{{ __('Staff Accounts') }}</span>
-                        <span class="settings-staff-limit-usage">
-                            @if($staffLimit === -1)
-                                {{ $staffCount }} {{ __('used') }} &nbsp;·&nbsp; <span class="settings-status-unlimited">{{ __('Unlimited') }}</span>
-                            @else
-                                {{ $staffCount }} / {{ $staffLimit }} {{ __('used') }}
-                                @if($atLimit) &nbsp;·&nbsp; <span class="settings-status-limit">{{ __('Limit reached') }}</span>@endif
-                            @endif
-                        </span>
-                    </div>
-                    @if($staffLimit !== -1)
-                    <div class="settings-progress-track">
-                        <div class="settings-progress-fill" style="width:{{ $pct }}%; background:{{ $barColor }};"></div>
-                    </div>
-                    @endif
-                </div>
-
-                <div class="staff-header">
-                    <span class="settings-staff-count">{{ $staffCount }} {{ __('non-owner member(s)') }}</span>
-                    @if($atLimit)
-                        <span class="btn-add settings-btn-disabled" title="{{ __('Staff limit reached. Remove a member or contact your administrator.') }}">
-                            <span>+</span> {{ __('Add Staff') }}
-                        </span>
-                    @else
-                        <a href="{{ route('staff.create') }}" class="btn-add" data-turbo-frame="_top">
-                            <span>+</span> {{ __('Add Staff') }}
-                        </a>
-                    @endif
-                </div>
-                
-                @if($staff->count() > 0)
-                    <div class="staff-grid">
-                        @foreach($staff as $member)
-                            <div class="staff-card" data-deletable-row>
-                                <div class="staff-avatar">
-                                    {{ strtoupper(substr($member->name ?? $member->mobile_number, 0, 1)) }}
-                                </div>
-                                <div class="staff-info">
-                                    <p class="staff-name">{{ $member->name ?? $member->mobile_number }}</p>
-                                    <p class="staff-meta">
-                                        @if($member->name){{ $member->mobile_number }} · @endif
-                                        <span class="staff-role {{ $member->role->name ?? 'staff' }}">
-                                            {{ __($member->role->display_name ?? 'Staff') }}
-                                        </span>
-                                    </p>
-                                </div>
-                                @if($member->role && $member->role->name !== 'owner')
-                                    <div class="staff-actions">
-                                        <a href="{{ route('staff.edit', $member) }}" title="{{ __('Edit') }}" data-turbo-frame="_top">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                        </a>
-                                        <form method="POST" action="{{ route('staff.destroy', $member) }}"
-                                            data-confirm-message="{{ __('Delete this staff member?') }}"
-                                            data-ajax-delete>
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" title="{{ __('Delete') }}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                            </button>
-                                        </form>
-                                    </div>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="empty-state">
-                        <div class="empty-icon"></div>
-                        <p class="empty-text">{{ __('No staff members yet') }}</p>
-                        @if(!$atLimit)
-                        <a href="{{ route('staff.create') }}" class="btn-add" data-turbo-frame="_top">
-                            <span>+</span> {{ __('Add Your First Staff') }}
-                        </a>
-                        @endif
-                    </div>
-                @endif
-            @endif
 
             @if($activeTab === 'audit')
                 <div class="settings-header">
