@@ -79,13 +79,20 @@ class AuthController extends Controller
 
         $token = $user->createToken('mobile-app')->plainTextToken;
 
+        // Role must be loaded without the BelongsToShop global scope because
+        // TenantContext is not set yet at login time (no auth middleware runs).
+        $roleName = \Illuminate\Support\Facades\DB::table('roles')
+            ->where('id', $user->role_id)
+            ->where('shop_id', $user->shop_id)
+            ->value('name');
+
         return response()->json([
             'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'mobile_number' => $user->mobile_number,
-                'role' => $user->role?->name,
+                'role' => $roleName,
             ],
             'shop' => [
                 'id' => $shop->id,
