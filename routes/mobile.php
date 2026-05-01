@@ -106,6 +106,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         // Repairs
         Route::get('/repairs', [RepairController::class, 'index'])
             ->middleware('throttle:api-pos-read');
+        Route::get('/repairs/{repair}', [RepairController::class, 'show'])
+            ->middleware('throttle:api-pos-read')
+            ->whereNumber('repair');
         Route::post('/repairs', [RepairController::class, 'store'])
             ->middleware('throttle:api-pos-sale');
         Route::post('/repairs/{repair}/status', [RepairController::class, 'updateStatus'])

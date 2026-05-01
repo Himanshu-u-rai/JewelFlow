@@ -829,17 +829,14 @@ class ShopPricingService
         float $ratePerGram,
         bool $isOverride
     ): MetalRate {
-        // Upsert by the natural key (shop, profile, date, is_override) so that saving
-        // rates multiple times in a day only keeps one row per purity per entry type,
-        // preventing unbounded table growth. fetched_at tracks the last update time.
         $key = [
             'shop_id'                      => (int) $profile->shop_id,
             'shop_metal_purity_profile_id' => (int) $profile->id,
             'business_date'                => $businessDate,
-            'is_override'                  => $isOverride,
         ];
 
         $payload = array_merge($key, [
+            'is_override'  => $this->databaseBoolean($isOverride),
             'metal_type'   => $profile->metal_type,
             'purity'       => $this->normalizePurityString((float) $profile->purity_value),
             'purity_value' => $this->normalizePurityValue((float) $profile->purity_value),
@@ -850,14 +847,15 @@ class ShopPricingService
             'created_at'   => now(),
         ]);
 
-        DB::table('metal_rates')->upsert(
-            [$payload],
-            array_keys($key),
-            ['rate_per_gram', 'fetched_at']
-        );
+        // Postgres stores this as boolean (not integer), and this table is append-only
+        // under trigger protection. Insert a new snapshot row and always read latest.
+        DB::table('metal_rates')->insert($payload);
 
         return MetalRate::query()
-            ->where($key)
+            ->where('shop_id', (int) $profile->shop_id)
+            ->where('shop_metal_purity_profile_id', (int) $profile->id)
+            ->where('business_date', $businessDate)
+            ->whereRaw($this->booleanComparisonSql('is_override', $isOverride))
             ->orderByDesc('id')
             ->firstOrFail();
     }

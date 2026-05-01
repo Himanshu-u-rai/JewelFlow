@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToShop;
 use App\Services\BusinessIdentifierService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Repair extends Model
 {
@@ -15,6 +16,7 @@ class Repair extends Model
         'item_description',
         'description',
         'image_path',
+        'image',
         'due_date',
         'gross_weight',
         'purity',
@@ -56,5 +58,31 @@ class Repair extends Model
     public function invoice()
     {
         return $this->belongsTo(\App\Models\Invoice::class);
+    }
+
+    public function resolveImagePath(): ?string
+    {
+        $path = $this->image_path ?: $this->image;
+
+        return is_string($path) && $path !== '' ? $path : null;
+    }
+
+    public function resolveImageUrl(?string $disk = null): ?string
+    {
+        $path = $this->resolveImagePath();
+        if ($path === null) {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $path) === 1) {
+            return $path;
+        }
+
+        $resolvedDisk = $disk ?: 'public';
+        $url = Storage::disk($resolvedDisk)->url($path);
+
+        return str_starts_with($url, 'http://') || str_starts_with($url, 'https://')
+            ? $url
+            : url($url);
     }
 }

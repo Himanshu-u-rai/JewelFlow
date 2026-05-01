@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Item;
+use App\Models\Karigar;
+use App\Models\Vendor;
 use App\Services\ShopPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -210,5 +212,48 @@ class MobileRetailerItemPricingParityTest extends TestCase
             "Today's retailer metal rates are missing",
             (string) $response->json('message')
         );
+    }
+
+    public function test_mobile_item_store_rejects_payload_when_vendor_and_karigar_are_both_set(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
+        Sanctum::actingAs($user);
+
+        $vendor = new Vendor();
+        $vendor->forceFill([
+            'shop_id' => $shop->id,
+            'name' => 'Vendor A',
+            'is_active' => true,
+        ]);
+        $vendor->save();
+
+        $karigar = Karigar::create([
+            'shop_id' => $shop->id,
+            'name' => 'Karigar A',
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/mobile/items', [
+            'barcode' => 'RTL-MOB-VK-CONFLICT-001',
+            'design' => 'Conflict Ring',
+            'category' => 'Gold Jewellery',
+            'metal_type' => 'gold',
+            'gross_weight' => 5,
+            'stone_weight' => 0,
+            'purity' => 22,
+            'making_charges' => 200,
+            'stone_charges' => 0,
+            'vendor_id' => $vendor->id,
+            'karigar_id' => $karigar->id,
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['vendor_id', 'karigar_id']);
+
+        $this->assertDatabaseMissing('items', [
+            'shop_id' => $shop->id,
+            'barcode' => 'RTL-MOB-VK-CONFLICT-001',
+        ]);
     }
 }

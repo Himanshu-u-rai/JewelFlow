@@ -9,7 +9,9 @@ use App\Services\InvoiceAccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class RepairController extends Controller
 {
@@ -37,6 +39,14 @@ class RepairController extends Controller
 
         $repairs = $query->orderBy('created_at', 'desc')->paginate(25)->withQueryString();
 
+        if ($request->expectsJson()) {
+            $repairs->setCollection(
+                $repairs->getCollection()->map(fn (Repair $repair) => $this->serializeRepair($repair))
+            );
+
+            return response()->json($repairs);
+        }
+
         $statusCounts = Repair::where('shop_id', $shopId)
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
@@ -62,27 +72,50 @@ class RepairController extends Controller
             'gross_weight'    => 'required|numeric|min:0',
             'purity'          => 'nullable|numeric|min:0|max:24',
             'estimated_cost'  => 'nullable|numeric|min:0',
-            'image'           => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'image'           => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'image_base64'    => 'nullable|string',
         ]);
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store("repairs/{$shopId}", 'public');
+            $imagePath = $this->storeUploadedRepairImage($request, $shopId);
+        } elseif (!empty($validated['image_base64'])) {
+            $imagePath = $this->storeRepairImageFromBase64($validated['image_base64'], $shopId);
         }
 
-        Repair::create([
+        $repair = Repair::create([
             'shop_id'          => $shopId,
             'customer_id'      => $validated['customer_id'],
             'item_description' => $validated['item_description'],
             'description'      => $validated['description'] ?? null,
             'image_path'       => $imagePath,
+            'image'            => $imagePath,
             'gross_weight'     => $validated['gross_weight'],
             'purity'           => $validated['purity'] ?? null,
             'estimated_cost'   => $validated['estimated_cost'],
             'status'           => 'pending',
         ]);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Repair item received successfully!',
+                'repair' => $this->serializeRepair($repair),
+            ], 201);
+        }
+
         return redirect()->route('repairs.index')->with('success', 'Repair item received successfully!');
+    }
+
+    public function show(Request $request, Repair $repair)
+    {
+        $this->authorize('update', $repair);
+        $repair->loadMissing('customer', 'invoice');
+
+        if ($request->expectsJson()) {
+            return response()->json($this->serializeRepair($repair));
+        }
+
+        return view('repairs.show', compact('repair'));
     }
 
     public function edit(Repair $repair)
@@ -118,23 +151,42 @@ class RepairController extends Controller
             'gross_weight'     => 'required|numeric|min:0',
             'purity'           => 'nullable|numeric|min:0|max:24',
             'estimated_cost'   => 'nullable|numeric|min:0',
-            'image'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'image'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'image_base64'     => 'nullable|string',
             'remove_image'     => 'nullable|boolean',
         ]);
 
+        $existingImagePath = $repair->resolveImagePath();
         if ($request->hasFile('image')) {
-            if ($repair->image_path) {
-                Storage::disk('public')->delete($repair->image_path);
+            if ($existingImagePath) {
+                Storage::disk($this->repairImageDisk())->delete($existingImagePath);
             }
-            $validated['image_path'] = $request->file('image')->store("repairs/{$shopId}", 'public');
-        } elseif ($request->boolean('remove_image') && $repair->image_path) {
-            Storage::disk('public')->delete($repair->image_path);
+            $newPath = $this->storeUploadedRepairImage($request, $shopId);
+            $validated['image_path'] = $newPath;
+            $validated['image'] = $newPath;
+        } elseif (!empty($validated['image_base64'])) {
+            if ($existingImagePath) {
+                Storage::disk($this->repairImageDisk())->delete($existingImagePath);
+            }
+            $newPath = $this->storeRepairImageFromBase64($validated['image_base64'], $shopId);
+            $validated['image_path'] = $newPath;
+            $validated['image'] = $newPath;
+        } elseif ($request->boolean('remove_image') && $existingImagePath) {
+            Storage::disk($this->repairImageDisk())->delete($existingImagePath);
             $validated['image_path'] = null;
+            $validated['image'] = null;
         }
 
-        unset($validated['image'], $validated['remove_image']);
+        unset($validated['image_base64'], $validated['remove_image']);
 
         $repair->update($validated);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Repair updated successfully!',
+                'repair' => $this->serializeRepair($repair->fresh(['customer', 'invoice'])),
+            ]);
+        }
 
         return redirect()->route('repairs.index')->with('success', 'Repair updated successfully!');
     }
@@ -232,12 +284,75 @@ class RepairController extends Controller
             return redirect()->route('repairs.index')->with('error', 'Delivered repairs cannot be deleted.');
         }
 
-        if ($repair->image_path) {
-            Storage::disk('public')->delete($repair->image_path);
+        $imagePath = $repair->resolveImagePath();
+        if ($imagePath) {
+            Storage::disk($this->repairImageDisk())->delete($imagePath);
         }
 
         $repair->delete();
 
         return redirect()->route('repairs.index')->with('success', 'Repair deleted successfully.');
+    }
+
+    private function repairImageDisk(): string
+    {
+        $defaultDisk = (string) config('filesystems.default', 'public');
+
+        return in_array($defaultDisk, ['public', 's3'], true) ? $defaultDisk : 'public';
+    }
+
+    private function storeUploadedRepairImage(Request $request, int $shopId): ?string
+    {
+        if (!$request->hasFile('image')) {
+            return null;
+        }
+
+        return $request->file('image')->store("repairs/{$shopId}", $this->repairImageDisk());
+    }
+
+    private function storeRepairImageFromBase64(string $imageBase64, int $shopId): string
+    {
+        $imageData = base64_decode($imageBase64, true);
+        if ($imageData === false) {
+            throw ValidationException::withMessages([
+                'image_base64' => 'Invalid image data.',
+            ]);
+        }
+
+        $maxBytes = 5 * 1024 * 1024;
+        if (strlen($imageData) > $maxBytes) {
+            throw ValidationException::withMessages([
+                'image_base64' => 'Image size must not exceed 5 MB.',
+            ]);
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->buffer($imageData);
+        $allowedMimes = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        if (!isset($allowedMimes[$mime])) {
+            throw ValidationException::withMessages([
+                'image_base64' => 'Invalid image format. Allowed: JPEG, PNG, WebP.',
+            ]);
+        }
+
+        $path = sprintf('repairs/%d/%s.%s', $shopId, (string) Str::ulid(), $allowedMimes[$mime]);
+        Storage::disk($this->repairImageDisk())->put($path, $imageData);
+
+        return $path;
+    }
+
+    private function serializeRepair(Repair $repair): array
+    {
+        $payload = $repair->toArray();
+        $payload['image'] = $repair->resolveImagePath();
+        $payload['image_path'] = $repair->resolveImagePath();
+        $payload['image_url'] = $repair->resolveImageUrl($this->repairImageDisk());
+
+        return $payload;
     }
 }

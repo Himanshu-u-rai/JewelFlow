@@ -264,6 +264,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // ======= REPAIRS =======
     Route::get('/repairs', [\App\Http\Controllers\RepairController::class, 'index'])->name('repairs.index');
     Route::post('/repairs', [\App\Http\Controllers\RepairController::class, 'store'])->name('repairs.store');
+    Route::get('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'show'])->name('repairs.show');
     Route::get('/repairs/{repair}/edit', [\App\Http\Controllers\RepairController::class, 'edit'])->name('repairs.edit');
     Route::put('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'update'])->name('repairs.update');
     Route::post('/repairs/{repair}/deliver', [\App\Http\Controllers\RepairController::class, 'deliver'])->name('repairs.deliver');
