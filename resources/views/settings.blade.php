@@ -731,7 +731,7 @@
         justify-content: center;
         background: #fff;
         border: 1px solid rgba(15, 23, 42, 0.12);
-
+        border-radius: 6px;
         color: #64748b;
         cursor: pointer;
         font-size: 12px;
@@ -2168,13 +2168,17 @@
                                 </div>
                                 @if($member->role && $member->role->name !== 'owner')
                                     <div class="staff-actions">
-                                        <a href="{{ route('staff.edit', $member) }}" title="{{ __('Edit') }}" data-turbo-frame="_top"></a>
-                                            <form method="POST" action="{{ route('staff.destroy', $member) }}"
-                                                data-confirm-message="{{ __('Delete this staff member?') }}"
-                                                data-ajax-delete>
+                                        <a href="{{ route('staff.edit', $member) }}" title="{{ __('Edit') }}" data-turbo-frame="_top">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </a>
+                                        <form method="POST" action="{{ route('staff.destroy', $member) }}"
+                                            data-confirm-message="{{ __('Delete this staff member?') }}"
+                                            data-ajax-delete>
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" title="{{ __('Delete') }}"></button>
+                                            <button type="submit" title="{{ __('Delete') }}">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                            </button>
                                         </form>
                                     </div>
                                 @endif
