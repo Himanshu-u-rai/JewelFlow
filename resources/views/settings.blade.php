@@ -1231,6 +1231,26 @@
                 </div>
 
                 <div class="section-divider"></div>
+                <div class="section-label">{{ __('Your Profile') }}</div>
+                <form method="POST" action="{{ route('settings.update.profile') }}">
+                    @csrf
+                    @method('PATCH')
+                    <div class="form-row cols-2">
+                        <div class="field">
+                            <label class="field-label">{{ __('Your Name') }}</label>
+                            <input type="text" name="name" value="{{ old('name', auth()->user()->name) }}" class="field-input" placeholder="{{ __('e.g. Ramesh Shah') }}" maxlength="255">
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Email') }}</label>
+                            <input type="email" name="email" value="{{ old('email', auth()->user()->email) }}" class="field-input" placeholder="{{ __('e.g. owner@shop.com') }}" maxlength="255">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">{{ __('Save Profile') }}</button>
+                    </div>
+                </form>
+
+                <div class="section-divider"></div>
                 <div class="section-label">{{ __('Session') }}</div>
 
                 <div class="bg-red-50 border border-red-200 p-4 text-sm">

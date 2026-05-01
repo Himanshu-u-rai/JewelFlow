@@ -142,6 +142,22 @@ class SettingsController extends Controller
         ));
     }
 
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'name'  => 'nullable|string|max:255',
+            'email' => ['nullable', 'email', 'max:255', \Illuminate\Validation\Rule::unique('users', 'email')->where('shop_id', $user->shop_id)->ignore($user->id)],
+        ]);
+
+        $user->name  = $validated['name'] ?: null;
+        $user->email = $validated['email'] ?: null;
+        $user->save();
+
+        return redirect()->route('settings.edit', ['tab' => 'general'])->with('success', 'Profile updated.');
+    }
+
     /**
      * Update shop identity information.
      */
