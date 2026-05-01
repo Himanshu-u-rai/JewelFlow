@@ -61,6 +61,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         // suppliers CRUD below. Full list/search lives at GET /vendors (index).
         Route::get('/vendors/lookup', [ItemController::class, 'vendors'])
             ->middleware('throttle:api-pos-read');
+        Route::get('/karigars/lookup', [ItemController::class, 'karigars'])
+            ->middleware('throttle:api-pos-read');
 
         // Suppliers (vendors) — full CRUD + ledger.
         Route::get('/vendors', [VendorController::class, 'index'])
