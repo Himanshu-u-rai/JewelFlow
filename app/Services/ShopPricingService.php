@@ -23,7 +23,9 @@ class ShopPricingService
     public const METAL_SILVER = 'silver';
 
     public const BASIS_GOLD = 'karat_24';
-    public const BASIS_SILVER = 'millesimal_1000';
+    public const BASIS_MILLESIMAL = 'millesimal_1000';
+    // Kept for backwards compatibility — prefer BASIS_MILLESIMAL
+    public const BASIS_SILVER = self::BASIS_MILLESIMAL;
 
     private array $schemaState = [];
 
@@ -486,18 +488,22 @@ class ShopPricingService
 
         $updated = 0;
 
+        // Include ALL in_stock items — even those flagged for review or missing
+        // metal_type. Each reprice run is a fresh attempt: if the root cause was
+        // fixed (e.g. a purity profile was added, metal_type was assigned) the item
+        // will succeed and the flag will be cleared automatically. Permanently
+        // excluding flagged/null-metal items causes silent stale prices.
         Item::withoutTenant()
             ->where('shop_id', $shopId)
             ->where('status', 'in_stock')
-            ->whereNotNull('metal_type')
-            ->where(function ($query): void {
-                $query->whereNull('pricing_review_required')
-                    ->orWhereRaw($this->booleanComparisonSql('pricing_review_required', false));
-            })
             ->orderBy('id')
             ->chunkById(200, function ($items) use ($shop, &$updated): void {
                 foreach ($items as $item) {
                     try {
+                        if (! $item->metal_type) {
+                            throw new LogicException('Item has no metal type assigned. Go to Settings → Pricing → Legacy Items to fix it.');
+                        }
+
                         $payload = $this->computeRetailerCostPayload($shop, [
                             'metal_type'       => $item->metal_type,
                             'purity'           => $item->purity,
@@ -510,7 +516,6 @@ class ShopPricingService
                             'other_charges'    => $item->other_charges    ?? 0,
                         ]);
                     } catch (\Throwable $e) {
-                        // Flag for owner review so stale prices are visible, not silent.
                         DB::table('items')->where('id', $item->id)->update([
                             'pricing_review_required' => $this->databaseBoolean(true),
                             'pricing_review_notes'    => 'Auto-reprice failed: ' . $e->getMessage(),
@@ -522,11 +527,13 @@ class ShopPricingService
                     DB::table('items')
                         ->where('id', $item->id)
                         ->update([
-                            'net_metal_weight' => $payload['net_metal_weight'],
-                            'cost_price'       => $payload['cost_price'],
-                            'selling_price'    => $payload['selling_price'],
-                            'overhead_cost'    => $payload['overhead_cost'],
-                            'updated_at'       => now(),
+                            'net_metal_weight'        => $payload['net_metal_weight'],
+                            'cost_price'              => $payload['cost_price'],
+                            'selling_price'           => $payload['selling_price'],
+                            'overhead_cost'           => $payload['overhead_cost'],
+                            'pricing_review_required' => $this->databaseBoolean(false),
+                            'pricing_review_notes'    => null,
+                            'updated_at'              => now(),
                         ]);
 
                     $updated++;
@@ -815,7 +822,7 @@ class ShopPricingService
         if ($profile->metal_type === self::METAL_GOLD) {
             // karat_24 basis: purity is 0–24 (e.g. 22 = 22K)  → divide by 24
             // millesimal_1000 basis: purity is 0–1000 (e.g. 916 = BIS 22K) → divide by 1000
-            $divisor = $profile->basis === self::BASIS_SILVER ? 1000.0 : 24.0;
+            $divisor = $profile->basis === self::BASIS_MILLESIMAL ? 1000.0 : 24.0;
 
             return round(((float) $dailyRate->gold_24k_rate_per_gram * $purityValue) / $divisor, 4);
         }
