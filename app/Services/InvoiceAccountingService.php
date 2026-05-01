@@ -83,6 +83,21 @@ class InvoiceAccountingService
             'target' => ['type' => 'invoice', 'id' => $invoice->id],
         ]);
 
+        // Mark any inventory items on this invoice as sold
+        $itemIds = $invoice->items()
+            ->whereNotNull('item_id')
+            ->pluck('item_id')
+            ->filter()
+            ->unique()
+            ->all();
+
+        if (!empty($itemIds)) {
+            Item::where('shop_id', $invoice->shop_id)
+                ->whereIn('id', $itemIds)
+                ->where('status', 'in_stock')
+                ->update(['status' => 'sold']);
+        }
+
         // Auto-earn loyalty points
         if ($invoice->customer_id && $invoice->total > 0) {
             try {
