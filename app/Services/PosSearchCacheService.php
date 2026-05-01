@@ -50,13 +50,25 @@ class PosSearchCacheService
                     $query->where(function ($q) use ($search) {
                         $q->where('first_name', 'ilike', '%' . $search . '%')
                             ->orWhere('last_name', 'ilike', '%' . $search . '%')
-                            ->orWhere('mobile', 'like', '%' . $search . '%');
+                            ->orWhere('mobile', 'like', '%' . $search . '%')
+                            ->orWhereRaw("CONCAT(first_name, ' ', COALESCE(last_name, '')) ILIKE ?", ['%' . $search . '%']);
                     });
+
+                    // Rank exact/prefix matches above mid-string matches so the
+                    // most relevant result appears first regardless of recency.
+                    $query->orderByRaw("
+                        CASE
+                            WHEN first_name ILIKE ? THEN 0
+                            WHEN CONCAT(first_name, ' ', COALESCE(last_name, '')) ILIKE ? THEN 1
+                            WHEN mobile LIKE ? THEN 2
+                            ELSE 3
+                        END
+                    ", [$search . '%', $search . '%', $search . '%']);
                 }
 
                 return $query
                     ->orderByDesc('updated_at')
-                    ->limit(20)
+                    ->limit(50)
                     ->get();
             });
         });
