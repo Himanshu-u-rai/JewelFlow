@@ -82,13 +82,12 @@ class AuthenticatedSessionController extends Controller
                 $request->session()->regenerate();
                 $request->session()->regenerateToken();
 
-                $message = $seat['reason_code'] === 'already_on_mobile'
-                    ? 'This account is already logged in on the mobile app. Log out of the mobile app first, then try again.'
-                    : "All {$seat['session_limit']} web seats are in use. Ask an active user to log out, then try again.";
-
                 return redirect('/login')
-                    ->with('login_modal', 'web_session_limit_reached')
-                    ->withErrors(['mobile_number' => $message]);
+                    ->with('login_modal', $seat['reason_code'])
+                    ->withErrors(['mobile_number' => $seat['reason_code'] === 'already_on_mobile'
+                        ? 'This account is already logged in on the mobile app. Log out of the mobile app first.'
+                        : "All {$seat['session_limit']} web seats are in use. Ask an active user to log out first.",
+                    ]);
             }
         }
 

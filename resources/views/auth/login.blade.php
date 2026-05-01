@@ -7,24 +7,28 @@
         $modalType = session('login_modal');
         $throttleSeconds = (int) session('login_modal_seconds', 0);
         $modalMessage = match ($modalType) {
-            'not_registered'    => $errors->first('mobile_number') ?: 'This mobile number is not registered. Please register to continue.',
-            'wrong_password'    => $errors->first('password') ?: 'Incorrect password. Please try again.',
-            'account_inactive'  => $errors->first('mobile_number') ?: 'Your account is inactive. Please contact support.',
-            'shop_deactivated'  => $errors->first('mobile_number') ?: 'Your shop is currently deactivated. Please contact support.',
-            'throttled'         => $errors->first('mobile_number') ?: "Too many attempts. Please try again in {$throttleSeconds} seconds.",
-            default             => null,
+            'not_registered'         => $errors->first('mobile_number') ?: 'This mobile number is not registered. Please register to continue.',
+            'wrong_password'         => $errors->first('password') ?: 'Incorrect password. Please try again.',
+            'account_inactive'       => $errors->first('mobile_number') ?: 'Your account is inactive. Please contact support.',
+            'shop_deactivated'       => $errors->first('mobile_number') ?: 'Your shop is currently deactivated. Please contact support.',
+            'throttled'              => $errors->first('mobile_number') ?: "Too many attempts. Please try again in {$throttleSeconds} seconds.",
+            'already_on_mobile'      => 'This account is already logged in on the mobile app. Log out of the mobile app first, then try again here.',
+            'web_session_limit_reached' => $errors->first('mobile_number') ?: 'All web seats for this shop are in use. Ask an active user to log out first.',
+            default                  => null,
         };
         $modalFocusTarget = match ($modalType) {
             'wrong_password' => 'password',
             default          => 'mobile_number',
         };
         $modalAccent = match ($modalType) {
-            'not_registered' => ['bg' => 'bg-amber-100', 'text' => 'text-amber-600', 'title' => 'Mobile Number Not Registered'],
-            'wrong_password' => ['bg' => 'bg-red-100',   'text' => 'text-red-600',   'title' => 'Incorrect Password'],
-            'account_inactive' => ['bg' => 'bg-red-100', 'text' => 'text-red-600',   'title' => 'Account Inactive'],
-            'shop_deactivated' => ['bg' => 'bg-red-100', 'text' => 'text-red-600',   'title' => 'Shop Deactivated'],
-            'throttled'      => ['bg' => 'bg-slate-100','text' => 'text-slate-600', 'title' => 'Too Many Attempts'],
-            default          => null,
+            'not_registered'            => ['bg' => 'bg-amber-100', 'text' => 'text-amber-600', 'title' => 'Mobile Number Not Registered'],
+            'wrong_password'            => ['bg' => 'bg-red-100',   'text' => 'text-red-600',   'title' => 'Incorrect Password'],
+            'account_inactive'          => ['bg' => 'bg-red-100',   'text' => 'text-red-600',   'title' => 'Account Inactive'],
+            'shop_deactivated'          => ['bg' => 'bg-red-100',   'text' => 'text-red-600',   'title' => 'Shop Deactivated'],
+            'throttled'                 => ['bg' => 'bg-slate-100', 'text' => 'text-slate-600', 'title' => 'Too Many Attempts'],
+            'already_on_mobile'         => ['bg' => 'bg-orange-100','text' => 'text-orange-600','title' => 'Already Logged In on Mobile'],
+            'web_session_limit_reached' => ['bg' => 'bg-red-100',   'text' => 'text-red-600',   'title' => 'All Web Seats In Use'],
+            default                     => null,
         };
     @endphp
 
