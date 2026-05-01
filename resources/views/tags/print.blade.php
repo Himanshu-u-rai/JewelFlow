@@ -316,14 +316,14 @@
         <div class="label-grid">
             @foreach($items as $item)
             @php
-                // Convert purity % to karat (e.g. 91.67% -> 22.00K)
-                $karat = $item->purity ? number_format($item->purity * 24 / 100, 2) . 'K' : null;
+                // purity_label accessor handles both retailer (karat scale: 22 → "22K")
+                // and manufacturer (percentage scale: 91.67 → "22K") correctly.
+                $purityLabel = $item->purity_label;
 
-                // Build details segments: Design | Karat | Weight
                 $segments = array_filter([
                     $item->design ?: null,
-                    $karat,
-                    number_format($item->gross_weight, 3) . 'g',
+                    $purityLabel,
+                    number_format((float) $item->gross_weight, 3) . 'g',
                 ]);
                 $detailsText = implode(' | ', $segments);
             @endphp

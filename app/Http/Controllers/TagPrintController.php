@@ -29,9 +29,9 @@ class TagPrintController extends Controller
             $query->where('category', $request->category);
         }
 
-        // All matching IDs (no pagination) — used by the "Select All" button
-        // to let the user select every item across all pages at once.
-        $allMatchingIds = (clone $query)->pluck('id')->map(fn ($id) => (string) $id)->values()->all();
+        // All matching IDs for "Select All" — capped at 500 to prevent
+        // bloating the page payload and localStorage for large catalogues.
+        $allMatchingIds = (clone $query)->limit(500)->pluck('id')->map(fn ($id) => (string) $id)->values()->all();
 
         $items = $query->latest()->paginate(20)->withQueryString();
 

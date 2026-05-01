@@ -76,7 +76,10 @@
             <input type="hidden" name="label_size"            :value="labelSize">
             <input type="hidden" name="include_barcode_image" :value="includeBarcodeImage ? 1 : 0">
             <input type="hidden" name="print_format"          :value="printFormat">
-            <input type="hidden" name="folded_size"           :value="printFormat === 'folded' ? foldedSize : ''">
+            {{-- Only submit folded_size when actually using folded format — empty string fails the `in` validation rule --}}
+            <template x-if="printFormat === 'folded'">
+                <input type="hidden" name="folded_size" :value="foldedSize">
+            </template>
 
             {{-- ── Toolbar ──────────────────────────────────────────────── --}}
             <div class="flex flex-wrap items-center gap-3 mb-4">

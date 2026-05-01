@@ -407,6 +407,7 @@
                                 <form method="POST" action="{{ route('tags.print') }}" target="_blank">
                                     @csrf
                                     <input type="hidden" name="item_ids[]" value="{{ $item->id }}">
+                                    <input type="hidden" name="label_size" value="medium">
                                     <input type="hidden" name="include_barcode_image" value="1">
                                     <input type="hidden" name="print_format" value="folded">
                                     <input type="hidden" name="folded_size" value="95x12">
@@ -418,6 +419,7 @@
                                 <form method="POST" action="{{ route('tags.print') }}" target="_blank">
                                     @csrf
                                     <input type="hidden" name="item_ids[]" value="{{ $item->id }}">
+                                    <input type="hidden" name="label_size" value="medium">
                                     <input type="hidden" name="include_barcode_image" value="1">
                                     <input type="hidden" name="print_format" value="folded">
                                     <input type="hidden" name="folded_size" value="95x15">
