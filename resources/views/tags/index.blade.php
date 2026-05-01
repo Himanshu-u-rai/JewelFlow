@@ -64,7 +64,9 @@
                 storeKey:        '{{ $storeKey }}',
                 allMatchingIds:  {{ Js::from($allMatchingIds) }},
                 labelSize:       'medium',
-                includeBarcodeImage: true
+                includeBarcodeImage: true,
+                printFormat:     'standard',
+                foldedSize:      '95x12'
             })"
             @submit="injectHiddenInputs"
         >
@@ -73,15 +75,49 @@
             {{-- Hidden inputs for label options --}}
             <input type="hidden" name="label_size"            :value="labelSize">
             <input type="hidden" name="include_barcode_image" :value="includeBarcodeImage ? 1 : 0">
+            <input type="hidden" name="print_format"          :value="printFormat">
+            <input type="hidden" name="folded_size"           :value="printFormat === 'folded' ? foldedSize : ''">
 
             {{-- ── Toolbar ──────────────────────────────────────────────── --}}
             <div class="flex flex-wrap items-center gap-3 mb-4">
                 <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Print Method</label>
+                    <div class="inline-flex items-center rounded-lg border border-slate-300 bg-slate-200/70 p-1">
+                        <button type="button"
+                                @click="printFormat = 'standard'"
+                                :aria-pressed="printFormat === 'standard'"
+                                class="rounded-md px-3 py-1.5 text-sm font-semibold transition"
+                                :class="printFormat === 'standard'
+                                    ? 'bg-slate-900 text-white shadow-[0_6px_16px_rgba(15,23,42,0.24)]'
+                                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'">
+                            Standard
+                        </button>
+                        <button type="button"
+                                @click="printFormat = 'folded'"
+                                :aria-pressed="printFormat === 'folded'"
+                                class="rounded-md px-3 py-1.5 text-sm font-semibold transition"
+                                :class="printFormat === 'folded'
+                                    ? 'bg-slate-900 text-white shadow-[0_6px_16px_rgba(15,23,42,0.24)]'
+                                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'">
+                            Folded
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2" x-show="printFormat === 'standard'">
                     <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Label Size</label>
                     <select x-model="labelSize" class="border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm rounded-md focus:border-amber-500 focus:ring-amber-500">
                         <option value="small">Small (25×50mm)</option>
                         <option value="medium">Medium (40×70mm)</option>
                         <option value="large">Large (50×90mm)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2" x-show="printFormat === 'folded'">
+                    <label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Folded Size</label>
+                    <select x-model="foldedSize" class="border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm rounded-md focus:border-amber-500 focus:ring-amber-500">
+                        <option value="95x12">95x12 mm</option>
+                        <option value="95x15">95x15 mm</option>
                     </select>
                 </div>
 
@@ -189,12 +225,14 @@
      * so items from other pages are included even if their checkboxes
      * are not currently in the DOM.
      */
-    function tagPrint({ storeKey, allMatchingIds, labelSize, includeBarcodeImage }) {
+    function tagPrint({ storeKey, allMatchingIds, labelSize, includeBarcodeImage, printFormat, foldedSize }) {
         return {
             storeKey,
             allMatchingIds,
             labelSize,
             includeBarcodeImage,
+            printFormat,
+            foldedSize,
 
             // Restore persisted selection; filter out any IDs that are
             // no longer in the current result set (e.g. item sold since).

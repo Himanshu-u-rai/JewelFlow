@@ -387,13 +387,48 @@
                         Sell in POS
                     </a>
 
-                    <button type="button" onclick="printBarcode()"
-                            class="inline-flex items-center justify-center px-3 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-medium text-sm">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                        </svg>
-                        Print
-                    </button>
+                    @if($isRetailer)
+                        <div class="w-full space-y-2">
+                            <form method="POST" action="{{ route('tags.print') }}" target="_blank" class="w-full">
+                                @csrf
+                                <input type="hidden" name="item_ids[]" value="{{ $item->id }}">
+                                <input type="hidden" name="label_size" value="medium">
+                                <input type="hidden" name="include_barcode_image" value="1">
+                                <input type="hidden" name="print_format" value="standard">
+                                <button type="submit"
+                                        class="w-full inline-flex items-center justify-center px-3 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-medium text-sm">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                    </svg>
+                                    Print Standard
+                                </button>
+                            </form>
+                            <div class="grid grid-cols-2 gap-2">
+                                <form method="POST" action="{{ route('tags.print') }}" target="_blank">
+                                    @csrf
+                                    <input type="hidden" name="item_ids[]" value="{{ $item->id }}">
+                                    <input type="hidden" name="include_barcode_image" value="1">
+                                    <input type="hidden" name="print_format" value="folded">
+                                    <input type="hidden" name="folded_size" value="95x12">
+                                    <button type="submit"
+                                            class="w-full inline-flex items-center justify-center px-3 py-2.5 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm">
+                                        Folded 95x12
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('tags.print') }}" target="_blank">
+                                    @csrf
+                                    <input type="hidden" name="item_ids[]" value="{{ $item->id }}">
+                                    <input type="hidden" name="include_barcode_image" value="1">
+                                    <input type="hidden" name="print_format" value="folded">
+                                    <input type="hidden" name="folded_size" value="95x15">
+                                    <button type="submit"
+                                            class="w-full inline-flex items-center justify-center px-3 py-2.5 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm">
+                                        Folded 95x15
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -437,17 +472,6 @@
         </div>
     </div>
 
-    <!-- Hidden Barcode Print Area -->
-    <div id="barcode-print-area" class="hidden">
-        <div style="width: 50mm; padding: 2mm; font-family: Arial, sans-serif; text-align: center;">
-            <div style="font-size: 10px; font-weight: bold; margin-bottom: 2mm;">{{ auth()->user()->shop->shop_name ?? 'JewelFlow' }}</div>
-            <svg id="barcode-svg"></svg>
-            <div style="font-size: 9px; margin-top: 1mm;">{{ $item->barcode }}</div>
-            <div style="font-size: 8px; color: #666;">{{ $item->category }} | {{ $item->purity_label }} | {{ number_format($item->gross_weight, 3) }}g</div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script>
         async function copyShareLink(link) {
             if (!link) return;
@@ -468,44 +492,5 @@
             }
         }
 
-        function printBarcode() {
-            // Generate barcode
-            JsBarcode("#barcode-svg", "{{ $item->barcode }}", {
-                format: "CODE128",
-                width: 1.5,
-                height: 40,
-                displayValue: false,
-                margin: 5
-            });
-            
-            // Create print window
-            const printContent = document.getElementById('barcode-print-area').innerHTML;
-            const printWindow = window.open('', '_blank', 'width=300,height=200');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Print Barcode - {{ $item->barcode }}</title>
-                    <style>
-                        @page { margin: 0; size: 50mm 25mm; }
-                        body { margin: 0; padding: 0; }
-                        @media print {
-                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${printContent}
-                    <script>
-                        window.onload = function() {
-                            window.print();
-                            window.close();
-                        };
-                    <\/script>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-        }
     </script>
 </x-app-layout>

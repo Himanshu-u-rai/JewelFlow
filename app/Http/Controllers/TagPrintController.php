@@ -63,8 +63,10 @@ class TagPrintController extends Controller
                     ->where('shop_id', $shopId)
                     ->where('status', 'in_stock')),
             ],
-            'label_size'           => 'in:small,medium,large',
+            'label_size'           => 'nullable|in:small,medium,large',
             'include_barcode_image' => 'nullable|boolean',
+            'print_format'         => 'nullable|in:standard,folded',
+            'folded_size'          => 'nullable|required_if:print_format,folded|in:95x12,95x15',
         ]);
 
         $items = Item::where('shop_id', $shopId)
@@ -73,8 +75,17 @@ class TagPrintController extends Controller
 
         $labelSize          = $data['label_size'] ?? 'medium';
         $includeBarcodeImage = (bool) ($data['include_barcode_image'] ?? true);
+        $printFormat        = $data['print_format'] ?? 'standard';
+        $foldedSize         = $data['folded_size'] ?? '95x12';
         $shop               = auth()->user()->shop;
 
-        return view('tags.print', compact('items', 'labelSize', 'shop', 'includeBarcodeImage'));
+        return view('tags.print', compact(
+            'items',
+            'labelSize',
+            'shop',
+            'includeBarcodeImage',
+            'printFormat',
+            'foldedSize'
+        ));
     }
 }
