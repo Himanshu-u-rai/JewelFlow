@@ -28,7 +28,7 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
                     <select name="status" class="repairs-filter-control">
                         <option value="">All Statuses</option>
-                        @foreach(['pending' => 'Pending', 'delivered' => 'Delivered'] as $val => $label)
+                        @foreach(['received' => 'Received', 'in_repair' => 'In Repair', 'ready' => 'Ready', 'delivered' => 'Delivered'] as $val => $label)
                             <option value="{{ $val }}" @selected($status === $val)>{{ $label }}</option>
                         @endforeach
                     </select>

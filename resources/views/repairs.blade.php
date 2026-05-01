@@ -133,86 +133,35 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
                 gap: 6px;
                 margin-bottom: 12px;
-                align-items: stretch;
             }
 
             .repairs-kpi-grid > div {
-                min-width: 0;
-                width: 100%;
-                height: 72px;
-                min-height: 72px;
-                padding: 7px 6px;
+                padding: 10px 10px;
                 border-radius: 10px;
-                display: flex;
-                align-items: stretch;
-                justify-content: flex-start;
             }
 
             .repairs-kpi-grid > div .flex {
-                display: grid;
-                grid-template-columns: auto 1fr;
-                grid-template-rows: 1fr auto;
-                column-gap: 5px;
-                row-gap: 4px;
-                width: 100%;
-                min-width: 0;
-                height: 100%;
-                align-items: start;
+                gap: 8px;
             }
 
             .repairs-kpi-grid > div [class*="p-2"] {
-                padding: 4px;
-                border-radius: 999px;
+                padding: 6px;
                 flex-shrink: 0;
-                grid-column: 1;
-                grid-row: 1;
-                align-self: start;
-                justify-self: start;
             }
 
             .repairs-kpi-grid > div [class*="p-2"] svg {
-                width: 10px;
-                height: 10px;
+                width: 14px;
+                height: 14px;
             }
 
             .repairs-kpi-grid > div .text-xs {
-                font-size: 8px;
-                letter-spacing: 0.02em;
-                line-height: 1.1;
-                white-space: normal;
-                text-align: center;
-                overflow: hidden;
-                text-overflow: clip;
-                display: -webkit-box;
-                -webkit-line-clamp: 2;
-                -webkit-box-orient: vertical;
-                min-height: 0;
-                grid-column: 1 / span 2;
-                grid-row: 2;
-                justify-self: center;
-                align-self: end;
+                font-size: 9px;
+                letter-spacing: 0.04em;
             }
 
             .repairs-kpi-grid > div .text-xl {
-                font-size: clamp(17px, 4.2vw, 21px);
-                line-height: 1;
-                margin: 0;
-                grid-column: 1 / span 2;
-                grid-row: 1;
-                align-self: center;
-                justify-self: center;
-                text-align: center;
-                white-space: nowrap;
-                max-width: 100%;
-                overflow: hidden;
-                text-overflow: clip;
-                font-variant-numeric: tabular-nums;
-                transform: translateY(8px);
-            }
-
-            .repairs-kpi-grid > div .flex > div:last-child {
-                min-width: 0;
-                display: contents;
+                font-size: 18px;
+                line-height: 1.1;
             }
 
             .repairs-layout {
@@ -286,21 +235,49 @@
     <div class="content-inner repairs-management-page">
         <x-app-alerts class="mb-6" />
         @php
-            $pendingCount = $statusCounts['pending'] ?? 0;
-            $deliveredCount = $statusCounts['delivered'] ?? 0;
+            $receivedCount   = ($statusCounts['received']   ?? 0) + ($statusCounts['pending'] ?? 0);
+            $inRepairCount   = $statusCounts['in_repair']   ?? 0;
+            $readyCount      = $statusCounts['ready']       ?? 0;
+            $deliveredCount  = $statusCounts['delivered']   ?? 0;
         @endphp
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 repairs-kpi-grid">
-            <div class="bg-white shadow-sm border border-gray-200 p-4 repairs-kpi-card">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 repairs-kpi-grid">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 repairs-kpi-card">
                 <div class="flex items-center gap-3">
-                    <div class="bg-amber-100 text-amber-700 p-2">
+                    <div class="bg-slate-100 text-slate-600 rounded-lg p-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                         </svg>
                     </div>
                     <div>
-                        <p class="text-xs uppercase tracking-wide text-gray-500">Pending</p>
-                        <p class="text-xl font-semibold text-gray-900">{{ $pendingCount }}</p>
+                        <p class="text-xs uppercase tracking-wide text-gray-500">Received</p>
+                        <p class="text-xl font-semibold text-gray-900">{{ $receivedCount }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 repairs-kpi-card">
+                <div class="flex items-center gap-3">
+                    <div class="bg-amber-100 text-amber-700 rounded-lg p-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-gray-500">In Repair</p>
+                        <p class="text-xl font-semibold text-gray-900">{{ $inRepairCount }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 repairs-kpi-card">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-100 text-blue-700 rounded-lg p-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-gray-500">Ready</p>
+                        <p class="text-xl font-semibold text-gray-900">{{ $readyCount }}</p>
                     </div>
                 </div>
             </div>
@@ -535,15 +512,17 @@
                                             </span>
                                         </td>
                                         <td class="px-3 py-4 whitespace-nowrap">
-                                            @if($r->status === 'delivered')
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Delivered
-                                                </span>
-                                            @else
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Pending
-                                                </span>
-                                            @endif
+                                            @php
+                                                $statusBadge = match($r->status) {
+                                                    'delivered'  => ['bg-emerald-100 text-emerald-800', 'M5 13l4 4L19 7', 'Delivered'],
+                                                    'ready'      => ['bg-blue-100 text-blue-800',    'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', 'Ready'],
+                                                    'in_repair'  => ['bg-amber-100 text-amber-800',  'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', 'In Repair'],
+                                                    default      => ['bg-slate-100 text-slate-700',  'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4', 'Received'],
+                                                };
+                                            @endphp
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusBadge[0] }}">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $statusBadge[1] }}"/></svg>{{ $statusBadge[2] }}
+                                            </span>
                                         </td>
                                         <td class="px-3 py-4 whitespace-nowrap text-sm text-center">
                                             <div class="flex items-center justify-center gap-2 repairs-action-row">

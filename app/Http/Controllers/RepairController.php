@@ -20,7 +20,7 @@ class RepairController extends Controller
         $shopId = auth()->user()->shop_id;
 
         $query = Repair::where('shop_id', $shopId)
-            ->where('status', '!=', 'delivered')
+            ->whereNotIn('status', ['delivered'])
             ->with(['customer', 'invoice']);
 
         if ($request->filled('search')) {
@@ -93,7 +93,7 @@ class RepairController extends Controller
             'gross_weight'     => $validated['gross_weight'],
             'purity'           => $validated['purity'] ?? null,
             'estimated_cost'   => $validated['estimated_cost'],
-            'status'           => 'pending',
+            'status'           => 'received',
         ]);
 
         if ($request->expectsJson()) {
