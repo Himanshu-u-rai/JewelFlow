@@ -80,9 +80,10 @@ class VendorController extends Controller
     /**
      * Single vendor, shop-scoped via route model binding + global scope.
      */
-    public function show(int $id): JsonResponse
+    public function show(int $id, Request $request): JsonResponse
     {
         $vendor = Vendor::withCount(['items' => fn ($q) => $q->where('status', 'in_stock')])
+            ->where('shop_id', (int) $request->user()->shop_id)
             ->findOrFail($id);
 
         return response()->json(VendorData::fromModel($vendor, (int) $vendor->items_count));
@@ -109,7 +110,7 @@ class VendorController extends Controller
 
     public function update(int $id, Request $request): JsonResponse
     {
-        $vendor = Vendor::findOrFail($id);
+        $vendor = Vendor::where('shop_id', (int) $request->user()->shop_id)->findOrFail($id);
 
         $validated = $this->validatePayload($request, $vendor->id);
 
@@ -127,9 +128,9 @@ class VendorController extends Controller
      * Hard delete (no soft-delete column on vendors table). Mirrors web
      * behavior: refuses when the vendor still has linked items.
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(int $id, Request $request): JsonResponse
     {
-        $vendor = Vendor::findOrFail($id);
+        $vendor = Vendor::where('shop_id', (int) $request->user()->shop_id)->findOrFail($id);
 
         if ($vendor->items()->exists()) {
             return response()->json([
@@ -155,12 +156,15 @@ class VendorController extends Controller
      */
     public function ledger(int $id, Request $request): JsonResponse
     {
+        $shopId = (int) $request->user()->shop_id;
+
         $validated = $request->validate([
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
         $perPage = (int) ($validated['per_page'] ?? 20);
 
         $vendor = Vendor::withCount(['items' => fn ($q) => $q->where('status', 'in_stock')])
+            ->where('shop_id', $shopId)
             ->findOrFail($id);
 
         // Summary aggregates over ALL items for this vendor (not just page).

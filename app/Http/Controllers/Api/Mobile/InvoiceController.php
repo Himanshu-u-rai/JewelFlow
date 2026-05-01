@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class InvoiceController extends Controller
@@ -73,8 +74,12 @@ class InvoiceController extends Controller
         return response()->json($invoices);
     }
 
-    public function show(Invoice $invoice): JsonResponse
+    public function show(Invoice $invoice, Request $request): JsonResponse
     {
+        if ((int) $invoice->shop_id !== (int) $request->user()->shop_id) {
+            return response()->json(['message' => 'Invoice not found.'], 404);
+        }
+
         $invoice->load([
             'customer:id,first_name,last_name,mobile,customer_code',
             'items:id,invoice_id,item_id,weight,rate,making_charges,stone_amount,line_total,gst_rate,gst_amount,created_at',
@@ -287,13 +292,18 @@ class InvoiceController extends Controller
 
     private function normalizePaymentPayload(Request $request): array
     {
+        $shopId = (int) $request->user()->shop_id;
+
         if ($request->has('payments')) {
             $validated = $request->validate([
                 'payments' => 'required|array|min:1',
                 'payments.*.mode' => 'required|in:cash,upi,bank,other',
                 'payments.*.amount' => 'required|numeric|min:0.01|max:99999999.99',
                 'payments.*.reference' => 'nullable|string|max:100',
-                'payments.*.payment_method_id' => 'nullable|integer',
+                'payments.*.payment_method_id' => [
+                    'nullable', 'integer',
+                    Rule::exists('shop_payment_methods', 'id')->where('shop_id', $shopId),
+                ],
             ]);
 
             return array_map(function (array $payment): array {
@@ -310,7 +320,10 @@ class InvoiceController extends Controller
             'mode' => 'required|in:cash,upi,bank,other',
             'amount' => 'required|numeric|min:0.01|max:99999999.99',
             'reference' => 'nullable|string|max:100',
-            'payment_method_id' => 'nullable|integer',
+            'payment_method_id' => [
+                'nullable', 'integer',
+                Rule::exists('shop_payment_methods', 'id')->where('shop_id', $shopId),
+            ],
         ]);
 
         return [[
@@ -380,8 +393,12 @@ class InvoiceController extends Controller
         }
     }
 
-    public function template(Invoice $invoice): JsonResponse
+    public function template(Invoice $invoice, Request $request): JsonResponse
     {
+        if ((int) $invoice->shop_id !== (int) $request->user()->shop_id) {
+            return response()->json(['message' => 'Invoice not found.'], 404);
+        }
+
         $invoice->load([
             'customer',
             'items.item',

@@ -56,7 +56,14 @@ class CustomerController extends Controller
 
     public function context(Customer $customer, Request $request): JsonResponse
     {
+        $shopId = (int) $request->user()->shop_id;
+
+        if ((int) $customer->shop_id !== $shopId) {
+            return response()->json(['message' => 'Customer not found.'], 404);
+        }
+
         $recentRepairs = Repair::query()
+            ->where('shop_id', $shopId)
             ->where('customer_id', $customer->id)
             ->latest('created_at')
             ->limit(6)
@@ -72,6 +79,7 @@ class CustomerController extends Controller
             ]);
 
         $recentInvoices = Invoice::query()
+            ->where('shop_id', $shopId)
             ->where('customer_id', $customer->id)
             ->latest('created_at')
             ->limit(6)
@@ -115,19 +123,23 @@ class CustomerController extends Controller
             ->take(12);
 
         $totalInvoices = Invoice::query()
+            ->where('shop_id', $shopId)
             ->where('customer_id', $customer->id)
             ->count();
 
         $lifetimeSpend = (float) Invoice::query()
+            ->where('shop_id', $shopId)
             ->where('customer_id', $customer->id)
             ->where('status', '!=', 'cancelled')
             ->sum('total');
 
         $totalRepairs = Repair::query()
+            ->where('shop_id', $shopId)
             ->where('customer_id', $customer->id)
             ->count();
 
         $openRepairs = Repair::query()
+            ->where('shop_id', $shopId)
             ->where('customer_id', $customer->id)
             ->where('status', '!=', 'delivered')
             ->count();

@@ -83,8 +83,12 @@ class QuickBillController extends Controller
         ]);
     }
 
-    public function show(QuickBill $quickBill): JsonResponse
+    public function show(QuickBill $quickBill, Request $request): JsonResponse
     {
+        if ((int) $quickBill->shop_id !== (int) $request->user()->shop_id) {
+            return response()->json(['message' => 'Quick bill not found.'], 404);
+        }
+
         $quickBill->load('customer', 'items', 'payments.paymentMethod', 'creator');
 
         return response()->json($this->transformDetail($quickBill));
@@ -103,6 +107,10 @@ class QuickBillController extends Controller
 
     public function update(Request $request, QuickBill $quickBill, QuickBillService $quickBillService): JsonResponse
     {
+        if ((int) $quickBill->shop_id !== (int) $request->user()->shop_id) {
+            return response()->json(['message' => 'Quick bill not found.'], 404);
+        }
+
         $payload = $this->validatedPayload($request);
         $quickBill = $quickBillService->update($quickBill, $request->user()->shop, $request->user(), $payload);
 
@@ -114,6 +122,10 @@ class QuickBillController extends Controller
 
     public function void(Request $request, QuickBill $quickBill, QuickBillService $quickBillService): JsonResponse
     {
+        if ((int) $quickBill->shop_id !== (int) $request->user()->shop_id) {
+            return response()->json(['message' => 'Quick bill not found.'], 404);
+        }
+
         $data = $request->validate([
             'void_reason' => 'nullable|string|max:1000',
         ]);
@@ -126,8 +138,12 @@ class QuickBillController extends Controller
         ]);
     }
 
-    public function template(QuickBill $quickBill): JsonResponse
+    public function template(QuickBill $quickBill, Request $request): JsonResponse
     {
+        if ((int) $quickBill->shop_id !== (int) $request->user()->shop_id) {
+            return response()->json(['message' => 'Quick bill not found.'], 404);
+        }
+
         $quickBill->load('customer', 'items', 'payments.paymentMethod');
 
         $html = view('quick-bills.print', [

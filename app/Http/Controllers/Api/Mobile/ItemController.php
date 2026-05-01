@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use LogicException;
 
 class ItemController extends Controller
@@ -84,8 +85,19 @@ class ItemController extends Controller
             'design' => 'nullable|string|max:255',
             'category' => 'sometimes|required|string|max:255',
             'sub_category' => 'nullable|string|max:255',
+            'metal_type' => ['sometimes', 'required', Rule::in(['gold', 'silver'])],
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
+            'hallmark_charges' => 'nullable|numeric|min:0',
+            'rhodium_charges' => 'nullable|numeric|min:0',
+            'other_charges' => 'nullable|numeric|min:0',
+            'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+            'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+            'huid' => [
+                'nullable', 'string', 'max:30',
+                Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')->ignore($item->id),
+            ],
+            'hallmark_date' => 'nullable|date',
             'image_base64' => 'nullable|string',
             'remove_image' => 'nullable|boolean',
         ];
@@ -100,23 +112,14 @@ class ItemController extends Controller
             $rules = array_merge($rules, [
                 'gross_weight' => 'sometimes|required|numeric|min:0.001',
                 'stone_weight' => 'nullable|numeric|min:0',
-                'metal_type' => ['sometimes', 'required', Rule::in(['gold', 'silver'])],
                 'purity' => 'sometimes|required|numeric|min:0.001|max:1000',
                 'cost_price' => 'sometimes|nullable|numeric|min:0',
                 'selling_price' => 'sometimes|nullable|numeric|min:0',
-                'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
-                'huid' => [
-                    'nullable', 'string', 'max:30',
-                    Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')->ignore($item->id),
-                ],
-                'hallmark_date' => 'nullable|date',
-                'hallmark_charges' => 'nullable|numeric|min:0',
-                'rhodium_charges' => 'nullable|numeric|min:0',
-                'other_charges' => 'nullable|numeric|min:0',
             ]);
         }
 
         $validated = $request->validate($rules);
+        $this->assertVendorKarigarMutuallyExclusive($validated);
         $retailerPricing = null;
 
         if ($isRetailer) {
@@ -173,10 +176,23 @@ class ItemController extends Controller
                 'sub_category' => array_key_exists('sub_category', $validated) ? $validated['sub_category'] : null,
                 'making_charges' => $validated['making_charges'] ?? null,
                 'stone_charges' => $validated['stone_charges'] ?? null,
+                'hallmark_charges' => array_key_exists('hallmark_charges', $validated) ? $validated['hallmark_charges'] : null,
+                'rhodium_charges' => array_key_exists('rhodium_charges', $validated) ? $validated['rhodium_charges'] : null,
+                'other_charges' => array_key_exists('other_charges', $validated) ? $validated['other_charges'] : null,
             ], fn ($v) => $v !== null);
 
             // Allow clearing nullable text fields via explicit null values.
             foreach (['design', 'sub_category'] as $nullable) {
+                if (array_key_exists($nullable, $validated)) {
+                    $updates[$nullable] = $validated[$nullable];
+                }
+            }
+
+            if (array_key_exists('metal_type', $validated) && !$isRetailer) {
+                $updates['metal_type'] = $validated['metal_type'];
+            }
+
+            foreach (['vendor_id', 'karigar_id', 'huid', 'hallmark_date'] as $nullable) {
                 if (array_key_exists($nullable, $validated)) {
                     $updates[$nullable] = $validated[$nullable];
                 }
@@ -198,11 +214,6 @@ class ItemController extends Controller
                     $updates['pricing_review_notes'] = null;
                 }
 
-                foreach (['vendor_id', 'huid', 'hallmark_date'] as $nullable) {
-                    if (array_key_exists($nullable, $validated)) {
-                        $updates[$nullable] = $validated[$nullable];
-                    }
-                }
             }
 
             if ($newImagePath !== null) {
@@ -280,6 +291,7 @@ class ItemController extends Controller
             'image' => $this->catalog->resolveImageUrl($request, $item),
             'share_url' => $this->buildProductShareUrl($shop, $token),
             'vendor_id' => $item->vendor_id,
+            'karigar_id' => $item->karigar_id,
         ];
     }
 
@@ -305,6 +317,7 @@ class ItemController extends Controller
             'design' => 'nullable|string|max:255',
             'category' => 'required|string|max:255',
             'sub_category' => 'nullable|string|max:255',
+            'metal_type' => ['nullable', Rule::in(['gold', 'silver'])],
             'gross_weight' => 'required|numeric|min:0.001',
             'stone_weight' => 'nullable|numeric|min:0',
             'purity' => $isRetailer ? 'required|numeric|min:0.001|max:1000' : 'required|numeric|min:1|max:24',
@@ -316,6 +329,7 @@ class ItemController extends Controller
             'rhodium_charges' => 'nullable|numeric|min:0',
             'other_charges' => 'nullable|numeric|min:0',
             'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+            'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
             'huid' => [
                 'nullable', 'string', 'max:30',
                 Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid'),
@@ -329,23 +343,28 @@ class ItemController extends Controller
         }
 
         $validated = $request->validate($rules);
+        $this->assertVendorKarigarMutuallyExclusive($validated);
 
         $imagePath = null;
         if (! empty($validated['image_base64'])) {
-            $imageData = base64_decode($validated['image_base64']);
-            if ($imageData !== false) {
-                $finfo = new \finfo(FILEINFO_MIME_TYPE);
-                $mime = $finfo->buffer($imageData);
-                $allowedMimes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-
-                if (! isset($allowedMimes[$mime])) {
-                    return response()->json(['message' => 'Invalid image format. Allowed: JPEG, PNG, WebP.'], 422);
-                }
-
-                $filename = 'items/' . Str::ulid() . '.' . $allowedMimes[$mime];
-                Storage::disk('public')->put($filename, $imageData);
-                $imagePath = $filename;
+            $imageData = base64_decode($validated['image_base64'], true);
+            if ($imageData === false) {
+                return response()->json(['message' => 'Invalid image data.'], 422);
             }
+            if (strlen($imageData) > 5 * 1024 * 1024) {
+                return response()->json(['message' => 'Image size must not exceed 5 MB.'], 422);
+            }
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mime = $finfo->buffer($imageData);
+            $allowedMimes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+
+            if (! isset($allowedMimes[$mime])) {
+                return response()->json(['message' => 'Invalid image format. Allowed: JPEG, PNG, WebP.'], 422);
+            }
+
+            $filename = 'items/' . Str::ulid() . '.' . $allowedMimes[$mime];
+            Storage::disk('public')->put($filename, $imageData);
+            $imagePath = $filename;
         }
 
         $pricingPayload = null;
@@ -366,7 +385,7 @@ class ItemController extends Controller
                 'design' => $validated['design'] ?? null,
                 'category' => $validated['category'],
                 'sub_category' => $validated['sub_category'] ?? null,
-                'metal_type' => $pricingPayload['metal_type'] ?? null,
+                'metal_type' => $pricingPayload['metal_type'] ?? ($validated['metal_type'] ?? null),
                 'gross_weight' => $validated['gross_weight'],
                 'stone_weight' => $validated['stone_weight'] ?? 0,
                 'net_metal_weight' => $netMetalWeight,
@@ -383,6 +402,7 @@ class ItemController extends Controller
                     ? $pricingPayload['selling_price']
                     : $validated['selling_price'],
                 'vendor_id' => $validated['vendor_id'] ?? null,
+                'karigar_id' => $validated['karigar_id'] ?? null,
                 'huid' => $validated['huid'] ?? null,
                 'hallmark_date' => $validated['hallmark_date'] ?? null,
                 'source' => 'purchased',
@@ -455,6 +475,7 @@ class ItemController extends Controller
     public function vendors(Request $request): JsonResponse
     {
         $vendors = Vendor::active()
+            ->where('shop_id', (int) $request->user()->shop_id)
             ->select('id', 'name', 'mobile')
             ->orderBy('name')
             ->get();
@@ -517,5 +538,20 @@ class ItemController extends Controller
     private function retailerPricingBlockedResponse(string $message): JsonResponse
     {
         return response()->json(['message' => $message], 409);
+    }
+
+    private function assertVendorKarigarMutuallyExclusive(array $validated): void
+    {
+        if (
+            array_key_exists('vendor_id', $validated)
+            && array_key_exists('karigar_id', $validated)
+            && !empty($validated['vendor_id'])
+            && !empty($validated['karigar_id'])
+        ) {
+            throw ValidationException::withMessages([
+                'vendor_id' => 'Vendor and karigar cannot both be set for the same item.',
+                'karigar_id' => 'Vendor and karigar cannot both be set for the same item.',
+            ]);
+        }
     }
 }

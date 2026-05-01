@@ -11,15 +11,21 @@ use App\Services\InvoiceAccountingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 
 class RepairController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Repair::with('customer:id,first_name,last_name,mobile');
+        $shopId = (int) $request->user()->shop_id;
+        $query = Repair::with('customer:id,first_name,last_name,mobile')
+            ->where('shop_id', $shopId);
 
-        if ($request->filled('status')) {
+        $allowedStatuses = ['received', 'in_repair', 'ready', 'delivered'];
+        if ($request->filled('status') && in_array($request->status, $allowedStatuses, true)) {
             $query->where('status', $request->status);
         }
 
@@ -31,8 +37,20 @@ class RepairController extends Controller
 
         $repairs = $query->orderBy('created_at', 'desc')
             ->paginate($request->input('per_page', 20));
+        $repairs->setCollection(
+            $repairs->getCollection()->map(fn (Repair $repair) => $this->serializeRepair($repair))
+        );
 
         return response()->json($repairs);
+    }
+
+    public function show(int $repair, Request $request): JsonResponse
+    {
+        $repairModel = Repair::with('customer:id,first_name,last_name,mobile')
+            ->where('shop_id', (int) $request->user()->shop_id)
+            ->findOrFail($repair);
+
+        return response()->json($this->serializeRepair($repairModel));
     }
 
     public function store(Request $request): JsonResponse
@@ -50,13 +68,21 @@ class RepairController extends Controller
             'gross_weight' => 'required|numeric|min:0.001',
             'purity' => 'required|numeric|min:1|max:24',
             'estimated_cost' => 'required|numeric|min:0',
+            'image_base64' => 'nullable|string',
         ]);
+
+        $imagePath = null;
+        if (!empty($validated['image_base64'])) {
+            $imagePath = $this->storeRepairImageFromBase64($validated['image_base64'], $shopId);
+        }
 
         $repair = Repair::create([
             'shop_id' => $shopId,
             'customer_id' => $validated['customer_id'],
             'item_description' => $validated['item_description'],
             'description' => $validated['description'] ?? null,
+            'image_path' => $imagePath,
+            'image' => $imagePath,
             'due_date' => $validated['due_date'] ?? null,
             'gross_weight' => $validated['gross_weight'],
             'purity' => $validated['purity'],
@@ -79,16 +105,25 @@ class RepairController extends Controller
             ],
         ]);
 
+        $resolvedImagePath = $repair->resolveImagePath();
+
         return response()->json([
             'id' => $repair->id,
             'repair_number' => $repair->repair_number,
             'status' => $repair->status,
+            'image' => $resolvedImagePath,
+            'image_path' => $resolvedImagePath,
+            'image_url' => $this->repairImageUrl($resolvedImagePath),
             'message' => 'Repair created successfully.',
         ], 201);
     }
 
     public function updateStatus(Repair $repair, Request $request): JsonResponse
     {
+        if ((int) $repair->shop_id !== (int) $request->user()->shop_id) {
+            return response()->json(['message' => 'Repair not found.'], 404);
+        }
+
         $validated = $request->validate([
             'status' => ['required', Rule::in(['received', 'in_repair', 'ready', 'delivered'])],
             'final_cost' => 'nullable|numeric|min:0',
@@ -159,10 +194,16 @@ class RepairController extends Controller
     public function deliver(Repair $repair, Request $request): JsonResponse
     {
         $shopId = (int) $request->user()->shop_id;
+
+        if ((int) $repair->shop_id !== $shopId) {
+            return response()->json(['message' => 'Repair not found.'], 404);
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0',
             'include_gst' => 'nullable|boolean',
             'gst_rate' => 'nullable|numeric|min:0|max:100',
+            'payment_mode' => ['nullable', Rule::in(['cash', 'upi', 'bank', 'wallet', 'other'])],
         ]);
 
         $includeGst = $request->boolean('include_gst');
@@ -172,6 +213,8 @@ class RepairController extends Controller
         $gstAmount = $includeGst ? round(($subtotal * $gstRate) / 100, 2) : 0.0;
         $totalAmount = round($subtotal + $gstAmount, 2);
 
+        $paymentMode = $validated['payment_mode'] ?? InvoicePayment::MODE_CASH;
+
         [$updatedRepair, $invoice] = DB::transaction(function () use (
             $repair,
             $request,
@@ -179,7 +222,8 @@ class RepairController extends Controller
             $subtotal,
             $gstRate,
             $gstAmount,
-            $totalAmount
+            $totalAmount,
+            $paymentMode
         ) {
             $lockedRepair = Repair::query()->where('id', $repair->id)->lockForUpdate()->firstOrFail();
 
@@ -203,22 +247,24 @@ class RepairController extends Controller
             InvoicePayment::record([
                 'invoice_id' => $invoice->id,
                 'shop_id' => $shopId,
-                'mode' => InvoicePayment::MODE_CASH,
+                'mode' => $paymentMode,
                 'amount' => $totalAmount,
             ]);
 
-            CashTransaction::record([
-                'shop_id' => $shopId,
-                'user_id' => (int) $request->user()->id,
-                'type' => 'in',
-                'amount' => $totalAmount,
-                'source_type' => 'invoice',
-                'source_id' => $invoice->id,
-                'invoice_id' => $invoice->id,
-                'description' => 'Repair delivery - ' . $lockedRepair->item_description,
-                'reference_type' => 'invoice',
-                'reference_id' => $invoice->id,
-            ]);
+            if ($paymentMode === InvoicePayment::MODE_CASH) {
+                CashTransaction::record([
+                    'shop_id' => $shopId,
+                    'user_id' => (int) $request->user()->id,
+                    'type' => 'in',
+                    'amount' => $totalAmount,
+                    'source_type' => 'invoice',
+                    'source_id' => $invoice->id,
+                    'invoice_id' => $invoice->id,
+                    'description' => 'Repair delivery - ' . $lockedRepair->item_description,
+                    'reference_type' => 'invoice',
+                    'reference_id' => $invoice->id,
+                ]);
+            }
 
             $lockedRepair->final_cost = $totalAmount;
             $lockedRepair->invoice_id = $invoice->id;
@@ -239,6 +285,7 @@ class RepairController extends Controller
                     'gst_rate' => $gstRate,
                     'gst' => $gstAmount,
                     'amount' => $totalAmount,
+                    'payment_mode' => $paymentMode,
                     'invoice_id' => $invoice->id,
                 ],
             ]);
@@ -253,10 +300,78 @@ class RepairController extends Controller
             'final_cost' => $updatedRepair->final_cost,
             'invoice_id' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
+            'payment_mode' => $paymentMode,
             'gst_rate' => $gstRate,
             'gst' => $gstAmount,
             'total' => $totalAmount,
             'message' => 'Repair delivered and billed successfully.',
         ]);
+    }
+
+    private function storeRepairImageFromBase64(string $imageBase64, int $shopId): string
+    {
+        $imageData = base64_decode($imageBase64, true);
+        if ($imageData === false) {
+            throw ValidationException::withMessages([
+                'image_base64' => 'Invalid image data.',
+            ]);
+        }
+
+        $maxBytes = 5 * 1024 * 1024;
+        if (strlen($imageData) > $maxBytes) {
+            throw ValidationException::withMessages([
+                'image_base64' => 'Image size must not exceed 5 MB.',
+            ]);
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->buffer($imageData);
+        $allowedMimes = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        if (!isset($allowedMimes[$mime])) {
+            throw ValidationException::withMessages([
+                'image_base64' => 'Invalid image format. Allowed: JPEG, PNG, WebP.',
+            ]);
+        }
+
+        $path = sprintf('repairs/%d/%s.%s', $shopId, (string) Str::ulid(), $allowedMimes[$mime]);
+        Storage::disk($this->repairImageDisk())->put($path, $imageData);
+
+        return $path;
+    }
+
+    private function repairImageUrl(?string $imagePath): ?string
+    {
+        if (empty($imagePath)) {
+            return null;
+        }
+
+        $url = Storage::disk($this->repairImageDisk())->url(ltrim($imagePath, '/'));
+
+        return str_starts_with($url, 'http://') || str_starts_with($url, 'https://')
+            ? $url
+            : url($url);
+    }
+
+    private function serializeRepair(Repair $repair): array
+    {
+        $resolvedImagePath = $repair->resolveImagePath();
+        $payload = $repair->toArray();
+        $payload['image'] = $resolvedImagePath;
+        $payload['image_path'] = $resolvedImagePath;
+        $payload['image_url'] = $this->repairImageUrl($resolvedImagePath);
+
+        return $payload;
+    }
+
+    private function repairImageDisk(): string
+    {
+        $defaultDisk = (string) config('filesystems.default', 'public');
+
+        return in_array($defaultDisk, ['public', 's3'], true) ? $defaultDisk : 'public';
     }
 }

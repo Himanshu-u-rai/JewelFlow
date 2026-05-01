@@ -13,7 +13,8 @@ class StockController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Item::query();
+        $shopId = (int) $request->user()->shop_id;
+        $query = Item::query()->where('shop_id', $shopId);
 
         // Filter by status
         $allowedStatuses = ['in_stock', 'sold', 'returned'];
@@ -36,7 +37,7 @@ class StockController extends Controller
 
         // Search
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = mb_substr(trim((string) $request->search), 0, 100);
             $query->where(function ($q) use ($search) {
                 $q->where('barcode', 'ilike', "%{$search}%")
                   ->orWhere('design', 'ilike', "%{$search}%")
@@ -52,11 +53,13 @@ class StockController extends Controller
 
         // High-value threshold filter
         if ($request->filled('min_price')) {
-            $query->where('selling_price', '>=', (float) $request->input('min_price'));
+            $minPrice = max(0, (float) $request->input('min_price'));
+            $query->where('selling_price', '>=', $minPrice);
         }
 
+        $perPage = min(100, max(1, (int) $request->input('per_page', 20)));
         $items = $query->orderBy('created_at', 'desc')
-            ->paginate($request->input('per_page', 20));
+            ->paginate($perPage);
 
         return response()->json($items);
     }
@@ -77,6 +80,7 @@ class StockController extends Controller
             ->values();
 
         $items = Item::query()
+            ->where('shop_id', $shopId)
             ->whereIn('id', $ids)
             ->get(['id', 'barcode', 'status']);
 
@@ -85,6 +89,7 @@ class StockController extends Controller
         }
 
         Item::query()
+            ->where('shop_id', $shopId)
             ->whereIn('id', $ids)
             ->update(['status' => $validated['status']]);
 
