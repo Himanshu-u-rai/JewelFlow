@@ -151,6 +151,7 @@ class RepairController extends Controller
             'gross_weight'     => 'required|numeric|min:0',
             'purity'           => 'nullable|numeric|min:0|max:24',
             'estimated_cost'   => 'nullable|numeric|min:0',
+            'status'           => ['required', Rule::in(['received', 'in_repair', 'ready'])],
             'image'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'image_base64'     => 'nullable|string',
             'remove_image'     => 'nullable|boolean',

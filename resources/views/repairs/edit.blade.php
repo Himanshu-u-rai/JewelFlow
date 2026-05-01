@@ -127,14 +127,22 @@
                 @method('PUT')
 
                 <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 repairs-edit-status-card">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Current Status</p>
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Pending
-                            </span>
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex-1">
+                            <label for="status" class="r-label">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Status
+                            </label>
+                            <select name="status" id="status" class="r-select" required>
+                                <option value="received"  @selected(old('status', $repair->status) === 'received')>Received</option>
+                                <option value="in_repair" @selected(old('status', $repair->status) === 'in_repair')>In Repair</option>
+                                <option value="ready"     @selected(old('status', $repair->status) === 'ready')>Ready for Pickup</option>
+                            </select>
+                            @error('status')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
-                        <div class="text-sm font-mono font-semibold text-gray-600">REP-{{ str_pad($repair->repair_number, 3, '0', STR_PAD_LEFT) }}</div>
+                        <div class="text-sm font-mono font-semibold text-gray-600 pt-5">REP-{{ str_pad($repair->repair_number, 3, '0', STR_PAD_LEFT) }}</div>
                     </div>
                 </div>
 
