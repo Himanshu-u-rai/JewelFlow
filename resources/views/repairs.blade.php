@@ -535,6 +535,16 @@
                                                     View
                                                 </a>
                                                 @if($r->status !== 'delivered')
+                                                    <form method="POST" action="{{ route('repairs.status', $r) }}" class="inline">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <select name="status" onchange="this.form.submit()" title="Change status"
+                                                                class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-slate-700 cursor-pointer focus:outline-none focus:border-teal-500">
+                                                            <option value="received"  @selected($r->status === 'received')>Received</option>
+                                                            <option value="in_repair" @selected($r->status === 'in_repair')>In Repair</option>
+                                                            <option value="ready"     @selected($r->status === 'ready')>Ready</option>
+                                                        </select>
+                                                    </form>
                                                     <a href="{{ route('repairs.edit', $r) }}"
                                                        class="btn btn-secondary btn-xs">
                                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -546,13 +556,6 @@
                                                             class="btn btn-success btn-xs" title="Complete & Bill">
                                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Bill
                                                     </button>
-                                                    <form method="POST" action="{{ route('repairs.destroy', $r) }}" class="inline" onsubmit="return confirm('Delete repair REP-{{ str_pad($r->repair_number, 3, '0', STR_PAD_LEFT) }} for {{ addslashes($r->customer->name) }}? This cannot be undone.');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-danger btn-xs" title="Delete repair">
-                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V4a1 1 0 011-1h6a1 1 0 011 1v3"/></svg>
-                                                        </button>
-                                                    </form>
                                                 @endif
                                                 @if($r->status === 'delivered' && $r->invoice_id)
                                                     <a href="{{ route('invoices.show', $r->invoice_id) }}"

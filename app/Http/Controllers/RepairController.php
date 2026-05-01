@@ -192,6 +192,23 @@ class RepairController extends Controller
         return redirect()->route('repairs.index')->with('success', 'Repair updated successfully!');
     }
 
+    public function updateStatus(Request $request, Repair $repair)
+    {
+        $this->authorize('update', $repair);
+
+        if ($repair->status === 'delivered') {
+            return back()->with('error', 'Delivered repairs cannot be changed.');
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(['received', 'in_repair', 'ready'])],
+        ]);
+
+        $repair->update(['status' => $validated['status']]);
+
+        return back()->with('success', 'Status updated to "' . ucwords(str_replace('_', ' ', $validated['status'])) . '".');
+    }
+
     public function deliver(Request $request, Repair $repair)
     {
         $this->authorize('update', $repair);

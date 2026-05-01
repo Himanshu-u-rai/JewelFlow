@@ -268,6 +268,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'show'])->name('repairs.show');
     Route::get('/repairs/{repair}/edit', [\App\Http\Controllers\RepairController::class, 'edit'])->name('repairs.edit');
     Route::put('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'update'])->name('repairs.update');
+    Route::patch('/repairs/{repair}/status', [\App\Http\Controllers\RepairController::class, 'updateStatus'])->name('repairs.status');
     Route::post('/repairs/{repair}/deliver', [\App\Http\Controllers\RepairController::class, 'deliver'])->name('repairs.deliver');
     Route::delete('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'destroy'])->name('repairs.destroy');
 
