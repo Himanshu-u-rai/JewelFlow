@@ -336,7 +336,6 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/settings/services/request-add', [\App\Http\Controllers\ShopServicesController::class, 'requestAdd'])->middleware('role:owner')->name('settings.services.request-add');
     Route::post('/settings/services/remove', [\App\Http\Controllers\ShopServicesController::class, 'remove'])->middleware('role:owner')->name('settings.services.remove');
     Route::post('/settings/services/requests/{editionRequest}/cancel', [\App\Http\Controllers\ShopServicesController::class, 'cancelRequest'])->middleware('role:owner')->name('settings.services.request.cancel');
-    Route::patch('/settings/profile', [SettingsController::class, 'updateProfile'])->name('settings.update.profile');
     Route::patch('/settings/shop', [SettingsController::class, 'updateShop'])->middleware('role:owner')->name('settings.update.shop');
     Route::patch('/settings/rules', [SettingsController::class, 'updateRules'])->middleware('role:owner')->name('settings.update.rules');
     Route::patch('/settings/billing', [SettingsController::class, 'updateBilling'])->middleware('role:owner')->name('settings.update.billing');
