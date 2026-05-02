@@ -37,6 +37,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware('throttle:api-pos-read');
 
         // Items
+        // Read = all roles. Write = owner + manager only (inventory.create/edit/delete).
         Route::get('/items/search', [ItemController::class, 'search'])
             ->middleware('throttle:api-pos-read');
         Route::get('/items/barcode/{barcode}', [ItemController::class, 'findByBarcode'])
@@ -44,44 +45,43 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::get('/items/retailer-pricing-meta', [ItemController::class, 'retailerPricingMeta'])
             ->middleware('throttle:api-pos-read');
         Route::post('/items', [ItemController::class, 'store'])
-            ->middleware('throttle:api-pos-sale');
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager']);
         Route::get('/items/{item}', [ItemController::class, 'show'])
             ->middleware('throttle:api-pos-read')
             ->whereNumber('item');
         Route::put('/items/{item}', [ItemController::class, 'update'])
-            ->middleware('throttle:api-pos-sale')
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager'])
             ->whereNumber('item');
         Route::patch('/items/{item}', [ItemController::class, 'update'])
-            ->middleware('throttle:api-pos-sale')
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager'])
             ->whereNumber('item');
 
-        // Lookup data for item registration
+        // Lookup data for item registration — read-only, all roles
         Route::get('/categories', [ItemController::class, 'categories'])
             ->middleware('throttle:api-pos-read');
-        // Lightweight vendor lookup for item-create — kept alongside the full
-        // suppliers CRUD below. Full list/search lives at GET /vendors (index).
         Route::get('/vendors/lookup', [ItemController::class, 'vendors'])
             ->middleware('throttle:api-pos-read');
         Route::get('/karigars/lookup', [ItemController::class, 'karigars'])
             ->middleware('throttle:api-pos-read');
 
         // Suppliers (vendors) — full CRUD + ledger.
+        // Read = all roles. Write/delete = owner + manager only.
         Route::get('/vendors', [VendorController::class, 'index'])
             ->middleware('throttle:api-pos-read')
             ->name('mobile.vendors.index');
         Route::post('/vendors', [VendorController::class, 'store'])
-            ->middleware('throttle:api-pos-sale')
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager'])
             ->name('mobile.vendors.store');
         Route::get('/vendors/{vendor}', [VendorController::class, 'show'])
             ->middleware('throttle:api-pos-read')
             ->whereNumber('vendor')
             ->name('mobile.vendors.show');
         Route::put('/vendors/{vendor}', [VendorController::class, 'update'])
-            ->middleware('throttle:api-pos-sale')
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager'])
             ->whereNumber('vendor')
             ->name('mobile.vendors.update');
         Route::patch('/vendors/{vendor}', [VendorController::class, 'update'])
-            ->middleware('throttle:api-pos-sale')
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager'])
             ->whereNumber('vendor');
         Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy'])
             ->middleware(['throttle:api-pos-sale', 'role:owner,manager'])
@@ -93,6 +93,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->name('mobile.vendors.ledger');
 
         // Customers
+        // Search/view/create = all roles (needed for POS flow).
         Route::get('/customers/search', [CustomerController::class, 'search'])
             ->middleware('throttle:api-pos-read');
         Route::get('/customers/{customer}/context', [CustomerController::class, 'context'])
@@ -104,9 +105,11 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::get('/stock', [StockController::class, 'index'])
             ->middleware('throttle:api-pos-read');
         Route::post('/stock/batch-status', [StockController::class, 'batchStatus'])
-            ->middleware('throttle:api-pos-sale');
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager']);
 
         // Repairs
+        // Read/create/edit/status/deliver = all roles (repairs.create/edit permission).
+        // No delete endpoint on mobile.
         Route::get('/repairs', [RepairController::class, 'index'])
             ->middleware('throttle:api-pos-read');
         Route::get('/repairs/{repair}', [RepairController::class, 'show'])
@@ -119,7 +122,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::post('/repairs/{repair}/deliver', [RepairController::class, 'deliver'])
             ->middleware('throttle:api-pos-sale');
 
-        // Invoices
+        // Invoices — view/show/print = all roles. Add payment = all roles (part of POS flow).
         Route::get('/invoices', [InvoiceController::class, 'index'])
             ->middleware('throttle:api-pos-read');
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])
@@ -130,7 +133,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware('throttle:api-pos-sale')
             ->whereNumber('invoice');
 
-        // Quick Bills
+        // Quick Bills — all roles (part of POS flow).
+        // Void = owner + manager only (financial reversal).
         Route::get('/quick-bills', [QuickBillController::class, 'index'])
             ->middleware('throttle:api-pos-read');
         Route::get('/quick-bills/{quickBill}', [QuickBillController::class, 'show'])
@@ -140,11 +144,11 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::post('/quick-bills', [QuickBillController::class, 'store'])
             ->middleware('throttle:api-pos-sale');
         Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
-            ->middleware('throttle:api-pos-sale');
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager']);
         Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
-            ->middleware('throttle:api-pos-sale');
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager']);
 
-        // Catalog Sharing
+        // Catalog Sharing — read = all roles. Write = owner + manager only.
         Route::get('/catalog/items', [CatalogController::class, 'items'])
             ->middleware('throttle:api-pos-read');
         Route::get('/catalog/categories', [CatalogController::class, 'categories'])
@@ -156,7 +160,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::post('/catalog/collections', [CatalogController::class, 'storeCollection'])
             ->middleware(['throttle:api-pos-sale', 'role:owner,manager']);
 
-        // Mobile POS
+        // Mobile POS — all roles.
         Route::get('/pos/bootstrap', [PosController::class, 'bootstrap'])
             ->middleware('throttle:api-pos-read');
         Route::post('/pos/preview', [PosController::class, 'preview'])
@@ -164,13 +168,13 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::post('/pos/sell', [PosController::class, 'sell'])
             ->middleware('throttle:api-pos-sale');
 
-        // POS Scan Connection
+        // POS Scan Connection — all roles.
         Route::post('/scan/connect', [ScanController::class, 'connect'])
             ->middleware('throttle:api-pos-read');
         Route::post('/scan/send', [ScanController::class, 'send'])
             ->middleware('throttle:api-pos-sale');
 
-        // Daily Pricing — owner/manager only
+        // Daily Pricing — owner + manager only.
         Route::get('/pricing/today', [PricingController::class, 'today'])
             ->middleware(['throttle:api-pos-read', 'role:owner,manager']);
         Route::post('/pricing/today', [PricingController::class, 'saveToday'])

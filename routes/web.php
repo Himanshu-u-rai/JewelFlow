@@ -148,15 +148,15 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])->name('subscription.status');
 
-    // ======= EXPORT =======
-    Route::get('/export', [ExportController::class, 'index'])->name('export.index');
-    Route::post('/export/customers', [ExportController::class, 'exportCustomers'])->name('export.customers');
-    Route::post('/export/products', [ExportController::class, 'exportProducts'])->name('export.products');
-    Route::post('/export/invoices', [ExportController::class, 'exportInvoices'])->name('export.invoices');
-    Route::post('/export/gold-ledger', [ExportController::class, 'exportGoldLedger'])->name('export.gold-ledger');
-    Route::post('/export/cash-transactions', [ExportController::class, 'exportCashTransactions'])->name('export.cash-transactions');
+    // ======= EXPORT (owner + manager only — reports.export permission) =======
+    Route::get('/export', [ExportController::class, 'index'])->middleware('role:owner,manager')->name('export.index');
+    Route::post('/export/customers', [ExportController::class, 'exportCustomers'])->middleware('role:owner,manager')->name('export.customers');
+    Route::post('/export/products', [ExportController::class, 'exportProducts'])->middleware('role:owner,manager')->name('export.products');
+    Route::post('/export/invoices', [ExportController::class, 'exportInvoices'])->middleware('role:owner,manager')->name('export.invoices');
+    Route::post('/export/gold-ledger', [ExportController::class, 'exportGoldLedger'])->middleware('role:owner,manager')->name('export.gold-ledger');
+    Route::post('/export/cash-transactions', [ExportController::class, 'exportCashTransactions'])->middleware('role:owner,manager')->name('export.cash-transactions');
     Route::post('/export/all', [ExportController::class, 'exportAll'])
-        ->middleware('edition:manufacturer')
+        ->middleware(['role:owner,manager', 'edition:manufacturer'])
         ->name('export.all');
 
     // ======= BULK IMPORTS =======
@@ -188,9 +188,24 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware('role:owner,manager')
         ->name('imports.cancel');
 
-    // ======= PRODUCT MASTER =======
-    Route::resource('categories', \App\Http\Controllers\CategoryController::class);
-    Route::resource('sub-categories', \App\Http\Controllers\SubCategoryController::class);
+    // ======= PRODUCT MASTER (owner + manager only — categories.create/edit/delete) =======
+    Route::get('/categories', [\App\Http\Controllers\CategoryController::class, 'index'])->middleware('role:owner,manager,staff')->name('categories.index');
+    Route::get('/categories/create', [\App\Http\Controllers\CategoryController::class, 'create'])->middleware('role:owner,manager')->name('categories.create');
+    Route::post('/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->middleware('role:owner,manager')->name('categories.store');
+    Route::get('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'show'])->middleware('role:owner,manager,staff')->name('categories.show');
+    Route::get('/categories/{category}/edit', [\App\Http\Controllers\CategoryController::class, 'edit'])->middleware('role:owner,manager')->name('categories.edit');
+    Route::put('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('role:owner,manager')->name('categories.update');
+    Route::patch('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('role:owner,manager');
+    Route::delete('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'destroy'])->middleware('role:owner,manager')->name('categories.destroy');
+
+    Route::get('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'index'])->middleware('role:owner,manager,staff')->name('sub-categories.index');
+    Route::get('/sub-categories/create', [\App\Http\Controllers\SubCategoryController::class, 'create'])->middleware('role:owner,manager')->name('sub-categories.create');
+    Route::post('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'store'])->middleware('role:owner,manager')->name('sub-categories.store');
+    Route::get('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'show'])->middleware('role:owner,manager,staff')->name('sub-categories.show');
+    Route::get('/sub-categories/{sub_category}/edit', [\App\Http\Controllers\SubCategoryController::class, 'edit'])->middleware('role:owner,manager')->name('sub-categories.edit');
+    Route::put('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('role:owner,manager')->name('sub-categories.update');
+    Route::patch('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('role:owner,manager');
+    Route::delete('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'destroy'])->middleware('role:owner,manager')->name('sub-categories.destroy');
 
     Route::get('/api/sub-categories', function (\Illuminate\Http\Request $request) {
         $shopId = auth()->user()->shop_id;
@@ -203,7 +218,14 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         return response()->json($subs);
     })->name('api.sub-categories');
 
-    Route::resource('products', \App\Http\Controllers\ProductController::class);
+    Route::get('/products', [\App\Http\Controllers\ProductController::class, 'index'])->middleware('role:owner,manager,staff')->name('products.index');
+    Route::get('/products/create', [\App\Http\Controllers\ProductController::class, 'create'])->middleware('role:owner,manager')->name('products.create');
+    Route::post('/products', [\App\Http\Controllers\ProductController::class, 'store'])->middleware('role:owner,manager')->name('products.store');
+    Route::get('/products/{product}', [\App\Http\Controllers\ProductController::class, 'show'])->middleware('role:owner,manager,staff')->name('products.show');
+    Route::get('/products/{product}/edit', [\App\Http\Controllers\ProductController::class, 'edit'])->middleware('role:owner,manager')->name('products.edit');
+    Route::put('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware('role:owner,manager')->name('products.update');
+    Route::patch('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware('role:owner,manager');
+    Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->middleware('role:owner,manager')->name('products.destroy');
 
     // ======= LIVE SEARCH SUGGESTIONS =======
     Route::get('/search/suggestions', \App\Http\Controllers\SearchSuggestionsController::class)->name('search.suggestions');
@@ -217,28 +239,30 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::put('/inventory/gold/{lot}', [GoldInventoryController::class, 'update'])->middleware('edition:manufacturer')->name('inventory.gold.update');
 
     // ======= ITEMS / STOCK =======
-    Route::get('/inventory/items', [ItemController::class, 'index'])->name('inventory.items.index');
-    Route::get('/inventory/items/pricing-alerts', [ItemController::class, 'pricingAlerts'])->name('inventory.items.pricing-alerts')->middleware('edition:retailer');
-    Route::get('/inventory/items/create', [ItemController::class, 'create'])->name('inventory.items.create');
-    Route::post('/inventory/items', [ItemController::class, 'store'])->name('inventory.items.store');
-    Route::post('/inventory/items/quick-add-purity', [ItemController::class, 'quickAddPurity'])->name('inventory.items.quick-add-purity');
-    Route::post('/inventory/items/quick-add-category', [ItemController::class, 'quickAddCategory'])->name('inventory.items.quick-add-category');
-    Route::post('/inventory/items/quick-add-sub-category', [ItemController::class, 'quickAddSubCategory'])->name('inventory.items.quick-add-sub-category');
-    Route::post('/inventory/items/quick-add-karigar', [ItemController::class, 'quickAddKarigar'])->name('inventory.items.quick-add-karigar');
-    Route::get('/inventory/items/{item}', [ItemController::class, 'show'])->name('inventory.items.show');
-    Route::get('/inventory/items/{item}/edit', [ItemController::class, 'edit'])->name('inventory.items.edit');
-    Route::put('/inventory/items/{item}', [ItemController::class, 'update'])->name('inventory.items.update');
-    Route::delete('/inventory/items/{item}', [ItemController::class, 'destroy'])->name('inventory.items.destroy');
+    // Staff: view + show only. Create/edit/delete = owner + manager.
+    Route::get('/inventory/items', [ItemController::class, 'index'])->middleware('role:owner,manager,staff')->name('inventory.items.index');
+    Route::get('/inventory/items/pricing-alerts', [ItemController::class, 'pricingAlerts'])->middleware(['role:owner,manager', 'edition:retailer'])->name('inventory.items.pricing-alerts');
+    Route::get('/inventory/items/create', [ItemController::class, 'create'])->middleware('role:owner,manager')->name('inventory.items.create');
+    Route::post('/inventory/items', [ItemController::class, 'store'])->middleware('role:owner,manager')->name('inventory.items.store');
+    Route::post('/inventory/items/quick-add-purity', [ItemController::class, 'quickAddPurity'])->middleware('role:owner,manager')->name('inventory.items.quick-add-purity');
+    Route::post('/inventory/items/quick-add-category', [ItemController::class, 'quickAddCategory'])->middleware('role:owner,manager')->name('inventory.items.quick-add-category');
+    Route::post('/inventory/items/quick-add-sub-category', [ItemController::class, 'quickAddSubCategory'])->middleware('role:owner,manager')->name('inventory.items.quick-add-sub-category');
+    Route::post('/inventory/items/quick-add-karigar', [ItemController::class, 'quickAddKarigar'])->middleware('role:owner,manager')->name('inventory.items.quick-add-karigar');
+    Route::get('/inventory/items/{item}', [ItemController::class, 'show'])->middleware('role:owner,manager,staff')->name('inventory.items.show');
+    Route::get('/inventory/items/{item}/edit', [ItemController::class, 'edit'])->middleware('role:owner,manager')->name('inventory.items.edit');
+    Route::put('/inventory/items/{item}', [ItemController::class, 'update'])->middleware('role:owner,manager')->name('inventory.items.update');
+    Route::delete('/inventory/items/{item}', [ItemController::class, 'destroy'])->middleware('role:owner,manager')->name('inventory.items.destroy');
 
     // ======= CUSTOMERS =======
-    Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
-    Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
-    Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
-    Route::post('/customers/quick-store', [CustomerController::class, 'quickStore'])->name('customers.quick-store');
-    Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
-    Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
-    Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
-    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
+    // Staff: view + create (needed for POS). Edit = owner + manager. Delete = owner only.
+    Route::get('/customers', [CustomerController::class, 'index'])->middleware('role:owner,manager,staff')->name('customers.index');
+    Route::get('/customers/create', [CustomerController::class, 'create'])->middleware('role:owner,manager,staff')->name('customers.create');
+    Route::post('/customers', [CustomerController::class, 'store'])->middleware('role:owner,manager,staff')->name('customers.store');
+    Route::post('/customers/quick-store', [CustomerController::class, 'quickStore'])->middleware('role:owner,manager,staff')->name('customers.quick-store');
+    Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware('role:owner,manager,staff')->name('customers.show');
+    Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->middleware('role:owner,manager')->name('customers.edit');
+    Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware('role:owner,manager')->name('customers.update');
+    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('role:owner')->name('customers.destroy');
 
     Route::get('/customers/{customer}/gold', [\App\Http\Controllers\CustomerGoldController::class, 'create'])
         ->middleware('edition:manufacturer')
@@ -263,14 +287,16 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/api/item-by-barcode/{barcode}', [PosController::class, 'findByBarcode'])->middleware('role:owner,manager,staff')->name('pos.barcode');
 
     // ======= REPAIRS =======
-    Route::get('/repairs', [\App\Http\Controllers\RepairController::class, 'index'])->name('repairs.index');
-    Route::post('/repairs', [\App\Http\Controllers\RepairController::class, 'store'])->name('repairs.store');
-    Route::get('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'show'])->name('repairs.show');
-    Route::get('/repairs/{repair}/edit', [\App\Http\Controllers\RepairController::class, 'edit'])->name('repairs.edit');
-    Route::put('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'update'])->name('repairs.update');
-    Route::patch('/repairs/{repair}/status', [\App\Http\Controllers\RepairController::class, 'updateStatus'])->name('repairs.status');
-    Route::post('/repairs/{repair}/deliver', [\App\Http\Controllers\RepairController::class, 'deliver'])->name('repairs.deliver');
-    Route::delete('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'destroy'])->name('repairs.destroy');
+    // Staff: view + create + edit + status update + deliver (repairs.create/edit permission).
+    // Delete = owner + manager only.
+    Route::get('/repairs', [\App\Http\Controllers\RepairController::class, 'index'])->middleware('role:owner,manager,staff')->name('repairs.index');
+    Route::post('/repairs', [\App\Http\Controllers\RepairController::class, 'store'])->middleware('role:owner,manager,staff')->name('repairs.store');
+    Route::get('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'show'])->middleware('role:owner,manager,staff')->name('repairs.show');
+    Route::get('/repairs/{repair}/edit', [\App\Http\Controllers\RepairController::class, 'edit'])->middleware('role:owner,manager,staff')->name('repairs.edit');
+    Route::put('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'update'])->middleware('role:owner,manager,staff')->name('repairs.update');
+    Route::patch('/repairs/{repair}/status', [\App\Http\Controllers\RepairController::class, 'updateStatus'])->middleware('role:owner,manager,staff')->name('repairs.status');
+    Route::post('/repairs/{repair}/deliver', [\App\Http\Controllers\RepairController::class, 'deliver'])->middleware('role:owner,manager,staff')->name('repairs.deliver');
+    Route::delete('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'destroy'])->middleware('role:owner,manager')->name('repairs.destroy');
 
     // ======= JOB WORK (Retailer) =======
     Route::middleware('edition:retailer')->group(function () {
@@ -363,12 +389,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::delete('/settings/catalog-pages/{page}', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'destroyPage'])->middleware('role:owner')->name('settings.catalog-pages.destroy');
 
     // ======= LEDGER & INVOICE =======
-    Route::get('/ledger', [\App\Http\Controllers\LedgerController::class, 'index'])->name('ledger.index');
-    Route::get('/invoices', [\App\Http\Controllers\InvoiceController::class, 'index'])->name('invoices.index');
-    Route::get('/invoices/{invoice}/edit', [\App\Http\Controllers\InvoiceController::class, 'edit'])->name('invoices.edit');
-    Route::put('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->name('invoices.update');
-    Route::get('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'show'])->name('invoices.show');
-    Route::get('/invoice/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->name('invoices.print');
+    // Ledger = owner + manager (financial data). Invoices: view/print = all roles, edit = owner + manager.
+    Route::get('/ledger', [\App\Http\Controllers\LedgerController::class, 'index'])->middleware('role:owner,manager')->name('ledger.index');
+    Route::get('/invoices', [\App\Http\Controllers\InvoiceController::class, 'index'])->middleware('role:owner,manager,staff')->name('invoices.index');
+    Route::get('/invoices/{invoice}/edit', [\App\Http\Controllers\InvoiceController::class, 'edit'])->middleware('role:owner,manager')->name('invoices.edit');
+    Route::put('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->middleware('role:owner,manager')->name('invoices.update');
+    Route::get('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'show'])->middleware('role:owner,manager,staff')->name('invoices.show');
+    Route::get('/invoice/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->middleware('role:owner,manager,staff')->name('invoices.print');
 
     // ======= QUICK BILL GENERATOR =======
     Route::get('/quick-bills', [QuickBillController::class, 'index'])
@@ -397,9 +424,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->name('quick-bills.print');
 
     // ======= CASH BOOK =======
-    Route::get('/cashbook', [\App\Http\Controllers\CashBookController::class, 'index'])->name('cashbook.index');
-    Route::get('/cashbook/create', [\App\Http\Controllers\CashBookController::class, 'create'])->name('cashbook.create');
-    Route::post('/cashbook', [\App\Http\Controllers\CashBookController::class, 'store'])->name('cashbook.store');
+    // View = owner + manager (cash.view). Create = owner + manager (cash.create).
+    Route::get('/cashbook', [\App\Http\Controllers\CashBookController::class, 'index'])->middleware('role:owner,manager')->name('cashbook.index');
+    Route::get('/cashbook/create', [\App\Http\Controllers\CashBookController::class, 'create'])->middleware('role:owner,manager')->name('cashbook.create');
+    Route::post('/cashbook', [\App\Http\Controllers\CashBookController::class, 'store'])->middleware('role:owner,manager')->name('cashbook.store');
 
     // ======= STAFF MANAGEMENT =======
     Route::get('/staff', [\App\Http\Controllers\StaffController::class, 'index'])->middleware('role:owner')->name('staff.index');
