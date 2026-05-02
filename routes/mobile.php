@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Mobile\ScanController;
 use App\Http\Controllers\Api\Mobile\PosController;
 use App\Http\Controllers\Api\Mobile\QuickBillController;
 use App\Http\Controllers\Api\Mobile\CatalogController;
+use App\Http\Controllers\Api\Mobile\PricingController;
 use App\Http\Controllers\Api\Mobile\VendorController;
 
 // --- Public (no auth) ---
@@ -168,4 +169,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware('throttle:api-pos-read');
         Route::post('/scan/send', [ScanController::class, 'send'])
             ->middleware('throttle:api-pos-sale');
+
+        // Daily Pricing — owner/manager only
+        Route::get('/pricing/today', [PricingController::class, 'today'])
+            ->middleware(['throttle:api-pos-read', 'role:owner,manager']);
+        Route::post('/pricing/today', [PricingController::class, 'saveToday'])
+            ->middleware(['throttle:api-pos-sale', 'role:owner,manager']);
     });
