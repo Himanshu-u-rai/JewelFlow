@@ -130,6 +130,16 @@ class ItemController extends Controller
             ], 422);
         }
 
+        if ($isRetailer && isset($validated['metal_type'], $validated['purity'])) {
+            $profile = $this->pricing->profileForPurity($shop, $validated['metal_type'], (float) $validated['purity']);
+            if (! $profile) {
+                return response()->json([
+                    'message' => 'The selected purity (' . $validated['purity'] . ') is not configured for ' . $validated['metal_type'] . '. Ask the owner to add it under Settings → Pricing.',
+                    'errors' => ['purity' => ['Purity not found in active profiles.']],
+                ], 422);
+            }
+        }
+
         $retailerPricing = null;
 
         if ($isRetailer) {
@@ -353,6 +363,16 @@ class ItemController extends Controller
             return response()->json([
                 'message' => 'Select either a vendor or a karigar, not both.',
             ], 422);
+        }
+
+        if ($isRetailer && isset($validated['metal_type'], $validated['purity'])) {
+            $profile = $this->pricing->profileForPurity($shop, $validated['metal_type'], (float) $validated['purity']);
+            if (! $profile) {
+                return response()->json([
+                    'message' => 'The selected purity (' . $validated['purity'] . ') is not configured for ' . $validated['metal_type'] . '. Ask the owner to add it under Settings → Pricing.',
+                    'errors' => ['purity' => ['Purity not found in active profiles.']],
+                ], 422);
+            }
         }
 
         $imagePath = null;
