@@ -23,6 +23,7 @@ class BullionVaultController extends Controller
         $balances = $this->vault->vaultBalances($shopId);
         $recentMovements = $this->vault->recentLedger($shopId, 25);
         $openJobs = JobOrder::query()
+            ->where('shop_id', $shopId)
             ->whereIn('status', [
                 JobOrder::STATUS_ISSUED,
                 JobOrder::STATUS_PARTIAL_RETURN,
@@ -108,6 +109,9 @@ class BullionVaultController extends Controller
 
     public function storeLot(Request $request)
     {
+        $shopId = auth()->user()->shop_id;
+        $userId = (int) auth()->id();
+
         $validated = $request->validate([
             'metal_type' => 'required|in:gold,silver',
             'source' => 'required|in:purchase,buyback,opening',
@@ -117,9 +121,6 @@ class BullionVaultController extends Controller
             'vendor_id' => ['nullable', \Illuminate\Validation\Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
             'notes' => 'nullable|string',
         ]);
-
-        $shopId = auth()->user()->shop_id;
-        $userId = (int) auth()->id();
 
         // Gold purity is in Karats (24 = pure), silver is fineness (999 = pure)
         $gross = (float) $validated['gross_weight'];

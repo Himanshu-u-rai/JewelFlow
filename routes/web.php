@@ -300,11 +300,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // ======= JOB WORK (Retailer) =======
     Route::middleware('edition:retailer')->group(function () {
-        Route::get('/vault', [\App\Http\Controllers\BullionVaultController::class, 'index'])->name('vault.index');
-        Route::get('/vault/ledger', [\App\Http\Controllers\BullionVaultController::class, 'ledger'])->name('vault.ledger');
-        Route::get('/vault/lots/create', [\App\Http\Controllers\BullionVaultController::class, 'createLot'])->name('vault.lots.create');
-        Route::post('/vault/lots', [\App\Http\Controllers\BullionVaultController::class, 'storeLot'])->name('vault.lots.store');
-        Route::get('/vault/lots/{metalLot}', [\App\Http\Controllers\BullionVaultController::class, 'showLot'])->name('vault.lots.show');
+        Route::get('/vault', [\App\Http\Controllers\BullionVaultController::class, 'index'])->middleware('role:owner,manager')->name('vault.index');
+        Route::get('/vault/ledger', [\App\Http\Controllers\BullionVaultController::class, 'ledger'])->middleware('role:owner,manager')->name('vault.ledger');
+        Route::get('/vault/lots/create', [\App\Http\Controllers\BullionVaultController::class, 'createLot'])->middleware('role:owner,manager')->name('vault.lots.create');
+        Route::post('/vault/lots', [\App\Http\Controllers\BullionVaultController::class, 'storeLot'])->middleware('role:owner,manager')->name('vault.lots.store');
+        Route::get('/vault/lots/{metalLot}', [\App\Http\Controllers\BullionVaultController::class, 'showLot'])->middleware('role:owner,manager')->name('vault.lots.show');
 
         Route::get('/karigars', [\App\Http\Controllers\KarigarController::class, 'index'])->name('karigars.index');
         Route::get('/karigars/create', [\App\Http\Controllers\KarigarController::class, 'create'])->name('karigars.create');
