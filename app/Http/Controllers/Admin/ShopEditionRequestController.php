@@ -70,7 +70,7 @@ class ShopEditionRequestController extends Controller
                 if (! $shop->hasEdition($edition)) {
                     ShopEdition::grantTo($shop, $edition, null);
                     if ($edition === ShopEdition::DHIRAN) {
-                        DhiranSettings::getForShop($shop->id)->update(['is_enabled' => true]);
+                        DhiranSettings::where('shop_id', $shop->id)->update(['is_enabled' => true]);
                     }
                 }
             } else {
@@ -83,12 +83,11 @@ class ShopEditionRequestController extends Controller
                 }
             }
 
-            $editionRequest->update([
-                'status'       => ShopEditionRequest::STATUS_APPROVED,
-                'reviewed_by'  => auth('platform_admin')->id(),
-                'reviewed_at'  => now(),
-                'review_notes' => $notes,
-            ]);
+            $editionRequest->status       = ShopEditionRequest::STATUS_APPROVED;
+            $editionRequest->reviewed_by  = auth('platform_admin')->id();
+            $editionRequest->reviewed_at  = now();
+            $editionRequest->review_notes = $notes;
+            $editionRequest->save();
         });
 
         $this->audit->log(
@@ -115,12 +114,11 @@ class ShopEditionRequestController extends Controller
 
         abort_unless($editionRequest->isPending(), 422, 'Request is not pending.');
 
-        $editionRequest->update([
-            'status'       => ShopEditionRequest::STATUS_DENIED,
-            'reviewed_by'  => auth('platform_admin')->id(),
-            'reviewed_at'  => now(),
-            'review_notes' => $validated['review_notes'],
-        ]);
+        $editionRequest->status       = ShopEditionRequest::STATUS_DENIED;
+        $editionRequest->reviewed_by  = auth('platform_admin')->id();
+        $editionRequest->reviewed_at  = now();
+        $editionRequest->review_notes = $validated['review_notes'];
+        $editionRequest->save();
 
         $this->audit->log(
             auth('platform_admin')->user(),

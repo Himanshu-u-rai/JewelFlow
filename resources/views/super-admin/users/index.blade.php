@@ -48,7 +48,7 @@
                 <tbody>
                     @forelse($users as $user)
                         <tr class="border-t border-slate-800 text-slate-200">
-                            <td class="px-4 py-3">{{ trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')) ?: ($user->name ?? '-') }}</td>
+                            <td class="px-4 py-3">{{ $user->name ?? '—' }}</td>
                             <td class="px-4 py-3">{{ $user->mobile_number }}</td>
                             <td class="px-4 py-3">
                                 <span class="admin-badge admin-badge-sky">Shop User</span>

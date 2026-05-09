@@ -72,9 +72,8 @@ class UserManagementController extends Controller
 
         $before = ['is_active' => (bool) $user->is_active];
 
-        $user->update([
-            'is_active' => $this->dbBool((bool) $validated['is_active']),
-        ]);
+        $user->is_active = (bool) $validated['is_active'];
+        $user->save();
         $user->refresh();
 
         $this->audit->log(
@@ -97,9 +96,8 @@ class UserManagementController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user->update([
-            'password' => Hash::make($validated['password']),
-        ]);
+        $user->password = Hash::make($validated['password']);
+        $user->save();
 
         $this->audit->log(
             auth('platform_admin')->user(),
@@ -128,7 +126,8 @@ class UserManagementController extends Controller
         }
 
         $before = ['role_id' => $user->role_id];
-        $user->update(['role_id' => $role->id]);
+        $user->role_id = $role->id;
+        $user->save();
 
         $this->audit->log(
             auth('platform_admin')->user(),

@@ -36,6 +36,7 @@ class ItemController extends Controller
         $shopId = auth()->user()->shop_id;
         $shop   = auth()->user()->shop;
         $isRetailer = $shop->isRetailer();
+        $stockValueDisplay = $shop->preferences?->stock_value_display ?? 'total';
 
         // Categories for filter — loaded once, reused for name lookup below
         $categories = Category::where('shop_id', $shopId)
@@ -133,7 +134,7 @@ class ItemController extends Controller
             $pricingAlertCount = $this->pricing->pricingAlerts($shop)['count'];
         }
 
-        return view('inventory.items.index', compact('items', 'stats', 'categories', 'stockAgingData', 'sellersData', 'isRetailer', 'statusFilter', 'pricingAlertCount'));
+        return view('inventory.items.index', compact('items', 'stats', 'categories', 'stockAgingData', 'sellersData', 'isRetailer', 'statusFilter', 'pricingAlertCount', 'stockValueDisplay'));
     }
 
     /**

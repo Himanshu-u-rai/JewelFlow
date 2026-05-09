@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Jobs\SendPlatformInvoiceEmail;
 use App\Models\Platform\Plan;
 use App\Models\Platform\PlatformAdmin;
 use App\Models\Platform\ShopSubscription;
 use App\Models\Platform\SubscriptionEvent;
+use App\Services\PlatformInvoiceService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -148,9 +150,12 @@ class SubscriptionPaymentService
         $graceEndsAt = $endsAt->copy()->addDays($plan->grace_days ?? config('business.subscription_grace_days'));
 
         try {
-            return DB::transaction(function () use (
+            $invoiceId = null;
+
+            $subscription = DB::transaction(function () use (
                 $plan, $status, $startsAt, $endsAt, $graceEndsAt,
-                $billingCycle, $expectedPrice, $paymentId, $orderId, $admin
+                $billingCycle, $expectedPrice, $paymentId, $orderId, $admin,
+                &$invoiceId
             ) {
                 $subscription = ShopSubscription::create([
                     'shop_id' => Auth::user()->shop_id,
@@ -177,6 +182,10 @@ class SubscriptionPaymentService
                     'reason' => 'Payment via Razorpay: ' . $paymentId,
                 ]);
 
+                // Generate platform invoice for this payment
+                $invoice   = app(PlatformInvoiceService::class)->issueForSubscription($subscription);
+                $invoiceId = $invoice->id;
+
                 if (Auth::user()->shop_id && Auth::user()->shop) {
                     Auth::user()->shop->forceFill([
                         'access_mode' => 'active',
@@ -186,6 +195,13 @@ class SubscriptionPaymentService
 
                 return $subscription;
             });
+
+            // Email the receipt after the transaction commits (avoids holding DB lock during mail)
+            if ($invoiceId) {
+                dispatch(new SendPlatformInvoiceEmail($invoiceId));
+            }
+
+            return $subscription;
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
             Log::info('Concurrent payment callback caught by unique constraint', [
                 'payment_id' => $paymentId,

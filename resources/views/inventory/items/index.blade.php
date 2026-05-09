@@ -432,10 +432,14 @@
                             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Gross Wt</th>
                             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Net Metal Wt</th>
                             @if($isRetailer)
-                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Pricing</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                                    {{ ($stockValueDisplay ?? 'total') === 'per_gram' ? 'Rate/g' : 'Price' }}
+                                </th>
                             @else
                                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Fine Gold</th>
-                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Cost Price</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                                    {{ ($stockValueDisplay ?? 'total') === 'per_gram' ? 'Rate/g' : 'Cost Price' }}
+                                </th>
                             @endif
                             <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
                             <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Actions</th>
@@ -476,10 +480,22 @@
                                 <td class="px-6 py-4 text-right text-sm text-gray-700">{{ number_format($item->gross_weight, 3) }} g</td>
                                 <td class="px-6 py-4 text-right text-sm text-gray-700">{{ number_format($item->net_metal_weight, 3) }} g</td>
                                 @if($isRetailer)
-                                    <td class="px-6 py-4 text-right text-sm font-semibold text-amber-600">₹{{ number_format($item->selling_price, 2) }}</td>
+                                    <td class="px-6 py-4 text-right text-sm font-semibold text-amber-600">
+                                        @if(($stockValueDisplay ?? 'total') === 'per_gram' && $item->net_metal_weight > 0)
+                                            ₹{{ number_format($item->selling_price / $item->net_metal_weight, 0) }}<span class="text-xs text-gray-400 font-normal">/g</span>
+                                        @else
+                                            ₹{{ number_format($item->selling_price, 2) }}
+                                        @endif
+                                    </td>
                                 @else
                                     <td class="px-6 py-4 text-right text-sm font-semibold text-yellow-600">{{ number_format($fineGold, 3) }} g</td>
-                                    <td class="px-6 py-4 text-right text-sm font-semibold text-gray-900">₹{{ number_format($item->cost_price, 2) }}</td>
+                                    <td class="px-6 py-4 text-right text-sm font-semibold text-gray-900">
+                                        @if(($stockValueDisplay ?? 'total') === 'per_gram' && $item->net_metal_weight > 0)
+                                            ₹{{ number_format($item->cost_price / $item->net_metal_weight, 0) }}<span class="text-xs text-gray-400 font-normal">/g</span>
+                                        @else
+                                            ₹{{ number_format($item->cost_price, 2) }}
+                                        @endif
+                                    </td>
                                 @endif
                                 <td class="px-6 py-4 text-center">
                                     @if($item->status == 'in_stock')
@@ -629,7 +645,9 @@
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Barcode</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                    {{ ($stockValueDisplay ?? 'total') === 'per_gram' ? 'Rate/g' : 'Price' }}
+                                </th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Days in Stock</th>
                             </tr>
                         </thead>
@@ -638,7 +656,13 @@
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-3 text-sm font-mono">{{ $sItem->barcode }}</td>
                                 <td class="px-6 py-3 text-sm">{{ $sItem->category }}{{ $sItem->sub_category ? ' · ' . $sItem->sub_category : '' }}</td>
-                                <td class="px-6 py-3 text-sm text-right">₹{{ number_format($sItem->selling_price, 2) }}</td>
+                                <td class="px-6 py-3 text-sm text-right">
+                                    @if(($stockValueDisplay ?? 'total') === 'per_gram' && $sItem->net_metal_weight > 0)
+                                        ₹{{ number_format($sItem->selling_price / $sItem->net_metal_weight, 0) }}<span class="text-xs text-gray-400">/g</span>
+                                    @else
+                                        ₹{{ number_format($sItem->selling_price, 2) }}
+                                    @endif
+                                </td>
                                 <td class="px-6 py-3 text-sm text-right font-medium text-rose-600">{{ $sItem->created_at->diffInDays(now()) }}</td>
                             </tr>
                             @endforeach

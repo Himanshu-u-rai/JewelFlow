@@ -20,6 +20,11 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::prefix('admin')->name('admin.')->group(function () {
+    // Route model binding for {user} must bypass BelongsToShop global scope —
+    // platform admins are authenticated on the platform_admin guard, not the web
+    // guard, so Auth::user() returns null and the scope collapses to 1=0.
+    Route::bind('user', fn ($value) => \App\Models\User::withoutGlobalScope('shop')->findOrFail($value));
+
     Route::middleware('guest:platform_admin')->group(function () {
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [AuthController::class, 'login'])->name('login.store');
@@ -31,46 +36,49 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
+        // Read-only views accessible to all platform admins
         Route::get('/shops', [ShopManagementController::class, 'index'])->name('shops.index');
         Route::get('/shops/{shop}', [ShopManagementController::class, 'show'])->name('shops.show');
-        Route::patch('/shops/{shop}/status', [ShopManagementController::class, 'updateStatus'])->name('shops.status');
-        Route::patch('/shops/{shop}/subscription', [BillingManagementController::class, 'updateShopSubscription'])->name('shops.subscription');
-        Route::post('/shops/{shop}/editions/grant', [ShopEditionManagementController::class, 'grant'])->name('shops.editions.grant');
-        Route::post('/shops/{shop}/editions/revoke', [ShopEditionManagementController::class, 'revoke'])->name('shops.editions.revoke');
-
-        Route::get('/edition-requests', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'index'])->name('edition-requests.index');
-        Route::post('/edition-requests/{editionRequest}/approve', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'approve'])->name('edition-requests.approve');
-        Route::post('/edition-requests/{editionRequest}/deny', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'deny'])->name('edition-requests.deny');
-
         Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
         Route::get('/users/{user}', [UserManagementController::class, 'show'])->name('users.show');
-        Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus'])->name('users.status');
-        Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword'])->name('users.password');
-        Route::patch('/users/{user}/role', [UserManagementController::class, 'updateRole'])->name('users.role');
-        Route::patch('/users/{user}/mobile', [\App\Http\Controllers\Admin\UserMobileController::class, 'update'])->name('users.mobile');
-
-        Route::get('/plans', [\App\Http\Controllers\Admin\PlanController::class, 'index'])->name('plans.index');
-        Route::get('/plans/create', [\App\Http\Controllers\Admin\PlanController::class, 'create'])->name('plans.create');
-        Route::post('/plans', [\App\Http\Controllers\Admin\PlanController::class, 'store'])->name('plans.store');
-        Route::get('/plans/{plan}/edit', [\App\Http\Controllers\Admin\PlanController::class, 'edit'])->name('plans.edit');
-        Route::patch('/plans/{plan}', [\App\Http\Controllers\Admin\PlanController::class, 'update'])->name('plans.update');
-        Route::patch('/plans/{plan}/toggle', [\App\Http\Controllers\Admin\PlanController::class, 'toggle'])->name('plans.toggle');
-
         Route::get('/subscriptions', [\App\Http\Controllers\Admin\SubscriptionManagementController::class, 'index'])->name('subscriptions.index');
-
+        Route::get('/invoices', [\App\Http\Controllers\Admin\PlatformInvoiceAdminController::class, 'index'])->name('invoices.index');
         Route::get('/tenant-activity', [TenantActivityController::class, 'index'])->name('tenant-activity.index');
         Route::get('/security', [SecurityController::class, 'index'])->name('security.index');
-        Route::get('/settings', [PlatformSettingsController::class, 'index'])->name('settings.index');
-        Route::patch('/settings', [PlatformSettingsController::class, 'update'])->name('settings.update');
-
         Route::get('/system/jobs', [SystemJobController::class, 'index'])->name('system.jobs.index');
         Route::get('/system/jobs/{id}', [SystemJobController::class, 'show'])->name('system.jobs.show');
-        Route::post('/system/jobs/{id}/retry', [SystemJobController::class, 'retry'])->name('system.jobs.retry');
 
         Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->name('impersonation.stop');
 
+        // All write/mutating actions require super_admin role
         Route::middleware('platform.role:super_admin')->group(function () {
+            Route::patch('/shops/{shop}/status', [ShopManagementController::class, 'updateStatus'])->name('shops.status');
+            Route::patch('/shops/{shop}/subscription', [BillingManagementController::class, 'updateShopSubscription'])->name('shops.subscription');
+            Route::post('/shops/{shop}/editions/grant', [ShopEditionManagementController::class, 'grant'])->name('shops.editions.grant');
+            Route::post('/shops/{shop}/editions/revoke', [ShopEditionManagementController::class, 'revoke'])->name('shops.editions.revoke');
             Route::post('/shops/{shop}/impersonate', [ImpersonationController::class, 'start'])->name('shops.impersonate');
+
+            Route::get('/edition-requests', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'index'])->name('edition-requests.index');
+            Route::post('/edition-requests/{editionRequest}/approve', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'approve'])->name('edition-requests.approve');
+            Route::post('/edition-requests/{editionRequest}/deny', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'deny'])->name('edition-requests.deny');
+
+            Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus'])->name('users.status');
+            Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword'])->name('users.password');
+            Route::patch('/users/{user}/role', [UserManagementController::class, 'updateRole'])->name('users.role');
+            Route::patch('/users/{user}/mobile', [\App\Http\Controllers\Admin\UserMobileController::class, 'update'])->name('users.mobile');
+
+            Route::get('/plans', [\App\Http\Controllers\Admin\PlanController::class, 'index'])->name('plans.index');
+            Route::get('/plans/create', [\App\Http\Controllers\Admin\PlanController::class, 'create'])->name('plans.create');
+            Route::post('/plans', [\App\Http\Controllers\Admin\PlanController::class, 'store'])->name('plans.store');
+            Route::get('/plans/{plan}/edit', [\App\Http\Controllers\Admin\PlanController::class, 'edit'])->name('plans.edit');
+            Route::patch('/plans/{plan}', [\App\Http\Controllers\Admin\PlanController::class, 'update'])->name('plans.update');
+            Route::patch('/plans/{plan}/toggle', [\App\Http\Controllers\Admin\PlanController::class, 'toggle'])->name('plans.toggle');
+
+            Route::get('/settings', [PlatformSettingsController::class, 'index'])->name('settings.index');
+            Route::patch('/settings', [PlatformSettingsController::class, 'update'])->name('settings.update');
+
+            Route::post('/system/jobs/{id}/retry', [SystemJobController::class, 'retry'])->name('system.jobs.retry');
+
             Route::get('/platform-admins', [PlatformAdminManagementController::class, 'index'])->name('platform-admins.index');
             Route::post('/platform-admins', [PlatformAdminManagementController::class, 'store'])->name('platform-admins.store');
             Route::patch('/platform-admins/{platformAdmin}/role', [PlatformAdminManagementController::class, 'updateRole'])->name('platform-admins.role');
@@ -87,6 +95,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('super-admin')->group(function () {
+    Route::bind('user', fn ($value) => \App\Models\User::withoutGlobalScope('shop')->findOrFail($value));
+
     Route::middleware('guest:platform_admin')->group(function () {
         Route::get('/login', fn () => redirect('/admin/login'))->name('superadmin.login');
         Route::post('/login', [AuthController::class, 'login'])->name('superadmin.login.store');

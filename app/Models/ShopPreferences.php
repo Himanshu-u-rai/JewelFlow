@@ -33,6 +33,7 @@ class ShopPreferences extends Model
         'loyalty_welcome_bonus',
         'credit_days',
         'barcode_prefix',
+        'stock_value_display',
     ];
 
     protected $casts = [
@@ -52,7 +53,8 @@ class ShopPreferences extends Model
         'auto_logout_minutes'  => 0,
         'loyalty_welcome_bonus'=> 0,
         'credit_days'          => 0,
-        'pricing_timezone'     => 'UTC',
+        'pricing_timezone'      => 'UTC',
+        'stock_value_display'   => 'total',
     ];
 
     public function shop(): BelongsTo

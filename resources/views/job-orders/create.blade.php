@@ -179,6 +179,59 @@
             align-items: end;
         }
 
+        .job-lot-avail {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            padding: 7px 10px;
+            border-radius: 10px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            font-size: 11px;
+            font-weight: 800;
+            color: #166534;
+            flex-wrap: wrap;
+        }
+
+        .job-lot-avail-warn {
+            background: #fff7ed;
+            border-color: #fed7aa;
+            color: #9a3412;
+        }
+
+        .job-lot-avail-over {
+            background: #fff1f2;
+            border-color: #fecdd3;
+            color: #be123c;
+        }
+
+        .job-lot-avail span + span::before {
+            content: '→';
+            margin-right: 10px;
+            opacity: 0.5;
+        }
+
+        .job-gross-display {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .job-gross-value {
+            display: flex;
+            align-items: center;
+            min-height: 44px;
+            border-radius: 13px;
+            border: 1px dashed #cbd5e1;
+            background: #f1f5f9;
+            padding: 10px 12px;
+            color: #475569;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
         .job-add-line {
             display: inline-flex;
             align-items: center;
@@ -569,7 +622,7 @@
                         <div class="job-section-head">
                             <div>
                                 <h2 class="job-title">Bullion Issued</h2>
-                                <p class="job-copy">Select one or more vault lots and issue gross/fine weights to the karigar.</p>
+                                <p class="job-copy">Enter the fine weight to issue per lot. Gross weight is derived for the delivery challan.</p>
                             </div>
                             <button type="button" @click="addLine" class="job-add-line">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
@@ -581,28 +634,28 @@
                             <template x-for="(line, idx) in lines" :key="idx">
                                 <div class="job-line-card">
                                     <div class="job-line-grid">
-                                        <div class="job-combobox" @click.outside="line.lotOpen = false">
+                                        <div class="job-combobox" x-data="{ get open() { return lines[idx].lotOpen; }, set open(v) { lines[idx].lotOpen = v; } }" @click.outside="open = false">
                                             <span class="job-label">Lot</span>
                                             <input type="hidden" :name="'issuances[' + idx + '][metal_lot_id]'" x-model="line.metal_lot_id">
-                                            <button type="button" class="job-combobox-trigger" @click="line.lotOpen = ! line.lotOpen" :aria-expanded="line.lotOpen.toString()">
+                                            <button type="button" class="job-combobox-trigger" @click="open = !open" :aria-expanded="open.toString()">
                                                 <span :class="line.lotName ? '' : 'job-combobox-placeholder'" x-text="line.lotName || 'Select lot...'">Select lot...</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                             </button>
-                                            <div class="job-combobox-menu" x-show="line.lotOpen" x-transition.origin.top x-cloak>
+                                            <div class="job-combobox-menu" x-show="open" x-transition.origin.top x-cloak>
                                                 <div class="job-combobox-list">
-                                                    <button type="button" class="job-combobox-option" @click="onLotSelect(idx, '', 'Select lot...', 22)">
+                                                    <button type="button" class="job-combobox-option" @click="onLotSelect(idx, '', 'Select lot...', 0, 0)">
                                                         Select lot...
                                                     </button>
                                                 @foreach($lots as $lot)
                                                     @php
-                                                        $lotLabel = 'Lot #' . $lot->lot_number . ' (' . $lot->source . ') - ' . rtrim(rtrim(number_format($lot->purity, 2), '0'), '.') . 'K - ' . number_format($lot->fine_weight_remaining, 3) . 'g fine';
+                                                        $lotLabel = 'Lot #' . $lot->lot_number . ' (' . $lot->source . ') - ' . rtrim(rtrim(number_format($lot->purity, 2), '0'), '.') . ($lot->metal_type === 'silver' ? '‰' : 'K');
                                                     @endphp
                                                     <button type="button"
                                                             class="job-combobox-option"
                                                             :class="line.metal_lot_id === '{{ $lot->id }}' ? 'job-combobox-option-selected' : ''"
-                                                            @click="onLotSelect(idx, '{{ $lot->id }}', @js($lotLabel), {{ (float) $lot->purity }})">
+                                                            @click='onLotSelect(idx, @json((string) $lot->id), @json($lotLabel), {{ (float) $lot->purity }}, {{ (float) $lot->fine_weight_remaining }})'>
                                                         Lot #{{ $lot->lot_number }}
-                                                        <span class="job-combobox-meta">{{ $lot->source }} - {{ rtrim(rtrim(number_format($lot->purity, 2), '0'), '.') }}K - {{ number_format($lot->fine_weight_remaining, 3) }}g fine</span>
+                                                        <span class="job-combobox-meta">{{ $lot->source }} · {{ rtrim(rtrim(number_format($lot->purity, 2), '0'), '.') }}{{ $lot->metal_type === 'silver' ? '‰' : 'K' }} · {{ number_format($lot->fine_weight_remaining, 3) }}g available fine</span>
                                                     </button>
                                                 @endforeach
                                                 </div>
@@ -610,21 +663,31 @@
                                         </div>
 
                                         <label>
-                                            <span class="job-label">Gross (g)</span>
-                                            <input type="number" step="0.001" min="0" :name="'issuances[' + idx + '][gross_weight]'" required class="job-control" x-model="line.gross_weight" @input="recomputeFine(idx)">
+                                            <span class="job-label">Fine Weight (g) *</span>
+                                            <input type="number" step="0.001" min="0.001" :name="'issuances[' + idx + '][fine_weight]'" required class="job-control font-semibold" x-model="line.fine_weight" @input="recomputeGross(idx)">
                                         </label>
 
-                                        <label>
-                                            <span class="job-label">Fine (g)</span>
-                                            <input type="number" step="0.001" min="0.0001" :name="'issuances[' + idx + '][fine_weight]'" required class="job-control font-semibold" x-model="line.fine_weight">
-                                        </label>
+                                        <div class="job-gross-display">
+                                            <span class="job-label">Gross (g) <span style="font-weight:500;color:#94a3b8">challan</span></span>
+                                            <input type="hidden" :name="'issuances[' + idx + '][gross_weight]'" :value="line.gross_weight">
+                                            <div class="job-gross-value" x-text="(parseFloat(line.gross_weight) || 0).toFixed(3) + ' g'">0.000 g</div>
+                                        </div>
 
                                         <label>
                                             <span class="job-label">Purity</span>
-                                            <input type="number" step="0.01" min="1" :max="metalType === 'silver' ? 1000 : 24" :name="'issuances[' + idx + '][purity]'" required class="job-control" x-model="line.purity" @input="recomputeFine(idx)">
+                                            <input type="number" step="0.01" min="1" :max="metalType === 'silver' ? 1000 : 24" :name="'issuances[' + idx + '][purity]'" required class="job-control" x-model="line.purity" @input="recomputeGross(idx)">
                                         </label>
 
-                                        <button type="button" @click="removeLine(idx)" x-show="lines.length > 1" class="job-remove-line" aria-label="Remove lot line">x</button>
+                                        <button type="button" @click="removeLine(idx)" x-show="lines.length > 1" class="job-remove-line" aria-label="Remove lot line">×</button>
+                                    </div>
+
+                                    <div x-show="line.metal_lot_id"
+                                         :class="'job-lot-avail' + (parseFloat(line.fine_weight) > line.lotAvailable ? ' job-lot-avail-over' : (parseFloat(line.fine_weight) > line.lotAvailable * 0.9 ? ' job-lot-avail-warn' : ''))"
+                                         x-cloak>
+                                        <span>Available: <strong x-text="line.lotAvailable.toFixed(3) + 'g'"></strong></span>
+                                        <span>Issuing: <strong x-text="(parseFloat(line.fine_weight) || 0).toFixed(3) + 'g'"></strong></span>
+                                        <span>Remaining: <strong x-text="Math.max(0, line.lotAvailable - (parseFloat(line.fine_weight) || 0)).toFixed(3) + 'g'"></strong></span>
+                                        <span x-show="parseFloat(line.fine_weight) > line.lotAvailable" style="color:#be123c">⚠ Exceeds available fine weight</span>
                                     </div>
                                 </div>
                             </template>
@@ -753,11 +816,11 @@
                 paymentMethodId: '',
                 paymentMethodName: '',
                 allowedWastage: 2,
-                lines: [{ metal_lot_id: '', lotName: '', lotOpen: false, gross_weight: '', fine_weight: '', purity: 22 }],
+                lines: [{ metal_lot_id: '', lotName: '', lotOpen: false, gross_weight: '', fine_weight: '', purity: 22, lotAvailable: 0 }],
                 get totalGross() { return this.lines.reduce((s, l) => s + (parseFloat(l.gross_weight) || 0), 0); },
                 get totalFine() { return this.lines.reduce((s, l) => s + (parseFloat(l.fine_weight) || 0), 0); },
                 get expectedReturn() { return this.totalFine * (1 - (parseFloat(this.allowedWastage) || 0) / 100); },
-                addLine() { this.lines.push({ metal_lot_id: '', lotName: '', lotOpen: false, gross_weight: '', fine_weight: '', purity: this.purity }); },
+                addLine() { this.lines.push({ metal_lot_id: '', lotName: '', lotOpen: false, gross_weight: '', fine_weight: '', purity: this.purity, lotAvailable: 0 }); },
                 removeLine(i) { this.lines.splice(i, 1); },
                 closeDropdowns() {
                     this.karigarOpen = false;
@@ -775,15 +838,19 @@
                 onMetalTypeSelect(type) {
                     this.metalType = type;
                     this.metalTypeOpen = false;
-                    this.lines.forEach((line, idx) => this.recomputeFine(idx));
+                    this.lines.forEach((line, idx) => this.recomputeGross(idx));
                 },
-                onLotSelect(idx, id, label, purity) {
+                onLotSelect(idx, id, label, purity, available) {
                     this.lines[idx].metal_lot_id = id;
                     this.lines[idx].lotName = id ? label : '';
                     this.lines[idx].lotOpen = false;
+                    this.lines[idx].lotAvailable = parseFloat(available) || 0;
                     if (id && purity) {
                         this.lines[idx].purity = parseFloat(purity);
-                        this.recomputeFine(idx);
+                        if (this.lines.length === 1) {
+                            this.purity = parseFloat(purity);
+                        }
+                        this.recomputeGross(idx);
                     }
                 },
                 onAdvanceModeSelect(mode, label) {
@@ -796,23 +863,12 @@
                     this.paymentMethodName = label;
                     this.paymentMethodOpen = false;
                 },
-                onKarigarChange(e) {
-                    const opt = e.target.selectedOptions[0];
-                    if (opt && opt.dataset.wastage) this.allowedWastage = parseFloat(opt.dataset.wastage);
-                },
-                onLotChange(idx, e) {
-                    const opt = e.target.selectedOptions[0];
-                    if (opt && opt.dataset.purity) {
-                        this.lines[idx].purity = parseFloat(opt.dataset.purity);
-                        this.recomputeFine(idx);
-                    }
-                },
-                recomputeFine(idx) {
-                    const g = parseFloat(this.lines[idx].gross_weight) || 0;
+                recomputeGross(idx) {
+                    const f = parseFloat(this.lines[idx].fine_weight) || 0;
                     const p = parseFloat(this.lines[idx].purity) || 0;
-                    // Gold: karat/24; Silver: fineness/1000
-                    const fine = this.metalType === 'silver' ? g * p / 1000 : g * p / 24;
-                    this.lines[idx].fine_weight = fine.toFixed(3);
+                    if (p === 0) { this.lines[idx].gross_weight = ''; return; }
+                    const gross = this.metalType === 'silver' ? f * 1000 / p : f * 24 / p;
+                    this.lines[idx].gross_weight = gross.toFixed(3);
                 },
             };
         }

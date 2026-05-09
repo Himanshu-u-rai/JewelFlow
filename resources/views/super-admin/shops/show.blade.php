@@ -41,6 +41,111 @@
         <div class="admin-kpi"><div class="admin-kpi__label">Repairs</div><div class="admin-kpi__value text-2xl">{{ $stats['repairs'] }}</div></div>
     </div>
 
+    {{-- ── Shop Details ──────────────────────────────────────── --}}
+    <div class="admin-panel p-4 mb-6">
+        <h3 class="font-semibold text-white mb-4">Shop Details</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {{-- Contact --}}
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Contact</div>
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">Phone</dt>
+                        <dd class="text-slate-100 text-right break-all">{{ $shop->phone ?: '—' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">WhatsApp</dt>
+                        <dd class="text-slate-100 text-right break-all">{{ $shop->shop_whatsapp ?: '—' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">Email</dt>
+                        <dd class="text-slate-100 text-right break-all">{{ $shop->shop_email ?: '—' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">Est. Year</dt>
+                        <dd class="text-slate-100 text-right">{{ $shop->established_year ?: '—' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">Reg. No.</dt>
+                        <dd class="text-slate-100 text-right break-all">{{ $shop->shop_registration_number ?: '—' }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            {{-- Owner --}}
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Owner</div>
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">Name</dt>
+                        <dd class="text-slate-100 text-right">
+                            {{ trim(($shop->owner_first_name ?? '') . ' ' . ($shop->owner_last_name ?? '')) ?: '—' }}
+                        </dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">Mobile</dt>
+                        <dd class="text-slate-100 text-right break-all">{{ $shop->owner_mobile ?: '—' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">Email</dt>
+                        <dd class="text-slate-100 text-right break-all">{{ $shop->owner_email ?: '—' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">GST No.</dt>
+                        <dd class="text-slate-100 text-right font-mono text-xs tracking-wide">{{ $shop->gst_number ?: '—' }}</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-slate-400 shrink-0">GST Rate</dt>
+                        <dd class="text-slate-100 text-right">{{ $shop->gst_rate ? $shop->gst_rate . '%' : '—' }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            {{-- Address --}}
+            <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Address</div>
+                <dl class="space-y-2 text-sm">
+                    @php
+                        $addressFull = collect([
+                            $shop->address_line1 ?: $shop->address,
+                            $shop->address_line2,
+                            $shop->city,
+                            $shop->state,
+                            $shop->pincode,
+                            $shop->country,
+                        ])->filter()->implode(', ');
+                    @endphp
+                    @if($addressFull)
+                        <div class="text-slate-100 leading-relaxed">{{ $addressFull }}</div>
+                    @else
+                        <div class="text-slate-500">No address on file</div>
+                    @endif
+                    @if($shop->state_code)
+                        <div class="flex justify-between gap-3 mt-2">
+                            <dt class="text-slate-400 shrink-0">State Code</dt>
+                            <dd class="text-slate-100 text-right font-mono">{{ $shop->state_code }}</dd>
+                        </div>
+                    @endif
+                    @if($shop->catalog_slug)
+                        <div class="flex justify-between gap-3 mt-2">
+                            <dt class="text-slate-400 shrink-0">Catalog Slug</dt>
+                            <dd class="text-slate-100 text-right font-mono text-xs">{{ $shop->catalog_slug }}</dd>
+                        </div>
+                    @endif
+                    @if($shop->wastage_recovery_percent)
+                        <div class="flex justify-between gap-3">
+                            <dt class="text-slate-400 shrink-0">Wastage Recovery</dt>
+                            <dd class="text-slate-100 text-right">{{ $shop->wastage_recovery_percent }}%</dd>
+                        </div>
+                    @endif
+                </dl>
+            </div>
+
+        </div>
+    </div>
+
     <div class="admin-panel p-4 mb-6">
         <h3 class="font-semibold text-white mb-1">Platform Control</h3>
         <p class="text-xs text-slate-400 mb-4">
@@ -96,6 +201,7 @@
                 <input type="text" name="reason"
                        value="{{ old('reason', $shop->suspension_reason) }}"
                        placeholder="e.g. Payment overdue, compliance hold..."
+                       maxlength="500"
                        class="admin-control">
             </div>
 
@@ -256,10 +362,7 @@
                     @foreach($shop->users as $user)
                         <tr class="border-t border-slate-800 text-slate-200">
                             @php
-                                $userFullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
-                                if ($userFullName === '') {
-                                    $userFullName = $user->name ?? '';
-                                }
+                                $userFullName = $user->name ?? '';
                                 if ($user->mobile_number === $shop->owner_mobile && $ownerName !== '') {
                                     $userFullName = $ownerName;
                                 }
@@ -289,5 +392,186 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    {{-- ── Subscription Management ──────────────────────────── --}}
+    <div class="admin-panel p-4 mt-6">
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <div>
+                <h3 class="font-semibold text-white mb-1">Subscription Management</h3>
+                <p class="text-xs text-slate-400">Manually assign or update this shop's subscription. Setting a price generates an invoice and sends a receipt email.</p>
+            </div>
+            @if($currentSubscription)
+                <div class="text-right text-xs text-slate-400 shrink-0">
+                    <div>Current: <span class="text-slate-200 font-medium">{{ $currentSubscription->plan?->name ?? 'Unknown' }}</span></div>
+                    <div class="mt-0.5">
+                        <span class="admin-badge admin-badge-{{ match($currentSubscription->status) {
+                            'active', 'trial'        => 'emerald',
+                            'grace', 'read_only'     => 'amber',
+                            default                  => 'rose'
+                        } }}">{{ ucfirst($currentSubscription->status) }}</span>
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <form method="POST" action="{{ route('admin.shops.subscription', $shop) }}" class="space-y-4">
+            @csrf
+            @method('PATCH')
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Plan <span class="text-rose-400">*</span></label>
+                    <select name="plan_id" required class="admin-control admin-select">
+                        <option value="">— Select plan —</option>
+                        @foreach($plans as $plan)
+                            <option value="{{ $plan->id }}"
+                                {{ old('plan_id', $currentSubscription?->plan_id) == $plan->id ? 'selected' : '' }}>
+                                {{ $plan->name }}
+                                (₹{{ number_format($plan->price_monthly, 0) }}/mo · ₹{{ number_format($plan->price_yearly, 0) }}/yr)
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Status <span class="text-rose-400">*</span></label>
+                    <select name="status" required class="admin-control admin-select">
+                        @foreach(['trial', 'active', 'grace', 'read_only', 'suspended', 'cancelled', 'expired'] as $s)
+                            <option value="{{ $s }}"
+                                {{ old('status', $currentSubscription?->status) === $s ? 'selected' : '' }}>
+                                {{ ucfirst(str_replace('_', ' ', $s)) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Billing Cycle</label>
+                    <select name="billing_cycle" class="admin-control admin-select">
+                        <option value="">— Not set —</option>
+                        <option value="monthly" {{ old('billing_cycle', $currentSubscription?->billing_cycle) === 'monthly' ? 'selected' : '' }}>Monthly</option>
+                        <option value="yearly"  {{ old('billing_cycle', $currentSubscription?->billing_cycle) === 'yearly'  ? 'selected' : '' }}>Yearly</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Starts At <span class="text-rose-400">*</span></label>
+                    <input type="date" name="starts_at" required
+                           value="{{ old('starts_at', $currentSubscription?->starts_at?->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
+                           class="admin-control">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Ends At</label>
+                    <input type="date" name="ends_at"
+                           value="{{ old('ends_at', $currentSubscription?->ends_at?->format('Y-m-d')) }}"
+                           class="admin-control">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Grace Period Ends</label>
+                    <input type="date" name="grace_ends_at"
+                           value="{{ old('grace_ends_at', $currentSubscription?->grace_ends_at?->format('Y-m-d')) }}"
+                           class="admin-control">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">
+                        Price Paid (₹)
+                        <span class="text-slate-500 font-normal">— leave blank for free/comp</span>
+                    </label>
+                    <input type="number" name="price_paid" min="0.01" max="9999999.99" step="0.01"
+                           value="{{ old('price_paid') }}"
+                           placeholder="e.g. 2999.00"
+                           class="admin-control">
+                    <p class="text-xs text-slate-500 mt-1">Setting a price generates a GST invoice and sends a receipt email to the shop owner.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Internal Notes</label>
+                    <input type="text" name="notes" maxlength="1000"
+                           value="{{ old('notes') }}"
+                           placeholder="e.g. Discounted onboarding pricing"
+                           class="admin-control">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Reason (audit log)</label>
+                    <input type="text" name="reason" maxlength="500"
+                           value="{{ old('reason') }}"
+                           placeholder="e.g. Renewed via support ticket #4521"
+                           class="admin-control">
+                </div>
+
+            </div>
+
+            <div>
+                <button type="submit" class="admin-btn admin-btn-primary">Apply Subscription Change</button>
+            </div>
+        </form>
+    </div>
+
+    {{-- Billing & Invoices --}}
+    <div class="admin-panel overflow-hidden mt-6">
+        <div class="admin-panel-header">
+            <h3 class="font-semibold text-white">Billing & Invoices</h3>
+            <span class="text-xs text-slate-400">Last 10 platform invoices</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm admin-table">
+                <thead class="bg-slate-800/80 text-slate-300">
+                    <tr>
+                        <th class="px-4 py-2 text-left">Invoice #</th>
+                        <th class="px-4 py-2 text-left">Plan</th>
+                        <th class="px-4 py-2 text-left">Cycle</th>
+                        <th class="px-4 py-2 text-left">Period</th>
+                        <th class="px-4 py-2 text-right">Before Tax</th>
+                        <th class="px-4 py-2 text-right">GST</th>
+                        <th class="px-4 py-2 text-right">Total</th>
+                        <th class="px-4 py-2 text-left">Method</th>
+                        <th class="px-4 py-2 text-left">Date</th>
+                        <th class="px-4 py-2 text-left">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($billingInvoices as $inv)
+                        <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="px-4 py-3 font-mono text-xs">{{ $inv->invoice_number }}</td>
+                            <td class="px-4 py-3">{{ $inv->plan?->name ?? '—' }}</td>
+                            <td class="px-4 py-3 capitalize text-slate-400">{{ $inv->billing_cycle }}</td>
+                            <td class="px-4 py-3 text-xs text-slate-400">
+                                {{ $inv->billing_period_start->format('d M Y') }} – {{ $inv->billing_period_end->format('d M Y') }}
+                            </td>
+                            <td class="px-4 py-3 text-right text-slate-300">₹{{ number_format($inv->amount_before_tax, 2) }}</td>
+                            <td class="px-4 py-3 text-right text-slate-400 text-xs">
+                                {{ number_format($inv->gst_rate, 0) }}% · ₹{{ number_format($inv->gst_amount, 2) }}
+                            </td>
+                            <td class="px-4 py-3 text-right font-semibold text-white">₹{{ number_format($inv->total_amount, 2) }}</td>
+                            <td class="px-4 py-3 capitalize text-slate-400 text-xs">{{ $inv->payment_method }}</td>
+                            <td class="px-4 py-3 text-xs text-slate-400">{{ $inv->issued_at->format('d M Y') }}</td>
+                            <td class="px-4 py-3">
+                                @if($inv->status === 'issued')
+                                    <span class="admin-badge admin-badge-emerald">Issued</span>
+                                @else
+                                    <span class="admin-badge admin-badge-rose">Cancelled</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="10" class="px-4 py-8 text-center text-slate-500">No invoices generated yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($billingInvoices->count() === 10)
+            <div class="px-4 py-3 border-t border-slate-800 text-xs text-slate-500">
+                Showing latest 10 invoices. View all in
+                <a href="{{ route('admin.invoices.index', ['shop' => $shop->id]) }}" class="text-sky-400 hover:underline">Invoices</a>.
+            </div>
+        @endif
     </div>
 </x-super-admin.layout>

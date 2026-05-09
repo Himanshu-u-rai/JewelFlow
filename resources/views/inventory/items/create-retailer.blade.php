@@ -96,9 +96,24 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Sub Category</label>
+                                @php
+                                    $initialCategory = old('category', '');
+                                    $initialSubCategory = old('sub_category', '');
+                                    $initialCategoryObj = $categories->firstWhere('name', $initialCategory);
+                                    $initialSubCategories = $initialCategoryObj
+                                        ? $initialCategoryObj->subCategories->pluck('name')
+                                        : collect();
+                                @endphp
                                 <select name="sub_category" id="sub_category"
+                                        data-initial-value="{{ $initialSubCategory }}"
                                         class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
                                     <option value="">Select sub category</option>
+                                    @foreach($initialSubCategories as $subName)
+                                        <option value="{{ $subName }}" @selected($initialSubCategory === $subName)>{{ $subName }}</option>
+                                    @endforeach
+                                    @if($initialCategoryObj)
+                                        <option value="__new_sub_category__">＋ New sub-category…</option>
+                                    @endif
                                 </select>
                             </div>
 
@@ -169,9 +184,20 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Purity Profile <span class="text-red-500">*</span>
                                 </label>
-                                <select name="purity" id="purity" required data-initial-value="{{ old('purity') }}"
+                                @php
+                                    $initialMetal = old('metal_type', 'gold');
+                                    $initialPurity = old('purity', '');
+                                    $initialProfiles = $profileOptions[$initialMetal] ?? collect();
+                                @endphp
+                                <select name="purity" id="purity" required data-initial-value="{{ $initialPurity }}"
                                         class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
                                     <option value="">Select purity</option>
+                                    @foreach($initialProfiles as $profile)
+                                        <option value="{{ $profile['value'] }}" @selected($initialPurity === $profile['value'])>{{ $profile['label'] }}</option>
+                                    @endforeach
+                                    @if($initialMetal)
+                                        <option value="__custom__">＋ Custom purity…</option>
+                                    @endif
                                 </select>
                             </div>
 
@@ -781,6 +807,23 @@
             populatePurityOptions();
             updateNetWeight();
             refreshRetailerPricing();
+
+            // Restore supplier hidden fields from old() on validation failure
+            const supplierPicker = document.getElementById('supplier_picker');
+            if (supplierPicker && supplierPicker.value && supplierPicker.value !== '__new_supplier__') {
+                syncSupplierHiddenFields(supplierPicker.value);
+            }
+
+            // Defer one frame so app.js's enhanced-select widget (which also
+            // attaches on DOMContentLoaded) has finished wrapping all selects
+            // before we call refresh — prevents dropdowns showing empty
+            // without a page reload.
+            requestAnimationFrame(() => {
+                ['purity', 'sub_category', 'supplier_picker'].forEach((id) => {
+                    const el = document.getElementById(id);
+                    if (el) refreshCreateDropdown(el);
+                });
+            });
         });
 
         // ── Supplier picker helpers ────────────────────────────────────────────

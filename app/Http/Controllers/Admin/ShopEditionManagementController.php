@@ -57,7 +57,7 @@ class ShopEditionManagementController extends Controller
             ShopEdition::grantTo($shop, $edition, null);
 
             if ($edition === ShopEdition::DHIRAN) {
-                \App\Models\Dhiran\DhiranSettings::getForShop($shop->id)
+                \App\Models\Dhiran\DhiranSettings::where('shop_id', $shop->id)
                     ->update(['is_enabled' => true]);
             }
         });

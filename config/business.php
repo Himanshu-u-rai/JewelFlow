@@ -22,4 +22,12 @@ return [
     |--------------------------------------------------------------------------
     */
     'subscription_grace_days' => (int) env('BUSINESS_GRACE_DAYS', 7),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Platform Billing Invoice Settings
+    |--------------------------------------------------------------------------
+    */
+    'platform_invoice_prefix'   => env('PLATFORM_INVOICE_PREFIX', 'JFINV-'),
+    'platform_invoice_gst_rate' => (float) env('PLATFORM_INVOICE_GST_RATE', 18.0),
 ];

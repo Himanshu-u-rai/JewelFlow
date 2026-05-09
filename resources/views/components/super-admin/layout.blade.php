@@ -37,6 +37,9 @@
         } elseif (request()->routeIs('admin.subscriptions.*')) {
             $title = 'Subscriptions';
             $subtitle = 'Monitor tenant subscriptions, billing state, and renewal health.';
+        } elseif (request()->routeIs('admin.invoices.*')) {
+            $title = 'Platform Invoices';
+            $subtitle = 'All subscription billing invoices generated across all shops.';
         } elseif (request()->routeIs('admin.settings.*')) {
             $title = 'Platform Settings';
             $subtitle = 'Control platform-wide behaviour and availability for all tenants.';
@@ -84,6 +87,10 @@
                 <a href="{{ route('admin.subscriptions.index') }}" class="admin-nav-link {{ request()->routeIs('admin.subscriptions.*') ? 'is-active' : '' }}">
                     <span>Subscriptions</span>
                     <span class="admin-nav-suffix">Tenants</span>
+                </a>
+                <a href="{{ route('admin.invoices.index') }}" class="admin-nav-link {{ request()->routeIs('admin.invoices.*') ? 'is-active' : '' }}">
+                    <span>Invoices</span>
+                    <span class="admin-nav-suffix">Billing</span>
                 </a>
 
                 <a href="{{ route('admin.settings.index') }}" class="admin-nav-link {{ request()->routeIs('admin.settings.*') ? 'is-active' : '' }}">

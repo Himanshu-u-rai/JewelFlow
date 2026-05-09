@@ -2029,6 +2029,19 @@
                     </div>
 
                     <div class="section-divider"></div>
+                    <div class="section-label">{{ __('Inventory Display') }}</div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">{{ __('Stock Price Display') }}</label>
+                            <select name="stock_value_display" class="field-input">
+                                <option value="total"    {{ ($preferences->stock_value_display ?? 'total') === 'total'    ? 'selected' : '' }}>{{ __('Full Price (₹ total value per item)') }}</option>
+                                <option value="per_gram" {{ ($preferences->stock_value_display ?? 'total') === 'per_gram' ? 'selected' : '' }}>{{ __('Per Gram Rate (₹/g)') }}</option>
+                            </select>
+                            <span class="field-hint">{{ __('Controls how item prices appear in the inventory list.') }}</span>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
                     <div class="section-label">{{ __('Security & Operations') }}</div>
                     <div class="form-row">
                         <div class="field">
@@ -2082,6 +2095,7 @@
                                     
                                     <div class="role-body">
                                         @foreach($permissionGroups as $group => $groupPerms)
+                                            @if($group === 'Dhiran (Gold Loans)') @continue @endif
                                             <div class="perm-group">
                                                 <div class="perm-group-title">{{ __($group) }}</div>
                                                 @foreach($groupPerms as $perm)

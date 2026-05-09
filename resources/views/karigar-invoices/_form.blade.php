@@ -471,7 +471,7 @@
     }
 </style>
 
-<div x-data="invoiceForm(@json($prefillLines), @js($initialMode), {!! $advancesByKarigar ?? '{}' !!}, @js($selectedKarigarId), @js($selectedKarigar?->name ?? ''), @js($modeLabel))"
+<div x-data='invoiceForm(@json($prefillLines), @json($initialMode), @json(json_decode($advancesByKarigar ?? "[]")), @json($selectedKarigarId), @json($selectedKarigar?->name ?? ""), @json($modeLabel))'
      @keydown.escape.window="closeDropdowns()">
     <div class="ki-form-grid">
         <div class="ki-card">
@@ -498,8 +498,8 @@
                                     @foreach($karigars as $k)
                                         <button type="button"
                                                 class="ki-combobox-option"
-                                                :class="selectedKarigarId === '{{ $k->id }}' ? 'ki-combobox-option-selected' : ''"
-                                                @click="onKarigarSelect('{{ $k->id }}', @js($k->name))">{{ $k->name }}</button>
+                                                :class="String(selectedKarigarId) === '{{ $k->id }}' ? 'ki-combobox-option-selected' : ''"
+                                                @click='onKarigarSelect(@json((string) $k->id), @json($k->name))'>{{ $k->name }}</button>
                                     @endforeach
                                 </div>
                             </div>

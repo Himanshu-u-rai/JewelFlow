@@ -20,6 +20,7 @@ class BusinessIdentifierService
     public const KEY_JOB_ORDER = 'job_order';
     public const KEY_CHALLAN = 'challan';
     public const KEY_JOB_RECEIPT = 'job_receipt';
+    public const KEY_PLATFORM_INVOICE = 'platform_invoice';
 
     public static function nextCounter(int $shopId, string $counterKey): int
     {
@@ -234,6 +235,58 @@ class BusinessIdentifierService
         return [
             'sequence' => $sequence,
             'number'   => 'JR-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+        ];
+    }
+
+    /**
+     * Global (platform-wide) sequential invoice number for platform billing.
+     * Uses the platform_counters table — not shop-scoped.
+     *
+     * @return array{sequence:int, number:string}
+     */
+    /**
+     * Must always be called from within a DB::transaction() so the
+     * lockForUpdate() is held for the full outer transaction duration,
+     * preventing concurrent requests from obtaining the same sequence number.
+     */
+    public static function nextPlatformInvoiceNumber(): array
+    {
+        $row = DB::table('platform_counters')
+            ->where('counter_key', self::KEY_PLATFORM_INVOICE)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $row) {
+            try {
+                DB::table('platform_counters')->insert([
+                    'counter_key'   => self::KEY_PLATFORM_INVOICE,
+                    'current_value' => 0,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
+            } catch (QueryException $e) {
+                if (($e->getCode() ?? '') !== '23505') {
+                    throw $e;
+                }
+            }
+
+            $row = DB::table('platform_counters')
+                ->where('counter_key', self::KEY_PLATFORM_INVOICE)
+                ->lockForUpdate()
+                ->firstOrFail();
+        }
+
+        $next = (int) $row->current_value + 1;
+
+        DB::table('platform_counters')
+            ->where('counter_key', self::KEY_PLATFORM_INVOICE)
+            ->update(['current_value' => $next, 'updated_at' => now()]);
+
+        $prefix = config('business.platform_invoice_prefix', 'JFINV-');
+
+        return [
+            'sequence' => $next,
+            'number'   => $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT),
         ];
     }
 }

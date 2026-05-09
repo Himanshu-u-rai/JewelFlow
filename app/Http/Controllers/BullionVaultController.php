@@ -116,7 +116,18 @@ class BullionVaultController extends Controller
             'metal_type' => 'required|in:gold,silver',
             'source' => 'required|in:purchase,buyback,opening',
             'gross_weight' => 'required|numeric|min:0.001',
-            'purity' => 'required|numeric|min:1|max:1000',
+            'purity' => [
+                'required', 'numeric',
+                'min:1',
+                function ($attribute, $value, $fail) use ($request) {
+                    $max = $request->input('metal_type') === 'silver' ? 1000 : 24;
+                    if ((float) $value > $max) {
+                        $fail($request->input('metal_type') === 'silver'
+                            ? 'Silver purity (fineness) cannot exceed 1000.'
+                            : 'Gold purity (karats) cannot exceed 24.');
+                    }
+                },
+            ],
             'cost_per_gram' => 'nullable|numeric|min:0',
             'vendor_id' => ['nullable', \Illuminate\Validation\Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
             'notes' => 'nullable|string',

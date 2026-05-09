@@ -427,6 +427,7 @@ class SettingsController extends Controller
             'loyalty_welcome_bonus'      => 'nullable|integer|min:0|max:99999',
             'credit_days'                => 'nullable|integer|min:0|max:365',
             'barcode_prefix'             => 'nullable|string|max:20',
+            'stock_value_display'        => 'nullable|in:total,per_gram',
         ]);
 
         // Defaults for new fields
@@ -435,6 +436,7 @@ class SettingsController extends Controller
         $validated['auto_logout_minutes']  = $validated['auto_logout_minutes']  ?? 0;
         $validated['loyalty_welcome_bonus']= $validated['loyalty_welcome_bonus'] ?? 0;
         $validated['credit_days']          = $validated['credit_days']          ?? 0;
+        $validated['stock_value_display']  = $validated['stock_value_display']  ?? 'total';
 
         $preferences = $shop->preferences ?? new ShopPreferences(['shop_id' => $shop->id]);
         $preferences->fill($validated);

@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Item;
+use App\Models\Platform\Plan;
+use App\Models\Platform\PlatformInvoice;
+use App\Models\Platform\ShopSubscription;
 use App\Models\Repair;
 use App\Models\Shop;
 use App\Services\PlatformAuditService;
@@ -70,12 +73,28 @@ class ShopManagementController extends Controller
         $availableEditions = array_values(array_diff(\App\Support\ShopEdition::ALL, $activeEditions));
         $editionHistory   = $shop->editions()->orderByDesc('created_at')->get();
 
+        $billingInvoices = PlatformInvoice::where('shop_id', $shop->id)
+            ->with('plan')
+            ->latest('issued_at')
+            ->limit(10)
+            ->get();
+
+        $currentSubscription = ShopSubscription::query()
+            ->where('shop_id', $shop->id)
+            ->latest('id')
+            ->first();
+
+        $plans = Plan::orderBy('name')->get(['id', 'name', 'price_monthly', 'price_yearly']);
+
         return view('super-admin.shops.show', compact(
             'shop',
             'stats',
             'activeEditions',
             'availableEditions',
-            'editionHistory'
+            'editionHistory',
+            'billingInvoices',
+            'currentSubscription',
+            'plans'
         ));
     }
 

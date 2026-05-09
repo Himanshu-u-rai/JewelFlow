@@ -256,7 +256,7 @@
         <div class="heading">
             <h2>{{ __('Which services do you need?') }}</h2>
             <p>{{ __('Pick one or more. Your choices shape onboarding, billing, and the app you see after login.') }}</p>
-            <div class="hint">{{ __('You can select multiple — for example Retailer + Dhiran, or Dhiran only.') }}</div>
+            <div class="hint">{{ __('You can select multiple — for example Retailer + Manufacturer.') }}</div>
         </div>
 
         @if(session('error'))
@@ -307,25 +307,7 @@
                 </label>
             @endif
 
-            @if($enabled['dhiran'])
-                <label class="type-card card-dhiran {{ $selected->contains('dhiran') ? 'selected' : '' }}">
-                    <input type="checkbox" name="editions[]" value="dhiran" {{ $selected->contains('dhiran') ? 'checked' : '' }}>
-                    <div class="check-dot">
-                        <svg viewBox="0 0 20 20" fill="none"><path d="M5 10l3 3 7-7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </div>
-                    <div class="type-icon">
-                        <svg width="22" height="22" fill="none" stroke="#2dd4bf" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2v20M5 9h14M5 15h14" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="5" width="18" height="14" rx="2" stroke-linecap="round"/></svg>
-                    </div>
-                    <h3>{{ __('Dhiran') }}</h3>
-                    <p class="type-subtitle">{{ __('Gold loans on pledge — ledger, interest, closure.') }}</p>
-                    <div class="type-features">
-                        <div class="feature-item"><span class="feature-dot"></span><span>{{ __('Loan & pledge management') }}</span></div>
-                        <div class="feature-item"><span class="feature-dot"></span><span>{{ __('Interest accrual & reminders') }}</span></div>
-                        <div class="feature-item"><span class="feature-dot"></span><span>{{ __('KYC, closure certificates') }}</span></div>
-                        <div class="feature-item"><span class="feature-dot"></span><span>{{ __('Can run standalone') }}</span></div>
-                    </div>
-                </label>
-            @endif
+            {{-- Dhiran is a separate product served on its own subdomain; not shown here --}}
         </div>
 
         <div class="actions">

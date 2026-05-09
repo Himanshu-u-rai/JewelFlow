@@ -32,11 +32,11 @@
         <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">{{ __('Active Services') }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             @foreach($active as $ed)
+                @if($ed === 'dhiran') @continue @endif
                 @php
                     $meta = [
                         'retailer'     => ['label' => 'Retailer',     'tint' => 'amber'],
                         'manufacturer' => ['label' => 'Manufacturer', 'tint' => 'indigo'],
-                        'dhiran'       => ['label' => 'Dhiran',       'tint' => 'teal'],
                     ][$ed] ?? ['label' => ucfirst($ed), 'tint' => 'gray'];
                     $assignment = $assignments[$ed] ?? null;
                 @endphp
@@ -88,11 +88,11 @@
             <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">{{ __('Add a Service') }}</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 @foreach($available as $ed)
+                    @if($ed === 'dhiran') @continue @endif
                     @php
                         $meta = [
                             'retailer'     => ['label' => 'Retailer', 'desc' => 'Buy & sell ready-made jewellery with POS.'],
                             'manufacturer' => ['label' => 'Manufacturer', 'desc' => 'Make jewellery in-house with lots & wastage.'],
-                            'dhiran'       => ['label' => 'Dhiran', 'desc' => 'Gold loans on pledge.'],
                         ][$ed] ?? ['label' => ucfirst($ed), 'desc' => ''];
 
                         $pending = $pendingRequests->firstWhere(fn($r) => $r->edition === $ed && $r->action === 'add');

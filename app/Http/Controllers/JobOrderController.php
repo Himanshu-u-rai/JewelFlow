@@ -69,7 +69,17 @@ class JobOrderController extends Controller
         $validated = $request->validate([
             'karigar_id' => 'required|integer',
             'metal_type' => 'required|in:gold,silver',
-            'purity' => 'required|numeric|min:1|max:1000',
+            'purity' => [
+                'required', 'numeric', 'min:1',
+                function ($attribute, $value, $fail) use ($request) {
+                    $max = $request->input('metal_type') === 'silver' ? 1000 : 24;
+                    if ((float) $value > $max) {
+                        $fail($request->input('metal_type') === 'silver'
+                            ? 'Silver purity (fineness) cannot exceed 1000.'
+                            : 'Gold purity (karats) cannot exceed 24.');
+                    }
+                },
+            ],
             'allowed_wastage_percent' => 'required|numeric|min:0|max:25',
             'issue_date' => 'required|date',
             'expected_return_date' => 'nullable|date|after_or_equal:issue_date',
@@ -78,7 +88,17 @@ class JobOrderController extends Controller
             'issuances.*.metal_lot_id' => 'required|integer',
             'issuances.*.gross_weight' => 'required|numeric|min:0',
             'issuances.*.fine_weight' => 'required|numeric|min:0.0001',
-            'issuances.*.purity'           => 'required|numeric|min:1|max:1000',
+            'issuances.*.purity' => [
+                'required', 'numeric', 'min:1',
+                function ($attribute, $value, $fail) use ($request) {
+                    $max = $request->input('metal_type') === 'silver' ? 1000 : 24;
+                    if ((float) $value > $max) {
+                        $fail($request->input('metal_type') === 'silver'
+                            ? 'Silver purity (fineness) cannot exceed 1000.'
+                            : 'Gold purity (karats) cannot exceed 24.');
+                    }
+                },
+            ],
             'advance_amount'               => 'nullable|numeric|min:0',
             'advance_mode'                 => 'nullable|string|max:20',
             'advance_payment_method_id'    => ['nullable', \Illuminate\Validation\Rule::exists('shop_payment_methods', 'id')->where('shop_id', auth()->user()->shop_id)],

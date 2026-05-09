@@ -38,12 +38,12 @@ Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     }
 
-    if (!auth()->check()) {
-        return redirect('/login');
+    if (auth()->check()) {
+        return redirect('/dashboard');
     }
 
-    return redirect('/dashboard');
-});
+    return view('landing');
+})->name('home');
 
 Route::get('/translations/{locale}.json', [TranslationController::class, 'show'])
     ->where('locale', '[a-zA-Z_\\-]+')
@@ -147,6 +147,14 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->name('dashboard');
 
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])->name('subscription.status');
+
+    // ======= BILLING INVOICES (owner-only portal) =======
+    Route::get('/billing', [\App\Http\Controllers\BillingController::class, 'index'])
+        ->middleware('role:owner')
+        ->name('billing.invoices.index');
+    Route::get('/billing/{invoice}', [\App\Http\Controllers\BillingController::class, 'show'])
+        ->middleware('role:owner')
+        ->name('billing.invoices.show');
 
     // ======= EXPORT (owner + manager only — reports.export permission) =======
     Route::get('/export', [ExportController::class, 'index'])->middleware('role:owner,manager')->name('export.index');
