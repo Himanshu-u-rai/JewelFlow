@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Services\PlatformAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class UserManagementController extends Controller
@@ -96,7 +95,7 @@ class UserManagementController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user->password = Hash::make($validated['password']);
+        $user->password = $validated['password']; // 'hashed' cast handles bcrypt
         $user->save();
 
         $this->audit->log(
@@ -123,6 +122,10 @@ class UserManagementController extends Controller
         $role = Role::withoutTenant()->findOrFail((int) $validated['role_id']);
         if ($user->shop_id !== $role->shop_id) {
             return back()->withErrors(['role_id' => 'Role does not belong to the user shop.']);
+        }
+
+        if ($role->name === 'owner') {
+            return back()->withErrors(['role_id' => 'Cannot assign the owner role via the admin panel.']);
         }
 
         $before = ['role_id' => $user->role_id];

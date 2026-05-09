@@ -48,6 +48,11 @@ class UserMobileController extends Controller
             return back()->with('error', 'Another user already owns that mobile number.');
         }
 
+        if (!$user->email) {
+            return back()->withErrors(['new_mobile_number' =>
+                'Cannot change mobile: user has no email on file for change notification.']);
+        }
+
         $oldMobile = $user->mobile_number;
 
         DB::transaction(function () use ($user, $validated, $signoutOthers) {

@@ -57,8 +57,8 @@ class ImpersonationController extends Controller
     public function stop(Request $request): RedirectResponse
     {
         $admin = auth('platform_admin')->user();
-        if (!$admin) {
-            abort(403, 'Not authorized.');
+        if (!$admin || !$admin->isSuperAdmin()) {
+            abort(403, 'Only super admins can manage impersonation.');
         }
 
         $this->impersonation->stop(null, $admin, 'manual');

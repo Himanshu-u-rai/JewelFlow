@@ -53,25 +53,28 @@ class ShopEditionManagementController extends Controller
 
         $before = $existing ? $existing->only(['deactivated_at', 'deactivation_reason', 'deactivated_by']) : null;
 
-        DB::transaction(function () use ($shop, $edition, $reason) {
+        $admin = auth('platform_admin')->user();
+
+        DB::transaction(function () use ($shop, $edition, $reason, $before, $admin, $request) {
             ShopEdition::grantTo($shop, $edition, null);
 
             if ($edition === ShopEdition::DHIRAN) {
-                \App\Models\Dhiran\DhiranSettings::where('shop_id', $shop->id)
+                \App\Models\Dhiran\DhiranSettings::withoutGlobalScope('shop')
+                    ->where('shop_id', $shop->id)
                     ->update(['is_enabled' => true]);
             }
-        });
 
-        $this->audit->log(
-            auth('platform_admin')->user(),
-            'shop.edition.grant',
-            Shop::class,
-            $shop->id,
-            $before,
-            ['edition' => $edition, 'active' => true],
-            $reason,
-            $request
-        );
+            $this->audit->log(
+                $admin,
+                'shop.edition.grant',
+                Shop::class,
+                $shop->id,
+                $before,
+                ['edition' => $edition, 'active' => true],
+                $reason,
+                $request
+            );
+        });
 
         return back()->with('success', ucfirst($edition).' edition granted to '.$shop->name.'.');
     }
@@ -104,25 +107,28 @@ class ShopEditionManagementController extends Controller
             return back()->with('error', $guard);
         }
 
-        DB::transaction(function () use ($shop, $edition, $reason) {
+        $admin = auth('platform_admin')->user();
+
+        DB::transaction(function () use ($shop, $edition, $reason, $admin, $request) {
             ShopEdition::revokeFrom($shop, $edition, null, $reason);
 
             if ($edition === ShopEdition::DHIRAN) {
-                \App\Models\Dhiran\DhiranSettings::where('shop_id', $shop->id)
+                \App\Models\Dhiran\DhiranSettings::withoutGlobalScope('shop')
+                    ->where('shop_id', $shop->id)
                     ->update(['is_enabled' => false]);
             }
-        });
 
-        $this->audit->log(
-            auth('platform_admin')->user(),
-            'shop.edition.revoke',
-            Shop::class,
-            $shop->id,
-            ['edition' => $edition, 'active' => true],
-            ['edition' => $edition, 'active' => false],
-            $reason,
-            $request
-        );
+            $this->audit->log(
+                $admin,
+                'shop.edition.revoke',
+                Shop::class,
+                $shop->id,
+                ['edition' => $edition, 'active' => true],
+                ['edition' => $edition, 'active' => false],
+                $reason,
+                $request
+            );
+        });
 
         return back()->with('success', ucfirst($edition).' edition revoked from '.$shop->name.'.');
     }

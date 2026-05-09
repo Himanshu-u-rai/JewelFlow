@@ -65,41 +65,44 @@ class ShopEditionRequestController extends Controller
             return back()->with('error', 'Shop no longer exists.');
         }
 
-        DB::transaction(function () use ($editionRequest, $shop, $edition, $notes) {
+        $admin = auth('platform_admin')->user();
+
+        DB::transaction(function () use ($editionRequest, $shop, $edition, $notes, $admin, $request) {
             if ($editionRequest->action === ShopEditionRequest::ACTION_ADD) {
                 if (! $shop->hasEdition($edition)) {
                     ShopEdition::grantTo($shop, $edition, null);
                     if ($edition === ShopEdition::DHIRAN) {
-                        DhiranSettings::where('shop_id', $shop->id)->update(['is_enabled' => true]);
+                        DhiranSettings::withoutGlobalScope('shop')
+                            ->where('shop_id', $shop->id)->update(['is_enabled' => true]);
                     }
                 }
             } else {
-                // remove action
                 if ($shop->hasEdition($edition) && count($shop->editionList()) > 1) {
                     ShopEdition::revokeFrom($shop, $edition, null, $editionRequest->reason);
                     if ($edition === ShopEdition::DHIRAN) {
-                        DhiranSettings::where('shop_id', $shop->id)->update(['is_enabled' => false]);
+                        DhiranSettings::withoutGlobalScope('shop')
+                            ->where('shop_id', $shop->id)->update(['is_enabled' => false]);
                     }
                 }
             }
 
             $editionRequest->status       = ShopEditionRequest::STATUS_APPROVED;
-            $editionRequest->reviewed_by  = auth('platform_admin')->id();
+            $editionRequest->reviewed_by  = $admin?->id;
             $editionRequest->reviewed_at  = now();
             $editionRequest->review_notes = $notes;
             $editionRequest->save();
-        });
 
-        $this->audit->log(
-            auth('platform_admin')->user(),
-            'shop.edition.request.approved',
-            Shop::class,
-            $shop->id,
-            ['action' => $editionRequest->action, 'edition' => $edition],
-            ['status' => 'approved'],
-            $notes ?? $editionRequest->reason,
-            $request
-        );
+            $this->audit->log(
+                $admin,
+                'shop.edition.request.approved',
+                Shop::class,
+                $shop->id,
+                ['action' => $editionRequest->action, 'edition' => $edition],
+                ['status' => 'approved'],
+                $notes ?? $editionRequest->reason,
+                $request
+            );
+        });
 
         return back()->with('success', 'Request approved and edition updated.');
     }

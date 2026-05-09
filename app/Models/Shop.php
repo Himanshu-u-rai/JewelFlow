@@ -37,6 +37,13 @@ class Shop extends Model
         'gst_rate',
         'wastage_recovery_percent',
         'catalog_slug',
+        'access_mode',
+        'is_active',
+        'deactivated_at',
+        'suspended_at',
+        'suspended_by',
+        'suspended_until',
+        'suspension_reason',
     ];
 
     protected $casts = [

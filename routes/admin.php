@@ -44,14 +44,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/subscriptions', [\App\Http\Controllers\Admin\SubscriptionManagementController::class, 'index'])->name('subscriptions.index');
         Route::get('/invoices', [\App\Http\Controllers\Admin\PlatformInvoiceAdminController::class, 'index'])->name('invoices.index');
         Route::get('/tenant-activity', [TenantActivityController::class, 'index'])->name('tenant-activity.index');
-        Route::get('/security', [SecurityController::class, 'index'])->name('security.index');
-        Route::get('/system/jobs', [SystemJobController::class, 'index'])->name('system.jobs.index');
-        Route::get('/system/jobs/{id}', [SystemJobController::class, 'show'])->name('system.jobs.show');
 
         Route::post('/impersonation/stop', [ImpersonationController::class, 'stop'])->name('impersonation.stop');
 
-        // All write/mutating actions require super_admin role
+        // All write/mutating actions + sensitive views require super_admin role
         Route::middleware('platform.role:super_admin')->group(function () {
+            Route::get('/security', [SecurityController::class, 'index'])->name('security.index');
+            Route::get('/system/jobs', [SystemJobController::class, 'index'])->name('system.jobs.index');
+            Route::get('/system/jobs/{id}', [SystemJobController::class, 'show'])->name('system.jobs.show');
             Route::patch('/shops/{shop}/status', [ShopManagementController::class, 'updateStatus'])->name('shops.status');
             Route::patch('/shops/{shop}/subscription', [BillingManagementController::class, 'updateShopSubscription'])->name('shops.subscription');
             Route::post('/shops/{shop}/editions/grant', [ShopEditionManagementController::class, 'grant'])->name('shops.editions.grant');
@@ -109,9 +109,12 @@ Route::prefix('super-admin')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('superadmin.logout');
         Route::get('/shops', [ShopManagementController::class, 'index'])->name('superadmin.shops.index');
         Route::get('/shops/{shop}', [ShopManagementController::class, 'show'])->name('superadmin.shops.show');
-        Route::patch('/shops/{shop}/status', [ShopManagementController::class, 'updateStatus'])->name('superadmin.shops.status');
         Route::get('/users', [UserManagementController::class, 'index'])->name('superadmin.users.index');
         Route::get('/users/{user}', [UserManagementController::class, 'show'])->name('superadmin.users.show');
+    });
+
+    Route::middleware(['admin', 'platform.role:super_admin'])->group(function () {
+        Route::patch('/shops/{shop}/status', [ShopManagementController::class, 'updateStatus'])->name('superadmin.shops.status');
         Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus'])->name('superadmin.users.status');
         Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword'])->name('superadmin.users.password');
     });

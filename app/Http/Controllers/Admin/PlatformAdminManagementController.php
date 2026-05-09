@@ -34,6 +34,11 @@ class PlatformAdminManagementController extends Controller
             'role' => ['required', 'in:super_admin,platform_operator'],
         ]);
 
+        $actor = auth('platform_admin')->user();
+        if ($validated['role'] === 'super_admin' && !$actor?->isSuperAdmin()) {
+            abort(403, 'Only super admins can create super_admin accounts.');
+        }
+
         $platformAdmin = PlatformAdmin::query()->create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
@@ -115,6 +120,13 @@ class PlatformAdminManagementController extends Controller
 
     public function resetPassword(Request $request, PlatformAdmin $platformAdmin): RedirectResponse
     {
+        $actor = auth('platform_admin')->user();
+
+        // Prevent a super_admin from resetting another super_admin's password
+        if ($platformAdmin->role === 'super_admin' && $actor?->id !== $platformAdmin->id) {
+            abort(403, 'Cannot reset another super admin\'s password.');
+        }
+
         $validated = $request->validate([
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'reason' => ['nullable', 'string', 'max:500'],

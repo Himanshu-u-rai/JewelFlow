@@ -435,8 +435,8 @@
                         @endif
                         <td class="text-right">{{ $repair ? number_format((float) $repair->gross_weight, 3) : '0.000' }}</td>
                         @if($showPurity)<td class="text-center">{{ $repair ? number_format((float) $repair->purity, 2) . 'K' : '—' }}</td>@endif
-                        <td class="text-right">{{ number_format((float) $invoice->subtotal, 2) }}</td>
-                        <td class="text-right strong">{{ number_format((float) $invoice->total, 2) }}</td>
+                        <td class="text-right">—</td>
+                        <td class="text-right strong">{{ number_format((float) $invoice->subtotal, 2) }}</td>
                     </tr>
                     @php
                         $fillerRows = max(0, $minimumPrintableRows - 1);
@@ -587,6 +587,7 @@
                     <td>Total Amount Before Tax</td>
                     <td class="text-right">{{ number_format($beforeTax, 2) }}</td>
                 </tr>
+                @if($gst > 0)
                 @if($igstMode)
                 <tr>
                     <td>Add: IGST {{ number_format($gstHalfRate * 2, 2) }}%</td>
@@ -602,6 +603,7 @@
                     <td class="text-right">{{ number_format($sgst, 2) }}</td>
                 </tr>
                 @endif
+                @endif
                 <tr>
                     <td>Hallmark / Misc. / Other Charges</td>
                     <td class="text-right">{{ number_format($extraCharges, 2) }}</td>
@@ -613,7 +615,7 @@
                 </tr>
                 @endif
                 <tr>
-                    <td>Total Amount After Tax</td>
+                    <td>{{ $gst > 0 ? 'Total Amount After Tax' : 'Total Amount' }}</td>
                     <td class="text-right">{{ number_format($afterTax, 2) }}</td>
                 </tr>
                 <tr>
