@@ -489,6 +489,11 @@ class PosController extends Controller
         if (auth()->user()->shop->isRetailer()) {
             $data['selling_price'] = (float) $item->selling_price;
             $data['cost_price'] = (float) $item->cost_price;
+            $data['making_charges'] = (float) ($item->making_charges ?? 0);
+            $data['stone_charges'] = (float) ($item->stone_charges ?? 0);
+            $data['hallmark_charges'] = (float) ($item->hallmark_charges ?? 0);
+            $data['rhodium_charges'] = (float) ($item->rhodium_charges ?? 0);
+            $data['other_charges'] = (float) ($item->other_charges ?? 0);
         }
 
         return response()->json($data);

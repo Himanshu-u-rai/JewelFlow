@@ -1103,18 +1103,19 @@
         }
 
         .dash-metal-card .dash-top-kpi-head {
-            align-items: center;
+            align-items: flex-start;
         }
 
         .dash-metal-card .dash-top-kpi-meta {
             color: #475569;
             text-align: left;
+            white-space: normal;
         }
 
         .dash-metal-rates {
             display: grid;
             grid-template-columns: minmax(0, 1fr);
-            gap: 0;
+            gap: 10px;
             min-width: 0;
             width: 100%;
         }
@@ -1122,11 +1123,14 @@
         .dash-metal-rate-row {
             display: grid;
             grid-template-columns: auto minmax(0, 1fr);
-            align-items: center;
-            gap: 10px;
+            align-items: start;
+            gap: 12px;
             min-width: 0;
-            padding: 9px 0;
-            border-top: 1px solid #e4ebf4;
+            padding: 12px;
+            border: 1px solid #e4ebf4;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
         }
 
         .dash-metal-coin {
@@ -1200,8 +1204,8 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
-            gap: 3px;
+            align-items: flex-start;
+            gap: 4px;
         }
 
         .dash-metal-rate-value {
@@ -1209,14 +1213,15 @@
             font-size: 27px;
             line-height: 1;
             white-space: nowrap;
-            display: inline-flex;
+            display: flex;
             align-items: baseline;
-            justify-content: flex-end;
-            gap: 1px;
+            justify-content: flex-start;
+            flex-wrap: nowrap;
+            gap: 2px;
             font-variant-numeric: tabular-nums;
             letter-spacing: 0;
             min-width: 0;
-            text-align: right;
+            text-align: left;
         }
 
         .dash-metal-rate-value.gold {
@@ -1235,11 +1240,11 @@
         .dash-metal-rate-subtitle {
             margin: 0;
             color: #94a3b8;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 600;
-            line-height: 1.1;
-            opacity: 0.72;
-            text-align: right;
+            line-height: 1.2;
+            opacity: 0.84;
+            text-align: left;
         }
 
         .dash-metal-card .dash-top-kpi-value {
@@ -2611,9 +2616,27 @@
             }
 
             .dash-col-shop,
+            .dash-col-metal,
             .dash-col-revenue,
             .dash-col-profit {
                 grid-column: span 12;
+            }
+
+            .dash-col-metal .dash-metal-rates {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
+            }
+
+            .dash-top-grid.dash-top-grid-retailer .dash-col-shop,
+            .dash-top-grid.dash-top-grid-retailer .dash-col-metal,
+            .dash-top-grid.dash-top-grid-retailer .dash-col-revenue,
+            .dash-top-grid.dash-top-grid-retailer .dash-col-profit {
+                grid-column: span 6;
+            }
+
+            .dash-top-grid.dash-top-grid-retailer .dash-col-metal .dash-metal-rates {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 8px;
             }
 
             .dash-insight-grid {
@@ -2840,7 +2863,7 @@
 
             .dash-col-revenue,
             .dash-col-profit {
-                grid-column: span 6;
+                grid-column: span 1;
                 padding: 12px;
                 order: 3;
             }
@@ -2852,8 +2875,8 @@
             }
 
             .dash-col-metal .dash-metal-rate-row {
-                gap: 9px;
-                padding: 8px 0;
+                gap: 10px;
+                padding: 10px;
             }
 
             .dash-col-metal .dash-metal-coin {
@@ -2868,6 +2891,25 @@
             }
 
             .dash-col-metal .dash-metal-rate-unit {
+                font-size: 10px;
+            }
+
+            .dash-col-metal .dash-metal-rates {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 8px;
+            }
+
+            .dash-top-grid.dash-top-grid-retailer .dash-col-shop,
+            .dash-top-grid.dash-top-grid-retailer .dash-col-metal {
+                grid-column: 1 / -1;
+            }
+
+            .dash-top-grid.dash-top-grid-retailer .dash-col-revenue,
+            .dash-top-grid.dash-top-grid-retailer .dash-col-profit {
+                grid-column: span 1;
+            }
+
+            .dash-col-metal .dash-metal-rate-subtitle {
                 font-size: 10px;
             }
 
@@ -3387,7 +3429,11 @@
             }
 
             .dash-col-metal .dash-metal-rates {
-                gap: 0;
+                gap: 8px;
+            }
+
+            .dash-col-metal .dash-metal-rate-row {
+                padding: 10px;
             }
 
             .dash-shop-actions .dash-btn,

@@ -295,6 +295,227 @@
         color: var(--muted);
     }
 
+    .item-picker-row {
+        display: grid;
+        grid-template-columns: minmax(0, 380px);
+        gap: 14px;
+        align-items: start;
+        margin-bottom: 16px;
+    }
+
+    .item-picker-row .barcode-wrap {
+        margin-bottom: 0;
+    }
+
+    .item-picker-browse {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .item-picker-browse-shell {
+        position: relative;
+        border: 1px solid #dbe3ee;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        padding: 10px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .item-picker-browse .field-label {
+        margin-bottom: 0;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .item-picker-native {
+        display: none;
+    }
+
+    .item-picker-trigger {
+        width: 100%;
+        min-height: 52px;
+        border-radius: 12px;
+        border: 1px solid #cfd8e3;
+        background: #ffffff;
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #0f172a;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .item-picker-trigger:hover,
+    .item-picker-browse-shell.is-open .item-picker-trigger {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(20, 33, 61, 0.12);
+    }
+
+    .item-picker-trigger-text {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: left;
+    }
+
+    .item-picker-trigger-text.is-placeholder {
+        color: #475569;
+    }
+
+    .item-picker-trigger-icon {
+        width: 18px;
+        height: 18px;
+        color: #475569;
+        flex-shrink: 0;
+    }
+
+    .item-picker-panel[hidden] {
+        display: none !important;
+    }
+
+    .item-picker-panel {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        z-index: 240;
+        border: 1px solid #dbe3ee;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16), 0 6px 16px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    .item-picker-panel-head {
+        padding: 12px;
+        border-bottom: 1px solid #e5edf5;
+        background: #f8fbff;
+    }
+
+    .item-picker-panel-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .item-picker-panel-title {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #475569;
+    }
+
+    .item-picker-panel-close {
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 4px 6px;
+        border-radius: 8px;
+    }
+
+    .item-picker-panel-close:hover {
+        background: #eef2f7;
+    }
+
+    .item-picker-filter {
+        width: 100%;
+        min-height: 42px;
+        border-radius: 10px;
+        border: 1px solid #d6dde7;
+        padding: 0 12px;
+        font-size: 14px;
+        background: #ffffff;
+        color: #0f172a;
+    }
+
+    .item-picker-filter:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(20, 33, 61, 0.12);
+    }
+
+    .item-picker-filter.loading {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 3px rgba(245,158,11,.15);
+    }
+
+    .item-picker-list {
+        display: flex;
+        flex-direction: column;
+        max-height: min(52vh, 360px);
+        overflow-y: auto;
+    }
+
+    .item-picker-option {
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid #eef2f7;
+        background: #ffffff;
+        padding: 12px 14px;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        cursor: pointer;
+        transition: background 0.12s ease, padding-left 0.12s ease;
+    }
+
+    .item-picker-option:last-child {
+        border-bottom: 0;
+    }
+
+    .item-picker-option:hover,
+    .item-picker-option.is-active {
+        background: #f8fbff;
+        padding-left: 18px;
+    }
+
+    .item-picker-option.is-focused {
+        background: #eef4ff;
+        padding-left: 18px;
+    }
+
+    .item-picker-option-main {
+        font-size: 13px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.35;
+    }
+
+    .item-picker-option-meta {
+        font-size: 12px;
+        color: #64748b;
+        line-height: 1.35;
+    }
+
+    .item-picker-empty {
+        padding: 16px 14px;
+        font-size: 13px;
+        color: #64748b;
+    }
+
+    .item-picker-empty strong {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 4px;
+    }
+
     /* ─── Item details strip ──────────────────────────── */
     .item-strip {
         display: grid;
@@ -613,12 +834,14 @@
         .pos-customer-name { font-size: 17px; }
         .card { padding: 16px; border-radius: 14px; }
         .field-row-2, .field-row-3 { grid-template-columns: 1fr; }
+        .item-picker-row { grid-template-columns: 1fr; }
         .item-strip { grid-template-columns: 1fr 1fr; }
         .pay-row-top { flex-wrap: wrap; }
         .pay-mode { width: 100%; }
         .summary-card { padding: 18px; border-radius: 14px; }
         .summary-total-val { font-size: 22px; }
         .barcode-wrap { padding: 12px; border-radius: 12px; }
+        .item-picker-panel { top: calc(100% + 6px); }
         .item-chip { padding: 10px 12px; border-radius: 12px; }
         .item-chip-icon { width: 38px; height: 38px; }
         .btn-sell { padding: 14px; font-size: 16px; border-radius: 12px; }
@@ -635,6 +858,16 @@
         .card-title { font-size: 14px; }
         .field-label { font-size: 12px; }
         .field-input, .field-select { font-size: 14px; padding: 10px 12px; }
+        .item-picker-panel {
+            position: fixed;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            top: auto;
+            max-height: min(72vh, 520px);
+            border-radius: 18px;
+        }
+        .item-picker-list { max-height: min(52vh, 360px); }
         .item-strip { grid-template-columns: 1fr; }
         .item-chip-icon { width: 34px; height: 34px; }
         .item-chip-design { font-size: 12px; }
@@ -673,31 +906,41 @@
                     <span><span class="card-title-icon"></span> Select Item</span>
                 </div>
 
-                <div class="barcode-wrap">
-                    <div class="barcode-top">
-                        <span class="field-label" style="margin-bottom:0;">Barcode / Quick Scan</span>
-                        <span class="barcode-badge">Scanner Ready</span>
+                <div class="item-picker-row">
+                    <div class="item-picker-browse">
+                        <label class="field-label">Search stock</label>
+                        <div class="item-picker-browse-shell" id="itemPickerShell">
+                            <button type="button" class="item-picker-trigger" id="itemPickerTrigger" aria-expanded="false" aria-controls="itemPickerPanel">
+                                <span class="item-picker-trigger-text is-placeholder" id="itemPickerLabel">Browse stock items</span>
+                                <svg class="item-picker-trigger-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m5 7.5 5 5 5-5" />
+                                </svg>
+                            </button>
+                            <div class="item-picker-panel" id="itemPickerPanel" hidden>
+                                <div class="item-picker-panel-head">
+                                    <div class="item-picker-panel-title-row">
+                                        <span class="item-picker-panel-title">Search stock</span>
+                                        <button type="button" class="item-picker-panel-close" id="itemPickerClose">Close</button>
+                                    </div>
+                                    <input type="text" class="item-picker-filter" id="itemPickerFilter" placeholder="Scan or type barcode / design" autofocus autocomplete="off">
+                                </div>
+                                <div class="item-picker-list" id="itemPickerList"></div>
+                            </div>
+                            <select name="item_id" id="itemSelect" class="field-select item-picker-native" data-item-picker onchange="showItemDetails()">
+                                <option value="">Browse stock items</option>
+                                @foreach($items as $item)
+                                    <option value="{{ $item->id }}"
+                                            data-design="{{ $item->design ?? 'N/A' }}"
+                                            data-barcode="{{ $item->barcode }}"
+                                            data-purity="{{ $item->purity }}"
+                                            data-weight="{{ $item->net_metal_weight }}"
+                                            {{ request('item_id') == $item->id ? 'selected' : '' }}>
+                                        {{ $item->barcode }} — {{ $item->design ?? 'N/A' }} ({{ $item->purity }}K, {{ $item->net_metal_weight }}g)
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                    <input type="text" id="barcodeInput" class="barcode-field" placeholder="Scan or type barcode / design to find item..." autofocus autocomplete="off">
-                    <div id="barcodeSuggestions" class="barcode-suggestions" style="display:none;"></div>
-                    <div class="barcode-hint">Type to filter suggestions · Press Enter or click to select</div>
-                </div>
-
-                <div class="field">
-                    <label class="field-label">Choose Item</label>
-                    <select name="item_id" id="itemSelect" class="field-select" onchange="showItemDetails()">
-                        <option value="">-- Select an item --</option>
-                        @foreach($items as $item)
-                            <option value="{{ $item->id }}"
-                                    data-design="{{ $item->design ?? 'N/A' }}"
-                                    data-barcode="{{ $item->barcode }}"
-                                    data-purity="{{ $item->purity }}"
-                                    data-weight="{{ $item->net_metal_weight }}"
-                                    {{ request('item_id') == $item->id ? 'selected' : '' }}>
-                                {{ $item->barcode }} — {{ $item->design ?? 'N/A' }} ({{ $item->purity }}K, {{ $item->net_metal_weight }}g)
-                            </option>
-                        @endforeach
-                    </select>
                 </div>
 
                 <div id="itemStrip" style="display:none;" class="item-strip">
@@ -837,13 +1080,19 @@ let paymentRowIndex = 1;
     window.addEventListener('DOMContentLoaded', () => showItemDetails());
 @endif
 
+window.addEventListener('DOMContentLoaded', initItemPicker);
+
 // ─── Item selection ──────────────────────────────────────
 function showItemDetails() {
     const sel = document.getElementById('itemSelect');
     const opt = sel.options[sel.selectedIndex];
     const strip = document.getElementById('itemStrip');
 
-    if (!opt.value) { strip.style.display = 'none'; return; }
+    if (!opt.value) {
+        strip.style.display = 'none';
+        if (window.syncPosItemPicker) window.syncPosItemPicker();
+        return;
+    }
 
     strip.style.display = 'grid';
     document.getElementById('stripBarcode').textContent = opt.dataset.barcode;
@@ -851,7 +1100,238 @@ function showItemDetails() {
     document.getElementById('stripPurity').textContent = opt.dataset.purity + 'K';
     document.getElementById('stripWeight').textContent = opt.dataset.weight + 'g';
 
+    if (window.syncPosItemPicker) window.syncPosItemPicker();
     updatePreview();
+}
+
+function initItemPicker() {
+    const select = document.getElementById('itemSelect');
+    const shell = document.getElementById('itemPickerShell');
+    const trigger = document.getElementById('itemPickerTrigger');
+    const label = document.getElementById('itemPickerLabel');
+    const panel = document.getElementById('itemPickerPanel');
+    const closeBtn = document.getElementById('itemPickerClose');
+    const filter = document.getElementById('itemPickerFilter');
+    const list = document.getElementById('itemPickerList');
+
+    if (!select || !shell || !trigger || !label || !panel || !closeBtn || !filter || !list) return;
+
+    const getOptions = () => Array.from(select.options).filter(option => option.value);
+    const minQueryLength = 2;
+    const maxVisibleResults = 60;
+    let visibleOptions = [];
+    let activeResultIndex = -1;
+    const escapeText = value => {
+        const node = document.createElement('div');
+        node.textContent = value;
+        return node.innerHTML;
+    };
+
+    function renderMessage(title, description) {
+        list.innerHTML =
+            '<div class="item-picker-empty">' +
+                '<strong>' + escapeText(title) + '</strong>' +
+                '<span>' + escapeText(description) + '</span>' +
+            '</div>';
+    }
+
+    function renderPicker(query) {
+        const q = (query || '').trim().toLowerCase();
+        const selectedValue = select.value;
+
+        activeResultIndex = -1;
+        visibleOptions = [];
+
+        if (q.length < minQueryLength) {
+            renderMessage('Search stock', 'Type at least ' + minQueryLength + ' characters to browse matching items.');
+            return;
+        }
+
+        const matches = getOptions().filter(option => {
+            return (option.dataset.barcode || '').toLowerCase().includes(q)
+                || (option.dataset.design || '').toLowerCase().includes(q);
+        }).slice(0, maxVisibleResults);
+
+        list.innerHTML = '';
+
+        if (!matches.length) {
+            renderMessage('No matches found', 'Try a different barcode, design name, or item code.');
+            return;
+        }
+
+        visibleOptions = matches;
+
+        matches.forEach(option => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'item-picker-option' + (option.value === selectedValue ? ' is-active' : '');
+            button.dataset.itemId = option.value;
+            button.innerHTML =
+                '<span class="item-picker-option-main">' + escapeText((option.dataset.barcode || option.value) + ' — ' + (option.dataset.design || 'N/A')) + '</span>' +
+                '<span class="item-picker-option-meta">' + escapeText((option.dataset.purity || '') + 'K · ' + (option.dataset.weight || '') + 'g') + '</span>';
+            list.appendChild(button);
+        });
+    }
+
+    function openPicker() {
+        panel.hidden = false;
+        shell.classList.add('is-open');
+        trigger.setAttribute('aria-expanded', 'true');
+        renderPicker(filter.value);
+        setTimeout(() => filter.focus(), 0);
+    }
+
+    function closePicker(resetFilter = false) {
+        panel.hidden = true;
+        shell.classList.remove('is-open');
+        trigger.setAttribute('aria-expanded', 'false');
+        if (resetFilter) {
+            filter.value = '';
+        }
+        activeResultIndex = -1;
+        visibleOptions = [];
+    }
+
+    function setActiveResult(index) {
+        const items = Array.from(list.querySelectorAll('.item-picker-option'));
+        items.forEach(item => item.classList.remove('is-focused'));
+
+        if (index < 0 || index >= items.length) {
+            activeResultIndex = -1;
+            return;
+        }
+
+        activeResultIndex = index;
+        items[index].classList.add('is-focused');
+        items[index].scrollIntoView({ block: 'nearest' });
+    }
+
+    function selectOption(option) {
+        if (!option) return;
+        select.value = option.value;
+        closePicker(true);
+        showItemDetails();
+        trigger.focus();
+    }
+
+    function findExactBarcodeMatch(query) {
+        const q = (query || '').trim().toLowerCase();
+        if (!q) return null;
+        return getOptions().find(option => (option.dataset.barcode || '').toLowerCase() === q) || null;
+    }
+
+    window.syncPosItemPicker = function() {
+        const option = select.options[select.selectedIndex];
+        const hasValue = !!(option && option.value);
+        label.textContent = hasValue
+            ? ((option.dataset.barcode || option.value) + ' — ' + (option.dataset.design || 'N/A'))
+            : 'Browse stock items';
+        label.classList.toggle('is-placeholder', !hasValue);
+        renderPicker(filter.value);
+    };
+
+    trigger.addEventListener('click', function() {
+        if (panel.hidden) {
+            openPicker();
+        } else {
+            closePicker(false);
+        }
+    });
+
+    closeBtn.addEventListener('click', function() {
+        closePicker(false);
+        trigger.focus();
+    });
+
+    filter.addEventListener('input', function() {
+        renderPicker(filter.value);
+    });
+
+    filter.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowDown') {
+            if (!panel.hidden && visibleOptions.length) {
+                event.preventDefault();
+                setActiveResult(activeResultIndex < visibleOptions.length - 1 ? activeResultIndex + 1 : 0);
+            }
+            return;
+        }
+
+        if (event.key === 'ArrowUp') {
+            if (!panel.hidden && visibleOptions.length) {
+                event.preventDefault();
+                setActiveResult(activeResultIndex > 0 ? activeResultIndex - 1 : visibleOptions.length - 1);
+            }
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            closePicker(false);
+            trigger.focus();
+            return;
+        }
+
+        if (event.key !== 'Enter') return;
+
+        event.preventDefault();
+
+        if (activeResultIndex >= 0 && visibleOptions[activeResultIndex]) {
+            selectOption(visibleOptions[activeResultIndex]);
+            return;
+        }
+
+        const exactLocalMatch = findExactBarcodeMatch(filter.value);
+        if (exactLocalMatch) {
+            selectOption(exactLocalMatch);
+            return;
+        }
+
+        const barcode = filter.value.trim();
+        if (!barcode) return;
+
+        filter.classList.add('loading');
+        fetch('/api/item-by-barcode/' + encodeURIComponent(barcode), { headers: { 'Accept': 'application/json' } })
+            .then(function(response) {
+                return response.ok
+                    ? response.json()
+                    : response.json().then(function(payload) { throw new Error(payload.message || 'Not found'); });
+            })
+            .then(function(item) {
+                if (item.error) {
+                    window.showToast(item.error, 'error');
+                    return;
+                }
+                select.value = item.id;
+                closePicker(true);
+                showItemDetails();
+                trigger.focus();
+            })
+            .catch(function(error) {
+                window.showToast('Error: ' + error.message, 'error');
+            })
+            .finally(function() {
+                filter.classList.remove('loading');
+            });
+    });
+
+    list.addEventListener('click', function(event) {
+        const button = event.target.closest('.item-picker-option');
+        if (!button) return;
+        const option = getOptions().find(item => item.value === button.dataset.itemId);
+        selectOption(option);
+    });
+
+    document.addEventListener('mousedown', function(event) {
+        if (panel.hidden || shell.contains(event.target)) return;
+        closePicker(false);
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && !panel.hidden) {
+            closePicker(false);
+        }
+    });
+
+    window.syncPosItemPicker();
 }
 
 // ─── Price preview ───────────────────────────────────────
@@ -1160,178 +1640,5 @@ if (saleFormEl && saleFormEl.dataset.boundSubmit !== 'true') {
         completeSale();
     });
 }
-
-// ─── Barcode / design live suggestions ───────────────────
-(function() {
-    var barcodeInput = document.getElementById('barcodeInput');
-    var suggBox      = document.getElementById('barcodeSuggestions');
-    var barcodeWrap  = barcodeInput ? barcodeInput.closest('.barcode-wrap') : null;
-    var activeIdx    = -1;
-    var currentMatches = [];
-
-    function getItemOptions() {
-        return Array.from(document.getElementById('itemSelect').options).filter(function(o) { return o.value; });
-    }
-
-    function escText(s) {
-        var d = document.createElement('div');
-        d.appendChild(document.createTextNode(s));
-        return d.innerHTML;
-    }
-
-    function setActive(idx) {
-        var items = suggBox.querySelectorAll('.barcode-sug-item');
-        items.forEach(function(el) { el.classList.remove('active'); });
-        if (idx >= 0 && idx < items.length) {
-            activeIdx = idx;
-            items[idx].classList.add('active');
-            items[idx].scrollIntoView({ block: 'nearest' });
-        } else {
-            activeIdx = -1;
-        }
-    }
-
-    function selectItem(option) {
-        document.getElementById('itemSelect').value = option.value;
-        showItemDetails();
-        barcodeInput.value = '';
-        suggBox.style.display = 'none';
-        if (barcodeWrap) barcodeWrap.classList.remove('drop-up');
-        activeIdx = -1;
-        currentMatches = [];
-    }
-
-    function closeSuggestions() {
-        suggBox.style.display = 'none';
-        if (barcodeWrap) barcodeWrap.classList.remove('drop-up');
-        activeIdx = -1;
-    }
-
-    function updateSuggestionDirection() {
-        if (!barcodeWrap || !suggBox || suggBox.style.display !== 'block') return;
-        barcodeWrap.classList.remove('drop-up');
-
-        var styles = window.getComputedStyle(suggBox);
-        var maxHeight = parseFloat(styles.maxHeight) || suggBox.scrollHeight || 280;
-        var panelHeight = Math.min(suggBox.scrollHeight || maxHeight, maxHeight) + 10;
-        var wrapRect = barcodeWrap.getBoundingClientRect();
-        var spaceBelow = window.innerHeight - wrapRect.bottom;
-        var spaceAbove = wrapRect.top;
-
-        if (spaceBelow < panelHeight && spaceAbove > spaceBelow) {
-            barcodeWrap.classList.add('drop-up');
-        }
-    }
-
-    function showSuggestions(q) {
-        suggBox.innerHTML = '';
-        activeIdx = -1;
-        q = q.trim().toLowerCase();
-        if (!q) { suggBox.style.display = 'none'; currentMatches = []; return; }
-
-        currentMatches = getItemOptions().filter(function(o) {
-            return (o.dataset.barcode || '').toLowerCase().includes(q)
-                || (o.dataset.design  || '').toLowerCase().includes(q);
-        }).slice(0, 8);
-
-        if (!currentMatches.length) { suggBox.style.display = 'none'; return; }
-
-        currentMatches.forEach(function(o, i) {
-            var div = document.createElement('div');
-            div.className = 'barcode-sug-item';
-            div.dataset.idx = i;
-            div.innerHTML =
-                '<span class="barcode-sug-barcode">' + escText(o.dataset.barcode || '') + '</span>'
-                + ' — ' + escText(o.dataset.design || 'N/A')
-                + ' <span style="color:var(--muted);font-size:12px;">(' + escText(o.dataset.purity || '') + 'K · ' + escText(o.dataset.weight || '') + 'g)</span>';
-            div.addEventListener('mousedown', function(e) {
-                e.preventDefault();
-                selectItem(o);
-            });
-            suggBox.appendChild(div);
-        });
-
-        suggBox.style.display = 'block';
-        updateSuggestionDirection();
-    }
-
-    barcodeInput.addEventListener('input', function() {
-        showSuggestions(this.value);
-    });
-
-    barcodeInput.addEventListener('blur', function() {
-        setTimeout(function() { closeSuggestions(); }, 150);
-    });
-
-    barcodeInput.addEventListener('focus', function() {
-        if (this.value.trim()) showSuggestions(this.value);
-    });
-
-    window.addEventListener('resize', function() {
-        updateSuggestionDirection();
-    }, { passive: true });
-
-    // ─── Keyboard navigation + Enter/Escape ──────────────
-    barcodeInput.addEventListener('keydown', function(e) {
-        var sugVisible = suggBox.style.display === 'block';
-        var count = currentMatches.length;
-
-        // Arrow Down: move highlight to next suggestion
-        if (e.key === 'ArrowDown' && sugVisible && count > 0) {
-            e.preventDefault();
-            setActive(activeIdx < count - 1 ? activeIdx + 1 : 0);
-            return;
-        }
-
-        // Arrow Up: move highlight to previous suggestion
-        if (e.key === 'ArrowUp' && sugVisible && count > 0) {
-            e.preventDefault();
-            setActive(activeIdx > 0 ? activeIdx - 1 : count - 1);
-            return;
-        }
-
-        // Escape: close the dropdown
-        if (e.key === 'Escape' && sugVisible) {
-            e.preventDefault();
-            closeSuggestions();
-            return;
-        }
-
-        // Enter: select highlighted suggestion, or fall back to exact/API match
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-
-        // If a suggestion is highlighted, select it
-        if (sugVisible && activeIdx >= 0 && activeIdx < count) {
-            selectItem(currentMatches[activeIdx]);
-            return;
-        }
-
-        var barcode = this.value.trim();
-        if (!barcode) return;
-
-        // Try exact match from already-loaded options first
-        var opts = getItemOptions();
-        var exact = opts.find(function(o) { return (o.dataset.barcode || '').toLowerCase() === barcode.toLowerCase(); });
-        if (exact) {
-            selectItem(exact);
-            return;
-        }
-
-        // Fallback: API lookup (handles barcodes not yet in DOM options)
-        barcodeInput.classList.add('loading');
-        fetch('/api/item-by-barcode/' + encodeURIComponent(barcode), { headers: { 'Accept': 'application/json' } })
-            .then(function(r) { return r.ok ? r.json() : r.json().then(function(j) { throw new Error(j.message || 'Not found'); }); })
-            .then(function(item) {
-                if (item.error) return window.showToast(item.error, 'error');
-                document.getElementById('itemSelect').value = item.id;
-                showItemDetails();
-            })
-            .catch(function(err) { window.showToast('Error: ' + err, 'error'); })
-            .finally(function() { barcodeInput.classList.remove('loading'); });
-        this.value = '';
-        closeSuggestions();
-    });
-}());
 </script>
 </x-app-layout>
