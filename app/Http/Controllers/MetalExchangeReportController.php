@@ -22,6 +22,8 @@ class MetalExchangeReportController extends Controller
         if ($view === 'lots') {
             $weeklyLots = MetalLot::where('shop_id', $shopId)
                 ->weekly()
+                ->where('created_at', '>=', $from)
+                ->where('created_at', '<=', $to . ' 23:59:59')
                 ->with([
                     'payments' => fn ($q) => $q->with('invoice.customer')
                         ->whereIn('mode', ['old_gold', 'old_silver']),

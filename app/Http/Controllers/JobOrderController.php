@@ -52,8 +52,9 @@ class JobOrderController extends Controller
         $lots = MetalLot::query()
             ->where('shop_id', $shopId)
             ->where('fine_weight_remaining', '>', 0)
+            ->whereNotIn('source', [\App\Models\MetalLot::SOURCE_OLD_GOLD_WEEKLY, \App\Models\MetalLot::SOURCE_OLD_SILVER_WEEKLY])
             ->orderByDesc('id')
-            ->get(['id', 'lot_number', 'source', 'purity', 'fine_weight_remaining']);
+            ->get(['id', 'lot_number', 'source', 'purity', 'fine_weight_remaining', 'metal_type']);
 
         $paymentMethods = ShopPaymentMethod::query()
             ->where('shop_id', $shopId)

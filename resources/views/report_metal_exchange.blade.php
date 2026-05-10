@@ -805,7 +805,7 @@
                                         @foreach($lot->payments as $pmt)
                                         @php $pmtCustomer = $pmt->invoice?->customer; @endphp
                                         <tr style="border-bottom:1px solid #f1f5f9;">
-                                            <td style="padding:8px 12px;color:#475569;white-space:nowrap;">{{ $pmt->created_at->format('d M Y') }}</td>
+                                            <td style="padding:8px 12px;color:#475569;white-space:nowrap;">{{ $pmt->created_at?->format('d M Y') ?? '—' }}</td>
                                             <td style="padding:8px 12px;">
                                                 @if($pmt->invoice)
                                                     <a href="{{ route('invoices.show', $pmt->invoice) }}" class="mxr-invoice-link">{{ $pmt->invoice->invoice_number }}</a>

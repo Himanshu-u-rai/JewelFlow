@@ -34,6 +34,7 @@ class BullionVaultController extends Controller
             ->get();
         $lots = MetalLot::query()
             ->where('shop_id', $shopId)
+            ->whereNotIn('source', [\App\Models\MetalLot::SOURCE_OLD_GOLD_WEEKLY, \App\Models\MetalLot::SOURCE_OLD_SILVER_WEEKLY])
             ->with('vendor:id,name')
             ->orderByDesc('id')
             ->get();

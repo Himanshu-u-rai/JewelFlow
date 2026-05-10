@@ -163,6 +163,9 @@ class RetailerSalesService
 
             foreach ($payments as $p) {
                 $mode   = $p['mode'];
+                // Reset per-iteration to prevent stale lot bleeding into subsequent payments
+                $weeklyLot = null;
+                $weeklyLotService = null;
 
                 if ($mode === 'emi') {
                     throw new \Exception('EMI checkout must be completed from the EMI form.');
@@ -264,7 +267,6 @@ class RetailerSalesService
                             ]);
                         }
 
-                        unset($weeklyLot, $weeklyLotService);
                     }
                 }
             }
