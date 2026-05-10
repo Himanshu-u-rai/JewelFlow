@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\InvoicePayment;
+use App\Models\MetalLot;
 use Illuminate\Http\Request;
 
 class MetalExchangeReportController extends Controller
@@ -10,6 +11,7 @@ class MetalExchangeReportController extends Controller
     public function index(Request $request)
     {
         $shopId = auth()->user()->shop_id;
+        $view   = $request->input('view', 'transactions');
 
         $from = $request->input('from', now()->startOfMonth()->toDateString());
         $to   = $request->input('to',   now()->toDateString());
@@ -17,10 +19,25 @@ class MetalExchangeReportController extends Controller
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) $from = now()->startOfMonth()->toDateString();
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to))   $to   = now()->toDateString();
 
+        if ($view === 'lots') {
+            $weeklyLots = MetalLot::where('shop_id', $shopId)
+                ->weekly()
+                ->with([
+                    'payments' => fn ($q) => $q->with('invoice.customer')
+                        ->whereIn('mode', ['old_gold', 'old_silver']),
+                ])
+                ->orderByDesc('iso_year')
+                ->orderByDesc('iso_week')
+                ->paginate(20);
+
+            return view('report_metal_exchange', compact('weeklyLots', 'view', 'from', 'to'));
+        }
+
+        // Default: transaction-level view (unchanged)
         $rows = InvoicePayment::with(['invoice.customer'])
-            ->whereHas('invoice', fn($q) => $q->where('shop_id', $shopId))
+            ->whereHas('invoice', fn ($q) => $q->where('shop_id', $shopId))
             ->whereIn('mode', ['old_gold', 'old_silver'])
-            ->whereHas('invoice', fn($q) => $q->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to))
+            ->whereHas('invoice', fn ($q) => $q->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to))
             ->orderByDesc('created_at')
             ->get();
 
@@ -40,6 +57,6 @@ class MetalExchangeReportController extends Controller
             'count'  => $silverRows->count(),
         ];
 
-        return view('report_metal_exchange', compact('rows', 'from', 'to', 'goldSummary', 'silverSummary'));
+        return view('report_metal_exchange', compact('rows', 'from', 'to', 'goldSummary', 'silverSummary', 'view'));
     }
 }

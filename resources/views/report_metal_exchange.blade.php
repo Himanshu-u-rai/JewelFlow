@@ -633,26 +633,45 @@
     @php
         $dateRangeLabel = \Carbon\Carbon::parse($from)->format('d M Y') . ' — ' . \Carbon\Carbon::parse($to)->format('d M Y');
         $dateRangeShortLabel = \Carbon\Carbon::parse($from)->format('d M') . ' — ' . \Carbon\Carbon::parse($to)->format('d M');
-        $totalTransactions = $rows->count();
-        $totalGross = (float) $rows->sum('metal_gross_weight');
-        $totalFine = (float) $rows->sum('metal_fine_weight');
-        $totalValue = (float) $rows->sum('amount');
+        $view = $view ?? 'transactions';
+        if ($view === 'transactions') {
+            $totalTransactions = $rows->count();
+            $totalGross = (float) $rows->sum('metal_gross_weight');
+            $totalFine  = (float) $rows->sum('metal_fine_weight');
+            $totalValue = (float) $rows->sum('amount');
+        }
     @endphp
 
     <x-page-header class="mxr-page-header-mobile-subtitle-hide" title="Metal Exchange Report" subtitle="Old gold and old silver received as payment through POS invoices" />
 
     <div class="content-inner metal-exchange-report-page">
         <div class="mxr-stack">
+
+            {{-- Tab switcher --}}
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="{{ route('report.metal-exchange', ['view' => 'transactions', 'from' => $from, 'to' => $to]) }}"
+                   style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight:800;text-decoration:none;border:1px solid {{ $view === 'transactions' ? '#0f172a' : '#dbe3ee' }};background:{{ $view === 'transactions' ? '#0f172a' : '#fff' }};color:{{ $view === 'transactions' ? '#fff' : '#475569' }};">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    Transactions
+                </a>
+                <a href="{{ route('report.metal-exchange', ['view' => 'lots', 'from' => $from, 'to' => $to]) }}"
+                   style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight:800;text-decoration:none;border:1px solid {{ $view === 'lots' ? '#0f172a' : '#dbe3ee' }};background:{{ $view === 'lots' ? '#0f172a' : '#fff' }};color:{{ $view === 'lots' ? '#fff' : '#475569' }};">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                    Weekly Lots
+                </a>
+            </div>
+
             <section class="mxr-card mxr-filter-card">
                 <div class="mxr-filter-head">
                     <div>
                         <p class="mxr-kicker">Report Window</p>
-                        <h2 class="mxr-title">Track old metal received</h2>
+                        <h2 class="mxr-title">{{ $view === 'lots' ? 'Weekly lot batches' : 'Track old metal received' }}</h2>
                     </div>
                     <span class="mxr-range-badge">{{ $dateRangeShortLabel }}</span>
                 </div>
 
                 <form method="GET" action="{{ route('report.metal-exchange') }}" class="mxr-filter-form">
+                    <input type="hidden" name="view" value="{{ $view }}">
                     <div class="mxr-filter-field">
                         <input id="mxr-from" type="date" name="from" value="{{ $from }}" class="mxr-filter-input" aria-label="From date">
                     </div>
@@ -665,6 +684,170 @@
                     </button>
                 </form>
             </section>
+
+            @if($view === 'lots')
+            {{-- ===== WEEKLY LOTS VIEW ===== --}}
+            <section class="mxr-card" style="padding:20px 20px 8px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
+                    <div>
+                        <h2 style="margin:0;font-size:15px;font-weight:950;color:#0f172a;letter-spacing:-0.02em;">Weekly Lot Batches</h2>
+                        <p style="margin:2px 0 0;font-size:12px;color:#64748b;font-weight:600;">Old gold and silver grouped by ISO calendar week (Mon–Sun). Each lot tracks the aggregate fine weight until dispatched.</p>
+                    </div>
+                    <span style="font-size:11px;font-weight:800;color:#475569;white-space:nowrap;">{{ $weeklyLots->total() }} lot{{ $weeklyLots->total() == 1 ? '' : 's' }}</span>
+                </div>
+
+                @if($weeklyLots->isEmpty())
+                    <div class="mxr-empty" style="padding:32px 0 24px;">
+                        <p>No weekly lots found. Old gold/silver received through POS will appear here grouped by week.</p>
+                    </div>
+                @else
+                <div x-data="{ expanded: null }">
+                    @foreach($weeklyLots as $lot)
+                    @php
+                        $isGoldLot = $lot->source === 'old_gold_weekly';
+                        $lotLabel  = 'Week ' . $lot->iso_week . ' / ' . $lot->iso_year;
+                        $remaining = (float) $lot->fine_weight_remaining;
+                        $total     = (float) $lot->fine_weight_total;
+                        $usedPct   = $total > 0 ? min(100, round(($total - $remaining) / $total * 100)) : 0;
+                    @endphp
+                    <div style="border:1px solid #e2e8f0;border-radius:14px;margin-bottom:12px;overflow:hidden;">
+                        {{-- Lot header row --}}
+                        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;background:#fafbfc;"
+                             @click="expanded = (expanded === {{ $lot->id }}) ? null : {{ $lot->id }}">
+                            <span style="flex:0 0 auto;display:inline-flex;width:34px;height:34px;align-items:center;justify-content:center;border-radius:10px;{{ $isGoldLot ? 'background:#fffbeb;color:#b45309;border:1px solid rgba(217,119,6,.16)' : 'background:#f8fafc;color:#475569;border:1px solid rgba(100,116,139,.16)' }}">
+                                @if($isGoldLot)
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                @else
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>
+                                @endif
+                            </span>
+                            <div style="flex:1 1 0;min-width:0;">
+                                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                    <span style="font-size:13px;font-weight:900;color:#0f172a;">{{ $lotLabel }}</span>
+                                    <span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;{{ $isGoldLot ? 'background:#fef3c7;color:#92400e' : 'background:#f1f5f9;color:#475569' }}">
+                                        {{ $isGoldLot ? 'Gold' : 'Silver' }}
+                                    </span>
+                                    @if($lot->is_dispatched)
+                                        <span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#dcfce7;color:#166534;">
+                                            Dispatched {{ $lot->dispatched_at?->format('d M Y') }}
+                                        </span>
+                                    @else
+                                        <span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#fef9c3;color:#854d0e;">Open</span>
+                                    @endif
+                                </div>
+                                <div style="display:flex;gap:16px;margin-top:4px;flex-wrap:wrap;">
+                                    <span style="font-size:11px;color:#64748b;font-weight:700;">Total: <strong style="color:#0f172a;">{{ number_format($total, 3) }}g fine</strong></span>
+                                    <span style="font-size:11px;color:#64748b;font-weight:700;">Remaining: <strong style="color:{{ $remaining > 0 ? '#0f172a' : '#94a3b8' }};">{{ number_format($remaining, 3) }}g</strong></span>
+                                    <span style="font-size:11px;color:#64748b;font-weight:700;">Avg: <strong style="color:#0f172a;">₹{{ number_format($lot->cost_per_fine_gram, 0) }}/g</strong></span>
+                                    <span style="font-size:11px;color:#64748b;font-weight:700;">Value: <strong style="color:#0f172a;">₹{{ number_format($total * (float)$lot->cost_per_fine_gram, 0) }}</strong></span>
+                                    <span style="font-size:11px;color:#64748b;font-weight:700;">{{ $lot->payments->count() }} transaction{{ $lot->payments->count() == 1 ? '' : 's' }}</span>
+                                </div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                                 style="flex:0 0 auto;transition:transform .2s;" :style="expanded === {{ $lot->id }} ? 'transform:rotate(180deg)' : ''">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </div>
+
+                        {{-- Expanded: transactions + dispatch --}}
+                        <div x-show="expanded === {{ $lot->id }}" x-cloak style="border-top:1px solid #e2e8f0;">
+                            {{-- Dispatch form (shown only if not yet dispatched) --}}
+                            @if(!$lot->is_dispatched)
+                            <div x-data="{ showDispatch: false }" style="padding:12px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                                <div x-show="!showDispatch">
+                                    <button @click="showDispatch = true"
+                                            style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-size:12px;font-weight:800;border:1px solid #0f172a;background:#0f172a;color:#fff;cursor:pointer;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                        Mark as Dispatched
+                                    </button>
+                                </div>
+                                <div x-show="showDispatch" x-cloak>
+                                    <form method="POST" action="{{ route('old-metal-lots.dispatch', $lot) }}" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                                        @csrf
+                                        <div style="flex:1 1 240px;">
+                                            <label style="display:block;font-size:11px;font-weight:800;color:#475569;margin-bottom:4px;">Dispatch notes (required)</label>
+                                            <textarea name="dispatch_notes" rows="2" required minlength="4" maxlength="500"
+                                                      placeholder="e.g. Sent to Mehul Refinery — 42.5g fine gold"
+                                                      style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:9px;font-size:12px;resize:vertical;"></textarea>
+                                        </div>
+                                        <div style="display:flex;gap:6px;">
+                                            <button type="submit" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight:800;border:1px solid #16a34a;background:#16a34a;color:#fff;cursor:pointer;">Confirm</button>
+                                            <button type="button" @click="showDispatch = false" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight:800;border:1px solid #dbe3ee;background:#fff;color:#475569;cursor:pointer;">Cancel</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            @else
+                            <div style="padding:10px 16px;background:#f0fdf4;border-bottom:1px solid #e2e8f0;">
+                                <p style="margin:0;font-size:12px;color:#166534;font-weight:700;">
+                                    <strong>Dispatched {{ $lot->dispatched_at?->format('d M Y') }}:</strong> {{ $lot->dispatch_notes }}
+                                </p>
+                            </div>
+                            @endif
+
+                            {{-- Transaction drill-down --}}
+                            @if($lot->payments->isNotEmpty())
+                            <div style="overflow-x:auto;">
+                                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                                    <thead>
+                                        <tr style="background:#f8fafc;">
+                                            <th style="padding:8px 12px;text-align:left;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Date</th>
+                                            <th style="padding:8px 12px;text-align:left;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Invoice</th>
+                                            <th style="padding:8px 12px;text-align:left;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Customer</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Gross (g)</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Purity</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Fine (g)</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Rate ₹/g</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($lot->payments as $pmt)
+                                        @php $pmtCustomer = $pmt->invoice?->customer; @endphp
+                                        <tr style="border-bottom:1px solid #f1f5f9;">
+                                            <td style="padding:8px 12px;color:#475569;white-space:nowrap;">{{ $pmt->created_at->format('d M Y') }}</td>
+                                            <td style="padding:8px 12px;">
+                                                @if($pmt->invoice)
+                                                    <a href="{{ route('invoices.show', $pmt->invoice) }}" class="mxr-invoice-link">{{ $pmt->invoice->invoice_number }}</a>
+                                                @else
+                                                    <span style="color:#94a3b8;">—</span>
+                                                @endif
+                                            </td>
+                                            <td style="padding:8px 12px;color:#0f172a;font-weight:700;">{{ $pmtCustomer?->name ?? '—' }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;">{{ number_format($pmt->metal_gross_weight, 3) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;">{{ $pmt->metal_purity }}{{ $pmt->mode === 'old_gold' ? 'K' : '‰' }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;{{ $isGoldLot ? 'color:#b45309' : 'color:#475569' }}">{{ number_format($pmt->metal_fine_weight, 3) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;">₹{{ number_format($pmt->metal_rate_per_gram, 0) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;">₹{{ number_format($pmt->amount, 0) }}</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        <tr style="background:#f8fafc;">
+                                            <td colspan="3" style="padding:8px 12px;font-weight:800;color:#475569;">Totals</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;">{{ number_format($lot->payments->sum('metal_gross_weight'), 3) }}</td>
+                                            <td></td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;{{ $isGoldLot ? 'color:#b45309' : 'color:#475569' }}">{{ number_format($lot->payments->sum('metal_fine_weight'), 3) }}</td>
+                                            <td></td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;">₹{{ number_format($lot->payments->sum('amount'), 0) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            @else
+                            <div style="padding:16px;color:#94a3b8;font-size:12px;font-weight:700;text-align:center;">No transactions linked to this lot.</div>
+                            @endif
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                {{ $weeklyLots->appends(['view' => 'lots', 'from' => $from, 'to' => $to])->links() }}
+                @endif
+            </section>
+            @endif
+
+            @if($view === 'transactions')
 
             <section class="mxr-summary-grid">
                 <article class="mxr-card mxr-summary-card mxr-summary-card--gold">
@@ -887,6 +1070,8 @@
                     </div>
                 @endif
             </section>
+            @endif {{-- end transactions view --}}
+
         </div>
     </div>
 </x-app-layout>

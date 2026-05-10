@@ -14,6 +14,7 @@ use App\Models\MetalMovement;
 use App\Models\CustomerGoldTransaction;
 use App\Models\SchemeEnrollment;
 use App\Services\InvoiceAccountingService;
+use App\Services\OldMetalWeeklyLotService;
 use App\Services\SubscriptionGateService;
 use App\Services\OfferEngineService;
 use App\Services\SchemeService;
@@ -199,6 +200,17 @@ class RetailerSalesService
                     $attrs['metal_test_loss']     = $testLoss;
                     $attrs['metal_fine_weight']   = round($fineWt, 3);
                     $attrs['metal_rate_per_gram'] = $ratePerG;
+
+                    // Find or create the weekly lot and link this payment to it
+                    if ($attrs['metal_fine_weight'] > 0) {
+                        $weeklyLotService = app(OldMetalWeeklyLotService::class);
+                        $weeklyLot = $weeklyLotService->findOrCreateForDate(
+                            $shopId,
+                            $attrs['metal_type'],
+                            now()
+                        );
+                        $attrs['weekly_lot_id'] = $weeklyLot->id;
+                    }
                 }
 
                 InvoicePayment::record($attrs);
@@ -218,25 +230,17 @@ class RetailerSalesService
                     ]);
                 }
 
-                // Record MetalLot + MetalMovement for old-gold/old-silver received
+                // Accumulate onto the weekly lot + record movement for old-gold/old-silver
                 if (in_array($mode, ['old_gold', 'old_silver'])) {
-                    $metalType = $mode === 'old_gold' ? 'gold' : 'silver';
-                    $fineWeight = round($attrs['metal_fine_weight'] ?? 0, 3);
+                    $fineWeight = (float) ($attrs['metal_fine_weight'] ?? 0);
 
-                    if ($fineWeight > 0) {
-                        $lot = MetalLot::create([
-                            'shop_id'              => $shopId,
-                            'source'               => 'old_' . $metalType,
-                            'purity'               => $attrs['metal_purity'],
-                            'fine_weight_total'     => $fineWeight,
-                            'fine_weight_remaining' => $fineWeight,
-                            'cost_per_fine_gram'    => $attrs['metal_rate_per_gram'] ?? 0,
-                        ]);
+                    if ($fineWeight > 0 && isset($weeklyLot)) {
+                        $weeklyLotService->addFineWeight($weeklyLot, $fineWeight, $amount);
 
                         MetalMovement::record([
                             'shop_id'        => $shopId,
                             'from_lot_id'    => null,
-                            'to_lot_id'      => $lot->id,
+                            'to_lot_id'      => $weeklyLot->id,
                             'fine_weight'    => $fineWeight,
                             'type'           => 'old_metal_in',
                             'reference_type' => 'invoice',
@@ -248,17 +252,19 @@ class RetailerSalesService
                         // Record CustomerGoldTransaction for the metal received
                         if ($invoice->customer_id) {
                             CustomerGoldTransaction::record([
-                                'shop_id'     => $shopId,
-                                'customer_id' => $invoice->customer_id,
-                                'gross_weight' => $attrs['metal_gross_weight'],
-                                'purity'      => $attrs['metal_purity'],
-                                'fine_gold'   => -1 * $fineWeight,
-                                'type'        => 'old_metal_in',
+                                'shop_id'        => $shopId,
+                                'customer_id'    => $invoice->customer_id,
+                                'gross_weight'   => $attrs['metal_gross_weight'],
+                                'purity'         => $attrs['metal_purity'],
+                                'fine_gold'      => -1 * $fineWeight,
+                                'type'           => 'old_metal_in',
                                 'reference_type' => 'invoice',
                                 'reference_id'   => $invoice->id,
                                 'invoice_id'     => $invoice->id,
                             ]);
                         }
+
+                        unset($weeklyLot, $weeklyLotService);
                     }
                 }
             }

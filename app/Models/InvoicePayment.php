@@ -64,6 +64,11 @@ class InvoicePayment extends Model
         return $this->belongsTo(ShopPaymentMethod::class, 'payment_method_id');
     }
 
+    public function weeklyLot()
+    {
+        return $this->belongsTo(MetalLot::class, 'weekly_lot_id');
+    }
+
     /**
      * Create a payment record via forceFill (all fields are guarded).
      */
