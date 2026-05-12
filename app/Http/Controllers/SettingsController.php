@@ -416,7 +416,6 @@ class SettingsController extends Controller
             'currency_symbol'            => 'required|string|max:5',
             'language'                   => ['required', 'string', Rule::in($supportedLocales)],
             'low_stock_threshold'        => 'required|integer|min:0|max:100',
-            'round_off_nearest'          => 'required|integer|in:1,10,100',
             'loyalty_points_per_hundred' => 'required|integer|min:0|max:100',
             'loyalty_point_value'        => 'required|numeric|min:0|max:100',
             'loyalty_expiry_months'      => 'required|integer|in:0,6,12,18,24',
@@ -426,17 +425,26 @@ class SettingsController extends Controller
             'auto_logout_minutes'        => 'nullable|integer|min:0|max:480',
             'loyalty_welcome_bonus'      => 'nullable|integer|min:0|max:99999',
             'credit_days'                => 'nullable|integer|min:0|max:365',
-            'barcode_prefix'             => 'nullable|string|max:20',
-            'stock_value_display'        => 'nullable|in:total,per_gram',
+            'barcode_prefix'               => 'nullable|string|max:20',
+            'stock_value_display'          => 'nullable|in:total,per_gram',
+            'compliance_enabled'           => 'nullable|boolean',
+            'compliance_threshold'         => 'nullable|numeric|min:10000|max:10000000',
+            'compliance_pan_mandatory'     => 'nullable|boolean',
+            'compliance_mobile_mandatory'  => 'nullable|boolean',
+            'compliance_address_mandatory' => 'nullable|boolean',
         ]);
 
         // Defaults for new fields
-        $validated['default_pricing_mode'] = $validated['default_pricing_mode'] ?? 'gst_exclusive';
-        $validated['default_payment_mode'] = $validated['default_payment_mode'] ?? 'cash';
-        $validated['auto_logout_minutes']  = $validated['auto_logout_minutes']  ?? 0;
-        $validated['loyalty_welcome_bonus']= $validated['loyalty_welcome_bonus'] ?? 0;
-        $validated['credit_days']          = $validated['credit_days']          ?? 0;
-        $validated['stock_value_display']  = $validated['stock_value_display']  ?? 'total';
+        $validated['default_pricing_mode']     = $validated['default_pricing_mode'] ?? 'gst_exclusive';
+        $validated['default_payment_mode']     = $validated['default_payment_mode'] ?? 'cash';
+        $validated['auto_logout_minutes']      = $validated['auto_logout_minutes']  ?? 0;
+        $validated['loyalty_welcome_bonus']    = $validated['loyalty_welcome_bonus'] ?? 0;
+        $validated['credit_days']              = $validated['credit_days']          ?? 0;
+        $validated['stock_value_display']      = $validated['stock_value_display']  ?? 'total';
+        $validated['compliance_enabled']           = (bool) ($validated['compliance_enabled'] ?? false);
+        $validated['compliance_pan_mandatory']     = (bool) ($validated['compliance_pan_mandatory'] ?? true);
+        $validated['compliance_mobile_mandatory']  = (bool) ($validated['compliance_mobile_mandatory'] ?? true);
+        $validated['compliance_address_mandatory'] = (bool) ($validated['compliance_address_mandatory'] ?? true);
 
         $preferences = $shop->preferences ?? new ShopPreferences(['shop_id' => $shop->id]);
         $preferences->fill($validated);

@@ -33,6 +33,10 @@ use App\Http\Controllers\TransactionHistoryReportController;
 | PUBLIC LANDING
 |--------------------------------------------------------------------------
 */
+// Health checks — no auth, consumed by load balancers and uptime monitors
+Route::get('/health', [\App\Http\Controllers\HealthController::class, 'health']);
+Route::get('/ping',   [\App\Http\Controllers\HealthController::class, 'ping']);
+
 Route::get('/', function () {
     if (auth('platform_admin')->check()) {
         return redirect()->route('admin.dashboard');
@@ -120,6 +124,8 @@ Route::middleware(['auth', 'tenant', 'account.active'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 'shop.exists'])->group(function () {
+
+    Route::post('/announcements/{announcement}/dismiss', [\App\Http\Controllers\AnnouncementDismissController::class, 'dismiss'])->name('announcements.dismiss');
 
     Route::post('/scan-session/create', [\App\Http\Controllers\ScanSessionController::class, 'create'])
         ->middleware('role:owner,manager,staff')
@@ -272,6 +278,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware('role:owner,manager')->name('customers.update');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('role:owner')->name('customers.destroy');
 
+    Route::post('/kyc-documents', [\App\Http\Controllers\KycDocumentController::class, 'store'])->middleware('role:owner,manager,staff')->name('kyc-documents.store');
+    Route::delete('/kyc-documents/{kycDocument}', [\App\Http\Controllers\KycDocumentController::class, 'destroy'])->middleware('role:owner,manager')->name('kyc-documents.destroy');
+
     Route::get('/customers/{customer}/gold', [\App\Http\Controllers\CustomerGoldController::class, 'create'])
         ->middleware('edition:manufacturer')
         ->name('customers.gold.create');
@@ -290,6 +299,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/pos/customer/{customer}', [PosController::class, 'showCustomerPos'])->middleware('role:owner,manager,staff')->name('pos.customer');
     Route::get('/pos/customers/search', [PosController::class, 'searchCustomers'])->middleware('role:owner,manager,staff')->name('pos.customers.search');
     Route::post('/pos/sell', [PosController::class, 'sell'])->middleware('role:owner,manager,staff')->name('pos.sell');
+    Route::post('/pos/compliance/save', [PosController::class, 'saveCompliance'])->middleware('role:owner,manager,staff')->name('pos.compliance.save');
     Route::post('/pos/exchange', [PosController::class, 'exchange'])->middleware('role:owner,manager,staff', 'edition:manufacturer');
     Route::post('/api/price-preview', [PosController::class, 'preview'])->middleware('role:owner,manager,staff')->name('pos.preview');
     Route::get('/api/item-by-barcode/{barcode}', [PosController::class, 'findByBarcode'])->middleware('role:owner,manager,staff')->name('pos.barcode');

@@ -112,11 +112,15 @@
         buildSubCategoryOptions(true);
         };
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init, { once: true });
-        } else {
-            init();
+        // Run now for this render.
+        init();
+
+        // Keep one live handler to avoid stale closures across Turbo visits.
+        if (window.__reorderEditTurboInitHandler) {
+            document.removeEventListener('turbo:load', window.__reorderEditTurboInitHandler);
         }
+        window.__reorderEditTurboInitHandler = init;
+        document.addEventListener('turbo:load', window.__reorderEditTurboInitHandler);
     })();
 </script>
 </x-app-layout>

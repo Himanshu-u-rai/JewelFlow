@@ -621,13 +621,15 @@
                 buildSubCategoryOptions(true);
             };
 
-            document.addEventListener('turbo:load', init);
+            // Run now for this render.
+            init();
 
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init, { once: true });
-            } else {
-                init();
+            // Keep one live handler to avoid stale closures across Turbo visits.
+            if (window.__reorderCreateTurboInitHandler) {
+                document.removeEventListener('turbo:load', window.__reorderCreateTurboInitHandler);
             }
+            window.__reorderCreateTurboInitHandler = init;
+            document.addEventListener('turbo:load', window.__reorderCreateTurboInitHandler);
         })();
     </script>
 </x-app-layout>

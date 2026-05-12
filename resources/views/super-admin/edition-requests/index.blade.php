@@ -19,18 +19,7 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="mb-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-            {{ session('success') }}
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="mb-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    <div class="admin-panel overflow-hidden">
+<div class="admin-panel overflow-hidden">
         @if($requests->isEmpty())
             <div class="px-6 py-12 text-center text-slate-500 text-sm">
                 No {{ $status }} requests.

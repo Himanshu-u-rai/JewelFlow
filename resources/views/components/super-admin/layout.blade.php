@@ -3,8 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>JewelFlow Super Admin</title>
     @include('partials.favicon')
+    @if(session('success'))
+        <meta name="flash-success" content="{{ session('success') }}">
+    @endif
+    @if(session('error'))
+        <meta name="flash-error" content="{{ session('error') }}">
+    @endif
+    @if(session('warning'))
+        <meta name="flash-warning" content="{{ session('warning') }}">
+    @endif
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -22,6 +32,9 @@
         } elseif (request()->routeIs('admin.tenant-activity.*')) {
             $title = 'Tenant Activity';
             $subtitle = 'Operational metrics, spikes, and activity trends.';
+        } elseif (request()->routeIs('admin.fraud-flags.*')) {
+            $title = 'Fraud Flags';
+            $subtitle = 'Suspicious activity signals detected across tenant shops.';
         } elseif (request()->routeIs('admin.security.*')) {
             $title = 'Platform Security';
             $subtitle = 'Failed logins, impersonation, and enforcement signals.';
@@ -109,6 +122,10 @@
                     <span>Security</span>
                     <span class="admin-nav-suffix">Signals</span>
                 </a>
+                <a href="{{ route('admin.fraud-flags.index') }}" class="admin-nav-link {{ request()->routeIs('admin.fraud-flags.*') ? 'is-active' : '' }}">
+                    <span>Fraud Flags</span>
+                    <span class="admin-nav-suffix">Detect</span>
+                </a>
                 <a href="{{ route('admin.system.jobs.index') }}" class="admin-nav-link {{ request()->routeIs('admin.system.jobs.*') ? 'is-active' : '' }}">
                     <span>System Jobs</span>
                     <span class="admin-nav-suffix">Queues</span>
@@ -146,21 +163,11 @@
             </header>
 
             <div class="px-5 py-6 lg:px-8">
-                @if(session('success'))
-                    <div class="admin-alert admin-alert-success mb-4">
-                        {{ session('success') }}
-                    </div>
-                @endif
-
-                @if($errors->any())
-                    <div class="admin-alert admin-alert-error mb-4">
-                        {{ $errors->first() }}
-                    </div>
-                @endif
-
                 {{ $slot }}
             </div>
         </main>
     </div>
+
+    <div id="global-toast" class="global-toast" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true"></div>
 </body>
 </html>

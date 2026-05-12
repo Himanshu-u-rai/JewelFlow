@@ -2,7 +2,6 @@
     <x-page-header :title="'Edit Karigar — ' . $karigar->name" />
 
     <div class="content-inner">
-        <x-app-alerts class="mb-4" />
 
         <form method="POST" action="{{ route('karigars.update', $karigar) }}" class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 max-w-3xl">
             @csrf @method('PUT')

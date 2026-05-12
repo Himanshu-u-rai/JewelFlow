@@ -1503,6 +1503,19 @@
         <div class="pos-badge">Retail Sale</div>
     </div>
 
+    @if($splitAlertTotal ?? false)
+    <div class="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        <span>
+            <strong>Compliance alert:</strong> Combined today's total for {{ $customer->name }} is
+            <strong>₹{{ number_format($splitAlertTotal, 0) }}</strong>.
+            Ensure all compliance documents are complete.
+        </span>
+    </div>
+    @endif
+
     <!-- ─── Body: 2 columns ─────────────────────── -->
     <div class="pos-body">
         <!-- ══ LEFT COLUMN ══ -->
@@ -1851,12 +1864,21 @@
                         </div>
                     </div>
                     <div class="field">
-                        <label class="field-label">Round-off (₹)</label>
+                        <label class="field-label">
+                            Round-off (₹)
+                            <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;font-size:11px;margin-left:4px;">— enter payments first</span>
+                            <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;font-size:11px;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
+                        </label>
                         <div class="roundoff-controls">
-                            <input type="number" class="field-input roundoff-input" x-model.number="roundOff" step="1" @input="recalc()">
-                            <button type="button" @click="autoRound(-1)" title="Round down" class="roundoff-btn roundoff-btn-down">−</button>
-                            <button type="button" @click="autoRound(1)" title="Round up" class="roundoff-btn roundoff-btn-up">+</button>
+                            <input type="number" class="field-input roundoff-input"
+                                   x-model.number="roundOff"
+                                   step="0.01"
+                                   min="-1" max="1"
+                                   :disabled="payments.length === 0"
+                                   @input="clampAndRecalc()"
+                                   placeholder="Auto">
                         </div>
+                        <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
                     </div>
                 </div>
             </div>
@@ -1944,7 +1966,7 @@
                                                min="0"
                                                :max="maxRedeemableForSelection()"
                                                :disabled="!schemeRedemptionEnrollmentId"
-                                               @input="normalizeRedemptionAmount(); recalc()">
+                                               @input="normalizeRedemptionAmount(); recalc(); applyAutoRoundOff()">
                                     </div>
                                 </div>
                             </template>
@@ -2105,14 +2127,14 @@
                     </div>
                 </template>
 
-                <div class="pay-remaining" :class="hasEmiMode() ? 'text-amber-700' : (remaining() > 0.5 ? 'text-red-600' : (excess() > 0.5 ? '' : 'text-green-600'))">
-                    <template x-if="hasEmiMode() && remaining() > 0.5">
+                <div class="pay-remaining" :class="hasEmiMode() ? 'text-amber-700' : (remaining() > 0.01 ? 'text-red-600' : (excess() > 0.5 ? '' : 'text-green-600'))">
+                    <template x-if="hasEmiMode() && remaining() > 0.01">
                         <span class="text-amber-700">₹<span x-text="remaining().toLocaleString('en-IN', {minimumFractionDigits:2})"></span> will be scheduled in EMI plan</span>
                     </template>
-                    <template x-if="!hasEmiMode() && remaining() > 0.5">
+                    <template x-if="!hasEmiMode() && remaining() > 0.01">
                         <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-0.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>₹<span x-text="remaining().toLocaleString('en-IN', {minimumFractionDigits:2})"></span> remaining</span>
                     </template>
-                    <template x-if="!hasEmiMode() && remaining() <= 0.5 && excess() <= 0.5">
+                    <template x-if="!hasEmiMode() && remaining() <= 0.01 && excess() <= 0.5">
                         <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-0.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Fully paid</span>
                     </template>
                     <template x-if="excess() > 0.5">
@@ -2145,7 +2167,13 @@
                     <span x-show="selling">Processing…</span>
                 </button>
 
-                <p x-show="missingAccountSelection()" class="text-sm text-red-600 mt-2 text-center">Select an account for all UPI / Bank / Wallet payments.</p>
+                <div x-show="missingAccountSelection()" class="mt-2 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
+                    <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <div>
+                        <p class="text-xs font-semibold text-red-700">Account not selected</p>
+                        <p class="text-xs text-red-600 mt-0.5">Tap <strong>— Select account</strong> next to each UPI / Bank payment to choose which account to receive this payment.</p>
+                    </div>
+                </div>
                 <p x-show="saleError" class="text-sm text-red-600 mt-3 text-center" x-text="saleError"></p>
             </div>
         </div>
@@ -2182,12 +2210,21 @@
                         </div>
                     </div>
                     <div class="field">
-                        <label class="field-label">Round-off (₹)</label>
+                        <label class="field-label">
+                            Round-off (₹)
+                            <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;font-size:11px;margin-left:4px;">— enter payments first</span>
+                            <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;font-size:11px;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
+                        </label>
                         <div class="roundoff-controls">
-                            <input type="number" class="field-input roundoff-input" x-model.number="roundOff" step="1" @input="recalc()">
-                            <button type="button" @click="autoRound(-1)" title="Round down" class="roundoff-btn roundoff-btn-down">−</button>
-                            <button type="button" @click="autoRound(1)" title="Round up" class="roundoff-btn roundoff-btn-up">+</button>
+                            <input type="number" class="field-input roundoff-input"
+                                   x-model.number="roundOff"
+                                   step="0.01"
+                                   min="-1" max="1"
+                                   :disabled="payments.length === 0"
+                                   @input="clampAndRecalc()"
+                                   placeholder="Auto">
                         </div>
+                        <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
                     </div>
                 </div>
             </div>
@@ -2275,7 +2312,7 @@
                                                min="0"
                                                :max="maxRedeemableForSelection()"
                                                :disabled="!schemeRedemptionEnrollmentId"
-                                               @input="normalizeRedemptionAmount(); recalc()">
+                                               @input="normalizeRedemptionAmount(); recalc(); applyAutoRoundOff()">
                                     </div>
                                 </div>
                             </template>
@@ -2335,11 +2372,117 @@
                     <span x-show="selling">Processing…</span>
                 </button>
 
-                <p x-show="missingAccountSelection()" class="text-sm text-red-600 mt-2 text-center">Select an account for all UPI / Bank / Wallet payments.</p>
+                <div x-show="missingAccountSelection()" class="mt-2 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
+                    <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <div>
+                        <p class="text-xs font-semibold text-red-700">Account not selected</p>
+                        <p class="text-xs text-red-600 mt-0.5">Tap <strong>— Select account</strong> next to each UPI / Bank payment to choose which account to receive this payment.</p>
+                    </div>
+                </div>
                 <p x-show="saleError" class="text-sm text-red-600 mt-3 text-center" x-text="saleError"></p>
             </div>
         </div>
     </div>
+
+    {{-- Compliance Modal — inside x-data scope so it can access Alpine state directly --}}
+    <x-modal name="compliance-modal" maxWidth="lg">
+        <div class="p-6">
+            <div class="flex items-start gap-3 mb-5">
+                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-gray-900">Government KYC Required</h3>
+                    <p class="text-sm text-gray-500 mt-0.5">
+                        This transaction exceeds
+                        <span class="font-semibold text-gray-700"
+                              x-text="'₹' + Number(complianceThreshold).toLocaleString('en-IN')"></span>.
+                        PAN and address details are legally required under Income Tax Rule 114B.
+                    </p>
+                </div>
+            </div>
+
+            {{-- General error banner — surfaces any error not tied to a visible field
+                 (e.g. server rejection, validation on a field the modal isn't showing) --}}
+            <div x-show="complianceGeneralError" x-cloak
+                 class="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700"
+                 x-text="complianceGeneralError"></div>
+
+            <div class="space-y-4">
+
+                {{-- PAN field --}}
+                <div x-show="complianceMissingFields.includes('pan')">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        PAN Number <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text"
+                           x-model="compliancePan"
+                           @input="compliancePan = $event.target.value.toUpperCase().replace(/\s/g, '')"
+                           maxlength="10"
+                           placeholder="ABCDE1234F"
+                           autocomplete="off"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <p x-show="complianceErrors.pan" x-text="(complianceErrors.pan || [])[0]" class="mt-1 text-xs text-red-600"></p>
+                    <p class="mt-1 text-xs text-gray-400">Format: 5 letters + 4 digits + 1 letter (e.g. ABCDE1234F)</p>
+                </div>
+
+                {{-- Mobile field --}}
+                <div x-show="complianceMissingFields.includes('mobile')">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        Mobile Number <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text"
+                           x-model="complianceMobile"
+                           maxlength="10"
+                           placeholder="10-digit mobile number"
+                           autocomplete="off"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <p x-show="complianceErrors.mobile" x-text="(complianceErrors.mobile || [])[0]" class="mt-1 text-xs text-red-600"></p>
+                </div>
+
+                {{-- Address field --}}
+                <div x-show="complianceMissingFields.includes('address')">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">
+                        Full Address <span class="text-red-500">*</span>
+                    </label>
+                    <textarea x-model="complianceAddress"
+                              rows="2"
+                              placeholder="Full address including city and state"
+                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"></textarea>
+                    <p x-show="complianceErrors.address" x-text="(complianceErrors.address || [])[0]" class="mt-1 text-xs text-red-600"></p>
+                </div>
+
+                {{-- Consent --}}
+                <label class="flex items-start gap-2.5 cursor-pointer pt-1">
+                    <input type="checkbox"
+                           x-model="complianceConsent"
+                           class="mt-0.5 h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500">
+                    <span class="text-sm text-gray-600">
+                        The customer has consented to provide these details for statutory compliance purposes and is aware they will be recorded.
+                    </span>
+                </label>
+                <p x-show="complianceErrors.consent" x-text="(complianceErrors.consent || [])[0]" class="text-xs text-red-600"></p>
+            </div>
+
+            <div class="flex gap-3 mt-6 justify-end">
+                <button type="button"
+                        @click="$dispatch('close-modal', 'compliance-modal')"
+                        :disabled="complianceSaving"
+                        class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                    Cancel Sale
+                </button>
+                <button type="button"
+                        @click="submitCompliance()"
+                        :disabled="complianceSaving || !complianceConsent"
+                        class="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50">
+                    <span x-show="!complianceSaving">Save &amp; Complete Sale</span>
+                    <span x-show="complianceSaving">Saving…</span>
+                </button>
+            </div>
+        </div>
+    </x-modal>
 </div>
 
 @php
@@ -2404,7 +2547,6 @@ function retailerPos() {
         discountPercent: 0,
         discountInputSource: 'amount',
         roundOff: 0,
-        roundOffNearest: {{ $roundOffNearest ?? 1 }},
         loyaltyPointsPerHundred: {{ $loyaltyPointsPerHundred ?? 1 }},
         total: 0,
 
@@ -2417,6 +2559,20 @@ function retailerPos() {
         // State
         selling: false,
         saleError: '',
+
+        // Compliance modal state
+        complianceRequired: false,
+        complianceMissingFields: [],
+        complianceThreshold: 200000,
+        compliancePan: '',
+        complianceMobile: '',
+        complianceAddress: '',
+        complianceIdNumber: '',
+        complianceConsent: false,
+        complianceSaving: false,
+        complianceErrors: {},
+        complianceGeneralError: '',
+        posComplianceSaveUrl: @json(route('pos.compliance.save')),
 
         init() {
             this.$nextTick(() => {
@@ -2636,6 +2792,7 @@ function retailerPos() {
                 ...item,
             });
             this.recalc();
+            this.applyAutoRoundOff();
             this.syncUrl();
             this.renderItemPicker();
         },
@@ -2643,6 +2800,7 @@ function retailerPos() {
         removeItem(idx) {
             this.items.splice(idx, 1);
             this.recalc();
+            this.applyAutoRoundOff();
             this.syncUrl();
             this.renderItemPicker();
         },
@@ -2730,12 +2888,14 @@ function retailerPos() {
             this.discount = Math.max(0, this.round2(value));
             this.discountInputSource = 'amount';
             this.recalc();
+            this.applyAutoRoundOff();
         },
 
         onDiscountPercentInput(value) {
             this.discountPercent = this.clampPercent(value);
             this.discountInputSource = 'percent';
             this.recalc();
+            this.applyAutoRoundOff();
         },
 
         /* ── Price calculation ──────────────────── */
@@ -2756,17 +2916,39 @@ function retailerPos() {
             this.normalizeRedemptionAmount();
         },
 
-        /* dir: -1 = round down, +1 = round up */
-        autoRound(dir) {
-            // compute total without any existing round-off
+        /* Clamp manual round-off input to ±1 and recalculate */
+        clampAndRecalc() {
+            if (this.roundOff > 1)  this.roundOff = 1;
+            if (this.roundOff < -1) this.roundOff = -1;
+            this.recalc();
+        },
+
+        /* Compute raw total without any round-off applied */
+        rawTotal() {
             const totalDiscount = Math.min(this.sellingPrice, this.discount + this.offerDiscountAmount());
             const taxable = Math.max(this.sellingPrice - totalDiscount, 0);
             const gst = Math.round(taxable * (this.gstRate / 100) * 100) / 100;
-            const raw = Math.round((this.sellingPrice + gst - totalDiscount) * 100) / 100;
-            const n = this.roundOffNearest;
-            const rounded = dir > 0 ? Math.ceil(raw / n) * n : Math.floor(raw / n) * n;
-            this.roundOff = Math.round((rounded - raw) * 100) / 100;
-            this.recalc();
+            return Math.round((this.sellingPrice + gst - totalDiscount) * 100) / 100;
+        },
+
+        /* Auto-apply round-off for sub-₹1 paise gaps after payments are entered.
+           Always computes against rawTotal (not this.total) to avoid including
+           a previous roundOff in the gap calculation. */
+        applyAutoRoundOff() {
+            if (this.payments.length === 0) {
+                if (this.roundOff !== 0) { this.roundOff = 0; this.recalc(); }
+                return;
+            }
+            const raw = this.rawTotal();
+            const gap = Math.round((raw - this.paymentTotal() - this.appliedRedemptionAmount()) * 100) / 100;
+            if (gap > 0 && gap < 1) {
+                // Sub-rupee shortfall — auto waive the paise
+                const newRoundOff = Math.round(-gap * 100) / 100;
+                if (this.roundOff !== newRoundOff) { this.roundOff = newRoundOff; this.recalc(); }
+            } else {
+                // Gap is zero, overpaid, or ≥₹1 — clear any auto round-off
+                if (this.roundOff !== 0) { this.roundOff = 0; this.recalc(); }
+            }
         },
 
         normalizeText(value) {
@@ -2970,10 +3152,12 @@ function retailerPos() {
                 pay.amount = Math.max(0, this.remaining());
             }
             this.payments.push(pay);
+            this.applyAutoRoundOff();
         },
 
         removePayment(idx) {
             this.payments.splice(idx, 1);
+            this.applyAutoRoundOff();
         },
 
         calcMetalValue(idx) {
@@ -2981,9 +3165,12 @@ function retailerPos() {
             const net = p.metal_gross_weight * (1 - (p.metal_test_loss || 0) / 100);
             const fine = p.mode === 'old_gold' ? net * (p.metal_purity / 24) : net * (p.metal_purity / 1000);
             p.amount = Math.round(fine * p.metal_rate_per_gram);
+            this.applyAutoRoundOff();
         },
 
-        recalcPayments() { /* no-op, just triggers reactivity */ },
+        recalcPayments() {
+            this.applyAutoRoundOff();
+        },
 
         paymentTotal() {
             return this.payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
@@ -3032,7 +3219,7 @@ function retailerPos() {
                 return hasOnlyEmi && this.appliedRedemptionAmount() <= 0;
             }
 
-            return this.remaining() < 1;
+            return this.remaining() <= 0.01;
         },
 
         async completeSale() {
@@ -3074,6 +3261,20 @@ function retailerPos() {
 
                 const data = await res.json();
                 if (!res.ok) {
+                    if (data.compliance_required) {
+                        this.selling = false;
+                        this.complianceMissingFields = data.missing_fields || [];
+                        this.complianceThreshold = data.threshold || 200000;
+                        this.compliancePan = '';
+                        this.complianceMobile = '';
+                        this.complianceAddress = '';
+                        this.complianceIdNumber = '';
+                        this.complianceConsent = false;
+                        this.complianceErrors = {};
+                        this.complianceGeneralError = '';
+                        this.$dispatch('open-modal', 'compliance-modal');
+                        return;
+                    }
                     this.saleError = data.message || 'Sale failed';
                     this.selling = false;
                     return;
@@ -3091,7 +3292,64 @@ function retailerPos() {
                 this.selling = false;
             }
         },
+
+        async submitCompliance() {
+            this.complianceSaving = true;
+            this.complianceErrors = {};
+            this.complianceGeneralError = '';
+
+            try {
+                const res = await fetch(this.posComplianceSaveUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        customer_id: {{ $customer->id }},
+                        pan: this.compliancePan || null,
+                        mobile: this.complianceMobile || null,
+                        address: this.complianceAddress || null,
+                        id_number: this.complianceIdNumber || null,
+                        consent: this.complianceConsent,
+                    }),
+                });
+
+                let data = {};
+                try { data = await res.json(); } catch (_) { data = {}; }
+
+                if (!res.ok) {
+                    const errs = (data && data.errors) ? data.errors : {};
+                    this.complianceErrors = errs;
+                    // Surface any error that won't be shown next to a visible field,
+                    // plus a server message fallback (403/500 etc. have no `errors`).
+                    const visibleFields = this.complianceMissingFields.concat(['consent']);
+                    const hiddenMsgs = [];
+                    for (const k of Object.keys(errs)) {
+                        if (!visibleFields.includes(k)) {
+                            hiddenMsgs.push((errs[k] || [])[0]);
+                        }
+                    }
+                    if (hiddenMsgs.length) {
+                        this.complianceGeneralError = hiddenMsgs.filter(Boolean).join(' ');
+                    } else if (Object.keys(errs).length === 0) {
+                        this.complianceGeneralError = data.message || 'Could not save details. Please try again.';
+                    }
+                    this.complianceSaving = false;
+                    return;
+                }
+
+                this.$dispatch('close-modal', 'compliance-modal');
+                this.complianceSaving = false;
+                await this.completeSale();
+            } catch (e) {
+                this.complianceGeneralError = 'Network error. Please try again.';
+                this.complianceSaving = false;
+            }
+        },
     };
 }
 </script>
+
 </x-app-layout>

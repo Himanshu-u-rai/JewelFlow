@@ -674,7 +674,6 @@
     </x-page-header>
 
     <div class="content-inner ki-show-page">
-        <x-app-alerts class="mb-4" />
 
         <div class="ki-show-stack">
             @if(! empty($invoice->discrepancy_flags))

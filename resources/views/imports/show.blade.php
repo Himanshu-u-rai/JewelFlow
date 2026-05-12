@@ -13,10 +13,7 @@
     </x-page-header>
 
     <div class="content-inner space-y-6 ops-treatment-page">
-        @if(session('success'))
-            <div class="px-4 py-3 bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl">{{ session('success') }}</div>
-        @endif
-        @if($errors->any())
+@if($errors->any())
             <div class="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
                 <ul class="list-disc list-inside">
                     @foreach($errors->all() as $error)

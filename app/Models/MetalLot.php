@@ -67,7 +67,7 @@ class MetalLot extends Model
 
     public function scopeNotDispatched($query)
     {
-        return $query->where('is_dispatched', false);
+        return $query->whereRaw('is_dispatched IS FALSE');
     }
 
     public function payments()

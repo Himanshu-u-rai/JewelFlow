@@ -20,7 +20,8 @@ class PlatformAdminManagementController extends Controller
     public function index(): View
     {
         $platformAdmins = PlatformAdmin::query()->latest()->paginate(25);
-        return view('super-admin.platform-admins.index', compact('platformAdmins'));
+        $permissions = PlatformAdmin::PERMISSIONS;
+        return view('super-admin.platform-admins.index', compact('platformAdmins', 'permissions'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -250,6 +251,40 @@ class PlatformAdminManagementController extends Controller
         );
 
         return back()->with('success', 'Platform admin deleted.');
+    }
+
+    public function updatePermissions(Request $request, PlatformAdmin $platformAdmin): RedirectResponse
+    {
+        $actor = auth('platform_admin')->user();
+
+        // super_admins have all permissions implicitly — no point setting a list
+        if ($platformAdmin->isSuperAdmin()) {
+            return back()->withErrors(['permissions' => 'Super admins have all permissions by default.']);
+        }
+
+        $allowed = PlatformAdmin::PERMISSIONS;
+        $validated = $request->validate([
+            'permissions'   => ['nullable', 'array'],
+            'permissions.*' => ['string', 'in:' . implode(',', $allowed)],
+            'reason'        => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $before = ['permissions' => $platformAdmin->permissions ?? []];
+        $newPerms = $validated['permissions'] ?? [];
+        $platformAdmin->update(['permissions' => $newPerms]);
+
+        $this->audit->log(
+            $actor,
+            'platform_admin.permissions_updated',
+            PlatformAdmin::class,
+            $platformAdmin->id,
+            $before,
+            ['permissions' => $newPerms],
+            $validated['reason'] ?? null,
+            $request
+        );
+
+        return back()->with('success', 'Permissions updated.');
     }
 
     private function dbBool(bool $value)

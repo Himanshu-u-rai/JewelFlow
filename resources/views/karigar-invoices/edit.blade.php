@@ -2,7 +2,6 @@
     <x-page-header :title="'Edit Karigar Invoice — ' . $invoice->karigar_invoice_number" />
 
     <div class="content-inner">
-        <x-app-alerts class="mb-4" />
 
         @php
             $jobOrder = $invoice->jobOrder;

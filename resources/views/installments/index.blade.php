@@ -16,11 +16,7 @@
     </x-page-header>
 
     <div class="content-inner">
-        @if(session('success'))
-            <div class="bg-green-50 border border-green-200 text-green-800 rounded-lg p-4 mb-6">{{ session('success') }}</div>
-        @endif
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 installments-top-kpi-grid">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 installments-top-kpi-grid">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 installments-top-kpi-card">
                 <div class="flex items-center gap-3">
                     <div class="installments-top-kpi-icon bg-amber-100 text-amber-700">

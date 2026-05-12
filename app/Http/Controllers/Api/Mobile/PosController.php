@@ -42,7 +42,6 @@ class PosController extends Controller
             'shop_mode' => $shop->isRetailer() ? 'retailer' : 'manufacturer',
             'gst_rate' => (float) ($shop->gst_rate ?? config('business.gst_rate_default')),
             'preferences' => [
-                'round_off_nearest' => (int) ($shop->preferences?->round_off_nearest ?? 1),
                 'loyalty_points_per_hundred' => (int) ($shop->preferences?->loyalty_points_per_hundred ?? 1),
                 'loyalty_point_value' => (float) ($shop->preferences?->loyalty_point_value ?? 0.25),
             ],

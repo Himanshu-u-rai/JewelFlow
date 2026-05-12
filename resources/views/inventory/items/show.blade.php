@@ -1,3 +1,9 @@
+@php
+    $isRetailer = $isRetailer ?? auth()->user()->shop?->isRetailer();
+    $retailerHeaderCategoryLabel = $item->category ?: 'Uncategorized';
+    $retailerHeaderDesignLabel = $item->design ?: 'Untitled item';
+@endphp
+
 <x-app-layout>
     <x-page-header>
         <div>
@@ -5,10 +11,10 @@
             <p class="text-sm text-gray-500 mt-1">
                 <span class="font-mono font-semibold text-amber-700">{{ $item->barcode }}</span>
                 <span class="mx-2">•</span>
-                <span>{{ $item->category }}</span>
-                @if($item->design)
+                <span>{{ $isRetailer ? $retailerHeaderCategoryLabel : $item->category }}</span>
+                @if($isRetailer || $item->design)
                     <span class="mx-2">•</span>
-                    <span>{{ $item->design }}</span>
+                    <span>{{ $isRetailer ? $retailerHeaderDesignLabel : $item->design }}</span>
                 @endif
             </p>
         </div>
@@ -66,7 +72,7 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner">
+    <div class="content-inner inventory-item-show-page {{ $isRetailer ? 'inventory-item-show-page--retailer' : '' }}">
         @php
             $isRetailer = auth()->user()->shop?->isRetailer();
             $makingCharges = (float) ($item->making_charges ?? 0);
@@ -93,8 +99,429 @@
             $margin = (float) $item->selling_price - (float) $item->cost_price - $retailerChargeTotal;
             $totalCost = (float) $item->cost_price + $retailerChargeTotal;
             $marginPct = $totalCost > 0 ? ($margin / $totalCost) * 100 : 0;
+
+            $designLabel = $item->design ?: 'Untitled item';
+            $categoryLabel = $item->category ?: 'Uncategorized';
+            $subCategoryLabel = $item->sub_category ?: 'No sub-category';
+            $metalTypeLabel = $item->metal_type ? ucfirst($item->metal_type) : '—';
+            $purityLabel = $item->purity_label ?: '—';
+            $vendorLabel = $item->vendor?->name ?: '—';
+            $huidLabel = $item->huid ?: '—';
+            $hallmarkDateLabel = $item->hallmark_date ? \Carbon\Carbon::parse($item->hallmark_date)->format('d M Y') : '—';
+            $createdDateLabel = $item->created_at ? $item->created_at->format('d M Y') : '—';
+            $createdTimeLabel = $item->created_at ? $item->created_at->format('h:i A') : '—';
+            $updatedDateLabel = $item->updated_at ? $item->updated_at->format('d M Y') : '—';
+            $updatedTimeLabel = $item->updated_at ? $item->updated_at->format('h:i A') : '—';
+            $sourcePurchaseLabel = $item->stock_purchase_id
+                ? ($item->stockPurchase?->purchase_number ?? "PUR-{$item->stock_purchase_id}")
+                : 'Not linked';
+            $invoiceLabel = $item->invoice?->invoice_number ?: 'Not linked';
+            $soldDateLabel = ($item->status == 'sold')
+                ? ($item->sold_at ? $item->sold_at->format('d M Y') : $updatedDateLabel)
+                : 'Not sold';
+            $retailerImageGallery = collect($item->image_gallery)
+                ->map(function ($path) {
+                    $path = trim((string) $path);
+                    $url = \Illuminate\Support\Str::startsWith($path, ['http://', 'https://'])
+                        ? $path
+                        : asset('storage/' . preg_replace('/^storage\//', '', ltrim($path, '/')));
+
+                    return ['path' => $path, 'url' => $url];
+                })
+                ->filter(fn ($image) => filled($image['path']))
+                ->values();
+            $retailerImageGalleryCount = $retailerImageGallery->count();
         @endphp
 
+        @if($isRetailer)
+            <div class="inventory-item-retailer-shell">
+                <section class="inventory-item-retailer-hero">
+                    <div class="inventory-item-retailer-media">
+                        @if($retailerImageGalleryCount)
+                            <div
+                                id="retailer-item-carousel"
+                                class="inventory-item-retailer-carousel hs-carousel"
+                                data-hs-carousel='{"isAutoPlay": true}'
+                                x-data="{
+                                    active: 0,
+                                    total: {{ $retailerImageGalleryCount }},
+                                    autoplayTimer: null,
+                                    syncFromScroll() {
+                                        if (!this.$refs.track) return;
+                                        const width = Math.max(this.$refs.track.clientWidth, 1);
+                                        this.active = Math.max(0, Math.min(this.total - 1, Math.round(this.$refs.track.scrollLeft / width)));
+                                    },
+                                    goTo(index) {
+                                        if (!this.$refs.track || this.total < 1) return;
+                                        const target = ((index % this.total) + this.total) % this.total;
+                                        this.$refs.track.scrollTo({
+                                            left: this.$refs.track.clientWidth * target,
+                                            behavior: 'smooth'
+                                        });
+                                        this.active = target;
+                                    },
+                                    prev() { this.goTo(this.active - 1); },
+                                    next() { this.goTo(this.active + 1); },
+                                    stopAutoPlay() {
+                                        if (this.autoplayTimer) {
+                                            clearInterval(this.autoplayTimer);
+                                            this.autoplayTimer = null;
+                                        }
+                                    },
+                                    startAutoPlay() {
+                                        this.stopAutoPlay();
+                                        if (this.total <= 1) return;
+                                        this.autoplayTimer = setInterval(() => {
+                                            if (!document.hidden) this.next();
+                                        }, 4200);
+                                    },
+                                    init() {
+                                        this.$nextTick(() => {
+                                            this.syncFromScroll();
+                                            this.startAutoPlay();
+                                        });
+                                    }
+                                }"
+                                x-init="init()"
+                                @mouseenter="stopAutoPlay()"
+                                @mouseleave="startAutoPlay()"
+                                @focusin="stopAutoPlay()"
+                                @focusout="startAutoPlay()"
+                            >
+                                <div
+                                    class="inventory-item-retailer-carousel-track hs-carousel-body"
+                                    x-ref="track"
+                                    @scroll.debounce.80ms="syncFromScroll()"
+                                >
+                                    @foreach($retailerImageGallery as $galleryIndex => $galleryImage)
+                                        <div class="inventory-item-retailer-carousel-slide hs-carousel-slide">
+                                            <img src="{{ $galleryImage['url'] }}" alt="{{ $designLabel }} image {{ $galleryIndex + 1 }}" class="inventory-item-retailer-image">
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                @if($retailerImageGalleryCount > 1)
+                                    <button
+                                        type="button"
+                                        class="inventory-item-retailer-carousel-nav inventory-item-retailer-carousel-nav--prev hs-carousel-prev"
+                                        aria-label="Previous item image"
+                                        @click="prev()"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                        </svg>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="inventory-item-retailer-carousel-nav inventory-item-retailer-carousel-nav--next hs-carousel-next"
+                                        aria-label="Next item image"
+                                        @click="next()"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+                                    <div class="inventory-item-retailer-carousel-dots hs-carousel-pagination" aria-label="Item image selector">
+                                        @foreach($retailerImageGallery as $galleryIndex => $galleryImage)
+                                            <button
+                                                type="button"
+                                                aria-label="Show item image {{ $galleryIndex + 1 }}"
+                                                :class="{ 'is-active': active === {{ $galleryIndex }} }"
+                                                @click="goTo({{ $galleryIndex }})"
+                                            ></button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        @else
+                            <div class="inventory-item-retailer-image inventory-item-retailer-image--empty" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                    <path d="M3.27 6.96 12 12.01l8.73-5.05"/>
+                                    <path d="M12 22.08V12"/>
+                                </svg>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="inventory-item-retailer-hero-body">
+                        <div class="inventory-item-retailer-title-row">
+                            <div class="min-w-0">
+                                <p class="inventory-item-retailer-eyebrow">Retail item profile</p>
+                                <h2>{{ $designLabel }}</h2>
+                                <p>{{ $categoryLabel }} / {{ $subCategoryLabel }}</p>
+                            </div>
+                            @if($item->status == 'in_stock')
+                                <span class="inventory-item-retailer-status inventory-item-retailer-status--stock">In Stock</span>
+                            @elseif($item->status == 'sold')
+                                <span class="inventory-item-retailer-status inventory-item-retailer-status--sold">Sold</span>
+                            @else
+                                <span class="inventory-item-retailer-status inventory-item-retailer-status--neutral">{{ ucfirst($item->status) }}</span>
+                            @endif
+                        </div>
+
+                        <div class="inventory-item-retailer-barcode">
+                            <span>Barcode</span>
+                            <strong>{{ $item->barcode }}</strong>
+                        </div>
+
+                        <div class="inventory-item-retailer-price-band">
+                            <div>
+                                <span>Selling Price / MRP</span>
+                                <strong>₹{{ number_format($item->selling_price, 2) }}</strong>
+                            </div>
+                            <div class="{{ $margin >= 0 ? 'is-positive' : 'is-negative' }}">
+                                <span>Margin</span>
+                                <strong>{{ number_format($marginPct, 1) }}%</strong>
+                                <em>₹{{ number_format($margin, 2) }}</em>
+                            </div>
+                        </div>
+
+                        <div class="inventory-item-retailer-quick-grid">
+                            <div>
+                                <span>Metal</span>
+                                <strong>{{ $metalTypeLabel }}</strong>
+                            </div>
+                            <div>
+                                <span>Purity</span>
+                                <strong>{{ $purityLabel }}</strong>
+                            </div>
+                            <div>
+                                <span>Net Metal</span>
+                                <strong>{{ number_format($item->net_metal_weight, 3) }} g</strong>
+                            </div>
+                            <div>
+                                <span>Gross Wt</span>
+                                <strong>{{ number_format($item->gross_weight, 3) }} g</strong>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="inventory-item-retailer-grid">
+                    <section class="inventory-item-retailer-card inventory-item-retailer-card--pricing">
+                        <div class="inventory-item-retailer-card-head">
+                            <div>
+                                <h3>Pricing</h3>
+                                <p>Cost, charges, and margin records.</p>
+                            </div>
+                            <span>₹{{ number_format($totalCost, 2) }}</span>
+                        </div>
+                        <div class="inventory-item-retailer-kv-list">
+                            <div>
+                                <span>Cost Price</span>
+                                <strong>₹{{ number_format($item->cost_price, 2) }}</strong>
+                            </div>
+                            <div>
+                                <span>Profit / Margin</span>
+                                <strong class="{{ $margin >= 0 ? 'text-green-600' : 'text-red-600' }}">₹{{ number_format($margin, 2) }}</strong>
+                            </div>
+                            <div>
+                                <span>Metal (Base)</span>
+                                <strong>₹{{ number_format($retailerMetalBase, 2) }}</strong>
+                            </div>
+                            <div>
+                                <span>Making</span>
+                                <strong>₹{{ number_format($makingCharges, 2) }}</strong>
+                            </div>
+                            <div>
+                                <span>Stone</span>
+                                <strong>₹{{ number_format($stoneCharges, 2) }}</strong>
+                            </div>
+                            <div>
+                                <span>Hallmark</span>
+                                <strong>₹{{ number_format($hallmarkCharges, 2) }}</strong>
+                            </div>
+                            <div>
+                                <span>Rhodium</span>
+                                <strong>₹{{ number_format($rhodiumCharges, 2) }}</strong>
+                            </div>
+                            <div>
+                                <span>Other</span>
+                                <strong>₹{{ number_format($otherCharges, 2) }}</strong>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="inventory-item-retailer-card inventory-item-retailer-card--weights">
+                        <div class="inventory-item-retailer-card-head">
+                            <div>
+                                <h3>Weights</h3>
+                                <p>Recorded item measurements.</p>
+                            </div>
+                            <span>grams</span>
+                        </div>
+                        <div class="inventory-item-retailer-metric-grid">
+                            <div>
+                                <span>Stone</span>
+                                <strong>{{ number_format($item->stone_weight ?? 0, 3) }}</strong>
+                            </div>
+                            <div>
+                                <span>Net Metal</span>
+                                <strong>{{ number_format($item->net_metal_weight, 3) }}</strong>
+                            </div>
+                            <div>
+                                <span>Gross</span>
+                                <strong>{{ number_format($item->gross_weight, 3) }}</strong>
+                            </div>
+                            <div>
+                                <span>Purity</span>
+                                <strong>{{ $purityLabel }}</strong>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="inventory-item-retailer-card inventory-item-retailer-card--vendor">
+                        <div class="inventory-item-retailer-card-head">
+                            <div>
+                                <h3>Vendor & Dates</h3>
+                                <p>Supplier and stock timeline.</p>
+                            </div>
+                        </div>
+                        <div class="inventory-item-retailer-kv-list">
+                            <div>
+                                <span>Vendor</span>
+                                <strong>{{ $vendorLabel }}</strong>
+                            </div>
+                            <div>
+                                <span>HUID</span>
+                                <strong class="font-mono">{{ $huidLabel }}</strong>
+                            </div>
+                            <div>
+                                <span>Hallmark Date</span>
+                                <strong>{{ $hallmarkDateLabel }}</strong>
+                            </div>
+                            <div>
+                                <span>Created</span>
+                                <strong>{{ $createdDateLabel }}</strong>
+                                <em>{{ $createdTimeLabel }}</em>
+                            </div>
+                            <div>
+                                <span>Updated</span>
+                                <strong>{{ $updatedDateLabel }}</strong>
+                                <em>{{ $updatedTimeLabel }}</em>
+                            </div>
+                        </div>
+                        @if($item->stock_purchase_id)
+                            <a href="{{ route('inventory.purchases.show', $item->stock_purchase_id) }}" class="inventory-item-retailer-source-link">
+                                <span>
+                                    <small>Source Purchase</small>
+                                    <strong>{{ $sourcePurchaseLabel }}</strong>
+                                </span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                        @else
+                            <div class="inventory-item-retailer-source-link inventory-item-retailer-source-link--empty">
+                                <span>
+                                    <small>Source Purchase</small>
+                                    <strong>{{ $sourcePurchaseLabel }}</strong>
+                                </span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                                </svg>
+                            </div>
+                        @endif
+                    </section>
+
+                    <section class="inventory-item-retailer-card inventory-item-retailer-card--actions">
+                        <div class="inventory-item-retailer-card-head">
+                            <div>
+                                <h3>Actions</h3>
+                                <p>Fast tasks for this item.</p>
+                            </div>
+                        </div>
+                        <div class="inventory-item-retailer-actions">
+                            <a href="{{ route('pos.index') }}?barcode={{ $item->barcode }}"
+                               class="inventory-item-retailer-action inventory-item-retailer-action--primary {{ $item->status == 'in_stock' ? '' : 'is-disabled' }}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17"/>
+                                </svg>
+                                Sell in POS
+                            </a>
+
+                            <form method="POST" action="{{ route('tags.print') }}" target="_blank">
+                                @csrf
+                                <input type="hidden" name="item_ids[]" value="{{ $item->id }}">
+                                <input type="hidden" name="label_size" value="medium">
+                                <input type="hidden" name="include_barcode_image" value="1">
+                                <input type="hidden" name="print_format" value="standard">
+                                <button type="submit" class="inventory-item-retailer-action inventory-item-retailer-action--dark">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                    </svg>
+                                    Print Standard
+                                </button>
+                            </form>
+
+                            <div class="inventory-item-retailer-print-grid">
+                                <form method="POST" action="{{ route('tags.print') }}" target="_blank">
+                                    @csrf
+                                    <input type="hidden" name="item_ids[]" value="{{ $item->id }}">
+                                    <input type="hidden" name="label_size" value="medium">
+                                    <input type="hidden" name="include_barcode_image" value="1">
+                                    <input type="hidden" name="print_format" value="folded">
+                                    <input type="hidden" name="folded_size" value="95x12">
+                                    <button type="submit" class="inventory-item-retailer-action inventory-item-retailer-action--muted">Folded 95x12</button>
+                                </form>
+                                <form method="POST" action="{{ route('tags.print') }}" target="_blank">
+                                    @csrf
+                                    <input type="hidden" name="item_ids[]" value="{{ $item->id }}">
+                                    <input type="hidden" name="label_size" value="medium">
+                                    <input type="hidden" name="include_barcode_image" value="1">
+                                    <input type="hidden" name="print_format" value="folded">
+                                    <input type="hidden" name="folded_size" value="95x15">
+                                    <button type="submit" class="inventory-item-retailer-action inventory-item-retailer-action--muted">Folded 95x15</button>
+                                </form>
+                            </div>
+
+                            <div class="inventory-item-retailer-print-grid">
+                                <a href="{{ route('inventory.items.edit', $item) }}"
+                                   class="inventory-item-retailer-action inventory-item-retailer-action--accent {{ $item->status === 'in_stock' ? '' : 'is-disabled' }}">
+                                    Edit
+                                </a>
+                                <a href="{{ route('inventory.items.index') }}" class="inventory-item-retailer-action inventory-item-retailer-action--muted">
+                                    All Items
+                                </a>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="inventory-item-retailer-card inventory-item-retailer-card--sale">
+                        <div class="inventory-item-retailer-card-head">
+                            <div>
+                                <h3>Sale</h3>
+                                <p>Invoice status for this item.</p>
+                            </div>
+                        </div>
+
+                        <div class="inventory-item-retailer-sale-grid">
+                            <div>
+                                <span>Sale Status</span>
+                                <strong>{{ $item->status == 'sold' ? 'Sold' : 'Not sold' }}</strong>
+                            </div>
+                            <div>
+                                <span>Invoice</span>
+                                @if($item->status == 'sold' && $item->invoice)
+                                    <a href="{{ route('invoices.show', $item->invoice) }}">{{ $invoiceLabel }}</a>
+                                @else
+                                    <strong>{{ $invoiceLabel }}</strong>
+                                @endif
+                            </div>
+                            <div>
+                                <span>Sold on</span>
+                                <strong>{{ $soldDateLabel }}</strong>
+                            </div>
+                            <div>
+                                <span>Availability</span>
+                                <strong>{{ $item->status == 'in_stock' ? 'Available for POS' : ucfirst($item->status ?: 'Unknown') }}</strong>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        @else
         <div class="grid grid-cols-12 items-start gap-3 sm:gap-4">
             <!-- Bento: Item -->
             <div class="col-span-12 lg:col-span-8 lg:row-span-2 lg:min-h-[400px] bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4 lg:p-5">
@@ -472,6 +899,7 @@
                 @endif
             </div>
         </div>
+        @endif
     </div>
 
     <script>

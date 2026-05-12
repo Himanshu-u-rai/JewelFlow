@@ -110,6 +110,11 @@ class Invoice extends Model
         return $this->belongsTo(self::class, 'reversed_by_invoice_id');
     }
 
+    public function complianceSnapshot()
+    {
+        return $this->hasOne(\App\Models\InvoiceComplianceSnapshot::class);
+    }
+
     public static function issue(array $attributes): self
     {
         if (!empty($attributes['shop_id']) && (empty($attributes['invoice_sequence']) || empty($attributes['invoice_number']))) {

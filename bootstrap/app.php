@@ -37,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(prepend: [
             \App\Http\Middleware\UseRouteScopedSessionCookie::class,
+            \App\Http\Middleware\CheckMaintenanceMode::class,
         ], append: [
             \App\Http\Middleware\NormalizeHumanTextInput::class,
             \App\Http\Middleware\SetShopLocale::class,
@@ -57,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'edition' => \App\Http\Middleware\EnsureShopEdition::class,
             'catalog.shop' => \App\Http\Middleware\ResolveCatalogShop::class,
             'dhiran.enabled' => \App\Http\Middleware\EnsureDhiranEnabled::class,
+            'rate.shop' => \App\Http\Middleware\RateLimitByShop::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

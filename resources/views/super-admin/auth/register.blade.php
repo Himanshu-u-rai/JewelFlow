@@ -11,13 +11,7 @@
         <h1 style="font-size:24px;font-weight:700;margin:0;">Create Super Admin</h1>
         <p style="margin-top:6px;color:#94a3b8;font-size:14px;">Bootstrap platform control access</p>
 
-        @if($errors->any())
-            <div style="margin-top:14px;border:1px solid #fda4af;background:#fff1f2;color:#be123c;padding:10px;border-radius:8px;font-size:13px;">
-                {{ $errors->first() }}
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('admin.register.store') }}" style="margin-top:16px;display:grid;gap:12px;">
+<form method="POST" action="{{ route('admin.register.store') }}" style="margin-top:16px;display:grid;gap:12px;">
             @csrf
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>

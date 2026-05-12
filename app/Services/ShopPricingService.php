@@ -119,7 +119,7 @@ class ShopPricingService
     public function activePurityProfiles(Shop|int $shop, ?string $metalType = null): Collection
     {
         return $this->allPurityProfiles($shop, $metalType)
-            ->where('is_active', true)
+            ->where('is_active', 1)
             ->values();
     }
 

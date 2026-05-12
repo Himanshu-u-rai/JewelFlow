@@ -43,7 +43,6 @@
     </x-page-header>
 
     <div class="content-inner dhiran-reports-root">
-        <x-app-alerts class="mb-6" />
 
         {{-- Date Range Filter --}}
         <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-6">

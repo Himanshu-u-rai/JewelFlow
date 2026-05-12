@@ -1,6 +1,6 @@
-<div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden categories-card" style="border-left:4px solid #0d9488;" data-deletable-row>
+<div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden categories-card is-collapsed" style="border-left:4px solid #0d9488;" data-deletable-row>
     <!-- Category Header -->
-    <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center categories-card-head" style="background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%);">
+    <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center categories-card-head" style="background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%);" data-category-toggle-surface>
         <div class="categories-card-title-wrap">
             <h3 class="font-semibold text-gray-900">{{ $category->name }}</h3>
             <p class="text-xs text-gray-500 mt-0.5">{{ __(':count sub-categories', ['count' => $category->subCategories->count()]) }}</p>
@@ -11,7 +11,7 @@
                 class="p-2 rounded-lg text-gray-500 hover:text-slate-700 hover:bg-slate-100 transition-colors categories-mobile-toggle"
                 data-category-toggle
                 aria-label="{{ __('Toggle sub-categories') }}"
-                aria-expanded="true"
+                aria-expanded="false"
             >
                 <svg class="w-4 h-4 categories-mobile-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6"/>

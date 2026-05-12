@@ -11,13 +11,7 @@
     </x-page-header>
 
     <div class="content-inner jf-skeleton-host is-loading">
-        @if(session('success'))
-            <div class="mb-6 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
-                {{ session('success') }}
-            </div>
-        @endif
-
-        <!-- Search -->
+<!-- Search -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
             <form method="GET" action="{{ route('products.index') }}" class="flex gap-4 items-end">
                 <div class="flex-1">

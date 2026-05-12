@@ -242,7 +242,6 @@
 
 <div class="content-inner ops-treatment-page">
     <div class="export-page">
-        <x-app-alerts />
 
         <div class="export-panel">
             <div class="export-intro">

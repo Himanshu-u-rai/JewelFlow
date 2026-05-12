@@ -8,7 +8,6 @@
     </x-page-header>
 
     <div class="content-inner">
-        <x-app-alerts class="mb-4" />
 
         {{-- Lot summary cards --}}
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">

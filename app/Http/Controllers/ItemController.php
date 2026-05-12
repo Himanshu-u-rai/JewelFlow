@@ -24,6 +24,10 @@ class ItemController extends Controller
 {
     use RespondsDynamically;
 
+    private const MAX_ITEM_GALLERY_IMAGES = 4;
+
+    private const ITEM_GALLERY_IMAGE_MIMES = 'jpg,jpeg,png,gif,webp,avif,bmp';
+
     public function __construct(
         private CatalogShareService $catalog,
         private ShopPricingService $pricing
@@ -309,13 +313,10 @@ class ItemController extends Controller
             'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
             'huid' => ['nullable', 'string', 'max:30', Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')],
             'hallmark_date' => 'nullable|date',
-            'image' => 'nullable|file|mimes:jpeg,png,gif,webp|max:5120',
+            'image' => 'nullable|file|mimes:' . self::ITEM_GALLERY_IMAGE_MIMES . '|max:5120',
+            'images' => 'nullable|array|max:' . self::MAX_ITEM_GALLERY_IMAGES,
+            'images.*' => 'file|mimes:' . self::ITEM_GALLERY_IMAGE_MIMES . '|max:5120',
         ]);
-
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('items', 'public');
-        }
 
         try {
             $pricing = $this->pricing->computeRetailerCostPayload(auth()->user()->shop, $validated);
@@ -323,52 +324,61 @@ class ItemController extends Controller
             return back()->withErrors(['pricing' => $e->getMessage()])->withInput();
         }
 
-        $item = DB::transaction(function () use ($shopId, $validated, $pricing, $imagePath) {
-            $item = Item::create([
-                'shop_id' => $shopId,
-                'barcode' => $validated['barcode'],
-                'design' => $validated['design'] ?? null,
-                'category' => $validated['category'],
-                'metal_type' => $pricing['metal_type'],
-                'sub_category' => $validated['sub_category'] ?? null,
-                'gross_weight' => $validated['gross_weight'],
-                'stone_weight' => $validated['stone_weight'] ?? 0,
-                'net_metal_weight' => $pricing['net_metal_weight'],
-                'purity' => $pricing['purity'],
-                'making_charges' => $validated['making_charges'] ?? 0,
-                'stone_charges' => $validated['stone_charges'] ?? 0,
-                'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
-                'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
-                'other_charges' => $validated['other_charges'] ?? 0,
-                'cost_price' => $pricing['cost_price'],
-                'selling_price' => $pricing['selling_price'],
-                'vendor_id' => $validated['vendor_id'] ?? null,
-                'karigar_id' => $validated['karigar_id'] ?? null,
-                'huid' => $validated['huid'] ?? null,
-                'hallmark_date' => $validated['hallmark_date'] ?? null,
-                'source' => 'purchased',
-                'status' => 'in_stock',
-                'image' => $imagePath,
-                'pricing_review_required' => false,
-            ]);
+        $imagePaths = $this->storeUploadedItemGallery($this->uploadedItemGalleryFiles($request));
+        $imagePath = $imagePaths[0] ?? null;
 
-            AuditLog::create([
-                'shop_id' => $shopId,
-                'user_id' => auth()->id(),
-                'action' => 'item_created',
-                'model_type' => 'item',
-                'model_id' => $item->id,
-            'data' => [
-                'barcode' => $item->barcode,
-                'source' => 'purchased',
-                'selling_price' => $item->selling_price,
-                'cost_price' => $item->cost_price,
-                'client_cost_price_ignored' => array_key_exists('cost_price', $validated),
-            ],
-        ]);
+        try {
+            $item = DB::transaction(function () use ($shopId, $validated, $pricing, $imagePaths, $imagePath) {
+                $item = Item::create([
+                    'shop_id' => $shopId,
+                    'barcode' => $validated['barcode'],
+                    'design' => $validated['design'] ?? null,
+                    'category' => $validated['category'],
+                    'metal_type' => $pricing['metal_type'],
+                    'sub_category' => $validated['sub_category'] ?? null,
+                    'gross_weight' => $validated['gross_weight'],
+                    'stone_weight' => $validated['stone_weight'] ?? 0,
+                    'net_metal_weight' => $pricing['net_metal_weight'],
+                    'purity' => $pricing['purity'],
+                    'making_charges' => $validated['making_charges'] ?? 0,
+                    'stone_charges' => $validated['stone_charges'] ?? 0,
+                    'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
+                    'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
+                    'other_charges' => $validated['other_charges'] ?? 0,
+                    'cost_price' => $pricing['cost_price'],
+                    'selling_price' => $pricing['selling_price'],
+                    'vendor_id' => $validated['vendor_id'] ?? null,
+                    'karigar_id' => $validated['karigar_id'] ?? null,
+                    'huid' => $validated['huid'] ?? null,
+                    'hallmark_date' => $validated['hallmark_date'] ?? null,
+                    'source' => 'purchased',
+                    'status' => 'in_stock',
+                    'image' => $imagePath,
+                    'images' => $imagePaths ?: null,
+                    'pricing_review_required' => false,
+                ]);
 
-            return $item;
-        });
+                AuditLog::create([
+                    'shop_id' => $shopId,
+                    'user_id' => auth()->id(),
+                    'action' => 'item_created',
+                    'model_type' => 'item',
+                    'model_id' => $item->id,
+                    'data' => [
+                        'barcode' => $item->barcode,
+                        'source' => 'purchased',
+                        'selling_price' => $item->selling_price,
+                        'cost_price' => $item->cost_price,
+                        'client_cost_price_ignored' => array_key_exists('cost_price', $validated),
+                    ],
+                ]);
+
+                return $item;
+            });
+        } catch (\Throwable $e) {
+            $this->deleteItemGalleryFiles($imagePaths);
+            throw $e;
+        }
 
         return redirect()->route('inventory.items.index')
             ->with('success', 'Item added to stock! Barcode: ' . $validated['barcode']);
@@ -519,7 +529,7 @@ class ItemController extends Controller
             'action' => 'item_updated',
             'model_type' => 'item',
             'model_id' => $item->id,
-            'data' => array_merge($validated, [
+            'data' => array_merge(collect($validated)->except(['image', 'remove_image'])->all(), [
                 'cost_price' => $item->cost_price,
                 'client_cost_price_ignored' => array_key_exists('cost_price', $validated),
             ]),
@@ -561,22 +571,13 @@ class ItemController extends Controller
             'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
             'huid' => ['nullable', 'string', 'max:30', Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')->ignore($item->id)],
             'hallmark_date' => 'nullable|date',
-            'image' => 'nullable|file|mimes:jpeg,png,gif,webp|max:5120',
+            'image' => 'nullable|file|mimes:' . self::ITEM_GALLERY_IMAGE_MIMES . '|max:5120',
             'remove_image' => 'nullable|boolean',
+            'remove_images' => 'nullable|array|max:' . self::MAX_ITEM_GALLERY_IMAGES,
+            'remove_images.*' => 'string',
+            'images' => 'nullable|array|max:' . self::MAX_ITEM_GALLERY_IMAGES,
+            'images.*' => 'file|mimes:' . self::ITEM_GALLERY_IMAGE_MIMES . '|max:5120',
         ]);
-
-        $imagePath = $item->image;
-        if ($request->hasFile('image')) {
-            if ($item->image && Storage::disk('public')->exists($item->image)) {
-                Storage::disk('public')->delete($item->image);
-            }
-            $imagePath = $request->file('image')->store('items', 'public');
-        } elseif ($request->boolean('remove_image')) {
-            if ($item->image && Storage::disk('public')->exists($item->image)) {
-                Storage::disk('public')->delete($item->image);
-            }
-            $imagePath = null;
-        }
 
         try {
             $pricing = $this->pricing->computeRetailerCostPayload(auth()->user()->shop, $validated);
@@ -584,43 +585,121 @@ class ItemController extends Controller
             return back()->withErrors(['pricing' => $e->getMessage()])->withInput();
         }
 
-        $item->update([
-            'barcode' => $validated['barcode'],
-            'design' => $validated['design'] ?? null,
-            'category' => $validated['category'],
-            'metal_type' => $pricing['metal_type'],
-            'sub_category' => $validated['sub_category'] ?? null,
-            'gross_weight' => $validated['gross_weight'],
-            'stone_weight' => $validated['stone_weight'] ?? 0,
-            'net_metal_weight' => $pricing['net_metal_weight'],
-            'purity' => $pricing['purity'],
-            'cost_price' => $pricing['cost_price'],
-            'selling_price' => $pricing['selling_price'],
-            'making_charges' => $validated['making_charges'] ?? 0,
-            'stone_charges' => $validated['stone_charges'] ?? 0,
-            'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
-            'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
-            'other_charges' => $validated['other_charges'] ?? 0,
-            'vendor_id' => $validated['vendor_id'] ?? null,
-            'karigar_id' => $validated['karigar_id'] ?? null,
-            'huid' => $validated['huid'] ?? null,
-            'hallmark_date' => $validated['hallmark_date'] ?? null,
-            'image' => $imagePath,
-            'pricing_review_required' => false,
-            'pricing_review_notes' => null,
-        ]);
+        $currentGallery = $item->image_gallery;
+        $removeImages = $request->boolean('remove_image')
+            ? $currentGallery
+            : collect($request->input('remove_images', []))
+                ->map(fn ($path) => is_string($path) ? trim($path) : null)
+                ->filter()
+                ->values()
+                ->all();
 
-        AuditLog::create([
-            'shop_id' => $item->shop_id,
-            'user_id' => auth()->id(),
-            'action' => 'item_updated',
-            'model_type' => 'item',
-            'model_id' => $item->id,
-            'data' => $validated,
-        ]);
+        $remainingGallery = collect($currentGallery)
+            ->reject(fn ($path) => in_array($path, $removeImages, true))
+            ->values()
+            ->all();
+
+        $newFiles = $this->uploadedItemGalleryFiles($request);
+        if (count($remainingGallery) + count($newFiles) > self::MAX_ITEM_GALLERY_IMAGES) {
+            return back()
+                ->withErrors(['images' => 'An item can have up to ' . self::MAX_ITEM_GALLERY_IMAGES . ' images.'])
+                ->withInput();
+        }
+
+        $newImagePaths = $this->storeUploadedItemGallery($newFiles);
+        $finalGallery = array_values(array_unique(array_merge($remainingGallery, $newImagePaths)));
+        $imagePath = $finalGallery[0] ?? null;
+        $removedPaths = array_values(array_diff($currentGallery, $finalGallery));
+
+        try {
+            DB::transaction(function () use ($item, $validated, $pricing, $finalGallery, $imagePath) {
+                $item->update([
+                    'barcode' => $validated['barcode'],
+                    'design' => $validated['design'] ?? null,
+                    'category' => $validated['category'],
+                    'metal_type' => $pricing['metal_type'],
+                    'sub_category' => $validated['sub_category'] ?? null,
+                    'gross_weight' => $validated['gross_weight'],
+                    'stone_weight' => $validated['stone_weight'] ?? 0,
+                    'net_metal_weight' => $pricing['net_metal_weight'],
+                    'purity' => $pricing['purity'],
+                    'cost_price' => $pricing['cost_price'],
+                    'selling_price' => $pricing['selling_price'],
+                    'making_charges' => $validated['making_charges'] ?? 0,
+                    'stone_charges' => $validated['stone_charges'] ?? 0,
+                    'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
+                    'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
+                    'other_charges' => $validated['other_charges'] ?? 0,
+                    'vendor_id' => $validated['vendor_id'] ?? null,
+                    'karigar_id' => $validated['karigar_id'] ?? null,
+                    'huid' => $validated['huid'] ?? null,
+                    'hallmark_date' => $validated['hallmark_date'] ?? null,
+                    'image' => $imagePath,
+                    'images' => $finalGallery ?: null,
+                    'pricing_review_required' => false,
+                    'pricing_review_notes' => null,
+                ]);
+
+                AuditLog::create([
+                    'shop_id' => $item->shop_id,
+                    'user_id' => auth()->id(),
+                    'action' => 'item_updated',
+                    'model_type' => 'item',
+                    'model_id' => $item->id,
+                    'data' => array_merge(
+                        collect($validated)->except(['image', 'images', 'remove_image', 'remove_images'])->all(),
+                        ['image_count' => count($finalGallery)]
+                    ),
+                ]);
+            });
+        } catch (\Throwable $e) {
+            $this->deleteItemGalleryFiles($newImagePaths);
+            throw $e;
+        }
+
+        $this->deleteItemGalleryFiles($removedPaths);
 
         return redirect()->route('inventory.items.show', $item)
             ->with('success', 'Item updated successfully.');
+    }
+
+    private function uploadedItemGalleryFiles(Request $request): array
+    {
+        $files = $request->file('images', []);
+
+        if ($files instanceof \Illuminate\Http\UploadedFile) {
+            $files = [$files];
+        }
+
+        $files = is_array($files) ? array_values(array_filter($files)) : [];
+
+        if ($files === [] && $request->hasFile('image')) {
+            $files = [$request->file('image')];
+        }
+
+        return $files;
+    }
+
+    private function storeUploadedItemGallery(array $files): array
+    {
+        return collect($files)
+            ->take(self::MAX_ITEM_GALLERY_IMAGES)
+            ->map(fn (\Illuminate\Http\UploadedFile $file) => $file->store('items', 'public'))
+            ->values()
+            ->all();
+    }
+
+    private function deleteItemGalleryFiles(array $paths): void
+    {
+        collect($paths)
+            ->map(fn ($path) => is_string($path) ? trim($path) : null)
+            ->filter()
+            ->unique()
+            ->each(function (string $path): void {
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            });
     }
 
     /**

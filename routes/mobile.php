@@ -21,7 +21,7 @@ Route::post('/auth/login', [AuthController::class, 'login'])
     ->middleware('throttle:5,1');
 
 // --- Authenticated ---
-Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.active', 'shop.exists'])
+Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'rate.shop:600,1'])
     ->group(function () {
 
         // Auth

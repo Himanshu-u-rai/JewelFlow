@@ -13,8 +13,8 @@ class DhiranOverdueReminder extends Command
 
     public function handle(): int
     {
-        $enabledSettings = DhiranSettings::where('is_enabled', true)
-            ->where('sms_reminders_enabled', true)
+        $enabledSettings = DhiranSettings::whereRaw('is_enabled IS TRUE')
+            ->whereRaw('sms_reminders_enabled IS TRUE')
             ->get();
 
         $totalApproaching = 0;

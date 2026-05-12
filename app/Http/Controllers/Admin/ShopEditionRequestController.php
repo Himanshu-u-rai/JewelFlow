@@ -81,7 +81,7 @@ class ShopEditionRequestController extends Controller
                     ShopEdition::revokeFrom($shop, $edition, null, $editionRequest->reason);
                     if ($edition === ShopEdition::DHIRAN) {
                         DhiranSettings::withoutGlobalScope('shop')
-                            ->where('shop_id', $shop->id)->update(['is_enabled' => false]);
+                            ->where('shop_id', $shop->id)->update(['is_enabled' => '0']);
                     }
                 }
             }

@@ -113,7 +113,6 @@
     />
 
     <div class="content-inner space-y-6 ops-treatment-page">
-        <x-app-alerts />
 
         <div class="bg-white border border-gray-200 shadow-sm p-4" style="border-radius:16px;">
             <h2 class="text-base font-semibold text-gray-900">How It Works</h2>

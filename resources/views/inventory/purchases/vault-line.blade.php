@@ -18,7 +18,6 @@
     </x-page-header>
 
     <div class="content-inner max-w-2xl">
-        <x-app-alerts class="mb-4" />
 
         {{-- Line summary --}}
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 grid grid-cols-3 gap-4 text-sm">

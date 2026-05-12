@@ -105,7 +105,6 @@
     </x-page-header>
 
     <div class="content-inner dhiran-show-root">
-        <x-app-alerts class="mb-6" />
 
         {{-- Loan Info Grid --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">

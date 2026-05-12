@@ -19,16 +19,36 @@ class PlatformSettingsController extends Controller
             'retailer_enabled'     => PlatformSetting::retailerEnabled(),
             'manufacturer_enabled' => PlatformSetting::manufacturerEnabled(),
             'dhiran_enabled'       => PlatformSetting::dhiranEnabled(),
+            'maintenance_mode'     => PlatformSetting::bool('maintenance_mode', false),
+            'maintenance_message'  => PlatformSetting::get('maintenance_message', 'JewelFlow is temporarily down for maintenance. We\'ll be back shortly.'),
         ];
 
-        return view('super-admin.settings.index', compact('settings'));
+        $mailSettings = [
+            'mail_mailer'       => PlatformSetting::get('mail_mailer', config('mail.default', 'smtp')),
+            'mail_host'         => PlatformSetting::get('mail_host', config('mail.mailers.smtp.host', '')),
+            'mail_port'         => PlatformSetting::get('mail_port', (string) config('mail.mailers.smtp.port', '587')),
+            'mail_username'     => PlatformSetting::get('mail_username', config('mail.mailers.smtp.username', '')),
+            'mail_encryption'   => PlatformSetting::get('mail_encryption', config('mail.mailers.smtp.encryption', 'tls')),
+            'mail_from_address' => PlatformSetting::get('mail_from_address', config('mail.from.address', '')),
+            'mail_from_name'    => PlatformSetting::get('mail_from_name', config('mail.from.name', '')),
+            'mail_password_set' => (bool) PlatformSetting::get('mail_password'),
+        ];
+
+        return view('super-admin.settings.index', compact('settings', 'mailSettings'));
     }
 
     public function update(Request $request)
     {
-        $retailer     = $request->boolean('retailer_enabled');
-        $manufacturer = $request->boolean('manufacturer_enabled');
-        $dhiran       = $request->boolean('dhiran_enabled');
+        // ── Mail settings (separate sub-form via ?section=mail) ────────────
+        if ($request->input('section') === 'mail') {
+            return $this->updateMailSettings($request);
+        }
+
+        $retailer            = $request->boolean('retailer_enabled');
+        $manufacturer        = $request->boolean('manufacturer_enabled');
+        $dhiran              = $request->boolean('dhiran_enabled');
+        $maintenanceMode     = $request->boolean('maintenance_mode');
+        $maintenanceMessage  = strip_tags(trim((string) $request->input('maintenance_message', '')));
 
         if (!$retailer && !$manufacturer && !$dhiran) {
             return back()->with('error', 'At least one edition must remain enabled. You cannot disable all.');
@@ -38,16 +58,22 @@ class PlatformSettingsController extends Controller
             'retailer_enabled'     => PlatformSetting::retailerEnabled(),
             'manufacturer_enabled' => PlatformSetting::manufacturerEnabled(),
             'dhiran_enabled'       => PlatformSetting::dhiranEnabled(),
+            'maintenance_mode'     => PlatformSetting::bool('maintenance_mode', false),
         ];
 
         PlatformSetting::set('retailer_enabled',     $retailer     ? 'true' : 'false');
         PlatformSetting::set('manufacturer_enabled', $manufacturer ? 'true' : 'false');
         PlatformSetting::set('dhiran_enabled',       $dhiran       ? 'true' : 'false');
+        PlatformSetting::set('maintenance_mode',     $maintenanceMode ? 'true' : 'false');
+        if ($maintenanceMessage) {
+            PlatformSetting::set('maintenance_message', $maintenanceMessage);
+        }
 
         $after = [
             'retailer_enabled'     => $retailer,
             'manufacturer_enabled' => $manufacturer,
             'dhiran_enabled'       => $dhiran,
+            'maintenance_mode'     => $maintenanceMode,
         ];
 
         $this->audit->log(
@@ -57,10 +83,54 @@ class PlatformSettingsController extends Controller
             null,
             $before,
             $after,
-            'Platform shop-type availability updated',
+            'Platform settings updated',
             $request
         );
 
-        return back()->with('success', 'Platform settings saved.');
+        $msg = $maintenanceMode
+            ? 'Settings saved. Maintenance mode is NOW ACTIVE — tenant traffic is blocked.'
+            : 'Platform settings saved.';
+
+        return back()->with('success', $msg);
+    }
+
+    private function updateMailSettings(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'mail_mailer'       => 'required|in:smtp,sendmail,mailgun,ses,postmark,log,array',
+            'mail_host'         => 'required|string|max:255',
+            'mail_port'         => 'required|integer|min:1|max:65535',
+            'mail_username'     => 'nullable|string|max:255',
+            'mail_password'     => 'nullable|string|max:500',
+            'mail_encryption'   => 'nullable|in:tls,ssl,starttls,',
+            'mail_from_address' => 'required|email|max:255',
+            'mail_from_name'    => 'required|string|max:255',
+        ]);
+
+        PlatformSetting::set('mail_mailer',       $validated['mail_mailer']);
+        PlatformSetting::set('mail_host',         $validated['mail_host']);
+        PlatformSetting::set('mail_port',         (string) $validated['mail_port']);
+        PlatformSetting::set('mail_username',     $validated['mail_username'] ?? '');
+        PlatformSetting::set('mail_encryption',   $validated['mail_encryption'] ?? 'tls');
+        PlatformSetting::set('mail_from_address', $validated['mail_from_address']);
+        PlatformSetting::set('mail_from_name',    $validated['mail_from_name']);
+
+        // Only overwrite password if a new one was provided
+        if (!empty($validated['mail_password'])) {
+            PlatformSetting::set('mail_password', $validated['mail_password']);
+        }
+
+        $this->audit->log(
+            auth('platform_admin')->user(),
+            'admin.platform_settings.mail_updated',
+            PlatformSetting::class,
+            null,
+            ['mail_host' => PlatformSetting::get('mail_host')],
+            ['mail_host' => $validated['mail_host'], 'mail_from_address' => $validated['mail_from_address']],
+            'SMTP / mail settings updated',
+            $request
+        );
+
+        return back()->with('success', 'Mail settings saved. Changes take effect on the next request.');
     }
 }

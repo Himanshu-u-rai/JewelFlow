@@ -128,7 +128,6 @@
     </x-page-header>
 
     <div class="content-inner purchase-show-shell space-y-5 xl:space-y-6">
-        <x-app-alerts class="mb-2" />
 
         <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5 xl:gap-6">
 

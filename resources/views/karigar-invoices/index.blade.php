@@ -406,7 +406,6 @@
     </x-page-header>
 
     <div class="content-inner ki-shell space-y-5">
-        <x-app-alerts class="mb-2" />
 
         <section class="ki-top-grid">
             <div class="ki-stat">

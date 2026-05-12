@@ -19,7 +19,6 @@ class ShopPreferences extends Model
         'language',
         'pricing_timezone',
         'low_stock_threshold',
-        'round_off_nearest',
         'loyalty_points_per_hundred',
         'loyalty_point_value',
         'loyalty_expiry_months',
@@ -34,17 +33,27 @@ class ShopPreferences extends Model
         'credit_days',
         'barcode_prefix',
         'stock_value_display',
+        // Compliance
+        'compliance_enabled',
+        'compliance_threshold',
+        'compliance_pan_mandatory',
+        'compliance_mobile_mandatory',
+        'compliance_address_mandatory',
     ];
 
     protected $casts = [
         'low_stock_threshold'        => 'integer',
-        'round_off_nearest'          => 'integer',
         'loyalty_points_per_hundred' => 'integer',
         'loyalty_point_value'        => 'decimal:2',
         'loyalty_expiry_months'      => 'integer',
-        'auto_logout_minutes'        => 'integer',
-        'loyalty_welcome_bonus'      => 'integer',
-        'credit_days'                => 'integer',
+        'auto_logout_minutes'          => 'integer',
+        'loyalty_welcome_bonus'        => 'integer',
+        'credit_days'                  => 'integer',
+        'compliance_enabled'           => 'boolean',
+        'compliance_threshold'         => 'decimal:2',
+        'compliance_pan_mandatory'     => 'boolean',
+        'compliance_mobile_mandatory'  => 'boolean',
+        'compliance_address_mandatory' => 'boolean',
     ];
 
     protected $attributes = [

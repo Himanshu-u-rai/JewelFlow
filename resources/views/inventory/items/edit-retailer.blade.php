@@ -16,6 +16,9 @@
         $categoriesData = $categories->mapWithKeys(fn ($category) => [
             (string) $category->id => $category->subCategories->pluck('name')->values(),
         ]);
+
+        $itemGallery = $item->image_gallery;
+        $primaryImagePath = $itemGallery[0] ?? null;
     @endphp
 
     <x-page-header>
@@ -55,8 +58,8 @@
                         <div class="grid grid-cols-12 items-start gap-3 sm:flex sm:flex-row sm:gap-6">
                             <div class="flex-shrink-0 flex justify-center sm:justify-start">
                                 <div class="relative" id="imageContainer">
-                                    @if($item->image)
-                                        <img id="imagePreview" src="{{ asset('storage/' . $item->image) }}" alt="{{ $item->design }}"
+                                    @if($primaryImagePath)
+                                        <img id="imagePreview" src="{{ asset('storage/' . preg_replace('/^storage\\//', '', ltrim($primaryImagePath, '/'))) }}" alt="{{ $item->design }}"
                                              class="rounded-xl object-cover bg-gray-100 shadow-sm w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36">
                                         <div id="imagePlaceholder" class="rounded-xl bg-gray-100 flex items-center justify-center shadow-sm w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 hidden">
                                             <span class="text-gray-400 text-xs">No image</span>
@@ -152,38 +155,48 @@
                             </div>
 
                             <div class="sm:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Change Item Image</label>
-                                <div class="flex items-center gap-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Item Images</label>
+                                @if(count($itemGallery))
+                                    <div class="item-gallery-existing-grid">
+                                        @foreach($itemGallery as $galleryIndex => $galleryPath)
+                                            <label class="item-gallery-existing-tile">
+                                                <img src="{{ asset('storage/' . preg_replace('/^storage\\//', '', ltrim($galleryPath, '/'))) }}" alt="Existing item image {{ $galleryIndex + 1 }}">
+                                                <span>{{ $galleryIndex === 0 ? 'Primary image' : 'Image ' . ($galleryIndex + 1) }}</span>
+                                                <input type="checkbox" name="remove_images[]" value="{{ $galleryPath }}">
+                                                <em>Remove</em>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                                        No images uploaded yet.
+                                    </div>
+                                @endif
+                                <div class="mt-3 flex items-center gap-4">
                                     <label class="flex-1 flex items-center justify-center px-4 py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 hover:border-amber-400 transition-colors">
-                                        <input type="file" name="image" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" class="hidden" id="imageFileInput">
+                                        <input type="file" name="images[]" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp,image/avif,image/bmp" multiple class="hidden" id="imageFileInput">
                                         <div class="text-center">
                                             <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                             </svg>
-                                            <p class="mt-1 text-sm text-gray-600"><span class="font-medium text-amber-600">Click to upload</span> new image</p>
+                                            <p class="mt-1 text-sm text-gray-600"><span class="font-medium text-amber-600">Click to upload</span> more images</p>
+                                            <p class="text-xs text-gray-500">Up to 4 total images. 5MB each.</p>
                                         </div>
                                     </label>
                                 </div>
                                 <div id="uploadPreviewWrap" class="mt-3 hidden">
                                     <p id="selectedFileName" class="text-sm text-amber-600 mb-2"></p>
-                                    <img id="uploadPreview" src="" alt="Selected image preview" class="rounded-lg object-cover border border-gray-200 w-full max-w-[200px] max-h-52">
+                                    <div id="uploadPreviewGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
                                 </div>
-                                @if($item->image)
-                                    <div class="mt-3">
-                                        <input type="hidden" name="remove_image" value="0" id="removeImage">
-                                        <button
-                                            type="button"
-                                            id="removeImageButton"
-                                            data-remove-image-state="0"
-                                            class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 12h8l1-12"/>
-                                            </svg>
-                                            <span id="removeImageButtonLabel">Delete current image</span>
-                                        </button>
-                                    </div>
-                                @endif
+                                @error('images')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                                @error('images.*')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                                @error('remove_images')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -524,9 +537,12 @@
             const stone = Number.parseFloat(document.getElementById('stone_weight').value) || 0;
             const net = Math.max(0, gross - stone);
             document.getElementById('net_weight_display').value = net.toFixed(3);
-            document.getElementById('summaryGross').textContent = gross > 0
-                ? gross.toFixed(3) + 'g / ' + net.toFixed(3) + 'g'
-                : '—';
+            const summaryGross = document.getElementById('summaryGross');
+            if (summaryGross) {
+                summaryGross.textContent = gross > 0
+                    ? gross.toFixed(3) + 'g / ' + net.toFixed(3) + 'g'
+                    : '—';
+            }
         }
 
         function refreshRetailerPricing() {
@@ -612,8 +628,8 @@
         }
 
         document.getElementById('imageFileInput')?.addEventListener('change', function (event) {
-            const file = event.target.files[0];
-            if (!file) {
+            const files = Array.from(event.target.files || []).slice(0, 4);
+            if (!files.length) {
                 return;
             }
 
@@ -621,22 +637,32 @@
             const placeholder = document.getElementById('imagePlaceholder');
             const fileName = document.getElementById('selectedFileName');
             const uploadWrap = document.getElementById('uploadPreviewWrap');
-            const uploadPreview = document.getElementById('uploadPreview');
+            const uploadPreviewGrid = document.getElementById('uploadPreviewGrid');
 
-            fileName.textContent = 'Selected: ' + file.name;
+            fileName.textContent = files.length === 1 ? 'Selected: ' + files[0].name : 'Selected: ' + files.length + ' images';
+            uploadPreviewGrid.innerHTML = '';
 
-            const reader = new FileReader();
-            reader.onload = function (loadEvent) {
-                preview.src = loadEvent.target.result;
-                preview.classList.remove('hidden');
-                uploadPreview.src = loadEvent.target.result;
-                uploadWrap.classList.remove('hidden');
-                setRemoveImageState(false);
-                if (placeholder) {
-                    placeholder.classList.add('hidden');
-                }
-            };
-            reader.readAsDataURL(file);
+            files.forEach(function (file, index) {
+                const reader = new FileReader();
+                reader.onload = function (loadEvent) {
+                    if (index === 0 && preview) {
+                        preview.src = loadEvent.target.result;
+                        preview.classList.remove('hidden');
+                        if (placeholder) {
+                            placeholder.classList.add('hidden');
+                        }
+                    }
+
+                    const tile = document.createElement('div');
+                    tile.className = 'item-gallery-preview-tile';
+                    tile.innerHTML = '<img src="' + loadEvent.target.result + '" alt="Selected item image ' + (index + 1) + '"><span>' + (index === 0 ? 'First new image' : 'New image ' + (index + 1)) + '</span>';
+                    uploadPreviewGrid.appendChild(tile);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            uploadWrap.classList.remove('hidden');
+            setRemoveImageState(false);
         });
 
         const removeButton = document.getElementById('removeImageButton');
@@ -714,13 +740,16 @@
             refreshRetailerPricing();
         }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeRetailerEditPage, { once: true });
-        } else {
-            initializeRetailerEditPage();
-        }
+        // Run immediately for this page render.
+        initializeRetailerEditPage();
 
-        document.addEventListener('turbo:load', initializeRetailerEditPage);
+        // Prevent stale per-page handlers from earlier Turbo visits from
+        // initializing the form with old inlined purity profile data.
+        if (window.__retailerEditTurboInitHandler) {
+            document.removeEventListener('turbo:load', window.__retailerEditTurboInitHandler);
+        }
+        window.__retailerEditTurboInitHandler = initializeRetailerEditPage;
+        document.addEventListener('turbo:load', window.__retailerEditTurboInitHandler);
 
         // ── Supplier picker helpers ────────────────────────────────────────────
 

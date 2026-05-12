@@ -16,7 +16,6 @@
     </x-page-header>
 
     <div class="content-inner max-w-[1380px] mx-auto ops-treatment-page jf-skeleton-host is-loading">
-        <x-app-alerts class="mb-6" />
 
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-1 ops-kpi-card">

@@ -494,15 +494,7 @@
 
     <div class="content-inner sub-status-page">
         <div class="sub-status-wrap">
-            @if(session('success'))
-                <div class="sub-alert success">{{ session('success') }}</div>
-            @endif
-
-            @if(session('error'))
-                <div class="sub-alert error">{{ session('error') }}</div>
-            @endif
-
-            <section class="sub-hero">
+<section class="sub-hero">
                 <div class="sub-hero-top">
                     <div>
                         <p class="sub-kicker">Current Plan</p>

@@ -115,7 +115,7 @@ class ShopEditionManagementController extends Controller
             if ($edition === ShopEdition::DHIRAN) {
                 \App\Models\Dhiran\DhiranSettings::withoutGlobalScope('shop')
                     ->where('shop_id', $shop->id)
-                    ->update(['is_enabled' => false]);
+                    ->update(['is_enabled' => '0']);
             }
 
             $this->audit->log(

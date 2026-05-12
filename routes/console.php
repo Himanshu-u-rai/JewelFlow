@@ -127,3 +127,8 @@ Schedule::command('cache:warm-shops')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('dhiran:accrue-interest')->daily();
 Schedule::command('dhiran:overdue-reminders')->daily();
 Schedule::command('dhiran:forfeiture-check')->daily();
+Schedule::command('platform:evaluate-alerts')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('platform:detect-fraud')->dailyAt('03:00');
+Schedule::command('storage:recompute-stats')->daily()->withoutOverlapping();
+Schedule::command('platform:archive-audit-logs')->monthly();
+Schedule::command('platform:check-shop-health')->dailyAt('06:00')->withoutOverlapping();

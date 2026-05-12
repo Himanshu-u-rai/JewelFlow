@@ -516,7 +516,6 @@
     <x-page-header title="Issue Bullion to Karigar" />
 
     <div class="content-inner job-create-shell">
-        <x-app-alerts class="mb-4" />
 
         <form method="POST" action="{{ route('job-orders.store') }}" x-data="jobOrderForm()" @keydown.escape.window="closeDropdowns()"
               @if($selectedKarigar)

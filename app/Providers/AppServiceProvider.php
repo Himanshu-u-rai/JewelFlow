@@ -37,11 +37,13 @@ use App\Policies\SchemePolicy;
 use App\Policies\VendorPolicy;
 use App\Models\CatalogPage;
 use App\Policies\CatalogPagePolicy;
+use App\Models\Platform\PlatformSetting;
 use App\Services\AdminImpersonationService;
 use App\Services\ShopPricingService;
 use App\Services\ReorderAlertService;
 use App\Services\TenantHealthService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -61,6 +63,8 @@ class AppServiceProvider extends ServiceProvider
         if (app()->environment('production')) {
             URL::forceScheme('https');
         }
+
+        $this->applySmtpFromDatabase();
 
         // Dotted ability names (e.g. "dhiran.pay", "invoices.create") are treated
         // as permission keys and resolved via User::hasPermission(). Returning
@@ -217,5 +221,47 @@ class AppServiceProvider extends ServiceProvider
             $health = app(TenantHealthService::class)->scores();
             $view->with('tenantHealth', $health);
         });
+    }
+
+    private function applySmtpFromDatabase(): void
+    {
+        try {
+            // Skip during migrations, CLI commands that run before DB is ready, etc.
+            if (!app()->bound('db') || !DB::connection()->getDatabaseName()) {
+                return;
+            }
+
+            $host = PlatformSetting::get('mail_host');
+
+            // Nothing stored yet — fall back to .env values entirely
+            if (!$host) {
+                return;
+            }
+
+            $mailer      = PlatformSetting::get('mail_mailer', 'smtp');
+            $port        = (int) PlatformSetting::get('mail_port', 587);
+            $username    = PlatformSetting::get('mail_username');
+            $password    = PlatformSetting::get('mail_password');
+            $encryption  = PlatformSetting::get('mail_encryption', 'tls');
+            $fromAddress = PlatformSetting::get('mail_from_address', config('mail.from.address'));
+            $fromName    = PlatformSetting::get('mail_from_name', config('mail.from.name'));
+
+            Config::set('mail.default', $mailer);
+            Config::set("mail.mailers.{$mailer}", [
+                'transport'  => $mailer,
+                'host'       => $host,
+                'port'       => $port,
+                'username'   => $username,
+                'password'   => $password,
+                'encryption' => $encryption,
+                'timeout'    => 30,
+            ]);
+            Config::set('mail.from.address', $fromAddress);
+            Config::set('mail.from.name', $fromName);
+        } catch (\Throwable $e) {
+            // Never crash the app if DB is unavailable during boot —
+            // fall back to .env mail config silently
+            \Illuminate\Support\Facades\Log::warning('AppServiceProvider: could not load SMTP config from DB: ' . $e->getMessage());
+        }
     }
 }

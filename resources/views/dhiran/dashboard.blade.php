@@ -76,7 +76,6 @@
     </x-page-header>
 
     <div class="content-inner dhiran-dash">
-        <x-app-alerts class="mb-6" />
 
         {{-- KPI Cards --}}
         <div class="dd-kpi-grid">

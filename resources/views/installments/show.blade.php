@@ -16,14 +16,7 @@
     </x-page-header>
 
     <div class="content-inner">
-        @if(session('success'))
-            <div class="bg-green-50 border border-green-200 text-green-800 rounded-lg p-4 mb-6">{{ session('success') }}</div>
-        @endif
-        @if(session('error'))
-            <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">{{ session('error') }}</div>
-        @endif
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <div class="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6 installments-plan-card">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Plan Details</h3>
                 <dl class="grid grid-cols-2 md:grid-cols-4 gap-4 installments-plan-grid">

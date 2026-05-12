@@ -17,7 +17,6 @@
     </x-page-header>
 
     <div class="content-inner">
-        <x-app-alerts class="mb-6" />
 
         {{-- Filters --}}
         <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-6">

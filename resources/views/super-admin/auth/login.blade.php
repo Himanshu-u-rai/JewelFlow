@@ -11,13 +11,7 @@
         <h1 class="text-xl font-semibold">JewelFlow Super Admin</h1>
         <p class="text-sm text-slate-400 mt-1">Platform control tower login</p>
 
-        @if($errors->any())
-            <div class="mt-4 rounded-md border border-rose-300 bg-rose-50 text-rose-700 px-3 py-2 text-sm">
-                {{ $errors->first() }}
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('admin.login.store') }}" class="mt-5 space-y-4">
+<form method="POST" action="{{ route('admin.login.store') }}" class="mt-5 space-y-4">
             @csrf
             <div>
                 <label class="block text-sm mb-1">Mobile Number</label>

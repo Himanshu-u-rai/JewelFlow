@@ -233,7 +233,6 @@
     </x-page-header>
 
     <div class="content-inner repairs-management-page">
-        <x-app-alerts class="mb-6" />
         @php
             $receivedCount   = ($statusCounts['received']   ?? 0) + ($statusCounts['pending'] ?? 0);
             $inRepairCount   = $statusCounts['in_repair']   ?? 0;

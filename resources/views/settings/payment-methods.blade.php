@@ -430,7 +430,6 @@
 <x-page-header title="{{ __('Settings') }}" />
 
 <div class="content-inner settings-shell">
-    <x-app-alerts class="mb-4" />
 
     <div class="settings-layout">
         {{-- Sidebar nav (mirrors settings.blade.php) --}}

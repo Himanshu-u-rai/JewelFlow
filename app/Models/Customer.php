@@ -21,13 +21,22 @@ class Customer extends Model
         'wedding_date',
         'notes',
         'loyalty_points',
+        // Compliance fields
+        'pan',
+        'id_number',
+        'compliance_verified_at',
+        'compliance_verified_by',
+        'consent_given_at',
+        'consent_given_by',
     ];
 
     protected $casts = [
-        'date_of_birth' => 'date',
-        'anniversary_date' => 'date',
-        'wedding_date' => 'date',
-        'loyalty_points' => 'integer',
+        'date_of_birth'          => 'date',
+        'anniversary_date'       => 'date',
+        'wedding_date'           => 'date',
+        'loyalty_points'         => 'integer',
+        'compliance_verified_at' => 'datetime',
+        'consent_given_at'       => 'datetime',
     ];
 
     protected static function booted(): void
@@ -89,6 +98,42 @@ class Customer extends Model
     public function dhiranLoans(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(\App\Models\Dhiran\DhiranLoan::class);
+    }
+
+    public function kycDocuments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(KycDocument::class);
+    }
+
+    public function complianceSnapshots(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(InvoiceComplianceSnapshot::class);
+    }
+
+    public function complianceAlerts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ComplianceAlert::class);
+    }
+
+    public function hasPan(): bool
+    {
+        return !empty($this->pan);
+    }
+
+    public function isComplianceVerified(): bool
+    {
+        return !empty($this->compliance_verified_at);
+    }
+
+    public function complianceStatus(): string
+    {
+        if ($this->isComplianceVerified()) {
+            return 'compliant';
+        }
+        if ($this->hasPan()) {
+            return 'pending_verification';
+        }
+        return 'missing_pan';
     }
 
     public function addLoyaltyPoints(int $points, ?int $invoiceId = null, string $description = 'Points earned', $expiresAt = null): LoyaltyTransaction

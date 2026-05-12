@@ -23,6 +23,7 @@ class Item extends Model
         'barcode',
         'design',
         'image',
+        'images',
         'category',
         'metal_type',
         'sub_category',
@@ -70,6 +71,7 @@ class Item extends Model
         'selling_price' => 'decimal:2',
         'hallmark_date' => 'date',
         'pricing_review_required' => 'boolean',
+        'images' => 'array',
     ];
 
     public function product()
@@ -135,5 +137,22 @@ class Item extends Model
         }
 
         return $value . 'K';
+    }
+
+    public function getImageGalleryAttribute(): array
+    {
+        $images = is_array($this->images) ? $this->images : [];
+
+        if (filled($this->image)) {
+            array_unshift($images, $this->image);
+        }
+
+        return collect($images)
+            ->map(fn ($path) => is_string($path) ? trim($path) : null)
+            ->filter()
+            ->unique()
+            ->take(4)
+            ->values()
+            ->all();
     }
 }

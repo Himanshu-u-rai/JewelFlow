@@ -37,6 +37,7 @@ class Shop extends Model
         'gst_rate',
         'wastage_recovery_percent',
         'catalog_slug',
+        'shop_code',
         'access_mode',
         'is_active',
         'deactivated_at',
@@ -191,6 +192,21 @@ class Shop extends Model
      */
     protected static function booted(): void
     {
+        static::saving(function (Shop $shop): void {
+            if (!empty($shop->owner_email)) {
+                $shop->owner_email = strtolower(trim($shop->owner_email));
+            }
+            if (!empty($shop->shop_email)) {
+                $shop->shop_email = strtolower(trim($shop->shop_email));
+            }
+        });
+
+        static::creating(function (Shop $shop): void {
+            if (empty($shop->shop_code)) {
+                $shop->shop_code = \App\Services\BusinessIdentifierService::nextShopCode();
+            }
+        });
+
         static::created(function (Shop $shop): void {
             if (in_array($shop->shop_type, ['retailer', 'manufacturer', 'dhiran'], true)) {
                 ShopEditionAssignment::firstOrCreate(

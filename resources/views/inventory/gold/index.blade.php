@@ -15,13 +15,7 @@
     </x-page-header>
 
     <div class="content-inner">
-        @if(session('success'))
-            <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-                {{ session('success') }}
-            </div>
-        @endif
-
-        <!-- Summary Card -->
+<!-- Summary Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
             <div class="flex items-center justify-between">
                 <div>

@@ -72,6 +72,23 @@ class InvoiceAccountingService
         ]);
         $invoice->save();
 
+        // Compliance snapshot — frozen record of customer data at sale time.
+        // Must run AFTER save() so invoice->total is populated.
+        if ($invoice->customer_id) {
+            $customer = \App\Models\Customer::find($invoice->customer_id);
+            if ($customer) {
+                try {
+                    $complianceService = app(\App\Services\ComplianceService::class);
+                    $complianceService->createSnapshot($invoice, $customer);
+                    // Non-blocking split detection — runs after snapshot
+                    $complianceService->detectSplitTransaction($invoice, $customer);
+                } catch (\Throwable $e) {
+                    // Compliance snapshot is non-critical — log and continue
+                    \Log::warning('Compliance snapshot failed for invoice ' . $invoice->id . ': ' . $e->getMessage());
+                }
+            }
+        }
+
         AccountingAuditService::log([
             'shop_id' => $invoice->shop_id,
             'action' => 'invoice_finalized',

@@ -8,6 +8,7 @@ use App\Models\Platform\ShopSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SubscriptionManagementController extends Controller
 {
@@ -47,5 +48,37 @@ class SubscriptionManagementController extends Controller
         $allPlans = Plan::orderBy('name')->get();
 
         return view('super-admin.subscriptions.index', compact('subscriptions', 'stats', 'allPlans'));
+    }
+
+    public function export(): StreamedResponse
+    {
+        $filename = 'subscriptions-' . now()->format('Y-m-d') . '.csv';
+
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'ID', 'Shop', 'Plan', 'Status', 'Billing Cycle',
+                'Price Paid', 'Starts At', 'Ends At', 'Created At',
+            ]);
+
+            ShopSubscription::with(['shop:id,name', 'plan:id,name'])
+                ->orderBy('id')
+                ->each(function (ShopSubscription $sub) use ($handle) {
+                    fputcsv($handle, [
+                        $sub->id,
+                        $sub->shop?->name,
+                        $sub->plan?->name,
+                        $sub->status,
+                        $sub->billing_cycle,
+                        $sub->price_paid,
+                        $sub->starts_at,
+                        $sub->ends_at,
+                        $sub->created_at?->toDateTimeString(),
+                    ]);
+                }, 500);
+
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv']);
     }
 }

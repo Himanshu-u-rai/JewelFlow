@@ -235,23 +235,7 @@
             </div>
         </div>
 
-        @if($errors->any())
-            <div class="mb-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                {{ $errors->first() }}
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="mb-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                {{ session('error') }}
-            </div>
-        @endif
-        @if(session('success'))
-            <div class="mb-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-                {{ session('success') }}
-            </div>
-        @endif
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
             {{-- Active editions with revoke controls --}}
             <div class="rounded-lg border border-slate-700 bg-slate-900/40 p-3">
                 <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Active</div>
@@ -573,5 +557,90 @@
                 <a href="{{ route('admin.invoices.index', ['shop' => $shop->id]) }}" class="text-sky-400 hover:underline">Invoices</a>.
             </div>
         @endif
+    </div>
+
+    {{-- ── Storage Usage ────────────────────────────────────── --}}
+    <div class="admin-panel p-4 mt-6">
+        <h3 class="font-semibold text-white mb-4">Storage Usage</h3>
+        @if($storageStat)
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="admin-kpi">
+                    <div class="admin-kpi__label">Total Files</div>
+                    <div class="admin-kpi__value text-2xl">{{ number_format($storageStat->file_count) }}</div>
+                </div>
+                <div class="admin-kpi">
+                    <div class="admin-kpi__label">Total Size</div>
+                    <div class="admin-kpi__value text-2xl">{{ $storageStat->humanSize() }}</div>
+                </div>
+            </div>
+
+            @if($storageStat->breakdown)
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
+                    <table class="w-full text-xs admin-table">
+                        <thead class="bg-slate-800/70 text-slate-300">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Directory</th>
+                                <th class="px-3 py-2 text-right">Files</th>
+                                <th class="px-3 py-2 text-right">Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($storageStat->breakdown as $dir => $info)
+                                <tr class="border-t border-slate-800 text-slate-200">
+                                    <td class="px-3 py-2 font-mono">{{ $dir }}/{{ $shop->id }}</td>
+                                    <td class="px-3 py-2 text-right">{{ number_format($info['files'] ?? 0) }}</td>
+                                    <td class="px-3 py-2 text-right text-slate-400">
+                                        @php
+                                            $b = $info['bytes'] ?? 0;
+                                            if ($b >= 1073741824) echo number_format($b/1073741824, 2).' GB';
+                                            elseif ($b >= 1048576) echo number_format($b/1048576, 2).' MB';
+                                            elseif ($b >= 1024) echo number_format($b/1024, 2).' KB';
+                                            else echo $b.' B';
+                                        @endphp
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
+            <p class="text-xs text-slate-500 mt-3">
+                Last computed: {{ $storageStat->computed_at?->format('d M Y, H:i') ?? '—' }}
+            </p>
+        @else
+            <p class="text-sm text-slate-400">Not yet computed. Runs daily.</p>
+        @endif
+    </div>
+
+    {{-- GDPR / Data Controls --}}
+    <div class="admin-panel p-4 mt-6">
+        <h3 class="font-semibold text-white mb-4">Data Controls (GDPR)</h3>
+        <div class="flex flex-wrap gap-4">
+            {{-- Export --}}
+            <form method="POST" action="{{ route('admin.shops.gdpr-export', $shop) }}">
+                @csrf
+                <div class="mb-2">
+                    <input type="text" name="reason" required placeholder="Reason for export (required)" class="admin-input text-xs w-72">
+                </div>
+                <button type="submit" onclick="return confirm('Export all shop data as JSON?')"
+                        class="px-3 py-1.5 rounded bg-sky-700 hover:bg-sky-600 text-white text-xs font-medium">
+                    Export Data (JSON)
+                </button>
+            </form>
+
+            {{-- Schedule Deletion --}}
+            <form method="POST" action="{{ route('admin.shops.gdpr-delete', $shop) }}">
+                @csrf
+                <div class="mb-2">
+                    <input type="text" name="reason" required placeholder="Reason for deletion (required)" class="admin-input text-xs w-72">
+                </div>
+                <button type="submit" onclick="return confirm('WARNING: This will suspend the shop and schedule data deletion after 30 days. Continue?')"
+                        class="px-3 py-1.5 rounded bg-rose-700 hover:bg-rose-600 text-white text-xs font-medium">
+                    Schedule GDPR Deletion
+                </button>
+            </form>
+        </div>
+        <p class="text-xs text-slate-500 mt-3">Export generates a JSON snapshot of all customer, invoice, and user data. Deletion suspends the shop and anonymises PII after a 30-day grace period.</p>
     </div>
 </x-super-admin.layout>

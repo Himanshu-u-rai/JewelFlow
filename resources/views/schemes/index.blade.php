@@ -852,11 +852,7 @@
     </x-page-header>
 
     <div class="content-inner ops-treatment-page schemes-index-page">
-        @if(session('success'))
-            <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{{ session('success') }}</div>
-        @endif
-
-        <div class="schemes-stats-grid">
+<div class="schemes-stats-grid">
             <div class="schemes-stat-card">
                 <div class="schemes-stat-icon">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

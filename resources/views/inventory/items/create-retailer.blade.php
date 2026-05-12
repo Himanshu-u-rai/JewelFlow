@@ -130,16 +130,23 @@
                             </div>
 
                             <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Item Image</label>
-                                <input type="file" name="image" id="image" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Item Images</label>
+                                <input type="file" name="images[]" id="images" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp,image/avif,image/bmp"
+                                       multiple
                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
-                                <p class="mt-1 text-xs text-gray-500">Optional. JPG, PNG, GIF, or WEBP up to 5MB.</p>
+                                <p class="mt-1 text-xs text-gray-500">Optional. Select up to 4 images. JPG, PNG, GIF, WEBP, AVIF, or BMP up to 5MB each.</p>
                                 <div class="mt-3">
                                     <div id="imagePreviewPlaceholder" class="rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-xs" style="width: 120px; height: 120px;">
-                                        No image selected
+                                        No images selected
                                     </div>
-                                    <img id="imagePreview" src="" alt="Selected item image" class="rounded-lg object-cover bg-gray-100 border border-gray-200 hidden" style="width: 120px; height: 120px;">
+                                    <div id="imagePreviewGrid" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
                                 </div>
+                                @error('images')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                                @error('images.*')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                                 @error('image')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -726,27 +733,45 @@
             document.getElementById('summarySelling').textContent = formatCurrency(selling);
         }
 
-        document.getElementById('image')?.addEventListener('change', function (event) {
-            const file = event.target.files[0];
-            const preview = document.getElementById('imagePreview');
-            const placeholder = document.getElementById('imagePreviewPlaceholder');
-
-            if (!file) {
-                preview.classList.add('hidden');
-                placeholder.classList.remove('hidden');
+        function initializeRetailerCreatePage() {
+            const form = document.getElementById('createItemForm');
+            if (!form || form.dataset.retailerCreateBooted === '1') {
                 return;
             }
+            form.dataset.retailerCreateBooted = '1';
 
-            const reader = new FileReader();
-            reader.onload = function (loadEvent) {
-                preview.src = loadEvent.target.result;
-                preview.classList.remove('hidden');
-                placeholder.classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        });
+            const imageInput = document.getElementById('images');
+            if (imageInput && imageInput.dataset.galleryPreviewBound !== '1') {
+                imageInput.addEventListener('change', function (event) {
+                    const files = Array.from(event.target.files || []).slice(0, 4);
+                    const previewGrid = document.getElementById('imagePreviewGrid');
+                    const placeholder = document.getElementById('imagePreviewPlaceholder');
 
-        document.addEventListener('DOMContentLoaded', function () {
+                    previewGrid.innerHTML = '';
+
+                    if (!files.length) {
+                        previewGrid.classList.add('hidden');
+                        placeholder.classList.remove('hidden');
+                        return;
+                    }
+
+                    files.forEach(function (file, index) {
+                        const reader = new FileReader();
+                        reader.onload = function (loadEvent) {
+                            const tile = document.createElement('div');
+                            tile.className = 'item-gallery-preview-tile';
+                            tile.innerHTML = '<img src="' + loadEvent.target.result + '" alt="Selected item image ' + (index + 1) + '"><span>' + (index === 0 ? 'Primary' : 'Image ' + (index + 1)) + '</span>';
+                            previewGrid.appendChild(tile);
+                        };
+                        reader.readAsDataURL(file);
+                    });
+
+                    previewGrid.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                });
+                imageInput.dataset.galleryPreviewBound = '1';
+            }
+
             const watchedIds = [
                 'metal_type',
                 'purity',
@@ -824,7 +849,18 @@
                     if (el) refreshCreateDropdown(el);
                 });
             });
-        });
+        }
+
+        // Run immediately for current render.
+        initializeRetailerCreatePage();
+
+        // Keep a single live Turbo handler so stale page closures do not
+        // re-initialize this form with old inlined data.
+        if (window.__retailerCreateTurboInitHandler) {
+            document.removeEventListener('turbo:load', window.__retailerCreateTurboInitHandler);
+        }
+        window.__retailerCreateTurboInitHandler = initializeRetailerCreatePage;
+        document.addEventListener('turbo:load', window.__retailerCreateTurboInitHandler);
 
         // ── Supplier picker helpers ────────────────────────────────────────────
 

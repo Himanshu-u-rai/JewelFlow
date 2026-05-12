@@ -195,16 +195,16 @@
         {{-- View Toggle for Retailers --}}
         @if($isRetailer)
         <div class="mb-6">
-            <div class="ui-toggle-strip items-view-toggle inline-flex flex-wrap items-center gap-1">
-            <button @click="view = 'items'" :class="view === 'items' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors">
+            <div class="ui-toggle-strip items-view-toggle inline-flex flex-wrap items-center gap-1" role="tablist" aria-label="Stock views">
+            <button type="button" role="tab" @click="view = 'items'" :aria-selected="view === 'items'" :aria-pressed="view === 'items'" :class="{ 'is-active': view === 'items' }" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                 Stock Items
             </button>
-            <button @click="view = 'aging'" :class="view === 'aging' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors">
+            <button type="button" role="tab" @click="view = 'aging'" :aria-selected="view === 'aging'" :aria-pressed="view === 'aging'" :class="{ 'is-active': view === 'aging' }" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 Stock Aging
             </button>
-            <button @click="view = 'sellers'" :class="view === 'sellers' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors">
+            <button type="button" role="tab" @click="view = 'sellers'" :aria-selected="view === 'sellers'" :aria-pressed="view === 'sellers'" :class="{ 'is-active': view === 'sellers' }" class="items-view-tab inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                 Sell Trend
             </button>
@@ -213,7 +213,7 @@
         @endif
 
         {{-- ==================== STOCK ITEMS VIEW ==================== --}}
-        <div x-show="view === 'items'" x-cloak>
+        <div x-show="view === 'items'" x-cloak class="items-stock-register {{ $isRetailer ? 'items-stock-register--retailer' : '' }}">
         <x-app-alerts class="mb-6" />
 
         <!-- Stats Cards -->
@@ -480,11 +480,11 @@
                                 <td class="px-6 py-4 text-right text-sm text-gray-700">{{ number_format($item->gross_weight, 3) }} g</td>
                                 <td class="px-6 py-4 text-right text-sm text-gray-700">{{ number_format($item->net_metal_weight, 3) }} g</td>
                                 @if($isRetailer)
-                                    <td class="px-6 py-4 text-right text-sm font-semibold text-amber-600">
+                                    <td class="px-6 py-4 text-right items-stock-price-cell">
                                         @if(($stockValueDisplay ?? 'total') === 'per_gram' && $item->net_metal_weight > 0)
-                                            ₹{{ number_format($item->selling_price / $item->net_metal_weight, 0) }}<span class="text-xs text-gray-400 font-normal">/g</span>
+                                            <span class="items-stock-price-value">₹{{ number_format($item->selling_price / $item->net_metal_weight, 0) }}</span><span class="items-stock-price-unit">/g</span>
                                         @else
-                                            ₹{{ number_format($item->selling_price, 2) }}
+                                            <span class="items-stock-price-value">₹{{ number_format($item->selling_price, 2) }}</span>
                                         @endif
                                     </td>
                                 @else
@@ -547,6 +547,82 @@
                     </tbody>
                 </table>
             </div>
+
+            @if($isRetailer)
+                <div class="items-stock-mobile-list" aria-label="Stock items mobile list">
+                    @forelse($items as $item)
+                        @php
+                            $mobilePrice = (($stockValueDisplay ?? 'total') === 'per_gram' && $item->net_metal_weight > 0)
+                                ? '₹' . number_format($item->selling_price / $item->net_metal_weight, 0) . '/g'
+                                : '₹' . number_format($item->selling_price, 2);
+                            $statusClass = $item->status === 'in_stock'
+                                ? 'is-in-stock'
+                                : ($item->status === 'sold' ? 'is-sold' : 'is-neutral');
+                            $statusLabel = $item->status === 'in_stock'
+                                ? 'In Stock'
+                                : ($item->status === 'sold' ? 'Sold' : ucfirst($item->status));
+                        @endphp
+                        <article class="items-stock-mobile-card">
+                            <div class="items-stock-mobile-card-main">
+                                @if($item->image)
+                                    <img src="{{ asset('storage/' . $item->image) }}" alt="{{ $item->design }}" class="items-stock-mobile-thumb">
+                                @else
+                                    <div class="items-stock-mobile-thumb items-stock-mobile-thumb--empty" aria-hidden="true">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>
+                                    </div>
+                                @endif
+                                <div class="items-stock-mobile-identity">
+                                    <div class="items-stock-mobile-title-row">
+                                        <h3>{{ $item->design ?: 'N/A' }}</h3>
+                                        <span class="items-stock-mobile-status {{ $statusClass }}">{{ $statusLabel }}</span>
+                                    </div>
+                                    <p class="items-stock-mobile-barcode">{{ $item->barcode }}</p>
+                                    <p class="items-stock-mobile-meta">
+                                        {{ $item->category }}
+                                        @if($item->metal_type)
+                                            <span>• {{ ucfirst($item->metal_type) }}</span>
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="items-stock-mobile-metrics">
+                                <div>
+                                    <span>Purity</span>
+                                    <strong>{{ $item->purity_label }}</strong>
+                                </div>
+                                <div>
+                                    <span>Gross Wt</span>
+                                    <strong>{{ number_format($item->gross_weight, 3) }} g</strong>
+                                </div>
+                                <div>
+                                    <span>Net Metal</span>
+                                    <strong>{{ number_format($item->net_metal_weight, 3) }} g</strong>
+                                </div>
+                                <div class="items-stock-mobile-price">
+                                    <span>{{ ($stockValueDisplay ?? 'total') === 'per_gram' ? 'Rate' : 'Price' }}</span>
+                                    <strong>{{ $mobilePrice }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="items-stock-mobile-actions">
+                                <a href="{{ route('inventory.items.show', $item) }}" class="items-stock-mobile-action items-stock-mobile-action--view">View</a>
+                                @if($item->status === 'in_stock')
+                                    <a href="{{ route('inventory.items.edit', $item) }}" class="items-stock-mobile-action items-stock-mobile-action--edit">Edit</a>
+                                @endif
+                            </div>
+                        </article>
+                    @empty
+                        <div class="items-stock-mobile-empty">
+                            <svg class="w-10 h-10 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                            <p>No items found</p>
+                            <a href="{{ route('inventory.items.create') }}">Create First Item</a>
+                        </div>
+                    @endforelse
+                </div>
+            @endif
             
             @if($items->hasPages())
                 <div class="px-6 py-4 border-t border-gray-200">
@@ -558,7 +634,7 @@
 
         {{-- ==================== STOCK AGING VIEW (Retailers Only) ==================== --}}
         @if($isRetailer && $stockAgingData)
-        <div x-show="view === 'aging'" x-cloak>
+        <div x-show="view === 'aging'" x-cloak class="items-analytics-tab items-aging-register">
             @php
                 $buckets = $stockAgingData;
                 $agingSummary = $buckets['__summary'] ?? ['avg_days' => 0, 'aged_pct' => 0, 'aged_count' => 0];
@@ -639,6 +715,13 @@
             @php $slowItems = collect($buckets['91-180 days']['items'] ?? [])->merge($buckets['180+ days']['items'] ?? []); @endphp
             @if($slowItems->count())
             <div class="items-table-card items-table-card--slow items-aging-slow-card">
+                <div class="items-analytics-card-head">
+                    <div>
+                        <h3 class="items-analytics-card-title">Slow Moving Stock</h3>
+                        <p class="items-analytics-card-subtitle">Items above 90 days in stock, limited to the first 50 records.</p>
+                    </div>
+                    <span class="items-analytics-card-pill">{{ number_format($slowItems->count()) }} flagged</span>
+                </div>
                 <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--slow">
                     <table class="w-full items-data-table items-data-table--slow">
                         <thead class="bg-gray-50 border-b border-gray-200">
@@ -669,6 +752,35 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="items-aging-mobile-list" aria-label="Slow moving stock mobile list">
+                    @foreach($slowItems->take(50) as $sItem)
+                        @php
+                            $daysInStock = $sItem->created_at->diffInDays(now());
+                            $agingPrice = (($stockValueDisplay ?? 'total') === 'per_gram' && $sItem->net_metal_weight > 0)
+                                ? '₹' . number_format($sItem->selling_price / $sItem->net_metal_weight, 0) . '/g'
+                                : '₹' . number_format($sItem->selling_price, 2);
+                        @endphp
+                        <article class="items-aging-mobile-card {{ $daysInStock > 180 ? 'is-critical' : 'is-risk' }}">
+                            <div class="items-aging-mobile-head">
+                                <div>
+                                    <h3>{{ $sItem->barcode }}</h3>
+                                    <p>{{ $sItem->category }}{{ $sItem->sub_category ? ' · ' . $sItem->sub_category : '' }}</p>
+                                </div>
+                                <span>{{ $daysInStock }}d</span>
+                            </div>
+                            <div class="items-aging-mobile-metrics">
+                                <div>
+                                    <span>{{ ($stockValueDisplay ?? 'total') === 'per_gram' ? 'Rate' : 'Price' }}</span>
+                                    <strong>{{ $agingPrice }}</strong>
+                                </div>
+                                <div>
+                                    <span>Bucket</span>
+                                    <strong>{{ $daysInStock > 180 ? '180+ days' : '91-180 days' }}</strong>
+                                </div>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
             </div>
             @endif
         </div>
@@ -676,7 +788,7 @@
 
         {{-- ==================== BEST & WORST SELLERS VIEW (Retailers Only) ==================== --}}
         @if($isRetailer && $sellersData)
-        <div x-show="view === 'sellers'" x-cloak>
+        <div x-show="view === 'sellers'" x-cloak class="items-analytics-tab items-sellers-register">
             @php
                 $best = $sellersData['best'];
                 $worst = $sellersData['worst'];
@@ -762,11 +874,14 @@
                 </section>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="items-sellers-tables-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {{-- Best Sellers by Category --}}
                 <div class="items-table-card items-table-card--best-cat items-seller-table-card">
-                    <div class="p-4 border-b border-gray-200">
-                        <h3 class="items-seller-table-title">Best Sellers — by Category</h3>
+                    <div class="p-4 border-b border-gray-200 items-seller-table-head">
+                        <div>
+                            <h3 class="items-seller-table-title">Best Sellers — by Category</h3>
+                            <p class="items-seller-table-subtitle">Top category movement for the selected period.</p>
+                        </div>
                     </div>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
                         <table class="w-full items-data-table items-data-table--sellers">
@@ -792,12 +907,40 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="items-seller-mobile-list" aria-label="Best sellers by category mobile list">
+                        @forelse($best['by_category'] as $i => $row)
+                            <article class="items-seller-mobile-card is-best">
+                                <div class="items-seller-mobile-head">
+                                    <span>#{{ $i + 1 }}</span>
+                                    <div>
+                                        <h4>{{ $row['category'] ?? '—' }}</h4>
+                                        <p>Best seller category</p>
+                                    </div>
+                                </div>
+                                <div class="items-seller-mobile-metrics">
+                                    <div>
+                                        <span>Sold</span>
+                                        <strong>{{ number_format($row['sold_count'] ?? 0) }}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Revenue</span>
+                                        <strong>₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</strong>
+                                    </div>
+                                </div>
+                            </article>
+                        @empty
+                            <div class="items-seller-mobile-empty">No sales data in this period.</div>
+                        @endforelse
+                    </div>
                 </div>
 
                 {{-- Best Sellers by Sub-Category --}}
                 <div class="items-table-card items-table-card--best-sub items-seller-table-card">
-                    <div class="p-4 border-b border-gray-200">
-                        <h3 class="items-seller-table-title">Best Sellers — by Sub-Category</h3>
+                    <div class="p-4 border-b border-gray-200 items-seller-table-head">
+                        <div>
+                            <h3 class="items-seller-table-title">Best Sellers — by Sub-Category</h3>
+                            <p class="items-seller-table-subtitle">More specific movement inside categories.</p>
+                        </div>
                     </div>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
                         <table class="w-full items-data-table items-data-table--sellers">
@@ -825,12 +968,40 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="items-seller-mobile-list" aria-label="Best sellers by sub-category mobile list">
+                        @forelse($best['by_sub_category'] as $i => $row)
+                            <article class="items-seller-mobile-card is-sub">
+                                <div class="items-seller-mobile-head">
+                                    <span>#{{ $i + 1 }}</span>
+                                    <div>
+                                        <h4>{{ $row['sub_category'] ?? '—' }}</h4>
+                                        <p>{{ $row['category'] ?? '—' }}</p>
+                                    </div>
+                                </div>
+                                <div class="items-seller-mobile-metrics">
+                                    <div>
+                                        <span>Sold</span>
+                                        <strong>{{ number_format($row['sold_count'] ?? 0) }}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Revenue</span>
+                                        <strong>₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</strong>
+                                    </div>
+                                </div>
+                            </article>
+                        @empty
+                            <div class="items-seller-mobile-empty">No data.</div>
+                        @endforelse
+                    </div>
                 </div>
 
                 {{-- Worst Sellers --}}
                 <div class="lg:col-span-2 items-table-card items-table-card--worst items-seller-table-card">
-                    <div class="p-4 border-b border-gray-200">
-                        <h3 class="items-seller-table-title">Worst Sellers — Lowest Movement Categories</h3>
+                    <div class="p-4 border-b border-gray-200 items-seller-table-head">
+                        <div>
+                            <h3 class="items-seller-table-title">Worst Sellers — Lowest Movement Categories</h3>
+                            <p class="items-seller-table-subtitle">Categories that may need promotion or pricing review.</p>
+                        </div>
                     </div>
                     <div class="overflow-x-auto ui-table-shell items-table-shell items-table-shell--sellers">
                         <table class="w-full items-data-table items-data-table--sellers">
@@ -855,6 +1026,31 @@
                                 @endforelse
                             </tbody>
                         </table>
+                    </div>
+                    <div class="items-seller-mobile-list items-seller-mobile-list--wide" aria-label="Worst sellers mobile list">
+                        @forelse($worst as $i => $row)
+                            <article class="items-seller-mobile-card is-worst">
+                                <div class="items-seller-mobile-head">
+                                    <span>#{{ $i + 1 }}</span>
+                                    <div>
+                                        <h4>{{ $row['category'] ?? '—' }}</h4>
+                                        <p>Lowest movement category</p>
+                                    </div>
+                                </div>
+                                <div class="items-seller-mobile-metrics">
+                                    <div>
+                                        <span>Items Sold</span>
+                                        <strong>{{ number_format($row['sold_count'] ?? 0) }}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Revenue</span>
+                                        <strong>₹{{ number_format($row['total_revenue'] ?? 0, 0) }}</strong>
+                                    </div>
+                                </div>
+                            </article>
+                        @empty
+                            <div class="items-seller-mobile-empty">No sales data in this period.</div>
+                        @endforelse
                     </div>
                 </div>
             </div>

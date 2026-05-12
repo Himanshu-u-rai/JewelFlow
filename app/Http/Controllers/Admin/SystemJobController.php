@@ -21,6 +21,17 @@ class SystemJobController extends Controller
 
     public function index(Request $request): View
     {
+        // Per-queue summary counts
+        $queueStats = DB::table('jobs')
+            ->select('queue',
+                DB::raw('count(*) as total'),
+                DB::raw('sum(case when reserved_at is not null then 1 else 0 end) as processing'),
+                DB::raw('sum(case when reserved_at is null then 1 else 0 end) as pending')
+            )
+            ->groupBy('queue')
+            ->orderBy('queue')
+            ->get();
+
         $jobs = DB::table('jobs')
             ->orderByDesc('id')
             ->limit(50)
@@ -33,6 +44,10 @@ class SystemJobController extends Controller
             ->get()
             ->map(fn ($job) => $this->mapFailedJob($job));
 
+        $totalPending    = $queueStats->sum('pending');
+        $totalProcessing = $queueStats->sum('processing');
+        $totalFailed     = DB::table('failed_jobs')->count();
+
         $admin = auth('platform_admin')->user();
         if ($admin) {
             $this->audit->log(
@@ -41,16 +56,47 @@ class SystemJobController extends Controller
                 PlatformAdmin::class,
                 $admin->id,
                 null,
-                ['queued' => $jobs->count(), 'failed' => $failedJobs->count()],
+                ['pending' => $totalPending, 'processing' => $totalProcessing, 'failed' => $totalFailed],
                 null,
                 $request
             );
         }
 
         return view('super-admin.system.jobs.index', [
-            'jobs' => $jobs,
-            'failedJobs' => $failedJobs,
+            'jobs'            => $jobs,
+            'failedJobs'      => $failedJobs,
+            'queueStats'      => $queueStats,
+            'totalPending'    => $totalPending,
+            'totalProcessing' => $totalProcessing,
+            'totalFailed'     => $totalFailed,
         ]);
+    }
+
+    public function retryAll(Request $request): RedirectResponse
+    {
+        Artisan::call('queue:retry', ['id' => ['all']]);
+
+        $admin = auth('platform_admin')->user();
+        if ($admin) {
+            $this->audit->log($admin, 'admin.jobs_retry_all', PlatformAdmin::class, $admin->id,
+                null, [], 'Retried all failed jobs', $request);
+        }
+
+        return back()->with('success', 'All failed jobs queued for retry.');
+    }
+
+    public function flushFailed(Request $request): RedirectResponse
+    {
+        $count = DB::table('failed_jobs')->count();
+        DB::table('failed_jobs')->truncate();
+
+        $admin = auth('platform_admin')->user();
+        if ($admin) {
+            $this->audit->log($admin, 'admin.jobs_flushed', PlatformAdmin::class, $admin->id,
+                null, ['flushed_count' => $count], 'Flushed all failed jobs', $request);
+        }
+
+        return back()->with('success', "{$count} failed job(s) permanently removed.");
     }
 
     public function show(int $id, Request $request): View

@@ -221,7 +221,6 @@
     <x-page-header title="Add Bullion to Vault" subtitle="Record a fresh purchase, buyback, or opening stock entry" />
 
     <div class="content-inner vault-lot-shell">
-        <x-app-alerts class="mb-4" />
 
         <form method="POST" action="{{ route('vault.lots.store') }}"
               x-data="{ gross: 0, purity: 22, costPerGram: 0, source: 'purchase', metalType: 'gold',

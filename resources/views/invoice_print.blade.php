@@ -387,8 +387,9 @@
                 @endif
                 <div class="kv"><div class="k">Mobile</div><div class="v">: {{ $customer?->mobile ?: '—' }}</div></div>
                 @if($showIdPan)
-                <div class="kv"><div class="k">ID</div><div class="v">: {{ $customer?->id_number ?: '—' }}</div></div>
-                <div class="kv"><div class="k">PAN</div><div class="v">: {{ $customer?->pan ?: '—' }}</div></div>
+                @php $snap = $invoice->complianceSnapshot; @endphp
+                <div class="kv"><div class="k">ID</div><div class="v">: {{ ($snap?->snapshot_id_number ?: $customer?->id_number) ?: '—' }}</div></div>
+                <div class="kv"><div class="k">PAN</div><div class="v">: {{ ($snap?->snapshot_pan ?: $customer?->pan) ?: '—' }}</div></div>
                 @endif
             </div>
             <div class="bill-col right">

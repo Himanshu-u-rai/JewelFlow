@@ -142,7 +142,6 @@
     </x-page-header>
 
     <div class="content-inner" x-data="dhiranCreateForm()">
-        <x-app-alerts class="mb-6" />
 
         <form method="POST" action="{{ route('dhiran.store') }}" class="max-w-4xl mx-auto space-y-6" @submit="prepareSubmit">
             @csrf

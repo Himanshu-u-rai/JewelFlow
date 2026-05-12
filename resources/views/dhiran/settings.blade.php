@@ -59,7 +59,6 @@
     </x-page-header>
 
     <div class="content-inner dhiran-settings-root">
-        <x-app-alerts class="mb-6" />
 
         <form method="POST" action="{{ route('dhiran.settings.update') }}" class="max-w-3xl mx-auto">
             @csrf

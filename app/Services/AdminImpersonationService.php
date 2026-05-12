@@ -12,9 +12,10 @@ use LogicException;
 
 class AdminImpersonationService
 {
-    public const SESSION_KEY = 'platform_impersonation_id';
+    public const SESSION_KEY        = 'platform_impersonation_id';
     public const SESSION_EXPIRES_AT = 'platform_impersonation_expires_at';
-    public const SESSION_ADMIN_ID = 'platform_impersonation_admin_id';
+    public const SESSION_ADMIN_ID   = 'platform_impersonation_admin_id';
+    public const SESSION_ADMIN_IP   = 'platform_impersonation_admin_ip';
 
     public function start(PlatformAdmin $admin, User $user, ?int $ttlMinutes = null): PlatformImpersonationSession
     {
@@ -51,6 +52,7 @@ class AdminImpersonationService
         Session::put(self::SESSION_KEY, $session->id);
         Session::put(self::SESSION_EXPIRES_AT, $expiresAt->getTimestamp());
         Session::put(self::SESSION_ADMIN_ID, $admin->id);
+        Session::put(self::SESSION_ADMIN_IP, request()->ip());
 
         Auth::guard('web')->loginUsingId($user->id, false);
 
@@ -93,6 +95,22 @@ class AdminImpersonationService
         $adminId = Session::get(self::SESSION_ADMIN_ID);
         if ($adminId && Auth::guard('platform_admin')->id() !== $adminId) {
             $this->stop($session, null, 'admin_mismatch');
+            return null;
+        }
+
+        $storedIp = Session::get(self::SESSION_ADMIN_IP);
+        if ($storedIp && $storedIp !== request()->ip()) {
+            $this->stop($session, Auth::guard('platform_admin')->user(), 'ip_mismatch');
+            app(PlatformAuditService::class)->log(
+                Auth::guard('platform_admin')->user(),
+                'admin.impersonation_ip_mismatch',
+                User::class,
+                $session->user_id,
+                null,
+                ['stored_ip' => $storedIp, 'request_ip' => request()->ip(), 'session_id' => $session->id],
+                'IP mismatch — possible session hijack attempt',
+                request()
+            );
             return null;
         }
 
@@ -179,5 +197,6 @@ class AdminImpersonationService
         Session::forget(self::SESSION_KEY);
         Session::forget(self::SESSION_EXPIRES_AT);
         Session::forget(self::SESSION_ADMIN_ID);
+        Session::forget(self::SESSION_ADMIN_IP);
     }
 }

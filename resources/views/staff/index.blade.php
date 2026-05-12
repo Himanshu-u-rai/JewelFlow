@@ -49,19 +49,7 @@
             @endif
         </div>
 
-        @if(session('success'))
-            <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
-                {{ session('success') }}
-            </div>
-        @endif
-        
-        @if(session('error'))
-            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                {{ session('error') }}
-            </div>
-        @endif
-
-        <!-- Staff Grid -->
+<!-- Staff Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @forelse($staff as $member)
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

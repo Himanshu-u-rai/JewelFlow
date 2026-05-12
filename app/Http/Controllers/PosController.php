@@ -9,11 +9,14 @@ use App\Models\Item;
 use App\Models\Customer;
 use App\Models\Scheme;
 use App\Models\ShopPaymentMethod;
+use App\Rules\PanFormatRule;
+use App\Services\ComplianceService;
 use App\Services\SalesService;
 use App\Services\RetailerSalesService;
 use App\Services\ExchangeService;
 use App\Services\ShopPricingService;
 use App\Services\SchemeService;
+use Illuminate\Http\JsonResponse;
 use LogicException;
 use Illuminate\Validation\ValidationException;
 
@@ -75,7 +78,6 @@ class PosController extends Controller
 
         // Retailer edition → simplified POS
         if ($shop->isRetailer()) {
-            $roundOffNearest = $shop->preferences?->round_off_nearest ?? 1;
             $loyaltyPointsPerHundred = $shop->preferences?->loyalty_points_per_hundred ?? 1;
             $loyaltyPointValue = (float) ($shop->preferences?->loyalty_point_value ?? 0.25);
             $customerLoyaltyPoints = $customer->loyalty_points ?? 0;
@@ -107,10 +109,14 @@ class PosController extends Controller
                 ->get()
                 ->groupBy('type');
 
+            $splitAlertTotal = app(ComplianceService::class)
+                ->getSplitAlertTotal($shopId, $customer->id);
+
             return view('pos_customer_retailer', compact(
-                'customer', 'items', 'roundOffNearest',
+                'customer', 'items',
                 'loyaltyPointsPerHundred', 'loyaltyPointValue', 'customerLoyaltyPoints',
-                'offerSchemes', 'redeemableEnrollments', 'paymentMethods'
+                'offerSchemes', 'redeemableEnrollments', 'paymentMethods',
+                'splitAlertTotal'
             ));
         }
 
@@ -140,7 +146,7 @@ class PosController extends Controller
             'making'    => 'nullable|numeric|min:0',
             'stone'     => 'nullable|numeric|min:0',
             'discount'  => 'nullable|numeric|min:0|max:999999',
-            'round_off' => 'nullable|numeric',
+            'round_off' => 'nullable|numeric|min:-1|max:1',
 
             // Split payments
             'payments'                       => 'required|array|min:1',
@@ -195,7 +201,7 @@ class PosController extends Controller
                 Rule::exists('items', 'id')->where('shop_id', auth()->user()->shop_id),
             ],
             'discount'  => 'nullable|numeric|min:0|max:999999',
-            'round_off' => 'nullable|numeric',
+            'round_off' => 'nullable|numeric|min:-1|max:1',
 
             'payments'             => 'nullable|array|min:1',
             'payments.*.mode'              => 'required_with:payments|in:cash,upi,bank,wallet,old_gold,old_silver,other,emi',
@@ -271,6 +277,29 @@ class PosController extends Controller
             ]);
         }
 
+        // Compliance gate — check if customer needs KYC for this invoice total
+        $shopId = auth()->user()->shop_id;
+        $estimatedTotal = Item::whereIn('id', $validated['item_ids'])
+            ->where('shop_id', $shopId)
+            ->sum('selling_price');
+        $estimatedDiscount = (float) ($validated['discount'] ?? 0);
+        $gstRate = (float) (auth()->user()->shop?->gst_rate ?? config('business.gst_rate_default'));
+        $taxable  = max($estimatedTotal - $estimatedDiscount, 0);
+        $estimatedTotal = round($taxable * (1 + $gstRate / 100), 2);
+
+        $complianceService = app(ComplianceService::class);
+        $missing = $complianceService->checkRequired($shopId, (int) $validated['customer_id'], $estimatedTotal);
+
+        if ($missing !== null && !empty($missing)) {
+            $prefs = auth()->user()->shop?->preferences;
+            return response()->json([
+                'compliance_required' => true,
+                'missing_fields'      => $missing,
+                'threshold'           => (float) ($prefs?->compliance_threshold ?? 200000),
+                'message'             => 'Government KYC required for high-value jewellery transactions.',
+            ], 422);
+        }
+
         $invoice = RetailerSalesService::sellItems(
             $validated['customer_id'],
             $validated['item_ids'],
@@ -285,6 +314,41 @@ class PosController extends Controller
             'invoice_id' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
         ]);
+    }
+
+    public function saveCompliance(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'customer_id' => [
+                'required',
+                'integer',
+                Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id),
+            ],
+            'pan'        => ['nullable', 'string', 'max:10', new PanFormatRule()],
+            'mobile'     => ['nullable', 'digits:10', function ($attr, $val, $fail) {
+                if ($val !== null && !preg_match('/^[6-9][0-9]{9}$/', (string) $val)) {
+                    $fail('Mobile number must be 10 digits starting with 6, 7, 8, or 9.');
+                }
+            }],
+            'address'    => ['nullable', 'string', 'max:1000'],
+            'id_number'  => ['nullable', 'string', 'max:20'],
+            'consent'    => ['required', 'accepted'],
+        ]);
+
+        $customer = Customer::findOrFail($validated['customer_id']);
+        $this->authorize('update', $customer);
+
+        $errors = app(ComplianceService::class)->saveComplianceData(
+            $customer,
+            $validated,
+            (int) auth()->id(),
+        );
+
+        if (!empty($errors)) {
+            return response()->json(['errors' => $errors], 422);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     private function retailerPricingRedirectIfMissing($shop)

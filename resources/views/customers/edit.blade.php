@@ -20,13 +20,7 @@
                     <p class="text-sm text-gray-500 mt-1">Update the details of this customer</p>
                 </div>
 
-                @if(session('success'))
-                    <div class="mx-6 mt-6 px-4 py-3 bg-green-50 border border-green-200 text-green-700 text-sm">
-                        {{ session('success') }}
-                    </div>
-                @endif
-
-                <form method="POST" action="{{ route('customers.update', $customer) }}" class="p-6">
+<form method="POST" action="{{ route('customers.update', $customer) }}" class="p-6">
                     @csrf
                     @method('PUT')
 

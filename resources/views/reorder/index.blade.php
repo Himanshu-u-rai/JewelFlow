@@ -551,11 +551,7 @@
     </x-page-header>
 
     <div class="content-inner reorder-index-page">
-        @if (session('success'))
-            <div class="reorder-index-flash">{{ session('success') }}</div>
-        @endif
-
-        <section class="reorder-stats-grid" aria-label="Reorder overview">
+<section class="reorder-stats-grid" aria-label="Reorder overview">
             <article class="reorder-stat-card">
                 <span class="reorder-stat-icon" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">

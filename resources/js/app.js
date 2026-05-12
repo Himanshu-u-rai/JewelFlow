@@ -587,9 +587,23 @@ function initLiveFilter() {
 
 // ─── Mobile table shells (fixed-height internal scroll) ─────────────────────
 function initMobileTableScrollShells() {
+    const isMobileViewport = window.matchMedia('(max-width: 768px)').matches;
+
     document.querySelectorAll('.overflow-x-auto, .ui-table-shell, .admin-table-wrap').forEach((shell) => {
         if (!shell.querySelector('table')) return;
-        shell.classList.add('mobile-table-scroll-shell');
+
+        // Root-fix: inner vertical scrolling must be explicit opt-in.
+        // Auto-applying to every table wrapper traps touch-scroll on mobile pages.
+        const shouldEnableInnerScrollShell = isMobileViewport
+            && (
+                shell.hasAttribute('data-mobile-table-scroll')
+                || shell.classList.contains('ui-table-shell--mobile-scroll')
+                || shell.classList.contains('admin-table-wrap--mobile-scroll')
+                || shell.classList.contains('mobile-table-scroll-shell--force')
+            );
+
+        shell.classList.toggle('mobile-table-scroll-shell', shouldEnableInnerScrollShell);
+        shell.classList.toggle('mobile-table-scroll-shell--bounded', shouldEnableInnerScrollShell);
     });
 }
 

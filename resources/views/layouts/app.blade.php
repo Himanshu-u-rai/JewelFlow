@@ -11,6 +11,9 @@
         @if(session('error'))
             <meta name="flash-error" content="{{ session('error') }}">
         @endif
+        @if(session('warning'))
+            <meta name="flash-warning" content="{{ session('warning') }}">
+        @endif
 
         <title>{{ config('app.name', 'JewelFlow') }}</title>
         @include('partials.favicon')
@@ -23,7 +26,6 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="app-shell">
-        <x-app-alerts floating :show-success="false" :show-validation="false" message-only />
 
         @php
             $authUser = auth()->user();
@@ -430,6 +432,25 @@
             </div>
             
             <!-- Main Content Area -->
+            @php
+                $activeAnnouncements = \App\Models\Platform\PlatformAnnouncement::active()
+                    ->whereNotExists(function($q) {
+                        $q->select(\DB::raw(1))->from('platform_announcement_dismissals')
+                          ->where('user_id', auth()->id())
+                          ->whereColumn('announcement_id', 'platform_announcements.id');
+                    })->get();
+            @endphp
+            @foreach($activeAnnouncements as $ann)
+            <div x-data="{ show: true }" x-show="show"
+                 class="mx-4 mt-3 rounded-lg border px-4 py-3 text-sm flex items-start justify-between gap-3
+                 {{ $ann->type === 'critical' ? 'bg-rose-950 border-rose-700 text-rose-200' : ($ann->type === 'warning' ? 'bg-amber-950 border-amber-700 text-amber-200' : 'bg-blue-950 border-blue-700 text-blue-200') }}">
+                <div><strong>{{ $ann->title }}</strong> — {{ $ann->body }}</div>
+                <form method="POST" action="{{ route('announcements.dismiss', $ann) }}" class="shrink-0">
+                    @csrf
+                    <button type="submit" @click="show=false" class="opacity-60 hover:opacity-100 text-xs">Dismiss</button>
+                </form>
+            </div>
+            @endforeach
             <main id="main-content" class="content-area" role="main">
                 @include('components.impersonation-banner')
                 @isset($header)

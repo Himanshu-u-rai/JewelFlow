@@ -1,4 +1,96 @@
 <x-app-layout>
+    <style>
+        .invoice-inline-actions {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .invoice-action-icon-link {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #475569;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+
+        .invoice-action-icon-link:hover,
+        .invoice-action-icon-link:focus-visible {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+            color: #0f172a;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+            transform: translateY(-1px);
+            outline: none;
+        }
+
+        .invoice-action-icon-link svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .invoice-action-icon-link--view:hover,
+        .invoice-action-icon-link--view:focus-visible {
+            color: #0f172a;
+        }
+
+        .invoice-action-icon-link--edit:hover,
+        .invoice-action-icon-link--edit:focus-visible {
+            color: #b45309;
+        }
+
+        .invoice-action-icon-link--print:hover,
+        .invoice-action-icon-link--print:focus-visible {
+            color: #0f766e;
+        }
+
+        .invoice-action-tooltip {
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% + 8px);
+            transform: translate(-50%, 6px);
+            opacity: 0;
+            pointer-events: none;
+            white-space: nowrap;
+            padding: 6px 8px;
+            border-radius: 8px;
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.2);
+            transition: opacity 0.12s ease, transform 0.12s ease;
+            z-index: 20;
+        }
+
+        .invoice-action-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #0f172a;
+        }
+
+        .invoice-action-icon-link:hover .invoice-action-tooltip,
+        .invoice-action-icon-link:focus-visible .invoice-action-tooltip {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+    </style>
+
     <x-page-header class="invoices-page-header" title="Invoices" subtitle="View and manage all sales invoices">
         <x-slot:actions>
             <a href="{{ route('pos.index') }}"
@@ -12,7 +104,6 @@
     </x-page-header>
 
     <div class="content-inner invoices-index-page jf-skeleton-host is-loading">
-        <x-app-alerts class="mb-6" />
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 invoices-kpi-grid">
@@ -205,36 +296,37 @@
                                     @endif
                                 </td>
                                 <td class="px-7 py-5 whitespace-nowrap text-center invoice-actions-cell">
-                                    <details class="invoice-action-menu relative inline-block text-left">
-                                        <summary class="invoice-action-trigger list-none cursor-pointer inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-50" style="list-style:none;" title="Actions" aria-label="Invoice actions">
+                                    <div class="invoice-inline-actions">
+                                        <a href="{{ route('invoices.show', $invoice) }}"
+                                           class="invoice-action-icon-link invoice-action-icon-link--view"
+                                           aria-label="View invoice"
+                                           title="View">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <circle cx="12" cy="12" r="1"></circle>
-                                                <circle cx="19" cy="12" r="1"></circle>
-                                                <circle cx="5" cy="12" r="1"></circle>
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                             </svg>
-                                        </summary>
-                                        <div class="invoice-action-list absolute right-0 mt-2 w-40 rounded-xl border border-slate-200 bg-white shadow-lg">
-                                            <a href="{{ route('invoices.show', $invoice) }}" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                                </svg>
-                                                View
-                                            </a>
-                                            <a href="{{ route('invoices.edit', $invoice) }}" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                                                </svg>
-                                                Edit
-                                            </a>
-                                            <a href="{{ route('invoices.print', $invoice) }}" target="_blank" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                                                </svg>
-                                                Print
-                                            </a>
-                                        </div>
-                                    </details>
+                                            <span class="invoice-action-tooltip">View</span>
+                                        </a>
+                                        <a href="{{ route('invoices.edit', $invoice) }}"
+                                           class="invoice-action-icon-link invoice-action-icon-link--edit"
+                                           aria-label="Edit invoice"
+                                           title="Edit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                            </svg>
+                                            <span class="invoice-action-tooltip">Edit</span>
+                                        </a>
+                                        <a href="{{ route('invoices.print', $invoice) }}"
+                                           target="_blank"
+                                           class="invoice-action-icon-link invoice-action-icon-link--print"
+                                           aria-label="Print invoice"
+                                           title="Print">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                            </svg>
+                                            <span class="invoice-action-tooltip">Print</span>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -260,101 +352,4 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const actionMenus = Array.from(document.querySelectorAll('.invoice-action-menu'));
-
-            if (!actionMenus.length) {
-                return;
-            }
-
-            const positionActionMenu = (menu) => {
-                const trigger = menu.querySelector('.invoice-action-trigger');
-                const list = menu.querySelector('.invoice-action-list');
-
-                if (!trigger || !list || !menu.open) {
-                    return;
-                }
-
-                // Render against viewport so dropdown is never clipped by table overflow containers.
-                list.style.position = 'fixed';
-                list.style.marginTop = '0';
-                list.style.top = '0px';
-                list.style.left = '0px';
-                list.style.right = 'auto';
-                list.style.bottom = 'auto';
-
-                const triggerRect = trigger.getBoundingClientRect();
-                const listRect = list.getBoundingClientRect();
-                const gap = 8;
-                const viewportPadding = 12;
-                const canOpenDown = triggerRect.bottom + gap + listRect.height <= window.innerHeight - viewportPadding;
-                const canOpenUp = triggerRect.top - gap - listRect.height >= viewportPadding;
-                const openUp = !canOpenDown && canOpenUp;
-
-                let top = openUp
-                    ? triggerRect.top - listRect.height - gap
-                    : triggerRect.bottom + gap;
-                let left = triggerRect.right - listRect.width;
-
-                top = Math.max(viewportPadding, Math.min(top, window.innerHeight - listRect.height - viewportPadding));
-                left = Math.max(viewportPadding, Math.min(left, window.innerWidth - listRect.width - viewportPadding));
-
-                list.style.top = `${Math.round(top)}px`;
-                list.style.left = `${Math.round(left)}px`;
-            };
-
-            const closeMenu = (menu) => {
-                if (!menu.open) {
-                    return;
-                }
-
-                menu.removeAttribute('open');
-            };
-
-            const closeOtherMenus = (currentMenu) => {
-                actionMenus.forEach((otherMenu) => {
-                    if (otherMenu !== currentMenu) {
-                        closeMenu(otherMenu);
-                    }
-                });
-            };
-
-            const repositionOpenMenus = () => {
-                actionMenus.forEach((menu) => {
-                    if (menu.open) {
-                        positionActionMenu(menu);
-                    }
-                });
-            };
-
-            actionMenus.forEach((menu) => {
-                menu.addEventListener('toggle', () => {
-                    if (!menu.open) {
-                        return;
-                    }
-
-                    closeOtherMenus(menu);
-                    positionActionMenu(menu);
-                });
-            });
-
-            document.addEventListener('click', (event) => {
-                actionMenus.forEach((menu) => {
-                    if (menu.open && !menu.contains(event.target)) {
-                        closeMenu(menu);
-                    }
-                });
-            });
-
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape') {
-                    actionMenus.forEach((menu) => closeMenu(menu));
-                }
-            });
-
-            window.addEventListener('resize', repositionOpenMenus);
-            window.addEventListener('scroll', repositionOpenMenus, true);
-        });
-    </script>
 </x-app-layout>

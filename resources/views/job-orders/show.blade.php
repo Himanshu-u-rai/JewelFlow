@@ -12,7 +12,6 @@
     </x-page-header>
 
     <div class="content-inner">
-        <x-app-alerts class="mb-4" />
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
             <div class="bg-white rounded-xl border border-amber-200 shadow-sm p-4">

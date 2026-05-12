@@ -11,13 +11,7 @@
     </x-page-header>
 
     <div class="content-inner space-y-6">
-        @if(session('success'))
-            <div class="px-4 py-3 rounded-md border border-green-200 bg-green-50 text-green-700 text-sm">
-                {{ session('success') }}
-            </div>
-        @endif
-
-        <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+<div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-0">
                 <div class="p-6 border-b lg:border-b-0 lg:border-r border-gray-200 bg-gray-50">
                     @if($product->image)

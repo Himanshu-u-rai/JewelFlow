@@ -6,7 +6,6 @@
     </x-page-header>
 
     <div class="content-inner">
-        <x-app-alerts class="mb-4" />
 
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">

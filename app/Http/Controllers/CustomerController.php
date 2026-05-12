@@ -208,6 +208,29 @@ class CustomerController extends Controller
         $data['mobile'] = $data['mobile'] ?? null;
         $data['shop_id'] = $shopId;
 
+        // Duplicate check — non-blocking: warn but do not prevent creation
+        $duplicates = [];
+        if (!empty($data['mobile'])) {
+            $duplicates = Customer::where('shop_id', $shopId)
+                ->where('mobile', $data['mobile'])
+                ->limit(3)
+                ->get(['id', 'first_name', 'last_name', 'mobile'])
+                ->map(fn ($c) => [
+                    'id'     => $c->id,
+                    'name'   => trim($c->first_name . ' ' . ($c->last_name ?? '')),
+                    'mobile' => $c->mobile,
+                ])
+                ->values()
+                ->all();
+        }
+
+        if (!empty($duplicates) && !$request->boolean('confirm_duplicate')) {
+            return response()->json([
+                'warning'    => 'possible_duplicate',
+                'duplicates' => $duplicates,
+            ], 409);
+        }
+
         $customer = Customer::create($data);
         Cache::forget(PosSearchCacheService::customersCacheKey($shopId, null));
 

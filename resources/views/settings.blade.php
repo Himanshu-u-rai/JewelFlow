@@ -1138,7 +1138,6 @@
     }
 </style>
 
-
 <x-page-header class="settings-page-header">
     <div>
         <h1 class="page-title">{{ __('Settings') }}</h1>
@@ -1146,13 +1145,7 @@
 </x-page-header>
 
 <div class="content-inner settings-shell">
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-error">{{ session('error') }}</div>
-    @endif
-    @if($errors->any())
+@if($errors->any())
         <div class="alert alert-error">
             <strong>{{ __('Please fix the following before saving:') }}</strong>
             <ul class="alert-error-list">
@@ -1959,14 +1952,6 @@
                             <label class="field-label">{{ __('Low Stock Alert') }}</label>
                             <input type="number" name="low_stock_threshold" value="{{ old('low_stock_threshold', $preferences->low_stock_threshold) }}" class="field-input" min="0" required>
                         </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Round-off Nearest (₹)') }}</label>
-                            <select name="round_off_nearest" class="field-input" required>
-                                <option value="1" {{ ($preferences->round_off_nearest ?? 1) == 1 ? 'selected' : '' }}>₹ 1</option>
-                                <option value="10" {{ ($preferences->round_off_nearest ?? 1) == 10 ? 'selected' : '' }}>₹ 10</option>
-                                <option value="100" {{ ($preferences->round_off_nearest ?? 1) == 100 ? 'selected' : '' }}>₹ 100</option>
-                            </select>
-                        </div>
                     </div>
 
                     <div class="settings-section-top">
@@ -2056,6 +2041,49 @@
                         </div>
                     </div>
 
+                    <div class="section-divider"></div>
+                    <div class="section-label">{{ __('Compliance (KYC / Rule 114B)') }}</div>
+                    <div class="form-row cols-2">
+                        <div class="field">
+                            <label class="field-label">{{ __('Enable Compliance Checks') }}</label>
+                            <select name="compliance_enabled" class="field-input">
+                                <option value="1" {{ ($preferences->compliance_enabled ?? false) ? 'selected' : '' }}>{{ __('Enabled') }}</option>
+                                <option value="0" {{ !($preferences->compliance_enabled ?? false) ? 'selected' : '' }}>{{ __('Disabled') }}</option>
+                            </select>
+                            <span class="field-hint">{{ __('When enabled, PAN and address are required for transactions above the threshold.') }}</span>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('High-Value Threshold (₹)') }}</label>
+                            <input type="number" name="compliance_threshold"
+                                   value="{{ old('compliance_threshold', $preferences->compliance_threshold ?? 200000) }}"
+                                   class="field-input" min="10000" max="10000000" step="1000">
+                            <span class="field-hint">{{ __('Default ₹2,00,000 per Income Tax Rule 114B.') }}</span>
+                        </div>
+                    </div>
+                    <div class="form-row cols-3">
+                        <div class="field">
+                            <label class="field-label">{{ __('PAN Mandatory') }}</label>
+                            <select name="compliance_pan_mandatory" class="field-input">
+                                <option value="1" {{ ($preferences->compliance_pan_mandatory ?? true) ? 'selected' : '' }}>{{ __('Yes') }}</option>
+                                <option value="0" {{ !($preferences->compliance_pan_mandatory ?? true) ? 'selected' : '' }}>{{ __('No') }}</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Mobile Mandatory') }}</label>
+                            <select name="compliance_mobile_mandatory" class="field-input">
+                                <option value="1" {{ ($preferences->compliance_mobile_mandatory ?? true) ? 'selected' : '' }}>{{ __('Yes') }}</option>
+                                <option value="0" {{ !($preferences->compliance_mobile_mandatory ?? true) ? 'selected' : '' }}>{{ __('No') }}</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Address Mandatory') }}</label>
+                            <select name="compliance_address_mandatory" class="field-input">
+                                <option value="1" {{ ($preferences->compliance_address_mandatory ?? true) ? 'selected' : '' }}>{{ __('Yes') }}</option>
+                                <option value="0" {{ !($preferences->compliance_address_mandatory ?? true) ? 'selected' : '' }}>{{ __('No') }}</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="form-footer">
                         <button type="submit" class="btn-primary">{{ __('Save Changes') }}</button>
                     </div>
@@ -2118,7 +2146,6 @@
                     @endforeach
                 </div>
             @endif
-
 
             @if($activeTab === 'staff')
                 <div class="settings-header">

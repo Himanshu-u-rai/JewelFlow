@@ -12,9 +12,14 @@
         ];
     @endphp
 
-    <div class="mb-4">
-        <h3 class="text-lg font-semibold text-white">Subscription Management</h3>
-        <p class="text-sm text-slate-400">Track lifecycle states, renewals, and billing risk.</p>
+    <div class="mb-4 flex items-center justify-between">
+        <div>
+            <h3 class="text-lg font-semibold text-white">Subscription Management</h3>
+            <p class="text-sm text-slate-400">Track lifecycle states, renewals, and billing risk.</p>
+        </div>
+        <a href="{{ route('admin.subscriptions.export') }}" class="admin-btn admin-btn-secondary admin-btn-sm">
+            ↓ Export CSV
+        </a>
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">

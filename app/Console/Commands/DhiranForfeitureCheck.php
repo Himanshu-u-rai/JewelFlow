@@ -13,7 +13,7 @@ class DhiranForfeitureCheck extends Command
 
     public function handle(): int
     {
-        $enabledSettings = DhiranSettings::where('is_enabled', true)->get();
+        $enabledSettings = DhiranSettings::whereRaw('is_enabled IS TRUE')->get();
 
         $totalNeedNotice = 0;
         $totalReadyForfeiture = 0;

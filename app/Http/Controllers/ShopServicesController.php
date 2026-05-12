@@ -162,7 +162,7 @@ class ShopServicesController extends Controller
 
             if ($edition === ShopEdition::DHIRAN) {
                 DhiranSettings::where('shop_id', $shop->id)
-                    ->update(['is_enabled' => false]);
+                    ->update(['is_enabled' => '0']);
             }
         });
 

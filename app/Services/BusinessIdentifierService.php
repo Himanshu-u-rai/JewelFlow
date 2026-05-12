@@ -21,6 +21,7 @@ class BusinessIdentifierService
     public const KEY_CHALLAN = 'challan';
     public const KEY_JOB_RECEIPT = 'job_receipt';
     public const KEY_PLATFORM_INVOICE = 'platform_invoice';
+    public const KEY_SHOP_CODE = 'shop_code';
 
     public static function nextCounter(int $shopId, string $counterKey): int
     {
@@ -236,6 +237,46 @@ class BusinessIdentifierService
             'sequence' => $sequence,
             'number'   => 'JR-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
         ];
+    }
+
+    /**
+     * Global (platform-wide) sequential shop code. Format: JF-0001
+     * Must be called inside a DB::transaction().
+     */
+    public static function nextShopCode(): string
+    {
+        $row = DB::table('platform_counters')
+            ->where('counter_key', self::KEY_SHOP_CODE)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $row) {
+            try {
+                DB::table('platform_counters')->insert([
+                    'counter_key'   => self::KEY_SHOP_CODE,
+                    'current_value' => 0,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
+            } catch (QueryException $e) {
+                if (($e->getCode() ?? '') !== '23505') {
+                    throw $e;
+                }
+            }
+
+            $row = DB::table('platform_counters')
+                ->where('counter_key', self::KEY_SHOP_CODE)
+                ->lockForUpdate()
+                ->firstOrFail();
+        }
+
+        $next = (int) $row->current_value + 1;
+
+        DB::table('platform_counters')
+            ->where('counter_key', self::KEY_SHOP_CODE)
+            ->update(['current_value' => $next, 'updated_at' => now()]);
+
+        return 'JF-' . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
     }
 
     /**

@@ -9,7 +9,6 @@
     </x-page-header>
 
     <div class="content-inner karigars-index-page">
-        <x-app-alerts class="mb-4" />
 
         @php
             $activeKarigars = $karigars->where('is_active', true)->count();

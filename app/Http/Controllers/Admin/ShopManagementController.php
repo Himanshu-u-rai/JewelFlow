@@ -14,7 +14,9 @@ use App\Models\Shop;
 use App\Services\PlatformAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ShopManagementController extends Controller
 {
@@ -50,7 +52,9 @@ class ShopManagementController extends Controller
 
         $shops = $query->latest()->paginate(20)->withQueryString();
 
-        return view('super-admin.shops.index', compact('shops'));
+        $plans = Plan::whereRaw('is_active IS TRUE')->orderBy('name')->get(['id', 'name', 'price_monthly']);
+
+        return view('super-admin.shops.index', compact('shops', 'plans'));
     }
 
     public function show(Shop $shop): View
@@ -86,6 +90,8 @@ class ShopManagementController extends Controller
 
         $plans = Plan::orderBy('name')->get(['id', 'name', 'price_monthly', 'price_yearly']);
 
+        $storageStat = \App\Models\ShopStorageStat::where('shop_id', $shop->id)->first();
+
         return view('super-admin.shops.show', compact(
             'shop',
             'stats',
@@ -94,7 +100,8 @@ class ShopManagementController extends Controller
             'editionHistory',
             'billingInvoices',
             'currentSubscription',
-            'plans'
+            'plans',
+            'storageStat'
         ));
     }
 
@@ -163,6 +170,39 @@ class ShopManagementController extends Controller
         );
 
         return back()->with('success', $accessMode === 'active' ? 'Shop activated.' : 'Shop access mode updated.');
+    }
+
+    public function export(): StreamedResponse
+    {
+        $filename = 'shops-' . now()->format('Y-m-d') . '.csv';
+
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'ID', 'Name', 'Shop Type', 'Owner Mobile', 'Phone',
+                'City', 'Access Mode', 'Users', 'Created At',
+            ]);
+
+            Shop::query()
+                ->withCount('users')
+                ->orderBy('id')
+                ->each(function (Shop $shop) use ($handle) {
+                    fputcsv($handle, [
+                        $shop->id,
+                        $shop->name,
+                        $shop->shop_type,
+                        $shop->owner_mobile,
+                        $shop->phone,
+                        $shop->city,
+                        $shop->access_mode,
+                        $shop->users_count,
+                        $shop->created_at?->toDateTimeString(),
+                    ]);
+                }, 200);
+
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv']);
     }
 
     private function dbBool(bool $value)

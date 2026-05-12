@@ -7,18 +7,7 @@
         <a href="{{ route('admin.users.index') }}" class="admin-btn admin-btn-secondary">Back to Users</a>
     </div>
 
-    @if(session('success'))
-        <div class="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            {{ session('success') }}
-        </div>
-    @endif
-    @if($errors->any())
-        <div class="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-            {{ $errors->first() }}
-        </div>
-    @endif
-
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {{-- User Info --}}
         <div class="admin-panel p-4">
             <h3 class="font-semibold text-white mb-3">User Information</h3>

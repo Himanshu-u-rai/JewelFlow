@@ -259,14 +259,7 @@
             <div class="hint">{{ __('You can select multiple — for example Retailer + Manufacturer.') }}</div>
         </div>
 
-        @if(session('error'))
-            <div class="error-banner">{{ session('error') }}</div>
-        @endif
-        @if($errors->any())
-            <div class="error-banner">{{ $errors->first() }}</div>
-        @endif
-
-        <div class="cards" style="--col-count: {{ max(1, $enabledCount) }};">
+<div class="cards" style="--col-count: {{ max(1, $enabledCount) }};">
             @if($enabled['retailer'])
                 <label class="type-card card-retailer {{ $selected->contains('retailer') ? 'selected' : '' }}">
                     <input type="checkbox" name="editions[]" value="retailer" {{ $selected->contains('retailer') ? 'checked' : '' }}>

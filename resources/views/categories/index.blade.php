@@ -16,7 +16,6 @@
     </x-page-header>
 
     <div class="content-inner categories-index-page">
-        <x-app-alerts class="mb-6" />
 
         @if($categories->isEmpty())
             <x-empty-state
@@ -247,8 +246,39 @@
             }
         });
 
-        // ---- Auto-reopen the correct modal after a failed validation ----
-        document.addEventListener('DOMContentLoaded', function() {
+        function syncCategoryCollapseMode() {
+            const page = document.querySelector('.categories-index-page');
+            if (!page) return;
+
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            page.querySelectorAll('.categories-card').forEach((card) => {
+                const toggleBtn = card.querySelector('[data-category-toggle]');
+                if (!toggleBtn) return;
+
+                if (isMobile) {
+                    card.classList.add('is-collapsed');
+                    toggleBtn.setAttribute('aria-expanded', 'false');
+                } else {
+                    card.classList.remove('is-collapsed');
+                    toggleBtn.setAttribute('aria-expanded', 'true');
+                }
+            });
+        }
+
+        function toggleCategoryCard(card) {
+            if (!window.matchMedia('(max-width: 768px)').matches) return;
+
+            const toggleBtn = card.querySelector('[data-category-toggle]');
+            if (!toggleBtn) return;
+
+            const collapsed = card.classList.toggle('is-collapsed');
+            toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        }
+
+        function initCategoriesPage() {
+            const page = document.querySelector('.categories-index-page');
+            if (!page) return;
+
             @php $intent = old('_intent'); @endphp
 
             @if($intent === 'add_category')
@@ -273,41 +303,41 @@
                 openEditSubCategoryModal({{ $oldEditSubId }}, @js(old('name', '')));
             @endif
 
-            const categoriesMobileMq = window.matchMedia('(max-width: 768px)');
-            const categoryCards = document.querySelectorAll('.categories-index-page .categories-card');
-
-            function syncCategoryCollapseMode() {
-                const isMobile = categoriesMobileMq.matches;
-                categoryCards.forEach((card) => {
-                    const toggleBtn = card.querySelector('[data-category-toggle]');
-                    if (!toggleBtn) return;
-
-                    if (isMobile) {
-                        if (!card.dataset.mobileCollapseInit) {
-                            card.classList.add('is-collapsed');
-                            toggleBtn.setAttribute('aria-expanded', 'false');
-                            card.dataset.mobileCollapseInit = '1';
-                        }
-                    } else {
-                        card.classList.remove('is-collapsed');
-                        toggleBtn.setAttribute('aria-expanded', 'true');
-                    }
-                });
-            }
-
-            categoryCards.forEach((card) => {
+            page.querySelectorAll('.categories-card').forEach((card) => {
                 const toggleBtn = card.querySelector('[data-category-toggle]');
-                if (!toggleBtn) return;
+                const toggleSurface = card.querySelector('[data-category-toggle-surface]');
+                if (!toggleBtn || toggleBtn.dataset.categoryToggleBound === '1') return;
 
                 toggleBtn.addEventListener('click', () => {
-                    if (!categoriesMobileMq.matches) return;
-                    const collapsed = card.classList.toggle('is-collapsed');
-                    toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                    toggleCategoryCard(card);
                 });
+                toggleBtn.dataset.categoryToggleBound = '1';
+
+                if (toggleSurface && toggleSurface.dataset.categorySurfaceBound !== '1') {
+                    toggleSurface.addEventListener('click', (event) => {
+                        if (event.target.closest('.categories-card-actions')) return;
+                        toggleCategoryCard(card);
+                    });
+                    toggleSurface.dataset.categorySurfaceBound = '1';
+                }
             });
 
             syncCategoryCollapseMode();
-            categoriesMobileMq.addEventListener('change', syncCategoryCollapseMode);
-        });
+        }
+
+        if (window.__categoriesPageTurboInitHandler) {
+            document.removeEventListener('turbo:load', window.__categoriesPageTurboInitHandler);
+        }
+        window.__categoriesPageTurboInitHandler = initCategoriesPage;
+        document.addEventListener('turbo:load', window.__categoriesPageTurboInitHandler);
+
+        if (window.__categoriesPageMediaQuery && window.__categoriesPageMediaHandler) {
+            window.__categoriesPageMediaQuery.removeEventListener('change', window.__categoriesPageMediaHandler);
+        }
+        window.__categoriesPageMediaQuery = window.matchMedia('(max-width: 768px)');
+        window.__categoriesPageMediaHandler = syncCategoryCollapseMode;
+        window.__categoriesPageMediaQuery.addEventListener('change', window.__categoriesPageMediaHandler);
+
+        initCategoriesPage();
     </script>
 </x-app-layout>

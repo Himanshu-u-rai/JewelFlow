@@ -11,23 +11,7 @@
         </p>
     </div>
 
-    @if(session('success'))
-        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {{ session('success') }}
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-            {{ session('error') }}
-        </div>
-    @endif
-    @if($errors->any())
-        <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-            {{ $errors->first() }}
-        </div>
-    @endif
-
-    {{-- Active services --}}
+{{-- Active services --}}
     <section class="mb-8">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">{{ __('Active Services') }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

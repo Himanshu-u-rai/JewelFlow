@@ -13,7 +13,7 @@ class DhiranAccrueInterest extends Command
 
     public function handle(): int
     {
-        $enabledSettings = DhiranSettings::where('is_enabled', true)->get();
+        $enabledSettings = DhiranSettings::whereRaw('is_enabled IS TRUE')->get();
         $totalProcessed = 0;
         $errors = 0;
 

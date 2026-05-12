@@ -20,6 +20,12 @@ class PlatformAdmin extends Authenticatable
         'two_factor_secret',
     ];
 
+    public const PERMISSIONS = [
+        'can_impersonate', 'can_billing_override', 'can_suspend_shop',
+        'can_view_audit_logs', 'can_manage_admins', 'can_view_security',
+        'can_manage_jobs', 'can_view_compliance',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -27,6 +33,7 @@ class PlatformAdmin extends Authenticatable
             'two_factor_enabled' => 'boolean',
             'last_login_at' => 'datetime',
             'password_changed_at' => 'datetime',
+            'permissions' => 'array',
         ];
     }
 
@@ -57,6 +64,13 @@ class PlatformAdmin extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->role === 'super_admin';
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->isSuperAdmin()) return true;
+        $perms = $this->permissions ?? [];
+        return in_array($permission, $perms);
     }
 
     public static function countActiveSuperAdminsExcluding(?int $excludeId = null): int

@@ -3968,8 +3968,6 @@
             </div>
         </div>
 
-        <x-app-alerts class="mb-1" />
-
         @if(!auth()->user()->email_verified_at)
         {{-- ══ EMAIL VERIFICATION BANNER ══════════════════════════════ --}}
         <div id="emailVerifyBanner" class="dash-email-verify">

@@ -26,7 +26,6 @@
             </a>
         </div>
 
-        <x-app-alerts class="mb-6" />
         @php
             $todayNet = $stats['today_in'] - $stats['today_out'];
             $monthNet = $stats['month_in'] - $stats['month_out'];

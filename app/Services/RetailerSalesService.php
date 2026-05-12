@@ -271,8 +271,8 @@ class RetailerSalesService
                 }
             }
 
-            // Validate payment total covers invoice total (1 rupee tolerance for rounding)
-            if (abs($paymentTotal - (float) $invoice->total) > 1.00) {
+            // Validate payment total covers invoice total (0.01 tolerance for floating point noise)
+            if (abs($paymentTotal - (float) $invoice->total) > 0.01) {
                 throw new \Exception("Payment total (₹{$paymentTotal}) does not match invoice total (₹{$invoice->total})");
             }
 
