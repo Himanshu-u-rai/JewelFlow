@@ -30,7 +30,7 @@ class CapabilityResolver
             purchases:    $this->gate($planFeatures, null, $user, null, true),
             pos:          $this->gate($planFeatures, 'pos', $user, 'sales.pos'),
             quick_bill:   $this->gate($planFeatures, null, $user, 'sales.pos', true),
-            invoice:      $this->gate($planFeatures, 'invoices', $user, 'invoices.view'),
+            invoice:      $this->gate($planFeatures, 'invoices', $user, 'sales.view'),
             repairs:      $this->gate($planFeatures, 'repairs', $user, 'repairs.view'),
             expenses:     $this->gate($planFeatures, null, $user, 'cash.view', true),
             catalog:      $this->catalogGate($planFeatures, $user),
