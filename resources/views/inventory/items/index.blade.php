@@ -20,6 +20,7 @@
                 </span>
             </button>
             @endif
+            @can('inventory.create')
                 <a href="{{ route('inventory.items.create') }}"
                     class="btn btn-success btn-sm inventory-items-create-btn">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,6 +28,7 @@
                 </svg>
                 Create Item
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
@@ -191,6 +193,15 @@
     @endif
 
     <div class="content-inner inventory-items-page jf-skeleton-host is-loading" x-data="{ view: '{{ $viewDefault }}' }">
+
+        @php
+            $canModifyInventory = auth()->user()->can('inventory.create')
+                || auth()->user()->can('inventory.edit')
+                || auth()->user()->can('inventory.delete');
+        @endphp
+        @unless($canModifyInventory)
+            @include('partials.view-only-banner', ['permission' => 'inventory.edit', 'message' => 'inventory management'])
+        @endunless
 
         {{-- View Toggle for Retailers --}}
         @if($isRetailer)
@@ -517,13 +528,15 @@
                                             View
                                         </a>
                                         @if($item->status === 'in_stock')
-                                                          <a href="{{ route('inventory.items.edit', $item) }}" 
+                                            @can('inventory.edit')
+                                                          <a href="{{ route('inventory.items.edit', $item) }}"
                                                               class="btn btn-success btn-xs inline-flex items-center">
                                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                                 </svg>
                                                 Edit
                                             </a>
+                                            @endcan
                                         @endif
                                     </div>
                                 </td>
@@ -535,12 +548,14 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                     </svg>
                                     <p class="text-gray-500 mb-4">No items found</p>
+                                    @can('inventory.create')
                                     <a href="{{ route('inventory.items.create') }}" class="btn btn-success btn-sm inline-flex items-center">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                                         </svg>
                                         Create First Item
                                     </a>
+                                    @endcan
                                 </td>
                             </tr>
                         @endforelse
@@ -608,7 +623,9 @@
                             <div class="items-stock-mobile-actions">
                                 <a href="{{ route('inventory.items.show', $item) }}" class="items-stock-mobile-action items-stock-mobile-action--view">View</a>
                                 @if($item->status === 'in_stock')
+                                    @can('inventory.edit')
                                     <a href="{{ route('inventory.items.edit', $item) }}" class="items-stock-mobile-action items-stock-mobile-action--edit">Edit</a>
+                                    @endcan
                                 @endif
                             </div>
                         </article>
@@ -618,7 +635,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                             </svg>
                             <p>No items found</p>
+                            @can('inventory.create')
                             <a href="{{ route('inventory.items.create') }}">Create First Item</a>
+                            @endcan
                         </div>
                     @endforelse
                 </div>

@@ -899,7 +899,7 @@
 
     <x-page-header>
         <div>
-            <h1 class="page-title">WhatsApp Catalog</h1>
+            <h1 class="page-title">Catalog</h1>
         </div>
     </x-page-header>
 

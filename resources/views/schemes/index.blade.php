@@ -840,6 +840,7 @@
             <p class="text-sm text-gray-600 mt-1 page-subtitle">Gold savings schemes, festival sales & discount offers</p>
         </div>
         <div class="page-actions">
+            @can('catalog.manage')
             <a href="{{ route('schemes.create') }}" class="inline-flex items-center px-4 py-2 rounded-full transition-colors text-sm font-semibold shadow-sm schemes-create-btn">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -848,10 +849,15 @@
                 <span class="schemes-add-label-full">Create Scheme</span>
                 <span class="schemes-add-label-short">Create</span>
             </a>
+            @endcan
         </div>
     </x-page-header>
 
     <div class="content-inner ops-treatment-page schemes-index-page">
+
+        @unless(auth()->user()->can('catalog.manage') || auth()->user()->can('sales.create'))
+            @include('partials.view-only-banner', ['permission' => 'catalog.manage', 'message' => 'schemes and enrollments'])
+        @endunless
 <div class="schemes-stats-grid">
             <div class="schemes-stat-card">
                 <div class="schemes-stat-icon">
@@ -1013,6 +1019,7 @@
                                                 View
                                             </a>
                                             @if($scheme->isGoldSavings())
+                                                @can('sales.create')
                                                 <a href="{{ route('schemes.enroll.form', $scheme) }}" class="schemes-link-btn">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -1022,6 +1029,7 @@
                                                     </svg>
                                                     Enroll
                                                 </a>
+                                                @endcan
                                             @endif
                                         </div>
                                     </td>
@@ -1066,7 +1074,9 @@
                             <div class="scheme-mobile-actions">
                                 <a href="{{ route('schemes.show', $scheme) }}" class="schemes-link-btn schemes-link-btn--primary">View Scheme</a>
                                 @if($scheme->isGoldSavings())
+                                    @can('sales.create')
                                     <a href="{{ route('schemes.enroll.form', $scheme) }}" class="schemes-link-btn">Enroll</a>
+                                    @endcan
                                 @else
                                     <span class="schemes-link-btn" style="opacity:.65; pointer-events:none;">No Enroll</span>
                                 @endif

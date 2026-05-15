@@ -990,10 +990,20 @@
                         <label class="field-label">Discount (₹)</label>
                         <input type="number" name="discount" id="discountInput" class="field-input" value="0" step="1" min="0" oninput="updatePreview()">
                     </div>
-                    <div class="field">
-                        <label class="field-label">Round Off (₹)</label>
-                        <input type="number" name="round_off" id="roundOffInput" class="field-input" value="0" step="1" oninput="updatePreview()" placeholder="e.g. −20">
-                    </div>
+                    @if(config('features.pos_quote_v2'))
+                        <div class="field">
+                            <label class="field-label">Round Off (auto)</label>
+                            <div id="roundOffDisplay" class="field-input" style="background:#f8fafc;color:#475569;cursor:not-allowed;">₹0.00</div>
+                            <span class="field-hint" style="font-size:11px;color:#94a3b8;">Derived from shop's rounding strategy.</span>
+                            {{-- Keep the hidden input so completeSale's legacy submit body remains identical. --}}
+                            <input type="hidden" name="round_off" id="roundOffInput" value="0">
+                        </div>
+                    @else
+                        <div class="field">
+                            <label class="field-label">Round Off (₹)</label>
+                            <input type="number" name="round_off" id="roundOffInput" class="field-input" value="0" step="1" oninput="updatePreview()" placeholder="e.g. −20">
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -1073,8 +1083,25 @@ const CSRF = '{{ csrf_token() }}';
 const CUSTOMER_ID = {{ $customer->id }};
 const POS_SELL_URL = @json(route('pos.sell'));
 const INVOICE_BASE_URL = @json(url('/invoices'));
+
+// Phase 2 feature flag: when on, this view talks to /pos/quote (signed
+// server-side quote) instead of /api/price-preview, and the manual
+// round-off input is replaced with a read-only display row.
+window.POS_QUOTE_V2_ENABLED = {{ config('features.pos_quote_v2') ? 'true' : 'false' }};
+window.POS_QUOTE_URL = @json(route('pos.quote'));
+window.POS_QUOTE_PERSIST_URL = @json(route('pos.quote.persist'));
+
 let lastPreview = null;
 let paymentRowIndex = 1;
+
+// Quote v2 state (used only when POS_QUOTE_V2_ENABLED).
+let currentQuote = {
+    id: null,
+    signature: null,
+    breakdown_json: null,
+    expires_at: null,
+    input: null,
+};
 
 @if(request('item_id'))
     window.addEventListener('DOMContentLoaded', () => showItemDetails());
@@ -1355,6 +1382,11 @@ function _fetchPreview() {
     document.getElementById('pricePreview').innerHTML =
         '<div style="color:var(--muted);font-size:14px;padding:8px 0;">Calculating...</div>';
 
+    if (window.POS_QUOTE_V2_ENABLED) {
+        _fetchQuoteV2(itemId, goldRate);
+        return;
+    }
+
     fetch('/api/price-preview', {
         method: 'POST',
         headers: {
@@ -1409,6 +1441,128 @@ function _fetchPreview() {
         document.getElementById('pricePreview').innerHTML =
             '<div style="color:#ef4444;font-size:14px;padding:8px 0;">Error loading preview</div>';
     });
+}
+
+// Phase 2 \u2014 manufacturer POS quote-driven preview.
+// Calls /pos/quote and renders the engine-issued breakdown. Manual round-off
+// input is no longer used: the server-side rounding strategy governs it.
+function _fetchQuoteV2(itemId, goldRate) {
+    const payload = {
+        mode: 'manufacturer',
+        item_id: itemId,
+        item_ids: [itemId],
+        customer_id: CUSTOMER_ID,
+        gold_rate: goldRate,
+        making: document.getElementById('makingInput').value || 0,
+        stone: document.getElementById('stoneInput').value || 0,
+        manual_discount: document.getElementById('discountInput').value || 0,
+    };
+
+    fetch(window.POS_QUOTE_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': CSRF,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.ok ? r.json() : r.json().then(j => { throw new Error(j.message || 'Error'); }))
+    .then(d => {
+        currentQuote.id = d.quote_id || null;
+        currentQuote.signature = d.signature || null;
+        currentQuote.breakdown_json = d.breakdown_json || null;
+        currentQuote.expires_at = d.expires_at || null;
+        currentQuote.input = payload;
+
+        const b = d.breakdown || {};
+        // Hold a legacy-shape preview so completeSale's submit body stays
+        // bit-identical to today (Phase 2 hard rule).
+        lastPreview = {
+            gold_value: Number(b.gold_value || 0),
+            making: Number(b.making || 0),
+            stone: Number(b.stone || 0),
+            wastage_charge: Number(b.wastage_charge || 0),
+            gst: Number(b.gst || 0),
+            gst_rate: Number(b.gst_rate || 0),
+            discount: Number(b.manual_discount || b.discount || 0),
+            round_off: Number(b.rounding_adjustment || 0),
+            total: Number(b.final_total || 0),
+        };
+
+        const adj = Number(b.rounding_adjustment || 0);
+        const lines = [
+            ['Gold Value', '\u20B9' + n(lastPreview.gold_value)],
+            ['Making', '\u20B9' + n(lastPreview.making)],
+            lastPreview.stone > 0 ? ['Stone', '\u20B9' + n(lastPreview.stone)] : null,
+            lastPreview.wastage_charge > 0 ? ['Wastage', '\u20B9' + n(lastPreview.wastage_charge)] : null,
+            ['GST (' + lastPreview.gst_rate + '%)', '\u20B9' + n(lastPreview.gst)],
+            lastPreview.discount > 0 ? ['Discount', '\u2212\u20B9' + n(lastPreview.discount)] : null,
+            adj !== 0 ? ['Round Off (auto)', (adj >= 0 ? '\u20B9' : '\u2212\u20B9') + n(Math.abs(adj))] : null,
+        ].filter(Boolean);
+
+        let html = lines.map(l =>
+            '<div class="summary-row"><span class="summary-row-label">' + l[0] + '</span><span class="summary-row-value">' + l[1] + '</span></div>'
+        ).join('');
+
+        html += '<hr class="summary-divider">';
+        html += '<div class="summary-total"><span class="summary-total-label">Total</span><span class="summary-total-value">\u20B9' + n(lastPreview.total) + '</span></div>';
+
+        document.getElementById('pricePreview').innerHTML = html;
+
+        // Mirror server-side round-off into the (now-hidden) input so the
+        // legacy submit body in completeSale still carries the correct value.
+        const roundOffEl = document.getElementById('roundOffInput');
+        if (roundOffEl) roundOffEl.value = adj;
+        const roundOffDisp = document.getElementById('roundOffDisplay');
+        if (roundOffDisp) roundOffDisp.textContent = (adj >= 0 ? '₹' : '−₹') + n(Math.abs(adj));
+
+        const firstAmt = document.querySelector('.pay-row[data-index="0"] .payment-amount');
+        if (firstAmt && (!firstAmt.value || firstAmt.value === '0')) {
+            firstAmt.value = lastPreview.total.toFixed(2);
+        }
+
+        recalcPaymentBalance();
+    })
+    .catch(err => {
+        console.error(err);
+        document.getElementById('pricePreview').innerHTML =
+            '<div style="color:#ef4444;font-size:14px;padding:8px 0;">Error loading preview</div>';
+    });
+}
+
+// Phase 2 \u2014 persist the latest quote durably right before submitting the sale.
+// Logs but does NOT block the sale if persistence fails (Phase 2 is additive
+// only; Phase 3a will validate quote_id server-side).
+function persistCurrentQuote() {
+    if (!window.POS_QUOTE_V2_ENABLED) return Promise.resolve();
+    if (!currentQuote.id || !currentQuote.signature) return Promise.resolve();
+
+    return fetch(window.POS_QUOTE_PERSIST_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': CSRF,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            quote_id: currentQuote.id,
+            signature: currentQuote.signature,
+            breakdown_json: currentQuote.breakdown_json,
+            input_payload: currentQuote.input,
+        }),
+    })
+    .then(r => r.ok ? r.json().catch(() => ({})) : r.json().catch(() => ({})).then(j => { console.warn('persistCurrentQuote failed', r.status, j); return null; }))
+    .then(d => {
+        if (d && d.quote_id) {
+            currentQuote.id = d.quote_id;
+            if (d.signature) currentQuote.signature = d.signature;
+            if (d.expires_at) currentQuote.expires_at = d.expires_at;
+        }
+    })
+    .catch(err => { console.warn('persistCurrentQuote network error', err); });
 }
 
 function n(v) { return Number(v).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); }
@@ -1590,6 +1744,9 @@ function completeSale() {
     btn.disabled = true;
     btn.textContent = 'Processing...';
 
+    // Phase 2: persist the latest quote before submitting. Non-blocking —
+    // errors are logged in persistCurrentQuote() and the sale proceeds.
+    Promise.resolve(persistCurrentQuote()).then(function() {
     fetch(POS_SELL_URL, {
         method: 'POST',
         headers: {
@@ -1607,9 +1764,36 @@ function completeSale() {
             discount: document.getElementById('discountInput').value || 0,
             round_off: document.getElementById('roundOffInput').value || 0,
             payments: payments,
+            // Phase 3a: quote-aware sale (manufacturer view).
+            quote_id: window.POS_QUOTE_V2_ENABLED ? (currentQuote.id || null) : null,
+            quote_signature: window.POS_QUOTE_V2_ENABLED ? (currentQuote.signature || null) : null,
         }),
     })
     .then(function(r) {
+        // Phase 3a 409 handling: stale quote → server returns a fresh one.
+        if (r.status === 409) {
+            return r.json().then(function(j) {
+                if (j && j.error === 'quote_stale' && j.new_quote) {
+                    currentQuote.id             = j.new_quote.quote_id;
+                    currentQuote.signature      = j.new_quote.signature;
+                    currentQuote.breakdown_json = j.new_quote.breakdown_json;
+                    currentQuote.expires_at     = j.new_quote.expires_at;
+                    var bd = j.new_quote.breakdown || {};
+                    // Mirror auto round-off into the hidden input so the
+                    // submit body keeps the correct value.
+                    var roundOffEl = document.getElementById('roundOffInput');
+                    if (roundOffEl) roundOffEl.value = Number(bd.rounding_adjustment || 0);
+                    window.showToast(j.message || 'Prices were refreshed — please confirm the updated total.', 'warning');
+                    btn.disabled = false;
+                    btn.textContent = 'Complete Sale';
+                    throw new Error('__quote_stale_handled__');
+                }
+                if (j && j.error === 'items_unavailable') {
+                    throw new Error(j.message || 'This item was just sold by another cashier. Refresh stock.');
+                }
+                throw new Error(j.message || 'Conflict');
+            });
+        }
         if (!r.ok) return r.json().then(function(j) {
             var errs = j.errors ? Object.values(j.errors).flat().join('\n') : '';
             throw new Error((j.message || 'Server error') + (errs ? '\n' + errs : ''));
@@ -1626,6 +1810,9 @@ function completeSale() {
         }
     })
     .catch(function(err) {
+        // Stale-quote handled above; button state was already restored and
+        // the toast was already shown. Don't pile a second toast on top.
+        if (err && err.message === '__quote_stale_handled__') return;
         window.showToast('Error: ' + err.message, 'error');
         btn.disabled = false;
         btn.textContent = 'Complete Sale';

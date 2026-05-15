@@ -16,7 +16,8 @@ use App\Models\SchemeEnrollment;
 use App\Services\InvoiceAccountingService;
 use App\Services\OldMetalWeeklyLotService;
 use App\Services\SubscriptionGateService;
-use App\Services\OfferEngineService;
+use App\Services\PricingEngine;
+use App\Services\PricingEngine\QuoteInput;
 use App\Services\SchemeService;
 use Illuminate\Validation\ValidationException;
 
@@ -68,25 +69,36 @@ class RetailerSalesService
                 }
             }
 
-            // Sum selling prices
+            // Sum selling prices (kept for audit only — engine recomputes internally)
             $sellingPrice = (float) $items->sum('selling_price');
-            $manualDiscount = max(0, round($discount, 2));
 
-            $offerEngine = app(OfferEngineService::class);
-            $offerPayload = $offerEngine->resolveBestOffer(
-                $shopId,
-                $items->map(fn (Item $item) => [
-                    'category' => $item->category,
-                    'sub_category' => $item->sub_category,
-                ])->all(),
-                $sellingPrice,
-                $offerSchemeId,
-                $allowAutoOfferFallback,
+            // Route ALL pricing math through the engine. Same QuoteInput → same
+            // PricingBreakdown, bit-identical to the inline math this replaces.
+            /** @var PricingEngine $engine */
+            $engine = app(PricingEngine::class);
+            $quoteInput = QuoteInput::retailer(
+                shopId: $shopId,
+                customerId: $customerId,
+                itemIds: $items->pluck('id')->toArray(),
+                manualDiscount: (float) $discount,
+                offerSchemeId: $offerSchemeId,
+                allowAutoOfferFallback: $allowAutoOfferFallback,
             );
-            $offerDiscount = (float) ($offerPayload['discount_amount'] ?? 0);
-            $totalDiscount = min(round($sellingPrice, 2), round($manualDiscount + $offerDiscount, 2));
+            $breakdown = $engine->compute($quoteInput);
 
-            $gstRate = $shop->gst_rate ?? config('business.gst_rate_default');
+            $manualDiscount = $breakdown->manualDiscount;
+            $offerDiscount  = $breakdown->offerDiscount;
+            $totalDiscount  = $breakdown->totalDiscount;
+            $gstRate        = $breakdown->gstRate;
+            $offerPayload   = $breakdown->offer;
+
+            // Preserve today's round_off behaviour: only override the function
+            // param when the shop has opted-in to auto-rounding. Shops with
+            // rounding_method='none' (or no preference row) keep using the
+            // caller-supplied $roundOff exactly as before.
+            $effectiveRoundOff = $breakdown->roundingMethod === 'none'
+                ? round((float) $roundOff, 2)
+                : $breakdown->roundingAdjustment;
 
             // Create invoice
             $invoice = InvoiceAccountingService::createDraft([
@@ -96,12 +108,19 @@ class RetailerSalesService
                 'gst_rate'       => $gstRate,
                 'wastage_charge' => 0,
                 'discount'       => $totalDiscount,
-                'round_off'      => $roundOff,
+                'round_off'      => $effectiveRoundOff,
             ]);
+
+            // Engine has already apportioned per-line GST via the same
+            // largest-remainder helper, so SUM(line.gst_amount) == invoice.gst
+            // is preserved by construction.
+            $apportioned = [];
+            foreach ($breakdown->lines as $line) {
+                $apportioned[(int) $line['item_id']] = (float) ($line['gst_amount'] ?? 0);
+            }
 
             // Invoice lines — one per item
             foreach ($items as $item) {
-                $lineGst = round((float) $item->selling_price * ($gstRate / 100), 2);
                 InvoiceItem::record([
                     'invoice_id'     => $invoice->id,
                     'item_id'        => $item->id,
@@ -111,7 +130,7 @@ class RetailerSalesService
                     'stone_amount'   => $item->stone_charges ?? 0,
                     'line_total'     => $item->selling_price,
                     'gst_rate'       => $gstRate,
-                    'gst_amount'     => $lineGst,
+                    'gst_amount'     => $apportioned[$item->id] ?? 0,
                 ]);
             }
 
@@ -298,7 +317,7 @@ class RetailerSalesService
                     'manual_discount' => $manualDiscount,
                     'offer_discount' => $offerDiscount,
                     'offer_scheme_id' => $offerPayload['scheme_id'] ?? null,
-                    'round_off'     => $roundOff,
+                    'round_off'     => $effectiveRoundOff,
                     'payments'      => collect($payments)->map(fn($p) => [
                         'mode' => $p['mode'], 'amount' => $p['amount'] ?? 0,
                     ])->toArray(),
@@ -353,23 +372,31 @@ class RetailerSalesService
                 }
             }
 
-            $gstRate = $shop->gst_rate ?? config('business.gst_rate_default');
-            $sellingPrice = (float) $items->sum('selling_price');
-            $manualDiscount = max(0, round($discount, 2));
-
-            $offerEngine = app(OfferEngineService::class);
-            $offerPayload = $offerEngine->resolveBestOffer(
-                $shopId,
-                $items->map(fn (Item $item) => [
-                    'category' => $item->category,
-                    'sub_category' => $item->sub_category,
-                ])->all(),
-                $sellingPrice,
-                $offerSchemeId,
-                $allowAutoOfferFallback,
+            // Route ALL pricing math through the engine — identical pipeline to
+            // sellItems() so the EMI draft and the final invoice agree.
+            /** @var PricingEngine $engine */
+            $engine = app(PricingEngine::class);
+            $quoteInput = QuoteInput::retailer(
+                shopId: $shopId,
+                customerId: $customerId,
+                itemIds: $items->pluck('id')->toArray(),
+                manualDiscount: (float) $discount,
+                offerSchemeId: $offerSchemeId,
+                allowAutoOfferFallback: $allowAutoOfferFallback,
             );
-            $offerDiscount = (float) ($offerPayload['discount_amount'] ?? 0);
-            $totalDiscount = min(round($sellingPrice, 2), round($manualDiscount + $offerDiscount, 2));
+            $breakdown = $engine->compute($quoteInput);
+
+            $manualDiscount = $breakdown->manualDiscount;
+            $offerDiscount  = $breakdown->offerDiscount;
+            $totalDiscount  = $breakdown->totalDiscount;
+            $gstRate        = $breakdown->gstRate;
+            $offerPayload   = $breakdown->offer;
+
+            // Preserve today's round_off behaviour: respect the caller's value
+            // unless the shop has opted-in to auto-rounding via preferences.
+            $effectiveRoundOff = $breakdown->roundingMethod === 'none'
+                ? round((float) $roundOff, 2)
+                : $breakdown->roundingAdjustment;
 
             $invoice = InvoiceAccountingService::createDraft([
                 'customer_id'    => $customerId,
@@ -378,11 +405,18 @@ class RetailerSalesService
                 'gst_rate'       => $gstRate,
                 'wastage_charge' => 0,
                 'discount'       => $totalDiscount,
-                'round_off'      => $roundOff,
+                'round_off'      => $effectiveRoundOff,
             ]);
 
+            // Engine has already apportioned per-line GST via the same
+            // largest-remainder helper, so SUM(line.gst_amount) == invoice.gst
+            // when this draft is finalized.
+            $apportionedEmi = [];
+            foreach ($breakdown->lines as $line) {
+                $apportionedEmi[(int) $line['item_id']] = (float) ($line['gst_amount'] ?? 0);
+            }
+
             foreach ($items as $item) {
-                $lineGst = round((float) $item->selling_price * ($gstRate / 100), 2);
                 InvoiceItem::record([
                     'invoice_id'     => $invoice->id,
                     'item_id'        => $item->id,
@@ -392,7 +426,7 @@ class RetailerSalesService
                     'stone_amount'   => $item->stone_charges ?? 0,
                     'line_total'     => $item->selling_price,
                     'gst_rate'       => $gstRate,
-                    'gst_amount'     => $lineGst,
+                    'gst_amount'     => $apportionedEmi[$item->id] ?? 0,
                 ]);
             }
 
@@ -436,7 +470,7 @@ class RetailerSalesService
                     'manual_discount' => $manualDiscount,
                     'offer_discount' => $offerDiscount,
                     'offer_scheme_id' => $offerPayload['scheme_id'] ?? null,
-                    'round_off'   => $roundOff,
+                    'round_off'   => $effectiveRoundOff,
                 ],
             ]);
 

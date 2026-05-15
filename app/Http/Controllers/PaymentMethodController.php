@@ -14,15 +14,7 @@ class PaymentMethodController extends Controller
 {
     public function index()
     {
-        $shop    = auth()->user()->shop;
-        $methods = ShopPaymentMethod::where('shop_id', $shop->id)
-            ->orderBy('sort_order')
-            ->orderBy('type')
-            ->orderBy('name')
-            ->get()
-            ->groupBy('type');
-
-        return view('settings.payment-methods', compact('shop', 'methods'));
+        return redirect()->route('settings.edit', ['tab' => 'payment-methods']);
     }
 
     public function store(Request $request)

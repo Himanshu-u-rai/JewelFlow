@@ -238,7 +238,13 @@
             $inRepairCount   = $statusCounts['in_repair']   ?? 0;
             $readyCount      = $statusCounts['ready']       ?? 0;
             $deliveredCount  = $statusCounts['delivered']   ?? 0;
+            $canModifyRepairs = auth()->user()->can('repairs.create')
+                || auth()->user()->can('repairs.edit')
+                || auth()->user()->can('repairs.delete');
         @endphp
+        @unless($canModifyRepairs)
+            @include('partials.view-only-banner', ['permission' => 'repairs.edit', 'message' => 'repair management'])
+        @endunless
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 repairs-kpi-grid">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 repairs-kpi-card">
@@ -295,7 +301,9 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 repairs-layout">
+        @php $canCreateRepair = auth()->user()->can('repairs.create'); @endphp
+        <div class="grid grid-cols-1 {{ $canCreateRepair ? 'lg:grid-cols-3' : 'lg:grid-cols-1' }} gap-6 repairs-layout">
+            @can('repairs.create')
             <!-- New Repair Form -->
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden repairs-form-card repairs-surface-card">
@@ -436,9 +444,10 @@
                     </form>
                 </div>
             </div>
+            @endcan
 
             <!-- Repairs List -->
-            <div class="lg:col-span-2">
+            <div class="{{ $canCreateRepair ? 'lg:col-span-2' : 'lg:col-span-1' }}">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden repairs-table-card repairs-surface-card">
                     <div class="p-4 border-b border-gray-200 flex items-center justify-between gap-3 flex-wrap">
                         <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2 shrink-0">
@@ -534,6 +543,7 @@
                                                     View
                                                 </a>
                                                 @if($r->status !== 'delivered')
+                                                    @can('repairs.edit')
                                                     <form method="POST" action="{{ route('repairs.status', $r) }}" class="inline">
                                                         @csrf
                                                         @method('PATCH')
@@ -555,6 +565,7 @@
                                                             class="btn btn-success btn-xs" title="Complete & Bill">
                                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Bill
                                                     </button>
+                                                    @endcan
                                                 @endif
                                                 @if($r->status === 'delivered' && $r->invoice_id)
                                                     <a href="{{ route('invoices.show', $r->invoice_id) }}"

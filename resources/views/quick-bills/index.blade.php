@@ -5,6 +5,7 @@
         subtitle="Flexible jewellery bills with a separate mini register for this shop."
     >
         <x-slot:actions>
+            @can('sales.create')
             <a href="{{ route('quick-bills.create') }}"
                class="btn btn-success btn-sm">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -12,10 +13,15 @@
                 </svg>
                 New Quick Bill
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
     <div class="content-inner max-w-[1380px] mx-auto ops-treatment-page jf-skeleton-host is-loading">
+
+        @unless(auth()->user()->can('sales.create'))
+            @include('partials.view-only-banner', ['permission' => 'sales.create', 'message' => 'creating quick bills'])
+        @endunless
 
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-1 ops-kpi-card">

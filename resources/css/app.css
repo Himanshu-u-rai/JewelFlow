@@ -58,7 +58,88 @@
 		--jf-radius-lg: 14px;
 		--jf-radius-xl: 16px;
 		--jf-radius-2xl: 20px;
+		--jf-radius-3xl: 24px;
 		--jf-radius-pill: 9999px;
+
+		/* ── Font Mono ──────────────────────────────── */
+		--jf-font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+		/* ── Tailwind brand ramp mirror (for inline-CSS use) ── */
+		--jf-brand-50: #fffbeb;
+		--jf-brand-100: #fef3c7;
+		--jf-brand-200: #fde68a;
+		--jf-brand-300: #fcd34d;
+		--jf-brand-400: #fbbf24;
+		--jf-brand-500: #f59e0b;
+		--jf-brand-600: #d97706;
+		--jf-brand-700: #b45309;
+
+		/* ── Semantic / Status ──────────────────────── */
+		--jf-success: #16a34a;
+		--jf-success-bg: #ecfdf5;
+		--jf-success-border: #a7f3d0;
+		--jf-success-ink: #065f46;
+
+		--jf-danger: #ef4444;
+		--jf-danger-strong: #dc2626;
+		--jf-danger-bg: #fff1f2;
+		--jf-danger-border: #fecdd3;
+		--jf-danger-ink: #9f1239;
+
+		--jf-warn: #f59e0b;
+		--jf-warn-bg: #fffbeb;
+		--jf-warn-border: #fde68a;
+		--jf-warn-ink: #b45309;
+
+		--jf-info: #38bdf8;
+		--jf-info-bg: #eff6ff;
+		--jf-info-border: #bae6fd;
+		--jf-info-ink: #075985;
+
+		/* ── Gold shadows + focus ring ─────────────── */
+		--jf-shadow-gold: 0 2px 8px rgba(217, 119, 6, 0.20);
+		--jf-shadow-gold-hover: 0 4px 16px rgba(217, 119, 6, 0.28);
+		--jf-shadow-modal: 0 20px 48px rgba(16, 24, 40, 0.18);
+		--jf-focus-ring: 0 0 0 3px rgba(245, 158, 11, 0.25);
+
+		/* ── Motion ─────────────────────────────────── */
+		--jf-ease: cubic-bezier(0.4, 0, 0.2, 1);
+		--jf-duration-fast: 120ms;
+		--jf-duration: 150ms;
+		--jf-duration-slow: 240ms;
+
+		/* ── Spacing scale (4-based) ───────────────── */
+		--jf-space-1: 4px;
+		--jf-space-2: 8px;
+		--jf-space-3: 12px;
+		--jf-space-4: 16px;
+		--jf-space-5: 20px;
+		--jf-space-6: 24px;
+		--jf-space-8: 32px;
+		--jf-space-10: 40px;
+		--jf-space-12: 48px;
+		--jf-space-16: 64px;
+
+		/* ── Marketing skin tokens (mirrored from landing.blade.php for future reuse) ── */
+		--jf-paper: #fbf6ea;
+		--jf-paper-2: #efe3cf;
+		--jf-cream: #faf3e7;
+		--jf-cream-2: #f5e8d2;
+		--jf-ink-warm: #1b1412;
+		--jf-ink-warm-2: #44332f;
+		--jf-muted-warm: #75655f;
+		--jf-line: #e1d2b8;
+		--jf-ruby: #8a1538;
+		--jf-ruby-deep: #66102a;
+		--jf-ruby-soft: #fff0f4;
+		--jf-saffron: #d49820;
+		--jf-saffron-soft: #fff1c6;
+		--jf-amethyst: #5d3a9b;
+		--jf-amethyst-soft: #f4efff;
+		--jf-pearl: #efe6da;
+		--jf-platinum: #ede7dc;
+		--jf-gold-warm: #c48a26;
+		--jf-gold-warm-2: #8e5b12;
 	}
 
 	html {
@@ -645,24 +726,24 @@ body.app-shell {
 }
 
 .nav-section-title {
-    font-size: 10px;
-    font-weight: 700;
-    color: rgba(245, 158, 11, 0.58);
+    font-size: 11px;
+    font-weight: 800;
+    color: rgba(245, 158, 11, 0.85);
     text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 10px 20px 6px 20px;
+    letter-spacing: 0.12em;
+    padding: 14px 20px 6px 20px;
     user-select: none;
 }
 
 .nav-link {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 9px 20px 9px 28px;
-    color: rgba(255,255,255,0.6);
+    gap: 12px;
+    padding: 10px 20px 10px 20px;
+    color: rgba(255,255,255,0.78);
     text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
     transition: all 0.15s ease;
     border-left: 3px solid transparent;
     line-height: 1.4;
@@ -671,15 +752,34 @@ body.app-shell {
 }
 
 .nav-link:hover {
-    background: rgba(255,255,255,0.05);
-    color: rgba(255,255,255,0.92);
+    background: rgba(255,255,255,0.06);
+    color: #ffffff;
 }
 
 .nav-link.active {
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.06) 100%);
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.18) 0%, rgba(245, 158, 11, 0.06) 100%);
     color: #ffffff;
     border-left-color: var(--jf-gold);
-    font-weight: 600;
+    font-weight: 700;
+}
+
+.nav-link .nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: rgba(245, 158, 11, 0.75);
+    flex-shrink: 0;
+    transition: color 0.15s ease;
+}
+
+.nav-link:hover .nav-icon {
+    color: var(--jf-gold-glow);
+}
+
+.nav-link.active .nav-icon {
+    color: var(--jf-gold);
 }
 
 /* Impersonation banner (tenant support mode) */
@@ -727,44 +827,75 @@ body.app-shell {
     filter: brightness(0.95);
 }
 
-.nav-icon {
-    display: none;
-}
 
 .sidebar-footer {
-    padding: 10px 16px;
-    border-top: 1px solid rgba(255,255,255,0.05);
-    background: transparent;
+    padding: 12px 12px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .sidebar-footer-link {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    color: rgba(255,255,255,0.6);
+    gap: 12px;
+    padding: 10px 12px;
+    color: rgba(255, 255, 255, 0.78);
     text-decoration: none;
-    font-size: 12px;
-    font-weight: 500;
-    border-radius: var(--jf-radius-sm);
-    transition: all 0.15s ease;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: var(--jf-radius);
+    transition: background 0.15s ease, color 0.15s ease;
+    width: 100%;
+}
+
+.sidebar-footer-link .nav-icon {
+    color: rgba(245, 158, 11, 0.75);
 }
 
 .sidebar-footer-link:hover {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.06);
     color: #ffffff;
+}
+
+.sidebar-footer-link:hover .nav-icon {
+    color: var(--jf-gold-glow);
+}
+
+.sidebar-footer-link.is-active {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.18) 0%, rgba(245, 158, 11, 0.06) 100%);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.sidebar-footer-link.is-active .nav-icon {
+    color: var(--jf-gold);
+}
+
+.sidebar-footer-link--danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #fecaca;
+}
+
+.sidebar-footer-link--danger:hover .nav-icon {
+    color: #fca5a5;
 }
 
 .sidebar-footer-role {
     margin-left: auto;
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--jf-gold);
-    background: rgba(245, 158, 11, 0.1);
-    padding: 3px 10px;
+    letter-spacing: 0.08em;
+    color: var(--jf-gold-glow);
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 3px 9px;
     border-radius: var(--jf-radius-pill);
+    line-height: 1.4;
+    flex-shrink: 0;
 }
 
 .sidebar-alert-pill {
@@ -1277,14 +1408,236 @@ body.drawer-open {
     box-shadow: var(--jf-shadow-xs);
 }
 
-.btn:focus-visible {
-    outline: 3px solid rgba(245, 158, 11, 0.25);
-    outline-offset: 2px;
+/* Unified gold focus ring across all button variants. Uses :focus-visible so
+   keyboard tabs get the ring while mouse clicks stay clean. */
+.btn:focus-visible,
+.btn-primary:focus-visible,
+.btn-dark:focus-visible,
+.btn-secondary:focus-visible,
+.btn-danger:focus-visible,
+.btn-success:focus-visible {
+    outline: none;
+    box-shadow: var(--jf-focus-ring);
 }
 
 .btn svg {
     width: 16px;
     height: 16px;
+}
+
+/* ─── Global semantic alerts (inline messages) ─── */
+.alert {
+    padding: 12px 16px;
+    border-radius: var(--jf-radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    box-shadow: var(--jf-shadow-sm);
+}
+.alert.success { background: var(--jf-success-bg); border-color: var(--jf-success-border); color: var(--jf-success-ink); }
+.alert.danger  { background: var(--jf-danger-bg);  border-color: var(--jf-danger-border);  color: var(--jf-danger-ink); }
+.alert.warn    { background: var(--jf-warn-bg);    border-color: var(--jf-warn-border);    color: var(--jf-warn-ink); }
+.alert.info    { background: var(--jf-info-bg);    border-color: var(--jf-info-border);    color: var(--jf-info-ink); }
+
+/* ─── Shared image carousel + lightbox (used by partials/image-carousel.blade.php) ─── */
+.jf-carousel {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: var(--jf-radius-xl);
+    background: var(--jf-surface-muted);
+}
+.jf-carousel-track {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+}
+.jf-carousel-track::-webkit-scrollbar { display: none; }
+.jf-carousel-slide {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    height: 100%;
+    position: relative;
+}
+.jf-carousel-image-btn {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+    display: block;
+}
+.jf-carousel-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.jf-carousel-zoom-hint {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    background: rgba(15, 23, 42, 0.55);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--jf-duration) var(--jf-ease);
+}
+.jf-carousel-image-btn:hover .jf-carousel-zoom-hint,
+.jf-carousel-image-btn:focus-visible .jf-carousel-zoom-hint {
+    opacity: 1;
+}
+.jf-carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--jf-ink);
+    box-shadow: var(--jf-shadow-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--jf-duration) var(--jf-ease), transform var(--jf-duration) var(--jf-ease);
+}
+.jf-carousel-nav:hover { background: #ffffff; transform: translateY(-50%) scale(1.05); }
+.jf-carousel-nav:focus-visible { outline: none; box-shadow: var(--jf-shadow-sm), var(--jf-focus-ring); }
+.jf-carousel-nav--prev { left: 10px; }
+.jf-carousel-nav--next { right: 10px; }
+.jf-carousel-dots {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 9999px;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+}
+.jf-carousel-dots button {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.55);
+    padding: 0;
+    cursor: pointer;
+    transition: background var(--jf-duration) var(--jf-ease), width var(--jf-duration) var(--jf-ease);
+}
+.jf-carousel-dots button.is-active {
+    background: #ffffff;
+    width: 18px;
+}
+
+/* Lightbox */
+.jf-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.92);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    backdrop-filter: blur(6px);
+}
+.jf-lightbox-stage {
+    position: relative;
+    max-width: min(1100px, 100%);
+    max-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.jf-lightbox-image {
+    max-width: 100%;
+    max-height: calc(100vh - 96px);
+    object-fit: contain;
+    border-radius: var(--jf-radius-md);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+}
+.jf-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--jf-duration) var(--jf-ease);
+}
+.jf-lightbox-close:hover { background: rgba(255, 255, 255, 0.22); }
+.jf-lightbox-close:focus-visible { outline: none; box-shadow: var(--jf-focus-ring); }
+.jf-lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--jf-duration) var(--jf-ease);
+}
+.jf-lightbox-nav:hover { background: rgba(255, 255, 255, 0.22); }
+.jf-lightbox-nav:focus-visible { outline: none; box-shadow: var(--jf-focus-ring); }
+.jf-lightbox-nav--prev { left: 18px; }
+.jf-lightbox-nav--next { right: 18px; }
+.jf-lightbox-counter {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 640px) {
+    .jf-lightbox { padding: 12px; }
+    .jf-lightbox-nav { width: 40px; height: 40px; }
+    .jf-lightbox-nav--prev { left: 8px; }
+    .jf-lightbox-nav--next { right: 8px; }
+    .jf-lightbox-close { top: 10px; right: 10px; }
+    .jf-carousel-nav { width: 32px; height: 32px; }
 }
 
 .btn-sm {
@@ -6958,30 +7311,32 @@ body.admin-shell {
 
 /* Retailer item profile page. Scoped to the retailer show branch only. */
 .inventory-item-show-page--retailer {
-    padding-bottom: 24px;
+    max-width: none;
+    gap: 12px;
+    padding: 22px 22px 28px;
 }
 
 .inventory-item-retailer-shell {
     display: grid;
-    gap: 14px;
-    width: min(100%, 1280px);
+    gap: 12px;
+    width: 100%;
     max-width: none;
-    margin: 0 auto;
+    margin: 0;
 }
 
 .inventory-item-retailer-hero,
 .inventory-item-retailer-card {
     border: 1px solid #dbe3ee;
-    border-radius: 16px;
+    border-radius: 12px;
     background: #ffffff;
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
 .inventory-item-retailer-hero {
     display: grid;
-    grid-template-columns: minmax(420px, 0.47fr) minmax(0, 0.53fr);
-    gap: 18px;
-    padding: 18px;
+    grid-template-columns: minmax(330px, 0.95fr) minmax(360px, 1.05fr);
+    gap: 14px;
+    padding: 14px;
     align-items: stretch;
 }
 
@@ -6994,7 +7349,7 @@ body.admin-shell {
     height: 100%;
     min-width: 0;
     overflow: hidden;
-    border-radius: 14px;
+    border-radius: 10px;
     background: #f8fafc;
 }
 
@@ -7023,9 +7378,9 @@ body.admin-shell {
     display: block;
     width: 100%;
     height: 100%;
-    min-height: 330px;
-    max-height: 390px;
-    border-radius: 14px;
+    min-height: 430px;
+    max-height: 520px;
+    border-radius: 10px;
     object-fit: cover;
     background: #f1f5f9;
 }
@@ -7098,6 +7453,7 @@ body.admin-shell {
     align-items: center;
     justify-content: center;
     color: #94a3b8;
+    border: 1px dashed #cbd5e1;
 }
 
 .item-gallery-preview-tile,
@@ -7161,52 +7517,50 @@ body.admin-shell {
     font-weight: 800;
 }
 
-.inventory-item-retailer-hero-body {
-    display: flex;
+.inventory-item-retailer-summary,
+.inventory-item-retailer-main-column,
+.inventory-item-retailer-side-column {
+    display: grid;
     min-width: 0;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 14px;
+    gap: 12px;
 }
 
-.inventory-item-retailer-title-row {
+.inventory-item-retailer-title-row,
+.inventory-item-retailer-card-head {
     display: flex;
+    min-width: 0;
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
 }
 
-.inventory-item-retailer-eyebrow {
-    margin: 0 0 4px;
+.inventory-item-retailer-title-block {
+    min-width: 0;
+}
+
+.inventory-item-retailer-title-block p {
+    margin: 0 0 6px;
     color: #64748b;
-    font-size: 11px;
-    font-weight: 900;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
 }
 
 .inventory-item-retailer-title-row h2 {
     margin: 0;
-    color: #0f172a;
-    font-size: clamp(30px, 2.65vw, 42px);
+    color: #071323;
+    font-size: 38px;
     font-weight: 900;
-    letter-spacing: -0.045em;
-    line-height: 1.04;
+    letter-spacing: 0;
+    line-height: 1.05;
     overflow-wrap: anywhere;
-}
-
-.inventory-item-retailer-title-row p:not(.inventory-item-retailer-eyebrow) {
-    margin: 6px 0 0;
-    color: #475569;
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 1.35;
 }
 
 .inventory-item-retailer-status {
     flex: 0 0 auto;
     border-radius: 999px;
-    padding: 7px 11px;
+    padding: 7px 10px;
     font-size: 12px;
     font-weight: 900;
     line-height: 1;
@@ -7228,21 +7582,47 @@ body.admin-shell {
     color: #475569;
 }
 
+.inventory-item-retailer-info-strip,
+.inventory-item-retailer-price-band,
+.inventory-item-retailer-quick-grid,
+.inventory-item-retailer-primary-actions,
+.inventory-item-retailer-record-layout,
+.inventory-item-retailer-ledger,
+.inventory-item-retailer-metric-grid,
+.inventory-item-retailer-secondary-actions,
+.inventory-item-retailer-sale-grid {
+    display: grid;
+    min-width: 0;
+    gap: 10px;
+}
+
+.inventory-item-retailer-info-strip {
+    grid-template-columns: minmax(140px, 0.75fr) repeat(2, minmax(0, 1fr));
+}
+
+.inventory-item-retailer-barcode,
+.inventory-item-retailer-mini-record,
+.inventory-item-retailer-price-card,
+.inventory-item-retailer-quick-grid > div,
+.inventory-item-retailer-metric-grid > div,
+.inventory-item-retailer-sale-grid > div {
+    min-width: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 12px;
+}
+
 .inventory-item-retailer-barcode {
-    display: inline-grid;
-    justify-items: start;
-    gap: 4px;
-    width: fit-content;
-    max-width: 100%;
-    border: 1px solid #fde68a;
-    border-radius: 13px;
+    border-color: #f7d886;
     background: #fffbeb;
-    padding: 10px 12px;
 }
 
 .inventory-item-retailer-barcode span,
+.inventory-item-retailer-mini-record span,
 .inventory-item-retailer-price-band span,
 .inventory-item-retailer-quick-grid span,
+.inventory-item-retailer-ledger span,
 .inventory-item-retailer-kv-list span,
 .inventory-item-retailer-metric-grid span,
 .inventory-item-retailer-sale-grid span,
@@ -7251,72 +7631,109 @@ body.admin-shell {
     color: #64748b;
     font-size: 11px;
     font-weight: 900;
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
     line-height: 1.15;
     text-transform: uppercase;
 }
 
-.inventory-item-retailer-barcode strong {
+.inventory-item-retailer-barcode strong,
+.inventory-item-retailer-mini-record strong {
+    display: block;
+    margin-top: 4px;
     min-width: 0;
-    color: #92400e;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: 16px;
+    color: #0f172a;
+    font-size: 14px;
     font-weight: 900;
-    line-height: 1.2;
+    line-height: 1.25;
     overflow-wrap: anywhere;
 }
 
-.inventory-item-retailer-price-band {
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(190px, 0.75fr);
-    gap: 10px;
+.inventory-item-retailer-barcode strong {
+    color: #92400e;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-.inventory-item-retailer-price-band > div,
-.inventory-item-retailer-quick-grid > div,
-.inventory-item-retailer-metric-grid > div,
-.inventory-item-retailer-sale-grid > div {
-    min-width: 0;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    background: #f8fafc;
-    padding: 13px;
+.inventory-item-retailer-price-band {
+    /* Selling Price / MRP card (wider) + Sell-in-POS CTA (narrower) on one row. */
+    grid-template-columns: minmax(0, 1.5fr) minmax(180px, 0.5fr);
+    align-items: stretch;
+}
+
+.inventory-item-retailer-price-card--main {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+/* Inline CTA inside the price-band — sits next to the Selling Price card and
+   matches its full height so the two cards read as a single pricing row. */
+.inventory-item-retailer-action--inline-cta {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 100%;
+    font-size: 14px;
+    padding: 16px 14px;
+    border-radius: 10px;
+}
+.inventory-item-retailer-action--inline-cta svg { width: 18px; height: 18px; }
+
+/* Title row now carries two tags (status + barcode chip). */
+.inventory-item-retailer-title-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* Compact barcode chip — sits next to the status pill. Slightly bigger and
+   more visually distinct than the status pill so the cashier can read it,
+   but no longer a full-width card. */
+.inventory-item-retailer-barcode-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: #92400e;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+/* When Cost Breakdown lives inside the hero summary, drop card chrome so it
+   blends into the surrounding column rather than looking like a 2nd card. */
+.inventory-item-retailer-card--in-hero {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 14px 0 0;
+    margin-top: 2px;
+    border-top: 1px solid #e2e8f0;
 }
 
 .inventory-item-retailer-price-band strong {
     display: block;
-    margin-top: 4px;
-    color: #0f172a;
-    font-size: clamp(32px, 2.75vw, 44px);
+    margin-top: 5px;
+    color: #071323;
+    font-size: 34px;
     font-weight: 950;
-    letter-spacing: -0.055em;
+    letter-spacing: 0;
     line-height: 1;
     overflow-wrap: anywhere;
 }
 
-.inventory-item-retailer-price-band .is-positive {
-    border-color: #bbf7d0;
-    background: #f0fdf4;
-}
-
-.inventory-item-retailer-price-band .is-negative {
-    border-color: #fecdd3;
-    background: #fff1f2;
-}
-
-.inventory-item-retailer-price-band .is-positive strong,
-.inventory-item-retailer-price-band .is-positive em {
-    color: #15803d;
-}
-
-.inventory-item-retailer-price-band .is-negative strong,
-.inventory-item-retailer-price-band .is-negative em {
-    color: #be123c;
-}
+/* Margin pill removed — retailer pricing model has selling_price equal to
+   metal_cost + overhead_cost by construction; per-item margin is always zero
+   and would be misleading. Profit lives in making/wastage/rate markups. */
 
 .inventory-item-retailer-price-band em {
     display: block;
-    margin-top: 3px;
+    margin-top: 4px;
     font-size: 13px;
     font-style: normal;
     font-weight: 900;
@@ -7324,88 +7741,92 @@ body.admin-shell {
 }
 
 .inventory-item-retailer-quick-grid,
-.inventory-item-retailer-metric-grid {
-    display: grid;
+.inventory-item-retailer-metric-grid,
+.inventory-item-retailer-sale-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
 }
 
 .inventory-item-retailer-quick-grid strong,
-.inventory-item-retailer-metric-grid strong {
+.inventory-item-retailer-metric-grid strong,
+.inventory-item-retailer-sale-grid a,
+.inventory-item-retailer-sale-grid strong {
     display: block;
     margin-top: 4px;
     color: #0f172a;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 900;
     line-height: 1.25;
     overflow-wrap: anywhere;
 }
 
-.inventory-item-retailer-grid {
-    display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    align-items: start;
-    grid-auto-flow: row dense;
-    gap: 14px;
+.inventory-item-retailer-sale-grid a {
+    color: #1d4ed8;
 }
 
-.inventory-item-retailer-card {
-    grid-column: span 4;
-    padding: 16px;
+.inventory-item-retailer-primary-actions {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.85fr);
+}
+
+.inventory-item-retailer-primary-actions form,
+.inventory-item-retailer-secondary-actions form {
     min-width: 0;
 }
 
-.inventory-item-retailer-card--pricing {
-    grid-column: span 6;
+.inventory-item-retailer-record-layout {
+    grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+    align-items: start;
 }
 
-.inventory-item-retailer-card--weights,
-.inventory-item-retailer-card--vendor {
-    grid-column: span 3;
-}
-
-.inventory-item-retailer-card--actions {
-    grid-column: span 8;
-}
-
-.inventory-item-retailer-card--sale {
-    grid-column: span 4;
+.inventory-item-retailer-card {
+    min-width: 0;
+    padding: 14px;
 }
 
 .inventory-item-retailer-card-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 
 .inventory-item-retailer-card-head h3 {
     margin: 0;
-    color: #0f172a;
-    font-size: 17px;
+    color: #071323;
+    font-size: 16px;
     font-weight: 900;
-    letter-spacing: -0.02em;
-}
-
-.inventory-item-retailer-card-head p {
-    margin: 3px 0 0;
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.35;
+    letter-spacing: 0;
+    line-height: 1.2;
 }
 
 .inventory-item-retailer-card-head > span {
     flex: 0 0 auto;
+    max-width: 60%;
     border-radius: 999px;
     background: #f1f5f9;
     color: #334155;
-    padding: 7px 10px;
+    padding: 6px 9px;
     font-size: 12px;
     font-weight: 900;
-    line-height: 1;
-    white-space: nowrap;
+    line-height: 1.1;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.inventory-item-retailer-ledger {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 18px;
+}
+
+.inventory-item-retailer-ledger > div,
+.inventory-item-retailer-kv-list > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    gap: 10px;
+    align-items: center;
+    border-bottom: 1px solid #edf2f7;
+    padding-bottom: 9px;
+}
+
+.inventory-item-retailer-ledger > div:nth-last-child(-n + 2) {
+    border-bottom: 0;
+    padding-bottom: 0;
 }
 
 .inventory-item-retailer-kv-list {
@@ -7413,25 +7834,12 @@ body.admin-shell {
     gap: 9px;
 }
 
-.inventory-item-retailer-card--pricing .inventory-item-retailer-kv-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 18px;
-}
-
-.inventory-item-retailer-kv-list > div {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: center;
-    border-bottom: 1px solid #edf2f7;
-    padding-bottom: 9px;
-}
-
 .inventory-item-retailer-kv-list > div:last-child {
     border-bottom: 0;
     padding-bottom: 0;
 }
 
+.inventory-item-retailer-ledger strong,
 .inventory-item-retailer-kv-list strong {
     min-width: 0;
     color: #0f172a;
@@ -7451,14 +7859,74 @@ body.admin-shell {
     text-align: right;
 }
 
+.inventory-item-retailer-card--weights .inventory-item-retailer-metric-grid,
+.inventory-item-retailer-sale-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inventory-item-retailer-secondary-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.inventory-item-retailer-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 42px;
+    border-radius: 10px;
+    border: 1px solid #dbe3ee;
+    background: #ffffff;
+    color: #334155;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.15;
+    text-align: center;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.inventory-item-retailer-action--primary {
+    border-color: #0f766e;
+    background: #0f766e;
+    color: #ffffff;
+}
+
+.inventory-item-retailer-action--dark {
+    border-color: #0f172a;
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.inventory-item-retailer-action--accent {
+    border-color: #f2c66d;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.inventory-item-retailer-action--muted {
+    background: #f8fafc;
+    color: #334155;
+}
+
+.inventory-item-retailer-action.is-disabled {
+    pointer-events: none;
+    border-color: #e2e8f0;
+    background: #f1f5f9;
+    color: #94a3b8;
+}
+
 .inventory-item-retailer-source-link {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     margin-top: 12px;
-    border: 1px solid #fde68a;
-    border-radius: 14px;
+    border: 1px solid #f2c66d;
+    border-radius: 10px;
     background: #fffbeb;
     color: #92400e;
     padding: 12px;
@@ -7479,6 +7947,7 @@ body.admin-shell {
     font-size: 14px;
     font-weight: 900;
     line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 .inventory-item-retailer-source-link--empty strong {
@@ -7486,144 +7955,56 @@ body.admin-shell {
     font-family: inherit;
 }
 
-.inventory-item-retailer-actions {
-    display: grid;
-    gap: 10px;
-}
-
-.inventory-item-retailer-card--actions .inventory-item-retailer-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.inventory-item-retailer-card--actions .inventory-item-retailer-print-grid {
-    grid-column: span 1;
-}
-
-.inventory-item-retailer-actions form {
-    min-width: 0;
-}
-
-.inventory-item-retailer-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    width: 100%;
-    min-height: 46px;
-    border-radius: 13px;
-    border: 1px solid #dbe3ee;
-    background: #ffffff;
-    color: #334155;
-    padding: 11px 13px;
-    font-size: 13px;
-    font-weight: 900;
-    line-height: 1.1;
-    text-align: center;
-    text-decoration: none;
-    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
-}
-
-.inventory-item-retailer-action--primary {
-    border-color: #0f766e;
-    background: #0f766e;
-    color: #ffffff;
-}
-
-.inventory-item-retailer-action--dark {
-    border-color: #0f172a;
-    background: #0f172a;
-    color: #ffffff;
-}
-
-.inventory-item-retailer-action--accent {
-    border-color: #fde68a;
-    background: #fffbeb;
-    color: #92400e;
-}
-
-.inventory-item-retailer-action--muted {
-    background: #f8fafc;
-    color: #334155;
-}
-
-.inventory-item-retailer-action.is-disabled {
-    pointer-events: none;
-    border-color: #e2e8f0;
-    background: #f1f5f9;
-    color: #94a3b8;
-}
-
-.inventory-item-retailer-print-grid,
-.inventory-item-retailer-sale-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.inventory-item-retailer-sale-grid a,
-.inventory-item-retailer-sale-grid strong {
-    display: block;
-    margin-top: 4px;
-    color: #1d4ed8;
-    font-size: 14px;
-    font-weight: 900;
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-}
-
 .inventory-item-retailer-empty-note {
     border: 1px solid #e2e8f0;
-    border-radius: 14px;
+    border-radius: 10px;
     background: #f8fafc;
     color: #475569;
-    padding: 15px;
+    padding: 14px;
     font-size: 14px;
     font-weight: 700;
 }
 
-.inventory-item-retailer-card--weights .inventory-item-retailer-metric-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (max-width: 1180px) {
-    .inventory-item-retailer-hero {
-        grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.1fr);
-    }
-
-    .inventory-item-retailer-card,
-    .inventory-item-retailer-card--pricing,
-    .inventory-item-retailer-card--weights,
-    .inventory-item-retailer-card--vendor,
-    .inventory-item-retailer-card--actions,
-    .inventory-item-retailer-card--sale {
-        grid-column: span 6;
-    }
-
-    .inventory-item-retailer-card--pricing .inventory-item-retailer-kv-list,
-    .inventory-item-retailer-card--actions .inventory-item-retailer-actions {
+@media (max-width: 1100px) {
+    .inventory-item-retailer-hero,
+    .inventory-item-retailer-record-layout {
         grid-template-columns: 1fr;
+    }
+
+    .inventory-item-retailer-image {
+        min-height: 360px;
+        max-height: none;
+        aspect-ratio: 16 / 10;
+    }
+
+    .inventory-item-retailer-side-column {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .inventory-item-retailer-card--vendor {
+        grid-column: 1 / -1;
     }
 }
 
 @media (max-width: 768px) {
     .inventory-item-show-page--retailer {
-        padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+        padding: 14px 12px 18px;
     }
 
-    .inventory-item-retailer-shell {
-        gap: 12px;
+    .inventory-item-retailer-shell,
+    .inventory-item-retailer-summary,
+    .inventory-item-retailer-main-column,
+    .inventory-item-retailer-side-column {
+        gap: 10px;
     }
 
     .inventory-item-retailer-hero {
-        grid-template-columns: 1fr;
-        gap: 12px;
-        border-radius: 12px;
+        gap: 10px;
         padding: 10px;
     }
 
     .inventory-item-retailer-image {
-        min-height: 230px;
-        max-height: none;
+        min-height: 260px;
         aspect-ratio: 4 / 3;
     }
 
@@ -7645,7 +8026,11 @@ body.admin-shell {
     }
 
     .inventory-item-retailer-title-row h2 {
-        font-size: clamp(20px, 7vw, 27px);
+        font-size: 28px;
+    }
+
+    .inventory-item-retailer-title-block p {
+        font-size: 12px;
     }
 
     .inventory-item-retailer-status {
@@ -7653,36 +8038,26 @@ body.admin-shell {
         font-size: 10px;
     }
 
-    .inventory-item-retailer-price-band {
+    .inventory-item-retailer-info-strip,
+    .inventory-item-retailer-price-band,
+    .inventory-item-retailer-primary-actions,
+    .inventory-item-retailer-ledger,
+    .inventory-item-retailer-side-column {
         grid-template-columns: 1fr;
-        gap: 8px;
-    }
-
-    .inventory-item-retailer-price-band strong {
-        font-size: clamp(22px, 8vw, 30px);
     }
 
     .inventory-item-retailer-quick-grid,
     .inventory-item-retailer-metric-grid,
-    .inventory-item-retailer-print-grid,
     .inventory-item-retailer-sale-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
     }
 
-    .inventory-item-retailer-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
+    .inventory-item-retailer-price-band strong {
+        font-size: 28px;
     }
 
-    .inventory-item-retailer-card,
-    .inventory-item-retailer-card--pricing,
-    .inventory-item-retailer-card--weights,
-    .inventory-item-retailer-card--vendor,
-    .inventory-item-retailer-card--actions,
-    .inventory-item-retailer-card--sale {
-        grid-column: auto;
-        border-radius: 12px;
+    .inventory-item-retailer-card {
         padding: 12px;
     }
 
@@ -7690,40 +8065,55 @@ body.admin-shell {
         margin-bottom: 10px;
     }
 
-    .inventory-item-retailer-kv-list > div {
-        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    .inventory-item-retailer-ledger > div:nth-last-child(-n + 2) {
+        border-bottom: 1px solid #edf2f7;
+        padding-bottom: 9px;
+    }
+
+    .inventory-item-retailer-ledger > div:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .inventory-item-retailer-secondary-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .inventory-item-retailer-action {
-        min-height: 38px;
+        min-height: 40px;
     }
 }
 
 @media (max-width: 430px) {
-    .inventory-item-retailer-hero {
-        padding: 9px;
-    }
-
-    .inventory-item-retailer-image {
-        min-height: 200px;
-    }
-
+    .inventory-item-retailer-hero,
     .inventory-item-retailer-card {
         padding: 10px;
     }
 
-    .inventory-item-retailer-quick-grid,
-    .inventory-item-retailer-metric-grid {
-        gap: 7px;
+    .inventory-item-retailer-image {
+        min-height: 220px;
+    }
+
+    .inventory-item-retailer-title-row {
+        align-items: flex-start;
+    }
+
+    .inventory-item-retailer-title-row h2 {
+        font-size: 24px;
+    }
+
+    .inventory-item-retailer-price-band strong {
+        font-size: 25px;
     }
 
     .inventory-item-retailer-quick-grid strong,
     .inventory-item-retailer-metric-grid strong,
+    .inventory-item-retailer-ledger strong,
     .inventory-item-retailer-kv-list strong {
         font-size: 12px;
     }
 
-    .inventory-item-retailer-print-grid,
+    .inventory-item-retailer-secondary-actions,
     .inventory-item-retailer-sale-grid {
         grid-template-columns: 1fr;
     }

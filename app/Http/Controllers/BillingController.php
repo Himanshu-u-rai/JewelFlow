@@ -3,21 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Platform\PlatformInvoice;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class BillingController extends Controller
 {
-    public function index(): View
+    /**
+     * Legacy entry point — billing history is now merged into the Subscription
+     * page (see SubscriptionController::status). Redirect any direct hits or
+     * old bookmarks to the unified page.
+     */
+    public function index(): RedirectResponse
     {
-        $shop     = auth()->user()->shop;
-        $invoices = PlatformInvoice::where('shop_id', $shop->id)
-            ->with('plan')
-            ->latest('issued_at')
-            ->paginate(20)
-            ->withQueryString();
-
-        return view('billing.index', compact('invoices'));
+        return redirect()->route('subscription.status');
     }
 
     public function show(PlatformInvoice $invoice): View

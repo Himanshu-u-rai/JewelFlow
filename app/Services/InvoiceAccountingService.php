@@ -29,6 +29,61 @@ class InvoiceAccountingService
         return $invoice;
     }
 
+    /**
+     * Apportion an aggregate GST amount across invoice lines using the
+     * largest-remainder method (Stripe / Tally canonical pattern).
+     *
+     * Each line gets `round(line_total / subtotal * totalGst, 2)`. The 2-decimal
+     * rounding leaves a small remainder; that remainder is added to the line
+     * with the largest line_total so SUM(line.gst_amount) == totalGst exactly.
+     *
+     * Called by sales services BEFORE inserting InvoiceItem rows so per-line
+     * gst_amount is correct at write-time and never needs to be mutated later
+     * (preserving InvoiceItem's append-only immutability contract).
+     *
+     * @param  array<int|string,float> $lineTotals  keyed by stable identifier (e.g. item index or item_id)
+     * @param  float                   $totalGst    aggregate invoice-level GST already computed
+     * @return array<int|string,float>              same keys, apportioned GST values
+     */
+    public static function apportionGstToLines(array $lineTotals, float $totalGst): array
+    {
+        if (empty($lineTotals)) {
+            return [];
+        }
+
+        $subtotal = array_sum(array_map('floatval', $lineTotals));
+        $totalGst = round($totalGst, 2);
+
+        // Degenerate cases: no subtotal or no GST to share → every line gets 0.
+        if ($subtotal <= 0 || $totalGst == 0.0) {
+            return array_map(fn () => 0.0, $lineTotals);
+        }
+
+        $apportioned = [];
+        $runningSum  = 0.0;
+        $largestKey  = null;
+        $largestVal  = -INF;
+
+        foreach ($lineTotals as $key => $lineTotal) {
+            $share = round(((float) $lineTotal / $subtotal) * $totalGst, 2);
+            $apportioned[$key] = $share;
+            $runningSum = round($runningSum + $share, 2);
+
+            if ((float) $lineTotal > $largestVal) {
+                $largestVal = (float) $lineTotal;
+                $largestKey = $key;
+            }
+        }
+
+        // Largest-remainder: put rounding drift on the biggest line.
+        $remainder = round($totalGst - $runningSum, 2);
+        if ($largestKey !== null && abs($remainder) >= 0.01) {
+            $apportioned[$largestKey] = round($apportioned[$largestKey] + $remainder, 2);
+        }
+
+        return $apportioned;
+    }
+
     public static function finalizeDraft(Invoice $invoice, ?float $gstRate = null): Invoice
     {
         $invoice->refresh();

@@ -31,7 +31,7 @@ class Invoice extends Model
         'gst_rate' => 'decimal:2',
         'wastage_charge' => 'decimal:2',
         'discount' => 'decimal:2',
-        'round_off' => 'decimal:2',
+        'round_off' => 'decimal:4',
         'total' => 'decimal:2',
         'finalized_at' => 'datetime',
         'cancelled_at' => 'datetime',

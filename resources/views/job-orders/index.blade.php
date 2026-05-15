@@ -443,14 +443,20 @@
 
     <x-page-header title="Job Orders" subtitle="Bullion issued to karigars">
         <x-slot:actions>
+            @can('job_order.manage')
             <a href="{{ route('job-orders.create') }}" class="btn btn-success btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Issue Bullion
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
     <div class="content-inner">
+
+        @unless(auth()->user()->can('job_order.manage'))
+            @include('partials.view-only-banner', ['permission' => 'job_order.manage', 'message' => 'job orders'])
+        @endunless
 
         <div x-data="{
                   statusOpen: false,
@@ -773,7 +779,9 @@
             @if($orders->isEmpty())
                 <div class="py-16 text-center text-gray-400">
                     <p class="text-sm mb-3">No job orders match your filter.</p>
+                    @can('job_order.manage')
                     <a href="{{ route('job-orders.create') }}" class="text-teal-700 underline text-sm">Issue your first job order</a>
+                    @endcan
                 </div>
             @else
                 <div class="jo-table-wrap">

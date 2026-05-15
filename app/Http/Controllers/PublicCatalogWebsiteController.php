@@ -176,7 +176,8 @@ class PublicCatalogWebsiteController extends Controller
             ->where('status', 'in_stock')
             ->firstOrFail();
 
-        $imageUrl = $this->catalog->resolveImageUrl($request, $item);
+        $imageUrl  = $this->catalog->resolveImageUrl($request, $item);   // legacy single (used for og:image)
+        $imageUrls = $this->catalog->resolveImageUrls($request, $item);  // full gallery for carousel
 
         // Related items from same category.
         $relatedItems = Item::where('status', 'in_stock')
@@ -191,7 +192,7 @@ class PublicCatalogWebsiteController extends Controller
         }
 
         return view('public.catalog.product', compact(
-            'item', 'imageUrl', 'relatedItems', 'relatedImageUrls'
+            'item', 'imageUrl', 'imageUrls', 'relatedItems', 'relatedImageUrls'
         ));
     }
 

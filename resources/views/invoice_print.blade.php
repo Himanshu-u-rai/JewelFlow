@@ -8,32 +8,37 @@
     $billing = $shop?->billingSettings;
 
     // ── Appearance ────────────────────────────────────────────────────────
-    $accent    = $billing->theme_color   ?? '#111111';
+    $accent    = $billing?->theme_color   ?? '#111111';
     // Font-size tiers: body / shop-name / subtitle / invoice-kind / meta / terms / top-line
     $fontTiers = [
         'compact' => ['body'=>'8.5px',  'title'=>'17px', 'sub'=>'9px',  'kind'=>'10px', 'meta'=>'8px',   'terms'=>'7.5px', 'top'=>'8px'  ],
         'normal'  => ['body'=>'9.5px',  'title'=>'20px', 'sub'=>'10px', 'kind'=>'11px', 'meta'=>'9px',   'terms'=>'8px',   'top'=>'8.5px'],
         'large'   => ['body'=>'10.5px', 'title'=>'23px', 'sub'=>'11px', 'kind'=>'12px', 'meta'=>'10px',  'terms'=>'9px',   'top'=>'9.5px'],
     ];
-    $tier      = $fontTiers[$billing->font_size ?? 'normal'] ?? $fontTiers['normal'];
+    $tier      = $fontTiers[$billing?->font_size ?? 'normal'] ?? $fontTiers['normal'];
     $fontSize  = $tier['body'];
     $pageSizes = ['a4' => 'A4', 'a5' => 'A5', 'thermal' => '80mm auto'];
     $margins   = ['a4' => '12mm', 'a5' => '8mm', 'thermal' => '3mm'];
-    $minHts    = ['a4' => '273mm', 'a5' => '190mm', 'thermal' => '0'];
-    $paperKey  = $billing->paper_size ?? 'a4';
+    // Shell min-height kept below the raw page-content area so the invoice
+    // still fits when the browser adds its default print headers/footers
+    // (URL + page number — ~24mm on Chrome with "Headers and footers" ON).
+    // A4 raw content: 297 − 24mm margins = 273mm; we use 250mm to absorb the
+    // browser strip. A5 raw: 210 − 16mm = ~190mm; we use 175mm.
+    $minHts    = ['a4' => '250mm', 'a5' => '175mm', 'thermal' => '0'];
+    $paperKey  = $billing?->paper_size ?? 'a4';
     $pageSize  = $pageSizes[$paperKey] ?? 'A4';
     $margin    = $margins[$paperKey]   ?? '12mm';
     $minHeight = $minHts[$paperKey]    ?? '273mm';
 
     // ── Column widths (redistribute hidden cols to Description) ───────────
-    $showHuid    = $billing->show_huid          ?? true;
-    $showStone   = $billing->show_stone_columns ?? true;
-    $showPurity  = $billing->show_purity        ?? true;
-    $showGstin   = $billing->show_gstin         ?? true;
-    $showAddr    = $billing->show_customer_address ?? true;
-    $showIdPan   = $billing->show_customer_id_pan  ?? true;
-    $igstMode    = $billing->igst_mode          ?? false;
-    $copyCount   = (int) ($billing->copy_count  ?? 1);
+    $showHuid    = $billing?->show_huid          ?? true;
+    $showStone   = $billing?->show_stone_columns ?? true;
+    $showPurity  = $billing?->show_purity        ?? true;
+    $showGstin   = $billing?->show_gstin         ?? true;
+    $showAddr    = $billing?->show_customer_address ?? true;
+    $showIdPan   = $billing?->show_customer_id_pan  ?? true;
+    $igstMode    = $billing?->igst_mode          ?? false;
+    $copyCount   = (int) ($billing?->copy_count  ?? 1);
     $copyCount   = max(1, min(2, $copyCount));
 
     $descW = 26;
@@ -47,12 +52,16 @@
     if ($showHuid)  $colCount++;
     if ($showStone) $colCount += 2; // StoneWt + StoneVal
     if ($showPurity) $colCount++;
+    // Items table minimum padded rows per paper size. Tuned so the items
+    // table + new bottom structure (9 payment slots + 3-column footer) all
+    // fit on one printed page even with the browser's default headers/footers
+    // enabled. Anything taller spills onto a second page in print preview.
     $minimumRowsByPaper = [
-        'a4' => 32,
-        'a5' => 20,
+        'a4' => 26,
+        'a5' => 16,
         'thermal' => 0,
     ];
-    $minimumPrintableRows = $minimumRowsByPaper[$paperKey] ?? 32;
+    $minimumPrintableRows = $minimumRowsByPaper[$paperKey] ?? 26;
 
     // ── Invoice calculations ───────────────────────────────────────────────
     $customer       = $invoice->customer;
@@ -112,10 +121,10 @@
         ? array_slice(array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $termsRaw)))), 0, 6)
         : $defaultTerms;
 
-    $subtitle  = $billing->shop_subtitle   ?: 'GOLD • SILVER • DIAMOND';
-    $tagline   = $billing->custom_tagline  ?? '';
-    $copyLabel = $billing->invoice_copy_label ?? 'Original';
-    $secondSig = $billing->second_signature_label ?? '';
+    $subtitle  = $billing?->shop_subtitle   ?: 'GOLD • SILVER • DIAMOND';
+    $tagline   = $billing?->custom_tagline  ?? '';
+    $copyLabel = $billing?->invoice_copy_label ?? 'Original';
+    $secondSig = $billing?->second_signature_label ?? '';
     $showDigitalSignature = (bool) ($billing?->show_digital_signature && !empty($billing?->digital_signature_path));
     $stateCode = trim((string) ($shop?->state_code ?? ''));
     $stateName = trim((string) ($shop?->state ?? ''));
@@ -131,9 +140,9 @@
     // HSN helper: map item category to HSN code
     $hsnFor = function (?string $category) use ($billing): string {
         $cat = strtolower((string) $category);
-        if (str_contains($cat, 'silver'))                                          return $billing->hsn_silver  ?? '7113';
-        if (str_contains($cat, 'diamond') || str_contains($cat, 'stone') || str_contains($cat, 'gem')) return $billing->hsn_diamond ?? '7114';
-        return $billing->hsn_gold ?? '7113';
+        if (str_contains($cat, 'silver'))                                          return $billing?->hsn_silver  ?? '7113';
+        if (str_contains($cat, 'diamond') || str_contains($cat, 'stone') || str_contains($cat, 'gem')) return $billing?->hsn_diamond ?? '7114';
+        return $billing?->hsn_gold ?? '7113';
     };
 
 @endphp
@@ -151,19 +160,50 @@
             flex-direction: column;
         }
         .invoice-body { flex: 1; }
+        /* Bottom 3-column footer row. Locked at the bottom of the page via
+           .invoice-shell's flex layout (.invoice-body grows to fill the gap).
+           Each column is a dedicated, always-rendered section. */
         .invoice-footer {
-            margin-top: 2px;
-            padding-top: 2px;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid {{ $accent }};
+            display: flex;
+            gap: 10px;
             page-break-inside: avoid;
             break-inside: avoid-page;
         }
+        .footer-col { flex: 1; min-width: 0; min-height: 80px; }
+        .footer-col + .footer-col {
+            border-left: 1px solid #ddd;
+            padding-left: 10px;
+        }
+        .footer-title {
+            margin: 0 0 4px;
+            font-size: {{ $tier['terms'] }};
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .footer-body {
+            font-size: {{ $tier['terms'] }};
+            line-height: 1.3;
+        }
+        .footer-body > div { margin: 0 0 2px; }
+        .footer-empty { color: #999; font-style: italic; }
+        .footer-col--sign { text-align: right; }
+        .footer-sign-second { margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
+        .footer-sign-image { margin: 6px 0 2px; }
+        .footer-sign-image img { max-height: 48px; max-width: 100%; }
+        .footer-sign-spacer { min-height: 32px; }
+        .footer-sign-line { margin-top: 4px; font-weight: 700; }
+        .footer-sign-role { font-size: calc({{ $tier['terms'] }} - 0.5px); color: #555; }
 
         .copy-break { page-break-before: always; margin-top: 0; }
 
         .row { display: flex; width: 100%; }
         .between { justify-content: space-between; align-items: flex-start; }
 
-        .top-line { font-size: {{ $tier['top'] }}; margin-bottom: 2px; }
+        .top-line { font-size: {{ $tier['top'] }}; margin-bottom: 2px; min-height: 12px; }
 
         .shop-head {
             text-align: center;
@@ -171,7 +211,14 @@
             border-bottom: 2px solid {{ $accent }};
             padding-bottom: 6px;
         }
-        .shop-title    { margin: 0; font-size: calc({{ $tier['title'] }} + 6px); line-height: 1.15; font-weight: 900; letter-spacing: 0.3px; }
+        /* Cap shop title to one line so an unusually long shop name (or
+           a misconfigured value) can't push the entire header down and
+           force a page break. */
+        .shop-title    {
+            margin: 0; font-size: calc({{ $tier['title'] }} + 6px);
+            line-height: 1.15; font-weight: 900; letter-spacing: 0.3px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
         .shop-subtitle { margin: 3px 0 2px; font-size: {{ $tier['sub'] }}; font-weight: 700; letter-spacing: 0.5px; }
         .shop-meta     { margin: 2px 0; font-size: {{ $tier['meta'] }}; }
         .shop-tagline  { margin: 2px 0; font-size: {{ $tier['meta'] }}; color: #555; font-style: italic; }
@@ -189,7 +236,7 @@
         .items-table td { border: 1px solid {{ $accent }}; padding: 4px; vertical-align: top; overflow-wrap: break-word; }
         .items-table th { font-weight: 700; background: #f3f3f3; text-align: center; white-space: nowrap; }
         .items-spacer-row td {
-            height: 12px;
+            height: 10px;
             padding-top: 0;
             padding-bottom: 0;
             border-top: 0;
@@ -206,8 +253,45 @@
 
         .bottom-wrap { display: flex; gap: 10px; margin-top: 6px; }
         .left-notes  { flex: 1; border-top: 1px solid #111; padding-top: 4px; min-height: 60px; }
+        /* Dedicated area for Amount in Words. Reserves vertical space so even
+           the shortest amount leaves room for a long amount (two-line wrap)
+           without shifting the layout below. Clean — no background or border
+           chrome; just a small uppercase label with the body text under it. */
+        .amount-words-block {
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            min-height: 36px;
+        }
+        .amount-words-title {
+            font-size: {{ $tier['terms'] }};
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #555;
+            margin-bottom: 3px;
+        }
+        .amount-words-body { font-size: {{ $fontSize }}; line-height: 1.35; }
+        /* Legacy single-line amount-words rule retained for any caller that
+           still uses the older class — new template uses .amount-words-block. */
         .amount-words { font-size: {{ $fontSize }}; margin-bottom: 8px; }
-        .payment-note { min-height: 16px; border-bottom: 1px dotted #111; margin-bottom: 4px; }
+        /* Payment Note block — reserves space for every POS payment mode
+           (cash, upi, bank, wallet, old_gold, old_silver, emi,
+           scheme_redemption, other = 9). Real payments fill from the top;
+           remaining rows render blank but height-preserved so the bottom-wrap
+           stays the same shape across all invoices. */
+        .payment-note { min-height: 135px; margin-bottom: 6px; }
+        .payment-note-title {
+            font-size: {{ $tier['terms'] }};
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #555;
+            margin-bottom: 3px;
+        }
+        /* Each payment row gets a locked height so 1-payment invoices and
+           4-payment invoices have identical bottom-wrap heights. */
+        .payment-row { min-height: 14px; line-height: 14px; margin-bottom: 2px; }
+        .payment-row-blank { color: transparent; }
         .note-meta {
             border-top: 1px solid #111;
             padding-top: 4px;
@@ -232,13 +316,15 @@
         }
         .note-meta-body > div { margin: 0 0 2px; }
         .note-meta-body > div:last-child { margin-bottom: 0; }
+        /* Bank / UPI details slot stays at a fixed minimum height even when
+           the shop has only configured one or two of these fields, so the
+           overall bottom-wrap section keeps the same shape across shops. */
+        .note-meta-body.payment { min-height: 70px; }
 
         .totals-box { width: 42%; border: 1px solid #111; border-collapse: collapse; align-self: flex-start; }
         .totals-box td { border: 1px solid #111; padding: 5px 6px; font-size: {{ $fontSize }}; }
 
-        .sign-row   { display: flex; gap: 10px; margin-top: 4px; font-size: {{ $fontSize }}; }
-        .sign-block { flex: 1; text-align: right; }
-        .sign-line  { margin-top: 4px; font-weight: 700; }
+        /* Legacy .sign-row was replaced by the 3-column .invoice-footer. */
 
         .header-center { flex: 1; text-align: center; }
         .invoice-kind  { font-weight: 700; font-size: {{ $tier['kind'] }}; margin: 0 0 2px; letter-spacing: 0.5px; }
@@ -335,6 +421,27 @@
                 font-size: 10px;
                 line-height: 1.35;
             }
+            /* Release the fixed-skeleton heights on small screens so the
+               scrolling preview doesn't show huge blank gaps. The locked
+               layout only applies to the print/desktop view. */
+            .note-meta-body.payment { min-height: 0; }
+            .payment-note { min-height: 0; }
+            .payment-row-blank { display: none; }
+            .top-line { min-height: 0; }
+            .shop-tagline:empty { display: none; }
+            /* Stack the 3-column footer vertically on phones for readability. */
+            .invoice-footer {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .footer-col + .footer-col {
+                border-left: 0;
+                border-top: 1px solid #eee;
+                padding-left: 0;
+                padding-top: 8px;
+            }
+            .footer-col { min-height: 0; }
+            .footer-col--sign { text-align: left; }
         }
 
         @media print {
@@ -362,7 +469,10 @@
             <div class="header-center">
                 <h1 class="shop-title">{{ $shop?->name ?? 'Jewellery Store' }}</h1>
                 <p class="shop-subtitle">{{ $subtitle }}</p>
-                @if($tagline)<p class="shop-tagline">{{ $tagline }}</p>@endif
+                {{-- Always render the tagline line so the shop-head block has
+                     a fixed height. Non-breaking space keeps the line visible
+                     when the shop hasn't configured a tagline. --}}
+                <p class="shop-tagline">{!! $tagline !== '' ? e($tagline) : '&nbsp;' !!}</p>
                 <p class="shop-meta">
                     {{ $shop?->address_line1 ?: ($shop?->address ?: '') }}
                     @if($shop?->address_line2), {{ $shop->address_line2 }}@endif
@@ -487,6 +597,14 @@
                             <td class="text-right strong">{{ number_format((float) $line->line_total, 2) }}</td>
                         </tr>
                         @php
+                            // When items.count() ≤ $minimumPrintableRows we pad
+                            // with filler rows to keep the table visually full.
+                            // When items.count() > $minimumPrintableRows we add
+                            // ZERO fillers (max(0, ...)) and the items themselves
+                            // overflow naturally onto a 2nd page — the
+                            // .invoice-footer is page-break-inside:avoid, so the
+                            // 3-column footer always stays whole on whichever
+                            // page it lands on.
                             $isLastItemRow = $idx === ($invoice->items->count() - 1);
                             $fillerRows = $isLastItemRow ? max(0, $minimumPrintableRows - $invoice->items->count()) : 0;
                         @endphp
@@ -538,57 +656,77 @@
 
         <div class="bottom-wrap">
             <div class="left-notes">
-                <div class="amount-words"><span class="strong">₹:</span> {{ $amountToWords((float) $invoice->total) }}</div>
-                <div class="strong" style="margin-bottom: 4px;">Total Receipt / Payment Note:</div>
-                <div class="payment-note"></div>
-                <div class="note-meta">
-                    <div class="note-meta-block">
-                        <h4 class="note-meta-title">Payment Details:</h4>
-                        <div class="note-meta-body payment">
-                            @if(!empty($billing?->upi_id))
-                                <div><span class="strong">UPI:</span> {{ $billing->upi_id }}</div>
-                            @endif
-                            @if(!empty($billing?->bank_name) || !empty($billing?->bank_account_number))
-                                @if(!empty($billing->bank_account_holder))
-                                    <div><span class="strong">A/C Holder:</span> {{ $billing->bank_account_holder }}</div>
-                                @endif
-                                @if(!empty($billing->bank_name))
-                                    <div><span class="strong">Bank:</span> {{ $billing->bank_name }}</div>
-                                @endif
-                                @if(!empty($billing->bank_account_number))
-                                    <div><span class="strong">A/C No:</span> {{ $billing->bank_account_number }}</div>
-                                @endif
-                                @if(!empty($billing->bank_ifsc))
-                                    <div><span class="strong">IFSC:</span> {{ $billing->bank_ifsc }}</div>
-                                @endif
-                                @if(!empty($billing->bank_account_type))
-                                    <div><span class="strong">Type:</span> {{ ucfirst($billing->bank_account_type) }}</div>
-                                @endif
-                                @if(!empty($billing->bank_branch))
-                                    <div><span class="strong">Branch:</span> {{ $billing->bank_branch }}</div>
-                                @endif
-                            @elseif(!empty($billing?->bank_details))
-                                <div style="white-space: pre-line;"><span class="strong">Bank:</span> {{ $billing->bank_details }}</div>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="note-meta-block">
-                        <h4 class="note-meta-title">T &amp; C Apply:</h4>
-                        <div class="note-meta-body">
-                            @foreach($terms as $term)
-                                <div>{{ $term }}</div>
-                            @endforeach
-                        </div>
-                    </div>
+                <div class="amount-words-block">
+                    <div class="amount-words-title">Amount in Words</div>
+                    <div class="amount-words-body">{{ $amountToWords((float) $invoice->total) }}</div>
                 </div>
+                <div class="payment-note-title">Total Receipt / Payment Note</div>
+                <div class="payment-note">
+                    @php
+                        $modeLabels = [
+                            'cash' => 'Cash', 'upi' => 'UPI', 'bank' => 'Bank Transfer',
+                            'wallet' => 'Wallet', 'old_gold' => 'Old Gold',
+                            'old_silver' => 'Old Silver', 'emi' => 'EMI',
+                            'scheme_redemption' => 'Scheme Redemption', 'other' => 'Other',
+                        ];
+                        $fmt    = fn ($v) => '₹ ' . number_format((float) $v, 2);
+                        $fmtWt  = fn ($v) => rtrim(rtrim(number_format((float) $v, 3, '.', ''), '0'), '.');
+                        // Fixed-skeleton: always render exactly $maxPaymentRows
+                        // rows. Reserved to fit every distinct POS payment
+                        // mode (cash, upi, bank, wallet, old_gold, old_silver,
+                        // emi, scheme_redemption, other = 9) so even an invoice
+                        // paid in every mode has the same shape as one paid
+                        // entirely in cash.
+                        $maxPaymentRows = 9;
+                        $paymentsToShow = $payments->take($maxPaymentRows);
+                        $blankSlots     = max(0, $maxPaymentRows - $paymentsToShow->count());
+                    @endphp
+                    @foreach($paymentsToShow as $payment)
+                        <div class="payment-row">
+                            <span class="strong">{{ $modeLabels[$payment->mode] ?? ucfirst((string) $payment->mode) }}:</span>
+                            {{ $fmt($payment->amount) }}
+                            @if(in_array($payment->mode, ['old_gold', 'old_silver'], true) && (float) ($payment->metal_gross_weight ?? 0) > 0)
+                                <span style="font-size: 11px; color: #444;">
+                                    ({{ $fmtWt($payment->metal_gross_weight) }}g
+                                    @if((float) ($payment->metal_purity ?? 0) > 0)
+                                        · {{ rtrim(rtrim(number_format((float) $payment->metal_purity, 2, '.', ''), '0'), '.') }}{{ $payment->mode === 'old_gold' ? 'K' : '' }}
+                                    @endif
+                                    @if((float) ($payment->metal_test_loss ?? 0) > 0)
+                                        · loss {{ rtrim(rtrim(number_format((float) $payment->metal_test_loss, 2, '.', ''), '0'), '.') }}%
+                                    @endif
+                                    @if((float) ($payment->metal_fine_weight ?? 0) > 0)
+                                        · {{ $fmtWt($payment->metal_fine_weight) }}g fine
+                                    @endif
+                                    @if((float) ($payment->metal_rate_per_gram ?? 0) > 0)
+                                        · @ ₹{{ number_format((float) $payment->metal_rate_per_gram, 2) }}/g
+                                    @endif)
+                                </span>
+                            @endif
+                            @if(!empty($payment->reference) && ! in_array($payment->mode, ['cash', 'old_gold', 'old_silver'], true))
+                                <span style="font-size: 11px; color: #444;">— {{ $payment->reference }}</span>
+                            @endif
+                        </div>
+                    @endforeach
+                    @for($i = 0; $i < $blankSlots; $i++)
+                        <div class="payment-row payment-row-blank">&nbsp;</div>
+                    @endfor
+                </div>
+                {{-- Payment Details + T&C moved to the bottom 3-column footer
+                     row so the left-notes column now only carries Amount in
+                     Words + Payment Note. Keeps the .bottom-wrap compact. --}}
             </div>
 
+            {{-- Fixed-skeleton totals box: every row renders on every invoice
+                 (zero values shown explicitly) so two sales from the same shop
+                 produce identically-shaped invoices. The `$igstMode` flag is a
+                 shop-wide setting (intra- vs inter-state) — IGST shape (1 tax
+                 row) and CGST/SGST shape (2 tax rows) are each fixed within a
+                 shop, just different between shops. --}}
             <table class="totals-box">
                 <tr>
                     <td>Total Amount Before Tax</td>
                     <td class="text-right">{{ number_format($beforeTax, 2) }}</td>
                 </tr>
-                @if($gst > 0)
                 @if($igstMode)
                 <tr>
                     <td>Add: IGST {{ number_format($gstHalfRate * 2, 2) }}%</td>
@@ -604,31 +742,26 @@
                     <td class="text-right">{{ number_format($sgst, 2) }}</td>
                 </tr>
                 @endif
-                @endif
                 <tr>
                     <td>Hallmark / Misc. / Other Charges</td>
                     <td class="text-right">{{ number_format($extraCharges, 2) }}</td>
                 </tr>
-                @if($discount > 0)
                 <tr>
                     <td>Less: Discount</td>
-                    <td class="text-right">-{{ number_format($discount, 2) }}</td>
+                    <td class="text-right">{{ $discount > 0 ? '-' : '' }}{{ number_format($discount, 2) }}</td>
                 </tr>
-                @endif
                 <tr>
-                    <td>{{ $gst > 0 ? 'Total Amount After Tax' : 'Total Amount' }}</td>
+                    <td>Total Amount</td>
                     <td class="text-right">{{ number_format($afterTax, 2) }}</td>
                 </tr>
                 <tr>
                     <td>Receipt Amount</td>
                     <td class="text-right">{{ number_format($receiptAmount, 2) }}</td>
                 </tr>
-                @if($roundOff != 0)
                 <tr>
                     <td>Round Off</td>
-                    <td class="text-right">{{ $roundOff > 0 ? '+' : '' }}{{ number_format($roundOff, 2) }}</td>
+                    <td class="text-right">{{ $roundOff > 0 ? '+' : ($roundOff < 0 ? '' : '') }}{{ number_format($roundOff, 2) }}</td>
                 </tr>
-                @endif
                 <tr>
                     <td class="strong">Net Amount</td>
                     <td class="text-right strong">₹{{ number_format((float) $invoice->total, 2) }}</td>
@@ -637,27 +770,75 @@
         </div>
     </div>{{-- end .invoice-body --}}
 
+    {{-- Bottom 3-column footer row. Each column is a dedicated, always-visible
+         section so the bottom of the invoice has the same shape across every
+         sale — no matter whether the shop has bank details set up, how many
+         terms are configured, or whether a second signatory exists. --}}
     <div class="invoice-footer">
-        <div class="sign-row">
-            @if($secondSig)
-            <div class="sign-block" style="text-align: left;">
-                <div class="sign-line">{{ $secondSig }}</div>
-                <div>(Prepared by)</div>
-            </div>
-            @endif
-            <div class="sign-block">
-                <div class="strong">FOR {{ $shop?->name ?? 'Jewellery Store' }}</div>
-                @if($showDigitalSignature)
-                <div style="margin-top: 6px;">
-                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($billing->digital_signature_path) }}"
-                         style="max-height: 60px; max-width: 160px;" alt="Signature">
-                </div>
+        <div class="footer-col footer-col--payment">
+            <h4 class="footer-title">Payment Details</h4>
+            <div class="footer-body">
+                @if(!empty($billing?->upi_id))
+                    <div><span class="strong">UPI:</span> {{ $billing?->upi_id }}</div>
                 @endif
-                <div class="sign-line">Authorised Signatory</div>
-                <div>(of selling Dealer/Manager/Agent)</div>
+                @if(!empty($billing?->bank_name) || !empty($billing?->bank_account_number))
+                    @if(!empty($billing?->bank_account_holder))
+                        <div><span class="strong">A/C Holder:</span> {{ $billing?->bank_account_holder }}</div>
+                    @endif
+                    @if(!empty($billing?->bank_name))
+                        <div><span class="strong">Bank:</span> {{ $billing?->bank_name }}</div>
+                    @endif
+                    @if(!empty($billing?->bank_account_number))
+                        <div><span class="strong">A/C No:</span> {{ $billing?->bank_account_number }}</div>
+                    @endif
+                    @if(!empty($billing?->bank_ifsc))
+                        <div><span class="strong">IFSC:</span> {{ $billing?->bank_ifsc }}</div>
+                    @endif
+                    @if(!empty($billing?->bank_account_type))
+                        <div><span class="strong">Type:</span> {{ ucfirst($billing?->bank_account_type) }}</div>
+                    @endif
+                    @if(!empty($billing?->bank_branch))
+                        <div><span class="strong">Branch:</span> {{ $billing?->bank_branch }}</div>
+                    @endif
+                @elseif(!empty($billing?->bank_details))
+                    <div style="white-space: pre-line;"><span class="strong">Bank:</span> {{ $billing?->bank_details }}</div>
+                @endif
+                @if(empty($billing?->upi_id) && empty($billing?->bank_name) && empty($billing?->bank_account_number) && empty($billing?->bank_details))
+                    <div class="footer-empty">—</div>
+                @endif
             </div>
         </div>
 
+        <div class="footer-col footer-col--terms">
+            <h4 class="footer-title">Terms &amp; Conditions</h4>
+            <div class="footer-body">
+                @foreach($terms as $term)
+                    <div>{{ $term }}</div>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="footer-col footer-col--sign">
+            <h4 class="footer-title">For {{ $shop?->name ?? 'Jewellery Store' }}</h4>
+            <div class="footer-body footer-sign-body">
+                @if($secondSig)
+                <div class="footer-sign-second">
+                    <div class="strong">{{ $secondSig }}</div>
+                    <div class="footer-sign-role">(Prepared by)</div>
+                </div>
+                @endif
+                @if($showDigitalSignature)
+                <div class="footer-sign-image">
+                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($billing?->digital_signature_path) }}"
+                         alt="Signature">
+                </div>
+                @else
+                <div class="footer-sign-spacer">&nbsp;</div>
+                @endif
+                <div class="footer-sign-line">Authorised Signatory</div>
+                <div class="footer-sign-role">(of selling Dealer / Manager / Agent)</div>
+            </div>
+        </div>
     </div>{{-- end .invoice-footer --}}
 </div>
 @endfor

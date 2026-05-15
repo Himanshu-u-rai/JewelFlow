@@ -127,14 +127,15 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     Route::post('/announcements/{announcement}/dismiss', [\App\Http\Controllers\AnnouncementDismissController::class, 'dismiss'])->name('announcements.dismiss');
 
+    // Mobile-scan session for POS — anyone with POS access can use it.
     Route::post('/scan-session/create', [\App\Http\Controllers\ScanSessionController::class, 'create'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.pos')
         ->name('scan.session.create');
     Route::get('/scan-session/{token}/poll', [\App\Http\Controllers\ScanSessionController::class, 'poll'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.pos')
         ->name('scan.session.poll');
     Route::post('/scan-session/{token}/expire', [\App\Http\Controllers\ScanSessionController::class, 'expire'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.pos')
         ->name('scan.session.expire');
 
     // ======= EMAIL OTP VERIFICATION =======
@@ -154,7 +155,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])->name('subscription.status');
 
-    // ======= BILLING INVOICES (owner-only portal) =======
+    // ======= BILLING INVOICES (platform-billing portal — strictly shop owner) =======
     Route::get('/billing', [\App\Http\Controllers\BillingController::class, 'index'])
         ->middleware('role:owner')
         ->name('billing.invoices.index');
@@ -162,64 +163,64 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware('role:owner')
         ->name('billing.invoices.show');
 
-    // ======= EXPORT (owner + manager only — reports.export permission) =======
-    Route::get('/export', [ExportController::class, 'index'])->middleware('role:owner,manager')->name('export.index');
-    Route::post('/export/customers', [ExportController::class, 'exportCustomers'])->middleware('role:owner,manager')->name('export.customers');
-    Route::post('/export/products', [ExportController::class, 'exportProducts'])->middleware('role:owner,manager')->name('export.products');
-    Route::post('/export/invoices', [ExportController::class, 'exportInvoices'])->middleware('role:owner,manager')->name('export.invoices');
-    Route::post('/export/gold-ledger', [ExportController::class, 'exportGoldLedger'])->middleware('role:owner,manager')->name('export.gold-ledger');
-    Route::post('/export/cash-transactions', [ExportController::class, 'exportCashTransactions'])->middleware('role:owner,manager')->name('export.cash-transactions');
+    // ======= EXPORT (reports.export permission) =======
+    Route::get('/export', [ExportController::class, 'index'])->middleware('can:reports.export')->name('export.index');
+    Route::post('/export/customers', [ExportController::class, 'exportCustomers'])->middleware('can:reports.export')->name('export.customers');
+    Route::post('/export/products', [ExportController::class, 'exportProducts'])->middleware('can:reports.export')->name('export.products');
+    Route::post('/export/invoices', [ExportController::class, 'exportInvoices'])->middleware('can:reports.export')->name('export.invoices');
+    Route::post('/export/gold-ledger', [ExportController::class, 'exportGoldLedger'])->middleware('can:reports.export')->name('export.gold-ledger');
+    Route::post('/export/cash-transactions', [ExportController::class, 'exportCashTransactions'])->middleware('can:reports.export')->name('export.cash-transactions');
     Route::post('/export/all', [ExportController::class, 'exportAll'])
-        ->middleware(['role:owner,manager', 'edition:manufacturer'])
+        ->middleware(['can:reports.export', 'edition:manufacturer'])
         ->name('export.all');
 
-    // ======= BULK IMPORTS =======
+    // ======= BULK IMPORTS (reuse reports.export — no separate imports.access permission seeded) =======
     Route::get('/imports', [BulkImportController::class, 'index'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:reports.export')
         ->name('imports.index');
     Route::get('/imports/{import}', [BulkImportController::class, 'show'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:reports.export')
         ->name('imports.show');
     Route::post('/imports/catalog/preview', [BulkImportController::class, 'previewCatalog'])
-        ->middleware('role:owner,manager', 'edition:manufacturer')
+        ->middleware('can:reports.export', 'edition:manufacturer')
         ->name('imports.catalog.preview');
     Route::post('/imports/manufacture/preview', [BulkImportController::class, 'previewManufacture'])
-        ->middleware('role:owner,manager', 'edition:manufacturer')
+        ->middleware('can:reports.export', 'edition:manufacturer')
         ->name('imports.manufacture.preview');
     Route::post('/imports/stock/preview', [BulkImportController::class, 'previewStock'])
-        ->middleware('role:owner,manager', 'edition:retailer')
+        ->middleware('can:reports.export', 'edition:retailer')
         ->name('imports.stock.preview');
     Route::post('/imports/{import}/execute', [BulkImportController::class, 'execute'])
-        ->middleware('role:owner,manager')
+        ->middleware('can:reports.export')
         ->name('imports.execute');
     Route::get('/imports/template/{type}', [BulkImportController::class, 'downloadTemplate'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:reports.export')
         ->name('imports.template');
     Route::get('/imports/{import}/errors', [BulkImportController::class, 'downloadErrors'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:reports.export')
         ->name('imports.errors');
     Route::post('/imports/{import}/cancel', [BulkImportController::class, 'cancel'])
-        ->middleware('role:owner,manager')
+        ->middleware('can:reports.export')
         ->name('imports.cancel');
 
-    // ======= PRODUCT MASTER (owner + manager only — categories.create/edit/delete) =======
-    Route::get('/categories', [\App\Http\Controllers\CategoryController::class, 'index'])->middleware('role:owner,manager,staff')->name('categories.index');
-    Route::get('/categories/create', [\App\Http\Controllers\CategoryController::class, 'create'])->middleware('role:owner,manager')->name('categories.create');
-    Route::post('/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->middleware('role:owner,manager')->name('categories.store');
-    Route::get('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'show'])->middleware('role:owner,manager,staff')->name('categories.show');
-    Route::get('/categories/{category}/edit', [\App\Http\Controllers\CategoryController::class, 'edit'])->middleware('role:owner,manager')->name('categories.edit');
-    Route::put('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('role:owner,manager')->name('categories.update');
-    Route::patch('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('role:owner,manager');
-    Route::delete('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'destroy'])->middleware('role:owner,manager')->name('categories.destroy');
+    // ======= PRODUCT MASTER (inventory.view to read; catalog.manage to mutate) =======
+    Route::get('/categories', [\App\Http\Controllers\CategoryController::class, 'index'])->middleware('can:inventory.view')->name('categories.index');
+    Route::get('/categories/create', [\App\Http\Controllers\CategoryController::class, 'create'])->middleware('can:catalog.manage')->name('categories.create');
+    Route::post('/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->middleware('can:catalog.manage')->name('categories.store');
+    Route::get('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'show'])->middleware('can:inventory.view')->name('categories.show');
+    Route::get('/categories/{category}/edit', [\App\Http\Controllers\CategoryController::class, 'edit'])->middleware('can:catalog.manage')->name('categories.edit');
+    Route::put('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('can:catalog.manage')->name('categories.update');
+    Route::patch('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('can:catalog.manage');
+    Route::delete('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'destroy'])->middleware('can:catalog.manage')->name('categories.destroy');
 
-    Route::get('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'index'])->middleware('role:owner,manager,staff')->name('sub-categories.index');
-    Route::get('/sub-categories/create', [\App\Http\Controllers\SubCategoryController::class, 'create'])->middleware('role:owner,manager')->name('sub-categories.create');
-    Route::post('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'store'])->middleware('role:owner,manager')->name('sub-categories.store');
-    Route::get('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'show'])->middleware('role:owner,manager,staff')->name('sub-categories.show');
-    Route::get('/sub-categories/{sub_category}/edit', [\App\Http\Controllers\SubCategoryController::class, 'edit'])->middleware('role:owner,manager')->name('sub-categories.edit');
-    Route::put('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('role:owner,manager')->name('sub-categories.update');
-    Route::patch('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('role:owner,manager');
-    Route::delete('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'destroy'])->middleware('role:owner,manager')->name('sub-categories.destroy');
+    Route::get('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'index'])->middleware('can:inventory.view')->name('sub-categories.index');
+    Route::get('/sub-categories/create', [\App\Http\Controllers\SubCategoryController::class, 'create'])->middleware('can:catalog.manage')->name('sub-categories.create');
+    Route::post('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'store'])->middleware('can:catalog.manage')->name('sub-categories.store');
+    Route::get('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'show'])->middleware('can:inventory.view')->name('sub-categories.show');
+    Route::get('/sub-categories/{sub_category}/edit', [\App\Http\Controllers\SubCategoryController::class, 'edit'])->middleware('can:catalog.manage')->name('sub-categories.edit');
+    Route::put('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('can:catalog.manage')->name('sub-categories.update');
+    Route::patch('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('can:catalog.manage');
+    Route::delete('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'destroy'])->middleware('can:catalog.manage')->name('sub-categories.destroy');
 
     Route::get('/api/sub-categories', function (\Illuminate\Http\Request $request) {
         $shopId = auth()->user()->shop_id;
@@ -230,63 +231,64 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             ->get(['id', 'name']);
 
         return response()->json($subs);
-    })->name('api.sub-categories');
+    })->middleware('can:inventory.view')->name('api.sub-categories');
 
-    Route::get('/products', [\App\Http\Controllers\ProductController::class, 'index'])->middleware('role:owner,manager,staff')->name('products.index');
-    Route::get('/products/create', [\App\Http\Controllers\ProductController::class, 'create'])->middleware('role:owner,manager')->name('products.create');
-    Route::post('/products', [\App\Http\Controllers\ProductController::class, 'store'])->middleware('role:owner,manager')->name('products.store');
-    Route::get('/products/{product}', [\App\Http\Controllers\ProductController::class, 'show'])->middleware('role:owner,manager,staff')->name('products.show');
-    Route::get('/products/{product}/edit', [\App\Http\Controllers\ProductController::class, 'edit'])->middleware('role:owner,manager')->name('products.edit');
-    Route::put('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware('role:owner,manager')->name('products.update');
-    Route::patch('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware('role:owner,manager');
-    Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->middleware('role:owner,manager')->name('products.destroy');
+    Route::get('/products', [\App\Http\Controllers\ProductController::class, 'index'])->middleware('can:inventory.view')->name('products.index');
+    Route::get('/products/create', [\App\Http\Controllers\ProductController::class, 'create'])->middleware('can:catalog.manage')->name('products.create');
+    Route::post('/products', [\App\Http\Controllers\ProductController::class, 'store'])->middleware('can:catalog.manage')->name('products.store');
+    Route::get('/products/{product}', [\App\Http\Controllers\ProductController::class, 'show'])->middleware('can:inventory.view')->name('products.show');
+    Route::get('/products/{product}/edit', [\App\Http\Controllers\ProductController::class, 'edit'])->middleware('can:catalog.manage')->name('products.edit');
+    Route::put('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware('can:catalog.manage')->name('products.update');
+    Route::patch('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware('can:catalog.manage');
+    Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->middleware('can:catalog.manage')->name('products.destroy');
 
     // ======= LIVE SEARCH SUGGESTIONS =======
-    Route::get('/search/suggestions', \App\Http\Controllers\SearchSuggestionsController::class)->name('search.suggestions');
+    Route::get('/search/suggestions', \App\Http\Controllers\SearchSuggestionsController::class)->middleware('can:inventory.view')->name('search.suggestions');
 
     // ======= GOLD INVENTORY (Manufacturer only) =======
-    Route::get('/inventory/gold', [GoldInventoryController::class, 'index'])->middleware('edition:manufacturer')->name('inventory.gold.index');
-    Route::get('/inventory/gold/create', [GoldInventoryController::class, 'create'])->middleware('edition:manufacturer')->name('inventory.gold.create');
-    Route::post('/inventory/gold', [GoldInventoryController::class, 'store'])->middleware('edition:manufacturer')->name('inventory.gold.store');
-    Route::get('/inventory/gold/{lot}', [GoldInventoryController::class, 'show'])->middleware('edition:manufacturer')->name('inventory.gold.show');
-    Route::get('/inventory/gold/{lot}/edit', [GoldInventoryController::class, 'edit'])->middleware('edition:manufacturer')->name('inventory.gold.edit');
-    Route::put('/inventory/gold/{lot}', [GoldInventoryController::class, 'update'])->middleware('edition:manufacturer')->name('inventory.gold.update');
+    Route::get('/inventory/gold', [GoldInventoryController::class, 'index'])->middleware(['edition:manufacturer', 'can:inventory.view'])->name('inventory.gold.index');
+    Route::get('/inventory/gold/create', [GoldInventoryController::class, 'create'])->middleware(['edition:manufacturer', 'can:inventory.create'])->name('inventory.gold.create');
+    Route::post('/inventory/gold', [GoldInventoryController::class, 'store'])->middleware(['edition:manufacturer', 'can:inventory.create'])->name('inventory.gold.store');
+    Route::get('/inventory/gold/{lot}', [GoldInventoryController::class, 'show'])->middleware(['edition:manufacturer', 'can:inventory.view'])->name('inventory.gold.show');
+    Route::get('/inventory/gold/{lot}/edit', [GoldInventoryController::class, 'edit'])->middleware(['edition:manufacturer', 'can:inventory.edit'])->name('inventory.gold.edit');
+    Route::put('/inventory/gold/{lot}', [GoldInventoryController::class, 'update'])->middleware(['edition:manufacturer', 'can:inventory.edit'])->name('inventory.gold.update');
 
     // ======= ITEMS / STOCK =======
     // Staff: view + show only. Create/edit/delete = owner + manager.
-    Route::get('/inventory/items', [ItemController::class, 'index'])->middleware('role:owner,manager,staff')->name('inventory.items.index');
-    Route::get('/inventory/items/pricing-alerts', [ItemController::class, 'pricingAlerts'])->middleware(['role:owner,manager', 'edition:retailer'])->name('inventory.items.pricing-alerts');
-    Route::get('/inventory/items/create', [ItemController::class, 'create'])->middleware('role:owner,manager')->name('inventory.items.create');
-    Route::post('/inventory/items', [ItemController::class, 'store'])->middleware('role:owner,manager')->name('inventory.items.store');
-    Route::post('/inventory/items/quick-add-purity', [ItemController::class, 'quickAddPurity'])->middleware('role:owner,manager')->name('inventory.items.quick-add-purity');
-    Route::post('/inventory/items/quick-add-category', [ItemController::class, 'quickAddCategory'])->middleware('role:owner,manager')->name('inventory.items.quick-add-category');
-    Route::post('/inventory/items/quick-add-sub-category', [ItemController::class, 'quickAddSubCategory'])->middleware('role:owner,manager')->name('inventory.items.quick-add-sub-category');
-    Route::post('/inventory/items/quick-add-karigar', [ItemController::class, 'quickAddKarigar'])->middleware('role:owner,manager')->name('inventory.items.quick-add-karigar');
-    Route::get('/inventory/items/{item}', [ItemController::class, 'show'])->middleware('role:owner,manager,staff')->name('inventory.items.show');
-    Route::get('/inventory/items/{item}/edit', [ItemController::class, 'edit'])->middleware('role:owner,manager')->name('inventory.items.edit');
-    Route::put('/inventory/items/{item}', [ItemController::class, 'update'])->middleware('role:owner,manager')->name('inventory.items.update');
-    Route::delete('/inventory/items/{item}', [ItemController::class, 'destroy'])->middleware('role:owner,manager')->name('inventory.items.destroy');
+    Route::get('/inventory/items', [ItemController::class, 'index'])->middleware('can:inventory.view')->name('inventory.items.index');
+    Route::get('/inventory/items/pricing-alerts', [ItemController::class, 'pricingAlerts'])->middleware(['can:inventory.view', 'edition:retailer'])->name('inventory.items.pricing-alerts');
+    Route::get('/inventory/items/create', [ItemController::class, 'create'])->middleware('can:inventory.create')->name('inventory.items.create');
+    Route::post('/inventory/items', [ItemController::class, 'store'])->middleware('can:inventory.create')->name('inventory.items.store');
+    Route::post('/inventory/items/quick-add-purity', [ItemController::class, 'quickAddPurity'])->middleware('can:inventory.create')->name('inventory.items.quick-add-purity');
+    Route::post('/inventory/items/quick-add-category', [ItemController::class, 'quickAddCategory'])->middleware('can:catalog.manage')->name('inventory.items.quick-add-category');
+    Route::post('/inventory/items/quick-add-sub-category', [ItemController::class, 'quickAddSubCategory'])->middleware('can:catalog.manage')->name('inventory.items.quick-add-sub-category');
+    Route::post('/inventory/items/quick-add-karigar', [ItemController::class, 'quickAddKarigar'])->middleware('can:karigar.manage')->name('inventory.items.quick-add-karigar');
+    Route::get('/inventory/items/{item}', [ItemController::class, 'show'])->middleware('can:inventory.view')->name('inventory.items.show');
+    Route::get('/inventory/items/{item}/edit', [ItemController::class, 'edit'])->middleware('can:inventory.edit')->name('inventory.items.edit');
+    Route::put('/inventory/items/{item}', [ItemController::class, 'update'])->middleware('can:inventory.edit')->name('inventory.items.update');
+    Route::delete('/inventory/items/{item}', [ItemController::class, 'destroy'])->middleware('can:inventory.delete')->name('inventory.items.destroy');
 
     // ======= CUSTOMERS =======
     // Staff: view + create (needed for POS). Edit = owner + manager. Delete = owner only.
-    Route::get('/customers', [CustomerController::class, 'index'])->middleware('role:owner,manager,staff')->name('customers.index');
-    Route::get('/customers/create', [CustomerController::class, 'create'])->middleware('role:owner,manager,staff')->name('customers.create');
-    Route::post('/customers', [CustomerController::class, 'store'])->middleware('role:owner,manager,staff')->name('customers.store');
-    Route::post('/customers/quick-store', [CustomerController::class, 'quickStore'])->middleware('role:owner,manager,staff')->name('customers.quick-store');
-    Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware('role:owner,manager,staff')->name('customers.show');
-    Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->middleware('role:owner,manager')->name('customers.edit');
-    Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware('role:owner,manager')->name('customers.update');
-    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('role:owner')->name('customers.destroy');
+    Route::get('/customers', [CustomerController::class, 'index'])->middleware('can:customers.view')->name('customers.index');
+    Route::get('/customers/create', [CustomerController::class, 'create'])->middleware('can:customers.create')->name('customers.create');
+    Route::post('/customers', [CustomerController::class, 'store'])->middleware('can:customers.create')->name('customers.store');
+    Route::post('/customers/quick-store', [CustomerController::class, 'quickStore'])->middleware('can:customers.create')->name('customers.quick-store');
+    Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware('can:customers.view')->name('customers.show');
+    Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->middleware('can:customers.edit')->name('customers.edit');
+    Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware('can:customers.edit')->name('customers.update');
+    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('can:customers.delete')->name('customers.destroy');
 
-    Route::post('/kyc-documents', [\App\Http\Controllers\KycDocumentController::class, 'store'])->middleware('role:owner,manager,staff')->name('kyc-documents.store');
-    Route::delete('/kyc-documents/{kycDocument}', [\App\Http\Controllers\KycDocumentController::class, 'destroy'])->middleware('role:owner,manager')->name('kyc-documents.destroy');
+    // KYC docs follow customer access: create-class can attach, delete-class can remove.
+    Route::post('/kyc-documents', [\App\Http\Controllers\KycDocumentController::class, 'store'])->middleware('can:customers.create')->name('kyc-documents.store');
+    Route::delete('/kyc-documents/{kycDocument}', [\App\Http\Controllers\KycDocumentController::class, 'destroy'])->middleware('can:customers.edit')->name('kyc-documents.destroy');
 
     Route::get('/customers/{customer}/gold', [\App\Http\Controllers\CustomerGoldController::class, 'create'])
-        ->middleware('edition:manufacturer')
+        ->middleware(['edition:manufacturer', 'can:customers.edit'])
         ->name('customers.gold.create');
 
     Route::post('/customers/{customer}/gold', [\App\Http\Controllers\CustomerGoldController::class, 'store'])
-        ->middleware('edition:manufacturer')
+        ->middleware(['edition:manufacturer', 'can:customers.edit'])
         ->name('customers.gold.store');
 
     // ======= PROFILE =======
@@ -295,240 +297,255 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // ======= POS =======
-    Route::get('/pos', [PosController::class, 'index'])->middleware('role:owner,manager,staff')->name('pos.index');
-    Route::get('/pos/customer/{customer}', [PosController::class, 'showCustomerPos'])->middleware('role:owner,manager,staff')->name('pos.customer');
-    Route::get('/pos/customers/search', [PosController::class, 'searchCustomers'])->middleware('role:owner,manager,staff')->name('pos.customers.search');
-    Route::post('/pos/sell', [PosController::class, 'sell'])->middleware('role:owner,manager,staff')->name('pos.sell');
-    Route::post('/pos/compliance/save', [PosController::class, 'saveCompliance'])->middleware('role:owner,manager,staff')->name('pos.compliance.save');
-    Route::post('/pos/exchange', [PosController::class, 'exchange'])->middleware('role:owner,manager,staff', 'edition:manufacturer');
-    Route::post('/api/price-preview', [PosController::class, 'preview'])->middleware('role:owner,manager,staff')->name('pos.preview');
-    Route::get('/api/item-by-barcode/{barcode}', [PosController::class, 'findByBarcode'])->middleware('role:owner,manager,staff')->name('pos.barcode');
+    Route::get('/pos', [PosController::class, 'index'])->middleware('can:sales.pos')->name('pos.index');
+    Route::get('/pos/customer/{customer}', [PosController::class, 'showCustomerPos'])->middleware('can:sales.pos')->name('pos.customer');
+    Route::get('/pos/customers/search', [PosController::class, 'searchCustomers'])->middleware('can:sales.pos')->name('pos.customers.search');
+    Route::post('/pos/sell', [PosController::class, 'sell'])->middleware('can:sales.create')->name('pos.sell');
+    Route::post('/pos/quote', [PosController::class, 'quote'])
+        ->middleware('can:sales.pos')
+        ->name('pos.quote');
+    Route::post('/pos/quote/persist', [PosController::class, 'persistQuote'])
+        ->middleware('can:sales.pos')
+        ->name('pos.quote.persist');
+    Route::post('/pos/compliance/save', [PosController::class, 'saveCompliance'])->middleware('can:sales.create')->name('pos.compliance.save');
+    Route::post('/pos/exchange', [PosController::class, 'exchange'])->middleware('can:sales.create', 'edition:manufacturer');
+    Route::post('/api/price-preview', [PosController::class, 'preview'])->middleware('can:sales.pos')->name('pos.preview');
+    Route::get('/api/item-by-barcode/{barcode}', [PosController::class, 'findByBarcode'])->middleware('can:sales.pos')->name('pos.barcode');
 
     // ======= REPAIRS =======
     // Staff: view + create + edit + status update + deliver (repairs.create/edit permission).
     // Delete = owner + manager only.
-    Route::get('/repairs', [\App\Http\Controllers\RepairController::class, 'index'])->middleware('role:owner,manager,staff')->name('repairs.index');
-    Route::post('/repairs', [\App\Http\Controllers\RepairController::class, 'store'])->middleware('role:owner,manager,staff')->name('repairs.store');
-    Route::get('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'show'])->middleware('role:owner,manager,staff')->name('repairs.show');
-    Route::get('/repairs/{repair}/edit', [\App\Http\Controllers\RepairController::class, 'edit'])->middleware('role:owner,manager,staff')->name('repairs.edit');
-    Route::put('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'update'])->middleware('role:owner,manager,staff')->name('repairs.update');
-    Route::patch('/repairs/{repair}/status', [\App\Http\Controllers\RepairController::class, 'updateStatus'])->middleware('role:owner,manager,staff')->name('repairs.status');
-    Route::post('/repairs/{repair}/deliver', [\App\Http\Controllers\RepairController::class, 'deliver'])->middleware('role:owner,manager,staff')->name('repairs.deliver');
-    Route::delete('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'destroy'])->middleware('role:owner,manager')->name('repairs.destroy');
+    Route::get('/repairs', [\App\Http\Controllers\RepairController::class, 'index'])->middleware('can:repairs.view')->name('repairs.index');
+    Route::post('/repairs', [\App\Http\Controllers\RepairController::class, 'store'])->middleware('can:repairs.create')->name('repairs.store');
+    Route::get('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'show'])->middleware('can:repairs.view')->name('repairs.show');
+    Route::get('/repairs/{repair}/edit', [\App\Http\Controllers\RepairController::class, 'edit'])->middleware('can:repairs.edit')->name('repairs.edit');
+    Route::put('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'update'])->middleware('can:repairs.edit')->name('repairs.update');
+    Route::patch('/repairs/{repair}/status', [\App\Http\Controllers\RepairController::class, 'updateStatus'])->middleware('can:repairs.edit')->name('repairs.status');
+    Route::post('/repairs/{repair}/deliver', [\App\Http\Controllers\RepairController::class, 'deliver'])->middleware('can:repairs.edit')->name('repairs.deliver');
+    Route::delete('/repairs/{repair}', [\App\Http\Controllers\RepairController::class, 'destroy'])->middleware('can:repairs.delete')->name('repairs.destroy');
 
     // ======= JOB WORK (Retailer) =======
     Route::middleware('edition:retailer')->group(function () {
-        Route::get('/vault', [\App\Http\Controllers\BullionVaultController::class, 'index'])->middleware('role:owner,manager')->name('vault.index');
-        Route::get('/vault/ledger', [\App\Http\Controllers\BullionVaultController::class, 'ledger'])->middleware('role:owner,manager')->name('vault.ledger');
-        Route::get('/vault/lots/create', [\App\Http\Controllers\BullionVaultController::class, 'createLot'])->middleware('role:owner,manager')->name('vault.lots.create');
-        Route::post('/vault/lots', [\App\Http\Controllers\BullionVaultController::class, 'storeLot'])->middleware('role:owner,manager')->name('vault.lots.store');
-        Route::get('/vault/lots/{metalLot}', [\App\Http\Controllers\BullionVaultController::class, 'showLot'])->middleware('role:owner,manager')->name('vault.lots.show');
+        // Bullion Vault — view to read; manage to write/dispatch.
+        Route::get('/vault', [\App\Http\Controllers\BullionVaultController::class, 'index'])->middleware('can:vault.view')->name('vault.index');
+        Route::get('/vault/ledger', [\App\Http\Controllers\BullionVaultController::class, 'ledger'])->middleware('can:vault.view')->name('vault.ledger');
+        Route::get('/vault/lots/create', [\App\Http\Controllers\BullionVaultController::class, 'createLot'])->middleware('can:vault.manage')->name('vault.lots.create');
+        Route::post('/vault/lots', [\App\Http\Controllers\BullionVaultController::class, 'storeLot'])->middleware('can:vault.manage')->name('vault.lots.store');
+        Route::get('/vault/lots/{metalLot}', [\App\Http\Controllers\BullionVaultController::class, 'showLot'])->middleware('can:vault.view')->name('vault.lots.show');
 
-        Route::get('/karigars', [\App\Http\Controllers\KarigarController::class, 'index'])->name('karigars.index');
-        Route::get('/karigars/create', [\App\Http\Controllers\KarigarController::class, 'create'])->name('karigars.create');
-        Route::post('/karigars', [\App\Http\Controllers\KarigarController::class, 'store'])->name('karigars.store');
-        Route::get('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'show'])->name('karigars.show');
-        Route::get('/karigars/{karigar}/edit', [\App\Http\Controllers\KarigarController::class, 'edit'])->name('karigars.edit');
-        Route::put('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'update'])->name('karigars.update');
-        Route::delete('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'destroy'])->name('karigars.destroy');
-        Route::patch('/karigars/{karigar}/toggle', [\App\Http\Controllers\KarigarController::class, 'toggle'])->name('karigars.toggle');
+        // Karigars — view to read; manage to mutate.
+        Route::get('/karigars', [\App\Http\Controllers\KarigarController::class, 'index'])->middleware('can:karigar.view')->name('karigars.index');
+        Route::get('/karigars/create', [\App\Http\Controllers\KarigarController::class, 'create'])->middleware('can:karigar.manage')->name('karigars.create');
+        Route::post('/karigars', [\App\Http\Controllers\KarigarController::class, 'store'])->middleware('can:karigar.manage')->name('karigars.store');
+        Route::get('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'show'])->middleware('can:karigar.view')->name('karigars.show');
+        Route::get('/karigars/{karigar}/edit', [\App\Http\Controllers\KarigarController::class, 'edit'])->middleware('can:karigar.manage')->name('karigars.edit');
+        Route::put('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'update'])->middleware('can:karigar.manage')->name('karigars.update');
+        Route::delete('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'destroy'])->middleware('can:karigar.manage')->name('karigars.destroy');
+        Route::patch('/karigars/{karigar}/toggle', [\App\Http\Controllers\KarigarController::class, 'toggle'])->middleware('can:karigar.manage')->name('karigars.toggle');
 
-        Route::get('/job-orders', [\App\Http\Controllers\JobOrderController::class, 'index'])->name('job-orders.index');
-        Route::get('/job-orders/create', [\App\Http\Controllers\JobOrderController::class, 'create'])->name('job-orders.create');
-        Route::post('/job-orders', [\App\Http\Controllers\JobOrderController::class, 'store'])->name('job-orders.store');
-        Route::get('/job-orders/{jobOrder}', [\App\Http\Controllers\JobOrderController::class, 'show'])->name('job-orders.show');
-        Route::post('/job-orders/{jobOrder}/cancel', [\App\Http\Controllers\JobOrderController::class, 'cancel'])->name('job-orders.cancel');
-        Route::get('/job-orders/{jobOrder}/challan', [\App\Http\Controllers\JobOrderController::class, 'challan'])->name('job-orders.challan');
-        Route::get('/job-orders/{jobOrder}/return-doc', [\App\Http\Controllers\JobOrderController::class, 'returnDoc'])->name('job-orders.return-doc');
-        Route::get('/job-orders/{jobOrder}/receive', [\App\Http\Controllers\JobOrderController::class, 'receiveForm'])->name('job-orders.receive.form');
-        Route::post('/job-orders/{jobOrder}/receive', [\App\Http\Controllers\JobOrderController::class, 'storeReceipt'])->name('job-orders.receive.store');
-        Route::post('/job-orders/{jobOrder}/leftover-return', [\App\Http\Controllers\JobOrderController::class, 'leftoverReturn'])->name('job-orders.leftover');
-        Route::post('/job-orders/{jobOrder}/acknowledge', [\App\Http\Controllers\JobOrderController::class, 'acknowledge'])->name('job-orders.acknowledge');
+        // Job Orders — view to read; manage to mutate.
+        Route::get('/job-orders', [\App\Http\Controllers\JobOrderController::class, 'index'])->middleware('can:job_order.view')->name('job-orders.index');
+        Route::get('/job-orders/create', [\App\Http\Controllers\JobOrderController::class, 'create'])->middleware('can:job_order.manage')->name('job-orders.create');
+        Route::post('/job-orders', [\App\Http\Controllers\JobOrderController::class, 'store'])->middleware('can:job_order.manage')->name('job-orders.store');
+        Route::get('/job-orders/{jobOrder}', [\App\Http\Controllers\JobOrderController::class, 'show'])->middleware('can:job_order.view')->name('job-orders.show');
+        Route::post('/job-orders/{jobOrder}/cancel', [\App\Http\Controllers\JobOrderController::class, 'cancel'])->middleware('can:job_order.manage')->name('job-orders.cancel');
+        Route::get('/job-orders/{jobOrder}/challan', [\App\Http\Controllers\JobOrderController::class, 'challan'])->middleware('can:job_order.view')->name('job-orders.challan');
+        Route::get('/job-orders/{jobOrder}/return-doc', [\App\Http\Controllers\JobOrderController::class, 'returnDoc'])->middleware('can:job_order.view')->name('job-orders.return-doc');
+        Route::get('/job-orders/{jobOrder}/receive', [\App\Http\Controllers\JobOrderController::class, 'receiveForm'])->middleware('can:job_order.manage')->name('job-orders.receive.form');
+        Route::post('/job-orders/{jobOrder}/receive', [\App\Http\Controllers\JobOrderController::class, 'storeReceipt'])->middleware('can:job_order.manage')->name('job-orders.receive.store');
+        Route::post('/job-orders/{jobOrder}/leftover-return', [\App\Http\Controllers\JobOrderController::class, 'leftoverReturn'])->middleware('can:job_order.manage')->name('job-orders.leftover');
+        Route::post('/job-orders/{jobOrder}/acknowledge', [\App\Http\Controllers\JobOrderController::class, 'acknowledge'])->middleware('can:job_order.manage')->name('job-orders.acknowledge');
 
-        Route::get('/karigar-invoices', [\App\Http\Controllers\KarigarInvoiceController::class, 'index'])->name('karigar-invoices.index');
-        Route::get('/karigar-invoices/create', [\App\Http\Controllers\KarigarInvoiceController::class, 'create'])->name('karigar-invoices.create');
-        Route::post('/karigar-invoices', [\App\Http\Controllers\KarigarInvoiceController::class, 'store'])->name('karigar-invoices.store');
-        Route::get('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'show'])->name('karigar-invoices.show');
-        Route::get('/karigar-invoices/{karigarInvoice}/edit', [\App\Http\Controllers\KarigarInvoiceController::class, 'edit'])->name('karigar-invoices.edit');
-        Route::put('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'update'])->name('karigar-invoices.update');
-        Route::delete('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'destroy'])->name('karigar-invoices.destroy');
-        Route::get('/karigar-invoices/{karigarInvoice}/print', [\App\Http\Controllers\KarigarInvoiceController::class, 'print'])->name('karigar-invoices.print');
-        Route::post('/karigar-invoices/{karigarInvoice}/payments', [\App\Http\Controllers\KarigarInvoiceController::class, 'recordPayment'])->name('karigar-invoices.pay');
+        // Karigar Invoices — view to read; manage to mutate.
+        Route::get('/karigar-invoices', [\App\Http\Controllers\KarigarInvoiceController::class, 'index'])->middleware('can:karigar_invoice.view')->name('karigar-invoices.index');
+        Route::get('/karigar-invoices/create', [\App\Http\Controllers\KarigarInvoiceController::class, 'create'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.create');
+        Route::post('/karigar-invoices', [\App\Http\Controllers\KarigarInvoiceController::class, 'store'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.store');
+        Route::get('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'show'])->middleware('can:karigar_invoice.view')->name('karigar-invoices.show');
+        Route::get('/karigar-invoices/{karigarInvoice}/edit', [\App\Http\Controllers\KarigarInvoiceController::class, 'edit'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.edit');
+        Route::put('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'update'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.update');
+        Route::delete('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'destroy'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.destroy');
+        Route::get('/karigar-invoices/{karigarInvoice}/print', [\App\Http\Controllers\KarigarInvoiceController::class, 'print'])->middleware('can:karigar_invoice.view')->name('karigar-invoices.print');
+        Route::post('/karigar-invoices/{karigarInvoice}/payments', [\App\Http\Controllers\KarigarInvoiceController::class, 'recordPayment'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.pay');
     });
 
-    // ======= REPORTS =======
-    Route::get('/report/gold', [ReportController::class, 'gold'])->middleware('role:owner')->name('report.gold');
-    Route::get('/report/metal-exchange', [\App\Http\Controllers\MetalExchangeReportController::class, 'index'])->middleware('edition:retailer')->name('report.metal-exchange');
-    Route::post('/old-metal-lots/{metalLot}/dispatch', [\App\Http\Controllers\OldMetalWeeklyLotController::class, 'dispatch'])->middleware('edition:retailer')->name('old-metal-lots.dispatch');
-    Route::get('/report/daily', [\App\Http\Controllers\DailyReportController::class, 'index'])->middleware('role:owner')->name('report.daily');
-    Route::get('/report/cash', [\App\Http\Controllers\CashReportController::class, 'index'])->middleware('role:owner')->name('report.cash');
-    Route::get('/report/pnl', [\App\Http\Controllers\PnlController::class, 'index'])->middleware('role:owner')->name('report.pnl');
-    Route::get('/report/gst', [\App\Http\Controllers\GstController::class, 'index'])->middleware('role:owner')->name('report.gst');
-    Route::get('/report/closing', [\App\Http\Controllers\ClosingController::class, 'index'])->middleware('role:owner')->name('report.closing');
-    Route::get('/report/transactions', [TransactionHistoryReportController::class, 'index'])->middleware('role:owner')->name('report.transactions');
-    Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware('role:owner')->name('report.repairs');
+    // ======= REPORTS (permission-gated: reports.view for most; reports.daily_closing for closing) =======
+    Route::get('/report/gold', [ReportController::class, 'gold'])->middleware('can:reports.view')->name('report.gold');
+    Route::get('/report/metal-exchange', [\App\Http\Controllers\MetalExchangeReportController::class, 'index'])->middleware(['can:reports.view', 'edition:retailer'])->name('report.metal-exchange');
+    Route::post('/old-metal-lots/{metalLot}/dispatch', [\App\Http\Controllers\OldMetalWeeklyLotController::class, 'dispatch'])->middleware(['can:vault.manage', 'edition:retailer'])->name('old-metal-lots.dispatch');
+    Route::get('/report/daily', [\App\Http\Controllers\DailyReportController::class, 'index'])->middleware('can:reports.view')->name('report.daily');
+    Route::get('/report/cash', [\App\Http\Controllers\CashReportController::class, 'index'])->middleware('can:reports.view')->name('report.cash');
+    Route::get('/report/pnl', [\App\Http\Controllers\PnlController::class, 'index'])->middleware('can:reports.view')->name('report.pnl');
+    Route::get('/report/gst', [\App\Http\Controllers\GstController::class, 'index'])->middleware('can:reports.view')->name('report.gst');
+    Route::get('/report/closing', [\App\Http\Controllers\ClosingController::class, 'index'])->middleware('can:reports.daily_closing')->name('report.closing');
+    Route::get('/report/transactions', [TransactionHistoryReportController::class, 'index'])->middleware('can:reports.view')->name('report.transactions');
+    Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware('can:reports.view')->name('report.repairs');
     Route::get('/report/audit', function () {
         return redirect()->route('settings.edit', ['tab' => 'audit']);
-    })->middleware('role:owner');
+    })->middleware('can:settings.view');
 
     // ======= SETTINGS =======
     Route::get('/profile/mobile/change', [\App\Http\Controllers\MobileChangeController::class, 'showForm'])->name('profile.mobile.change');
     Route::post('/profile/mobile/change-request', [\App\Http\Controllers\MobileChangeController::class, 'requestChange'])->name('profile.mobile.request');
     Route::post('/profile/mobile/change-verify', [\App\Http\Controllers\MobileChangeController::class, 'verifyChange'])->name('profile.mobile.verify');
 
-    Route::get('/settings', [SettingsController::class, 'edit'])->middleware('role:owner')->name('settings.edit');
-    Route::get('/settings/services', [\App\Http\Controllers\ShopServicesController::class, 'index'])->middleware('role:owner')->name('settings.services');
-    Route::post('/settings/services/request-add', [\App\Http\Controllers\ShopServicesController::class, 'requestAdd'])->middleware('role:owner')->name('settings.services.request-add');
-    Route::post('/settings/services/remove', [\App\Http\Controllers\ShopServicesController::class, 'remove'])->middleware('role:owner')->name('settings.services.remove');
-    Route::post('/settings/services/requests/{editionRequest}/cancel', [\App\Http\Controllers\ShopServicesController::class, 'cancelRequest'])->middleware('role:owner')->name('settings.services.request.cancel');
-    Route::patch('/settings/shop', [SettingsController::class, 'updateShop'])->middleware('role:owner')->name('settings.update.shop');
-    Route::patch('/settings/rules', [SettingsController::class, 'updateRules'])->middleware('role:owner')->name('settings.update.rules');
-    Route::patch('/settings/billing', [SettingsController::class, 'updateBilling'])->middleware('role:owner')->name('settings.update.billing');
-    Route::patch('/settings/preferences', [SettingsController::class, 'updatePreferences'])->middleware('role:owner')->name('settings.update.preferences');
-    Route::post('/settings/whatsapp-template', [SettingsController::class, 'saveWhatsappTemplate'])->middleware('role:owner')->name('settings.whatsapp.template');
+    // Settings — read access: anyone with `settings.view` permission (default: Owner + Manager).
+    Route::get('/settings', [SettingsController::class, 'edit'])->middleware('can:settings.view')->name('settings.edit');
+    Route::get('/settings/services', [\App\Http\Controllers\ShopServicesController::class, 'index'])->middleware('can:settings.view')->name('settings.services');
+    Route::get('/settings/payment-methods', [PaymentMethodController::class, 'index'])->middleware('can:settings.view')->name('settings.payment-methods.index');
+
+    // Settings — write access: requires `settings.edit` permission (default: Owner only).
+    Route::post('/settings/services/request-add', [\App\Http\Controllers\ShopServicesController::class, 'requestAdd'])->middleware('can:settings.edit')->name('settings.services.request-add');
+    Route::post('/settings/services/remove', [\App\Http\Controllers\ShopServicesController::class, 'remove'])->middleware('can:settings.edit')->name('settings.services.remove');
+    Route::post('/settings/services/requests/{editionRequest}/cancel', [\App\Http\Controllers\ShopServicesController::class, 'cancelRequest'])->middleware('can:settings.edit')->name('settings.services.request.cancel');
+    Route::patch('/settings/shop', [SettingsController::class, 'updateShop'])->middleware('can:settings.edit')->name('settings.update.shop');
+    Route::patch('/settings/billing', [SettingsController::class, 'updateBilling'])->middleware('can:settings.edit')->name('settings.update.billing');
+    Route::patch('/settings/preferences', [SettingsController::class, 'updatePreferences'])->middleware('can:settings.edit')->name('settings.update.preferences');
+    Route::post('/settings/whatsapp-template', [SettingsController::class, 'saveWhatsappTemplate'])->middleware('can:settings.edit')->name('settings.whatsapp.template');
+    // The role-permission editor itself stays `role:owner` — only the shop owner
+    // controls who has which permissions. Permission-gating this would let a
+    // Manager with settings.edit reshape the entire permission matrix.
     Route::patch('/settings/roles/{role}', [SettingsController::class, 'updateRolePermissions'])->middleware('role:owner')->name('settings.update.role');
-    Route::patch('/settings/pricing/timezone', [PricingSettingsController::class, 'updateTimezone'])->middleware('role:owner')->name('settings.pricing.update-timezone');
-    Route::post('/settings/pricing/daily-rates', [PricingSettingsController::class, 'saveTodayRates'])->middleware('role:owner')->name('settings.pricing.save-rates');
-    Route::post('/settings/pricing/purity-profiles', [PricingSettingsController::class, 'storeProfile'])->middleware('role:owner')->name('settings.pricing.profiles.store');
-    Route::patch('/settings/pricing/purity-profiles/{profile}', [PricingSettingsController::class, 'updateProfile'])->middleware('role:owner')->name('settings.pricing.profiles.update');
-    Route::post('/settings/pricing/purity-profiles/{profile}/override', [PricingSettingsController::class, 'storeOverride'])->middleware('role:owner')->name('settings.pricing.overrides.store');
-    Route::patch('/settings/pricing/legacy-items/{item}', [PricingSettingsController::class, 'resolveLegacyItem'])->middleware('role:owner')->name('settings.pricing.legacy.resolve');
+    Route::patch('/settings/pricing/timezone', [PricingSettingsController::class, 'updateTimezone'])->middleware('can:pricing.update')->name('settings.pricing.update-timezone');
+    Route::post('/settings/pricing/daily-rates', [PricingSettingsController::class, 'saveTodayRates'])->middleware('can:pricing.update')->name('settings.pricing.save-rates');
+    Route::post('/settings/pricing/purity-profiles', [PricingSettingsController::class, 'storeProfile'])->middleware('can:pricing.update')->name('settings.pricing.profiles.store');
+    Route::patch('/settings/pricing/purity-profiles/{profile}', [PricingSettingsController::class, 'updateProfile'])->middleware('can:pricing.update')->name('settings.pricing.profiles.update');
+    Route::post('/settings/pricing/purity-profiles/{profile}/override', [PricingSettingsController::class, 'storeOverride'])->middleware('can:pricing.update')->name('settings.pricing.overrides.store');
+    Route::patch('/settings/pricing/legacy-items/{item}', [PricingSettingsController::class, 'resolveLegacyItem'])->middleware('can:pricing.update')->name('settings.pricing.legacy.resolve');
 
-    // Payment Methods settings
-    Route::get('/settings/payment-methods', [PaymentMethodController::class, 'index'])->middleware('role:owner')->name('settings.payment-methods.index');
-    Route::post('/settings/payment-methods', [PaymentMethodController::class, 'store'])->middleware('role:owner')->name('settings.payment-methods.store');
-    Route::put('/settings/payment-methods/{method}', [PaymentMethodController::class, 'update'])->middleware('role:owner')->name('settings.payment-methods.update');
-    Route::delete('/settings/payment-methods/{method}', [PaymentMethodController::class, 'destroy'])->middleware('role:owner')->name('settings.payment-methods.destroy');
-    Route::patch('/settings/payment-methods/{method}/toggle', [PaymentMethodController::class, 'toggle'])->middleware('role:owner')->name('settings.payment-methods.toggle');
+    // Payment Methods write routes — `settings.edit` gates configuration changes.
+    Route::post('/settings/payment-methods', [PaymentMethodController::class, 'store'])->middleware('can:settings.edit')->name('settings.payment-methods.store');
+    Route::put('/settings/payment-methods/{method}', [PaymentMethodController::class, 'update'])->middleware('can:settings.edit')->name('settings.payment-methods.update');
+    Route::delete('/settings/payment-methods/{method}', [PaymentMethodController::class, 'destroy'])->middleware('can:settings.edit')->name('settings.payment-methods.destroy');
+    Route::patch('/settings/payment-methods/{method}/toggle', [PaymentMethodController::class, 'toggle'])->middleware('can:settings.edit')->name('settings.payment-methods.toggle');
 
-    // Catalog Website settings
-    Route::patch('/settings/catalog-website', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'updateSettings'])->middleware('role:owner')->name('settings.update.catalog-website');
-    Route::post('/settings/catalog-pages', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'storePage'])->middleware('role:owner')->name('settings.catalog-pages.store');
-    Route::put('/settings/catalog-pages/{page}', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'updatePage'])->middleware('role:owner')->name('settings.catalog-pages.update');
-    Route::delete('/settings/catalog-pages/{page}', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'destroyPage'])->middleware('role:owner')->name('settings.catalog-pages.destroy');
+    // Catalog Website settings — settings.edit gates configuration; catalog.manage gates
+    // the catalog content itself (collections/pages). Following the existing dichotomy.
+    Route::patch('/settings/catalog-website', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'updateSettings'])->middleware('can:settings.edit')->name('settings.update.catalog-website');
+    Route::post('/settings/catalog-pages', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'storePage'])->middleware('can:catalog.manage')->name('settings.catalog-pages.store');
+    Route::put('/settings/catalog-pages/{page}', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'updatePage'])->middleware('can:catalog.manage')->name('settings.catalog-pages.update');
+    Route::delete('/settings/catalog-pages/{page}', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'destroyPage'])->middleware('can:catalog.manage')->name('settings.catalog-pages.destroy');
 
-    // ======= LEDGER & INVOICE =======
-    // Ledger = owner + manager (financial data). Invoices: view/print = all roles, edit = owner + manager.
-    Route::get('/ledger', [\App\Http\Controllers\LedgerController::class, 'index'])->middleware('role:owner,manager')->name('ledger.index');
-    Route::get('/invoices', [\App\Http\Controllers\InvoiceController::class, 'index'])->middleware('role:owner,manager,staff')->name('invoices.index');
-    Route::get('/invoices/{invoice}/edit', [\App\Http\Controllers\InvoiceController::class, 'edit'])->middleware('role:owner,manager')->name('invoices.edit');
-    Route::put('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->middleware('role:owner,manager')->name('invoices.update');
-    Route::get('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'show'])->middleware('role:owner,manager,staff')->name('invoices.show');
-    Route::get('/invoice/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->middleware('role:owner,manager,staff')->name('invoices.print');
+    // ======= LEDGER & INVOICE (sales.* permissions) =======
+    Route::get('/ledger', [\App\Http\Controllers\LedgerController::class, 'index'])->middleware('can:reports.view')->name('ledger.index');
+    Route::get('/invoices', [\App\Http\Controllers\InvoiceController::class, 'index'])->middleware('can:sales.view')->name('invoices.index');
+    Route::get('/invoices/{invoice}/edit', [\App\Http\Controllers\InvoiceController::class, 'edit'])->middleware('can:sales.void')->name('invoices.edit');
+    Route::put('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->middleware('can:sales.void')->name('invoices.update');
+    Route::get('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'show'])->middleware('can:sales.view')->name('invoices.show');
+    Route::get('/invoice/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->middleware('can:sales.view')->name('invoices.print');
 
-    // ======= QUICK BILL GENERATOR =======
+    // ======= QUICK BILL GENERATOR (sales.* permissions) =======
     Route::get('/quick-bills', [QuickBillController::class, 'index'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.view')
         ->name('quick-bills.index');
     Route::get('/quick-bills/create', [QuickBillController::class, 'create'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.create')
         ->name('quick-bills.create');
     Route::post('/quick-bills', [QuickBillController::class, 'store'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.create')
         ->name('quick-bills.store');
     Route::get('/quick-bills/{quickBill}', [QuickBillController::class, 'show'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.view')
         ->name('quick-bills.show');
     Route::get('/quick-bills/{quickBill}/edit', [QuickBillController::class, 'edit'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.create')
         ->name('quick-bills.edit');
     Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.create')
         ->name('quick-bills.update');
     Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.void')
         ->name('quick-bills.void');
     Route::get('/quick-bills/{quickBill}/print', [QuickBillController::class, 'print'])
-        ->middleware('role:owner,manager,staff')
+        ->middleware('can:sales.view')
         ->name('quick-bills.print');
 
-    // ======= CASH BOOK =======
-    // View = owner + manager (cash.view). Create = owner + manager (cash.create).
-    Route::get('/cashbook', [\App\Http\Controllers\CashBookController::class, 'index'])->middleware('role:owner,manager')->name('cashbook.index');
-    Route::get('/cashbook/create', [\App\Http\Controllers\CashBookController::class, 'create'])->middleware('role:owner,manager')->name('cashbook.create');
-    Route::post('/cashbook', [\App\Http\Controllers\CashBookController::class, 'store'])->middleware('role:owner,manager')->name('cashbook.store');
+    // ======= CASH BOOK (cash.view / cash.create permissions) =======
+    Route::get('/cashbook', [\App\Http\Controllers\CashBookController::class, 'index'])->middleware('can:cash.view')->name('cashbook.index');
+    Route::get('/cashbook/create', [\App\Http\Controllers\CashBookController::class, 'create'])->middleware('can:cash.create')->name('cashbook.create');
+    Route::post('/cashbook', [\App\Http\Controllers\CashBookController::class, 'store'])->middleware('can:cash.create')->name('cashbook.store');
 
-    // ======= STAFF MANAGEMENT =======
-    Route::get('/staff', [\App\Http\Controllers\StaffController::class, 'index'])->middleware('role:owner')->name('staff.index');
-    Route::get('/staff/create', [\App\Http\Controllers\StaffController::class, 'create'])->middleware('role:owner')->name('staff.create');
-    Route::post('/staff', [\App\Http\Controllers\StaffController::class, 'store'])->middleware('role:owner')->name('staff.store');
-    Route::get('/staff/{staff}/edit', [\App\Http\Controllers\StaffController::class, 'edit'])->middleware('role:owner')->name('staff.edit');
-    Route::put('/staff/{staff}', [\App\Http\Controllers\StaffController::class, 'update'])->middleware('role:owner')->name('staff.update');
-    Route::delete('/staff/{staff}', [\App\Http\Controllers\StaffController::class, 'destroy'])->middleware('role:owner')->name('staff.destroy');
+    // ======= STAFF MANAGEMENT (staff.view to read; staff.manage to mutate) =======
+    Route::get('/staff', [\App\Http\Controllers\StaffController::class, 'index'])->middleware('can:staff.view')->name('staff.index');
+    Route::get('/staff/create', [\App\Http\Controllers\StaffController::class, 'create'])->middleware('can:staff.manage')->name('staff.create');
+    Route::post('/staff', [\App\Http\Controllers\StaffController::class, 'store'])->middleware('can:staff.manage')->name('staff.store');
+    Route::get('/staff/{staff}/edit', [\App\Http\Controllers\StaffController::class, 'edit'])->middleware('can:staff.manage')->name('staff.edit');
+    Route::put('/staff/{staff}', [\App\Http\Controllers\StaffController::class, 'update'])->middleware('can:staff.manage')->name('staff.update');
+    Route::delete('/staff/{staff}', [\App\Http\Controllers\StaffController::class, 'destroy'])->middleware('can:staff.manage')->name('staff.destroy');
 
     // ======= RETAILER FEATURES (edition:retailer) =======
 
     // --- Stock Purchases / Inward ---
-    Route::get('/inventory/purchases', [StockPurchaseController::class, 'index'])->middleware('edition:retailer')->name('inventory.purchases.index');
-    Route::get('/inventory/purchases/create', [StockPurchaseController::class, 'create'])->middleware('edition:retailer')->name('inventory.purchases.create');
-    Route::post('/inventory/purchases', [StockPurchaseController::class, 'store'])->middleware('edition:retailer')->name('inventory.purchases.store');
-    Route::get('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'show'])->middleware('edition:retailer')->name('inventory.purchases.show');
-    Route::get('/inventory/purchases/{purchase}/edit', [StockPurchaseController::class, 'edit'])->middleware('edition:retailer')->name('inventory.purchases.edit');
-    Route::put('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'update'])->middleware('edition:retailer')->name('inventory.purchases.update');
-    Route::patch('/inventory/purchases/{purchase}/confirm', [StockPurchaseController::class, 'confirm'])->middleware('edition:retailer')->name('inventory.purchases.confirm');
-    Route::patch('/inventory/purchases/{purchase}/stock', [StockPurchaseController::class, 'addToInventory'])->middleware('edition:retailer')->name('inventory.purchases.stock');
-    Route::get('/inventory/purchases/{purchase}/vault/{line}', [StockPurchaseController::class, 'vaultLineForm'])->middleware('edition:retailer')->name('inventory.purchases.vault-line.form');
-    Route::post('/inventory/purchases/{purchase}/vault/{line}', [StockPurchaseController::class, 'vaultLine'])->middleware('edition:retailer')->name('inventory.purchases.vault-line');
-    Route::delete('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'destroy'])->middleware('edition:retailer')->name('inventory.purchases.destroy');
+    Route::get('/inventory/purchases', [StockPurchaseController::class, 'index'])->middleware(['edition:retailer', 'can:inventory.view'])->name('inventory.purchases.index');
+    Route::get('/inventory/purchases/create', [StockPurchaseController::class, 'create'])->middleware(['edition:retailer', 'can:inventory.create'])->name('inventory.purchases.create');
+    Route::post('/inventory/purchases', [StockPurchaseController::class, 'store'])->middleware(['edition:retailer', 'can:inventory.create'])->name('inventory.purchases.store');
+    Route::get('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'show'])->middleware(['edition:retailer', 'can:inventory.view'])->name('inventory.purchases.show');
+    Route::get('/inventory/purchases/{purchase}/edit', [StockPurchaseController::class, 'edit'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.edit');
+    Route::put('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'update'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.update');
+    Route::patch('/inventory/purchases/{purchase}/confirm', [StockPurchaseController::class, 'confirm'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.confirm');
+    Route::patch('/inventory/purchases/{purchase}/stock', [StockPurchaseController::class, 'addToInventory'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.stock');
+    Route::get('/inventory/purchases/{purchase}/vault/{line}', [StockPurchaseController::class, 'vaultLineForm'])->middleware(['edition:retailer', 'can:vault.manage'])->name('inventory.purchases.vault-line.form');
+    Route::post('/inventory/purchases/{purchase}/vault/{line}', [StockPurchaseController::class, 'vaultLine'])->middleware(['edition:retailer', 'can:vault.manage'])->name('inventory.purchases.vault-line');
+    Route::delete('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'destroy'])->middleware(['edition:retailer', 'can:inventory.delete'])->name('inventory.purchases.destroy');
 
     // --- Vendors / Suppliers ---
-    Route::get('/vendors', [VendorController::class, 'index'])->middleware('edition:retailer')->name('vendors.index');
-    Route::get('/vendors/create', [VendorController::class, 'create'])->middleware('edition:retailer')->name('vendors.create');
-    Route::post('/vendors', [VendorController::class, 'store'])->middleware('edition:retailer')->name('vendors.store');
-    Route::get('/vendors/{vendor}', [VendorController::class, 'show'])->middleware('edition:retailer')->name('vendors.show');
-    Route::get('/vendors/{vendor}/edit', [VendorController::class, 'edit'])->middleware('edition:retailer')->name('vendors.edit');
-    Route::put('/vendors/{vendor}', [VendorController::class, 'update'])->middleware('edition:retailer')->name('vendors.update');
-    Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy'])->middleware('edition:retailer')->name('vendors.destroy');
+    Route::get('/vendors', [VendorController::class, 'index'])->middleware(['edition:retailer', 'can:vendors.view'])->name('vendors.index');
+    Route::get('/vendors/create', [VendorController::class, 'create'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.create');
+    Route::post('/vendors', [VendorController::class, 'store'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.store');
+    Route::get('/vendors/{vendor}', [VendorController::class, 'show'])->middleware(['edition:retailer', 'can:vendors.view'])->name('vendors.show');
+    Route::get('/vendors/{vendor}/edit', [VendorController::class, 'edit'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.edit');
+    Route::put('/vendors/{vendor}', [VendorController::class, 'update'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.update');
+    Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.destroy');
 
-    // --- Schemes & Offers ---
-    Route::get('/schemes', [SchemeController::class, 'index'])->middleware('edition:retailer')->name('schemes.index');
-    Route::get('/schemes/create', [SchemeController::class, 'create'])->middleware('edition:retailer')->name('schemes.create');
-    Route::post('/schemes', [SchemeController::class, 'store'])->middleware('edition:retailer')->name('schemes.store');
-    Route::get('/schemes/{scheme}', [SchemeController::class, 'show'])->middleware('edition:retailer')->name('schemes.show');
-    Route::get('/schemes/{scheme}/edit', [SchemeController::class, 'edit'])->middleware('edition:retailer')->name('schemes.edit');
-    Route::put('/schemes/{scheme}', [SchemeController::class, 'update'])->middleware('edition:retailer')->name('schemes.update');
-    Route::delete('/schemes/{scheme}', [SchemeController::class, 'destroy'])->middleware('edition:retailer')->name('schemes.destroy');
-    Route::get('/schemes/{scheme}/enroll', [SchemeController::class, 'enrollForm'])->middleware('edition:retailer')->name('schemes.enroll.form');
-    Route::post('/schemes/{scheme}/enroll', [SchemeController::class, 'enroll'])->middleware('edition:retailer')->name('schemes.enroll');
-    Route::get('/scheme-enrollments/{enrollment}', [SchemeController::class, 'enrollmentShow'])->middleware('edition:retailer')->name('schemes.enrollment.show');
-    Route::post('/scheme-enrollments/{enrollment}/pay', [SchemeController::class, 'recordPayment'])->middleware('edition:retailer')->name('schemes.enrollment.pay');
-    Route::post('/scheme-enrollments/{enrollment}/redeem', [SchemeController::class, 'redeemToInvoice'])->middleware('edition:retailer')->name('schemes.enrollment.redeem');
+    // --- Schemes & Offers (reuse catalog.manage — no dedicated schemes permission in seed) ---
+    Route::get('/schemes', [SchemeController::class, 'index'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.index');
+    Route::get('/schemes/create', [SchemeController::class, 'create'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.create');
+    Route::post('/schemes', [SchemeController::class, 'store'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.store');
+    Route::get('/schemes/{scheme}', [SchemeController::class, 'show'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.show');
+    Route::get('/schemes/{scheme}/edit', [SchemeController::class, 'edit'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.edit');
+    Route::put('/schemes/{scheme}', [SchemeController::class, 'update'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.update');
+    Route::delete('/schemes/{scheme}', [SchemeController::class, 'destroy'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.destroy');
+    // Enrollment + payment recording — customer-facing actions, sales-level access.
+    Route::get('/schemes/{scheme}/enroll', [SchemeController::class, 'enrollForm'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enroll.form');
+    Route::post('/schemes/{scheme}/enroll', [SchemeController::class, 'enroll'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enroll');
+    Route::get('/scheme-enrollments/{enrollment}', [SchemeController::class, 'enrollmentShow'])->middleware(['edition:retailer', 'can:sales.view'])->name('schemes.enrollment.show');
+    Route::post('/scheme-enrollments/{enrollment}/pay', [SchemeController::class, 'recordPayment'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enrollment.pay');
+    Route::post('/scheme-enrollments/{enrollment}/redeem', [SchemeController::class, 'redeemToInvoice'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enrollment.redeem');
 
-    // --- Loyalty Points (now inline in Customers page) ---
-    Route::get('/loyalty', fn () => redirect()->route('customers.index', ['view' => 'loyalty']))->middleware('edition:retailer')->name('loyalty.index');
-    Route::get('/loyalty/{customer}/history', fn (\App\Models\Customer $customer) => redirect()->route('customers.show', $customer))->middleware('edition:retailer')->name('loyalty.history');
-    Route::get('/loyalty/{customer}/adjust', [LoyaltyController::class, 'adjustForm'])->middleware('edition:retailer')->name('loyalty.adjust.form');
-    Route::post('/loyalty/{customer}/adjust', [LoyaltyController::class, 'adjust'])->middleware('edition:retailer')->name('loyalty.adjust');
+    // --- Loyalty Points (read = customers.view; adjust = customers.edit; the two redirects don't need stricter gating since they redirect to customer views which are themselves gated) ---
+    Route::get('/loyalty', fn () => redirect()->route('customers.index', ['view' => 'loyalty']))->middleware(['edition:retailer', 'can:customers.view'])->name('loyalty.index');
+    Route::get('/loyalty/{customer}/history', fn (\App\Models\Customer $customer) => redirect()->route('customers.show', $customer))->middleware(['edition:retailer', 'can:customers.view'])->name('loyalty.history');
+    Route::get('/loyalty/{customer}/adjust', [LoyaltyController::class, 'adjustForm'])->middleware(['edition:retailer', 'can:customers.edit'])->name('loyalty.adjust.form');
+    Route::post('/loyalty/{customer}/adjust', [LoyaltyController::class, 'adjust'])->middleware(['edition:retailer', 'can:customers.edit'])->name('loyalty.adjust');
 
-    // --- EMI / Installments ---
-    Route::get('/installments', [InstallmentController::class, 'index'])->middleware('edition:retailer')->name('installments.index');
-    Route::get('/installments/create', [InstallmentController::class, 'create'])->middleware('edition:retailer')->name('installments.create');
-    Route::post('/installments', [InstallmentController::class, 'store'])->middleware('edition:retailer')->name('installments.store');
-    Route::get('/installments/{plan}', [InstallmentController::class, 'show'])->middleware('edition:retailer')->name('installments.show');
-    Route::post('/installments/{plan}/pay', [InstallmentController::class, 'recordPayment'])->middleware('edition:retailer')->name('installments.pay');
-    Route::get('/installments/{plan}/payments/{payment}/receipt', [InstallmentController::class, 'receipt'])->middleware('edition:retailer')->name('installments.receipt');
+    // --- EMI / Installments (sales.* — installments are a sales settlement option) ---
+    Route::get('/installments', [InstallmentController::class, 'index'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.index');
+    Route::get('/installments/create', [InstallmentController::class, 'create'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.create');
+    Route::post('/installments', [InstallmentController::class, 'store'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.store');
+    Route::get('/installments/{plan}', [InstallmentController::class, 'show'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.show');
+    Route::post('/installments/{plan}/pay', [InstallmentController::class, 'recordPayment'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.pay');
+    Route::get('/installments/{plan}/payments/{payment}/receipt', [InstallmentController::class, 'receipt'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.receipt');
 
-    // --- Reorder Alerts ---
-    Route::get('/reorder', [ReorderController::class, 'index'])->middleware('edition:retailer')->name('reorder.index');
-    Route::get('/reorder/create', [ReorderController::class, 'create'])->middleware('edition:retailer')->name('reorder.create');
-    Route::post('/reorder', [ReorderController::class, 'store'])->middleware('edition:retailer')->name('reorder.store');
-    Route::get('/reorder/{rule}/edit', [ReorderController::class, 'edit'])->middleware('edition:retailer')->name('reorder.edit');
-    Route::put('/reorder/{rule}', [ReorderController::class, 'update'])->middleware('edition:retailer')->name('reorder.update');
-    Route::delete('/reorder/{rule}', [ReorderController::class, 'destroy'])->middleware('edition:retailer')->name('reorder.destroy');
+    // --- Reorder Alerts (inventory.view to see; inventory.edit to mutate rules) ---
+    Route::get('/reorder', [ReorderController::class, 'index'])->middleware(['edition:retailer', 'can:inventory.view'])->name('reorder.index');
+    Route::get('/reorder/create', [ReorderController::class, 'create'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('reorder.create');
+    Route::post('/reorder', [ReorderController::class, 'store'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('reorder.store');
+    Route::get('/reorder/{rule}/edit', [ReorderController::class, 'edit'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('reorder.edit');
+    Route::put('/reorder/{rule}', [ReorderController::class, 'update'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('reorder.update');
+    Route::delete('/reorder/{rule}', [ReorderController::class, 'destroy'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('reorder.destroy');
 
-    // --- Tag / Label Printing ---
-    Route::get('/tags', [TagPrintController::class, 'index'])->middleware('edition:retailer')->name('tags.index');
-    Route::post('/tags/print', [TagPrintController::class, 'print'])->middleware('edition:retailer')->name('tags.print');
+    // --- Tag / Label Printing (inventory-level view permission) ---
+    Route::get('/tags', [TagPrintController::class, 'index'])->middleware(['edition:retailer', 'can:inventory.view'])->name('tags.index');
+    Route::post('/tags/print', [TagPrintController::class, 'print'])->middleware(['edition:retailer', 'can:inventory.view'])->name('tags.print');
 
-    // --- Retailer Reports & Analytics ---
-    Route::get('/report/stock-aging', [RetailerDashboardController::class, 'stockAging'])->middleware('edition:retailer')->name('report.stock-aging');
-    Route::get('/report/sellers', [RetailerDashboardController::class, 'sellers'])->middleware('edition:retailer')->name('report.sellers');
-    Route::get('/report/occasions', [RetailerDashboardController::class, 'occasions'])->middleware('edition:retailer')->name('report.occasions');
-    Route::get('/catalog', [CatalogController::class, 'index'])->middleware('edition:retailer')->name('catalog.index');
-    Route::post('/catalog/collections', [CatalogController::class, 'storeCollection'])->middleware('edition:retailer')->name('catalog.collections.store');
+    // --- Retailer Reports & Analytics (reports.view; catalog.manage for catalog management) ---
+    Route::get('/report/stock-aging', [RetailerDashboardController::class, 'stockAging'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.stock-aging');
+    Route::get('/report/sellers', [RetailerDashboardController::class, 'sellers'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.sellers');
+    Route::get('/report/occasions', [RetailerDashboardController::class, 'occasions'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.occasions');
+    Route::get('/catalog', [CatalogController::class, 'index'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('catalog.index');
+    Route::post('/catalog/collections', [CatalogController::class, 'storeCollection'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('catalog.collections.store');
     // Legacy aliases — keep old names resolving so any bookmarked links or nav items still work
-    Route::get('/report/whatsapp', [CatalogController::class, 'index'])->middleware('edition:retailer')->name('report.whatsapp');
-    Route::post('/report/whatsapp/collection-link', [CatalogController::class, 'storeCollection'])->middleware('edition:retailer')->name('report.whatsapp.collection-link');
+    Route::get('/report/whatsapp', [CatalogController::class, 'index'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('report.whatsapp');
+    Route::post('/report/whatsapp/collection-link', [CatalogController::class, 'storeCollection'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('report.whatsapp.collection-link');
 
     // ======= DHIRAN (Gold Loan / Pledge Module) =======
     // On the main domain, redirect all /dhiran/* to the dedicated subdomain

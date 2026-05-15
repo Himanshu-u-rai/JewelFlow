@@ -1,0 +1,227 @@
+/*
+ * Public catalog CSS bundle.
+ *
+ * Scope: dedicated to layouts/catalog.blade.php and resources/views/public/catalog/*.
+ *
+ * Contains ONLY the styles the public catalog needs that aren't already in its
+ * inline <style> block — currently the shared image carousel + lightbox.
+ *
+ * DO NOT @import the design-system app.css here. The catalog has its own warm
+ * Inter / Playfair palette that must not be overridden by the SaaS app's
+ * Plus-Jakarta-Sans / gold-gradient design system.
+ */
+
+[x-cloak] { display: none !important; }
+
+/* ─── Shared image carousel (used by partials/image-carousel.blade.php) ─── */
+.jf-carousel {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: 16px;
+    background: #f5f3ef;
+}
+
+.jf-carousel-track {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+}
+.jf-carousel-track::-webkit-scrollbar { display: none; }
+
+.jf-carousel-slide {
+    flex: 0 0 100%;
+    width: 100%;
+    height: 100%;
+    scroll-snap-align: start;
+    position: relative;
+}
+
+.jf-carousel-image-btn {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+    display: block;
+}
+
+.jf-carousel-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.jf-carousel-zoom-hint {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 9999px;
+    background: rgba(15, 23, 42, 0.55);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    opacity: 0.85;
+    transition: opacity 150ms ease;
+}
+.jf-carousel-image-btn:hover .jf-carousel-zoom-hint,
+.jf-carousel-image-btn:focus-visible .jf-carousel-zoom-hint {
+    opacity: 1;
+}
+
+.jf-carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.92);
+    color: #1a1a1a;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 150ms ease, transform 150ms ease;
+}
+.jf-carousel-nav:hover { background: #ffffff; transform: translateY(-50%) scale(1.05); }
+.jf-carousel-nav--prev { left: 10px; }
+.jf-carousel-nav--next { right: 10px; }
+
+.jf-carousel-dots {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 9999px;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+}
+.jf-carousel-dots button {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.55);
+    padding: 0;
+    cursor: pointer;
+    transition: background 150ms ease, width 150ms ease;
+}
+.jf-carousel-dots button.is-active {
+    background: #ffffff;
+    width: 18px;
+}
+
+/* ─── Lightbox ─── */
+.jf-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.92);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    backdrop-filter: blur(6px);
+}
+
+.jf-lightbox-stage {
+    position: relative;
+    max-width: min(1100px, 100%);
+    max-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.jf-lightbox-image {
+    max-width: 100%;
+    max-height: calc(100vh - 96px);
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+}
+
+.jf-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 150ms ease;
+    z-index: 2;
+}
+.jf-lightbox-close:hover { background: rgba(255, 255, 255, 0.22); }
+
+.jf-lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 150ms ease;
+}
+.jf-lightbox-nav:hover { background: rgba(255, 255, 255, 0.22); }
+.jf-lightbox-nav--prev { left: 18px; }
+.jf-lightbox-nav--next { right: 18px; }
+
+.jf-lightbox-counter {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 640px) {
+    .jf-lightbox { padding: 12px; }
+    .jf-lightbox-nav { width: 40px; height: 40px; }
+    .jf-lightbox-nav--prev { left: 8px; }
+    .jf-lightbox-nav--next { right: 8px; }
+    .jf-lightbox-close { top: 10px; right: 10px; }
+    .jf-carousel-nav { width: 32px; height: 32px; }
+}

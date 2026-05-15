@@ -72,19 +72,32 @@ class SalesService
 
             $goldToUse = min(max(0, $customerGold), $fineGold);
 
-            // Calculate wastage recovery charge
-            $wastageRecoveryPercent = $shop->wastage_recovery_percent ?? 100;
-            $wastageFineGold = $item->wastage;
-            $wastageCharge = round(($wastageFineGold * $goldRate * $wastageRecoveryPercent) / 100, 2);
+            // ── Pricing math via PricingEngine ─────────────────────────
+            // The engine is the single source of truth for invoice math.
+            // It computes wastage, subtotal, GST, rounding identically to
+            // the previous inline math (bit-compatible, verified).
+            $engine = app(\App\Services\PricingEngine::class);
+            $quoteInput = \App\Services\PricingEngine\QuoteInput::manufacturer(
+                shopId: $shopId,
+                customerId: $customerId,
+                itemId: (int) $item->id,
+                goldRate: (float) $goldRate,
+                making: (float) $making,
+                stone: (float) $stone,
+                manualDiscount: (float) $discount,
+                creditOffset: (float) $creditOffset,
+            );
+            $breakdown = $engine->compute($quoteInput);
 
-            // Calculate subtotal and GST
-            $subtotal = round(($fineGold * $goldRate) + $making + $stone, 2);
-            if ($creditOffset > 0) {
-                $subtotal = round(max(0, $subtotal - $creditOffset), 2);
-            }
-            $gstRate = $shop->gst_rate ?? config('business.gst_rate_default');
-            $gst = round($subtotal * ($gstRate / 100), 2);
-            $total = round($subtotal + $gst + $wastageCharge - $discount + $roundOff, 2);
+            // Resolve the round_off that gets persisted on the invoice.
+            // If the shop hasn't opted into automatic rounding (method === 'none'),
+            // honour the caller-supplied $roundOff (preserves legacy behaviour).
+            // Otherwise use the engine-computed rounding adjustment.
+            $effectiveRoundOff = $breakdown->roundingMethod === 'none'
+                ? round((float) $roundOff, 2)
+                : $breakdown->roundingAdjustment;
+
+            $gstRate = $breakdown->gstRate;
 
             // Create invoice draft
             $invoice = InvoiceAccountingService::createDraft([
@@ -92,10 +105,15 @@ class SalesService
                 'shop_id'     => $shopId,
                 'gold_rate'   => $goldRate,
                 'gst_rate'    => $gstRate,
-                'wastage_charge' => $wastageCharge,
-                'discount'    => $discount,
-                'round_off'   => $roundOff,
+                'wastage_charge' => $breakdown->wastageCharge,
+                'discount'    => $breakdown->totalDiscount,
+                'round_off'   => $effectiveRoundOff,
             ]);
+
+            // Manufacturer invoices have a single line: the engine's lines[0]
+            // carries the full line_total and the aggregate GST stamped onto
+            // that one line (no per-line apportionment needed).
+            $line = $breakdown->lines[0];
 
             // Create invoice line
             InvoiceItem::record([
@@ -105,7 +123,9 @@ class SalesService
                 'rate'           => $goldRate,
                 'making_charges' => $making,
                 'stone_amount'   => $stone,
-                'line_total'     => ($fineGold * $goldRate) + $making + $stone,
+                'line_total'     => $line['line_total'],
+                'gst_rate'       => $gstRate,
+                'gst_amount'     => $line['gst_amount'],
             ]);
 
             $invoice = InvoiceAccountingService::finalizeDraft($invoice, (float) $gstRate);

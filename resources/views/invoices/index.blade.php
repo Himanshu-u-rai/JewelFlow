@@ -93,6 +93,7 @@
 
     <x-page-header class="invoices-page-header" title="Invoices" subtitle="View and manage all sales invoices">
         <x-slot:actions>
+            @can('sales.pos')
             <a href="{{ route('pos.index') }}"
                class="btn btn-success btn-sm invoices-open-pos-btn">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,10 +101,20 @@
                 </svg>
                 Open POS
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
     <div class="content-inner invoices-index-page jf-skeleton-host is-loading">
+
+        @php
+            $canModifyInvoices = auth()->user()->can('sales.void')
+                || auth()->user()->can('sales.pos')
+                || auth()->user()->can('sales.create');
+        @endphp
+        @unless($canModifyInvoices)
+            @include('partials.view-only-banner', ['permission' => 'sales.void', 'message' => 'invoice management'])
+        @endunless
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6 invoices-kpi-grid">
@@ -307,6 +318,7 @@
                                             </svg>
                                             <span class="invoice-action-tooltip">View</span>
                                         </a>
+                                        @can('sales.void')
                                         <a href="{{ route('invoices.edit', $invoice) }}"
                                            class="invoice-action-icon-link invoice-action-icon-link--edit"
                                            aria-label="Edit invoice"
@@ -316,6 +328,7 @@
                                             </svg>
                                             <span class="invoice-action-tooltip">Edit</span>
                                         </a>
+                                        @endcan
                                         <a href="{{ route('invoices.print', $invoice) }}"
                                            target="_blank"
                                            class="invoice-action-icon-link invoice-action-icon-link--print"

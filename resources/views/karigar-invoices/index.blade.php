@@ -398,14 +398,20 @@
 
     <x-page-header title="Karigar Invoices" subtitle="Tax invoices received from karigars">
         <x-slot:actions>
+            @can('karigar_invoice.manage')
             <a href="{{ route('karigar-invoices.create') }}" class="ki-action">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                 Add Invoice
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
     <div class="content-inner ki-shell space-y-5">
+
+        @unless(auth()->user()->can('karigar_invoice.manage'))
+            @include('partials.view-only-banner', ['permission' => 'karigar_invoice.manage', 'message' => 'karigar invoices'])
+        @endunless
 
         <section class="ki-top-grid">
             <div class="ki-stat">

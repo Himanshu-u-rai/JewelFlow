@@ -1,14 +1,20 @@
 <x-app-layout>
     <x-page-header title="Karigars" subtitle="Job-work artisans linked to this shop">
         <x-slot:actions>
+            @can('karigar.manage')
             <a href="{{ route('karigars.create') }}" class="btn btn-success btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Add Karigar
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
     <div class="content-inner karigars-index-page">
+
+        @unless(auth()->user()->can('karigar.manage'))
+            @include('partials.view-only-banner', ['permission' => 'karigar.manage', 'message' => 'karigar management'])
+        @endunless
 
         @php
             $activeKarigars = $karigars->where('is_active', true)->count();
@@ -52,7 +58,9 @@
             @if($karigars->isEmpty())
                 <div class="karigars-empty-state">
                     <p>No karigars yet.</p>
+                    @can('karigar.manage')
                     <a href="{{ route('karigars.create') }}" class="karigars-empty-link">Add your first karigar</a>
+                    @endcan
                 </div>
             @else
                 <div class="karigars-table-shell">
@@ -93,6 +101,7 @@
                                         @endif
                                     </td>
                                     <td class="text-right" onclick="event.stopPropagation()">
+                                        @can('karigar.manage')
                                         <div class="karigars-row-actions">
                                             <form method="POST" action="{{ route('karigars.toggle', $k) }}" class="inline">
                                                 @csrf
@@ -101,6 +110,7 @@
                                             </form>
                                             <a href="{{ route('karigars.edit', $k) }}" class="karigars-row-btn karigars-row-btn--edit">Edit</a>
                                         </div>
+                                        @endcan
                                     </td>
                                 </tr>
                             @endforeach
@@ -148,6 +158,7 @@
                                 </div>
                             </dl>
 
+                            @can('karigar.manage')
                             <div class="karigars-mobile-actions" onclick="event.stopPropagation()">
                                 <form method="POST" action="{{ route('karigars.toggle', $k) }}">
                                     @csrf
@@ -156,6 +167,7 @@
                                 </form>
                                 <a href="{{ route('karigars.edit', $k) }}" class="karigars-row-btn karigars-row-btn--edit">Edit</a>
                             </div>
+                            @endcan
                         </article>
                     @endforeach
                 </div>

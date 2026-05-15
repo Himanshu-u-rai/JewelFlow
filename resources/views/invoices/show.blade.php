@@ -167,40 +167,32 @@
                         <span class="text-gray-600">Subtotal</span>
                         <span class="font-medium text-gray-900">₹{{ number_format($invoice->subtotal, 2) }}</span>
                     </div>
-                    @if($invoice->wastage_charge > 0)
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Wastage Charge</span>
-                            <span class="font-medium text-gray-900">₹{{ number_format($invoice->wastage_charge, 2) }}</span>
-                        </div>
-                    @endif
+                    {{-- Fixed-skeleton: every row always renders so the
+                         Payment Summary card has the same shape on every
+                         invoice. Zero/empty values show explicitly. --}}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Wastage Charge</span>
+                        <span class="font-medium text-gray-900">₹{{ number_format($invoice->wastage_charge, 2) }}</span>
+                    </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">GST ({{ $invoice->gst_rate ?? 3 }}%)</span>
                         <span class="font-medium text-gray-900">₹{{ number_format($invoice->gst, 2) }}</span>
                     </div>
-                    @if($manualDiscount > 0)
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Manual Discount</span>
-                            <span class="font-medium text-red-600">−₹{{ number_format($manualDiscount, 2) }}</span>
-                        </div>
-                    @endif
-                    @if($offerDiscount > 0)
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Offer Discount @if($offerApplied)<span class="text-xs text-gray-400">({{ $offerApplied->scheme_name_snapshot }})</span>@endif</span>
-                            <span class="font-medium text-red-600">−₹{{ number_format($offerDiscount, 2) }}</span>
-                        </div>
-                    @endif
-                    @if($invoice->discount > 0 && $offerDiscount <= 0 && $manualDiscount <= 0)
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Discount</span>
-                            <span class="font-medium text-red-600">−₹{{ number_format($invoice->discount, 2) }}</span>
-                        </div>
-                    @endif
-                    @if($invoice->round_off != 0)
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Round Off</span>
-                            <span class="font-medium text-gray-700">{{ $invoice->round_off > 0 ? '+' : '' }}₹{{ number_format($invoice->round_off, 2) }}</span>
-                        </div>
-                    @endif
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Manual Discount</span>
+                        <span class="font-medium {{ $manualDiscount > 0 ? 'text-red-600' : 'text-gray-400' }}">{{ $manualDiscount > 0 ? '−' : '' }}₹{{ number_format($manualDiscount, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Offer Discount @if($offerApplied)<span class="text-xs text-gray-400">({{ $offerApplied->scheme_name_snapshot }})</span>@endif</span>
+                        <span class="font-medium {{ $offerDiscount > 0 ? 'text-red-600' : 'text-gray-400' }}">{{ $offerDiscount > 0 ? '−' : '' }}₹{{ number_format($offerDiscount, 2) }}</span>
+                    </div>
+                    {{-- Legacy fallback row (pre-Phase-0 invoices that lack the
+                         manual/offer split) — removed; every invoice now uses
+                         the Manual + Offer rows above. --}}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Round Off</span>
+                        <span class="font-medium text-gray-700">{{ $invoice->round_off > 0 ? '+' : ($invoice->round_off < 0 ? '' : '') }}₹{{ number_format($invoice->round_off, 2) }}</span>
+                    </div>
                     <div class="border-t border-gray-100 pt-2 mt-2">
                         <div class="flex justify-between items-center">
                             <span class="font-semibold text-gray-900">Total</span>
@@ -238,33 +230,44 @@
                     </div>
                 </div>
 
-                {{-- Payment Breakdown --}}
-                    @if($invoice->payments->count())
-                        <div class="mt-4 pt-3 border-t border-gray-100">
-                            <div class="text-[11px] text-gray-500 uppercase mb-2">Payment Breakdown</div>
-                        <div class="space-y-2">
-                            @foreach($invoice->payments as $payment)
-                                <div class="flex items-center justify-between text-sm">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-gray-700">{{ ucfirst(str_replace('_', ' ', $payment->mode)) }}</span>
-                                        @if($payment->reference)
-                                            <span class="text-xs text-gray-400">({{ $payment->reference }})</span>
-                                        @endif
-                                    </div>
-                                    <span class="font-medium text-gray-900">₹{{ number_format($payment->amount, 2) }}</span>
+                {{-- Payment Breakdown — fixed-skeleton: always renders 4
+                     slots so the card height stays constant. Real payments
+                     fill from the top, remaining slots show "—". --}}
+                @php
+                    $showMaxPayments = 4;
+                    $showPayments    = $invoice->payments->take($showMaxPayments);
+                    $showBlanks      = max(0, $showMaxPayments - $showPayments->count());
+                @endphp
+                <div class="mt-4 pt-3 border-t border-gray-100">
+                    <div class="text-[11px] text-gray-500 uppercase mb-2">Payment Breakdown</div>
+                    <div class="space-y-2">
+                        @foreach($showPayments as $payment)
+                            <div class="flex items-center justify-between text-sm">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-700">{{ ucfirst(str_replace('_', ' ', $payment->mode)) }}</span>
+                                    @if($payment->reference)
+                                        <span class="text-xs text-gray-400">({{ $payment->reference }})</span>
+                                    @endif
                                 </div>
-                                @if(in_array($payment->mode, ['old_gold', 'old_silver']) && $payment->metal_fine_weight)
-                                    <div class="ml-7 text-xs text-gray-500">
-                                        {{ number_format($payment->metal_gross_weight, 3) }}g gross
-                                        · {{ $payment->mode === 'old_gold' ? $payment->metal_purity . 'K' : $payment->metal_purity . '‰' }}
-                                        · {{ number_format($payment->metal_fine_weight, 3) }}g fine
-                                        @ ₹{{ number_format($payment->metal_rate_per_gram, 2) }}/g
-                                    </div>
-                                @endif
-                            @endforeach
-                        </div>
+                                <span class="font-medium text-gray-900">₹{{ number_format($payment->amount, 2) }}</span>
+                            </div>
+                            @if(in_array($payment->mode, ['old_gold', 'old_silver']) && $payment->metal_fine_weight)
+                                <div class="ml-7 text-xs text-gray-500">
+                                    {{ number_format($payment->metal_gross_weight, 3) }}g gross
+                                    · {{ $payment->mode === 'old_gold' ? $payment->metal_purity . 'K' : $payment->metal_purity . '‰' }}
+                                    · {{ number_format($payment->metal_fine_weight, 3) }}g fine
+                                    @ ₹{{ number_format($payment->metal_rate_per_gram, 2) }}/g
+                                </div>
+                            @endif
+                        @endforeach
+                        @for($i = 0; $i < $showBlanks; $i++)
+                            <div class="flex items-center justify-between text-sm text-gray-300">
+                                <span>—</span>
+                                <span>—</span>
+                            </div>
+                        @endfor
                     </div>
-                @endif
+                </div>
             </div>
 
             <!-- Items Table -->

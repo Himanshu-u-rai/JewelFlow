@@ -1863,23 +1863,33 @@
                             </div>
                         </div>
                     </div>
-                    <div class="field">
-                        <label class="field-label">
-                            Round-off (₹)
-                            <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;font-size:11px;margin-left:4px;">— enter payments first</span>
-                            <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;font-size:11px;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
-                        </label>
-                        <div class="roundoff-controls">
-                            <input type="number" class="field-input roundoff-input"
-                                   x-model.number="roundOff"
-                                   step="0.01"
-                                   min="-1" max="1"
-                                   :disabled="payments.length === 0"
-                                   @input="clampAndRecalc()"
-                                   placeholder="Auto">
+                    <template x-if="!posQuoteV2Enabled">
+                        <div class="field">
+                            <label class="field-label">
+                                Round-off (₹)
+                                <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;font-size:11px;margin-left:4px;">— enter payments first</span>
+                                <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;font-size:11px;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
+                            </label>
+                            <div class="roundoff-controls">
+                                <input type="number" class="field-input roundoff-input"
+                                       x-model.number="roundOff"
+                                       step="0.01"
+                                       min="-1" max="1"
+                                       :disabled="payments.length === 0"
+                                       @input="clampAndRecalc()"
+                                       placeholder="Auto">
+                            </div>
+                            <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
                         </div>
-                        <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
-                    </div>
+                    </template>
+                    <template x-if="posQuoteV2Enabled">
+                        <div class="field">
+                            <label class="field-label">Round-off (auto)</label>
+                            <div class="field-input" style="background:#f8fafc;color:#475569;cursor:not-allowed;"
+                                 x-text="(Number(quoteRoundingAdjustment || 0) >= 0 ? '+ ₹' : '- ₹') + Math.abs(Number(quoteRoundingAdjustment || 0)).toFixed(2)"></div>
+                            <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Derived from shop's rounding strategy.</p>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -1966,7 +1976,7 @@
                                                min="0"
                                                :max="maxRedeemableForSelection()"
                                                :disabled="!schemeRedemptionEnrollmentId"
-                                               @input="normalizeRedemptionAmount(); recalc(); applyAutoRoundOff()">
+                                               @input="normalizeRedemptionAmount(); recalc(); applyAutoRoundOff(); fetchQuoteDebounced()">
                                     </div>
                                 </div>
                             </template>
@@ -2209,23 +2219,33 @@
                             </div>
                         </div>
                     </div>
-                    <div class="field">
-                        <label class="field-label">
-                            Round-off (₹)
-                            <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;font-size:11px;margin-left:4px;">— enter payments first</span>
-                            <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;font-size:11px;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
-                        </label>
-                        <div class="roundoff-controls">
-                            <input type="number" class="field-input roundoff-input"
-                                   x-model.number="roundOff"
-                                   step="0.01"
-                                   min="-1" max="1"
-                                   :disabled="payments.length === 0"
-                                   @input="clampAndRecalc()"
-                                   placeholder="Auto">
+                    <template x-if="!posQuoteV2Enabled">
+                        <div class="field">
+                            <label class="field-label">
+                                Round-off (₹)
+                                <span class="field-label-hint" x-show="roundOff === 0 && payments.length === 0" style="font-weight:400;color:#94a3b8;font-size:11px;margin-left:4px;">— enter payments first</span>
+                                <span class="field-label-hint" x-show="roundOff !== 0" style="font-weight:400;color:#64748b;font-size:11px;margin-left:4px;" x-text="roundOff < 0 ? 'Paise waived off' : 'Added to total'"></span>
+                            </label>
+                            <div class="roundoff-controls">
+                                <input type="number" class="field-input roundoff-input"
+                                       x-model.number="roundOff"
+                                       step="0.01"
+                                       min="-1" max="1"
+                                       :disabled="payments.length === 0"
+                                       @input="clampAndRecalc()"
+                                       placeholder="Auto">
+                            </div>
+                            <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
                         </div>
-                        <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
-                    </div>
+                    </template>
+                    <template x-if="posQuoteV2Enabled">
+                        <div class="field">
+                            <label class="field-label">Round-off (auto)</label>
+                            <div class="field-input" style="background:#f8fafc;color:#475569;cursor:not-allowed;"
+                                 x-text="(Number(quoteRoundingAdjustment || 0) >= 0 ? '+ ₹' : '- ₹') + Math.abs(Number(quoteRoundingAdjustment || 0)).toFixed(2)"></div>
+                            <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Derived from shop's rounding strategy.</p>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -2312,7 +2332,7 @@
                                                min="0"
                                                :max="maxRedeemableForSelection()"
                                                :disabled="!schemeRedemptionEnrollmentId"
-                                               @input="normalizeRedemptionAmount(); recalc(); applyAutoRoundOff()">
+                                               @input="normalizeRedemptionAmount(); recalc(); applyAutoRoundOff(); fetchQuoteDebounced()">
                                     </div>
                                 </div>
                             </template>
@@ -2550,6 +2570,25 @@ function retailerPos() {
         loyaltyPointsPerHundred: {{ $loyaltyPointsPerHundred ?? 1 }},
         total: 0,
 
+        // Quote-driven pricing (Phase 2). When posQuoteV2Enabled is true the JS
+        // calls /pos/quote on every cart/discount/offer change and binds the
+        // totals box to the quote response. The local recalc() is the fallback
+        // used only when the feature flag is off.
+        posQuoteV2Enabled: {{ config('features.pos_quote_v2') ? 'true' : 'false' }},
+        posQuoteUrl: @json(route('pos.quote')),
+        posQuotePersistUrl: @json(route('pos.quote.persist')),
+        currentQuoteId: null,
+        currentQuoteSignature: null,
+        currentQuoteBreakdownJson: null,
+        currentQuoteExpiresAt: null,
+        currentQuoteInput: null,
+        quoteFetchInFlight: false,
+        quoteFetchDebounceTimer: null,
+        quoteError: '',
+        quoteRoundingMethod: 'none',
+        quoteRoundingNearest: 1,
+        quoteRoundingAdjustment: 0,
+
         // Payment methods (configured by shop owner)
         paymentMethods: @json($paymentMethods),
 
@@ -2586,6 +2625,13 @@ function retailerPos() {
                     itemIds.forEach(id => this.addItem(id));
                 } else if (singleId) {
                     this.addItem(singleId);
+                }
+
+                // If the cart was preloaded from the URL, fetch the initial
+                // server-side quote so totals reflect engine output from the
+                // first paint. No-op when the flag is off.
+                if (this.posQuoteV2Enabled && this.items.length > 0) {
+                    this.fetchQuoteDebounced();
                 }
             });
         },
@@ -2795,6 +2841,7 @@ function retailerPos() {
             this.applyAutoRoundOff();
             this.syncUrl();
             this.renderItemPicker();
+            this.fetchQuoteDebounced();
         },
 
         removeItem(idx) {
@@ -2803,6 +2850,7 @@ function retailerPos() {
             this.applyAutoRoundOff();
             this.syncUrl();
             this.renderItemPicker();
+            this.fetchQuoteDebounced();
         },
 
         async lookupBarcode(barcode) {
@@ -2841,6 +2889,7 @@ function retailerPos() {
                 this.itemPickerQuery = '';
                 this.renderItemPicker();
                 this.focusItemPicker();
+                this.fetchQuoteDebounced();
             } catch {
                 window.showToast('Error looking up barcode', 'error');
             } finally {
@@ -2854,6 +2903,7 @@ function retailerPos() {
             this.syncUrl();
             this.renderItemPicker();
             this.focusItemPicker();
+            this.fetchQuoteDebounced();
         },
 
         round2(value) {
@@ -2889,6 +2939,7 @@ function retailerPos() {
             this.discountInputSource = 'amount';
             this.recalc();
             this.applyAutoRoundOff();
+            this.fetchQuoteDebounced();
         },
 
         onDiscountPercentInput(value) {
@@ -2896,10 +2947,15 @@ function retailerPos() {
             this.discountInputSource = 'percent';
             this.recalc();
             this.applyAutoRoundOff();
+            this.fetchQuoteDebounced();
         },
 
         /* ── Price calculation ──────────────────── */
         recalc() {
+            // Quote v2 takes over the totals when enabled — skip local math so
+            // we don't overwrite the server-issued breakdown.
+            if (this.posQuoteV2Enabled) return;
+
             this.sellingPrice = this.items.reduce((sum, i) => sum + i.selling, 0);
 
             if (this.discountInputSource === 'percent') {
@@ -2916,8 +2972,140 @@ function retailerPos() {
             this.normalizeRedemptionAmount();
         },
 
-        /* Clamp manual round-off input to ±1 and recalculate */
+        /* ── Quote v2: debounced fetch ──────────── */
+        fetchQuoteDebounced() {
+            if (!this.posQuoteV2Enabled) return;
+            if (this.quoteFetchDebounceTimer) {
+                clearTimeout(this.quoteFetchDebounceTimer);
+                this.quoteFetchDebounceTimer = null;
+            }
+            if (this.items.length === 0) {
+                // Empty cart — clear any stale quote so the UI shows ₹0 totals.
+                this.currentQuoteId = null;
+                this.currentQuoteSignature = null;
+                this.currentQuoteBreakdownJson = null;
+                this.currentQuoteExpiresAt = null;
+                this.currentQuoteInput = null;
+                this.sellingPrice = 0;
+                this.gst = 0;
+                this.total = 0;
+                this.roundOff = 0;
+                this.quoteRoundingAdjustment = 0;
+                return;
+            }
+            this.quoteFetchDebounceTimer = setTimeout(() => {
+                this.fetchQuote();
+            }, 150);
+        },
+
+        async fetchQuote() {
+            if (!this.posQuoteV2Enabled) return;
+            if (this.items.length === 0) return;
+
+            this.quoteFetchInFlight = true;
+            this.quoteError = '';
+
+            const payload = {
+                mode: 'retailer',
+                customer_id: {{ $customer->id }},
+                item_ids: this.items.map(i => i.id),
+                manual_discount: this.discount,
+                manual_discount_percent: this.discountInputSource === 'percent' ? this.discountPercent : null,
+                offer_scheme_id: this.selectedOfferId || null,
+                scheme_redemption: this.appliedRedemptionAmount() > 0 ? {
+                    enrollment_id: parseInt(this.schemeRedemptionEnrollmentId, 10),
+                    amount: this.appliedRedemptionAmount(),
+                } : null,
+            };
+
+            try {
+                const res = await fetch(this.posQuoteUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    this.quoteError = data.message || 'Could not refresh price.';
+                    // Leave displayed totals untouched so the cashier sees a
+                    // stale-but-coherent screen rather than zeros.
+                    return;
+                }
+
+                this.currentQuoteId = data.quote_id || null;
+                this.currentQuoteSignature = data.signature || null;
+                this.currentQuoteBreakdownJson = data.breakdown_json || null;
+                this.currentQuoteExpiresAt = data.expires_at || null;
+                this.currentQuoteInput = payload;
+
+                const b = data.breakdown || {};
+                if (b.subtotal !== undefined) this.sellingPrice = Number(b.subtotal);
+                if (b.gst !== undefined) this.gst = Number(b.gst);
+                if (b.gst_rate !== undefined) this.gstRate = Number(b.gst_rate);
+                if (b.final_total !== undefined) this.total = Number(b.final_total);
+                if (b.rounding_method !== undefined) this.quoteRoundingMethod = b.rounding_method;
+                if (b.rounding_nearest !== undefined) this.quoteRoundingNearest = Number(b.rounding_nearest);
+                if (b.rounding_adjustment !== undefined) {
+                    this.quoteRoundingAdjustment = Number(b.rounding_adjustment);
+                    // Keep the legacy roundOff field in sync so any read-only
+                    // bindings that still reference it continue to render.
+                    this.roundOff = Number(b.rounding_adjustment);
+                }
+            } catch (e) {
+                this.quoteError = 'Network error while refreshing price.';
+                // Intentionally do not zero out totals on network errors.
+            } finally {
+                this.quoteFetchInFlight = false;
+            }
+        },
+
+        async persistCurrentQuote() {
+            if (!this.posQuoteV2Enabled) return;
+            if (!this.currentQuoteId || !this.currentQuoteSignature) return;
+
+            try {
+                const res = await fetch(this.posQuotePersistUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        quote_id: this.currentQuoteId,
+                        signature: this.currentQuoteSignature,
+                        breakdown_json: this.currentQuoteBreakdownJson,
+                        input_payload: this.currentQuoteInput,
+                    }),
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.quote_id) {
+                    this.currentQuoteId = data.quote_id;
+                    if (data.signature) this.currentQuoteSignature = data.signature;
+                    if (data.expires_at) this.currentQuoteExpiresAt = data.expires_at;
+                } else if (!res.ok) {
+                    // Phase 2 is additive only — log and let the sale proceed.
+                    console.warn('persistCurrentQuote failed', res.status, data);
+                }
+            } catch (e) {
+                console.warn('persistCurrentQuote network error', e);
+            }
+        },
+
+        /* Clamp manual round-off input to ±1 and recalculate.
+         * Only used for the legacy (flag-off) cashier-typed paise adjustment.
+         * When the quote engine is active, round-off comes from the server's
+         * rounding_adjustment (which can be up to ±₹10 under Tally-style
+         * rounding) and must NOT be clamped here. */
         clampAndRecalc() {
+            if (this.posQuoteV2Enabled) return;
             if (this.roundOff > 1)  this.roundOff = 1;
             if (this.roundOff < -1) this.roundOff = -1;
             this.recalc();
@@ -3055,17 +3243,20 @@ function retailerPos() {
                 this.ignoreAutoOffer = false;
             }
             this.recalc();
+            this.fetchQuoteDebounced();
         },
 
         skipOfferForThisBill() {
             this.selectedOfferId = '';
             this.ignoreAutoOffer = true;
             this.recalc();
+            this.fetchQuoteDebounced();
         },
 
         enableAutoOfferForThisBill() {
             this.ignoreAutoOffer = false;
             this.recalc();
+            this.fetchQuoteDebounced();
         },
 
         redemptionSelectedEnrollment() {
@@ -3098,6 +3289,7 @@ function retailerPos() {
             if (!this.schemeRedemptionEnrollmentId) {
                 this.schemeRedemptionAmount = 0;
                 this.recalc();
+                this.fetchQuoteDebounced();
                 return;
             }
 
@@ -3105,6 +3297,7 @@ function retailerPos() {
             const payableWithoutRedemption = Math.max(0, this.total - this.paymentTotal());
             this.schemeRedemptionAmount = Math.min(max, payableWithoutRedemption > 0 ? payableWithoutRedemption : max);
             this.recalc();
+            this.fetchQuoteDebounced();
         },
 
         appliedRedemptionAmount() {
@@ -3227,6 +3420,13 @@ function retailerPos() {
             this.selling = true;
             this.saleError = '';
 
+            // Phase 2: persist the latest quote so it's durable before sale.
+            // Failures are logged but do NOT block the sale — Phase 2 is
+            // additive only; Phase 3a will validate quote_id server-side.
+            if (this.posQuoteV2Enabled) {
+                await this.persistCurrentQuote();
+            }
+
             try {
                 const res = await fetch(this.posSellUrl, {
                     method: 'POST',
@@ -3256,10 +3456,49 @@ function retailerPos() {
                             metal_test_loss: p.metal_test_loss || null,
                             metal_rate_per_gram: p.metal_rate_per_gram || null,
                         })),
+                        // Phase 3a: quote-aware sale. Server uses these (when
+                        // present) as the authoritative source for discount/
+                        // round-off, ignores the legacy fields above, and stamps
+                        // the quote consumed so double-clicks return the same
+                        // invoice (idempotency).
+                        quote_id: this.posQuoteV2Enabled ? this.currentQuoteId : null,
+                        quote_signature: this.posQuoteV2Enabled ? this.currentQuoteSignature : null,
                     }),
                 });
 
                 const data = await res.json();
+
+                // Phase 3a: quote went stale between display and submit (offer
+                // expired, item price moved, etc.). Server returns 409 with a
+                // fresh quote — show the new total non-blockingly and let the
+                // cashier confirm. Re-enable the Complete Sale button so they
+                // can click again on the refreshed numbers.
+                if (res.status === 409 && data && data.error === 'quote_stale' && data.new_quote) {
+                    this.currentQuoteId         = data.new_quote.quote_id;
+                    this.currentQuoteSignature  = data.new_quote.signature;
+                    this.currentQuoteBreakdownJson = data.new_quote.breakdown_json;
+                    this.currentQuoteExpiresAt  = data.new_quote.expires_at;
+                    const bd = data.new_quote.breakdown || {};
+                    this.sellingPrice           = bd.subtotal ?? this.sellingPrice;
+                    this.gst                    = bd.gst ?? this.gst;
+                    this.gstRate                = bd.gst_rate ?? this.gstRate;
+                    this.total                  = bd.final_total ?? this.total;
+                    this.roundOff               = bd.rounding_adjustment ?? this.roundOff;
+                    this.quoteRoundingAdjustment = bd.rounding_adjustment ?? 0;
+                    this.quoteRoundingMethod    = bd.rounding_method ?? 'none';
+                    this.quoteRoundingNearest   = bd.rounding_nearest ?? 1;
+                    this.saleError              = data.message || 'Prices were refreshed — please confirm the updated total.';
+                    this.selling                = false;
+                    return;
+                }
+
+                // Phase 3a: item raced and got sold by another cashier.
+                if (res.status === 409 && data && data.error === 'items_unavailable') {
+                    this.saleError = data.message || 'One or more items were sold by another cashier. Refresh to see the updated cart.';
+                    this.selling   = false;
+                    return;
+                }
+
                 if (!res.ok) {
                     if (data.compliance_required) {
                         this.selling = false;

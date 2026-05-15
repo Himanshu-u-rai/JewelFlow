@@ -13,7 +13,7 @@
         'installments' => ['label' => 'EMI / Installments', 'type' => 'boolean'],
         'reorder_alerts' => ['label' => 'Reorder Alerts', 'type' => 'boolean'],
         'tag_printing' => ['label' => 'Tag Printing', 'type' => 'boolean'],
-        'whatsapp_catalog' => ['label' => 'WhatsApp Catalog', 'type' => 'boolean'],
+        'whatsapp_catalog' => ['label' => 'Catalog', 'type' => 'boolean'],
         'bulk_imports' => ['label' => 'Bulk Imports (CSV)', 'type' => 'boolean'],
         'gold_inventory' => ['label' => 'Gold Lot Inventory', 'type' => 'boolean'],
         'manufacturing' => ['label' => 'Manufacturing Workflow', 'type' => 'boolean'],

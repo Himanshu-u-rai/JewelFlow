@@ -8,6 +8,7 @@ use App\Models\CashTransaction;
 use App\Models\InvoicePayment;
 use App\Models\Repair;
 use App\Services\InvoiceAccountingService;
+use App\Services\PricingEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -207,11 +208,18 @@ class RepairController extends Controller
         ]);
 
         $includeGst = $request->boolean('include_gst');
-        $subtotal = (float) $validated['amount'];
+        $amount = (float) $validated['amount'];
         $defaultGstRate = (float) ($request->user()->shop->gst_rate ?? config('business.gst_rate_default'));
         $gstRate = $includeGst ? (float) ($validated['gst_rate'] ?? $defaultGstRate) : 0.0;
-        $gstAmount = $includeGst ? round(($subtotal * $gstRate) / 100, 2) : 0.0;
-        $totalAmount = round($subtotal + $gstAmount, 2);
+
+        $engine = app(PricingEngine::class);
+        $breakdown = $engine->computeRepair($shopId, $amount, $includeGst, $gstRate);
+
+        $subtotal = $breakdown->subtotal;
+        $gstAmount = $breakdown->gst;
+        $gstRate = $breakdown->gstRate;
+        $totalAmount = $breakdown->finalTotal;
+        $roundOff = $breakdown->roundingAdjustment;
 
         $paymentMode = $validated['payment_mode'] ?? InvoicePayment::MODE_CASH;
 
@@ -223,6 +231,7 @@ class RepairController extends Controller
             $gstRate,
             $gstAmount,
             $totalAmount,
+            $roundOff,
             $paymentMode
         ) {
             $lockedRepair = Repair::query()->where('id', $repair->id)->lockForUpdate()->firstOrFail();
@@ -242,6 +251,7 @@ class RepairController extends Controller
                 'gst_rate' => $gstRate,
                 'wastage_charge' => 0,
                 'total' => $totalAmount,
+                'round_off' => $roundOff,
             ]);
 
             InvoicePayment::record([
@@ -284,6 +294,7 @@ class RepairController extends Controller
                     'subtotal' => $subtotal,
                     'gst_rate' => $gstRate,
                     'gst' => $gstAmount,
+                    'round_off' => $roundOff,
                     'amount' => $totalAmount,
                     'payment_mode' => $paymentMode,
                     'invoice_id' => $invoice->id,

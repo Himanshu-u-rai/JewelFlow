@@ -20,6 +20,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    {{-- Catalog-only asset bundle: carousel CSS + Alpine.js.
+         Intentionally separate from the SaaS app pipeline so the public
+         catalog's warm Inter/Playfair design stays untouched by the
+         Plus-Jakarta-Sans / Tailwind reset shipped in app.css. --}}
+    @vite(['resources/css/catalog.css', 'resources/js/catalog.js'])
+
     <style>
         :root {
             --accent: {{ $catalogSettings->accent_color ?? '#8f6a2d' }};

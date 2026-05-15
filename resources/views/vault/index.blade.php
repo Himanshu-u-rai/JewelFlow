@@ -53,15 +53,16 @@
         }
 
         .vault-action-primary {
-            border: 1px solid #0f766e;
-            background: #0f766e;
+            border: 1px solid transparent;
+            background: linear-gradient(135deg, var(--jf-gold) 0%, var(--jf-gold-deep) 100%);
             color: #ffffff;
-            box-shadow: 0 12px 24px rgba(15, 118, 110, .22);
+            box-shadow: var(--jf-shadow-gold);
         }
 
         .vault-action-primary:hover {
+            background: linear-gradient(135deg, var(--jf-gold-glow) 0%, var(--jf-gold) 100%);
             transform: translateY(-1px);
-            box-shadow: 0 14px 28px rgba(15, 118, 110, .26);
+            box-shadow: var(--jf-shadow-gold-hover);
         }
 
         .vault-card {
@@ -73,11 +74,23 @@
         }
 
         .vault-summary-card {
-            border: 1px solid #dbe3ee;
-            border-radius: 20px;
-            background: #ffffff;
-            padding: 20px;
-            box-shadow: 0 14px 28px rgba(15, 23, 42, .06);
+            position: relative;
+            border: 1px solid var(--jf-border);
+            border-radius: var(--jf-radius-2xl);
+            background: linear-gradient(180deg, var(--jf-surface-accent) 0%, #ffffff 36%);
+            padding: 22px 22px 20px;
+            box-shadow: var(--jf-shadow-md);
+            overflow: hidden;
+        }
+
+        .vault-summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent 0%, var(--jf-gold) 20%, var(--jf-gold-glow) 50%, var(--jf-gold) 80%, transparent 100%);
         }
 
         .vault-summary-head {
@@ -184,9 +197,9 @@
         }
 
         .vault-link:hover {
-            border-color: #0f766e;
-            color: #0f766e;
-            background: #f0fdfa;
+            border-color: var(--jf-gold);
+            color: var(--jf-gold-deep);
+            background: var(--jf-surface-accent);
         }
 
         .vault-count-chip {
@@ -196,10 +209,10 @@
             min-width: 34px;
             min-height: 34px;
             padding: 0 10px;
-            border-radius: 999px;
-            border: 1px solid #fde68a;
-            background: #fffbeb;
-            color: #92400e;
+            border-radius: 9999px;
+            border: 1px solid var(--jf-warn-border);
+            background: var(--jf-warn-bg);
+            color: var(--jf-warn-ink);
             font-size: 12px;
             font-weight: 900;
         }
@@ -314,8 +327,8 @@
             width: 56px;
             height: 56px;
             border: none;
-            border-radius: 999px;
-            background: linear-gradient(135deg, #0f172a 0%, #0f766e 100%);
+            border-radius: 9999px;
+            background: linear-gradient(135deg, var(--jf-navy) 0%, var(--jf-gold-deep) 100%);
             box-shadow: 0 18px 30px rgba(15, 23, 42, .28);
             display: inline-flex;
             align-items: center;
@@ -1000,6 +1013,10 @@
     </x-page-header>
 
     <div class="content-inner vault-shell">
+
+        @unless(auth()->user()->can('vault.manage'))
+            @include('partials.view-only-banner', ['permission' => 'vault.manage', 'message' => 'vault management'])
+        @endunless
 
         <div class="vault-flow" x-data="{ vaultSection: @js($initialSection), mobileOverviewOpen: false, vaultFabOpen: false }" @keydown.escape.window="vaultFabOpen = false">
             <section class="vault-card vault-responsive-actions-shell vault-tablet-mobile-only">

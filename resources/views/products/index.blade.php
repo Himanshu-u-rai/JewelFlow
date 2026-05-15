@@ -1,16 +1,22 @@
 <x-app-layout>
     <x-page-header title="Product Catalog" subtitle="Manage your jewellery product templates">
         <x-slot:actions>
+            @can('catalog.manage')
             <a href="{{ route('products.create') }}" class="btn btn-primary btn-sm">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
                 Add Product
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
     <div class="content-inner jf-skeleton-host is-loading">
+
+        @unless(auth()->user()->can('catalog.manage'))
+            @include('partials.view-only-banner', ['permission' => 'catalog.manage', 'message' => 'product catalog management'])
+        @endunless
 <!-- Search -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
             <form method="GET" action="{{ route('products.index') }}" class="flex gap-4 items-end">
@@ -44,10 +50,12 @@
                 </svg>
                 <h3 class="text-lg font-semibold text-gray-900 mb-2">No Products Yet</h3>
                 <p class="text-gray-500 mb-6">Create your first product template</p>
-                <a href="{{ route('products.create') }}" 
+                @can('catalog.manage')
+                <a href="{{ route('products.create') }}"
                    class="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm font-medium">
                     Add First Product
                 </a>
+                @endcan
             </div>
         @else
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -105,6 +113,7 @@
                                 </td>
                                 <td class="px-4 py-2 text-right">
                                     <div class="flex items-center justify-end gap-2">
+                                        @can('inventory.create')
                                         <a href="{{ route('inventory.items.create', ['product_id' => $product->id]) }}"
                                            class="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded hover:bg-emerald-100 text-xs font-medium transition-colors">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,7 +121,8 @@
                                             </svg>
                                             Create Stock
                                         </a>
-                                        <a href="{{ route('products.show', $product) }}" 
+                                        @endcan
+                                        <a href="{{ route('products.show', $product) }}"
                                            class="inline-flex items-center px-2.5 py-1 bg-amber-50 text-amber-600 rounded hover:bg-amber-100 text-xs font-medium transition-colors">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -120,13 +130,15 @@
                                             </svg>
                                             View
                                         </a>
-                                        <a href="{{ route('products.edit', $product) }}" 
+                                        @can('catalog.manage')
+                                        <a href="{{ route('products.edit', $product) }}"
                                            class="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-xs font-medium transition-colors">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </svg>
                                             Edit
                                         </a>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>

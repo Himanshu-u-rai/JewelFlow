@@ -1,19 +1,21 @@
 <x-app-layout>
     <style>
         .dash-root {
-            --dash-ink: #0f172a;
-            --dash-action: #14284b;
-            --dash-action-strong: #10203d;
-            --dash-gold: #f4a300;
-            --dash-gold-deep: #d98b00;
+            /* Local --dash-* tokens now alias the global design-system tokens so
+               any future palette tweak in app.css's :root flows through here. */
+            --dash-ink: var(--jf-ink);
+            --dash-action: var(--jf-navy);
+            --dash-action-strong: var(--jf-navy-deep);
+            --dash-gold: var(--jf-gold);
+            --dash-gold-deep: var(--jf-gold-deep);
             --dash-slate: #475569;
-            --dash-muted: #64748b;
-            --dash-line: #d7dee8;
-            --dash-bg: #f4f6fa;
-            --dash-card: #ffffff;
-            --dash-accent-soft: #fff7e8;
-            --dash-shadow: 0 10px 24px rgba(20, 40, 75, 0.08);
-            --dash-shadow-strong: 0 16px 34px rgba(20, 40, 75, 0.12);
+            --dash-muted: var(--jf-text-muted);
+            --dash-line: var(--jf-border);
+            --dash-bg: var(--jf-surface-soft);
+            --dash-card: var(--jf-surface);
+            --dash-accent-soft: var(--jf-surface-accent);
+            --dash-shadow: var(--jf-shadow-md);
+            --dash-shadow-strong: var(--jf-shadow-lg);
             padding-top: 18px;
         }
 
@@ -295,7 +297,7 @@
             min-height: 32px;
             padding: 0 10px;
             border: 1px solid #d9e3ef;
-            border-radius: 999px;
+            border-radius: 9999px;
             background: rgba(255, 255, 255, 0.98);
             color: #52627c;
             font-size: 11px;
@@ -350,7 +352,7 @@
 
         .dash-command-results::-webkit-scrollbar-thumb {
             border: 2px solid transparent;
-            border-radius: 999px;
+            border-radius: 9999px;
             background: #cfdae6;
             background-clip: padding-box;
         }
@@ -514,7 +516,7 @@
             color: #0f766e;
             background: #effaf6;
             border: 1px solid #b7edd8;
-            border-radius: 999px;
+            border-radius: 9999px;
             padding: 5px 8px;
             white-space: nowrap;
         }
@@ -594,7 +596,7 @@
             gap: 9px;
             min-width: 172px;
             padding: 11px 14px;
-            border-radius: 999px;
+            border-radius: 9999px;
             border: 1px solid rgba(20, 40, 75, 0.16);
             background: rgba(255, 255, 255, 0.98);
             color: var(--dash-action);
@@ -638,7 +640,7 @@
             width: 56px;
             height: 56px;
             border: none;
-            border-radius: 999px;
+            border-radius: 9999px;
             background: linear-gradient(135deg, var(--dash-action) 0%, var(--dash-action-strong) 100%);
             box-shadow: 0 18px 30px rgba(20, 40, 75, 0.3);
             display: inline-flex;
@@ -652,7 +654,7 @@
             position: absolute;
             inset: 4px;
             border-radius: inherit;
-            border: 1px solid rgba(244, 163, 0, 0.36);
+            border: 1px solid rgba(245, 158, 11, 0.36);
         }
 
         .dash-mobile-fab-bars {
@@ -666,7 +668,7 @@
             left: 0;
             width: 22px;
             height: 2.5px;
-            border-radius: 999px;
+            border-radius: 9999px;
             background: #ffffff;
             transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 180ms ease, top 220ms cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -732,12 +734,12 @@
 
         .dash-email-verify {
             background: var(--dash-accent-soft);
-            border: 1px solid rgba(244, 163, 0, 0.45);
+            border: 1px solid rgba(245, 158, 11, 0.45);
             padding: 14px 18px;
             display: flex;
             align-items: flex-start;
             gap: 14px;
-            box-shadow: 0 4px 12px rgba(244, 163, 0, 0.13);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.13);
         }
 
         .dash-email-verify-icon {
@@ -957,8 +959,8 @@
             display: inline-flex;
             align-items: center;
             padding: 3px 8px;
-            border: 1px solid rgba(244, 163, 0, 0.38);
-            background: rgba(244, 163, 0, 0.14);
+            border: 1px solid rgba(245, 158, 11, 0.38);
+            background: rgba(245, 158, 11, 0.14);
             color: #986000;
             font-size: 10px;
             font-weight: 700;
@@ -1085,7 +1087,7 @@
 
         .dash-top-kpi-revenue .dash-top-kpi-icon {
             border-color: rgba(217, 139, 0, 0.24);
-            background: rgba(244, 163, 0, 0.16);
+            background: rgba(245, 158, 11, 0.16);
             color: #986000;
         }
 
@@ -1139,7 +1141,7 @@
             position: relative;
             isolation: isolate;
             overflow: hidden;
-            border-radius: 999px;
+            border-radius: 9999px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -1283,7 +1285,7 @@
             align-items: center;
             gap: 10px;
             padding: 10px 12px;
-            border: 1px solid rgba(244, 163, 0, 0.45);
+            border: 1px solid rgba(245, 158, 11, 0.45);
             background: #fffbf2;
             box-shadow: var(--dash-shadow);
         }
@@ -1499,7 +1501,7 @@
             align-items: center;
             gap: 6px;
             padding: 6px 10px;
-            border-radius: 999px;
+            border-radius: 9999px;
             border: 1px solid rgba(154, 98, 0, 0.28);
             background: rgba(255, 255, 255, 0.66);
             color: #8b5200;
@@ -1659,7 +1661,7 @@
             font-size: 11px;
             color: #475569;
             font-weight: 700;
-            border-radius: 999px;
+            border-radius: 9999px;
         }
 
         .dash-chart-shell {
@@ -1779,7 +1781,7 @@
         .dash-legend-dot {
             width: 9px;
             height: 9px;
-            border-radius: 999px;
+            border-radius: 9999px;
             flex-shrink: 0;
         }
 
@@ -2395,7 +2397,7 @@
             justify-content: center;
             min-height: 22px;
             padding: 3px 8px;
-            border-radius: 999px;
+            border-radius: 9999px;
             border: 1px solid transparent;
             font-size: 10px;
             line-height: 1;
@@ -2446,7 +2448,7 @@
             bottom: -6px;
             min-width: 16px;
             height: 16px;
-            border-radius: 999px;
+            border-radius: 9999px;
             background: #111827;
             color: #ffffff;
             border: 1px solid #ffffff;
@@ -2485,15 +2487,15 @@
         }
 
         .dash-root .dash-mini-dark {
-            background: linear-gradient(180deg, #1a335d 0%, #14284b 100%);
+            background: linear-gradient(180deg, #1a335d 0%, var(--jf-navy) 100%);
             border-color: #2e4f81;
             box-shadow: 0 12px 22px rgba(20, 40, 75, 0.28);
         }
 
         .dash-root .dash-mini-kpi-icon {
-            border-color: rgba(244, 163, 0, 0.55);
-            background: rgba(244, 163, 0, 0.14);
-            color: #f4c354;
+            border-color: rgba(245, 158, 11, 0.55);
+            background: rgba(245, 158, 11, 0.16);
+            color: var(--jf-gold-glow);
         }
 
         .dash-root .dash-mini-kpi-meta {
@@ -3524,7 +3526,6 @@
             $dashCommandPages[] = ['label' => 'Services Settings', 'sub' => 'Manage editions and service requests', 'url' => route('settings.services'), 'keywords' => 'settings services editions modules plans'];
             $dashCommandPages[] = ['label' => 'Settings · General', 'sub' => 'Business basics and account defaults', 'url' => route('settings.edit', ['tab' => 'general']), 'keywords' => 'settings general profile defaults'];
             $dashCommandPages[] = ['label' => 'Settings · Shop', 'sub' => 'Shop identity and branding setup', 'url' => route('settings.edit', ['tab' => 'shop']), 'keywords' => 'settings shop logo gst address'];
-            $dashCommandPages[] = ['label' => 'Settings · Rules', 'sub' => 'Pricing, buyback and GST rules', 'url' => route('settings.edit', ['tab' => 'rules']), 'keywords' => 'settings rules pricing buyback gst'];
             $dashCommandPages[] = ['label' => 'Settings · Billing', 'sub' => 'Invoice, signature and print defaults', 'url' => route('settings.edit', ['tab' => 'billing']), 'keywords' => 'settings billing invoice print terms'];
             $dashCommandPages[] = ['label' => 'Settings · Preferences', 'sub' => 'Operational and POS preferences', 'url' => route('settings.edit', ['tab' => 'preferences']), 'keywords' => 'settings preferences pos workflow'];
             $dashCommandPages[] = ['label' => 'Settings · Pricing', 'sub' => 'Daily rates and purity profiles', 'url' => route('settings.edit', ['tab' => 'pricing']), 'keywords' => 'settings pricing daily rates purity'];
@@ -3538,7 +3539,7 @@
         }
 
         if ($isRetailer) {
-            $dashCommandPages[] = ['label' => 'WhatsApp Catalog', 'sub' => 'Share catalog links', 'url' => route('catalog.index'), 'keywords' => 'catalog whatsapp share'];
+            $dashCommandPages[] = ['label' => 'Catalog', 'sub' => 'Share catalog links', 'url' => route('catalog.index'), 'keywords' => 'catalog whatsapp share'];
             $dashCommandPages[] = ['label' => 'Vendors', 'sub' => 'Supplier management', 'url' => route('vendors.index'), 'keywords' => 'vendors suppliers'];
             $dashCommandPages[] = ['label' => 'Stock Purchases', 'sub' => 'Purchase inward register', 'url' => route('inventory.purchases.index'), 'keywords' => 'stock purchase inward supplier'];
             $dashCommandPages[] = ['label' => 'Schemes', 'sub' => 'Offers and savings plans', 'url' => route('schemes.index'), 'keywords' => 'schemes offers promotions'];
@@ -4233,7 +4234,9 @@
                 </div>
 
                 <div class="dash-shop-actions" style="gap: 6px;">
+                    @can('settings.view')
                     <a href="{{ route('settings.edit', ['tab' => 'shop']) }}" class="dash-btn dash-btn-muted" style="min-height: 32px; font-size: 11px;">Edit Shop</a>
+                    @endcan
                     <a href="/inventory/items" class="dash-btn dash-btn-primary" style="min-height: 32px; font-size: 11px;">View Inventory</a>
                 </div>
             </div>

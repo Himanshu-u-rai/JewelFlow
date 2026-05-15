@@ -6,27 +6,32 @@
         </div>
         <div class="page-actions">
             @php $atLimit = $staffLimit !== -1 && $staffCount >= $staffLimit; @endphp
-            @if($atLimit)
-                <span class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
-                      title="Staff limit reached ({{ $staffLimit }}). Remove a member or contact your admin.">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-                    </svg>
-                    Add Staff
-                </span>
-            @else
-                <a href="{{ route('staff.create') }}"
-                   class="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-                    </svg>
-                    Add Staff
-                </a>
-            @endif
+            @can('staff.manage')
+                @if($atLimit)
+                    <span class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-400 rounded-lg text-sm font-medium cursor-not-allowed"
+                          title="Staff limit reached ({{ $staffLimit }}). Remove a member or contact your admin.">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                        </svg>
+                        Add Staff
+                    </span>
+                @else
+                    <a href="{{ route('staff.create') }}"
+                       class="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                        </svg>
+                        Add Staff
+                    </a>
+                @endif
+            @endcan
         </div>
     </x-page-header>
 
     <div class="content-inner">
+        @unless(auth()->user()->can('staff.manage'))
+            @include('partials.view-only-banner', ['permission' => 'staff.manage', 'message' => 'staff management'])
+        @endunless
         {{-- Staff limit bar --}}
         @php
             $pct      = ($staffLimit > 0) ? min(100, round($staffCount / $staffLimit * 100)) : 0;
@@ -104,20 +109,21 @@
                             </span>
                             
                             <div class="flex gap-2">
-                                <a href="{{ route('staff.edit', $member) }}" 
+                                @can('staff.manage')
+                                <a href="{{ route('staff.edit', $member) }}"
                                    class="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-xs">
                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                     </svg>
                                     Edit
                                 </a>
-                                
+
                                 @if($member->id !== auth()->id())
                                     <form method="POST" action="{{ route('staff.destroy', $member) }}"
                                         data-confirm-message="Are you sure you want to remove {{ $member->name ?? $member->mobile_number }}?">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 class="inline-flex items-center px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -128,6 +134,7 @@
                                 @else
                                     <span class="text-xs text-gray-400 italic">You</span>
                                 @endif
+                                @endcan
                             </div>
                         </div>
                     </div>
@@ -139,11 +146,13 @@
                     </svg>
                     <h3 class="text-lg font-semibold text-gray-900 mb-2">No staff members yet</h3>
                     <p class="text-gray-500 mb-4">Add your first employee to get started</p>
-                    @if(!$atLimit)
-                    <a href="{{ route('staff.create') }}" class="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">
-                        Add Staff Member
-                    </a>
-                    @endif
+                    @can('staff.manage')
+                        @if(!$atLimit)
+                        <a href="{{ route('staff.create') }}" class="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">
+                            Add Staff Member
+                        </a>
+                        @endif
+                    @endcan
                 </div>
             @endforelse
         </div>

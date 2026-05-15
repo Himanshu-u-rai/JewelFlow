@@ -5,12 +5,14 @@
             <p class="text-sm text-gray-500 mt-1">Manage your gold stock (Metal Lots)</p>
         </div>
         <div class="page-actions">
+            @can('inventory.create')
             <a href="{{ route('inventory.gold.create') }}" class="btn btn-dark btn-sm">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
                 Add Gold
             </a>
+            @endcan
         </div>
     </x-page-header>
 
@@ -110,13 +112,15 @@
                                     </div>
                                     <p class="text-gray-500 font-medium">No gold lots found</p>
                                     <p class="text-gray-400 text-sm mt-1">Add your first gold lot to get started</p>
-                                    <a href="{{ route('inventory.gold.create') }}" 
+                                    @can('inventory.create')
+                                    <a href="{{ route('inventory.gold.create') }}"
                                        class="inline-flex items-center mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                         </svg>
                                         Add Gold
                                     </a>
+                                    @endcan
                                 </td>
                             </tr>
                         @endforelse

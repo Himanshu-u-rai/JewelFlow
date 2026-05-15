@@ -75,8 +75,20 @@ function initAjaxDeletes() {
         if (form.dataset.ajaxDeleteBound === 'true') return;
         form.dataset.ajaxDeleteBound = 'true';
 
-        form.addEventListener('submit', (event) => {
+        form.addEventListener('submit', async (event) => {
             event.preventDefault();
+
+            // If a confirmation message is set, show the dialog here and only
+            // fire the ajax DELETE after the user confirms. We own the confirm
+            // flow inside this handler so we don't fight with the generic
+            // `initAccessibleFormConfirms` handler — that one skips forms that
+            // have `data-ajax-delete`. Previously both bound to the same submit
+            // event and the DELETE fetch fired before the dialog rendered.
+            const confirmMsg = form.dataset.confirmMessage;
+            if (confirmMsg) {
+                const ok = await openConfirmDialog(confirmMsg);
+                if (!ok) return;
+            }
 
             const url = form.action;
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -278,6 +290,10 @@ function openConfirmDialog(message) {
 function initAccessibleFormConfirms() {
     document.querySelectorAll('form[onsubmit*="confirm("], form[data-confirm-message]').forEach((form) => {
         if (form.dataset.confirmInterceptBound === 'true') return;
+        // Ajax-delete forms run their own confirm flow inside initAjaxDeletes()
+        // so the dialog appears BEFORE the DELETE fetch fires. Skip them here
+        // to avoid double-binding the submit event with conflicting handlers.
+        if (form.hasAttribute('data-ajax-delete')) return;
 
         const onsubmitAttr = form.getAttribute('onsubmit') || '';
         const message = form.dataset.confirmMessage || extractConfirmMessage(onsubmitAttr);

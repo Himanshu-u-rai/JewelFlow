@@ -13,6 +13,7 @@
         :subtitle="'Manage customer profiles' . ($isRetailer ? '' : ' and balances')"
     >
         <x-slot:actions>
+            @can('customers.create')
             <a href="{{ route('customers.create') }}"
                class="btn btn-success btn-sm customers-add-btn">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,10 +21,20 @@
                 </svg>
                 Add Customer
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
     <div class="content-inner customers-index-page jf-skeleton-host is-loading" x-data="{ view: '{{ $viewDefault }}' }">
+
+        @php
+            $canModifyCustomers = auth()->user()->can('customers.create')
+                || auth()->user()->can('customers.edit')
+                || auth()->user()->can('customers.delete');
+        @endphp
+        @unless($canModifyCustomers)
+            @include('partials.view-only-banner', ['permission' => 'customers.edit', 'message' => 'customer management'])
+        @endunless
 
         {{-- View Toggle for Retailers --}}
         @if($isRetailer)
@@ -368,12 +379,14 @@
         {{-- ==================== EMI / INSTALLMENTS VIEW (Retailers Only) ==================== --}}
         @if($isRetailer && $installmentData)
         <div x-show="view === 'emi'" x-cloak>
+            @can('sales.create')
             <div class="mb-4 flex justify-end">
                 <a href="{{ route('installments.create') }}" class="btn btn-dark btn-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Create EMI Plan
                 </a>
             </div>
+            @endcan
             @php
                 $installmentPlans = $installmentData['installmentPlans'];
                 $overduePlans = $installmentData['overduePlans'];

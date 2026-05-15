@@ -708,16 +708,18 @@
         <div class="pricing-field pricing-timezone-field">
             <label class="field-label">{{ __('Timezone') }}</label>
             <div class="pricing-timezone-controls">
-                <select name="pricing_timezone" class="field-input pricing-timezone-select" required>
+                <select name="pricing_timezone" class="field-input pricing-timezone-select" required @cannot('pricing.update') disabled @endcannot>
                     @foreach($pricingTimezones as $timezone)
                         <option value="{{ $timezone }}" {{ old('pricing_timezone', $pricingData['timezone'] ?? config('app.timezone', 'UTC')) === $timezone ? 'selected' : '' }}>
                             {{ $timezone }}
                         </option>
                     @endforeach
                 </select>
+                @can('pricing.update')
                 <div class="pricing-timezone-action">
                     <button type="submit" class="btn-primary">{{ __('Save Timezone') }}</button>
                 </div>
+                @endcan
             </div>
             <span class="field-hint pricing-timezone-hint">{{ __('Retailer daily pricing resets at local midnight in this timezone.') }}</span>
         </div>
@@ -753,9 +755,11 @@
                     </div>
                 </div>
             </div>
+            @can('pricing.update')
             <div class="form-footer">
                 <button type="submit" class="btn-primary">{{ __('Save Today\'s Rates') }}</button>
             </div>
+            @endcan
         </form>
     </div>
 
@@ -785,9 +789,11 @@
                     <input type="text" name="label" class="field-input" maxlength="60" placeholder="{{ __('Optional') }}">
                 </div>
             </div>
+            @can('pricing.update')
             <div class="form-footer">
                 <button type="submit" class="btn-primary">{{ __('Add Purity Profile') }}</button>
             </div>
+            @endcan
         </form>
     </div>
 </div>
@@ -833,9 +839,11 @@
                                     </label>
                                 </div>
                             </div>
+                            @can('pricing.update')
                             <div class="pricing-profile-card-footer">
                                 <button type="submit" class="btn btn-secondary btn-sm">{{ __('Update') }}</button>
                             </div>
+                            @endcan
                         </form>
                     @endforeach
                 </div>
@@ -891,8 +899,11 @@
                                         value="{{ old('rate_per_gram', $currentRate ? (float) $currentRate->rate_per_gram : null) }}"
                                         class="field-input"
                                         required
+                                        @cannot('pricing.update') disabled @endcannot
                                     >
+                                    @can('pricing.update')
                                     <button type="submit" class="btn btn-secondary btn-sm">{{ __('Override') }}</button>
+                                    @endcan
                                 </form>
                             </td>
                         </tr>
@@ -938,11 +949,13 @@
                                 <form method="POST" action="{{ route('settings.pricing.legacy.resolve', $legacyItem) }}" class="pricing-action-form">
                                     @csrf
                                     @method('PATCH')
-                                    <select name="metal_type" class="field-input max-w-[180px]" required>
+                                    <select name="metal_type" class="field-input max-w-[180px]" required @cannot('pricing.update') disabled @endcannot>
                                         <option value="gold" {{ old('metal_type', $legacyItem->metal_type) === 'gold' ? 'selected' : '' }}>{{ __('Gold') }}</option>
                                         <option value="silver" {{ old('metal_type', $legacyItem->metal_type) === 'silver' ? 'selected' : '' }}>{{ __('Silver') }}</option>
                                     </select>
+                                    @can('pricing.update')
                                     <button type="submit" class="btn btn-secondary btn-sm">{{ __('Save') }}</button>
+                                    @endcan
                                 </form>
                             </td>
                             <td class="px-4 py-3 text-right text-xs text-gray-500">

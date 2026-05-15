@@ -64,6 +64,28 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         Integration::handles($exceptions);
 
+        // ─── JSON-shaped permission denials for API requests ─────────────────
+        // When the client sends `Accept: application/json` (typical for the mobile
+        // app and AJAX), surface 403s with a stable JSON shape so clients can
+        // parse + display them uniformly. HTML requests still hit the branded
+        // errors/403.blade.php view.
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => 'permission_denied',
+                    'message' => $e->getMessage() ?: 'You do not have permission to perform this action.',
+                ], 403);
+            }
+        });
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
+            if ($e->getStatusCode() === 403 && $request->expectsJson()) {
+                return response()->json([
+                    'error' => 'permission_denied',
+                    'message' => $e->getMessage() ?: 'You do not have permission to perform this action.',
+                ], 403);
+            }
+        });
+
         $exceptions->report(function (Throwable $exception) {
             if (!app()->bound('request')) {
                 return;

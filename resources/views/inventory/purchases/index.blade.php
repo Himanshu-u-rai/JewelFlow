@@ -355,12 +355,14 @@
 
     <x-page-header title="Stock Purchases" subtitle="Record and manage incoming stock from suppliers">
         <x-slot:actions>
+            @can('inventory.create')
             <a href="{{ route('inventory.purchases.create') }}" class="btn btn-success btn-sm">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
                 New Purchase
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
@@ -665,7 +667,9 @@
                     <svg class="mx-auto mb-3 h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     <p class="text-sm font-medium text-slate-500">No purchases found</p>
                     <p class="mt-1 text-xs text-slate-400">Create your first stock purchase to get started</p>
+                    @can('inventory.create')
                     <a href="{{ route('inventory.purchases.create') }}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">New Purchase</a>
+                    @endcan
                 </div>
             @else
                 <div class="sp-register-table-wrap">
@@ -706,12 +710,16 @@
                                         <div class="flex items-center justify-end gap-2">
                                             <a href="{{ route('inventory.purchases.show', $purchase) }}" class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">View</a>
                                             @if($purchase->isDraft())
+                                                @can('inventory.edit')
                                                 <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100">Edit</a>
+                                                @endcan
+                                                @can('inventory.delete')
                                                 <form method="POST" action="{{ route('inventory.purchases.destroy', $purchase) }}" onsubmit="return confirm('Delete this draft purchase?')">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100">Delete</button>
                                                 </form>
+                                                @endcan
                                             @endif
                                         </div>
                                     </td>
@@ -761,12 +769,16 @@
                                 <div class="flex flex-wrap items-center gap-2">
                                     <a href="{{ route('inventory.purchases.show', $purchase) }}" class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700">View</a>
                                     @if($purchase->isDraft())
+                                        @can('inventory.edit')
                                         <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700">Edit</a>
+                                        @endcan
+                                        @can('inventory.delete')
                                         <form method="POST" action="{{ route('inventory.purchases.destroy', $purchase) }}" onsubmit="return confirm('Delete this draft purchase?')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600">Delete</button>
                                         </form>
+                                        @endcan
                                     @endif
                                 </div>
                             </div>

@@ -1,18 +1,22 @@
 <x-app-layout>
 <style>
     .settings-shell {
-        padding: 0 24px 24px !important;
+        padding: 16px 24px 24px !important;
     }
 
+    /* Fixed-viewport Master-Detail layout.
+       The layout height is locked to the viewport (minus the top chrome + breathing room).
+       Nav and content each scroll inside their own column — the page itself never
+       scrolls, so the document-level scrollbar never appears/disappears between tabs
+       (which is what previously caused the sidebar to shift). */
     .settings-layout {
         display: grid;
         grid-template-columns: 240px 1fr;
         gap: 18px;
-        align-items: start;
-        min-height: calc(100vh - 140px);
+        align-items: stretch;
+        height: calc(100vh - 156px);
         background: transparent;
         border: none;
-
         padding: 0;
         box-shadow: none;
     }
@@ -22,9 +26,12 @@
         width: 100%;
         min-width: 0;
         max-width: 100%;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
     }
 
-    /* Sidebar */
+    /* Sidebar — scrolls inside its own column, never affected by content height. */
     .settings-nav {
         background: #ffffff;
         border: 2px solid #0f766e;
@@ -33,10 +40,9 @@
         display: flex;
         flex-direction: column;
         gap: 4px;
-        height: fit-content;
-        position: sticky;
-        top: 92px;
-        overflow: auto;
+        height: 100%;
+        min-height: 0;
+        overflow-y: auto;
         box-shadow: 0 14px 24px rgba(15, 23, 42, 0.05);
     }
 
@@ -47,7 +53,7 @@
       }
     }
 
-    .nav-item {
+    .settings-nav .nav-item {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -60,24 +66,24 @@
         transition: all 0.15s;
     }
 
-    .nav-item:hover {
+    .settings-nav .nav-item:hover {
         background: #f1f5f9;
         color: #0f172a;
     }
 
-    .nav-item.active {
+    .settings-nav .nav-item.active {
         background: #0f766e;
         color: #ffffff;
         box-shadow: 0 10px 18px rgba(15, 118, 110, 0.2);
         border-radius: 9999px;
     }
 
-    .nav-item.active .nav-icon {
+    .settings-nav .nav-item.active .nav-icon {
         background: rgba(255, 255, 255, 0.2);
         color: #ffffff;
     }
 
-    .nav-icon {
+    .settings-nav .nav-icon {
         font-size: 14px;
         width: 24px;
         height: 24px;
@@ -90,25 +96,30 @@
         flex-shrink: 0;
     }
 
-    /* Content */
+    /* Content — owns its scrollbar inside the locked column. */
     .settings-content {
         background: #ffffff;
         border: 1px solid rgba(15, 23, 42, 0.08);
         border-radius: 16px;
         padding: 24px 28px;
-        overflow: visible;
+        height: 100%;
+        min-height: 0;
         min-width: 0;
         max-width: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
         box-shadow: 0 18px 30px rgba(15, 23, 42, 0.06);
     }
 
-    /* Pricing tab needs visible overflow for table wrappers + custom dropdown menus. */
+    /* Pricing tab — keep horizontal overflow visible so table wrappers and any
+       custom dropdown menus can escape sideways, but keep vertical scrolling
+       intact so the (often very tall) pricing form is reachable. */
     .content-inner.settings-shell .settings-content.settings-content-pricing {
         width: 100%;
         min-width: 0;
         max-width: 100%;
         overflow-x: visible !important;
-        overflow-y: visible !important;
+        overflow-y: auto !important;
         padding-left: 18px !important;
         padding-right: 18px !important;
     }
@@ -1030,17 +1041,27 @@
 
     /* Responsive */
     @media (max-width: 900px) {
+        /* On mobile, release the fixed-viewport lock so the page can scroll naturally
+           (one column, nav on top, content below). The desktop master-detail pattern
+           doesn't apply when there's only one column. */
         .settings-layout {
             grid-template-columns: 1fr;
             gap: 14px;
             min-width: 0;
             max-width: 100%;
+            height: auto;
         }
 
         #settings-content {
             width: 100%;
             min-width: 0;
             max-width: 100%;
+            height: auto;
+            overflow: visible;
+        }
+
+        .settings-content {
+            height: auto;
             overflow: visible;
         }
 
@@ -1048,12 +1069,14 @@
             position: static;
             flex-direction: row;
             flex-wrap: nowrap;
+            height: auto;
             overflow-x: auto;
+            overflow-y: hidden;
             padding: 8px;
             scrollbar-width: none;
         }
 
-        .nav-item {
+        .settings-nav .nav-item {
             padding: 8px 12px;
             flex: 0 0 auto;
             white-space: nowrap;
@@ -1159,46 +1182,75 @@
     <div class="settings-layout">
         <!-- Sidebar Navigation -->
         <nav class="settings-nav">
+            {{-- General — account info, available to any authenticated user --}}
             <a href="{{ route('settings.edit', ['tab' => 'general']) }}" class="nav-item {{ $activeTab === 'general' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> {{ __('General') }}
             </a>
+            {{-- Shop Info / Invoice / Payment Methods / Preferences — settings.view to read, settings.edit to write --}}
+            @can('settings.view')
             <a href="{{ route('settings.edit', ['tab' => 'shop']) }}" class="nav-item {{ $activeTab === 'shop' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> {{ __('Shop Info') }}
-            </a>
-            <a href="{{ route('settings.edit', ['tab' => 'rules']) }}" class="nav-item {{ $activeTab === 'rules' ? 'active' : '' }}" data-turbo-frame="settings-content">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> {{ auth()->user()->shop?->isRetailer() ? __('Sale Rules') : __('Gold & POS') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'billing']) }}" class="nav-item {{ $activeTab === 'billing' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> {{ __('Invoice') }}
             </a>
-            <a href="{{ route('settings.payment-methods.index') }}" class="nav-item {{ request()->routeIs('settings.payment-methods.*') ? 'active' : '' }}">
+            <a href="{{ route('settings.edit', ['tab' => 'payment-methods']) }}" class="nav-item {{ $activeTab === 'payment-methods' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> {{ __('Payment Methods') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'preferences']) }}" class="nav-item {{ $activeTab === 'preferences' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span> {{ __('Preferences') }}
             </a>
+            @endcan
+            {{-- Pricing — only users with pricing.update --}}
             @if($shop->isRetailer())
+            @can('pricing.update')
             <a href="{{ route('settings.edit', ['tab' => 'pricing']) }}" class="nav-item {{ $activeTab === 'pricing' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/><path d="M12 1a5 5 0 0 0 0 22"/></svg></span> {{ __('Pricing') }}
             </a>
+            @endcan
             @endif
+            {{-- Catalog Website — same as Settings: needs settings.view to enter --}}
+            @can('settings.view')
             <a href="{{ route('settings.edit', ['tab' => 'website']) }}" class="nav-item {{ $activeTab === 'website' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> {{ __('Catalog Website') }}
             </a>
+            @endcan
+            {{-- Roles & Permissions — Owner only (the matrix editor itself uses role:owner) --}}
+            @if(auth()->user()->isOwner())
             <a href="{{ route('settings.edit', ['tab' => 'roles']) }}" class="nav-item {{ $activeTab === 'roles' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> {{ __('Roles') }}
             </a>
+            @endif
+            {{-- Staff — staff.view to read --}}
+            @can('staff.view')
             <a href="{{ route('settings.edit', ['tab' => 'staff']) }}" class="nav-item {{ $activeTab === 'staff' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> {{ __('Staff') }}
             </a>
+            @endcan
+            {{-- Audit Log — settings.view (sensitive history) --}}
+            @can('settings.view')
             <a href="{{ route('settings.edit', ['tab' => 'audit']) }}" class="nav-item {{ $activeTab === 'audit' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> {{ __('Audit Log') }}
             </a>
+            @endcan
         </nav>
 
         <!-- Content Area -->
         <turbo-frame id="settings-content">
         <div class="settings-content {{ $activeTab === 'pricing' ? 'settings-content-pricing' : '' }}">
+            @php
+                // Used to hide Save buttons + show a "View only" banner on tabs
+                // the user can read but not write (Shop Info / Invoice / Preferences).
+                $canEditSettings = auth()->user()->can('settings.edit');
+            @endphp
+
+            @if(! $canEditSettings && in_array($activeTab, ['shop', 'billing', 'preferences', 'website']))
+                <div class="settings-readonly-banner" style="display:flex;align-items:center;gap:10px;padding:12px 16px;margin-bottom:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;color:#92400e;font-size:13px;font-weight:600;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>{{ __('View only — ask the shop owner to grant') }} <code style="background:rgba(217,119,6,0.1);padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-size:12px;">settings.edit</code> {{ __('if you need to make changes here.') }}</span>
+                </div>
+            @endif
+
             @if($activeTab === 'general')
                 <div class="settings-header">
                     <h2 class="settings-title">{{ __('General Settings') }}</h2>
@@ -1214,7 +1266,7 @@
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-gray-600">{{ __('Role') }}</span>
-                            <span class="font-semibold text-gray-900">{{ auth()->user()->isOwner() ? __('Owner') : __('Cashier') }}</span>
+                            <span class="font-semibold text-gray-900">{{ auth()->user()->role?->display_name ?? __('Guest') }}</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-gray-600">{{ __('Shop') }}</span>
@@ -1456,117 +1508,11 @@
                         </div>
                     </div>
                     
+                    @if($canEditSettings)
                     <div class="form-footer">
                         <button type="submit" class="btn-primary">{{ __('Save Changes') }}</button>
                     </div>
-                </form>
-            @endif
-
-            @if($activeTab === 'rules')
-                <div class="settings-header">
-                    <h2 class="settings-title">{{ auth()->user()->shop?->isRetailer() ? __('Sale & POS Rules') : __('Gold & POS Rules') }}</h2>
-                    <p class="settings-desc">{{ __('Calculation settings for pricing, exchange, and buyback') }}</p>
-                </div>
-                
-                <form method="POST" action="{{ route('settings.update.rules') }}">
-                    @csrf
-                    @method('PATCH')
-                    
-                    <div class="form-row cols-2">
-                        <div class="field">
-                            <label class="field-label">{{ __('Default Purity') }}</label>
-                            <select name="default_purity" class="field-input" required>
-                                <option value="24K" {{ $rules->default_purity === '24K' ? 'selected' : '' }}>24K (99.9%)</option>
-                                <option value="22K" {{ $rules->default_purity === '22K' ? 'selected' : '' }}>22K (91.6%)</option>
-                                <option value="18K" {{ $rules->default_purity === '18K' ? 'selected' : '' }}>18K (75.0%)</option>
-                                <option value="14K" {{ $rules->default_purity === '14K' ? 'selected' : '' }}>14K (58.3%)</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Rounding Precision') }}</label>
-                            <select name="rounding_precision" class="field-input" required>
-                                <option value="0" {{ $rules->rounding_precision == 0 ? 'selected' : '' }}>{{ __('0 decimals') }}</option>
-                                <option value="1" {{ $rules->rounding_precision == 1 ? 'selected' : '' }}>{{ __('1 decimal') }}</option>
-                                <option value="2" {{ $rules->rounding_precision == 2 ? 'selected' : '' }}>{{ __('2 decimals') }}</option>
-                                <option value="3" {{ $rules->rounding_precision == 3 ? 'selected' : '' }}>{{ __('3 decimals') }}</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    @if(auth()->user()->shop?->isManufacturer())
-                    <div class="form-row cols-2">
-                        <div class="field">
-                            <label class="field-label">{{ __('Default Making Charge Type') }}</label>
-                            <select name="default_making_type" class="field-input" required>
-                                <option value="per_gram" {{ $rules->default_making_type === 'per_gram' ? 'selected' : '' }}>{{ __('Per Gram (₹/g)') }}</option>
-                                <option value="percent" {{ $rules->default_making_type === 'percent' ? 'selected' : '' }}>{{ __('Percentage (%)') }}</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Default Making Value') }}</label>
-                            <input type="number" name="default_making_value" value="{{ old('default_making_value', $rules->default_making_value) }}" class="field-input" step="0.01" min="0" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row cols-2">
-                        <div class="field">
-                            <label class="field-label">{{ __('Test Loss (%)') }}</label>
-                            <input type="number" name="test_loss_percent" value="{{ old('test_loss_percent', $rules->test_loss_percent) }}" class="field-input" step="0.01" min="0" max="100" required>
-                            <span class="field-hint">{{ __('Gold lost during purity testing') }}</span>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Buyback Rate (%)') }}</label>
-                            <input type="number" name="buyback_percent" value="{{ old('buyback_percent', $rules->buyback_percent) }}" class="field-input" step="0.01" min="0" max="100" required>
-                            <span class="field-hint">{{ __('% of gold rate for buybacks') }}</span>
-                        </div>
-                    </div>
-                    @else
-                    <div class="form-row cols-2">
-                        <div class="field">
-                            <label class="field-label">{{ __('Buyback Rate (%)') }}</label>
-                            <input type="number" name="buyback_percent" value="{{ old('buyback_percent', $rules->buyback_percent) }}" class="field-input" step="0.01" min="0" max="100" required>
-                            <span class="field-hint">{{ __('% of gold rate for buybacks') }}</span>
-                        </div>
-                    </div>
                     @endif
-
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Per-Category GST Rates') }}</div>
-                    <p class="settings-desc settings-desc-gap">{{ __('Override the default GST rate for specific product categories on invoices. Leave blank to use the shop-level GST rate.') }}</p>
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label">{{ __('Gold GST Rate (%)') }}</label>
-                            <input type="number" name="gst_rate_gold" value="{{ old('gst_rate_gold', $rules->gst_rate_gold) }}" class="field-input" step="0.01" min="0" max="100" placeholder="{{ __('e.g. 3') }}">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Silver GST Rate (%)') }}</label>
-                            <input type="number" name="gst_rate_silver" value="{{ old('gst_rate_silver', $rules->gst_rate_silver) }}" class="field-input" step="0.01" min="0" max="100" placeholder="{{ __('e.g. 3') }}">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Diamond / Stone GST Rate (%)') }}</label>
-                            <input type="number" name="gst_rate_diamond" value="{{ old('gst_rate_diamond', $rules->gst_rate_diamond) }}" class="field-input" step="0.01" min="0" max="100" placeholder="{{ __('e.g. 1.5') }}">
-                        </div>
-                    </div>
-
-                    @if(auth()->user()->shop?->isManufacturer())
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Wastage Calculation') }}</div>
-                    <div class="form-row cols-2">
-                        <div class="field">
-                            <label class="field-label">{{ __('Wastage Rounding Precision') }}</label>
-                            <select name="wastage_rounding" class="field-input">
-                                <option value="0.001" {{ ($rules->wastage_rounding ?? '0.001') === '0.001' ? 'selected' : '' }}>{{ __('3 decimals (0.001 g)') }}</option>
-                                <option value="0.01"  {{ ($rules->wastage_rounding ?? '') === '0.01'  ? 'selected' : '' }}>{{ __('2 decimals (0.01 g)') }}</option>
-                                <option value="0.1"   {{ ($rules->wastage_rounding ?? '') === '0.1'   ? 'selected' : '' }}>{{ __('1 decimal (0.1 g)') }}</option>
-                                <option value="1"     {{ ($rules->wastage_rounding ?? '') === '1'     ? 'selected' : '' }}>{{ __('Whole grams (1 g)') }}</option>
-                            </select>
-                        </div>
-                    </div>
-                    @endif
-
-                    <div class="form-footer">
-                        <button type="submit" class="btn-primary">{{ __('Save Changes') }}</button>
-                    </div>
                 </form>
             @endif
 
@@ -1889,9 +1835,11 @@
                         </div>
                     </div>
 
+                    @if($canEditSettings)
                     <div class="form-footer">
                         <button type="submit" class="btn-primary">{{ __('Save Changes') }}</button>
                     </div>
+                    @endif
                 </form>
                 <script>
                 function previewSig(input) {
@@ -1903,6 +1851,10 @@
                     }
                 }
                 </script>
+            @endif
+
+            @if($activeTab === 'payment-methods')
+                @include('partials.settings.payment-methods-tab')
             @endif
 
             @if($activeTab === 'preferences')
@@ -1917,38 +1869,6 @@
                     
                     <div class="form-row cols-4">
                         <div class="field">
-                            <label class="field-label">{{ __('Weight Unit') }}</label>
-                            <select name="weight_unit" class="field-input" required>
-                                <option value="grams" {{ $preferences->weight_unit === 'grams' ? 'selected' : '' }}>{{ __('Grams') }}</option>
-                                <option value="tola" {{ $preferences->weight_unit === 'tola' ? 'selected' : '' }}>{{ __('Tola') }}</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Date Format') }}</label>
-                            <select name="date_format" class="field-input" required>
-                                <option value="d/m/Y" {{ $preferences->date_format === 'd/m/Y' ? 'selected' : '' }}>DD/MM/YYYY</option>
-                                <option value="m/d/Y" {{ $preferences->date_format === 'm/d/Y' ? 'selected' : '' }}>MM/DD/YYYY</option>
-                                <option value="Y-m-d" {{ $preferences->date_format === 'Y-m-d' ? 'selected' : '' }}>YYYY-MM-DD</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Currency Symbol') }}</label>
-                            <input type="text" name="currency_symbol" value="{{ old('currency_symbol', $preferences->currency_symbol) }}" class="field-input" maxlength="5" required>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Language') }}</label>
-                            <select name="language" class="field-input" required>
-                                @foreach(config('app.supported_locales', ['en' => 'English']) as $localeCode => $localeLabel)
-                                    <option value="{{ $localeCode }}" {{ old('language', $preferences->language ?? config('app.locale', 'en')) === $localeCode ? 'selected' : '' }}>
-                                        {{ __($localeLabel) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row cols-4">
-                        <div class="field">
                             <label class="field-label">{{ __('Low Stock Alert') }}</label>
                             <input type="number" name="low_stock_threshold" value="{{ old('low_stock_threshold', $preferences->low_stock_threshold) }}" class="field-input" min="0" required>
                         </div>
@@ -1959,7 +1879,7 @@
                         <p class="settings-section-subtitle">{{ __('Configure how customers earn and lose points') }}</p>
                     </div>
 
-                    <div class="form-row cols-4">
+                    <div class="form-row cols-3">
                         <div class="field">
                             <label class="field-label">{{ __('Points per ₹100 spent') }}</label>
                             <input type="number" name="loyalty_points_per_hundred" value="{{ old('loyalty_points_per_hundred', $preferences->loyalty_points_per_hundred ?? 1) }}" class="field-input" min="0" max="100" required>
@@ -1977,39 +1897,6 @@
                                 <option value="18" {{ ($preferences->loyalty_expiry_months ?? 12) == 18 ? 'selected' : '' }}>{{ __('18 months') }}</option>
                                 <option value="24" {{ ($preferences->loyalty_expiry_months ?? 12) == 24 ? 'selected' : '' }}>{{ __('24 months') }}</option>
                             </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Loyalty Welcome Bonus (pts)') }}</label>
-                            <input type="number" name="loyalty_welcome_bonus" value="{{ old('loyalty_welcome_bonus', $preferences->loyalty_welcome_bonus ?? 0) }}" class="field-input" min="0" max="99999">
-                            <span class="field-hint">{{ __('Points awarded when a new customer is registered') }}</span>
-                        </div>
-                    </div>
-
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Billing Defaults') }}</div>
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label">{{ __('Default Pricing Mode') }}</label>
-                            <select name="default_pricing_mode" class="field-input">
-                                <option value="gst_exclusive" {{ ($preferences->default_pricing_mode ?? 'gst_exclusive') === 'gst_exclusive' ? 'selected' : '' }}>{{ __('GST Exclusive') }}</option>
-                                <option value="gst_inclusive" {{ ($preferences->default_pricing_mode ?? '') === 'gst_inclusive' ? 'selected' : '' }}>{{ __('GST Inclusive') }}</option>
-                                <option value="no_gst"        {{ ($preferences->default_pricing_mode ?? '') === 'no_gst'        ? 'selected' : '' }}>{{ __('No GST') }}</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Default Payment Mode') }}</label>
-                            <select name="default_payment_mode" class="field-input">
-                                <option value="cash"          {{ ($preferences->default_payment_mode ?? 'cash') === 'cash'          ? 'selected' : '' }}>{{ __('Cash') }}</option>
-                                <option value="card"          {{ ($preferences->default_payment_mode ?? '') === 'card'          ? 'selected' : '' }}>{{ __('Card') }}</option>
-                                <option value="upi"           {{ ($preferences->default_payment_mode ?? '') === 'upi'           ? 'selected' : '' }}>{{ __('UPI') }}</option>
-                                <option value="bank_transfer" {{ ($preferences->default_payment_mode ?? '') === 'bank_transfer' ? 'selected' : '' }}>{{ __('Bank Transfer') }}</option>
-                                <option value="cheque"        {{ ($preferences->default_payment_mode ?? '') === 'cheque'        ? 'selected' : '' }}>{{ __('Cheque') }}</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Credit Days') }}</label>
-                            <input type="number" name="credit_days" value="{{ old('credit_days', $preferences->credit_days ?? 0) }}" class="field-input" min="0" max="365">
-                            <span class="field-hint">{{ __('Default payment due days for credit customers') }}</span>
                         </div>
                     </div>
 
@@ -2034,10 +1921,37 @@
                             <input type="number" name="auto_logout_minutes" value="{{ old('auto_logout_minutes', $preferences->auto_logout_minutes ?? 0) }}" class="field-input" min="0" max="480">
                             <span class="field-hint">{{ __('Idle minutes before auto logout. 0 = disabled.') }}</span>
                         </div>
+                    </div>
+
+                    <div class="section-divider"></div>
+                    <div class="section-label">{{ __('Invoice Rounding') }}</div>
+                    <div class="form-row cols-3">
                         <div class="field">
-                            <label class="field-label">{{ __('Barcode Prefix') }}</label>
-                            <input type="text" name="barcode_prefix" value="{{ old('barcode_prefix', $preferences->barcode_prefix) }}" class="field-input" maxlength="20" placeholder="{{ __('e.g. JF or SHOP1') }}">
-                            <span class="field-hint">{{ __('Prefix used when generating product barcodes') }}</span>
+                            <label class="field-label">{{ __('Rounding Method') }}</label>
+                            <select name="rounding_method" class="field-input">
+                                <option value="none"     {{ ($preferences->rounding_method ?? 'none') === 'none'     ? 'selected' : '' }}>{{ __('No rounding (paise-accurate)') }}</option>
+                                <option value="normal"   {{ ($preferences->rounding_method ?? 'none') === 'normal'   ? 'selected' : '' }}>{{ __('Round to nearest') }}</option>
+                                <option value="upward"   {{ ($preferences->rounding_method ?? 'none') === 'upward'   ? 'selected' : '' }}>{{ __('Always round up') }}</option>
+                                <option value="downward" {{ ($preferences->rounding_method ?? 'none') === 'downward' ? 'selected' : '' }}>{{ __('Always round down') }}</option>
+                            </select>
+                            <span class="field-hint">{{ __("How the invoice total is rounded. Tally-equivalent: Normal / Upward / Downward. Default keeps current paise-accurate behaviour.") }}</span>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Round to Nearest') }}</label>
+                            <select name="round_off_nearest" class="field-input">
+                                <option value="1"  {{ (int)($preferences->round_off_nearest ?? 1) === 1  ? 'selected' : '' }}>{{ __('1 Rupee') }}</option>
+                                <option value="5"  {{ (int)($preferences->round_off_nearest ?? 1) === 5  ? 'selected' : '' }}>{{ __('5 Rupees') }}</option>
+                                <option value="10" {{ (int)($preferences->round_off_nearest ?? 1) === 10 ? 'selected' : '' }}>{{ __('10 Rupees') }}</option>
+                            </select>
+                            <span class="field-hint">{{ __("Total is rounded to this nearest amount. Has no effect when method is 'No rounding'.") }}</span>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Max Manual Discount %') }}</label>
+                            <input type="number" name="max_manual_discount_percent"
+                                   value="{{ old('max_manual_discount_percent', $preferences->max_manual_discount_percent) }}"
+                                   class="field-input" step="0.01" min="0" max="100"
+                                   placeholder="{{ __('No cap') }}">
+                            <span class="field-hint">{{ __('Cap on the manual discount a cashier can apply. Leave empty for no cap. Example: enter 10 to limit cashiers to 10% off any sale.') }}</span>
                         </div>
                     </div>
 
@@ -2084,9 +1998,11 @@
                         </div>
                     </div>
 
+                    @if($canEditSettings)
                     <div class="form-footer">
                         <button type="submit" class="btn-primary">{{ __('Save Changes') }}</button>
                     </div>
+                    @endif
                 </form>
             @endif
 

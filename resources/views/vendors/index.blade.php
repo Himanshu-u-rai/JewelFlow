@@ -806,6 +806,7 @@
 
     <x-page-header class="vendors-page-header ops-treatment-header" title="Vendors / Suppliers" subtitle="Manage your jewellery suppliers and vendors">
         <x-slot:actions>
+            @can('vendors.manage')
             <a href="{{ route('vendors.create') }}" class="btn btn-success btn-sm vendors-add-btn">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -814,10 +815,15 @@
                 <span class="vendors-add-label-full">Add Vendor</span>
                 <span class="vendors-add-label-short">Add</span>
             </a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
     <div class="content-inner ops-treatment-page vendors-index-page">
+
+        @unless(auth()->user()->can('vendors.manage'))
+            @include('partials.view-only-banner', ['permission' => 'vendors.manage', 'message' => 'vendor management'])
+        @endunless
 <div class="vendors-stats-grid">
             <div class="vendors-stat-card">
                 <div class="vendors-stat-icon">
@@ -966,12 +972,14 @@
                                                 </svg>
                                                 View
                                             </a>
+                                            @can('vendors.manage')
                                             <a href="{{ route('vendors.edit', $vendor) }}" class="vendors-link-btn">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
                                                 </svg>
                                                 Edit
                                             </a>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -1014,7 +1022,9 @@
 
                             <div class="vendor-mobile-actions">
                                 <a href="{{ route('vendors.show', $vendor) }}" class="vendors-link-btn vendors-link-btn--primary">View Vendor</a>
+                                @can('vendors.manage')
                                 <a href="{{ route('vendors.edit', $vendor) }}" class="vendors-link-btn">Edit Details</a>
+                                @endcan
                             </div>
                         </article>
                     @endforeach

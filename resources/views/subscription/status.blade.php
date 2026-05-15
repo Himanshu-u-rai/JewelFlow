@@ -49,7 +49,7 @@
             'installments' => 'EMI / Installments',
             'reorder_alerts' => 'Reorder Alerts',
             'tag_printing' => 'Tag Printing',
-            'whatsapp_catalog' => 'WhatsApp Catalog',
+            'whatsapp_catalog' => 'Catalog',
             'bulk_imports' => 'Bulk Imports',
             'staff_limit' => 'Staff Accounts',
             'max_items' => 'Item Limit',
@@ -479,6 +479,105 @@
                 gap: 8px;
             }
         }
+
+        /* ─── Billing History section ─── */
+        .sub-status-page .sub-billing-section {
+            margin-top: 24px;
+        }
+        .sub-status-page .sub-billing-head {
+            margin-bottom: 14px;
+        }
+        .sub-status-page .sub-billing-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 4px 0 6px;
+            letter-spacing: -0.01em;
+        }
+        .sub-status-page .sub-billing-copy {
+            font-size: 13px;
+            color: #64748b;
+            margin: 0;
+        }
+        .sub-status-page .sub-billing-card {
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 14px 24px rgba(15, 23, 42, 0.05);
+        }
+        .sub-status-page .sub-billing-table-wrap {
+            overflow-x: auto;
+        }
+        .sub-status-page .sub-billing-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .sub-status-page .sub-billing-table thead th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 12px;
+            color: #475569;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+        .sub-status-page .sub-billing-table thead th.text-right { text-align: right; }
+        .sub-status-page .sub-billing-table tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+            vertical-align: middle;
+        }
+        .sub-status-page .sub-billing-table tbody tr:last-child td { border-bottom: 0; }
+        .sub-status-page .sub-billing-table tbody tr:hover { background: #f8fafc; }
+        .sub-status-page .sub-billing-table td.text-right { text-align: right; }
+        .sub-status-page .sub-billing-num {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .sub-status-page .sub-billing-capitalize { text-transform: capitalize; color: #475569; }
+        .sub-status-page .sub-billing-muted { color: #64748b; font-size: 12px; }
+        .sub-status-page .sub-billing-amount { font-weight: 700; color: #0f172a; }
+        .sub-status-page .sub-billing-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.6;
+        }
+        .sub-status-page .sub-billing-pill-paid {
+            background: #ecfdf5; color: #065f46; box-shadow: inset 0 0 0 1px #a7f3d0;
+        }
+        .sub-status-page .sub-billing-pill-cancelled {
+            background: #fef2f2; color: #991b1b; box-shadow: inset 0 0 0 1px #fecaca;
+        }
+        .sub-status-page .sub-billing-view {
+            font-size: 12px;
+            font-weight: 700;
+            color: #4338ca;
+            text-decoration: none;
+        }
+        .sub-status-page .sub-billing-view:hover { color: #312e81; text-decoration: underline; }
+        .sub-status-page .sub-billing-empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 32px 16px !important;
+            font-size: 13px;
+        }
+        .sub-status-page .sub-billing-pagination {
+            padding: 14px 16px;
+            border-top: 1px solid #f1f5f9;
+            background: #fafbfd;
+        }
     </style>
 
     <x-page-header class="ops-treatment-header">
@@ -657,6 +756,74 @@
                     </div>
                 </aside>
             </div>
+
+            {{-- ─── Billing History ───────────────────────────────────────────── --}}
+            <section class="sub-billing-section">
+                <div class="sub-billing-head">
+                    <div>
+                        <p class="sub-kicker">Billing</p>
+                        <h2 class="sub-billing-title">Billing History</h2>
+                        <p class="sub-billing-copy">All invoices issued for your subscription. Click any row to view or print.</p>
+                    </div>
+                </div>
+
+                <div class="sub-billing-card">
+                    <div class="sub-billing-table-wrap">
+                        <table class="sub-billing-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Invoice #</th>
+                                    <th class="text-left">Plan</th>
+                                    <th class="text-left">Cycle</th>
+                                    <th class="text-left">Period</th>
+                                    <th class="text-right">Amount</th>
+                                    <th class="text-left">Date</th>
+                                    <th class="text-left">Status</th>
+                                    <th class="text-right"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($invoices as $inv)
+                                    <tr>
+                                        <td class="sub-billing-num">{{ $inv->invoice_number }}</td>
+                                        <td>{{ $inv->plan?->name ?? '—' }}</td>
+                                        <td class="sub-billing-capitalize">{{ $inv->billing_cycle }}</td>
+                                        <td class="sub-billing-muted">
+                                            {{ $inv->billing_period_start->format('d M Y') }}
+                                            –
+                                            {{ $inv->billing_period_end->format('d M Y') }}
+                                        </td>
+                                        <td class="text-right sub-billing-amount">₹{{ number_format($inv->total_amount, 2) }}</td>
+                                        <td class="sub-billing-muted">{{ $inv->issued_at->format('d M Y') }}</td>
+                                        <td>
+                                            @if($inv->status === 'issued')
+                                                <span class="sub-billing-pill sub-billing-pill-paid">Paid</span>
+                                            @else
+                                                <span class="sub-billing-pill sub-billing-pill-cancelled">Cancelled</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-right">
+                                            <a href="{{ route('billing.invoices.show', $inv) }}" class="sub-billing-view">View</a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="8" class="sub-billing-empty">
+                                            No invoices yet. Invoices appear here after each subscription payment.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if($invoices->hasPages())
+                        <div class="sub-billing-pagination">
+                            {{ $invoices->links() }}
+                        </div>
+                    @endif
+                </div>
+            </section>
         </div>
     </div>
 </x-app-layout>

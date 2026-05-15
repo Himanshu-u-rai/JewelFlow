@@ -6,9 +6,9 @@ use App\Models\Shop;
 use App\Models\Role;
 use App\Models\Permission;
 use App\Models\User;
-use App\Models\ShopRules;
 use App\Models\ShopBillingSettings;
 use App\Models\ShopPreferences;
+use App\Models\ShopPaymentMethod;
 use App\Models\ShopCounter;
 use App\Models\Invoice;
 use App\Models\AuditLog;
@@ -31,34 +31,75 @@ class SettingsController extends Controller
     public function edit(Request $request)
     {
         $user = Auth::user();
-        
+
         if (!$user->shop_id) {
             return redirect()->route('shops.create');
         }
 
         $shop = $user->shop;
-        
-        // Get or create related settings
-        $rules = $shop->rules ?? ShopRules::create(['shop_id' => $shop->id]);
+
+        // Active tab — resolve first so per-tab queries can be gated.
+        $activeTab = $request->get('tab', 'shop');
+
+        // ─── Per-tab access guard ────────────────────────────────────────────
+        // Each tab has its own permission requirement. If the requested tab is
+        // beyond the user's reach, redirect to the first tab they CAN see
+        // instead of rendering empty content (which broke Turbo Drive frames).
+        $tabRequirements = [
+            'general'         => null, // any authenticated user
+            'shop'            => 'settings.view',
+            'billing'         => 'settings.view',
+            'payment-methods' => 'settings.view',
+            'preferences'     => 'settings.view',
+            'pricing'         => 'pricing.update',
+            'website'         => 'settings.view',
+            'roles'           => '__owner_only__',
+            'staff'           => 'staff.view',
+            'audit'           => 'settings.view',
+        ];
+        $canSee = function (string $tab) use ($user, $tabRequirements): bool {
+            $req = $tabRequirements[$tab] ?? null;
+            if ($req === null) return true;
+            if ($req === '__owner_only__') return $user->isOwner();
+            return $user->can($req);
+        };
+        if (! $canSee($activeTab)) {
+            // Pick the first tab the user CAN see and redirect there.
+            foreach (array_keys($tabRequirements) as $tab) {
+                if ($canSee($tab)) {
+                    return redirect()->route('settings.edit', ['tab' => $tab]);
+                }
+            }
+            // Fallback: dashboard (shouldn't happen — General is always accessible).
+            return redirect()->route('dashboard');
+        }
+
+        // Settings rows referenced by Invoice + Preferences tabs — single-row reads.
         $billing = $shop->billingSettings ?? ShopBillingSettings::create(['shop_id' => $shop->id]);
         $preferences = $shop->preferences ?? ShopPreferences::create(['shop_id' => $shop->id]);
 
-        // Get roles and permissions for RBAC tab
-        $roles = Role::with('permissions')->get();
-        $permissions = Permission::orderBy('group')->orderBy('name')->get();
-        $permissionGroups = $permissions->groupBy('group');
+        // Roles + Permissions — only the Roles tab uses these (heavier queries).
+        $roles = collect();
+        $permissions = collect();
+        $permissionGroups = collect();
+        if ($activeTab === 'roles') {
+            $roles = Role::with('permissions')->get();
+            $permissions = Permission::orderBy('group')->orderBy('name')->get();
+            $permissionGroups = $permissions->groupBy('group');
+        }
 
-        // Get staff for Staff tab
-        $staff = User::with('role')
-            ->where('shop_id', $shop->id)
-            ->orderByRaw('COALESCE(name, mobile_number) ASC')
-            ->get();
-
-        $staffLimit = $shop->staffLimit();
-        $staffCount = $shop->currentStaffCount();
-
-        // Get active tab from query string
-        $activeTab = $request->get('tab', 'shop');
+        // Staff list — only the Staff tab uses this.
+        $staff = collect();
+        $staffLimit = 0;
+        $staffCount = 0;
+        if ($activeTab === 'staff') {
+            $staff = User::with('role')
+                ->where('shop_id', $shop->id)
+                ->orderByRaw('COALESCE(name, mobile_number) ASC')
+                ->get();
+            $staffLimit = $shop->staffLimit();
+            $staffCount = $shop->currentStaffCount();
+        }
 
         // Catalog Website tab
         $catalogWebsiteSettings = null;
@@ -81,6 +122,16 @@ class SettingsController extends Controller
                     ->whereDate('created_at', now()->toDateString())
                     ->count(),
             ];
+        }
+
+        $methods = collect();
+        if ($activeTab === 'payment-methods') {
+            $methods = ShopPaymentMethod::where('shop_id', $shop->id)
+                ->orderBy('sort_order')
+                ->orderBy('type')
+                ->orderBy('name')
+                ->get()
+                ->groupBy('type');
         }
 
         $pricingData = null;
@@ -123,7 +174,6 @@ class SettingsController extends Controller
 
         return view('settings', compact(
             'shop',
-            'rules',
             'billing',
             'preferences',
             'roles',
@@ -138,7 +188,8 @@ class SettingsController extends Controller
             'catalogWebsiteSettings',
             'catalogPages',
             'pricingData',
-            'pricingTimezones'
+            'pricingTimezones',
+            'methods'
         ));
     }
 
@@ -223,35 +274,6 @@ class SettingsController extends Controller
             ->with('success', 'Shop information updated successfully.');
     }
 
-    /**
-     * Update gold & POS calculation rules.
-     */
-    public function updateRules(Request $request)
-    {
-        $shop = Auth::user()->shop;
-
-        $validated = $request->validate([
-            'default_purity'       => 'required|string|in:24K,22K,18K,14K',
-            'default_making_type'  => 'required|in:per_gram,percent',
-            'default_making_value' => 'required|numeric|min:0',
-            'test_loss_percent'    => 'required|numeric|min:0|max:100',
-            'buyback_percent'      => 'required|numeric|min:0|max:100',
-            'rounding_precision'   => 'required|integer|min:0|max:4',
-            // Per-category GST rates
-            'gst_rate_gold'        => 'nullable|numeric|min:0|max:100',
-            'gst_rate_silver'      => 'nullable|numeric|min:0|max:100',
-            'gst_rate_diamond'     => 'nullable|numeric|min:0|max:100',
-            // Wastage rounding
-            'wastage_rounding'     => 'nullable|string|in:0.001,0.01,0.1,1',
-        ]);
-
-        $rules = $shop->rules ?? new ShopRules(['shop_id' => $shop->id]);
-        $rules->fill($validated);
-        $rules->save();
-
-        return redirect()->route('settings.edit', ['tab' => 'rules'])
-            ->with('success', 'Gold & POS rules updated successfully.');
-    }
 
     /**
      * Update invoice/billing settings.
@@ -408,39 +430,30 @@ class SettingsController extends Controller
     public function updatePreferences(Request $request)
     {
         $shop = Auth::user()->shop;
-        $supportedLocales = array_keys(config('app.supported_locales', ['en' => 'English']));
 
         $validated = $request->validate([
-            'weight_unit'                => 'required|in:grams,tola',
-            'date_format'                => 'required|string|in:d/m/Y,m/d/Y,Y-m-d',
-            'currency_symbol'            => 'required|string|max:5',
-            'language'                   => ['required', 'string', Rule::in($supportedLocales)],
             'low_stock_threshold'        => 'required|integer|min:0|max:100',
             'loyalty_points_per_hundred' => 'required|integer|min:0|max:100',
             'loyalty_point_value'        => 'required|numeric|min:0|max:100',
             'loyalty_expiry_months'      => 'required|integer|in:0,6,12,18,24',
-            // New general settings
-            'default_pricing_mode'       => 'nullable|string|in:no_gst,gst_exclusive,gst_inclusive',
-            'default_payment_mode'       => 'nullable|string|in:cash,card,upi,bank_transfer,cheque',
             'auto_logout_minutes'        => 'nullable|integer|min:0|max:480',
-            'loyalty_welcome_bonus'      => 'nullable|integer|min:0|max:99999',
-            'credit_days'                => 'nullable|integer|min:0|max:365',
-            'barcode_prefix'               => 'nullable|string|max:20',
-            'stock_value_display'          => 'nullable|in:total,per_gram',
+            'stock_value_display'        => 'nullable|in:total,per_gram',
             'compliance_enabled'           => 'nullable|boolean',
             'compliance_threshold'         => 'nullable|numeric|min:10000|max:10000000',
             'compliance_pan_mandatory'     => 'nullable|boolean',
             'compliance_mobile_mandatory'  => 'nullable|boolean',
             'compliance_address_mandatory' => 'nullable|boolean',
+            // POS pricing engine rounding / discount caps.
+            // round_off_nearest is stored as an unsigned smallint of rupee
+            // units (1 = nearest rupee, 5 = nearest 5 rupees, ...).
+            'rounding_method'              => 'nullable|in:none,normal,upward,downward',
+            'max_manual_discount_percent'  => 'nullable|numeric|min:0|max:100',
+            'round_off_nearest'            => 'nullable|integer|in:1,5,10',
         ]);
 
-        // Defaults for new fields
-        $validated['default_pricing_mode']     = $validated['default_pricing_mode'] ?? 'gst_exclusive';
-        $validated['default_payment_mode']     = $validated['default_payment_mode'] ?? 'cash';
-        $validated['auto_logout_minutes']      = $validated['auto_logout_minutes']  ?? 0;
-        $validated['loyalty_welcome_bonus']    = $validated['loyalty_welcome_bonus'] ?? 0;
-        $validated['credit_days']              = $validated['credit_days']          ?? 0;
-        $validated['stock_value_display']      = $validated['stock_value_display']  ?? 'total';
+        // Defaults
+        $validated['auto_logout_minutes']  = $validated['auto_logout_minutes']  ?? 0;
+        $validated['stock_value_display']  = $validated['stock_value_display']  ?? 'total';
         $validated['compliance_enabled']           = (bool) ($validated['compliance_enabled'] ?? false);
         $validated['compliance_pan_mandatory']     = (bool) ($validated['compliance_pan_mandatory'] ?? true);
         $validated['compliance_mobile_mandatory']  = (bool) ($validated['compliance_mobile_mandatory'] ?? true);
@@ -459,7 +472,8 @@ class SettingsController extends Controller
      */
     public function updateRolePermissions(Request $request, Role $role)
     {
-        // Owner role cannot be modified
+        // Owner role cannot be modified — Gate::before short-circuits anyway,
+        // but the UI lets the form be submitted; this is the server-side guard.
         if ($role->name === 'owner') {
             return redirect()->route('settings.edit', ['tab' => 'roles'])
                 ->with('error', 'Owner role permissions cannot be modified.');
@@ -470,7 +484,35 @@ class SettingsController extends Controller
             'permissions.*' => 'exists:permissions,id',
         ]);
 
-        $role->permissions()->sync($validated['permissions'] ?? []);
+        // Snapshot the current permission set so we can audit the diff.
+        $beforeIds = $role->permissions()->pluck('permissions.id')->sort()->values()->all();
+        $afterIds = collect($validated['permissions'] ?? [])->map(fn ($id) => (int) $id)->sort()->values()->all();
+
+        $role->permissions()->sync($afterIds);
+
+        // Audit the change — added/removed permission names for accountability.
+        $beforeSet = collect($beforeIds);
+        $afterSet = collect($afterIds);
+        $addedIds = $afterSet->diff($beforeSet)->all();
+        $removedIds = $beforeSet->diff($afterSet)->all();
+        $added = empty($addedIds) ? [] : \App\Models\Permission::whereIn('id', $addedIds)->pluck('name')->all();
+        $removed = empty($removedIds) ? [] : \App\Models\Permission::whereIn('id', $removedIds)->pluck('name')->all();
+
+        if (! empty($added) || ! empty($removed)) {
+            AuditLog::create([
+                'shop_id' => auth()->user()->shop_id,
+                'user_id' => auth()->id(),
+                'action' => 'role_permissions_updated',
+                'model_type' => 'Role',
+                'model_id' => $role->id,
+                'description' => sprintf(
+                    'Updated permissions for %s. Added: %s. Removed: %s.',
+                    $role->display_name,
+                    empty($added) ? 'none' : implode(', ', $added),
+                    empty($removed) ? 'none' : implode(', ', $removed)
+                ),
+            ]);
+        }
 
         return redirect()->route('settings.edit', ['tab' => 'roles'])
             ->with('success', "Permissions for {$role->display_name} updated successfully.");

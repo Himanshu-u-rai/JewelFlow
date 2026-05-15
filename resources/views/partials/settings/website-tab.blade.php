@@ -302,9 +302,11 @@
     @endif
 
     {{-- ─── Save ─── --}}
+    @can('settings.edit')
     <div class="form-footer" style="margin-top:20px;">
         <button type="submit" class="btn-primary">{{ __('Save Website Settings') }}</button>
     </div>
+    @endcan
 </form>
 
 {{-- ─── CMS Pages ─── --}}
@@ -325,6 +327,7 @@
                             &middot; {{ ucfirst($cmsPage->type) }}
                         </div>
                     </div>
+                    @can('catalog.manage')
                     <div class="cw-page-actions">
                         <button type="button" class="cw-btn-sm" onclick="toggleEditPage({{ $cmsPage->id }})">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -339,6 +342,7 @@
                             </button>
                         </form>
                     </div>
+                    @endcan
                 </div>
 
                 {{-- Edit form (hidden) --}}
@@ -373,6 +377,7 @@
     @endif
 
     {{-- Add new page --}}
+    @can('catalog.manage')
     <div class="cw-card dashed" style="margin-top:12px;">
         <button type="button" class="cw-add-btn" onclick="document.getElementById('cwNewPageForm').style.display = document.getElementById('cwNewPageForm').style.display === 'none' ? 'block' : 'none'">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -408,6 +413,7 @@
             </form>
         </div>
     </div>
+    @endcan
 </div>
 
 <script>

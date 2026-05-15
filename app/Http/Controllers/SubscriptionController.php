@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Platform\Plan;
+use App\Models\Platform\PlatformInvoice;
 use App\Models\Platform\PlatformSetting;
 use App\Models\Platform\ShopSubscription;
 use App\Services\OnboardingResumeService;
@@ -37,7 +38,7 @@ class SubscriptionController extends Controller
             'installments' => 'EMI / Installments',
             'reorder_alerts' => 'Reorder Alerts',
             'tag_printing' => 'Tag Printing',
-            'whatsapp_catalog' => 'WhatsApp Catalog',
+            'whatsapp_catalog' => 'Catalog',
             'bulk_imports' => 'Bulk Imports (CSV)',
             'gold_inventory' => 'Gold Lot Inventory',
             'manufacturing' => 'Manufacturing Workflow',
@@ -457,13 +458,22 @@ class SubscriptionController extends Controller
             && Carbon::now()->lte($subscription->grace_ends_at);
         $featureLabels = self::featureLabels();
 
+        // Billing history — merged into the same page so users get plan status
+        // + past invoices in one view (replaces the standalone /billing page).
+        $invoices = PlatformInvoice::where('shop_id', $shop->id)
+            ->with('plan')
+            ->latest('issued_at')
+            ->paginate(10)
+            ->withQueryString();
+
         return view('subscription.status', compact(
             'subscription',
             'plan',
             'daysRemaining',
             'isInGrace',
             'isExpired',
-            'featureLabels'
+            'featureLabels',
+            'invoices'
         ));
     }
 }

@@ -186,7 +186,34 @@ class CatalogShareService
             return null;
         }
 
-        $rawImage = trim((string) $item->image);
+        return $this->buildImageUrl($request, (string) $item->image);
+    }
+
+    /**
+     * Resolve all gallery image URLs for an item (legacy `image` + new `images[]`).
+     * Used by carousel views — returns an empty array when no images exist.
+     *
+     * @return array<int, string>
+     */
+    public function resolveImageUrls(Request $request, Item $item): array
+    {
+        $gallery = $item->image_gallery;
+        if (empty($gallery)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (string $path) => $this->buildImageUrl($request, $path),
+            $gallery
+        )));
+    }
+
+    private function buildImageUrl(Request $request, string $rawImage): ?string
+    {
+        $rawImage = trim($rawImage);
+        if ($rawImage === '') {
+            return null;
+        }
 
         if (Str::startsWith($rawImage, ['http://', 'https://'])) {
             return $rawImage;

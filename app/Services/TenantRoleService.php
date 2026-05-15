@@ -43,24 +43,27 @@ class TenantRoleService
             $allPermissions = Permission::query()->pluck('id');
             $ownerRole->permissions()->sync($allPermissions);
 
+            // Manager: every permission EXCEPT settings.edit and staff.manage.
+            // Matches the migration's canonical default at 2026_05_08_200000_add_core_permissions.php.
             $managerPermissions = Permission::query()
-                ->whereNotIn('name', ['settings.edit', 'staff.delete'])
+                ->whereNotIn('name', ['settings.edit', 'staff.manage'])
                 ->pluck('id');
             $managerRole->permissions()->sync($managerPermissions);
 
+            // Staff: minimal set for day-to-day operations. Permission keys must exist
+            // in the permissions table (see add_core_permissions migration). The
+            // previous version referenced 'invoices.view'/'invoices.create' and
+            // 'staff.delete' which were never seeded — silently shrinking Staff's set.
             $staffPermissions = Permission::query()->whereIn('name', [
                 'inventory.view',
-                'sales.view',
-                'sales.create',
-                'sales.pos',
-                'customers.view',
-                'customers.create',
-                'invoices.view',
-                'invoices.create',
-                'repairs.view',
-                'repairs.create',
-                'repairs.edit',
+                'sales.view', 'sales.create', 'sales.pos',
+                'customers.view', 'customers.create', 'customers.edit',
+                'repairs.view', 'repairs.create', 'repairs.edit',
                 'cash.view',
+                'vendors.view',
+                'karigar.view',
+                'job_order.view',
+                'karigar_invoice.view',
             ])->pluck('id');
             $staffRole->permissions()->sync($staffPermissions);
 

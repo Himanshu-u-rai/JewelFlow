@@ -13,6 +13,10 @@
     </x-page-header>
 
     <div class="content-inner cashbook-index-page">
+        @unless(auth()->user()->can('cash.create'))
+            @include('partials.view-only-banner', ['permission' => 'cash.create', 'message' => 'adding ledger entries'])
+        @endunless
+        @can('cash.create')
         <div class="cashbook-quick-action-card">
             <div>
                 <p class="cashbook-quick-action-kicker">Quick Action</p>
@@ -25,6 +29,7 @@
                 Add Ledger Entry
             </a>
         </div>
+        @endcan
 
         @php
             $todayNet = $stats['today_in'] - $stats['today_out'];

@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\InvoicePayment;
 use App\Models\Repair;
 use App\Services\InvoiceAccountingService;
+use App\Services\PricingEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -225,16 +226,22 @@ class RepairController extends Controller
             'gst_rate'    => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $includeGst  = $request->boolean('include_gst');
-        $subtotal    = (float) $validated['amount'];
-        $gstRate     = $includeGst
+        $includeGst = $request->boolean('include_gst');
+        $amount     = (float) $validated['amount'];
+        $gstRate    = $includeGst
             ? (float) ($validated['gst_rate'] ?? (auth()->user()->shop->gst_rate ?? config('business.gst_rate_default')))
             : 0.0;
-        $gstAmount   = $includeGst ? round(($subtotal * $gstRate) / 100, 2) : 0.0;
-        $totalAmount = round($subtotal + $gstAmount, 2);
 
+        $engine    = app(PricingEngine::class);
+        $breakdown = $engine->computeRepair($shopId, $amount, $includeGst, $gstRate);
 
-        $invoice = DB::transaction(function () use ($shopId, $repair, $subtotal, $gstRate, $gstAmount, $totalAmount) {
+        $subtotal    = $breakdown->subtotal;
+        $gstAmount   = $breakdown->gst;
+        $gstRate     = $breakdown->gstRate;
+        $totalAmount = $breakdown->finalTotal;
+        $roundOff    = $breakdown->roundingAdjustment;
+
+        $invoice = DB::transaction(function () use ($shopId, $repair, $subtotal, $gstRate, $gstAmount, $totalAmount, $roundOff) {
             $invoice = InvoiceAccountingService::createFinalized([
                 'shop_id'        => $shopId,
                 'customer_id'    => $repair->customer_id,
@@ -244,6 +251,7 @@ class RepairController extends Controller
                 'gst_rate'       => $gstRate,
                 'wastage_charge' => 0,
                 'total'          => $totalAmount,
+                'round_off'      => $roundOff,
             ]);
 
             // Record the payment — repair service is always collected as cash.
@@ -282,6 +290,7 @@ class RepairController extends Controller
                     'subtotal'   => $subtotal,
                     'gst_rate'   => $gstRate,
                     'gst'        => $gstAmount,
+                    'round_off'  => $roundOff,
                     'amount'     => $totalAmount,
                     'invoice_id' => $invoice->id,
                 ],

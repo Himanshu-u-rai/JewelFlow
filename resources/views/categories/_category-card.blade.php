@@ -17,6 +17,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6"/>
                 </svg>
             </button>
+            @can('catalog.manage')
             <button
                 data-category-id="{{ $category->id }}"
                 data-category-name="{{ $category->name }}"
@@ -48,6 +49,7 @@
                     </svg>
                 </button>
             </form>
+            @endcan
         </div>
     </div>
 
@@ -60,6 +62,7 @@
                 @foreach($category->subCategories as $sub)
                     <li class="flex items-center justify-between px-3 py-2 rounded-lg group border border-gray-200 hover:border-amber-200 hover:bg-amber-50/50 transition-colors" data-deletable-row>
                         <span class="text-sm text-gray-700">{{ $sub->name }}</span>
+                        @can('catalog.manage')
                         <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                                 data-sub-id="{{ $sub->id }}"
@@ -83,6 +86,7 @@
                                 </button>
                             </form>
                         </div>
+                        @endcan
                     </li>
                 @endforeach
             </ul>

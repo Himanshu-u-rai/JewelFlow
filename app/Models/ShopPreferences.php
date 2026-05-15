@@ -39,6 +39,10 @@ class ShopPreferences extends Model
         'compliance_pan_mandatory',
         'compliance_mobile_mandatory',
         'compliance_address_mandatory',
+        // Rounding / discount policy (POS pricing engine)
+        'rounding_method',
+        'max_manual_discount_percent',
+        'round_off_nearest',
     ];
 
     protected $casts = [
@@ -54,6 +58,8 @@ class ShopPreferences extends Model
         'compliance_pan_mandatory'     => 'boolean',
         'compliance_mobile_mandatory'  => 'boolean',
         'compliance_address_mandatory' => 'boolean',
+        'max_manual_discount_percent'  => 'decimal:2',
+        'round_off_nearest'            => 'integer',
     ];
 
     protected $attributes = [

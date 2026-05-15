@@ -61,6 +61,15 @@
         font-size: 14px;
     }
 
+    /* Catalog override for the shared .jf-carousel: 4/5 aspect to match
+       this page's existing .product-image-frame, plus catalog-themed surfaces. */
+    .product-image-wrap .jf-carousel {
+        aspect-ratio: 4 / 5;
+        border-radius: 20px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+    }
+
     /* ─── Product info ─── */
     .product-info { padding-top: 8px; }
 
@@ -296,20 +305,24 @@
         </div>
 
         <div class="product-layout">
-            {{-- Image --}}
+            {{-- Image / Carousel --}}
             <div class="product-image-wrap">
-                <div class="product-image-frame">
-                    @if($imageUrl)
-                        <img src="{{ $imageUrl }}" alt="{{ $item->design ?? $item->barcode }}">
-                    @else
+                @if (!empty($imageUrls))
+                    @include('partials.image-carousel', [
+                        'urls'     => $imageUrls,
+                        'alt'      => $item->design ?? $item->barcode,
+                        'idPrefix' => 'product-' . $item->id,
+                    ])
+                @else
+                    <div class="product-image-frame">
                         <div class="product-image-placeholder">
                             <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25">
                                 <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
                             </svg>
                             <span>Image not available</span>
                         </div>
-                    @endif
-                </div>
+                    </div>
+                @endif
             </div>
 
             {{-- Info --}}
