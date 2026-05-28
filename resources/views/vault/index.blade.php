@@ -1085,12 +1085,12 @@
                     </div>
                     <div class="vault-purity-scroll">
                         <div class="vault-purity-wrap">
-                            @foreach($balances as $row)
+                            @foreach($primaryBalances as $row)
                                 @php $purityLabel = rtrim(rtrim(number_format($row['purity'], 2), '0'), '.'); @endphp
                                 <article class="vault-purity-card">
                                     <div class="vault-purity-top">
                                         <div>
-                                            <p class="vault-label">Purity Profile</p>
+                                            <p class="vault-label capitalize">{{ $row['metal_type'] ?? 'Metal' }}</p>
                                             <h3 class="text-2xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-sm font-bold text-amber-700">fine</span></h3>
                                             <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                         </div>
@@ -1114,6 +1114,43 @@
                             @endforeach
                         </div>
                     </div>
+
+                    @if($otherBalances->isNotEmpty())
+                        <details class="mt-5 rounded-xl border border-slate-200 bg-slate-50/60">
+                            <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">
+                                Other materials ({{ $otherBalances->count() }})
+                            </summary>
+                            <div class="vault-purity-wrap px-4 pb-4">
+                                @foreach($otherBalances as $row)
+                                    @php $purityLabel = rtrim(rtrim(number_format($row['purity'], 2), '0'), '.'); @endphp
+                                    <article class="vault-purity-card">
+                                        <div class="vault-purity-top">
+                                            <div>
+                                                <p class="vault-label capitalize">{{ $row['metal_type'] ?? 'Other' }}</p>
+                                                <h3 class="text-2xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-sm font-bold text-slate-500">fine</span></h3>
+                                                <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
+                                            </div>
+                                            <div class="vault-purity-chip">{{ $purityLabel }}</div>
+                                        </div>
+                                        <div class="vault-purity-stats">
+                                            <div class="vault-mini-stat">
+                                                <p class="vault-label">In Vault</p>
+                                                <p class="vault-value text-slate-700">{{ number_format($row['in_vault_fine'], 3) }}g</p>
+                                            </div>
+                                            <div class="vault-mini-stat">
+                                                <p class="vault-label">Karigar</p>
+                                                <p class="vault-value text-slate-700">{{ number_format($row['with_karigar_fine'], 3) }}g</p>
+                                            </div>
+                                            <div class="vault-mini-stat">
+                                                <p class="vault-label">Total</p>
+                                                <p class="vault-value">{{ number_format($row['total_fine'], 3) }}g</p>
+                                            </div>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
                 </section>
             @endif
 
@@ -1584,12 +1621,12 @@
                         </div>
                     @else
                         <div class="vault-overview-purity-rail">
-                            @foreach($balances as $row)
+                            @foreach($primaryBalances as $row)
                                 @php $purityLabel = rtrim(rtrim(number_format($row['purity'], 2), '0'), '.'); @endphp
                                 <article class="vault-purity-card">
                                     <div class="vault-purity-top">
                                         <div>
-                                            <p class="vault-label">Purity Profile</p>
+                                            <p class="vault-label capitalize">{{ $row['metal_type'] ?? 'Metal' }}</p>
                                             <h3 class="text-xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-xs font-bold text-amber-700">fine</span></h3>
                                             <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                         </div>
@@ -1603,6 +1640,33 @@
                                         <div class="vault-mini-stat">
                                             <p class="vault-label">Karigar</p>
                                             <p class="vault-value text-blue-800">{{ number_format($row['with_karigar_fine'], 3) }}g</p>
+                                        </div>
+                                        <div class="vault-mini-stat">
+                                            <p class="vault-label">Total</p>
+                                            <p class="vault-value">{{ number_format($row['total_fine'], 3) }}g</p>
+                                        </div>
+                                    </div>
+                                </article>
+                            @endforeach
+                            @foreach($otherBalances as $row)
+                                @php $purityLabel = rtrim(rtrim(number_format($row['purity'], 2), '0'), '.'); @endphp
+                                <article class="vault-purity-card">
+                                    <div class="vault-purity-top">
+                                        <div>
+                                            <p class="vault-label capitalize">{{ $row['metal_type'] ?? 'Other' }}</p>
+                                            <h3 class="text-xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-xs font-bold text-slate-500">fine</span></h3>
+                                            <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
+                                        </div>
+                                        <div class="vault-purity-chip">{{ $purityLabel }}</div>
+                                    </div>
+                                    <div class="vault-purity-stats">
+                                        <div class="vault-mini-stat">
+                                            <p class="vault-label">In Vault</p>
+                                            <p class="vault-value text-slate-700">{{ number_format($row['in_vault_fine'], 3) }}g</p>
+                                        </div>
+                                        <div class="vault-mini-stat">
+                                            <p class="vault-label">Karigar</p>
+                                            <p class="vault-value text-slate-700">{{ number_format($row['with_karigar_fine'], 3) }}g</p>
                                         </div>
                                         <div class="vault-mini-stat">
                                             <p class="vault-label">Total</p>

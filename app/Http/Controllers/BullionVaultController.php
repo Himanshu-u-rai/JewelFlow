@@ -9,6 +9,7 @@ use App\Models\MetalLot;
 use App\Models\MetalMovement;
 use App\Models\Vendor;
 use App\Services\BullionVaultService;
+use App\Services\MetalRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,6 +22,19 @@ class BullionVaultController extends Controller
         $shopId = auth()->user()->shop_id;
 
         $balances = $this->vault->vaultBalances($shopId);
+
+        // Split balances into primary (gold/silver) and other materials so the
+        // view can keep the everyday metals front-and-centre and tuck any
+        // opted-in Tier 2 metals into a collapsible section. Legacy rows with a
+        // null/unknown metal_type fall into "other".
+        [$primaryBalances, $otherBalances] = $balances->partition(function ($row) {
+            $metal = $row['metal_type'] ?? null;
+
+            return is_string($metal)
+                && MetalRegistry::isSupported($metal)
+                && MetalRegistry::uxVaultPrimary($metal);
+        });
+
         $recentMovements = $this->vault->recentLedger($shopId, 25);
         $openJobs = JobOrder::query()
             ->where('shop_id', $shopId)
@@ -39,7 +53,7 @@ class BullionVaultController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('vault.index', compact('balances', 'recentMovements', 'openJobs', 'lots'));
+        return view('vault.index', compact('balances', 'primaryBalances', 'otherBalances', 'recentMovements', 'openJobs', 'lots'));
     }
 
     public function ledger(Request $request)

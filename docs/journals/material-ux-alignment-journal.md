@@ -258,3 +258,59 @@ Revert the `quickAddPurity` guard in `ItemController.php` and delete the new tes
 The daily rates screen the owner uses every morning shows exactly two things — today's gold rate and today's silver rate — and nothing else, which is how a real shop works. Even a shop that has turned on platinum sees no platinum rate field, because platinum is sold at a fixed price per piece, not from a daily rate.
 
 ---
+
+## Entry [6] — 2026-05-28 — Stage 4: Vault & Reports Visibility
+
+### Batch identity
+- **Batch ID:** UX-2026-05-28-06
+- **Plan stage:** Stage 4 from material-ux-alignment-plan.md §6
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- `BullionVaultController::index()` now partitions vault balances into `$primaryBalances` (gold/silver) and `$otherBalances` (everything else, including legacy null-metal rows), using `MetalRegistry::isSupported()` + `uxVaultPrimary()` (guarded so a null metal_type never throws). Both collections are passed to the view; `$balances` is retained for the summary sums and the empty-state check.
+- `resources/views/vault/index.blade.php` (both desktop and mobile balance blocks): primary cards render gold/silver with a metal-type label; opted-in Tier 2 metals render in a collapsible "Other materials" section that is ABSENT when empty. Each balance card now shows its metal name (previously every card just said "Purity Profile").
+- Added `tests/Feature/Material/VaultReportsVisibilityTest.php`.
+
+### Why it changed
+The vault summary is the surface where a gold-and-silver shop must not be cluttered by materials it rarely carries. With the per-metal balances now available (Entry [4] foundation fix), the view can keep gold and silver front-and-centre and tuck any opted-in platinum/copper into a collapsible section. For a typical pilot shop (gold/silver only), nothing changes — there is no "Other materials" section. The metal label also makes the gold@22 vs silver@22 distinction (which Entry [4] stopped merging) visible to the operator.
+
+### Scope decisions (deviations from the plan §6)
+- **Mobile dashboard:** the API's `metal_rates` block already exposes only gold + silver and carries no per-metal vault breakdown — already aligned. NO change made (a `display_priority` flag would be meaningless with no secondary data present).
+- **PnL & Closing per-metal breakdown: DEFERRED.** PnL currently has no per-metal split, and `ClosingController` aggregates metal-in under a single `gold_in` figure. Adding per-metal breakdown there touches ACCOUNTING aggregations (revenue, metal-in sums), which is higher risk and closer to the plan's forbidden accounting-path zone (F9) than UX visibility. For pilot (gold/silver), these reports already only show gold/silver data. Deferred to a dedicated reporting batch with care.
+
+### Files touched
+- **Code:** `app/Http/Controllers/BullionVaultController.php`
+- **Views:** `resources/views/vault/index.blade.php`
+- **Tests:** `tests/Feature/Material/VaultReportsVisibilityTest.php` (new)
+- **Docs:** `docs/journals/material-ux-alignment-journal.md`
+
+### Migrations added
+- None.
+
+### Risks introduced
+- The vault view now references `$primaryBalances`/`$otherBalances`. Both are always provided by the controller. The empty-state path still keys off `$balances->isEmpty()`. Sums (`$balances->sum(...)`) are unchanged.
+- Display only — no accounting, schema, or trigger impact.
+
+### Rollback notes
+Revert the controller `index()` partition (restore the single `$balances` compact) and the two view blocks. Delete the new test. `php artisan view:clear`.
+
+### Invariant impacts
+- None. Pure presentation on top of the Entry [4] data fix. No accounting paths touched.
+
+### Verification performed
+- `php artisan test tests/Feature/Material/VaultReportsVisibilityTest.php` — 2 passed (6 assertions): ✓ (gold/silver-only shop shows no "Other materials"; platinum-enabled shop with a platinum lot shows it).
+- `php artisan test tests/Feature/Material/` — 19 passed (71 assertions): ✓
+- `php artisan test tests/Feature/ConstitutionalInvariantsTest.php` — 1 failed (carried-forward audit-clean), 28 passed, 6 skipped: ✓
+- `php artisan materials:audit` — SAME 3 carried-forward violations, no new ones: ✓
+- `php -l` BullionVaultController — clean.
+- Discovery: the bullion vault is a RETAILER-edition feature (`edition:retailer` route group), not manufacturer — noted for future test setup.
+
+### Unresolved concerns
+- `materials audit command runs clean` still red on the 3 carried-forward literals.
+- **PnL/Closing per-metal breakdown deferred** (see Scope decisions). `ClosingController`'s `gold_in` aggregation may sum silver movement into a gold-labelled figure — worth a dedicated review (same family as the Phase 0 "claimed but not implemented" findings).
+
+### Operational rationale
+When the owner opens the vault page, they see their gold and silver balances clearly, each labelled by metal. If they have turned on platinum and have some in stock, it sits in a tidy "Other materials" drawer they can open when they want — it never pushes gold and silver aside. A plain gold-and-silver shop sees no extra clutter at all.
+
+---
