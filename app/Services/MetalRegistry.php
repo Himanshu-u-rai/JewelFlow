@@ -134,6 +134,175 @@ final class MetalRegistry
         return self::isReconciliationEligible($normalized);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Material identity systems (Identity Alignment — P1)
+    //
+    // "Purity" is not one concept. Each metal belongs to exactly one identity
+    // class that determines whether purity is accounting truth, a hallmark
+    // specification, or absent. See docs/runbooks/material-identity-audit.md.
+    //
+    //   A — purity_accounting : gold, silver  (purity = fine-weight multiplier)
+    //   B — purity_spec        : platinum      (purity = hallmark spec; piece-priced)
+    //   D — manual_grade       : copper        (no purity; piece-priced)
+    //
+    // (Stones are class C — attribute_value — and are NOT metals; their class
+    //  is asserted at the stone layer, never here.)
+    // ─────────────────────────────────────────────────────────────────────
+
+    public const IDENTITY_PURITY_ACCOUNTING = 'purity_accounting';
+    public const IDENTITY_PURITY_SPEC = 'purity_spec';
+    public const IDENTITY_MANUAL_GRADE = 'manual_grade';
+    public const IDENTITY_ATTRIBUTE_VALUE = 'attribute_value'; // stones — not a metal
+
+    /**
+     * The single source of truth for a metal's identity class. Every
+     * identity-derived capability below reads from this.
+     *
+     * @return self::IDENTITY_*
+     */
+    public static function identityClass(string $metal): string
+    {
+        $normalized = self::normalize($metal);
+        self::assertSupported($normalized);
+
+        return match ($normalized) {
+            'gold', 'silver' => self::IDENTITY_PURITY_ACCOUNTING,
+            'platinum'       => self::IDENTITY_PURITY_SPEC,
+            'copper'         => self::IDENTITY_MANUAL_GRADE,
+            default => throw new \InvalidArgumentException(
+                "No identity class defined for metal '{$normalized}'."
+            ),
+        };
+    }
+
+    /**
+     * Purity is a fine-weight multiplier (accounting truth). True ONLY for
+     * gold/silver. This is the gate the fine-weight authority consults so a
+     * non-accounting metal's purity can never become a multiplier.
+     */
+    public static function purityIsAccountingTruth(string $metal): bool
+    {
+        return self::identityClass($metal) === self::IDENTITY_PURITY_ACCOUNTING;
+    }
+
+    /**
+     * Purity is a hallmark/quality specification (displayed, not calculated).
+     * True ONLY for platinum.
+     */
+    public static function purityIsSpecification(string $metal): bool
+    {
+        return self::identityClass($metal) === self::IDENTITY_PURITY_SPEC;
+    }
+
+    /**
+     * Whether a hallmark/quality stamp is meaningful for this metal
+     * (gold HUID, silver fineness, platinum Pt950). Copper has none.
+     */
+    public static function hallmarkRelevant(string $metal): bool
+    {
+        return in_array(
+            self::identityClass($metal),
+            [self::IDENTITY_PURITY_ACCOUNTING, self::IDENTITY_PURITY_SPEC],
+            true
+        );
+    }
+
+    /**
+     * How the item-creation form should present the purity field.
+     *   mandatory   — gold/silver (required, drives price)
+     *   lightweight — platinum (optional hallmark-grade spec, never drives price)
+     *   hidden      — copper (no purity field)
+     *
+     * @return 'mandatory'|'lightweight'|'hidden'
+     */
+    public static function puritySelectorMode(string $metal): string
+    {
+        return match (self::identityClass($metal)) {
+            self::IDENTITY_PURITY_ACCOUNTING => 'mandatory',
+            self::IDENTITY_PURITY_SPEC       => 'lightweight',
+            default                          => 'hidden',
+        };
+    }
+
+    /**
+     * Operator-facing label for the purity field, scale-correct per metal.
+     * Empty string when the metal has no purity field.
+     */
+    public static function purityLabel(string $metal): string
+    {
+        $normalized = self::normalize($metal);
+        self::assertSupported($normalized);
+
+        return match ($normalized) {
+            'gold'     => 'Karat (K)',
+            'silver'   => 'Fineness',
+            'platinum' => 'Hallmark grade',
+            default    => '',
+        };
+    }
+
+    /**
+     * The metals whose purity is accounting truth (i.e. participate in
+     * fine-weight / vault / gram reconciliation). Capability-driven so callers
+     * never hardcode ['gold','silver'].
+     *
+     * @return list<string>
+     */
+    public static function accountingTruthMetals(): array
+    {
+        return array_values(array_filter(
+            self::allSupportedMetals(),
+            fn (string $metal) => self::purityIsAccountingTruth($metal)
+        ));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Fine-weight authority (Identity Alignment — P2)
+    //
+    // THE single sanctioned way to turn purity into a fine-weight multiplier.
+    // Returns null for any metal whose purity is NOT accounting truth, so a
+    // platinum/copper purity value can never silently become a multiplier.
+    //
+    // Rule for all contributors: fine weight comes ONLY from here. Never write
+    // inline `purity / 24` or `purity / 1000` in new code.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Fine-weight multiplier for a metal's stored purity, or null when purity
+     * is not accounting truth for this metal (platinum/copper).
+     *
+     * Scale is keyed on metal_type — NOT guessed from the purity magnitude:
+     *   gold   → karat scale  (purity / 24)
+     *   silver → millesimal   (purity / 1000)
+     */
+    public static function fineWeightMultiplier(string $metal, float $purity): ?float
+    {
+        $normalized = self::normalize($metal);
+        self::assertSupported($normalized);
+
+        if (! self::purityIsAccountingTruth($normalized)) {
+            return null;
+        }
+
+        return match ($normalized) {
+            'gold'   => $purity / 24.0,
+            'silver' => $purity / 1000.0,
+            default  => null,
+        };
+    }
+
+    /**
+     * Fine weight = net weight × multiplier, rounded to 6dp. Null when the
+     * metal's purity is not accounting truth (caller must handle — never
+     * fabricate a fine weight for a non-accounting metal).
+     */
+    public static function fineWeight(string $metal, float $netWeight, float $purity): ?float
+    {
+        $multiplier = self::fineWeightMultiplier($metal, $purity);
+
+        return $multiplier === null ? null : round($netWeight * $multiplier, 6);
+    }
+
 
     /**
      * Per-process cache. Reset between requests; safe across requests

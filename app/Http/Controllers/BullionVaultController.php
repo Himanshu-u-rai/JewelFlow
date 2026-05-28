@@ -128,7 +128,10 @@ class BullionVaultController extends Controller
         $userId = (int) auth()->id();
 
         $validated = $request->validate([
-            'metal_type' => 'required|in:gold,silver',
+            // The vault tracks fine weight, so only accounting-truth metals
+            // (gold/silver) may be added as lots. Capability-driven, not a
+            // hardcoded literal.
+            'metal_type' => ['required', \Illuminate\Validation\Rule::in(MetalRegistry::accountingTruthMetals())],
             'source' => 'required|in:purchase,buyback,opening',
             'gross_weight' => 'required|numeric|min:0.001',
             'purity' => [
@@ -148,12 +151,17 @@ class BullionVaultController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Gold purity is in Karats (24 = pure), silver is fineness (999 = pure)
+        // Fine weight comes ONLY from the MetalRegistry authority. It returns
+        // null for any metal whose purity is not accounting truth, so a
+        // non-gold/silver purity can never become a vault fine weight.
         $gross = (float) $validated['gross_weight'];
         $purity = (float) $validated['purity'];
-        $fineWeight = $validated['metal_type'] === 'silver'
-            ? round($gross * ($purity / 1000), 6)
-            : round($gross * ($purity / 24), 6);
+        $fineWeight = MetalRegistry::fineWeight($validated['metal_type'], $gross, $purity);
+        if ($fineWeight === null) {
+            return back()
+                ->withErrors(['metal_type' => 'Only gold and silver use purity-based vault balances.'])
+                ->withInput();
+        }
         $totalCost = round(((float) ($validated['cost_per_gram'] ?? 0)) * $gross, 2);
         $costPerFineGram = $fineWeight > 0 ? round($totalCost / $fineWeight, 2) : 0;
 

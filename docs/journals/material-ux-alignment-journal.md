@@ -466,3 +466,78 @@ Revert the toggle markup in the Materials tab block. `php artisan view:clear`.
 The owner now sees a clear checkbox labelled "Sell this metal" next to Platinum and Copper. Tick it and press "Save materials" to start selling that metal; untick to stop. No invisible controls.
 
 ---
+
+## Entry [10] — 2026-05-28 — Identity P1: Capability Formalization
+
+### Batch identity
+- **Batch ID:** ID-2026-05-28-01
+- **Plan:** material-identity-alignment-plan.md §3 (P1)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7). User directed Claude to execute all phases (incl. MinMax-tagged ones).
+
+### What changed
+- Added the identity-class source of truth to `MetalRegistry`: `identityClass()` → `purity_accounting` (gold/silver), `purity_spec` (platinum), `manual_grade` (copper). Constants `IDENTITY_*` added (incl. `attribute_value` for stones, which are not metals).
+- Derived capabilities: `purityIsAccountingTruth()`, `purityIsSpecification()`, `hallmarkRelevant()`, `puritySelectorMode()` (mandatory/lightweight/hidden), `purityLabel()` (Karat/Fineness/Hallmark grade).
+- Added `tests/Feature/Material/MaterialIdentityClassTest.php` (9 tests) locking the four-system contract + consistency with existing flags.
+
+### Why it changed
+The audit proved purity is four different identity systems. Behaviour was implicit (scattered `=== 'gold'` assumptions). P1 makes the identity class the single discriminator other phases derive from, so the systems can never be silently collapsed.
+
+### Files touched
+- **Code:** `app/Services/MetalRegistry.php`
+- **Tests:** `tests/Feature/Material/MaterialIdentityClassTest.php` (new)
+- **Docs:** `docs/journals/material-ux-alignment-journal.md`
+
+### Migrations / Invariant impacts
+- None. Purely additive capability methods; no existing method changed.
+
+### Verification performed
+- `MaterialIdentityClassTest` — 9 passed: ✓
+- Full Material suite — 39 passed: ✓; Constitutional — only carried-forward audit-clean red: ✓; returns:validate pass: ✓; materials:audit same 3, no new: ✓
+
+### Unresolved concerns
+- **Divergence found (intended):** `isReconciliationEligible` returns true for Tier 1 AND Tier 2 (so platinum/copper are currently "reconciliation eligible"), reflecting the old "Tier 2 = gold-lite" model. The identity model says only gold/silver (class A) are reconciliation-relevant. I did NOT change `isReconciliationEligible` semantics in P1 (it's referenced by reconciliation commands; sensitive). The real protection is the P2 fine-weight boundary, which makes platinum incapable of producing a purity-derived fine weight regardless of the eligibility flag name. A future batch may narrow `isReconciliationEligible` to accounting-truth metals — flagged, not done.
+
+### Operational rationale
+The system now has one place that says "gold and silver use purity as real weight; platinum's purity is just a stamp; copper has none." Everything else reads from that instead of guessing.
+
+---
+
+## Entry [11] — 2026-05-28 — Identity P2: Fine-Weight Semantic Boundary
+
+### Batch identity
+- **Batch ID:** ID-2026-05-28-02
+- **Plan:** material-identity-alignment-plan.md §4 (P2)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- Added the fine-weight authority to `MetalRegistry`: `fineWeightMultiplier($metal, $purity)` (gold→/24, silver→/1000, **null for platinum/copper**) and `fineWeight($metal, $net, $purity)`. Plus `accountingTruthMetals()` (capability-driven [gold, silver]).
+- Rerouted vault lot creation (`BullionVaultController::storeLot`): metal_type validation now uses `Rule::in(MetalRegistry::accountingTruthMetals())` (removed the hardcoded `in:gold,silver` literal); fine weight now comes from `MetalRegistry::fineWeight()` with a null-guard that rejects non-accounting metals.
+- Added `tests/Feature/Material/FineWeightBoundaryTest.php` (6 tests).
+
+### Why it changed
+`items.purity` carries different meanings per metal. The risk: future code treating platinum's `95` as a fine-weight multiplier → corrupt accounting + historical reinterpretation. The authority makes it structurally impossible — purity becomes a multiplier ONLY for accounting-truth metals; everything else gets null. The scale is now keyed on metal_type, not guessed from purity magnitude (fixing a latent silver-detection heuristic).
+
+### Strategy note (no schema change)
+Per the plan, the column was NOT split. The boundary is enforced by funnelling derivation through one authority. The other inline `purity/24` sites (SalesService, InvoiceAccountingService, JobOrderService, DhiranService, BuybackService, ItemManufacturingService, PricingEngine, RetailerSalesService, BulkImportService) are gold/silver-bound by their domain (gold loans, old-gold buyback, gold/silver lot manufacturing, gold sale movements) and platinum/copper do not flow through them (platinum/copper are piece-priced — Stage 2). They were deliberately NOT rewritten this pass to avoid destabilizing working accounting cores; converting them to the authority is a future consistency sweep, tracked here.
+
+### Files touched
+- **Code:** `app/Services/MetalRegistry.php`, `app/Http/Controllers/BullionVaultController.php`
+- **Tests:** `tests/Feature/Material/FineWeightBoundaryTest.php` (new)
+- **Docs:** `docs/journals/material-ux-alignment-journal.md`
+
+### Migrations / Invariant impacts
+- None. No schema, no triggers. Gold/silver vault fine-weight math byte-identical (verified: 10g 22K → 9.166667g).
+
+### Verification performed
+- `FineWeightBoundaryTest` — 6 passed: ✓ (gold/silver multipliers correct; platinum/copper null; vault lot works for gold; vault rejects platinum).
+- Full gate: Material 39 passed; returns:validate pass; vault:reconcile unaffected; materials:audit same 3 (note: ItemController/PricingSettingsController literals unchanged; the storeLot literal was removed but that file wasn't an audit hit).
+
+### Unresolved concerns
+- Future consistency sweep: route the remaining gold/silver-bound `purity/24` sites through `fineWeightMultiplier()` for uniformity. Low urgency (they're domain-bound to accounting metals); deferred to avoid touching accounting cores in this pass.
+
+### Operational rationale
+Gold and silver vault balances are computed exactly as before. The difference: it is now impossible for the system to ever turn a platinum or copper "purity" into vault grams — the one function that does that conversion simply refuses any metal that isn't gold or silver.
+
+---
