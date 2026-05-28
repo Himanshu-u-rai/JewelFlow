@@ -6,19 +6,64 @@
     becomes a direct operator input instead of being derived from daily rates.
 
     Requires: $metalUxModes (map of metal => 'rate_derived'|'piece_price').
+              $metalPurity  (map of metal => {mode, label}).
     Expects these element IDs in the parent form: metal_type, selling_price,
-    selling_price_display, cost_price.
+    selling_price_display, cost_price, and (optional) purity_field_wrap,
+    purity_field_label, purity_required_star, purity.
 --}}
 <script>
 (function () {
     const UX_MODES = @json($metalUxModes ?? []);
+    const PURITY = @json($metalPurity ?? []);
     const metalSelect = document.getElementById('metal_type');
     const sellingDisplay = document.getElementById('selling_price_display');
     const sellingHidden = document.getElementById('selling_price');
     const costInput = document.getElementById('cost_price');
 
+    // Purity field hooks (P3 — purity selector mode per identity class).
+    const purityWrap = document.getElementById('purity_field_wrap');
+    const puritySelect = document.getElementById('purity');
+    const purityLabelEl = document.getElementById('purity_field_label');
+    const purityStar = document.getElementById('purity_required_star');
+
     if (!metalSelect || !sellingDisplay || !sellingHidden) {
         return;
+    }
+
+    // Adapt the purity field to the selected metal's identity class:
+    //   mandatory   (gold/silver) — required, page-managed profile options
+    //   lightweight (platinum)    — optional hallmark-grade spec, never required
+    //   hidden      (copper)      — no purity field
+    function applyPurityMode() {
+        const cfg = PURITY[metalSelect.value];
+        if (!purityWrap || !puritySelect || !cfg) {
+            return;
+        }
+
+        if (cfg.mode === 'hidden') {
+            purityWrap.style.display = 'none';
+            puritySelect.required = false;
+            puritySelect.value = '';
+            return;
+        }
+
+        purityWrap.style.display = '';
+
+        if (cfg.mode === 'lightweight') {
+            if (purityLabelEl) purityLabelEl.textContent = cfg.label || 'Hallmark grade';
+            if (purityStar) purityStar.style.display = 'none';
+            puritySelect.required = false;
+            // Hallmark grade is a spec, not a profile — offer the standard grades.
+            puritySelect.innerHTML =
+                '<option value="">Select grade (optional)</option>' +
+                '<option value="95">Pt950</option>' +
+                '<option value="90">Pt900</option>';
+        } else { // mandatory — gold/silver
+            if (purityLabelEl) purityLabelEl.textContent = cfg.label || 'Purity';
+            if (purityStar) purityStar.style.display = '';
+            puritySelect.required = true;
+            // gold/silver options are repopulated by the page's own handler.
+        }
     }
 
     let hintEl = null;
@@ -76,16 +121,22 @@
         }
     });
 
-    // Run AFTER the form's own metal-change handler (which derives from rates).
+    function applyAll() {
+        applyMode();
+        applyPurityMode();
+    }
+
+    // Run AFTER the form's own metal-change handler (which derives from rates
+    // and repopulates gold/silver purity options).
     metalSelect.addEventListener('change', function () {
-        setTimeout(applyMode, 0);
+        setTimeout(applyAll, 0);
     });
 
     document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(applyMode, 0);
+        setTimeout(applyAll, 0);
     });
 
     // Fallback in case DOMContentLoaded already fired.
-    setTimeout(applyMode, 50);
+    setTimeout(applyAll, 50);
 })();
 </script>

@@ -195,9 +195,9 @@
                                        value="0.000">
                             </div>
 
-                            <div>
+                            <div id="purity_field_wrap">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Purity Profile <span class="text-red-500">*</span>
+                                    <span id="purity_field_label">Purity Profile</span> <span id="purity_required_star" class="text-red-500">*</span>
                                 </label>
                                 @php
                                     $initialMetal = old('metal_type', 'gold');

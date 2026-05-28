@@ -541,3 +541,43 @@ Per the plan, the column was NOT split. The boundary is enforced by funnelling d
 Gold and silver vault balances are computed exactly as before. The difference: it is now impossible for the system to ever turn a platinum or copper "purity" into vault grams — the one function that does that conversion simply refuses any metal that isn't gold or silver.
 
 ---
+
+## Entry [12] — 2026-05-28 — Identity P3: Material-Aware Item-Creation UX
+
+### Batch identity
+- **Batch ID:** ID-2026-05-28-03
+- **Plan:** material-identity-alignment-plan.md §5 (P3)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- Purity validation is now conditional: `Rule::requiredIf` makes purity required ONLY for accounting-truth metals (gold/silver); platinum/copper treat it as nullable spec. Applied in `storeRetailerItem` + `updateRetailerItem`.
+- `ItemController::buildMetalPickerData()` now returns a third map `$metalPurity` (per metal: `puritySelectorMode` + `purityLabel`), passed to both retailer views.
+- Both retailer views: purity field wrapped with DOM hooks (`purity_field_wrap`, `purity_field_label`, `purity_required_star`).
+- `_metal_aware_pricing.blade.php` partial now adapts the purity field by mode: `mandatory` (gold/silver — required, page-managed options, label "Purity"/"Fineness"), `lightweight` (platinum — optional, label "Hallmark grade", Pt950/Pt900 options), `hidden` (copper — field removed, not required).
+- Added 2 tests: platinum item creates without purity; gold still requires purity.
+
+### Why it changed
+Forms must match the operator mental model per identity class (audit). Gold/silver keep the mandatory purity selector unchanged. Platinum shows a lightweight optional hallmark-grade spec that never drives price. Copper shows no purity field. Pilot (gold/silver) sees zero change.
+
+### Files touched
+- **Code:** `app/Http/Controllers/ItemController.php`
+- **Views:** `resources/views/inventory/items/create-retailer.blade.php`, `edit-retailer.blade.php`, `_metal_aware_pricing.blade.php`
+- **Tests:** `tests/Feature/Material/ItemCreationMaterialAwareTest.php`
+- **Docs:** journal
+
+### Migrations / Invariant impacts
+- None. Conditional validation is additive; gold/silver behaviour unchanged (purity still required, options still page-managed).
+
+### Verification performed
+- Item-creation tests — 8 passed (incl. platinum-without-purity, gold-requires-purity): ✓
+- Full gate: Material 41 passed; Constitutional only carried-forward audit-clean; returns:validate pass; materials:audit same 3, no new: ✓
+- view:clear run so the live page reflects the change.
+
+### Unresolved concerns
+- The platinum hallmark options (Pt950/Pt900) are static in the partial. Acceptable (hallmark grades, not metal-type literals). If more grades are ever needed, drive them from a capability.
+
+### Operational rationale
+A gold or silver ring is entered exactly as before — pick the purity, it's required. A platinum ring asks only for an optional "Hallmark grade" (Pt950/Pt900) and never blocks on it, because platinum is sold at a fixed price. Copper shows no purity field at all. The form now matches how each metal is actually sold.
+
+---

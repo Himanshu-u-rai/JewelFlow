@@ -245,9 +245,9 @@
                                        value="{{ number_format($item->net_metal_weight, 3) }}">
                             </div>
 
-                            <div>
+                            <div id="purity_field_wrap">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Purity Profile <span class="text-red-500">*</span>
+                                    <span id="purity_field_label">Purity Profile</span> <span id="purity_required_star" class="text-red-500">*</span>
                                 </label>
                                 <select name="purity" id="purity" required data-initial-value="{{ old('purity', rtrim(rtrim(number_format((float) $item->purity, 3, '.', ''), '0'), '.')) }}"
                                         class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">

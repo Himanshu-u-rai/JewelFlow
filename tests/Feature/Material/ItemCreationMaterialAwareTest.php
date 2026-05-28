@@ -127,6 +127,53 @@ class ItemCreationMaterialAwareTest extends TestCase
         $this->assertSame(6.0, round((float) $item->net_metal_weight, 3));
     }
 
+    public function test_platinum_item_creation_succeeds_without_purity(): void
+    {
+        // P3: purity is optional for piece-price metals (platinum/copper).
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
+        $this->grantInventory($user);
+        $this->enableMetal($shop->id, 'platinum');
+
+        $response = $this->actingAs($user)->post(route('inventory.items.store'), [
+            'barcode' => 'MAT-PLAT-NOPUR',
+            'design' => 'Platinum Band',
+            'category' => 'Platinum Jewellery',
+            'metal_type' => 'platinum',
+            'gross_weight' => 6,
+            'stone_weight' => 0,
+            'selling_price' => 85000,
+            // no purity submitted
+        ]);
+
+        $response->assertRedirect(route('inventory.items.index'));
+        $item = Item::withoutTenant()->where('shop_id', $shop->id)->where('barcode', 'MAT-PLAT-NOPUR')->firstOrFail();
+        $this->assertSame('platinum', $item->metal_type);
+        $this->assertSame(85000.0, round((float) $item->selling_price, 2));
+    }
+
+    public function test_gold_item_creation_still_requires_purity(): void
+    {
+        // P3: purity remains mandatory for accounting-truth metals.
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
+        $this->grantInventory($user);
+
+        $response = $this->actingAs($user)->from(route('inventory.items.create'))->post(route('inventory.items.store'), [
+            'barcode' => 'MAT-GOLD-NOPUR',
+            'design' => 'Gold Ring',
+            'category' => 'Gold Jewellery',
+            'metal_type' => 'gold',
+            'gross_weight' => 10,
+            'stone_weight' => 1,
+            'making_charges' => 500,
+            // no purity submitted
+        ]);
+
+        $response->assertSessionHasErrors('purity');
+        $this->assertDatabaseMissing('items', ['barcode' => 'MAT-GOLD-NOPUR']);
+    }
+
     public function test_platinum_rejected_at_backend_when_not_enabled(): void
     {
         [$user, $shop] = $this->createRetailerTenant();

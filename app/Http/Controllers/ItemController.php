@@ -194,7 +194,7 @@ class ItemController extends Controller
             $karigars = \App\Models\Karigar::where('shop_id', $shopId)->active()->orderBy('name')->get();
             $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
             $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
-            [$enabledMetals, $metalUxModes] = $this->buildMetalPickerData($shopId);
+            [$enabledMetals, $metalUxModes, $metalPurity] = $this->buildMetalPickerData($shopId);
 
             return view('inventory.items.create-retailer', compact(
                 'categories',
@@ -203,7 +203,8 @@ class ItemController extends Controller
                 'purityProfiles',
                 'resolvedRates',
                 'enabledMetals',
-                'metalUxModes'
+                'metalUxModes',
+                'metalPurity'
             ));
         }
 
@@ -306,7 +307,14 @@ class ItemController extends Controller
             'sub_category' => 'nullable|string|max:255',
             'gross_weight' => 'required|numeric|min:0.001',
             'stone_weight' => 'nullable|numeric|min:0',
-            'purity' => 'required|numeric|min:0.001|max:1000',
+            'purity' => [
+                // Purity is required only for accounting-truth metals (gold/silver),
+                // where it drives fine weight. Piece-priced metals (platinum/copper)
+                // treat purity as an optional spec.
+                \Illuminate\Validation\Rule::requiredIf(fn () => MetalRegistry::isSupported((string) $request->input('metal_type', ''))
+                    && MetalRegistry::purityIsAccountingTruth((string) $request->input('metal_type', ''))),
+                'nullable', 'numeric', 'min:0.001', 'max:1000',
+            ],
             'cost_price' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
@@ -437,7 +445,7 @@ class ItemController extends Controller
             $karigars = \App\Models\Karigar::where('shop_id', $shopId)->active()->orderBy('name')->get();
             $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
             $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
-            [$enabledMetals, $metalUxModes] = $this->buildMetalPickerData($shopId);
+            [$enabledMetals, $metalUxModes, $metalPurity] = $this->buildMetalPickerData($shopId);
 
             return view('inventory.items.edit-retailer', compact(
                 'item',
@@ -447,7 +455,8 @@ class ItemController extends Controller
                 'purityProfiles',
                 'resolvedRates',
                 'enabledMetals',
-                'metalUxModes'
+                'metalUxModes',
+                'metalPurity'
             ));
         }
 
@@ -568,7 +577,14 @@ class ItemController extends Controller
             'sub_category' => 'nullable|string|max:255',
             'gross_weight' => 'required|numeric|min:0.001',
             'stone_weight' => 'nullable|numeric|min:0',
-            'purity' => 'required|numeric|min:0.001|max:1000',
+            'purity' => [
+                // Purity is required only for accounting-truth metals (gold/silver),
+                // where it drives fine weight. Piece-priced metals (platinum/copper)
+                // treat purity as an optional spec.
+                \Illuminate\Validation\Rule::requiredIf(fn () => MetalRegistry::isSupported((string) $request->input('metal_type', ''))
+                    && MetalRegistry::purityIsAccountingTruth((string) $request->input('metal_type', ''))),
+                'nullable', 'numeric', 'min:0.001', 'max:1000',
+            ],
             'cost_price' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
@@ -853,7 +869,7 @@ class ItemController extends Controller
      * can switch between rate-derived (gold/silver) and piece-price
      * (platinum/copper) entry.
      *
-     * @return array{0: list<string>, 1: array<string,string>}
+     * @return array{0: list<string>, 1: array<string,string>, 2: array<string,array{mode:string,label:string}>}
      */
     private function buildMetalPickerData(int $shopId): array
     {
@@ -863,11 +879,16 @@ class ItemController extends Controller
         ));
 
         $metalUxModes = [];
+        $metalPurity = [];
         foreach ($enabledMetals as $metal) {
             $metalUxModes[$metal] = MetalRegistry::uxItemCreationDefault($metal);
+            $metalPurity[$metal] = [
+                'mode'  => MetalRegistry::puritySelectorMode($metal),  // mandatory|lightweight|hidden
+                'label' => MetalRegistry::purityLabel($metal),
+            ];
         }
 
-        return [$enabledMetals, $metalUxModes];
+        return [$enabledMetals, $metalUxModes, $metalPurity];
     }
 
     private function buildRetailerResolvedRateMap($shop, $purityProfiles): array
