@@ -16,6 +16,27 @@ class MetalMovement extends Model
     {
         $model = new self();
         $model->forceFill($attributes);
+
+        // Auto-derive metal_type from the associated lot when the caller did
+        // not set it explicitly. The destination lot (to_lot) wins; fall back
+        // to the source lot (from_lot). This keeps the per-metal ledger
+        // accurate without forcing every caller to pass metal_type.
+        if (empty($model->metal_type)) {
+            $derived = null;
+
+            if (! empty($attributes['to_lot_id'])) {
+                $derived = MetalLot::withoutTenant()->whereKey($attributes['to_lot_id'])->value('metal_type');
+            }
+
+            if ($derived === null && ! empty($attributes['from_lot_id'])) {
+                $derived = MetalLot::withoutTenant()->whereKey($attributes['from_lot_id'])->value('metal_type');
+            }
+
+            if ($derived !== null) {
+                $model->metal_type = $derived;
+            }
+        }
+
         $model->save();
 
         return $model;

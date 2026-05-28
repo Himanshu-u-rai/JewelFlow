@@ -156,3 +156,54 @@ Revert `ItemController.php` and `ShopPricingService.php`, delete `_metal_aware_p
 A jewelry shop owner adding a gold ring still types weight, purity, and making charges and sees the price calculated from today's rate — exactly as before. If that shop also sells platinum (and has turned it on), adding a platinum ring now simply asks for the selling price, because that is how platinum is actually sold. Copper and platinum stay out of the metal list entirely for the typical gold-and-silver shop, so the form stays simple and familiar.
 
 ---
+
+## Entry [4] — 2026-05-28 — Foundation Fix: Phase 0 invariants (discovered during Stage 2 verification)
+
+### Batch identity
+- **Batch ID:** UX-2026-05-28-04
+- **Plan stage:** Not a UX stage — a Phase 0 foundation correction found while verifying Stage 2.
+- **Status:** shipped
+- **Executor note:** Claude (Opus 4.7). The user paused UX work to investigate two red constitutional invariant tests before continuing.
+
+### What changed
+- `MetalMovement::record()` now auto-derives `metal_type` from the destination lot (`to_lot_id`), falling back to the source lot (`from_lot_id`), when the caller does not pass `metal_type`. Previously it only `forceFill`-ed attributes, so `metal_type` stayed NULL — the per-metal ledger column existed but was never populated by the runtime path.
+- `BullionVaultService::vaultBalances()` now groups lots and open karigar jobs by `(metal_type, purity)` instead of `purity` alone. Gold and silver that share a purity figure are no longer merged into one balance line. Each returned row now carries a `metal_type` key (existing keys unchanged).
+- `ReportController::gold()` (the `/report/gold` balances report) had the SAME purity-only merge defect — swept and fixed to group by `(metal_type, purity)`; the report view gained a Metal column.
+
+### Why it changed
+Two Phase 0 constitutional invariant tests were failing at the Stage 1 baseline:
+`metal movement record auto derives metal type` and `vault balances does not merge metals at same purity`. The Phase 0 roadmap claimed these code changes were made, but they were absent from the actual files — the `metal_type` columns existed (added by migrations) but the code never populated/grouped by them. Building UX on a foundation whose per-metal ledger silently merged metals would be unsafe, so the user directed an immediate fix.
+
+### Files touched
+- **Code:** `app/Models/MetalMovement.php`, `app/Services/BullionVaultService.php`, `app/Http/Controllers/ReportController.php`
+- **Views:** `resources/views/reports/gold.blade.php`
+- **Docs:** `docs/journals/material-ux-alignment-journal.md`
+
+### Migrations added
+- None. The `metal_type` columns already existed; only the runtime code that uses them was missing.
+
+### Risks introduced
+- `vaultBalances()` rows now carry a `metal_type` key and may return more rows (one per metal at a given purity instead of one merged row). The vault view consumes rows by `purity`/`in_vault_fine`/`with_karigar_fine`/`total_fine`/`lots_count` and sums across rows — all still valid. Display does not yet label the metal per balance row; that refinement is Stage 4.
+- `MetalMovement::record()` auto-derive only fires when `metal_type` is empty; existing callers that pass `metal_type` are unaffected. Legacy movements already in the DB are not retroactively changed (append-only ledger; constitutionally immutable).
+
+### Rollback notes
+Revert the three code files and the report view. No data or schema changes. No cache concerns beyond `php artisan view:clear` for the report view.
+
+### Invariant impacts
+- POSITIVE: restores two Phase 0 constitutional invariants (per-metal movement attribution; no cross-metal balance merging). No triggers, schema, or ImmutableLedger behavior changed. `record()` still appends; legacy NULL rows remain NULL.
+
+### Verification performed
+- `php artisan test tests/Feature/ConstitutionalInvariantsTest.php` — was 3 failed / now 1 failed (28 passed, 6 skipped). The two Phase 0 invariants now pass: ✓. The single remaining failure is `materials audit command runs clean`, which fails ONLY because of the 3 carried-forward hardcoded-metal-literal violations (PricingSettingsController, ProductController, StockPurchaseController) — unchanged, out of scope.
+- `php artisan test tests/Feature/Material/` — 14 passed: ✓ (no regression to Stage 1/2).
+- Sweep for the same merge pattern: `MetalMovement` creation — ALL runtime creation goes through `record()` (no `::create`/`new`/`::insert` bypass found), so the auto-derive fix covers every path. `groupBy` purity — `ReportController` was the only other purity-only merge; fixed. Other `groupBy('metal_type')` usages are purity-profile groupings and are already correct.
+- Regression check on adjacent pricing tests: `MobileRetailerItemPricingParityTest` fails 6 both WITH and WITHOUT these changes (403/404 from the pre-existing RBAC test-fixture gap), so these fixes introduce no new failures.
+
+### Unresolved concerns
+- **`materials audit command runs clean`** still red — the 3 carried-forward hardcoded literals. Separate batch + founder review.
+- **Pre-existing RBAC test-fixture gap:** `tests/Feature/Traits/CreatesTestTenant.php` creates owner roles with no permissions, so multiple feature tests (`RetailerPricingTest`, `MobileRetailerItemPricingParityTest`, `MobileDashboardMetalRatesTest`) now 403/404 after the uncommitted RBAC hardening. This is a real test-suite health issue worth a dedicated fix (seed owner permissions in the trait), but it is outside material/UX scope.
+- **Phase 0 was reported complete but two of its core code changes were missing.** Worth a broader audit of whether other claimed Phase 0/1/2 changes are actually present in the code vs only described in the roadmap docs.
+
+### Operational rationale
+The shop's gold and silver are now always counted separately, even in the unlikely case their purity numbers line up. The vault balances and the gold report will never quietly add silver grams into a gold total. Owners can trust that "how much gold do I have" and "how much silver do I have" stay distinct.
+
+---
