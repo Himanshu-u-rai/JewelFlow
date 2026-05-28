@@ -621,3 +621,33 @@ The audit requires platinum to feel luxury-piece-priced, never gold-lite — pro
 Platinum is now provably a fixed-price luxury product. The system cannot turn a platinum piece's hallmark grade into vault grams, cannot price it from a daily rate, and cannot reconcile it by purity — it is sold for the price the owner set, full stop.
 
 ---
+
+## Entry [14] — 2026-05-28 — Identity P5: Stone Identity Containment
+
+### Batch identity
+- **Batch ID:** ID-2026-05-28-05
+- **Plan:** material-identity-alignment-plan.md §6 (P5)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- Added `tests/Feature/Material/StoneIdentityTest.php` (4 tests) locking the stone identity boundary: stones are not metals, have no metal identity class (identityClass throws), can never produce fine weight, and the `attribute_value` class is reserved and assigned to no metal.
+- No production code — Stage 5 already delivered the simple `stone_amount` UX and kept the advanced Phase 2B component routes unexposed.
+
+### Why it changed
+Stones are class C (attribute/value). They must never be treated as a purity-bearing metal. P5 makes that impossible to violate silently: any attempt to route a stone through the metal/purity/fine-weight machinery throws.
+
+### Files touched
+- **Tests:** `tests/Feature/Material/StoneIdentityTest.php` (new)
+- **Docs:** journal
+
+### Migrations / Invariant impacts
+- None.
+
+### Verification performed
+- `StoneIdentityTest` — 4 passed: ✓
+
+### Operational rationale
+A stone's worth is the rupee value the owner enters — it is never a "purity," never grams, never a metal. The system now refuses any attempt to treat a stone like a metal.
+
+---
