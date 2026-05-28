@@ -207,3 +207,54 @@ Revert the three code files and the report view. No data or schema changes. No c
 The shop's gold and silver are now always counted separately, even in the unlikely case their purity numbers line up. The vault balances and the gold report will never quietly add silver grams into a gold total. Owners can trust that "how much gold do I have" and "how much silver do I have" stay distinct.
 
 ---
+
+## Entry [5] — 2026-05-28 — Stage 3: Daily Rates Dashboard Shaping
+
+### Batch identity
+- **Batch ID:** UX-2026-05-28-05
+- **Plan stage:** Stage 3 from material-ux-alignment-plan.md §5
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- `ItemController::quickAddPurity()` now rejects piece-price metals (platinum/copper) with a clear message — "Custom purity profiles apply only to rate-priced metals like gold and silver." — instead of letting the generic gold/silver guard fire deeper in the pricing service.
+- Added `tests/Feature/Material/RatesDashboardVisibilityTest.php` locking the rate-surface invariants.
+
+### Why it changed
+The daily rates dashboard (pricing tab + `saveTodayRates`) is already entirely hardcoded to gold + silver — platinum/copper/stones cannot appear, and purity profiles cannot be created for non-gold/silver metals (`createObservedProfileIfMissing` calls `normalizeMetalType`, which restricts to gold/silver at the source). So Stage 3's core intent — gold/silver first-class, Tier 2 absent from the rates dashboard — is already satisfied by the existing architecture. The only gap was a confusing error: after Stage 2 widened `quickAddPurity` validation to enabled metals, an opted-in platinum shop clicking "add custom purity" hit a generic "must be gold or silver" deep error. This batch makes that rejection explicit and adds tests to lock the invariant so future changes cannot regress it.
+
+### Deliberate deviation from the plan
+The plan §5 offered an OPTIONAL "Also manage platinum rate (rarely needed)" expander for opted-in shops. **I did NOT build it.** Stage 2 made platinum/copper piece-priced — a platinum item's price is typed directly and never reads a daily platinum rate. A platinum-rate input would therefore be dead UI that contradicts Stage 2 and the operational audit (platinum is piece-priced, shops do not maintain a daily platinum rate). Omitting it keeps the rates dashboard honest. This is an audit-aligned, conscious deviation.
+
+### Files touched
+- **Code:** `app/Http/Controllers/ItemController.php`
+- **Tests:** `tests/Feature/Material/RatesDashboardVisibilityTest.php` (new)
+- **Docs:** `docs/journals/material-ux-alignment-journal.md`
+
+### Migrations added
+- None.
+
+### Risks introduced
+- None material. The quickAddPurity change only alters an error path for piece-price metals (which should not create profiles anyway). Gold/silver custom-purity behavior is unchanged (verified by test).
+
+### Rollback notes
+Revert the `quickAddPurity` guard in `ItemController.php` and delete the new test. No data/schema changes.
+
+### Invariant impacts
+- None constitutional. Reinforces the existing gold/silver-only boundary on rate-derivation surfaces; introduces no new authority.
+
+### Verification performed
+- `php artisan test tests/Feature/Material/RatesDashboardVisibilityTest.php` — 3 passed (11 assertions): ✓
+- `php artisan test tests/Feature/Material/` — 17 passed (65 assertions): ✓
+- `php artisan test tests/Feature/ConstitutionalInvariantsTest.php` — 1 failed (the carried-forward audit-clean), 28 passed, 6 skipped. The two Phase 0 invariants fixed in Entry [4] remain green: ✓
+- `php artisan materials:audit` — SAME 3 carried-forward violations, no new ones: ✓
+- Confirmed `shop_daily_metal_rates` has no platinum/copper columns (structural proof the rates dashboard is gold/silver only).
+
+### Unresolved concerns
+- `materials audit command runs clean` still red on the 3 carried-forward hardcoded literals (PricingSettingsController, ProductController, StockPurchaseController) — separate batch + founder review.
+- Note: `PricingSettingsController::storeProfile/updateProfile/resolveLegacyItem` use `Rule::in(['gold','silver'])` literals (two of the carried-forward audit hits live here). They are correct semantically (purity profiles are gold/silver only) but are flagged by the audit. Converting them is out of UX scope.
+
+### Operational rationale
+The daily rates screen the owner uses every morning shows exactly two things — today's gold rate and today's silver rate — and nothing else, which is how a real shop works. Even a shop that has turned on platinum sees no platinum rate field, because platinum is sold at a fixed price per piece, not from a daily rate.
+
+---

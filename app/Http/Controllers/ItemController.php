@@ -729,6 +729,16 @@ class ItemController extends Controller
         $metalType   = $validated['metal_type'];
         $purityValue = (float) $validated['purity_value'];
 
+        // Purity profiles are a rate-derivation mechanism. Piece-price metals
+        // (platinum, copper) are sold at a fixed price and never use purity
+        // profiles, so reject them here with a clear message instead of letting
+        // the generic gold/silver guard fire deeper in the pricing service.
+        if (MetalRegistry::uxItemCreationDefault($metalType) !== 'rate_derived') {
+            return response()->json([
+                'error' => 'Custom purity profiles apply only to rate-priced metals like gold and silver.',
+            ], 422);
+        }
+
         // Validate range: gold ≤ 24 (karat), silver ≤ 1000 (millesimal)
         if ($metalType === 'gold' && $purityValue > 24) {
             return response()->json(['error' => 'Gold purity cannot exceed 24K.'], 422);
