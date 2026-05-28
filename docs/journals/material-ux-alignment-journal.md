@@ -314,3 +314,55 @@ Revert the controller `index()` partition (restore the single `$balances` compac
 When the owner opens the vault page, they see their gold and silver balances clearly, each labelled by metal. If they have turned on platinum and have some in stock, it sits in a tidy "Other materials" drawer they can open when they want — it never pushes gold and silver aside. A plain gold-and-silver shop sees no extra clutter at all.
 
 ---
+
+## Entry [7] — 2026-05-28 — Stage 5: Stone UX Simplification
+
+### Batch identity
+- **Batch ID:** UX-2026-05-28-07
+- **Plan stage:** Stage 5 from material-ux-alignment-plan.md §7
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- Added `tests/Feature/Material/StoneUxSimplificationTest.php` locking the simple stone-amount model and the containment of the advanced Phase 2B stone UI.
+- No production code changed — the system already implements Stage 5's target state.
+
+### Why it changed
+Stage 5's goal is: pilot shops enter stones as a single rupee amount; the advanced Phase 2B component infrastructure stays invisible until genuinely needed. Investigation found this is ALREADY the state:
+- Item creation (`create-retailer`/`edit-retailer`) uses plain `stone_weight` + `stone_charges` (₹) inputs — no carat/clarity/certificate fields.
+- Invoice show and POS display stones as a rupee `stone_amount`/`stone_charges` value.
+- `ItemStoneController` (the Phase 2B component CRUD + revaluation) exists in code but is NOT registered in any route file — `php artisan route:list` shows zero stone routes — and no view links it. It is completely unexposed.
+
+So the advanced stone UI is already contained. Building the plan's opt-in "Add stone details" gate + `shopHasAdvancedStoneTracking()` would mean ADDING the advanced surface — the opposite of the pilot-simplicity goal. The right call for pilot is to leave it unexposed and wire it behind an opt-in only when a real shop needs component-level diamond tracking.
+
+### Deliberate deviation from the plan §7
+The plan specified adding `MetalRegistry::shopHasAdvancedStoneTracking()` and an "Add stone details" opt-in link. NOT built — because the advanced UI it would gate is not currently exposed at all, and exposing it now is unnecessary for pilot. Decision recorded; the Phase 2B infrastructure remains intact and can be wired behind an opt-in later.
+
+### Files touched
+- **Tests:** `tests/Feature/Material/StoneUxSimplificationTest.php` (new)
+- **Docs:** `docs/journals/material-ux-alignment-journal.md`
+
+### Migrations added
+- None.
+
+### Risks introduced
+- None. No production code changed. The containment test will flag (for a conscious decision) if a future batch wires up the stone component routes.
+
+### Rollback notes
+Delete the new test. Nothing else to undo.
+
+### Invariant impacts
+- None. Phase 2B constitutional infrastructure (snapshot guard trigger, append-only revaluation events) untouched and unexposed.
+
+### Verification performed
+- `php artisan test tests/Feature/Material/StoneUxSimplificationTest.php` — 2 passed (6 assertions): ✓ (stone_charges persists as a plain rupee value; advanced stone routes confirmed absent).
+- `php artisan test tests/Feature/Material/` — 21 passed: ✓
+- `php artisan route:list | grep stone` — zero stone routes (advanced UI unexposed): ✓
+
+### Unresolved concerns
+- The Phase 2B `ItemStoneController` + stone-component routes were described as shipped in the roadmap but are not registered — same "claimed but not wired" pattern as the Phase 0 findings (Entry [4]). Not a pilot problem (we want it unexposed), but reinforces the recommendation for a roadmap-vs-code reconciliation audit.
+
+### Operational rationale
+When a shop adds a ring with a stone, they type one number — the stone's value in rupees — exactly as they think about it at the counter. There is no carat/clarity/certificate paperwork to fill in. The deeper diamond-tracking machinery exists in the system for the day a shop genuinely needs it, but it stays out of sight until then.
+
+---
