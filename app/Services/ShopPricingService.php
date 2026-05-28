@@ -429,7 +429,12 @@ class ShopPricingService
         $this->assertPricingSchemaReady();
         $this->assertRetailerPricingReady($shop, $now);
 
-        $metalType = $this->normalizeMetalType((string) ($attributes['metal_type'] ?? ''));
+        // Accept any supported metal here (gold/silver flow through the rate
+        // path below; platinum/copper branch into piece-price). Do NOT use
+        // normalizeMetalType() — it is intentionally restricted to gold/silver
+        // for the rate-resolution code paths.
+        $metalType = strtolower(trim((string) ($attributes['metal_type'] ?? '')));
+        MetalRegistry::assertSupported($metalType);
         $purityValue = $this->normalizePurityValue((float) ($attributes['purity'] ?? 0));
         $grossWeight = round((float) ($attributes['gross_weight'] ?? 0), 6);
         $stoneWeight = round((float) ($attributes['stone_weight'] ?? 0), 6);
@@ -442,12 +447,44 @@ class ShopPricingService
             throw new LogicException('Stone weight must be less than gross weight.');
         }
 
+        $netMetalWeight = round($grossWeight - $stoneWeight, 6);
+
+        // Piece-price metals (e.g. platinum, copper) are entered as a direct
+        // selling price set by the operator. They do not use daily rates or
+        // purity profiles. Net metal weight is still recorded for inventory.
+        if (MetalRegistry::uxItemCreationDefault($metalType) === 'piece_price') {
+            $sellingPrice = round((float) ($attributes['selling_price'] ?? 0), 2);
+            if ($sellingPrice <= 0) {
+                throw new LogicException('Enter the selling price for this item.');
+            }
+
+            $costPrice = array_key_exists('cost_price', $attributes) && $attributes['cost_price'] !== null && $attributes['cost_price'] !== ''
+                ? round((float) $attributes['cost_price'], 2)
+                : $sellingPrice;
+
+            $makingCharges   = round((float) ($attributes['making_charges']   ?? 0), 2);
+            $stoneCharges    = round((float) ($attributes['stone_charges']    ?? 0), 2);
+            $hallmarkCharges = round((float) ($attributes['hallmark_charges'] ?? 0), 2);
+            $rhodiumCharges  = round((float) ($attributes['rhodium_charges']  ?? 0), 2);
+            $otherCharges    = round((float) ($attributes['other_charges']    ?? 0), 2);
+            $overheadCost    = round($makingCharges + $stoneCharges + $hallmarkCharges + $rhodiumCharges + $otherCharges, 2);
+
+            return [
+                'metal_type'             => $metalType,
+                'purity'                 => $purityValue,
+                'net_metal_weight'       => $netMetalWeight,
+                'resolved_rate_per_gram' => null,
+                'cost_price'             => $costPrice,
+                'overhead_cost'          => $overheadCost,
+                'selling_price'          => $sellingPrice,
+            ];
+        }
+
         $profile = $this->profileForPurity($shop, $metalType, $purityValue);
         if (! $profile) {
             throw new LogicException('Select an active purity profile for the chosen metal type.');
         }
 
-        $netMetalWeight = round($grossWeight - $stoneWeight, 6);
         $resolvedRate = $this->resolvedRateForToday($shop, $metalType, $purityValue, $now);
 
         if ($resolvedRate === null) {

@@ -13,6 +13,7 @@ use App\Services\CatalogShareService;
 use App\Services\ItemManufacturingService;
 use App\Services\RetailerReportService;
 use App\Services\ShopPricingService;
+use App\Services\MetalRegistry;
 use App\Http\Concerns\RespondsDynamically;
 use App\Support\ShopEdition;
 use Illuminate\Http\Request;
@@ -193,13 +194,16 @@ class ItemController extends Controller
             $karigars = \App\Models\Karigar::where('shop_id', $shopId)->active()->orderBy('name')->get();
             $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
             $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
+            [$enabledMetals, $metalUxModes] = $this->buildMetalPickerData($shopId);
 
             return view('inventory.items.create-retailer', compact(
                 'categories',
                 'vendors',
                 'karigars',
                 'purityProfiles',
-                'resolvedRates'
+                'resolvedRates',
+                'enabledMetals',
+                'metalUxModes'
             ));
         }
 
@@ -298,12 +302,13 @@ class ItemController extends Controller
             ],
             'design' => 'nullable|string|max:255',
             'category' => 'required|string|max:255',
-            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
+            'metal_type' => ['required', Rule::in(MetalRegistry::enabledMetalsForShop($shopId))],
             'sub_category' => 'nullable|string|max:255',
             'gross_weight' => 'required|numeric|min:0.001',
             'stone_weight' => 'nullable|numeric|min:0',
             'purity' => 'required|numeric|min:0.001|max:1000',
             'cost_price' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
             'hallmark_charges' => 'nullable|numeric|min:0',
@@ -432,6 +437,7 @@ class ItemController extends Controller
             $karigars = \App\Models\Karigar::where('shop_id', $shopId)->active()->orderBy('name')->get();
             $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
             $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
+            [$enabledMetals, $metalUxModes] = $this->buildMetalPickerData($shopId);
 
             return view('inventory.items.edit-retailer', compact(
                 'item',
@@ -439,7 +445,9 @@ class ItemController extends Controller
                 'vendors',
                 'karigars',
                 'purityProfiles',
-                'resolvedRates'
+                'resolvedRates',
+                'enabledMetals',
+                'metalUxModes'
             ));
         }
 
@@ -556,12 +564,13 @@ class ItemController extends Controller
             ],
             'design' => 'nullable|string|max:255',
             'category' => 'required|string|max:255',
-            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
+            'metal_type' => ['required', Rule::in(MetalRegistry::enabledMetalsForShop($shopId))],
             'sub_category' => 'nullable|string|max:255',
             'gross_weight' => 'required|numeric|min:0.001',
             'stone_weight' => 'nullable|numeric|min:0',
             'purity' => 'required|numeric|min:0.001|max:1000',
             'cost_price' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
             'hallmark_charges' => 'nullable|numeric|min:0',
@@ -713,7 +722,7 @@ class ItemController extends Controller
         abort_unless($shop && $shop->isRetailer(), 404);
 
         $validated = $request->validate([
-            'metal_type'  => ['required', Rule::in(['gold', 'silver'])],
+            'metal_type'  => ['required', Rule::in(MetalRegistry::enabledMetalsForShop((int) $shop->id))],
             'purity_value' => 'required|numeric|min:0.001|max:1000',
         ]);
 
@@ -824,6 +833,31 @@ class ItemController extends Controller
             'id'   => $karigar->id,
             'name' => $karigar->name,
         ]);
+    }
+
+    /**
+     * Build the metal picker data for retailer item forms.
+     *
+     * Returns the list of metals the shop offers (Tier 1 always; Tier 2 only
+     * when opted in) plus a map of each metal's UX pricing mode so the form
+     * can switch between rate-derived (gold/silver) and piece-price
+     * (platinum/copper) entry.
+     *
+     * @return array{0: list<string>, 1: array<string,string>}
+     */
+    private function buildMetalPickerData(int $shopId): array
+    {
+        $enabledMetals = array_values(array_filter(
+            MetalRegistry::allSupportedMetals(),
+            fn (string $metal) => MetalRegistry::uxItemPickerVisible($metal, $shopId)
+        ));
+
+        $metalUxModes = [];
+        foreach ($enabledMetals as $metal) {
+            $metalUxModes[$metal] = MetalRegistry::uxItemCreationDefault($metal);
+        }
+
+        return [$enabledMetals, $metalUxModes];
     }
 
     private function buildRetailerResolvedRateMap($shop, $purityProfiles): array

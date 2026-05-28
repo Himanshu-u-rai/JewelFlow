@@ -146,11 +146,24 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Metal Type <span class="text-red-500">*</span>
                                 </label>
+                                @php
+                                    $metalLabels = ['gold' => 'Gold', 'silver' => 'Silver', 'platinum' => 'Platinum', 'copper' => 'Copper'];
+                                    $pickerMetals = $enabledMetals ?? ['gold', 'silver'];
+                                    // Always keep the item's existing metal selectable, even if it was
+                                    // since disabled for the shop.
+                                    if ($item->metal_type && ! in_array($item->metal_type, $pickerMetals, true)) {
+                                        $pickerMetals[] = $item->metal_type;
+                                    }
+                                    $currentMetal = old('metal_type', $item->metal_type ?? 'gold');
+                                @endphp
                                 <select name="metal_type" id="metal_type" required
                                         class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
                                     <option value="">Select metal</option>
-                                    <option value="gold" @selected(old('metal_type', $item->metal_type ?? 'gold') === 'gold')>Gold</option>
-                                    <option value="silver" @selected(old('metal_type', $item->metal_type) === 'silver')>Silver</option>
+                                    @foreach($pickerMetals as $metalOption)
+                                        <option value="{{ $metalOption }}" @selected($currentMetal === $metalOption)>
+                                            {{ $metalLabels[$metalOption] ?? ucfirst($metalOption) }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
 
@@ -1368,4 +1381,6 @@
             </div>
         </div>
     </div>
+
+    @include('inventory.items._metal_aware_pricing')
 </x-app-layout>

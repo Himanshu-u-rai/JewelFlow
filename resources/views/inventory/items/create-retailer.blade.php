@@ -121,11 +121,19 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Metal Type <span class="text-red-500">*</span>
                                 </label>
+                                @php
+                                    $metalLabels = ['gold' => 'Gold', 'silver' => 'Silver', 'platinum' => 'Platinum', 'copper' => 'Copper'];
+                                    $pickerMetals = $enabledMetals ?? ['gold', 'silver'];
+                                    $defaultMetal = in_array('gold', $pickerMetals, true) ? 'gold' : ($pickerMetals[0] ?? '');
+                                @endphp
                                 <select name="metal_type" id="metal_type" required
                                         class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
                                     <option value="">Select metal</option>
-                                    <option value="gold" @selected(old('metal_type', 'gold') === 'gold')>Gold</option>
-                                    <option value="silver" @selected(old('metal_type') === 'silver')>Silver</option>
+                                    @foreach($pickerMetals as $metalOption)
+                                        <option value="{{ $metalOption }}" @selected(old('metal_type', $defaultMetal) === $metalOption)>
+                                            {{ $metalLabels[$metalOption] ?? ucfirst($metalOption) }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
 
@@ -1306,4 +1314,6 @@
             });
         });
     </script>
+
+    @include('inventory.items._metal_aware_pricing')
 </x-app-layout>
