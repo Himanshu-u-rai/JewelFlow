@@ -950,3 +950,45 @@ The vocabulary lock-in is the cheapest, most durable anti-drift guard: the next 
 
 ### Next phase
 R2 — additive `shop_metal_reference_prices` storage + `ReferencePriceService`. **Awaits explicit go-ahead before code changes.**
+
+## Entry [23] — 2026-05-28 — Pricing-Control R2: reference-price storage + service
+
+### Batch identity
+- **Batch ID:** RP-2026-05-28-02
+- **Plan:** pricing-control-plan.md (R2)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### Class declaration (mandatory per R1 rule)
+- **Touches class B only** (platinum, copper).
+- **Does NOT cross into class A** (gold/silver rate engine) or class C (stones). Zero changes to `ShopPricingService`, `BullionVaultService`, `RepriceRetailerInventoryJob`, `MetalRate`, `shop_daily_metal_rates`, `computeRetailerCostPayload`, stone components, or `stone_amount`.
+- **Operator-facing implication:** none yet — pure storage + service. UI surfaces ship in R3.
+- **Invariant impact:** none. Additive table; no accounting paths touched; pilot (gold/silver) behaviour unchanged.
+
+### What changed
+- **Migration** `2026_08_03_010000_create_shop_metal_reference_prices_table` — additive table `shop_metal_reference_prices(id, shop_id, metal_type, reference_price, noted_at, noted_by_user_id, note, timestamps)` with CHECK constraints enforcing `metal_type IN ('platinum','copper')` and `reference_price >= 0`. Deliberate column naming: `reference_price` (NOT `rate_per_gram`), `noted_at` (NOT `business_date`) — vocabulary structurally blocks "promote to rate" drift.
+- **Model** `App\Models\ShopMetalReferencePrice` — append-only via `booted()` throw on update/delete events. To "update" a reference, record a new row.
+- **Service** `App\Services\ReferencePriceService` — exactly two operations: `recordReference()` (Class-B-only guard at the source) and `latestReference()` (returns null gracefully for any other class).
+- **Tests** `tests/Feature/Material/ReferencePriceServiceTest` — 10 tests covering record/latest, metal isolation, class-A/C rejection, DB CHECK enforcement, negative-price rejection, append-only enforcement, and an immediate forbidden-token scan of the service file (R6 ships the full architecture exclusivity tests; this is the entry-level guard).
+
+### Files touched
+- **Migration:** `database/migrations/2026_08_03_010000_create_shop_metal_reference_prices_table.php` (new)
+- **Model:** `app/Models/ShopMetalReferencePrice.php` (new)
+- **Service:** `app/Services/ReferencePriceService.php` (new)
+- **Tests:** `tests/Feature/Material/ReferencePriceServiceTest.php` (new)
+- **Docs:** journal
+
+### Pilot invariant verified
+A grep of `ShopPricingService.php`, `BullionVaultService.php`, and `RepriceRetailerInventoryJob.php` for `ReferencePriceService`/`shop_metal_reference_prices`/`latestReference` returns ZERO results — the Class A rate engine is structurally untouched.
+
+### Verification performed
+- ReferencePriceService tests — 10 passed (20 assertions): ✓
+- Material suite — 70 passed (263 assertions): ✓
+- Constitutional — 29 passed / 0 failed: ✓
+- returns:validate ✓; vault:reconcile exit 0 ✓; materials:audit CLEAN (183 files, recursive) ✓
+
+### Operational rationale
+The infrastructure is now in place for an owner to optionally note "this is what I'm selling platinum at this week," and the system structurally cannot mistake that note for an accounting rate — gold/silver, vault, reprice, GST, and reconciliation paths cannot reach it. R3 puts a UI on top.
+
+### Next phase
+R3 — "Reference price" card on Settings → Materials per opted-in Class-B metal. Awaits explicit go-ahead.
