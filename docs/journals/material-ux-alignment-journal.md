@@ -651,3 +651,36 @@ Stones are class C (attribute/value). They must never be treated as a purity-bea
 A stone's worth is the rupee value the owner enters — it is never a "purity," never grams, never a metal. The system now refuses any attempt to treat a stone like a metal.
 
 ---
+
+## Entry [15] — 2026-05-28 — Identity P6: Contributor Documentation
+
+### Batch identity
+- **Batch ID:** ID-2026-05-28-06
+- **Plan:** material-identity-alignment-plan.md §10 (P6)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- Added `docs/runbooks/material-identity.md` — a short plain-English contributor guide: the one fine-weight rule, the four identity classes, why platinum isn't gold-lite, why stones never have purity, the capability cheat-sheet, the "document the identity class on every material change" rule, and the anti-ERP don'ts.
+
+### Why it changed
+Future contributors must understand WHY materials behave differently, so the four-system separation can't be accidentally re-collapsed. This closes the Identity Alignment plan.
+
+### Files touched
+- **Docs:** `docs/runbooks/material-identity.md` (new), journal.
+
+### Verification performed
+- Final full gate: Material suite **48 passed**; Constitutional only carried-forward `materials audit command runs clean` red; returns:validate all pass; materials:audit same 3 carried-forward (no new).
+
+### Unresolved concerns
+- **`vault:reconcile` reports 3 discrepancies** on the production shop. These are PRE-EXISTING data discrepancies (documented in material-stone-expansion-completion.md as "pre-existing, not from this roadmap"). The identity work does not touch lot weights or reconciliation math — `vaultBalances` is display-only and the fine-weight authority is byte-identical for gold/silver — so these are not a regression. Flagged for the operator to investigate via `vault_reconciliation_runs` separately.
+- The known carried-forward `materials:audit` 3 hardcoded-literal violations (PricingSettingsController, ProductController, StockPurchaseController) remain — separate founder-reviewed batch.
+
+### Operational rationale
+The "why" behind material behavior now lives in the repo so the next contributor (or model) keeps gold/silver, platinum, copper, and stones as the distinct things they are.
+
+---
+
+## Identity Alignment phase — complete
+
+P1–P6 shipped (journal entries [10]–[15]). The four identity systems are now explicit capabilities; purity can only become fine weight for gold/silver via a single authority; platinum is provably piece-priced/spec-only; stones can never be treated as a purity-bearing metal; forms adapt per identity class; and the why is documented. Material test suite: 48 passing. No schema changes, no trigger changes, no constitutional article changes. Pilot (gold/silver) behavior unchanged.
