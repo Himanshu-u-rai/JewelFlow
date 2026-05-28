@@ -581,3 +581,43 @@ Forms must match the operator mental model per identity class (audit). Gold/silv
 A gold or silver ring is entered exactly as before — pick the purity, it's required. A platinum ring asks only for an optional "Hallmark grade" (Pt950/Pt900) and never blocks on it, because platinum is sold at a fixed price. Copper shows no purity field at all. The form now matches how each metal is actually sold.
 
 ---
+
+## Entry [13] — 2026-05-28 — Identity P4: Platinum Specification Hardening (proof)
+
+### Batch identity
+- **Batch ID:** ID-2026-05-28-04
+- **Plan:** material-identity-alignment-plan.md §7 (P4)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- Added `tests/Feature/Material/PlatinumExclusionTest.php` (3 tests) proving the platinum-exclusion guarantees hold together. No new production code — the hardening was already delivered by P2 (fine-weight authority returns null for platinum), P3 (lightweight hallmark-grade UX, purity optional), and Stage 2 (piece-priced).
+
+### Why it changed
+The audit requires platinum to feel luxury-piece-priced, never gold-lite — provably excluded from purity-derived pricing, fine weight, and vault reconciliation. P4 locks that with a proof so a future change can't silently re-admit platinum into gold-style accounting.
+
+### Exclusion paths verified (structural)
+- **Vault lots:** `storeLot` validates `Rule::in(accountingTruthMetals())` and computes fine weight via the authority (null → reject). Platinum cannot become a vault lot (proven in FineWeightBoundaryTest).
+- **Item pricing:** `computeRetailerCostPayload` for platinum returns `resolved_rate_per_gram = null` and the operator's entered price (proven here).
+- **Fine weight:** `fineWeight('platinum', …)` / `fineWeightMultiplier('platinum', …)` return null even with a stored purity (proven here).
+- **Retailer sale:** the only retailer `purity/24` path is for old-gold/silver PAYMENTS, hardcoded to gold/silver metal_type — never the platinum item being sold.
+- **Manufacturer sale (`SalesService` fineGold):** only reachable for lot-made items; platinum has no vault lots, so no platinum manufacturer items exist to reach it.
+
+### Files touched
+- **Tests:** `tests/Feature/Material/PlatinumExclusionTest.php` (new)
+- **Docs:** journal
+
+### Migrations / Invariant impacts
+- None.
+
+### Verification performed
+- `PlatinumExclusionTest` — 3 passed: ✓
+- Full Material suite — 44 passed: ✓
+
+### Unresolved concerns
+- None new. The future "consistency sweep" of remaining gold/silver-bound `purity/24` sites (P2 note) would further centralize, but each is domain-bound to accounting metals; platinum cannot reach them today.
+
+### Operational rationale
+Platinum is now provably a fixed-price luxury product. The system cannot turn a platinum piece's hallmark grade into vault grams, cannot price it from a daily rate, and cannot reconcile it by purity — it is sold for the price the owner set, full stop.
+
+---
