@@ -869,3 +869,45 @@ A platform admin scanning the shop list now sees "Goldlux Jewellers [Demo]" and 
 ## Shop Environment Classification — complete
 
 E1–E3 shipped (journal entries [18]–[20]). `shops.environment` (production default / demo / internal_test) is platform-admin-only metadata, read ONLY for an admin badge/filter and a reconcile context note. Demo shops (Goldlux/JF-0001) run the identical accounting engine, triggers, immutability, audit logging, and reconciliation — a demo discrepancy still needs an explicit acknowledgement to stop failing the run. No accounting bypass; one additive column; full gate green.
+
+## Entry [21] — 2026-05-28 — Consistency Hardening Pass (final material-system unification)
+
+### Batch identity
+- **Batch ID:** HARD-2026-05-28-01
+- **Purpose:** eliminate the remaining material-system inconsistency seams found by the Operational Health Audit, so the same category of bug stops resurfacing.
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### Task 2 — materials:audit reliability (governance fix)
+The audit produced a FALSE-CLEAN result: its `glob('Controllers/**/*.php') + glob(...)` (a) did not recurse beyond one directory level (so `Api/Mobile/*` was never scanned) and (b) lost files to integer-key array union. Replaced both file-discovery paths (Check 4 + Check 6) with a recursive `RecursiveDirectoryIterator` helper `allPhpFilesUnder()`. Now scans 183 business files deterministically. PROVEN: after the fix, the audit immediately flagged the previously-invisible `Api/Mobile/ItemController.php` hardcoded literal (false-clean → correctly-fails), then went clean again only after Task 1.
+
+### Task 1 — mobile capability unification
+`Api/Mobile/ItemController.php` store + update now use `Rule::in(MetalRegistry::enabledMetalsForShop($shopId))` (was `Rule::in(['gold','silver'])`) and conditional purity (`Rule::requiredIf(purityIsAccountingTruth)`), identical to web. The purity-profile validation is now gated to accounting-truth metals so platinum doesn't get rejected for lacking a profile. Mobile and web now speak ONE material language.
+
+### Task 3 — universal fine-weight authority routing
+The audit said "six" inline sites; the real count was ~18 (the audit under-counted — itself a finding). Routed EVERY PHP fine-weight derivation through `MetalRegistry::fineWeightMultiplier()` (gold → /24, silver → /1000, null for non-accounting metals + loud guard). Sites: SalesService (×2), InvoiceAccountingService, PricingEngine, DhiranService, BuybackService, ItemManufacturingService, BulkImportService, JobOrderService (local helper now delegates), GoldValuationService, RetailerSalesService, ReturnService (×2), StockPurchaseController, ItemController (×2 PHP), ReturnsController (×4), GoldInventoryController, CustomerGoldController.
+- **Byte-for-byte preserved:** every site processes only gold (or the already-metal-aware retailer old-metal path) in current data (verified: 0 silver manufactured items, 0 dhiran items, buyback gold-by-design). `fineWeightMultiplier('gold',p) === p/24` exactly. Locked by a byte-equality test.
+- **Two deliberate, documented exceptions** (NOT missed sites): (1) `ShopPricingService::deriveRateForProfile` is RATE resolution (rate × purity/scale) and is basis-aware (handles gold-millesimal /1000) — different semantics from fine WEIGHT, correctly separate; (2) `ItemController` `total_fine_gold` is a raw-SQL display aggregate the PHP authority cannot run inside — made explicitly gold-filtered so it is correct, documented as the one SQL-layer boundary.
+
+### Task 4 — structural anti-drift protection
+New `tests/Feature/Material/FineWeightAuthorityExclusivityTest`: (a) scans all of app/Services + app/Http/Controllers and FAILS if any inline `purity / 24|1000` reappears outside the authority (only the documented gold-filtered SQL is whitelisted); (b) asserts the mobile controller is capability-driven (no literal, uses enabledMetalsForShop + purityIsAccountingTruth); (c) byte-equality lock between the authority and the legacy formula for gold/silver.
+
+### Task 6 — aggressive verification (zero regression proven)
+- Material suite: 60 passed; Constitutional: 29 passed / 0 failed; returns:validate pass; vault:reconcile clean; materials:audit CLEAN (183 files).
+- **Regression proof via baseline diff:** the only test clusters touching modified accounting paths (PosSalesTest, BulkImportSafetyTest) fail IDENTICALLY with and without this pass (28 failed / 3 passed both) — confirming those are the pre-existing RBAC-fixture 403s, not regressions. Full-suite failures (84) are entirely pre-existing (CreatesTestTenant grants no permissions → 403/404).
+
+### Files touched
+- **Code:** AuditMaterialGovernance, Api/Mobile/ItemController, SalesService, InvoiceAccountingService, PricingEngine, DhiranService, BuybackService, ItemManufacturingService, BulkImportService, JobOrderService, Returns/GoldValuationService, RetailerSalesService, Returns/ReturnService, StockPurchaseController, ItemController, Returns/ReturnsController, GoldInventoryController, CustomerGoldController
+- **Tests:** tests/Feature/Material/FineWeightAuthorityExclusivityTest.php (new)
+- **Docs:** journal
+
+### Migrations / Invariant impacts
+- None. No schema, no triggers. Gold/silver behaviour byte-identical (locked by test). Adds loud failure for any non-accounting metal reaching a fine-weight path (future-corruption prevention).
+
+### Remaining semantic seams after this pass
+- NONE in fine-weight derivation (PHP fully unified + guarded against drift).
+- NONE in mobile/web material validation (unified + guarded).
+- Two DOCUMENTED, intentional non-authority sites remain by necessity: basis-aware rate resolution (deriveRateForProfile) and the gold-filtered SQL display aggregate. Both are correct and explained, not hidden.
+
+### Operational rationale
+There is now exactly one place in the entire system that knows how to turn purity into fine weight, and the build fails if anyone adds a second. Mobile and web validate metals the same way. A gold/silver shop sees no change at all; a non-gold/silver value can no longer silently become grams anywhere.

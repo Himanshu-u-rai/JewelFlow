@@ -51,8 +51,8 @@ class GoldInventoryController extends Controller
 
         $shopId = auth()->user()->shop_id;
 
-        // Calculate fine gold
-        $fineGold = $validated['gross_weight'] * ($validated['purity'] / 24);
+        // Calculate fine gold via the single authority (gold inventory is gold-domain).
+        $fineGold = $validated['gross_weight'] * \App\Services\MetalRegistry::fineWeightMultiplier('gold', (float) $validated['purity']);
         
         // Calculate total cost
         $totalCost = ($validated['cost_per_gram'] ?? 0) * $validated['gross_weight'];

@@ -23,8 +23,9 @@ class BuybackService
             // Calculate net weight after test loss
             $netWeight = $grossWeight * (1 - ($testLossPercent / 100));
 
-            // Calculate fine gold
-            $fineGold = $netWeight * ($purity / 24);
+            // Calculate fine gold via the single authority. buyGold is an
+            // intrinsically gold operation (gold lot, gold rate).
+            $fineGold = $netWeight * \App\Services\MetalRegistry::fineWeightMultiplier('gold', (float) $purity);
 
             if ($fineGold <= 0) {
                 throw new \Exception('Fine gold weight must be greater than zero.');

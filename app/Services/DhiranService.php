@@ -69,7 +69,15 @@ class DhiranService
                 $ratePerGram     = (float) $item['rate_per_gram_at_pledge'];
 
                 $netMetalWeight  = $grossWeight - $stoneWeight;
-                $fineWeight      = $netMetalWeight * $purity / 24;
+                // Fine weight via the single authority. Dhiran collateral is
+                // gold (metal_type defaults to gold); the authority refuses any
+                // non-accounting metal.
+                $pledgeMetal     = (string) ($item['metal_type'] ?? 'gold');
+                $fineMultiplier  = \App\Services\MetalRegistry::fineWeightMultiplier($pledgeMetal, $purity);
+                if ($fineMultiplier === null) {
+                    throw new \LogicException("Cannot derive fine weight for non-accounting metal '{$pledgeMetal}' in dhiran pledge.");
+                }
+                $fineWeight      = $netMetalWeight * $fineMultiplier;
                 $marketValue     = round($fineWeight * $ratePerGram, 2);
 
                 $totalFineWeight += $fineWeight;

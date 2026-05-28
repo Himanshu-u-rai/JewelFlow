@@ -42,7 +42,11 @@ class ItemManufacturingService
             throw new LogicException('Net metal weight must be greater than zero.');
         }
 
-        $fineRequired = round($netMetal * ($purity / 24), 6);
+        // Fine weight via the single authority. Manufacturing is a gold-domain
+        // flow (gold lots, "fine gold" throughout); the divisor lives only in
+        // MetalRegistry now. If multi-metal manufacturing is ever added, derive
+        // the metal from the chosen lot.
+        $fineRequired = round($netMetal * \App\Services\MetalRegistry::fineWeightMultiplier('gold', (float) $purity), 6);
         $wastage = round($fineRequired * ($wastagePercent / 100), 6);
         $totalFineNeeded = round($fineRequired + $wastage, 6);
 

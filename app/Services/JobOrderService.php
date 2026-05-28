@@ -21,9 +21,14 @@ class JobOrderService
     // Gold purity is in Karats (24 = pure); silver is fineness (999 = pure).
     private function fineWeight(float $net, float $purity, string $metalType): float
     {
-        return $metalType === 'silver'
-            ? round($net * ($purity / 1000), 6)
-            : round($net * ($purity / 24), 6);
+        // Delegate to the single fine-weight authority. Gold → /24, silver →
+        // /1000; null (non-accounting metal) is impossible in karigar flows.
+        $mult = \App\Services\MetalRegistry::fineWeightMultiplier($metalType, $purity);
+        if ($mult === null) {
+            throw new \LogicException("Cannot derive fine weight for non-accounting metal '{$metalType}'.");
+        }
+
+        return round($net * $mult, 6);
     }
 
     /**

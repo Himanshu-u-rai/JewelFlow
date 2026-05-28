@@ -288,7 +288,11 @@ class InvoiceAccountingService
                 }
 
                 $item = $line->item;
-                $fineWeight = (float) $line->weight * ((float) $item->purity / 24);
+                $fineMultiplier = MetalRegistry::fineWeightMultiplier((string) $item->metal_type, (float) $item->purity);
+                if ($fineMultiplier === null) {
+                    throw new \LogicException("Cannot derive fine weight for non-accounting metal '{$item->metal_type}'.");
+                }
+                $fineWeight = (float) $line->weight * $fineMultiplier;
 
                 // Only create metal movement if item was sourced from a lot (manufacturer flow)
                 if ($item->metal_lot_id) {

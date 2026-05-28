@@ -369,7 +369,11 @@ class PricingEngine
         $making   = (float) $input->making;
         $stone    = (float) $input->stone;
 
-        $fineGold = (float) $item->net_metal_weight * ((float) $item->purity / 24.0);
+        $fineMultiplier = \App\Services\MetalRegistry::fineWeightMultiplier((string) $item->metal_type, (float) $item->purity);
+        if ($fineMultiplier === null) {
+            throw new \LogicException("Cannot derive fine weight for non-accounting metal '{$item->metal_type}'.");
+        }
+        $fineGold = (float) $item->net_metal_weight * $fineMultiplier;
         $metalValue = round($fineGold * $goldRate, 2);
         $lineTotal  = round($metalValue + $making + $stone, 2);
 

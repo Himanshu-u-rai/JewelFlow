@@ -12,6 +12,7 @@ use App\Models\Vendor;
 use App\Services\CatalogShareService;
 use App\Services\PosSearchCacheService;
 use App\Services\ShopPricingService;
+use App\Services\MetalRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -101,8 +102,15 @@ class ItemController extends Controller
             $rules = array_merge($rules, [
                 'gross_weight' => 'sometimes|required|numeric|min:0.001',
                 'stone_weight' => 'nullable|numeric|min:0',
-                'metal_type' => ['sometimes', 'required', Rule::in(['gold', 'silver'])],
-                'purity' => 'sometimes|required|numeric|min:0.001|max:1000',
+                'metal_type' => ['sometimes', 'required', Rule::in(MetalRegistry::enabledMetalsForShop($shopId))],
+                'purity' => [
+                    // Required only for accounting-truth metals (gold/silver);
+                    // piece-priced metals (platinum/copper) treat purity as an
+                    // optional spec — identical semantics to the web flow.
+                    Rule::requiredIf(fn () => MetalRegistry::isSupported((string) $request->input('metal_type', ''))
+                        && MetalRegistry::purityIsAccountingTruth((string) $request->input('metal_type', ''))),
+                    'nullable', 'numeric', 'min:0.001', 'max:1000',
+                ],
                 'cost_price' => 'sometimes|nullable|numeric|min:0',
                 'selling_price' => 'sometimes|nullable|numeric|min:0',
                 'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
@@ -331,7 +339,14 @@ class ItemController extends Controller
             'sub_category' => 'nullable|string|max:255',
             'gross_weight' => 'required|numeric|min:0.001',
             'stone_weight' => 'nullable|numeric|min:0',
-            'purity' => $isRetailer ? 'required|numeric|min:0.001|max:1000' : 'required|numeric|min:1|max:24',
+            'purity' => $isRetailer
+                ? [
+                    // Required only for accounting-truth metals (gold/silver).
+                    Rule::requiredIf(fn () => MetalRegistry::isSupported((string) $request->input('metal_type', ''))
+                        && MetalRegistry::purityIsAccountingTruth((string) $request->input('metal_type', ''))),
+                    'nullable', 'numeric', 'min:0.001', 'max:1000',
+                ]
+                : 'required|numeric|min:1|max:24',
             'cost_price' => $isRetailer ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
             'selling_price' => $isRetailer ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
@@ -350,7 +365,7 @@ class ItemController extends Controller
         ];
 
         if ($isRetailer) {
-            $rules['metal_type'] = ['required', Rule::in(['gold', 'silver'])];
+            $rules['metal_type'] = ['required', Rule::in(MetalRegistry::enabledMetalsForShop($shopId))];
         }
 
         $validated = $request->validate($rules);
@@ -365,7 +380,11 @@ class ItemController extends Controller
             ], 422);
         }
 
-        if ($isRetailer && isset($validated['metal_type'], $validated['purity'])) {
+        // Purity-profile validation applies only to accounting-truth metals
+        // (gold/silver). Piece-priced metals (platinum/copper) have no profiles.
+        if ($isRetailer && isset($validated['metal_type'], $validated['purity'])
+            && MetalRegistry::isSupported($validated['metal_type'])
+            && MetalRegistry::purityIsAccountingTruth($validated['metal_type'])) {
             $profile = $this->pricing->profileForPurity($shop, $validated['metal_type'], (float) $validated['purity']);
             if (! $profile) {
                 return response()->json([

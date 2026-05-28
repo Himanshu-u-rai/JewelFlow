@@ -31,7 +31,8 @@ class CustomerGoldController extends Controller
         $shopId   = auth()->user()->shop_id;
         $gross    = (float) $validated['gross_weight'];
         $purity   = (float) $validated['purity'];
-        $fineGold = $gross * ($purity / 24);
+        // Fine gold via the single authority (customer gold deposits are gold-domain).
+        $fineGold = $gross * \App\Services\MetalRegistry::fineWeightMultiplier('gold', $purity);
 
         DB::transaction(function () use ($shopId, $customer, $gross, $purity, $fineGold, $validated) {
             $lot = \App\Models\MetalLot::firstOrCreate(

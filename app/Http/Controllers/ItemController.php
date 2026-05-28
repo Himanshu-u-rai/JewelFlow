@@ -92,7 +92,7 @@ class ItemController extends Controller
                 COUNT(*) FILTER (WHERE status = 'in_stock') as in_stock,
                 COUNT(*) FILTER (WHERE status = 'sold') as sold,
                 COALESCE(SUM(selling_price) FILTER (WHERE status = 'in_stock'), 0) as total_stock_value,
-                COALESCE(SUM(net_metal_weight * purity / 24.0) FILTER (WHERE status = 'in_stock'), 0) as total_fine_gold
+                COALESCE(SUM(net_metal_weight * purity / 24.0) FILTER (WHERE status = 'in_stock' AND metal_type = 'gold'), 0) as total_fine_gold
             ")
             ->first();
 
@@ -533,7 +533,11 @@ class ItemController extends Controller
         // Recalculate cost price if charges changed (lot may have been deleted)
         $lot = MetalLot::where('shop_id', auth()->user()->shop_id)->find($item->metal_lot_id);
         if ($lot) {
-            $fineGold = $item->net_metal_weight * ($item->purity / 24) + ($item->wastage ?? 0);
+            $fineMultiplier = MetalRegistry::fineWeightMultiplier((string) $item->metal_type, (float) $item->purity);
+            if ($fineMultiplier === null) {
+                throw new \LogicException("Cannot derive fine weight for non-accounting metal '{$item->metal_type}'.");
+            }
+            $fineGold = $item->net_metal_weight * $fineMultiplier + ($item->wastage ?? 0);
             $goldCost = $fineGold * ($lot->cost_per_fine_gram ?? 0);
             $item->cost_price = $goldCost + $item->making_charges + $item->stone_charges;
             $item->save();
@@ -936,7 +940,11 @@ class ItemController extends Controller
                 if ($shop->isManufacturer() && $item->metal_lot_id) {
                     $lot = MetalLot::where('shop_id', $shopId)->where('id', $item->metal_lot_id)->lockForUpdate()->first();
                     if ($lot) {
-                        $fineGoldUsed = $item->net_metal_weight * ($item->purity / 24) + ($item->wastage ?? 0);
+                        $reverseMultiplier = MetalRegistry::fineWeightMultiplier((string) $item->metal_type, (float) $item->purity);
+                        if ($reverseMultiplier === null) {
+                            throw new \LogicException("Cannot derive fine weight for non-accounting metal '{$item->metal_type}'.");
+                        }
+                        $fineGoldUsed = $item->net_metal_weight * $reverseMultiplier + ($item->wastage ?? 0);
                         $lot->fine_weight_remaining += $fineGoldUsed;
                         $lot->save();
 

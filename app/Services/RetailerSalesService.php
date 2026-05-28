@@ -211,9 +211,11 @@ class RetailerSalesService
                     $purity    = (float) ($p['metal_purity'] ?? 0);
                     $testLoss  = (float) ($p['metal_test_loss'] ?? 0);
                     $netWt     = $grossWt * (1 - ($testLoss / 100));
-                    $fineWt    = $mode === 'old_gold'
-                        ? $netWt * ($purity / 24)
-                        : $netWt * ($purity / 1000);
+                    // Fine weight via the single authority (gold → /24, silver → /1000).
+                    $fineWt    = $netWt * \App\Services\MetalRegistry::fineWeightMultiplier(
+                        $mode === 'old_gold' ? 'gold' : 'silver',
+                        $purity
+                    );
                     $ratePerG  = (float) ($p['metal_rate_per_gram'] ?? 0);
 
                     $attrs['metal_type']          = $mode === 'old_gold' ? 'gold' : 'silver';

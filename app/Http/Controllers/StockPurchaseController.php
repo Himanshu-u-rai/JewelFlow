@@ -207,9 +207,12 @@ class StockPurchaseController extends Controller
         $metalType  = $line->metal_type;
         $purity     = (float) $line->purity;
         $gross      = (float) $line->gross_weight;
-        $fineWeight = $metalType === 'silver'
-            ? round($gross * ($purity / 1000), 6)
-            : round($gross * ($purity / 24), 6);
+        // Fine weight via the single authority (gold → /24, silver → /1000).
+        $fineMultiplier = MetalRegistry::fineWeightMultiplier((string) $metalType, $purity);
+        if ($fineMultiplier === null) {
+            throw new \LogicException("Cannot derive fine weight for non-accounting metal '{$metalType}'.");
+        }
+        $fineWeight = round($gross * $fineMultiplier, 6);
         $totalCost      = (float) $line->purchase_line_amount;
         $costPerFineGram = $fineWeight > 0 ? round($totalCost / $fineWeight, 2) : 0;
         $userId = (int) auth()->id();

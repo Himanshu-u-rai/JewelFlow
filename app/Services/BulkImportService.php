@@ -484,7 +484,13 @@ class BulkImportService
         }
 
         $net = round($normalized['gross_weight'] - $normalized['stone_weight'], 6);
-        $fineRequired = round($net * ($normalized['purity'] / 24), 6);
+        // Fine weight via the single authority. Returns null for any metal whose
+        // purity is not accounting truth — bulk stock import is gold/silver only.
+        $fineMultiplier = \App\Services\MetalRegistry::fineWeightMultiplier((string) ($normalized['metal_type'] ?? ''), (float) $normalized['purity']);
+        if ($fineMultiplier === null) {
+            return ['valid' => false, 'normalized' => $normalized, 'error' => 'Bulk stock import supports only fine-weight metals (gold, silver).'];
+        }
+        $fineRequired = round($net * $fineMultiplier, 6);
         $wastageFine = round($fineRequired * ($normalized['wastage_percent'] / 100), 6);
         $totalFine = round($fineRequired + $wastageFine, 6);
 
