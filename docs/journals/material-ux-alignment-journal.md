@@ -833,3 +833,39 @@ So an investigator reading reconcile output for a demo shop immediately sees the
 
 ### Operational rationale
 Reconcile output for Goldlux now reads "demo shop — seeded inventory" right next to its numbers, so no one mistakes its seeded quirks for live corruption — but the check still does its full job and still raises the alarm on anything genuinely new.
+
+## Entry [20] — 2026-05-28 — Shop Environment E3: admin badge + support filter
+
+### Batch identity
+- **Batch ID:** ENV-2026-05-28-03
+- **Plan:** shop-environment-classification-plan.md (E3)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- Platform admin shop list (`super-admin/shops/index`): a "Demo"/"Internal" badge next to non-production shop names, and an Environment filter dropdown (All/Production/Demo/Internal test).
+- `ShopManagementController::index`: added an `environment` query filter.
+
+### Why it changed
+Gives platform admins/support an at-a-glance signal and a triage filter to separate seeded shops from real ones.
+
+### Files touched
+- **Code:** `app/Http/Controllers/Admin/ShopManagementController.php`
+- **Views:** `resources/views/super-admin/shops/index.blade.php`
+- **Docs:** journal
+
+### Migrations / Invariant impacts
+- None. Display + a read-only `where` filter on the admin list. No accounting paths.
+
+### Verification performed
+- Controller lint clean; view:clear run.
+- Full gate: Material 57 passed; Constitutional 29 passed / 0 failed; returns:validate pass; materials:audit CLEAN; vault:reconcile exit 0.
+
+### Operational rationale
+A platform admin scanning the shop list now sees "Goldlux Jewellers [Demo]" and can filter to just production (or just demo) shops in one click — seeded data is visibly separated from real businesses everywhere it matters.
+
+---
+
+## Shop Environment Classification — complete
+
+E1–E3 shipped (journal entries [18]–[20]). `shops.environment` (production default / demo / internal_test) is platform-admin-only metadata, read ONLY for an admin badge/filter and a reconcile context note. Demo shops (Goldlux/JF-0001) run the identical accounting engine, triggers, immutability, audit logging, and reconciliation — a demo discrepancy still needs an explicit acknowledgement to stop failing the run. No accounting bypass; one additive column; full gate green.

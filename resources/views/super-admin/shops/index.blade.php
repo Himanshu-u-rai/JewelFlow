@@ -35,6 +35,15 @@
                     <option value="manufacturer" @selected(request('type') === 'manufacturer')>Manufacturer</option>
                 </select>
             </div>
+            <div>
+                <label class="block text-sm mb-1 text-slate-300">Environment</label>
+                <select name="environment" class="admin-control admin-select">
+                    <option value="">All</option>
+                    <option value="production" @selected(request('environment') === 'production')>Production</option>
+                    <option value="demo" @selected(request('environment') === 'demo')>Demo</option>
+                    <option value="internal_test" @selected(request('environment') === 'internal_test')>Internal test</option>
+                </select>
+            </div>
             <button class="admin-btn admin-btn-primary">Apply</button>
         </form>
     </div>
@@ -72,7 +81,14 @@
                                        value="{{ $shop->id }}">
                             </td>
                             <td class="px-4 py-3 text-slate-300 font-mono text-xs font-medium">{{ $shop->shop_code }}</td>
-                            <td class="px-4 py-3 font-medium">{{ $shop->name }}</td>
+                            <td class="px-4 py-3 font-medium">
+                                {{ $shop->name }}
+                                @if(($shop->environment ?? 'production') !== 'production')
+                                    <span class="ml-1 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide {{ $shop->environment === 'demo' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700' }}">
+                                        {{ $shop->environment === 'demo' ? 'Demo' : 'Internal' }}
+                                    </span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3">{{ trim(($shop->owner_first_name ?? '') . ' ' . ($shop->owner_last_name ?? '')) ?: ($shop->owner_name ?? '-') }}</td>
                             <td class="px-4 py-3">{{ $shop->phone }}</td>
                             <td class="px-4 py-3">{{ $shop->shop_type === 'retailer' ? 'Retail' : 'Manufacturer' }}</td>

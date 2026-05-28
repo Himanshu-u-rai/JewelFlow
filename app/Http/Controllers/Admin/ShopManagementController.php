@@ -50,6 +50,10 @@ class ShopManagementController extends Controller
             $query->where('shop_type', $request->type);
         }
 
+        if ($request->filled('environment')) {
+            $query->where('environment', $request->environment);
+        }
+
         $shops = $query->latest()->paginate(20)->withQueryString();
 
         $plans = Plan::whereRaw('is_active IS TRUE')->orderBy('name')->get(['id', 'name', 'price_monthly']);
