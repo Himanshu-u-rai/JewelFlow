@@ -911,3 +911,42 @@ New `tests/Feature/Material/FineWeightAuthorityExclusivityTest`: (a) scans all o
 
 ### Operational rationale
 There is now exactly one place in the entire system that knows how to turn purity into fine weight, and the build fails if anyone adds a second. Mobile and web validate metals the same way. A gold/silver shop sees no change at all; a non-gold/silver value can no longer silently become grams anywhere.
+
+## Entry [22] — 2026-05-28 — Pricing-Control R1: Vocabulary Lock-in
+
+### Batch identity
+- **Batch ID:** RP-2026-05-28-01
+- **Plan:** docs/runbooks/pricing-control-plan.md (R1)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed (docs only — zero code)
+- Marked `pricing-control-plan.md` status: APPROVED 2026-05-28.
+- Added `docs/runbooks/material-pricing-classes.md` — a one-page contributor guide locking the vocabulary: the three classes, the forbidden-name table, the "which class does this code touch?" rule, and the journal-declaration rule.
+
+### Vocabulary locked (definitive — future contributors consult `material-pricing-classes.md`)
+- **Class A — Accounting rate** (gold, silver): `rate_per_gram`, `business_date`, `ShopPricingService`, `ShopDailyMetalRate`, "Daily Rates History."
+- **Class B — Reference price (memo)** (platinum, copper): `reference_price`, `noted_at`, `ReferencePriceService` (R2+), `ShopMetalReferencePrice` (R2+), "Reference Prices — last noted."
+- **Class C — Value-only** (stones): per-piece `stone_amount` / `stone_components`. No rate or reference UI exists.
+
+### Forbidden combinations (each will fail an architecture test once R6 ships)
+- `rate_per_gram` on the reference table.
+- `business_date` on the reference table.
+- FK between rate and reference storage families.
+- `ReferencePriceService` importing `ShopPricingService`/`MetalRate`/`resolvedRateForToday`/`RepriceRetailerInventoryJob`/`fineWeightMultiplier`.
+- `ShopPricingService`/`BullionVaultService`/`RepriceRetailerInventoryJob`/`computeRetailerCostPayload` mentioning `ReferencePriceService`/`shop_metal_reference_prices`/`latestReference`.
+
+### Journal-entry rule (permanent, applies from R2 onward)
+Any future change touching pricing/material code MUST declare in its journal entry: (a) which class(es) it touches, (b) that it does not cross into the other classes, (c) operator-facing implication, (d) invariant impact. A material/pricing change without a class declaration is incomplete.
+
+### Files touched
+- **Docs:** `docs/runbooks/pricing-control-plan.md` (status header), `docs/runbooks/material-pricing-classes.md` (new), journal.
+
+### Migrations / Invariant impacts
+- None. Docs only.
+
+### Operational rationale
+The vocabulary lock-in is the cheapest, most durable anti-drift guard: the next person to write a "rate" feature will read this guide first, and the structural test gates (shipping in R6) will catch anyone who didn't. Pilot shops see nothing.
+
+### Next phase
+R2 — additive `shop_metal_reference_prices` storage + `ReferencePriceService`. **Awaits explicit go-ahead before code changes.**
