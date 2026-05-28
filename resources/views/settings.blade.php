@@ -2087,6 +2087,81 @@
                         </div>
                     @endcan
                 </form>
+
+                {{-- Class-B reference prices: an optional memo per enabled Tier-2 metal.
+                     Display hint only — never an accounting rate. See pricing-control-plan.md. --}}
+                @php
+                    $enabledTier2 = array_values(array_filter(($materialsData['tier2'] ?? []), fn ($r) => $r['enabled']));
+                @endphp
+                @if(! empty($enabledTier2))
+                    <div class="mt-6 max-w-2xl space-y-4">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">{{ __('Reference prices') }}</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">
+                                {{ __('Optional note — what you are selling these metals at this week. Used as a hint only; never a daily rate.') }}
+                            </p>
+                        </div>
+
+                        @foreach($enabledTier2 as $row)
+                            @php
+                                $metal  = $row['metal'];
+                                $latest = $row['latest_reference'] ?? null;
+                            @endphp
+
+                            <section class="rounded-xl border border-slate-200 bg-white">
+                                <div class="border-b border-slate-100 px-5 py-3">
+                                    <h4 class="text-sm font-semibold text-slate-900 capitalize">{{ $metal }} {{ __('reference price') }}</h4>
+                                    @if($latest)
+                                        <p class="text-xs text-slate-600 mt-1">
+                                            {{ __('Last noted') }}:
+                                            <strong>₹{{ number_format((float) $latest->reference_price, 2) }} / g</strong>
+                                            · {{ optional($latest->noted_at)->format('d M Y') }}
+                                            @if($latest->notedBy)
+                                                {{ __('by') }} {{ $latest->notedBy->name ?? __('user') }}
+                                            @endif
+                                            @if(filled($latest->note))
+                                                — <span class="italic">"{{ $latest->note }}"</span>
+                                            @endif
+                                        </p>
+                                    @else
+                                        <p class="text-xs text-slate-500 mt-1">{{ __('No reference noted yet — fine to leave blank.') }}</p>
+                                    @endif
+                                </div>
+
+                                @can('settings.edit')
+                                    <form method="POST" action="{{ route('settings.update.material-reference') }}" data-turbo-frame="_top" class="px-5 py-4 space-y-3">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="metal_type" value="{{ $metal }}">
+                                        <div class="flex flex-wrap items-end gap-3">
+                                            <div>
+                                                <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('Price per gram (₹)') }}</label>
+                                                <input type="number" name="reference_price" step="0.01" min="0" required
+                                                       class="rounded-lg border border-slate-300 px-3 py-2 text-sm w-40">
+                                            </div>
+                                            <div class="flex-1 min-w-[180px]">
+                                                <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('Note (optional)') }}</label>
+                                                <input type="text" name="note" maxlength="255"
+                                                       placeholder="{{ __('e.g. supplier price this week') }}"
+                                                       class="rounded-lg border border-slate-300 px-3 py-2 text-sm w-full">
+                                            </div>
+                                            <button type="submit"
+                                                    class="inline-flex items-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition">
+                                                {{ __('Note new price') }}
+                                            </button>
+                                        </div>
+                                    </form>
+                                @endcan
+
+                                <div class="border-t border-slate-100 bg-slate-50 px-5 py-2">
+                                    <p class="text-[11px] text-slate-500">
+                                        {{ __('Used as a hint only; this metal is sold at a fixed price per piece.') }}
+                                    </p>
+                                </div>
+                            </section>
+                        @endforeach
+                    </div>
+                @endif
             @endif
 
             @if($activeTab === 'roles')

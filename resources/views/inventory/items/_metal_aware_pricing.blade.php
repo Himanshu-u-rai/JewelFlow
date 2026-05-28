@@ -15,6 +15,10 @@
 (function () {
     const UX_MODES = @json($metalUxModes ?? []);
     const PURITY = @json($metalPurity ?? []);
+    // Class B reference-price hints (display-only memory aid). Keyed by metal.
+    // Missing entry = no reference noted yet (a normal state). Hint is NEVER
+    // auto-filled into selling_price and NEVER used as a rate.
+    const REFERENCE_HINTS = @json($referenceHints ?? []);
     const metalSelect = document.getElementById('metal_type');
     const sellingDisplay = document.getElementById('selling_price_display');
     const sellingHidden = document.getElementById('selling_price');
@@ -67,6 +71,7 @@
     }
 
     let hintEl = null;
+    let referenceHintEl = null;
 
     function ensureHint() {
         if (hintEl) {
@@ -77,6 +82,34 @@
         hintEl.textContent = 'This metal is sold at a fixed price — type the selling price directly. Daily metal rate is not used.';
         sellingDisplay.parentElement.appendChild(hintEl);
         return hintEl;
+    }
+
+    function ensureReferenceHint() {
+        if (referenceHintEl) {
+            return referenceHintEl;
+        }
+        referenceHintEl = document.createElement('p');
+        referenceHintEl.className = 'mt-1 text-xs text-slate-500 italic';
+        referenceHintEl.setAttribute('data-role', 'reference-hint');
+        sellingDisplay.parentElement.appendChild(referenceHintEl);
+        return referenceHintEl;
+    }
+
+    function applyReferenceHint(metal) {
+        const hint = REFERENCE_HINTS[metal];
+        if (!hint || !isPiecePrice(metal)) {
+            if (referenceHintEl) {
+                referenceHintEl.style.display = 'none';
+            }
+            return;
+        }
+        const el = ensureReferenceHint();
+        const priceStr = '₹' + Number(hint.price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let text = 'Recent reference: ' + priceStr + ' / g';
+        if (hint.noted_at_human) text += ' (noted ' + hint.noted_at_human + ')';
+        text += '. Memory aid only — not a rate.';
+        el.textContent = text;
+        el.style.display = '';
     }
 
     function isPiecePrice(metal) {
@@ -124,6 +157,7 @@
     function applyAll() {
         applyMode();
         applyPurityMode();
+        applyReferenceHint(metalSelect.value);
     }
 
     // Run AFTER the form's own metal-change handler (which derives from rates

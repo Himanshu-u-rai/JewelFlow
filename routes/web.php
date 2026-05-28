@@ -379,6 +379,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/closing', [\App\Http\Controllers\ClosingController::class, 'index'])->middleware('can:reports.daily_closing')->name('report.closing');
     Route::get('/report/transactions', [TransactionHistoryReportController::class, 'index'])->middleware('can:reports.view')->name('report.transactions');
     Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware('can:reports.view')->name('report.repairs');
+    Route::get('/report/reference-prices', [\App\Http\Controllers\ReferencePriceHistoryController::class, 'index'])->middleware('can:reports.view')->name('report.reference-prices');
     Route::get('/report/audit', function () {
         return redirect()->route('settings.edit', ['tab' => 'audit']);
     })->middleware('can:settings.view');
@@ -401,6 +402,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/settings/billing', [SettingsController::class, 'updateBilling'])->middleware('can:settings.edit')->name('settings.update.billing');
     Route::patch('/settings/preferences', [SettingsController::class, 'updatePreferences'])->middleware('can:settings.edit')->name('settings.update.preferences');
     Route::patch('/settings/materials', [SettingsController::class, 'updateMaterials'])->middleware('can:settings.edit')->name('settings.update.materials');
+    Route::patch('/settings/materials/reference', [SettingsController::class, 'updateMaterialReference'])->middleware('can:settings.edit')->name('settings.update.material-reference');
     Route::post('/settings/whatsapp-template', [SettingsController::class, 'saveWhatsappTemplate'])->middleware('can:settings.edit')->name('settings.whatsapp.template');
     // The role-permission editor itself stays `role:owner` — only the shop owner
     // controls who has which permissions. Permission-gating this would let a

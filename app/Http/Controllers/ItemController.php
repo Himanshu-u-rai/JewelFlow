@@ -14,6 +14,7 @@ use App\Services\ItemManufacturingService;
 use App\Services\RetailerReportService;
 use App\Services\ShopPricingService;
 use App\Services\MetalRegistry;
+use App\Services\ReferencePriceService;
 use App\Http\Concerns\RespondsDynamically;
 use App\Support\ShopEdition;
 use Illuminate\Http\Request;
@@ -195,6 +196,7 @@ class ItemController extends Controller
             $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
             $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
             [$enabledMetals, $metalUxModes, $metalPurity] = $this->buildMetalPickerData($shopId);
+            $referenceHints = $this->buildReferenceHints($shopId);
 
             return view('inventory.items.create-retailer', compact(
                 'categories',
@@ -204,7 +206,8 @@ class ItemController extends Controller
                 'resolvedRates',
                 'enabledMetals',
                 'metalUxModes',
-                'metalPurity'
+                'metalPurity',
+                'referenceHints'
             ));
         }
 
@@ -446,6 +449,7 @@ class ItemController extends Controller
             $purityProfiles = $this->pricing->activePurityProfiles($shop)->groupBy('metal_type');
             $resolvedRates = $this->buildRetailerResolvedRateMap($shop, $purityProfiles);
             [$enabledMetals, $metalUxModes, $metalPurity] = $this->buildMetalPickerData($shopId);
+            $referenceHints = $this->buildReferenceHints($shopId);
 
             return view('inventory.items.edit-retailer', compact(
                 'item',
@@ -456,7 +460,8 @@ class ItemController extends Controller
                 'resolvedRates',
                 'enabledMetals',
                 'metalUxModes',
-                'metalPurity'
+                'metalPurity',
+                'referenceHints'
             ));
         }
 
@@ -893,6 +898,34 @@ class ItemController extends Controller
         }
 
         return [$enabledMetals, $metalUxModes, $metalPurity];
+    }
+
+    /**
+     * Build the class-B reference-price hint map for the item form.
+     *
+     * Returns a `metal => {price, noted_at_human, noted_by}` map for each
+     * Tier-2 metal that has a recorded reference. Metals with no reference are
+     * omitted. This is a display-only memory aid — it is NEVER auto-filled
+     * into selling_price and NEVER multiplied by anything. Gold/silver and
+     * stones are never in the map (the service rejects them).
+     */
+    private function buildReferenceHints(int $shopId): array
+    {
+        $service = app(ReferencePriceService::class);
+        $hints = [];
+        foreach (MetalRegistry::tier2Metals() as $metal) {
+            $row = $service->latestReference($shopId, $metal);
+            if ($row === null) {
+                continue;
+            }
+            $hints[$metal] = [
+                'price'         => (float) $row->reference_price,
+                'noted_at_human' => optional($row->noted_at)->format('d M Y'),
+                'noted_by'      => $row->notedBy?->name,
+                'note'          => $row->note,
+            ];
+        }
+        return $hints;
     }
 
     private function buildRetailerResolvedRateMap($shop, $purityProfiles): array

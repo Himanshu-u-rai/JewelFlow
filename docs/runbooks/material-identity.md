@@ -52,8 +52,27 @@ Your journal entry (and PR) MUST state:
 
 No generic material/attribute engine, no alloy decomposition, no gemological grading engine, no universal purity abstraction, no schema redesign of `items.purity` (the column meaning is enforced by the fine-weight authority, not by splitting storage). Model how a shop owner thinks, not material science.
 
+## And reference prices (Class B memo, never a rate)
+
+Platinum and copper are piece-priced — the operator types the actual selling price per item. They have an **optional, append-only reference-price memo** ("what we are asking per gram this week") stored in `shop_metal_reference_prices`, written by `ReferencePriceService::recordReference()`, and surfaced read-only in three places: the Materials settings card, the item form hint, and the Reference Prices history report.
+
+This memo is **not** a rate. The structural separation is permanent:
+
+| Forbidden in the reference path | Required vocabulary |
+|---|---|
+| `rate_per_gram`, `business_date`, `resolved_rate_per_gram` | `reference_price`, `noted_at` |
+| Joining `shop_metal_reference_prices` to `shop_daily_metal_rates` | Two separate, never-joined storage families |
+| Importing `ShopPricingService` / calling `resolvedRateForToday` / `fineWeightMultiplier` from the reference path | `ReferencePriceService` only — its own service, file, vocabulary |
+| Importing `ReferencePriceService` from `ShopPricingService`, `BullionVaultService`, or `RepriceRetailerInventoryJob` | The rate engine, vault, and reprice paths are reference-free |
+
+Gold and silver have no reference price (they have a daily rate). Stones have no reference price (no rate UI at all). The Reference Prices report shows platinum and copper only; empty state is normal.
+
+See `docs/runbooks/pricing-control-plan.md` for the full plan and `docs/runbooks/material-pricing-classes.md` for the one-page contributor cheat-sheet.
+
 ## See also
 - `material-identity-audit.md` — the why (approved truth).
 - `material-identity-alignment-plan.md` — the phased plan + Claude/MinMax task split.
 - `material-behavior-audit.md` — operational behavior per material.
-- `docs/journals/material-ux-alignment-journal.md` — implementation log (entries [10]–[14] are the identity phases).
+- `pricing-control-plan.md` — Class A/B/C pricing model and R1–R7 sequence.
+- `material-pricing-classes.md` — one-page A/B/C cheat-sheet for new contributors.
+- `docs/journals/material-ux-alignment-journal.md` — implementation log (entries [22]–[26] are the pricing-control phases).

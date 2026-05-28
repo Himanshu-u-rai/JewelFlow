@@ -992,3 +992,159 @@ The infrastructure is now in place for an owner to optionally note "this is what
 
 ### Next phase
 R3 — "Reference price" card on Settings → Materials per opted-in Class-B metal. Awaits explicit go-ahead.
+
+---
+
+## [24] 2026-05-28 — R3 shipped: reference price UI on Settings → Materials
+
+### Class declaration (R1 journal rule)
+- Class A (gold, silver): **NOT touched.** No view, controller, route, model, migration, or service used in this change reads or writes the daily-rate path, `MetalRate`, `shop_daily_metal_rate`, `ShopPricingService`, or `RepriceRetailerInventoryJob`. The pricing tab and POS rate flow are byte-identical.
+- Class B (platinum, copper): **only class touched.** A small "Reference price" card now appears on Settings → Materials beneath each enabled Tier-2 metal. The card surfaces the latest `shop_metal_reference_prices` row and submits new ones via `PATCH settings.update.material-reference`, which calls `ReferencePriceService::recordReference()` (R2). Append-only.
+- Class C (stones): **NOT touched.** No stone path read or written.
+
+### Pilot invariant
+A gold-and-silver-only shop sees **zero** reference UI. The card section iterates `array_filter($materialsData['tier2'], fn ($r) => $r['enabled'])` and only renders for enabled Tier-2 metals; on a pilot shop that array is empty so the section never appears. Verified by `test_pilot_shop_sees_no_reference_card`. The daily-rates tab is verified untouched by `test_daily_rates_ui_is_not_touched`.
+
+### What changed
+- `SettingsController::edit()` — loads `latest_reference` per enabled Tier-2 metal via `ReferencePriceService::latestReference()`; no other materials-tab behaviour altered.
+- `SettingsController::updateMaterialReference()` — new action. Validates `metal_type` is in `MetalRegistry::tier2Metals()` (rejects gold/silver/stones) and is enabled for the shop. Records via the service. Redirects back to materials tab.
+- `routes/web.php` — `PATCH /settings/materials/reference` named `settings.update.material-reference`, gated `can:settings.edit`.
+- `resources/views/settings.blade.php` — appended a reference-cards block **after** the materials toggle form and **before** the materials-tab `@endif`. Each card is its own form with `data-turbo-frame="_top"` (CLAUDE.md Turbo rule). Owner-facing text is plain English ("Used as a hint only; this metal is sold at a fixed price per piece.") per the simple-English memory.
+- `tests/Feature/Material/ReferencePriceSettingsTest.php` — 8 new tests: pilot invariant, card visibility per enabled metal, card absence per disabled metal, save persistence + redirect, class-A rejection at validation, rejection when metal not enabled, latest-reference rendering, daily-rates tab isolation.
+
+### Gates passed
+- 18/18 (R2 + R3) feature tests green.
+- `php artisan returns:validate` — 12/12 checks pass.
+- Forbidden-token sweep on R2/R3 files: only matches are in the ban-list documentation comments inside `ReferencePriceService.php` (constitutional reminder of what may never appear in that file). No live code mentions `rate_per_gram`, `resolvedRateForToday`, `RepriceRetailerInventoryJob`, `MetalRate::`, `shop_daily_metal_rate`, or `ShopPricingService` anywhere in the R2/R3 surface.
+- Route registered: `PATCH settings/materials/reference` → `settings.update.material-reference`.
+
+### Operational rationale
+Owners that opted platinum or copper on (R2's enablement gate) now have a one-input way to note "this is what I'm asking per gram this week" plus an optional reason. Nothing about that note becomes an accounting rate. The UI explicitly says "hint only" and "sold at a fixed price per piece." Append-only history is preserved server-side; old references are never edited, only superseded.
+
+### Next phase
+R4 — propagation policy review (where the reference _may_ surface read-only: catalogue admin, item form hint, vault valuation report). Strictly read-only consumers. Awaits explicit go-ahead.
+
+---
+
+## [25] 2026-05-28 — R4 shipped: item-form reference-price hint (display-only)
+
+### Class declaration
+- Class A (gold, silver): **NOT touched.** No code path emitted by R4 reads, writes, or imports the daily-rate engine, `MetalRate`, `shop_daily_metal_rate`, `ShopPricingService::resolvedRateForToday`, or `fineWeightMultiplier`. The retailer item form's rate-derived gold/silver pricing JS is byte-identical (existing logic on lines 86–115 of `_metal_aware_pricing.blade.php` is unchanged).
+- Class B (platinum, copper): **only class touched.** When the operator selects a piece-price metal that has a recorded reference, a small grey italic hint reading "Recent reference: ₹X / g (noted DD Mon YYYY). Memory aid only — not a rate." appears beneath the selling-price input. The hint never auto-fills `selling_price`. The hint never multiplies by anything.
+- Class C (stones): **NOT touched.** Stone path has no rate UI and no hint.
+
+### Pilot invariant
+A gold/silver-only shop ships an empty hint payload (`REFERENCE_HINTS = []`). Verified by `test_pilot_shop_create_form_has_no_reference_hints_payload`. The class-A rate-derived JS branch (lines 102–114) is the path taken for gold/silver and is unmodified.
+
+### What changed
+- `ItemController` — new private `buildReferenceHints(int $shopId): array` that iterates `MetalRegistry::tier2Metals()` and calls `ReferencePriceService::latestReference()`. Returns `[metal => {price, noted_at_human, noted_by, note}]` or `[]`. Gold/silver/stones are structurally never in the map (the service rejects them by class).
+- `ItemController::create()` retailer branch + `edit()` retailer branch now pass `$referenceHints` to the views.
+- `resources/views/inventory/items/_metal_aware_pricing.blade.php` — added `REFERENCE_HINTS = @json($referenceHints ?? [])` constant, a separate `referenceHintEl` DOM node, and an `applyReferenceHint(metal)` function. Called from `applyAll()` alongside the existing `applyMode()`/`applyPurityMode()`. Mounting site is `sellingDisplay.parentElement.appendChild(...)`. Italic grey styling distinguishes the hint from the existing piece-price helper line.
+- `tests/Feature/Material/ReferencePriceItemHintTest.php` — 5 new tests: pilot shop empty payload, hint appears when reference noted, class-A rejected at service layer, helper returns null per class, partial source has no rate-engine tokens.
+
+### Gates passed
+- 5/5 R4 tests green.
+- Full material suite: 94/94 passing.
+- `php artisan returns:validate` — 12/12 checks pass.
+- `php artisan materials:audit` — clean (28/28 constitutional triggers present, 0 orphan opt-in rows).
+
+### Operational rationale
+A platinum-enabled retailer who saw the reference price last week on Settings → Materials now sees that same value again at the moment they're typing the selling price for a new platinum item. It is a memory aid, not a recommendation; the form does not pre-fill or arithmetic on it. Most platinum sales come straight from a supplier-tagged piece price, and the system continues to respect that workflow.
+
+### Next phase
+R5 — Reference Prices history report screen. Append-only timeline per metal. Approved as part of the original plan approval.
+
+---
+
+## [26] 2026-05-28 — R5 shipped: Reference Prices history report
+
+### Class declaration
+- Class A (gold, silver): **NOT touched.** The new controller reads from `shop_metal_reference_prices` only. It never imports `ShopPricingService`, never joins to `shop_daily_metal_rates`, never references `MetalRate`. Verified by `test_controller_does_not_touch_class_a_storage` (comment-stripped scan) and `test_view_does_not_render_class_a_storage_columns`.
+- Class B (platinum, copper): **only class touched.** New screen at `/report/reference-prices` lists per-metal append-only timelines, newest-first, showing date, price, noted-by, note. Hard-capped at 50 rows per metal.
+- Class C (stones): **NOT touched.** Stones are never in the timeline iteration (`MetalRegistry::tier2Metals()` returns `['platinum','copper']`).
+
+### Pilot invariant
+A gold/silver-only shop sees both metal sections with "No reference noted for platinum yet" and "No reference noted for copper yet." Gold and silver are not listed as section headers. Verified by `test_report_renders_empty_state_for_pilot_shop`.
+
+### What changed
+- `app/Http/Controllers/ReferencePriceHistoryController.php` — new controller. Single `index()` action. Loads timelines per Tier-2 metal via `ShopMetalReferencePrice::withoutTenant()->where(...)`. Eager-loads `notedBy:id,name` for display.
+- `routes/web.php` — `GET /report/reference-prices` named `report.reference-prices`, gated `can:reports.view`.
+- `resources/views/reports/reference-prices.blade.php` — new view using `<x-app-layout>` and `<x-page-header>`. Top amber banner explicitly disclaims rate-feeding ("not daily rates and never feed pricing, vault, GST, or reconciliation"). Per-metal sections with empty-state copy. Table renders `noted_at`, formatted price, `notedBy->name`, note.
+- `tests/Feature/Material/ReferencePriceHistoryReportTest.php` — 4 tests: empty state, newest-first ordering across three notes, controller source has no class-A tokens (comment-stripped), view contains no class-A storage column names.
+
+### Gates passed
+- 4/4 R5 tests green.
+- Full material suite: 94/94 passing.
+- `returns:validate` 12/12, `materials:audit` clean.
+
+### Operational rationale
+An owner now has one place to see "when did we last note the platinum price, and what did we say it was." The screen makes the append-only nature visible and the disclaimer makes the memo-only nature explicit. The constitutional separation from daily rates is enforced both at the code-search level (tests) and at the visible UI level (the banner).
+
+### Next phase
+R6 — anti-drift architecture tests.
+
+---
+
+## [27] 2026-05-28 — R6 shipped: anti-drift architecture tests
+
+### Class declaration
+- Class A: **NOT touched.** Tests scan `ShopPricingService`, `BullionVaultService`, `RepriceRetailerInventoryJob`, and `ShopPricingService::computeRetailerCostPayload` callers for class-B leakage; no class-A code was modified.
+- Class B: **only class affected.** Permanent guards added.
+- Class C: **NOT touched.**
+
+### What changed
+- `tests/Feature/Material/ReferencePriceAntiDriftTest.php` — 7 architecture tests, each named after one concrete drift vector:
+  1. `reference_service_does_not_import_rate_engine` — strips comments from `ReferencePriceService.php`, asserts no live mention of `ShopPricingService`, `shop_daily_metal_rate`, `MetalRate::`, `resolvedRateForToday`, `RepriceRetailerInventoryJob`, `fineWeightMultiplier`, or `rate_per_gram`.
+  2. `pricing_engine_does_not_import_reference_service` — `ShopPricingService.php` is free of `ReferencePriceService`, `shop_metal_reference_prices`, `latestReference`, `recordReference`, `ShopMetalReferencePrice`.
+  3. `vault_service_does_not_import_reference_service` — same for `BullionVaultService.php`.
+  4. `reprice_job_does_not_import_reference_service` — same for `RepriceRetailerInventoryJob.php`.
+  5. `compute_retailer_cost_payload_callers_do_not_import_reference_service` — scans `ItemController` (web + mobile) and `BulkImportService`. The web `ItemController` is permitted to call `ReferencePriceService::latestReference()` for the R4 hint (the ONLY authorized caller path).
+  6. `reference_table_schema_carries_no_class_a_column_names` — `shop_metal_reference_prices` must not carry `rate_per_gram`, `business_date`, `resolved_rate_per_gram`, or `fine_weight_multiplier`, and MUST carry `reference_price`, `noted_at`, `noted_by_user_id`.
+  7. `materials_audit_is_recursive_clean` — exits 0.
+
+### Gates passed
+- 7/7 R6 tests green.
+- Full material suite: 94/94 passing.
+- `returns:validate` 12/12.
+
+### Operational rationale
+Future contributors cannot accidentally promote the reference-price memo into the rate engine, nor leak the rate engine into the reference path. Every drift vector named in the pricing-control plan §6 ("Historical-meaning protection") now has a named test. The build fails if any of them break.
+
+### Next phase
+R7 — contributor docs (cross-link from `material-identity.md` to the pricing-control plan and cheat-sheet).
+
+---
+
+## [28] 2026-05-28 — R7 shipped: contributor docs cross-link
+
+### Class declaration
+- Class A: **NOT touched.** Pure documentation.
+- Class B: **NOT touched.** Pure documentation.
+- Class C: **NOT touched.** Pure documentation.
+
+### What changed
+- `docs/runbooks/material-identity.md` — appended an "And reference prices (Class B memo, never a rate)" section just above "See also." It states the forbidden/required vocabulary table, names the three read-only surfaces (Materials settings card, item form hint, history report), and reiterates the gold/silver/stone exclusion. Cross-links to `pricing-control-plan.md` and `material-pricing-classes.md`.
+- The "See also" footer now also lists `pricing-control-plan.md` and `material-pricing-classes.md`, and updates the journal-entry pointer to entries [22]–[28] (R1 through R7).
+- `material-pricing-classes.md` already exists from R1; no change needed.
+
+### Gates passed
+- Full material suite: 94/94 passing.
+- `returns:validate` 12/12, `materials:audit` clean, `vault:reconcile` clean.
+
+### Pricing-control plan completion
+R1 → R7 are all shipped. Per the plan's §11 verification checklist, every numbered invariant now has a named test or a structural guarantee:
+1. `ReferencePriceService` exists; greps for class-A tokens return zero (R2, R6).
+2. Pricing/vault/reprice paths contain no class-B token references (R6).
+3. `shop_metal_reference_prices` schema carries only class-B vocabulary (R2, R6 schema test).
+4. PnL/Closing loads no rows from `shop_metal_reference_prices` (no controller modified in R1–R7 touches those reports).
+5. Vault reconciliation output unchanged before/after (verified end-of-R7: `vault:reconcile` clean).
+6. Auto-reprice unaffected by reference prices (R6 covers the job's source code).
+7. `materials:audit` recursive-clean (R6 test + final gate).
+8. Anti-drift tests are named after specific drift vectors (R6).
+9. Gold/silver shop sees today's UI byte-identical (R4/R5 pilot-invariant tests; daily rates tab isolation test from R3).
+
+### Operational rationale
+New contributors landing on `material-identity.md` are now pointed at the pricing-control plan and the one-page cheat-sheet the moment they read about the three identity classes. The "and reference prices" section structurally answers the most likely future question ("can I convert this memo into a rate?") with a permanent No.
+
+### Next phase
+Pricing-control plan complete. No further phases planned in this stream.

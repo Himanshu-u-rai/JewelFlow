@@ -175,13 +175,28 @@ class SettingsController extends Controller
 
         // Materials tab — current Tier 2 opt-in state. Tier 1 (gold/silver) is
         // always available; Tier 2 (platinum/copper) is opt-in per shop.
+        // For enabled Tier-2 metals, also surface the most recent Class-B
+        // reference price (memo, display hint only — see pricing-control-plan).
         $materialsData = null;
         if ($activeTab === 'materials') {
             $enabled = \App\Services\MetalRegistry::enabledMetalsForShop((int) $shop->id);
+            $refSvc  = app(\App\Services\ReferencePriceService::class);
+
             $materialsData = [
                 'primary' => \App\Services\MetalRegistry::tier1Metals(),
                 'tier2' => array_map(
-                    fn (string $metal) => ['metal' => $metal, 'enabled' => in_array($metal, $enabled, true)],
+                    function (string $metal) use ($enabled, $refSvc, $shop) {
+                        $isEnabled = in_array($metal, $enabled, true);
+                        return [
+                            'metal'             => $metal,
+                            'enabled'           => $isEnabled,
+                            // Reference price exists ONLY when the metal is enabled
+                            // (no point showing a memo for a metal the shop doesn't sell).
+                            'latest_reference'  => $isEnabled
+                                ? $refSvc->latestReference((int) $shop->id, $metal)
+                                : null,
+                        ];
+                    },
                     \App\Services\MetalRegistry::tier2Metals()
                 ),
             ];
@@ -473,6 +488,43 @@ class SettingsController extends Controller
 
         return redirect()->route('settings.edit', ['tab' => 'materials'])
             ->with('success', 'Materials updated successfully.');
+    }
+
+    /**
+     * Record a NEW reference price (Class-B memo, append-only) for an
+     * opted-in Tier-2 metal. Each save records a new row; previous notes are
+     * preserved as history. Class A (gold/silver) and unsupported metals are
+     * rejected at validation; the service rejects them again at the source.
+     */
+    public function updateMaterialReference(Request $request, \App\Services\ReferencePriceService $references)
+    {
+        $shop = Auth::user()->shop;
+
+        $tier2 = \App\Services\MetalRegistry::tier2Metals();
+        $enabled = \App\Services\MetalRegistry::enabledMetalsForShop((int) $shop->id);
+
+        $validated = $request->validate([
+            'metal_type'      => ['required', \Illuminate\Validation\Rule::in($tier2)],
+            'reference_price' => 'required|numeric|min:0|max:9999999.99',
+            'note'            => 'nullable|string|max:255',
+        ]);
+
+        if (! in_array($validated['metal_type'], $enabled, true)) {
+            return back()
+                ->withErrors(['metal_type' => 'Turn this metal on first before noting a reference price.'])
+                ->withInput();
+        }
+
+        $references->recordReference(
+            shopId:          (int) $shop->id,
+            metalType:       (string) $validated['metal_type'],
+            referencePrice:  (float) $validated['reference_price'],
+            notedByUserId:   (int) Auth::id(),
+            note:            $validated['note'] ?? null,
+        );
+
+        return redirect()->route('settings.edit', ['tab' => 'materials'])
+            ->with('success', ucfirst($validated['metal_type']) . ' reference price noted.');
     }
 
     /**
