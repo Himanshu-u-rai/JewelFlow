@@ -763,3 +763,39 @@ The system no longer hardcodes "gold or silver" anywhere in business validation 
 
 ### Operational rationale
 The vault check no longer cries wolf over three known demo-data quirks in the sample shop, but it still raises the alarm the instant anything NEW or DIFFERENT goes out of balance — and every acknowledgement is a permanent, reasoned audit record.
+
+## Entry [18] — 2026-05-28 — Shop Environment E1: classification metadata
+
+### Batch identity
+- **Batch ID:** ENV-2026-05-28-01
+- **Plan:** docs/runbooks/shop-environment-classification-plan.md (E1)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- Migration `2026_08_02_010000_add_environment_to_shops`: adds `shops.environment VARCHAR(20) NOT NULL DEFAULT 'production'` + CHECK constraint `IN ('production','demo','internal_test')`. Additive; no other table touched.
+- `Shop` model: `ENV_*` consts + `ENVIRONMENTS` list + `isProduction()`/`isDemo()`/`isNonProduction()`. **Deliberately NOT added to `$fillable`** — environment is platform-admin-only, never shop-owner self-service.
+- Data step (this deployment only): set shop 4 (JF-0001, Goldlux Jewellers) → `demo` via a direct metadata UPDATE on the `shops` row. Not a global data migration (another deployment's JF-0001 may be real).
+- Added `tests/Feature/Material/ShopEnvironmentTest.php` (4 tests).
+
+### Why it changed
+Goldlux (JF-0001) is confirmed demo/seed data. Classifying it explicitly stops future audits/reconciliation/support from repeatedly treating seeded anomalies as potential corruption — while the shop keeps running the identical accounting engine.
+
+### Files touched
+- **Migration:** `database/migrations/2026_08_02_010000_add_environment_to_shops.php` (new)
+- **Code:** `app/Models/Shop.php`
+- **Tests:** `tests/Feature/Material/ShopEnvironmentTest.php` (new)
+- **Docs:** `docs/runbooks/shop-environment-classification-plan.md` (new), journal
+
+### Migrations / Invariant impacts
+- One additive metadata column + CHECK on `shops` (a non-ledger table). NOT a trigger, NOT an accounting change. No existing row's meaning changes (all default to production). Shop 4's ledger rows untouched — only the `shops` metadata row was updated.
+
+### Verification performed
+- `ShopEnvironmentTest` — 4 passed: ✓ (default production; demo classification; not mass-assignable; CHECK rejects invalid e.g. 'pilot').
+- Migration ran clean; shop 4 → demo confirmed.
+
+### Unresolved concerns
+- None. E2 (reconcile annotation) and E3 (admin badge/filter) follow.
+
+### Operational rationale
+The system now knows Goldlux is a demo shop. Nothing about how it accounts changes — but future investigators have a clear, queryable signal that its quirks are seeded, not real corruption.

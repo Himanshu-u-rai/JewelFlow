@@ -56,6 +56,38 @@ class Shop extends Model
         'suspended_until' => 'datetime',
     ];
 
+    // Environment classification (operational-clarity metadata ONLY).
+    // Read for labels/annotations; never branch accounting on these.
+    // Deliberately NOT in $fillable — set by platform admins, not shop owners.
+    public const ENV_PRODUCTION = 'production';
+    public const ENV_DEMO = 'demo';
+    public const ENV_INTERNAL_TEST = 'internal_test';
+
+    public const ENVIRONMENTS = [
+        self::ENV_PRODUCTION,
+        self::ENV_DEMO,
+        self::ENV_INTERNAL_TEST,
+    ];
+
+    public function isProduction(): bool
+    {
+        return ($this->environment ?? self::ENV_PRODUCTION) === self::ENV_PRODUCTION;
+    }
+
+    public function isDemo(): bool
+    {
+        return $this->environment === self::ENV_DEMO;
+    }
+
+    /**
+     * Any non-production environment (demo or internal_test) — i.e. data whose
+     * anomalies may originate from seeding rather than live operations.
+     */
+    public function isNonProduction(): bool
+    {
+        return ! $this->isProduction();
+    }
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'shop_id');
