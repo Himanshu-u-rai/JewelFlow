@@ -724,3 +724,42 @@ Conservative + behaviour-preserving. All three flows (rate-derivation purity pro
 
 ### Operational rationale
 The system no longer hardcodes "gold or silver" anywhere in business validation — those flows now ask the registry which metals use real purity accounting, and the answer is gold and silver. Same behaviour, but the rule lives in one authoritative place.
+
+## Entry [17] — 2026-05-28 — Acknowledge pre-existing vault discrepancies (Option A)
+
+### Batch identity
+- **Batch ID:** ID-2026-05-28-08
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7). User chose Option A (acknowledge; no ledger writes).
+
+### Diagnosis (the 3 discrepancies, all shop 4 "Goldlux Jewellers" JF-0001 — demo/seed data)
+- **Lot #2** (gold/purchase, declared 1000g): the `purchase` movement recorded only 240g vs the lot's declared total; balance tracked from 1000 (1000−723 issued = 277 stored). Delta +760 = the under-recorded inflow.
+- **Lot #3** (gold/purchase, declared 1500g): `purchase` movement recorded only 360g; never issued. Delta +1140 = under-recorded inflow.
+- **Lot #7** (old gold, 0.75g): `old_metal_in` +0.75 → credit-note reversal −0.75 → a REDUNDANT `vault_adjustment` −0.75 (double-removal). Stored 0 is correct; ledger over-subtracted by one entry.
+- None caused by any code in this session; created Apr–May 2026. Implausible demo inventory (1000g+1500g of 24K).
+
+### What changed (code)
+- `vault:reconcile` is now acknowledgement-aware. A discrepancy set whose signature (sorted lotId:delta) matches a previously-acknowledged reconciliation run is reported as "known/acknowledged" and does NOT fail the run. New/changed discrepancies still fail. Added `--acknowledge` + `--reason=` to record an acknowledgement (append-only `acknowledged_vault_discrepancies` row linked to the run). Still read-only on the ledger — no MetalMovement/MetalLot writes.
+- Added `tests/Feature/Material/VaultDiscrepancyAcknowledgementTest.php` (3 tests).
+
+### What changed (data — production)
+- Recorded an acknowledgement for shop 4's current discrepancy set (run #32) with a reason documenting the demo-data diagnosis. Subsequent `vault:reconcile` runs now exit 0 for shop 4 (reported as known/acknowledged).
+
+### Files touched
+- **Code:** `app/Console/Commands/ReconcileVaultBalances.php`
+- **Tests:** `tests/Feature/Material/VaultDiscrepancyAcknowledgementTest.php` (new)
+- **Docs:** journal
+
+### Migrations / Invariant impacts
+- None. No schema change (the `acknowledged_vault_discrepancies` table already existed; it was simply never wired into the command). No ledger writes. `acknowledged_vault_discrepancies` is append-only (model-enforced).
+
+### Verification performed
+- Acknowledgement tests — 3 passed: ✓ (unacked fails; ack persists; later run passes; --acknowledge requires --reason; a new/changed discrepancy still fails).
+- `vault:reconcile` (production, all shops) — **exit 0, all balanced/acknowledged**: ✓
+- Full gate: Material 51 passed; Constitutional 29 passed / 0 failed; materials:audit CLEAN; returns:validate pass.
+
+### Unresolved concerns
+- None. If the underlying lots #2/#3/#7 data is ever corrected (real shop), the acknowledgement signature will no longer match and reconcile will surface them again — the acknowledgement is signature-bound, so it self-expires if the discrepancy changes.
+
+### Operational rationale
+The vault check no longer cries wolf over three known demo-data quirks in the sample shop, but it still raises the alarm the instant anything NEW or DIFFERENT goes out of balance — and every acknowledgement is a permanent, reasoned audit record.
