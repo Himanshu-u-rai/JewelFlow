@@ -39,6 +39,18 @@ final class MetalRegistry
     public const TIER_3 = 3;
 
     // ─────────────────────────────────────────────────────────────────────
+    // Mobile registry snapshot version (M1 — registry endpoint contract).
+    //
+    // Bump this constant whenever the SHAPE of the materials snapshot
+    // changes (new capability fields, semantics change for an existing
+    // field, etc.). Mobile clients read this to know when to refresh
+    // their cached registry; the version is the single-file change point.
+    //
+    // Convention: 'YYYY-MM-DD.N' where N is the same-day bump counter.
+    // ─────────────────────────────────────────────────────────────────────
+    public const REGISTRY_VERSION = '2026-05-28.1';
+
+    // ─────────────────────────────────────────────────────────────────────
     // UX capability map (Stage 1)
     // ─────────────────────────────────────────────────────────────────────
 
@@ -546,5 +558,52 @@ final class MetalRegistry
     public static function validationListSystemWide(): array
     {
         return self::allSupportedMetals();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Pricing classes (M1 — mobile registry contract).
+    //
+    // Three pricing classes describe how a material's price is established:
+    //   A — daily rate × fine weight (gold, silver — accounting truth metals)
+    //   B — reference price memo, piece-priced at POS (platinum, copper — Tier 2)
+    //   C — stones — NOT a metal; asserted at the stone layer, never here.
+    //
+    // Stones intentionally go through a separate path: they have no metal
+    // pricing class, and passing 'stone' / any stone identifier here MUST
+    // throw. The registry endpoint surfaces stones as a separate descriptor.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Pricing class for a metal. Throws for anything that is not a known
+     * metal (including stones, which have their own path).
+     *
+     * @return 'A'|'B'
+     */
+    public static function pricingClass(string $metal): string
+    {
+        $normalized = self::normalize($metal);
+        self::assertSupported($normalized);
+
+        if (in_array($normalized, self::accountingTruthMetals(), true)) {
+            return 'A';
+        }
+
+        if (in_array($normalized, self::tier2Metals(), true)) {
+            return 'B';
+        }
+
+        throw new LogicException(
+            "Metal '{$normalized}' has no pricing class. Stones are class C and go through "
+            . 'a separate path; they must never be passed to MetalRegistry::pricingClass().'
+        );
+    }
+
+    /**
+     * Accessor for the registry snapshot version constant. Mobile clients
+     * use this to detect when their cached materials snapshot is stale.
+     */
+    public static function registryVersion(): string
+    {
+        return self::REGISTRY_VERSION;
     }
 }

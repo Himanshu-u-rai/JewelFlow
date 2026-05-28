@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Items\StoreItemMobileRequest;
 use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Item;
@@ -327,48 +328,44 @@ class ItemController extends Controller
             } catch (LogicException $e) {
                 return $this->retailerPricingBlockedResponse($e->getMessage());
             }
+
+            // Retailer flow shares the canonical Form Request with web. The
+            // three previously-duplicated rules (enabled metal, purity-required,
+            // barcode uniqueness) live in StoreItemRequest and cannot drift.
+            $validated = app(StoreItemMobileRequest::class)->validated();
+        } else {
+            // Manufacturer mobile flow has materially different semantics
+            // (purity 1-24 required, cost/selling required) — kept inline.
+            $rules = [
+                'barcode' => [
+                    'required', 'string', 'max:100',
+                    Rule::unique('items', 'barcode')->where('shop_id', $shopId),
+                ],
+                'design' => 'nullable|string|max:255',
+                'category' => 'required|string|max:255',
+                'sub_category' => 'nullable|string|max:255',
+                'gross_weight' => 'required|numeric|min:0.001',
+                'stone_weight' => 'nullable|numeric|min:0',
+                'purity' => 'required|numeric|min:1|max:24',
+                'cost_price' => 'required|numeric|min:0',
+                'selling_price' => 'required|numeric|min:0',
+                'making_charges' => 'nullable|numeric|min:0',
+                'stone_charges' => 'nullable|numeric|min:0',
+                'hallmark_charges' => 'nullable|numeric|min:0',
+                'rhodium_charges' => 'nullable|numeric|min:0',
+                'other_charges' => 'nullable|numeric|min:0',
+                'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+                'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+                'huid' => [
+                    'nullable', 'string', 'max:30',
+                    Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid'),
+                ],
+                'hallmark_date' => 'nullable|date',
+                'image_base64' => 'nullable|string',
+            ];
+
+            $validated = $request->validate($rules);
         }
-
-        $rules = [
-            'barcode' => [
-                'required', 'string', 'max:100',
-                Rule::unique('items', 'barcode')->where('shop_id', $shopId),
-            ],
-            'design' => 'nullable|string|max:255',
-            'category' => 'required|string|max:255',
-            'sub_category' => 'nullable|string|max:255',
-            'gross_weight' => 'required|numeric|min:0.001',
-            'stone_weight' => 'nullable|numeric|min:0',
-            'purity' => $isRetailer
-                ? [
-                    // Required only for accounting-truth metals (gold/silver).
-                    Rule::requiredIf(fn () => MetalRegistry::isSupported((string) $request->input('metal_type', ''))
-                        && MetalRegistry::purityIsAccountingTruth((string) $request->input('metal_type', ''))),
-                    'nullable', 'numeric', 'min:0.001', 'max:1000',
-                ]
-                : 'required|numeric|min:1|max:24',
-            'cost_price' => $isRetailer ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
-            'selling_price' => $isRetailer ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
-            'making_charges' => 'nullable|numeric|min:0',
-            'stone_charges' => 'nullable|numeric|min:0',
-            'hallmark_charges' => 'nullable|numeric|min:0',
-            'rhodium_charges' => 'nullable|numeric|min:0',
-            'other_charges' => 'nullable|numeric|min:0',
-            'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
-            'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
-            'huid' => [
-                'nullable', 'string', 'max:30',
-                Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid'),
-            ],
-            'hallmark_date' => 'nullable|date',
-            'image_base64' => 'nullable|string',
-        ];
-
-        if ($isRetailer) {
-            $rules['metal_type'] = ['required', Rule::in(MetalRegistry::enabledMetalsForShop($shopId))];
-        }
-
-        $validated = $request->validate($rules);
         if (
             array_key_exists('vendor_id', $validated)
             && array_key_exists('karigar_id', $validated)

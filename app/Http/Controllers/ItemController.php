@@ -16,6 +16,7 @@ use App\Services\ShopPricingService;
 use App\Services\MetalRegistry;
 use App\Services\ReferencePriceService;
 use App\Http\Concerns\RespondsDynamically;
+use App\Http\Requests\Items\StoreItemWebRequest;
 use App\Support\ShopEdition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -241,8 +242,9 @@ class ItemController extends Controller
         $shopId = auth()->user()->shop_id;
 
         // === Retailer edition: simple direct item creation ===
+        // Resolve via container so StoreItemWebRequest validation fires.
         if ($shop->isRetailer()) {
-            return $this->storeRetailerItem($request, $shopId);
+            return $this->storeRetailerItem(app(StoreItemWebRequest::class), $shopId);
         }
 
         // === Manufacturer edition: lot-based manufacturing ===
@@ -293,46 +295,16 @@ class ItemController extends Controller
     }
 
     /**
-     * Store a retailer item — no lot deduction, direct creation with selling price
+     * Store a retailer item — no lot deduction, direct creation with selling price.
+     *
+     * Validation now lives in StoreItemWebRequest, which extends the shared
+     * StoreItemRequest. The same shared rules drive the mobile flow, so the
+     * three previously-duplicated patterns (enabled metal, purity-required,
+     * barcode-uniqueness) cannot drift between platforms.
      */
-    private function storeRetailerItem(Request $request, int $shopId)
+    private function storeRetailerItem(StoreItemWebRequest $request, int $shopId)
     {
-        $validated = $request->validate([
-            'barcode' => [
-                'required',
-                'string',
-                'max:100',
-                Rule::unique('items', 'barcode')->where('shop_id', $shopId),
-            ],
-            'design' => 'nullable|string|max:255',
-            'category' => 'required|string|max:255',
-            'metal_type' => ['required', Rule::in(MetalRegistry::enabledMetalsForShop($shopId))],
-            'sub_category' => 'nullable|string|max:255',
-            'gross_weight' => 'required|numeric|min:0.001',
-            'stone_weight' => 'nullable|numeric|min:0',
-            'purity' => [
-                // Purity is required only for accounting-truth metals (gold/silver),
-                // where it drives fine weight. Piece-priced metals (platinum/copper)
-                // treat purity as an optional spec.
-                \Illuminate\Validation\Rule::requiredIf(fn () => MetalRegistry::isSupported((string) $request->input('metal_type', ''))
-                    && MetalRegistry::purityIsAccountingTruth((string) $request->input('metal_type', ''))),
-                'nullable', 'numeric', 'min:0.001', 'max:1000',
-            ],
-            'cost_price' => 'nullable|numeric|min:0',
-            'selling_price' => 'nullable|numeric|min:0',
-            'making_charges' => 'nullable|numeric|min:0',
-            'stone_charges' => 'nullable|numeric|min:0',
-            'hallmark_charges' => 'nullable|numeric|min:0',
-            'rhodium_charges' => 'nullable|numeric|min:0',
-            'other_charges' => 'nullable|numeric|min:0',
-            'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
-            'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
-            'huid' => ['nullable', 'string', 'max:30', Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')],
-            'hallmark_date' => 'nullable|date',
-            'image' => 'nullable|file|mimes:' . self::ITEM_GALLERY_IMAGE_MIMES . '|max:5120',
-            'images' => 'nullable|array|max:' . self::MAX_ITEM_GALLERY_IMAGES,
-            'images.*' => 'file|mimes:' . self::ITEM_GALLERY_IMAGE_MIMES . '|max:5120',
-        ]);
+        $validated = $request->validated();
 
         try {
             $pricing = $this->pricing->computeRetailerCostPayload(auth()->user()->shop, $validated);

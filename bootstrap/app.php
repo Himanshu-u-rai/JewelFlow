@@ -21,6 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('api')
                 ->prefix('api/mobile')
                 ->group(base_path('routes/mobile.php'));
+
+            // Mobile API v1 — canonical envelope, cursor pagination,
+            // idempotency-protected mutations. See routes/mobile_v1.php.
+            Route::middleware('api')
+                ->prefix('api/mobile/v1')
+                ->group(base_path('routes/mobile_v1.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
@@ -59,17 +65,51 @@ return Application::configure(basePath: dirname(__DIR__))
             'catalog.shop' => \App\Http\Middleware\ResolveCatalogShop::class,
             'dhiran.enabled' => \App\Http\Middleware\EnsureDhiranEnabled::class,
             'rate.shop' => \App\Http\Middleware\RateLimitByShop::class,
+            'mobile.envelope' => \App\Http\Middleware\MobileEnvelope::class,
+            'mobile.idempotency' => \App\Http\Middleware\EnsureIdempotency::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         Integration::handles($exceptions);
+
+        // ─── Mobile API v1 — canonical envelope on framework errors ──────────
+        // Errors raised BEFORE the mobile.envelope middleware runs (e.g.
+        // AuthenticationException from auth:sanctum) bypass the response
+        // wrapper. Reshape them here for any path under /api/mobile/v1/* so
+        // the contract is uniform regardless of where the failure originated.
+        $isMobileV1 = fn (\Illuminate\Http\Request $request) =>
+            $request->is('api/mobile/v1/*') && $request->expectsJson();
+
+        $envelopeError = function (string $code, string $message, int $status, ?\Illuminate\Http\Request $request = null) {
+            $requestId = $request?->headers->get('X-Request-Id')
+                ?: (string) \Illuminate\Support\Str::uuid();
+            return response()->json([
+                'data' => null,
+                'meta' => [
+                    'request_id'       => $requestId,
+                    'server_time'      => now()->toIso8601String(),
+                    'api_version'      => '1',
+                    'registry_version' => \App\Services\MetalRegistry::registryVersion(),
+                ],
+                'errors' => [['code' => $code, 'message' => $message]],
+            ], $status)->withHeaders(['X-Request-Id' => $requestId]);
+        };
+
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) use ($isMobileV1, $envelopeError) {
+            if ($isMobileV1($request)) {
+                return $envelopeError('unauthorized', 'Authentication required.', 401, $request);
+            }
+        });
 
         // ─── JSON-shaped permission denials for API requests ─────────────────
         // When the client sends `Accept: application/json` (typical for the mobile
         // app and AJAX), surface 403s with a stable JSON shape so clients can
         // parse + display them uniformly. HTML requests still hit the branded
         // errors/403.blade.php view.
-        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, \Illuminate\Http\Request $request) use ($isMobileV1, $envelopeError) {
+            if ($isMobileV1($request)) {
+                return $envelopeError('permission_denied', $e->getMessage() ?: 'You do not have permission to perform this action.', 403, $request);
+            }
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'permission_denied',
@@ -77,7 +117,17 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 403);
             }
         });
-        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) use ($isMobileV1, $envelopeError) {
+            if ($isMobileV1($request)) {
+                $status = $e->getStatusCode();
+                $codeMap = [
+                    401 => 'unauthorized', 403 => 'permission_denied', 404 => 'not_found',
+                    409 => 'conflict', 412 => 'precondition_failed', 422 => 'unprocessable',
+                    429 => 'too_many_requests', 503 => 'service_unavailable',
+                ];
+                $code = $codeMap[$status] ?? 'request_failed';
+                return $envelopeError($code, $e->getMessage() ?: 'Request failed.', $status, $request);
+            }
             if ($e->getStatusCode() === 403 && $request->expectsJson()) {
                 return response()->json([
                     'error' => 'permission_denied',
