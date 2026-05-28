@@ -12,6 +12,7 @@ use App\Models\Vendor;
 use App\Services\BusinessIdentifierService;
 use App\Services\ShopPricingService;
 use App\Services\StockPurchaseService;
+use App\Services\MetalRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -440,7 +441,7 @@ class StockPurchaseController extends Controller
             'lines.*.design'                 => 'nullable|string|max:255',
             'lines.*.category'               => 'nullable|string|max:255',
             'lines.*.sub_category'           => 'nullable|string|max:255',
-            'lines.*.metal_type'             => ['required', Rule::in(['gold', 'silver'])],
+            'lines.*.metal_type'             => ['required', Rule::in(MetalRegistry::accountingTruthMetals())],
             'lines.*.purity'                 => 'required|numeric|min:0.001',
             'lines.*.gross_weight'           => 'required|numeric|min:0.001',
             'lines.*.stone_weight'           => 'nullable|numeric|min:0',

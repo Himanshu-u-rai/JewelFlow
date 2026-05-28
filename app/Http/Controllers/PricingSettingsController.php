@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\ShopMetalPurityProfile;
 use App\Models\ShopPreferences;
 use App\Services\ShopPricingService;
+use App\Services\MetalRegistry;
 use DateTimeZone;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -60,7 +61,7 @@ class PricingSettingsController extends Controller
         abort_unless($shop && $shop->isRetailer(), 404);
 
         $validated = $request->validate([
-            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
+            'metal_type' => ['required', Rule::in(MetalRegistry::accountingTruthMetals())],
             'code' => 'nullable|string|max:30',
             'label' => 'nullable|string|max:60',
             'purity_value' => 'required|numeric|min:0.001|max:1000',
@@ -97,7 +98,7 @@ class PricingSettingsController extends Controller
         abort_if((int) $profile->shop_id !== (int) $shop->id, 404);
 
         $validated = $request->validate([
-            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
+            'metal_type' => ['required', Rule::in(MetalRegistry::accountingTruthMetals())],
             'code' => 'nullable|string|max:30',
             'label' => 'nullable|string|max:60',
             'purity_value' => 'required|numeric|min:0.001|max:1000',
@@ -153,7 +154,7 @@ class PricingSettingsController extends Controller
         abort_if((int) $item->shop_id !== (int) $shop->id, 404);
 
         $validated = $request->validate([
-            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
+            'metal_type' => ['required', Rule::in(MetalRegistry::accountingTruthMetals())],
         ]);
 
         $pricing->resolveLegacyItem($item, $validated['metal_type']);

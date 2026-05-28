@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Services\ShopPricingService;
+use App\Services\MetalRegistry;
 
 class ProductController extends Controller
 {
@@ -64,7 +65,7 @@ class ProductController extends Controller
                 'required',
                 Rule::exists('sub_categories', 'id')->where('shop_id', $shopId),
             ],
-            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
+            'metal_type' => ['required', Rule::in(MetalRegistry::accountingTruthMetals())],
             'default_purity' => 'nullable|numeric|min:0.001|max:1000',
             'approx_weight' => 'nullable|numeric|min:0',
             'default_making' => 'nullable|numeric|min:0',
@@ -138,7 +139,7 @@ class ProductController extends Controller
                 'required',
                 Rule::exists('sub_categories', 'id')->where('shop_id', $shopId),
             ],
-            'metal_type' => ['required', Rule::in(['gold', 'silver'])],
+            'metal_type' => ['required', Rule::in(MetalRegistry::accountingTruthMetals())],
             'default_purity' => 'nullable|numeric|min:0.001|max:1000',
             'approx_weight' => 'nullable|numeric|min:0',
             'default_making' => 'nullable|numeric|min:0',

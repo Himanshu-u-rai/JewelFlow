@@ -684,3 +684,43 @@ The "why" behind material behavior now lives in the repo so the next contributor
 ## Identity Alignment phase — complete
 
 P1–P6 shipped (journal entries [10]–[15]). The four identity systems are now explicit capabilities; purity can only become fine weight for gold/silver via a single authority; platinum is provably piece-priced/spec-only; stones can never be treated as a purity-bearing metal; forms adapt per identity class; and the why is documented. Material test suite: 48 passing. No schema changes, no trigger changes, no constitutional article changes. Pilot (gold/silver) behavior unchanged.
+
+## Entry [16] — 2026-05-28 — Close carried-forward hardcoded-metal-literal violations
+
+### Batch identity
+- **Batch ID:** ID-2026-05-28-07
+- **Plan:** clears the long-standing carried-forward `materials:audit` violations.
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7). User approved closing the last red constitutional test.
+
+### What changed
+- Replaced the 3 hardcoded `Rule::in(['gold','silver'])` metal-type validators with `Rule::in(MetalRegistry::accountingTruthMetals())` in:
+  - `PricingSettingsController` (×3 — purity profiles store/update + legacy-item resolution)
+  - `ProductController` (×2 — product create/update)
+  - `StockPurchaseController` (×1 — purchase line metal_type)
+- Added `use App\Services\MetalRegistry;` to each.
+
+### Why it changed
+These were the only 3 `materials:audit` violations (Article XV — no hardcoded metal literals in business logic) and the sole reason the `materials audit command runs clean` constitutional test was red. `accountingTruthMetals()` returns exactly `['gold','silver']` today, so behaviour is identical, but the rule is now capability-driven.
+
+### Why `accountingTruthMetals()` (not `enabledMetalsForShop`)
+Conservative + behaviour-preserving. All three flows (rate-derivation purity profiles, product templates that feed rate-derived items, and bullion/ornament intake tied to vault fine weight) have always been gold/silver. Using `accountingTruthMetals()` keeps them exactly gold/silver today and avoids newly admitting platinum/copper into rate-derived paths that aren't tested for them. If a shop later needs platinum products, that's a separate, tested change.
+
+### Files touched
+- **Code:** `PricingSettingsController.php`, `ProductController.php`, `StockPurchaseController.php`
+- **Docs:** journal
+
+### Migrations / Invariant impacts
+- None. Behaviour byte-identical (validators still accept exactly gold/silver). POSITIVE: restores the `materials audit command runs clean` constitutional invariant.
+
+### Verification performed
+- `php artisan materials:audit` — **CLEAN. All Phase 0–3 invariants hold.** ✓
+- `php artisan test tests/Feature/ConstitutionalInvariantsTest.php` — **29 passed, 6 skipped, 0 failed** ✓ (the last red test is now green)
+- Material suite — 48 passed ✓; returns:validate — all pass ✓
+- `php -l` on all three controllers — clean.
+
+### Unresolved concerns
+- None. The constitutional suite is fully green (modulo 6 fixture-dependent skips). `vault:reconcile`'s 3 production-data discrepancies remain a separate pre-existing operational item (Entry [15]), unrelated to code.
+
+### Operational rationale
+The system no longer hardcodes "gold or silver" anywhere in business validation — those flows now ask the registry which metals use real purity accounting, and the answer is gold and silver. Same behaviour, but the rule lives in one authoritative place.
