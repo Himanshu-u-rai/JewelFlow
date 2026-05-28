@@ -1,0 +1,17 @@
+# Constitutional and accounting-critical paths require founder review
+
+# Constitutional document
+CONSTITUTION.md @himanshurai114
+
+# Accounting service layer
+app/Services/InvoiceAccountingService.php @himanshurai114
+app/Services/Returns/CreditNoteService.php @himanshurai114
+app/Services/Returns/ReturnService.php @himanshurai114
+app/Services/BullionVaultService.php @himanshurai114
+
+# All database migrations
+database/migrations/ @himanshurai114
+
+# Permission and role models
+app/Models/Role.php @himanshurai114
+app/Models/User.php @himanshurai114

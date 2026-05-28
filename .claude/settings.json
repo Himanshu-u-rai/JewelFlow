@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan view:clear)",
+      "Bash(php artisan cache:clear)",
+      "Bash(php artisan config:clear)",
+      "Bash(php artisan optimize:clear)",
+      "Bash(php artisan route:list *)",
+      "Bash(php artisan migrate:status)",
+      "Bash(php artisan migrate:status *)",
+      "Bash(php -l *)"
+    ]
+  }
+}
