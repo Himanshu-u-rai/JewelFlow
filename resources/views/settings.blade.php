@@ -1209,6 +1209,12 @@
             </a>
             @endcan
             @endif
+            {{-- Materials — which metals this shop offers --}}
+            @can('settings.view')
+            <a href="{{ route('settings.edit', ['tab' => 'materials']) }}" class="nav-item {{ $activeTab === 'materials' ? 'active' : '' }}" data-turbo-frame="settings-content">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/></svg></span> {{ __('Materials') }}
+            </a>
+            @endcan
             {{-- Catalog Website — same as Settings: needs settings.view to enter --}}
             @can('settings.view')
             <a href="{{ route('settings.edit', ['tab' => 'website']) }}" class="nav-item {{ $activeTab === 'website' ? 'active' : '' }}" data-turbo-frame="settings-content">
@@ -2008,6 +2014,78 @@
 
             @if($activeTab === 'pricing' && $shop->isRetailer())
                 @include('partials.settings.pricing-tab')
+            @endif
+
+            @if($activeTab === 'materials')
+                @php
+                    $metalDescriptions = [
+                        'platinum' => 'Sold at a fixed price per piece. Turn on only if you keep platinum items.',
+                        'copper'   => 'For special items like pooja or copper articles. Most shops keep this off.',
+                    ];
+                @endphp
+                <div class="settings-header">
+                    <h2 class="settings-title">{{ __('Materials') }}</h2>
+                    <p class="settings-desc">{{ __('Choose which metals your shop sells. Gold and silver are always on.') }}</p>
+                </div>
+
+                <form method="POST" action="{{ route('settings.update.materials') }}" data-turbo-frame="_top" class="space-y-6 max-w-2xl">
+                    @csrf
+                    @method('PATCH')
+
+                    <section class="rounded-xl border border-slate-200 bg-white">
+                        <div class="border-b border-slate-100 px-5 py-3">
+                            <h3 class="text-sm font-semibold text-slate-900">{{ __('Main metals') }}</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">{{ __('Always available — these are the heart of your shop.') }}</p>
+                        </div>
+                        <ul class="divide-y divide-slate-100">
+                            @foreach($materialsData['primary'] as $metal)
+                                <li class="flex items-center justify-between px-5 py-3">
+                                    <span class="text-sm font-medium text-slate-800 capitalize">{{ $metal }}</span>
+                                    <span class="inline-flex items-center gap-1 text-xs font-semibold text-green-700">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        {{ __('On') }}
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+
+                    <section class="rounded-xl border border-slate-200 bg-white">
+                        <div class="border-b border-slate-100 px-5 py-3">
+                            <h3 class="text-sm font-semibold text-slate-900">{{ __('Other metals') }}</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">{{ __('Turn on only if you actually sell them.') }}</p>
+                        </div>
+                        <ul class="divide-y divide-slate-100">
+                            @foreach($materialsData['tier2'] as $row)
+                                <li class="flex items-start justify-between gap-4 px-5 py-3">
+                                    <div>
+                                        <p class="text-sm font-medium text-slate-800 capitalize">{{ $row['metal'] }}</p>
+                                        <p class="text-xs text-slate-500 mt-0.5">{{ $metalDescriptions[$row['metal']] ?? '' }}</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                        <input type="hidden" name="metals[{{ $row['metal'] }}]" value="0">
+                                        <input type="checkbox" name="metals[{{ $row['metal'] }}]" value="1" class="sr-only peer"
+                                               @checked($row['enabled']) @cannot('settings.edit') disabled @endcannot>
+                                        <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-amber-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                                    </label>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+
+                    <section class="rounded-xl border border-slate-200 bg-white px-5 py-4">
+                        <h3 class="text-sm font-semibold text-slate-900">{{ __('Stones') }}</h3>
+                        <p class="text-xs text-slate-500 mt-1">{{ __('Stones are added as a rupee amount on each item. Nothing to set up here.') }}</p>
+                    </section>
+
+                    @can('settings.edit')
+                        <div>
+                            <button type="submit" class="inline-flex items-center rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 transition">
+                                {{ __('Save materials') }}
+                            </button>
+                        </div>
+                    @endcan
+                </form>
             @endif
 
             @if($activeTab === 'roles')

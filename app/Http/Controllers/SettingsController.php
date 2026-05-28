@@ -52,6 +52,7 @@ class SettingsController extends Controller
             'payment-methods' => 'settings.view',
             'preferences'     => 'settings.view',
             'pricing'         => 'pricing.update',
+            'materials'       => 'settings.view',
             'website'         => 'settings.view',
             'roles'           => '__owner_only__',
             'staff'           => 'staff.view',
@@ -172,10 +173,25 @@ class SettingsController extends Controller
             $pricingTimezones = DateTimeZone::listIdentifiers();
         }
 
+        // Materials tab — current Tier 2 opt-in state. Tier 1 (gold/silver) is
+        // always available; Tier 2 (platinum/copper) is opt-in per shop.
+        $materialsData = null;
+        if ($activeTab === 'materials') {
+            $enabled = \App\Services\MetalRegistry::enabledMetalsForShop((int) $shop->id);
+            $materialsData = [
+                'primary' => \App\Services\MetalRegistry::tier1Metals(),
+                'tier2' => array_map(
+                    fn (string $metal) => ['metal' => $metal, 'enabled' => in_array($metal, $enabled, true)],
+                    \App\Services\MetalRegistry::tier2Metals()
+                ),
+            ];
+        }
+
         return view('settings', compact(
             'shop',
             'billing',
             'preferences',
+            'materialsData',
             'roles',
             'permissions',
             'permissionGroups',
@@ -422,6 +438,41 @@ class SettingsController extends Controller
 
         return redirect()->route('settings.edit', ['tab' => 'billing'])
             ->with('success', 'Invoice settings updated successfully.');
+    }
+
+    /**
+     * Update which optional (Tier 2) materials the shop offers.
+     *
+     * Gold and silver (Tier 1) are always available and are not togglable.
+     * Platinum and copper (Tier 2) are opt-in per shop via shop_enabled_metals.
+     */
+    public function updateMaterials(Request $request)
+    {
+        $shop = Auth::user()->shop;
+
+        $validated = $request->validate([
+            'metals'   => 'nullable|array',
+            'metals.*' => 'boolean',
+        ]);
+
+        $submitted = $validated['metals'] ?? [];
+
+        foreach (\App\Services\MetalRegistry::tier2Metals() as $metal) {
+            $enabled = (bool) ($submitted[$metal] ?? false);
+
+            // shop_enabled_metals has no Eloquent model; use the query builder.
+            // PostgreSQL rejects integer 0/1 for boolean columns, so the flag is
+            // a raw boolean literal (see CLAUDE.md).
+            DB::table('shop_enabled_metals')->updateOrInsert(
+                ['shop_id' => $shop->id, 'metal_type' => $metal],
+                ['enabled' => DB::raw($enabled ? 'true' : 'false'), 'updated_at' => now(), 'created_at' => now()]
+            );
+        }
+
+        \App\Services\MetalRegistry::clearShopCache((int) $shop->id);
+
+        return redirect()->route('settings.edit', ['tab' => 'materials'])
+            ->with('success', 'Materials updated successfully.');
     }
 
     /**

@@ -400,6 +400,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/settings/shop', [SettingsController::class, 'updateShop'])->middleware('can:settings.edit')->name('settings.update.shop');
     Route::patch('/settings/billing', [SettingsController::class, 'updateBilling'])->middleware('can:settings.edit')->name('settings.update.billing');
     Route::patch('/settings/preferences', [SettingsController::class, 'updatePreferences'])->middleware('can:settings.edit')->name('settings.update.preferences');
+    Route::patch('/settings/materials', [SettingsController::class, 'updateMaterials'])->middleware('can:settings.edit')->name('settings.update.materials');
     Route::post('/settings/whatsapp-template', [SettingsController::class, 'saveWhatsappTemplate'])->middleware('can:settings.edit')->name('settings.whatsapp.template');
     // The role-permission editor itself stays `role:owner` — only the shop owner
     // controls who has which permissions. Permission-gating this would let a

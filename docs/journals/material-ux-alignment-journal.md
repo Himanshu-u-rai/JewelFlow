@@ -366,3 +366,64 @@ Delete the new test. Nothing else to undo.
 When a shop adds a ring with a stone, they type one number — the stone's value in rupees — exactly as they think about it at the counter. There is no carat/clarity/certificate paperwork to fill in. The deeper diamond-tracking machinery exists in the system for the day a shop genuinely needs it, but it stays out of sight until then.
 
 ---
+
+## Entry [8] — 2026-05-28 — Stage 6: Materials Settings Tab
+
+### Batch identity
+- **Batch ID:** UX-2026-05-28-08
+- **Plan stage:** Stage 6 from material-ux-alignment-plan.md §8
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- New Settings → Materials tab. Three sections: "Main metals" (gold/silver, always on, shown with a green On badge), "Other metals" (platinum/copper opt-in toggles), and a short "Stones" note ("Stones are added as a rupee amount on each item. Nothing to set up here.").
+- `SettingsController::edit()`: registered the `materials` tab (requires `settings.view`) and loads `$materialsData` (Tier 1 list + Tier 2 enabled-state) when that tab is active.
+- `SettingsController::updateMaterials()`: new action that writes platinum/copper enablement to `shop_enabled_metals` via the query builder (no Eloquent model exists for that table) using raw boolean literals, then clears the MetalRegistry shop cache.
+- Route `PATCH /settings/materials` (`settings.update.materials`, `can:settings.edit`).
+- Settings nav link for Materials (`can:settings.view`).
+- Added `tests/Feature/Material/MaterialsSettingsUiTest.php`.
+
+### Why it changed
+The Tier 2 opt-in previously required raw SQL (the Tier 2 playbook). This gives owners a plain-English screen to turn platinum/copper on or off themselves, and ties the whole phase together: toggling platinum here immediately makes it appear in the item picker (Stage 2) and the vault "Other materials" section (Stage 4), with no rate-dashboard noise (Stage 3). Gold and silver are shown as permanently on so the owner understands they are the core, not a setting to fiddle with.
+
+### Files touched
+- **Code:** `app/Http/Controllers/SettingsController.php`
+- **Routes:** `routes/web.php`
+- **Views:** `resources/views/settings.blade.php`
+- **Tests:** `tests/Feature/Material/MaterialsSettingsUiTest.php` (new)
+- **Docs:** `docs/journals/material-ux-alignment-journal.md`
+
+### Migrations added
+- None. `shop_enabled_metals` already exists; the toggle writes the existing `enabled` column.
+
+### Risks introduced
+- The Materials save uses `DB::table('shop_enabled_metals')->updateOrInsert(... DB::raw('true'/'false') ...)` — the established pattern for this model-less table (PostgreSQL rejects integer 0/1 for boolean columns; see CLAUDE.md). The form uses the hidden-input-before-checkbox idiom so unchecked toggles submit "0". `data-turbo-frame="_top"` is set so the redirect renders the full page (CLAUDE.md Turbo rule).
+- No accounting, schema, or trigger impact.
+
+### Rollback notes
+Remove the `settings.update.materials` route, the `updateMaterials()` method, the materials tab block + nav link in `settings.blade.php`, and the `materials` entry + `$materialsData` loader in `edit()`. Delete the test. `php artisan view:clear`. Existing `shop_enabled_metals` rows are unaffected.
+
+### Invariant impacts
+- None. Pure settings UI over the existing opt-in mechanism.
+
+### Verification performed
+- `php artisan test tests/Feature/Material/MaterialsSettingsUiTest.php` — 3 passed (16 assertions): ✓ (tab renders the three sections; enabling platinum persists and makes it pickable via `uxItemPickerVisible`; disabling persists and removes pickability).
+- `php artisan test tests/Feature/Material/` — 24 passed (93 assertions): ✓
+- `php artisan test tests/Feature/ConstitutionalInvariantsTest.php` — 1 failed (carried-forward audit-clean), 28 passed, 6 skipped: ✓
+- `php artisan materials:audit` — SAME 3 carried-forward violations, no new ones: ✓
+- `php artisan returns:validate` — All checks passed: ✓
+- `php -l` SettingsController — clean. Route registered (verified via route:list).
+
+### Unresolved concerns
+- `materials audit command runs clean` still red on the 3 carried-forward hardcoded literals (PricingSettingsController, ProductController, StockPurchaseController). Separate batch + founder review — the only remaining item before the constitutional suite is fully green.
+
+### Operational rationale
+An owner who starts selling platinum can now turn it on themselves from Settings → Materials, in plain language, instead of needing a developer to run SQL. Gold and silver are shown as permanently on, so it is clear they are the foundation. Copper stays off unless deliberately enabled, keeping the everyday experience focused on what the shop actually sells.
+
+---
+
+## Phase complete — summary
+
+All six UX-alignment stages shipped (Entries [1]–[3], [5]–[8]) plus a Phase 0 foundation fix (Entry [4]). Material test suite: 24 passing. The only red constitutional test is `materials audit command runs clean`, blocked solely by 3 pre-existing hardcoded-metal-literal violations that are out of UX scope and flagged for a separate founder-reviewed batch.
+
+JewelFlow now behaves like a gold-and-silver business: gold/silver are first-class everywhere; platinum/copper are piece-priced, opt-in, and quiet; stones are a simple rupee amount; and the advanced Phase 2B stone infrastructure stays available but unexposed.
