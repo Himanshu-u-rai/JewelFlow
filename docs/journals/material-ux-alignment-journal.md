@@ -799,3 +799,37 @@ Goldlux (JF-0001) is confirmed demo/seed data. Classifying it explicitly stops f
 
 ### Operational rationale
 The system now knows Goldlux is a demo shop. Nothing about how it accounts changes — but future investigators have a clear, queryable signal that its quirks are seeded, not real corruption.
+
+## Entry [19] — 2026-05-28 — Shop Environment E2: reconciliation annotation
+
+### Batch identity
+- **Batch ID:** ENV-2026-05-28-02
+- **Plan:** shop-environment-classification-plan.md (E2)
+- **Status:** shipped
+- **Executor:** Claude (Opus 4.7).
+
+### What changed
+- `vault:reconcile` and `karigar:reconcile` now print a contextual note for non-production shops (e.g. "Note: demo shop — historical discrepancies may originate from seeded inventory, not live operations."). Display only.
+- Added `tests/Feature/Material/ReconcileEnvironmentAnnotationTest.php` (2 tests).
+
+### Why it changed
+So an investigator reading reconcile output for a demo shop immediately sees the context, without the flag changing what is detected.
+
+### Critical: annotation changes NOTHING but the text
+- Discrepancy detection, suppression (acknowledgement), and the **exit code** are all unchanged by environment. The test proves a demo shop with an UN-acknowledged discrepancy still exits 1 — the note never hides anything. (Shop 4 exits 0 only because its discrepancies are explicitly acknowledged, Entry [17] — a separate, signature-bound mechanism.)
+- The environment read lives only in the command's display path, never in detection SQL.
+
+### Files touched
+- **Code:** `app/Console/Commands/ReconcileVaultBalances.php`, `app/Console/Commands/ReconcileKarigarBalances.php`
+- **Tests:** `tests/Feature/Material/ReconcileEnvironmentAnnotationTest.php` (new)
+- **Docs:** journal
+
+### Migrations / Invariant impacts
+- None. Display-only reads of `shops.environment`.
+
+### Verification performed
+- E2 tests — 2 passed: ✓ (demo note present + still exits 1 on un-acknowledged; production = no note).
+- Production check: `vault:reconcile --shop=4` shows the demo note and exits 0 (acknowledged).
+
+### Operational rationale
+Reconcile output for Goldlux now reads "demo shop — seeded inventory" right next to its numbers, so no one mistakes its seeded quirks for live corruption — but the check still does its full job and still raises the alarm on anything genuinely new.

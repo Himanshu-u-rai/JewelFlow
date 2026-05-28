@@ -145,6 +145,12 @@ class ReconcileVaultBalances extends Command
             return 0;
         }
 
+        // Environment context (display only — does NOT change detection or exit code).
+        $envNote = $this->environmentNote($shopId);
+        if ($envNote !== null) {
+            $this->line("  {$envNote}");
+        }
+
         // Acknowledgement awareness. A discrepancy set that exactly matches a
         // previously-acknowledged one (same lots + deltas) is "known" and does
         // not fail the run. Operators record acknowledgements with --acknowledge.
@@ -186,6 +192,21 @@ class ReconcileVaultBalances extends Command
         );
 
         return count($discrepancies);
+    }
+
+    /**
+     * Contextual note for non-production shops. Display only — never affects
+     * discrepancy detection, suppression, or the exit code.
+     */
+    private function environmentNote(int $shopId): ?string
+    {
+        $env = DB::table('shops')->where('id', $shopId)->value('environment');
+
+        if ($env !== null && $env !== 'production') {
+            return "Note: {$env} shop — historical discrepancies may originate from seeded inventory, not live operations.";
+        }
+
+        return null;
     }
 
     /**
