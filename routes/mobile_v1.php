@@ -32,11 +32,17 @@ use App\Http\Controllers\Api\Mobile\V1\KarigarController;
 use App\Http\Controllers\Api\Mobile\V1\ReferencePriceController;
 use App\Http\Controllers\Api\Mobile\V1\RegistryController;
 use App\Http\Controllers\Api\Mobile\V1\ReturnController;
+use App\Http\Controllers\Api\Mobile\V1\SessionController;
 use App\Http\Controllers\Api\Mobile\V1\UploadController;
 
 // ─── Auth layer shared by ALL v1 routes ───────────────────────────────────
+// session.alive checks that the Sanctum token is still bound to a live
+// MobileDeviceSession. Revoked / replaced / expired sessions get a stable
+// session_revoked / session_replaced / session_ended 401 response.
+// Legacy tokens (pre-M7, mobile_device_session_id IS NULL) pass through.
 $authMiddleware = [
     'auth:sanctum',
+    'session.alive',
     'tenant',
     'subscription.active',
     'account.active',
@@ -59,6 +65,13 @@ Route::middleware($authMiddleware)
 // ─── All other v1 routes — canonical envelope ──────────────────────────────
 Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
     ->group(function () {
+
+        // ─── M7: Session governance ────────────────────────────────────
+        // Read-only session endpoints (no idempotency required).
+        Route::get('/sessions', [SessionController::class, 'index'])
+            ->name('mobile.v1.sessions.index');
+        Route::get('/sessions/me', [SessionController::class, 'me'])
+            ->name('mobile.v1.sessions.me');
 
         // ─── M1: Material registry snapshot ───────────────────────────
         Route::get('/registry/materials', [RegistryController::class, 'materials'])
@@ -118,6 +131,16 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
 
         // ─── Mutation routes (idempotency-protected) ───────────────────
         Route::middleware(['mobile.idempotency'])->group(function () {
+
+            // M7 — session mutations
+            Route::post('/sessions/lock', [SessionController::class, 'lock'])
+                ->name('mobile.v1.sessions.lock');
+            Route::post('/sessions/unlock', [SessionController::class, 'unlock'])
+                ->name('mobile.v1.sessions.unlock');
+            Route::delete('/sessions', [SessionController::class, 'destroyForUser'])
+                ->name('mobile.v1.sessions.destroy_for_user');
+            Route::delete('/sessions/{session}', [SessionController::class, 'destroy'])
+                ->name('mobile.v1.sessions.destroy');
 
             // M5 — item + customer PATCH
             Route::patch('/items/{item}', [ItemController::class, 'update'])

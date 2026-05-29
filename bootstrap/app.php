@@ -65,8 +65,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'catalog.shop' => \App\Http\Middleware\ResolveCatalogShop::class,
             'dhiran.enabled' => \App\Http\Middleware\EnsureDhiranEnabled::class,
             'rate.shop' => \App\Http\Middleware\RateLimitByShop::class,
-            'mobile.envelope' => \App\Http\Middleware\MobileEnvelope::class,
+            'mobile.envelope'  => \App\Http\Middleware\MobileEnvelope::class,
             'mobile.idempotency' => \App\Http\Middleware\EnsureIdempotency::class,
+            'session.alive'    => \App\Http\Middleware\EnforceSessionAlive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

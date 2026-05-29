@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\MobileDeviceSession;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\Mobile\MobileSessionSeatService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
@@ -74,30 +76,70 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // Revoke existing mobile tokens for this user
-        $user->tokens()->where('name', 'mobile-app')->delete();
+        // Revoke existing mobile tokens for this user and end their sessions.
+        // This enforces "one active session per user" — a shared device
+        // must go through this flow when an operator switches accounts.
+        DB::transaction(function () use ($user) {
+            // End any still-active session rows so audit history is complete.
+            // Use withoutTenant() because TenantContext is not set at login time
+            // (no auth middleware has run yet). The explicit shop_id filter is the
+            // tenant scope here.
+            MobileDeviceSession::withoutTenant()
+                ->where('user_id', $user->id)
+                ->where('shop_id', $user->shop_id)
+                ->whereNull('logged_out_at')
+                ->each(function (MobileDeviceSession $s) {
+                    $s->endSession('replaced');
+                });
 
-        $token = $user->createToken('mobile-app')->plainTextToken;
+            // Revoke the Sanctum tokens (triggers nullOnDelete on session FK).
+            $user->tokens()->where('name', 'mobile-app')->delete();
+        });
+
+        // Create the new session row FIRST, then mint the token and bind it.
+        $session = MobileDeviceSession::create([
+            'shop_id'      => $user->shop_id,
+            'user_id'      => $user->id,
+            'device_uuid'  => $request->input('device_uuid'),
+            'device_name'  => $request->input('device_name'),
+            'platform'     => $request->input('platform'),
+            'app_version'  => $request->input('app_version'),
+            'os_version'   => $request->input('os_version'),
+            'ip_address'   => $request->ip(),
+            'logged_in_at' => now(),
+        ]);
+
+        $tokenObj = $user->createToken('mobile-app');
+        $plainToken = $tokenObj->plainTextToken;
+
+        // Bind the Sanctum token to the session so EnforceSessionAlive
+        // can check session state on every authenticated request.
+        DB::table('personal_access_tokens')
+            ->where('id', $tokenObj->accessToken->id)
+            ->update(['mobile_device_session_id' => $session->id]);
+
+        $session->update(['token_id' => $tokenObj->accessToken->id]);
 
         // Role must be loaded without the BelongsToShop global scope because
         // TenantContext is not set yet at login time (no auth middleware runs).
-        $roleName = \Illuminate\Support\Facades\DB::table('roles')
+        $roleName = DB::table('roles')
             ->where('id', $user->role_id)
             ->where('shop_id', $user->shop_id)
             ->value('name');
 
         return response()->json([
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
+            'token'      => $plainToken,
+            'session_id' => $session->id,
+            'user'       => [
+                'id'            => $user->id,
+                'name'          => $user->name,
                 'mobile_number' => $user->mobile_number,
-                'role' => $roleName,
+                'role'          => $roleName,
             ],
-            'shop' => [
-                'id' => $shop->id,
-                'name' => $shop->name,
-                'type' => $shop->shop_type,
+            'shop'       => [
+                'id'       => $shop->id,
+                'name'     => $shop->name,
+                'type'     => $shop->shop_type,
                 'logo_url' => $this->shopLogoUrl($request, $shop),
             ],
         ]);
@@ -105,7 +147,18 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()->currentAccessToken();
+
+        // End the bound session row BEFORE deleting the token (so last_seen_at
+        // can be snapshotted from the token's last_used_at).
+        $session = MobileDeviceSession::withoutTenant()
+            ->where('token_id', $token->id)
+            ->whereNull('logged_out_at')
+            ->first();
+
+        $session?->endSession('logout');
+
+        $token->delete();
 
         return response()->json(['message' => 'Logged out successfully.']);
     }

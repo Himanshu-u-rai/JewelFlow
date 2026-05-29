@@ -32,6 +32,7 @@ class MobileDeviceSession extends Model
         'token_id',
         'logged_in_at',
         'last_seen_at',
+        'locked_at',
         'logged_out_at',
         'ended_reason',
     ];
@@ -39,6 +40,7 @@ class MobileDeviceSession extends Model
     protected $casts = [
         'logged_in_at'  => 'datetime',
         'last_seen_at'  => 'datetime',
+        'locked_at'     => 'datetime',
         'logged_out_at' => 'datetime',
     ];
 

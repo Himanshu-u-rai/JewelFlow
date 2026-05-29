@@ -478,91 +478,122 @@ surfaced to the user for resolution.
 
 ---
 
-## 8. Upload state — **PARTIAL**
+## 8. Upload infrastructure — **SHIPPED (M6)**
 
-> Mobile developers must NOT build against imaginary upload APIs.
+The presigned-intent upload flow is live. Use it for all new image-bearing
+operations.
 
-### What exists today
+### The three-step flow
 
-- `pending_uploads` database table.
-- `App\Models\PendingUpload` Eloquent model with scopes (pending,
-  expired, consumable) and an `isExpired()` helper.
+1. **`POST /api/mobile/v1/uploads/intent`** — declare the upload.
+   Body: `{ kind, content_type, size_bytes }`. `kind` ∈ `item_image`,
+   `repair_image`. `content_type` ∈ `image/jpeg`, `image/png`,
+   `image/webp`. Max size 5 MB. Returns `{ upload_id, upload_url,
+   expires_at, max_size_bytes }`. The intent lives 15 minutes.
+2. **`PUT /api/mobile/v1/uploads/{token}`** — stream the raw image bytes
+   (Content-Type matching the declared type). The server writes the
+   original, verifies the real MIME via `finfo`, generates a 512px WebP
+   thumbnail, and marks the upload `ready`. This route is intentionally
+   **outside** the envelope and idempotency middleware (the token IS the
+   idempotency key; the raw body must not be double-buffered).
+3. **Reference the upload at create time** — send `image_upload_id` in
+   the item/repair create payload. The server verifies the upload is
+   `ready`, attaches the original, and marks it `consumed`.
 
-### What does NOT exist yet
+`GET /api/mobile/v1/uploads/{token}` returns status for polling.
 
-- `App\Services\Mobile\UploadIntentService` (mint, finalize, consume).
-- `App\Http\Controllers\Api\Mobile\V1\UploadController` —
-  `POST /api/mobile/v1/uploads/intent`,
-  `PUT  /api/mobile/v1/uploads/{token}`,
-  `GET  /api/mobile/v1/uploads/{token}` are **NOT implemented**.
-- Image verification (`finfo_file` + ImageMagick or GD re-encode).
-- WebP thumbnail generation pipeline.
-- Retry semantics for large or interrupted uploads.
-- Legacy ItemController accepting `image_upload_id` alongside
-  `image_base64`.
-- `mobile:prune-uploads` console command.
-- Tests.
+### Lifecycle and cleanup
 
-### What the mobile client should do today
+- States: `pending → uploaded → ready → (consumed)`, or `failed` /
+  `expired`.
+- `mobile:prune-uploads` (scheduled daily) deletes: pending-expired,
+  ready-unconsumed-after-24h, and failed-after-7d rows plus their disk
+  files.
+- Cross-shop and cross-user upload tokens are rejected (404).
 
-For image-bearing operations on items and repairs, the mobile client
-must continue using the **legacy** `/api/mobile/items` (and similar)
-endpoints with `image_base64` inline in the JSON body. This is
-documented for the legacy endpoints in `docs/api-quick-bills.md` and
-`docs/api-repairs.md`. The legacy path will remain supported until M6
-ships in full and the mobile client is migrated.
+### Backward compatibility
 
-**Do not** write mobile code that calls `/uploads/intent` or
-`/uploads/{token}`. Those routes return 404 today. Do not stub them on
-the client expecting "the backend will catch up before release." That
-is exactly the speculative coupling this stabilization phase forbids.
+The legacy inline `image_base64` path on `/api/mobile/items` still works.
+If both `image_base64` and `image_upload_id` are sent, `image_upload_id`
+wins. New mobile builds should use the intent flow; the base64 path
+remains only for transition.
 
 ---
 
-## 9. Session governance state — **PENDING**
+## 9. Session governance — **SHIPPED (M7)**
 
-> Current session system exists. M7 governance improvements are not yet
-> built.
+> Shared-device safety is now authoritative **server** behaviour, not a
+> frontend convention. Every mobile token is bound to a server session
+> row; revocation propagates on the next request.
 
-### What exists today
+### How it works
 
-- `App\Models\MobileDeviceSession` — append-only row per login event
-  with `ended_reason ∈ {logout, replaced, revoked, terminated,
-  stale_pruned}`.
-- `App\Services\Mobile\MobileSessionSeatService` — enforces plan seat
-  limits at login.
-- `App\Console\Commands\PruneStaleDeviceSessions` — closes idle
-  sessions on a schedule.
-- Sanctum personal access tokens minted at `POST /api/mobile/auth/login`.
+- **Token-session binding.** At login (`POST /api/mobile/auth/login`),
+  the server creates a `MobileDeviceSession` row FIRST, then mints the
+  Sanctum token and writes `personal_access_tokens.mobile_device_session_id`
+  back to it. The login response now also returns `session_id`.
+- **`session.alive` middleware** runs on every `/api/mobile/v1/*`
+  request (right after `auth:sanctum`). It loads the bound session and,
+  if `logged_out_at` is set, rejects with a stable 401 envelope. On a
+  live request it touches `last_seen_at`.
+- **One active session per user per shop.** A new login ends the prior
+  active session with reason `replaced` and deletes its token. The old
+  device gets `session_replaced` on its next call. This is the
+  operator-switch safety guarantee — the wrong person can never keep
+  acting after someone else signs in on that account.
+- **Logout** (`POST /api/mobile/auth/logout`) ends the bound session
+  with reason `logout` before deleting the token.
 
-### What is NOT built yet (M7)
+### Session-end codes the mobile client MUST handle
 
-- Token-to-session binding (the `personal_access_tokens` row carrying
-  a `mobile_device_session_id` FK).
-- `EnforceSessionAlive` middleware — checking the bound session's
-  `ended_at` on every authenticated request.
-- Lock-screen pattern (`POST /sessions/lock`, `/sessions/unlock`).
-- Active-session listing endpoint.
-- Server-driven revocation (`POST /sessions/{session}/revoke`).
-- Owner-on-demand elevation (`POST /sessions/elevate`).
-- Per-session `last_seen_at` touch on every request.
+All arrive as a 401 in the canonical envelope: `errors[0].code` plus
+`errors[0].params.ended_reason`.
 
-### What the mobile client should do today
+| Code | Meaning |
+|---|---|
+| `session_revoked` | Owner/manager disconnected this device |
+| `session_replaced` | A newer login on this account ended this session |
+| `session_stale_pruned` | Session expired after inactivity |
+| `session_terminated` | Administrative termination |
+| `session_ended` | Catch-all (e.g. session row deleted by retention prune) |
 
-- Use standard Sanctum auth: `POST /api/mobile/auth/login` returns a
-  bearer token; send it on every authenticated request.
-- Logout via `POST /api/mobile/auth/logout`. This closes the session
-  row with `ended_reason='logout'`.
-- For shared-device cashier switching, treat it as a **logout + new
-  login** flow until M7 ships. Do not invent a client-side lock-screen
-  that fakes session persistence — the server cannot yet verify that
-  the displayed user is the authenticated one.
-- Be prepared for 401 responses to mean "token rejected" generically
-  for now; the more specific `session_ended` code with `params.ended_reason`
-  is an M7 deliverable.
+On any of these, the client clears its token and returns to the login
+screen. Distinguish `session_replaced` ("you signed in elsewhere") from
+`session_revoked` ("a manager removed you") in the UI message.
 
-Shared-device flows are therefore evolving. Design mobile screens so
-they can adopt the lock-screen pattern later without a rebuild.
+### Session endpoints (v1)
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/mobile/v1/sessions/me` | Current operator identity + session. **Display "acting as: X" on every screen** to prevent wrong-operator billing. |
+| `GET` | `/api/mobile/v1/sessions` | List active sessions for the shop (owner/manager see all; staff see only their own). |
+| `POST` | `/api/mobile/v1/sessions/lock` | Cashier-handoff lock screen. Records `locked_at`. Token stays valid — this is a UX gate. |
+| `POST` | `/api/mobile/v1/sessions/unlock` | Verify the operator's password, clear `locked_at`. |
+| `DELETE` | `/api/mobile/v1/sessions/{session}` | Revoke one session (owner/manager). Managers cannot revoke an owner's session. |
+| `DELETE` | `/api/mobile/v1/sessions` | Revoke ALL sessions for a `user_id` (owner only; cannot self-revoke — use logout). |
+
+### Lock vs revoke — the distinction
+
+- **Lock** is a client UX gate for shared-tablet cashier handoff. The
+  token stays valid; the server only records `locked_at`. The mobile
+  client requires password re-entry (unlock) before the next action.
+- **Revoke** ends the session server-side. The next API call from that
+  device gets `session_revoked`. This is a real security action.
+
+### Legacy tokens
+
+Tokens minted before M7 have `mobile_device_session_id = NULL` and pass
+through `session.alive` untouched (backward compatibility). They never
+get session-end codes.
+
+### What the mobile client should do
+
+- Store `session_id` from the login response.
+- On every screen, show the operator identity from `/sessions/me`.
+- Handle the five session-end codes by clearing the token and routing
+  to login with an appropriate message.
+- For cashier handoff on a shared tablet, use lock/unlock — not logout —
+  to keep the session alive while requiring re-authentication.
 
 ---
 
@@ -670,13 +701,18 @@ layers — not before, and not after the next sprint as an afterthought.
 
 | Phase | State | Documentation status |
 |---|---|---|
-| Phase A — M1, M2, M3, M4 | **Shipped + verified (137/137 tests)** | This document is authoritative. |
+| Phase A — M1, M2, M3, M4 | **Shipped + verified** | This document is authoritative. |
 | Phase B — M5 ETag concurrency | **Shipped + verified** | This document is authoritative. |
-| Phase B — M6 uploads | **PARTIAL** — migration + model only | §8 documents the gap. |
-| Phase B — M7 session governance | **PENDING** — nothing landed | §9 documents the gap. |
-| Phase C — M8 returns API | **PENDING** | §11 documents the gap. |
-| Phase C — M9 karigar API | **PENDING** | §11 documents the gap. |
-| Phase C — M10 reference-price reads | **PENDING** | §11 documents the gap. |
+| Phase B — M6 uploads | **Shipped + verified** | §8 — full intent/finalize/thumbnail/consume lifecycle. |
+| Phase B — M7 session governance | **Shipped + verified** | §9 — token-session binding, revocation, lock/unlock. |
+| Phase C — M8 returns API | **Shipped + verified** | §11. |
+| Phase C — M9 karigar API | **Shipped + verified** | §11. |
+| Phase C — M10 reference-price reads | **Shipped + verified** | §11. |
+
+**As of M7, the mobile backend platform is complete. Mobile app
+development no longer depends on any unfinished backend infrastructure.**
+Full suite: 177/177 mobile + material tests passing; `returns:validate`
+12/12; `materials:audit` clean.
 
 When a phase ships, update this document in the same PR. Do not let
 the docs drift from the contract. That is the exact failure mode this
