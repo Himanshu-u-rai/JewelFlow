@@ -1,5 +1,24 @@
 # Quick Bills — Mobile API Reference
 
+> **Status: LEGACY surface.** This document describes endpoints on the
+> `/api/mobile/` base path. These endpoints **predate** the Mobile
+> Contract Stabilization (Phase A + M5) and therefore do **NOT** carry:
+>
+> - the canonical `{data, meta, errors}` envelope
+> - ETag / If-Match concurrency protection
+> - the `EnsureIdempotency` middleware
+> - `MaterialRegistrySnapshot` capability fields
+> - normalised `errors[]` error codes
+>
+> Use them only when there is no v1 equivalent. Plan for migration as
+> the v1 surface grows.
+>
+> **For semantic contracts, retry/idempotency rules, and the
+> material-capability model that mobile screens MUST follow, read
+> [`docs/mobile/README.md`](mobile/README.md) before writing any new
+> client code.** That document supersedes any conflicting guidance
+> below for the v1 era.
+
 Base URL: `/api/mobile`  
 Auth: `Authorization: Bearer <sanctum_token>` on every request.  
 All endpoints are scoped to the authenticated user's shop automatically.
