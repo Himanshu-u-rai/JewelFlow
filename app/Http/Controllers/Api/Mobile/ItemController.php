@@ -10,7 +10,9 @@ use App\Models\Item;
 use App\Models\Karigar;
 use App\Models\Shop;
 use App\Models\Vendor;
+use App\Models\PendingUpload;
 use App\Services\CatalogShareService;
+use App\Services\Mobile\UploadIntentService;
 use App\Services\PosSearchCacheService;
 use App\Services\ShopPricingService;
 use App\Services\MetalRegistry;
@@ -89,8 +91,9 @@ class ItemController extends Controller
             'sub_category' => 'nullable|string|max:255',
             'making_charges' => 'nullable|numeric|min:0',
             'stone_charges' => 'nullable|numeric|min:0',
-            'image_base64' => 'nullable|string',
-            'remove_image' => 'nullable|boolean',
+            'image_base64'    => 'nullable|string',
+            'image_upload_id' => 'nullable|string|max:80',
+            'remove_image'    => 'nullable|boolean',
         ];
 
         if ($isRetailer) {
@@ -173,8 +176,24 @@ class ItemController extends Controller
 
         $newImagePath = null;
         $clearImage = false;
+        $uploadToConsume = null;
 
-        if (! empty($validated['image_base64'])) {
+        if (! empty($validated['image_upload_id'])) {
+            // Preferred path: client used the M6 presigned-upload flow.
+            $upload = PendingUpload::where('upload_token', $validated['image_upload_id'])
+                ->where('shop_id', $shopId)
+                ->where('status', 'ready')
+                ->whereNull('consumed_at')
+                ->first();
+
+            if (! $upload) {
+                return response()->json(['message' => 'Upload ID is invalid, not ready, or already consumed.'], 422);
+            }
+
+            $newImagePath   = $upload->original_path;
+            $uploadToConsume = $upload;
+        } elseif (! empty($validated['image_base64'])) {
+            // Legacy path: inline base64 (kept for backward compatibility).
             $imageData = base64_decode($validated['image_base64'], true);
             if ($imageData === false) {
                 return response()->json(['message' => 'Invalid image data.'], 422);
@@ -194,7 +213,7 @@ class ItemController extends Controller
         }
 
         // Drop the transport-only fields so they don't leak into the model update.
-        unset($validated['image_base64'], $validated['remove_image']);
+        unset($validated['image_base64'], $validated['image_upload_id'], $validated['remove_image']);
 
         DB::transaction(function () use ($item, $validated, $isRetailer, $retailerPricing, $newImagePath, $clearImage) {
             $previousImage = $item->image;
@@ -271,6 +290,10 @@ class ItemController extends Controller
                 ]),
             ]);
         });
+
+        if ($uploadToConsume !== null) {
+            app(UploadIntentService::class)->consume($uploadToConsume, $item);
+        }
 
         $item->refresh();
 
@@ -360,8 +383,9 @@ class ItemController extends Controller
                     'nullable', 'string', 'max:30',
                     Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid'),
                 ],
-                'hallmark_date' => 'nullable|date',
-                'image_base64' => 'nullable|string',
+                'hallmark_date'   => 'nullable|date',
+                'image_base64'    => 'nullable|string',
+                'image_upload_id' => 'nullable|string|max:80',
             ];
 
             $validated = $request->validate($rules);
@@ -392,7 +416,24 @@ class ItemController extends Controller
         }
 
         $imagePath = null;
-        if (! empty($validated['image_base64'])) {
+        $storeUploadToConsume = null;
+
+        if (! empty($validated['image_upload_id'])) {
+            // Preferred path: client used the M6 presigned-upload flow.
+            $upload = PendingUpload::where('upload_token', $validated['image_upload_id'])
+                ->where('shop_id', $shopId)
+                ->where('status', 'ready')
+                ->whereNull('consumed_at')
+                ->first();
+
+            if (! $upload) {
+                return response()->json(['message' => 'Upload ID is invalid, not ready, or already consumed.'], 422);
+            }
+
+            $imagePath            = $upload->original_path;
+            $storeUploadToConsume = $upload;
+        } elseif (! empty($validated['image_base64'])) {
+            // Legacy path: inline base64 (kept for backward compatibility).
             $imageData = base64_decode($validated['image_base64']);
             if ($imageData !== false) {
                 $finfo = new \finfo(FILEINFO_MIME_TYPE);
@@ -472,6 +513,10 @@ class ItemController extends Controller
 
             return $item;
         });
+
+        if ($storeUploadToConsume !== null) {
+            app(UploadIntentService::class)->consume($storeUploadToConsume, $item);
+        }
 
         return response()->json(array_merge(
             $this->itemPayload($request, $item->fresh()),

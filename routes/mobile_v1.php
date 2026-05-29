@@ -14,6 +14,11 @@
 | Mutation routes (POST/PATCH/PUT/DELETE) additionally pass through
 | `mobile.idempotency` so retries are safe.
 |
+| EXCEPTION: PUT /uploads/{token} is intentionally excluded from both
+| `mobile.envelope` and `mobile.idempotency` — the upload token is
+| already the idempotency key, and the raw-bytes body must not be
+| double-buffered by a middleware layer.
+|
 | Legacy routes remain in routes/mobile.php at `/api/mobile/...` for
 | backward compatibility until the mobile client adopts v1 in full.
 |
@@ -22,59 +27,124 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Mobile\V1\CustomerController;
 use App\Http\Controllers\Api\Mobile\V1\ItemController;
+use App\Http\Controllers\Api\Mobile\V1\JobOrderController;
+use App\Http\Controllers\Api\Mobile\V1\KarigarController;
+use App\Http\Controllers\Api\Mobile\V1\ReferencePriceController;
 use App\Http\Controllers\Api\Mobile\V1\RegistryController;
+use App\Http\Controllers\Api\Mobile\V1\ReturnController;
+use App\Http\Controllers\Api\Mobile\V1\UploadController;
 
-Route::middleware([
+// ─── Auth layer shared by ALL v1 routes ───────────────────────────────────
+$authMiddleware = [
     'auth:sanctum',
     'tenant',
     'subscription.active',
     'account.active',
     'shop.exists',
     'rate.shop:600,1',
-    'mobile.envelope',
-])->group(function () {
+];
 
-    // ─── M1: Material registry snapshot ───────────────────────────────
-    // Filled in by M1 agent. Endpoint: GET /api/mobile/v1/registry/materials
-    Route::get('/registry/materials', [RegistryController::class, 'materials'])
-        ->name('mobile.v1.registry.materials');
-
-    /*
-    |--------------------------------------------------------------------
-    | M5 — Optimistic concurrency (ETag / If-Match)
-    |--------------------------------------------------------------------
-    |
-    | Every resource-returning endpoint in this block sets an `ETag`
-    | response header (and `X-Has-Entity-Tag: yes` so the envelope can
-    | surface the tag in `meta.etag`).
-    |
-    | Mutation endpoints in the same block REQUIRE an `If-Match` request
-    | header carrying the client's last-known ETag:
-    |
-    |   * Missing  → 428 Precondition Required  (precondition_required)
-    |   * Mismatch → 412 Precondition Failed    (precondition_failed)
-    |   * Match    → request proceeds normally
-    |
-    | This prevents a stale mobile copy from silently overwriting another
-    | cashier's edits to the same row.
-    |
-    */
-    Route::get('/items/{item}', [ItemController::class, 'show'])
-        ->middleware('can:inventory.view')
-        ->name('mobile.v1.items.show');
-    Route::get('/customers/{customer}', [CustomerController::class, 'show'])
-        ->middleware('can:customers.view')
-        ->name('mobile.v1.customers.show');
-
-    // ─── Mutation routes (idempotency-protected) ──────────────────────
-    Route::middleware(['mobile.idempotency'])->group(function () {
-        // Filled in by future phases (M8 returns, M9 karigar, etc.).
-
-        Route::patch('/items/{item}', [ItemController::class, 'update'])
-            ->middleware('can:inventory.edit')
-            ->name('mobile.v1.items.update');
-        Route::patch('/customers/{customer}', [CustomerController::class, 'update'])
-            ->middleware('can:customers.edit')
-            ->name('mobile.v1.customers.update');
+// ─── PUT /uploads/{token} — raw bytes, NO envelope, NO idempotency ─────────
+// This route receives the raw binary body from the client. Adding envelope
+// or idempotency middleware would buffer the entire body twice, causing
+// memory issues on large files. The upload_token serves as its own
+// idempotency surface.
+Route::middleware($authMiddleware)
+    ->group(function () {
+        Route::put('/uploads/{token}', [UploadController::class, 'upload'])
+            ->middleware('can:inventory.create')
+            ->name('mobile.v1.uploads.upload');
     });
-});
+
+// ─── All other v1 routes — canonical envelope ──────────────────────────────
+Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
+    ->group(function () {
+
+        // ─── M1: Material registry snapshot ───────────────────────────
+        Route::get('/registry/materials', [RegistryController::class, 'materials'])
+            ->name('mobile.v1.registry.materials');
+
+        // ─── M5: Optimistic concurrency (ETag / If-Match) ─────────────
+        Route::get('/items/{item}', [ItemController::class, 'show'])
+            ->middleware('can:inventory.view')
+            ->name('mobile.v1.items.show');
+
+        Route::get('/customers/{customer}', [CustomerController::class, 'show'])
+            ->middleware('can:customers.view')
+            ->name('mobile.v1.customers.show');
+
+        // ─── M6: Upload intent + status ───────────────────────────────
+        Route::post('/uploads/intent', [UploadController::class, 'intent'])
+            ->middleware(['can:inventory.create', 'mobile.idempotency'])
+            ->name('mobile.v1.uploads.intent');
+
+        Route::get('/uploads/{token}', [UploadController::class, 'show'])
+            ->middleware('can:inventory.view')
+            ->name('mobile.v1.uploads.show');
+
+        // ─── M9: Karigar read endpoints ────────────────────────────────
+        Route::get('/karigars', [KarigarController::class, 'index'])
+            ->middleware('can:karigar.view')
+            ->name('mobile.v1.karigars.index');
+
+        Route::get('/karigars/{karigar}', [KarigarController::class, 'show'])
+            ->middleware('can:karigar.view')
+            ->name('mobile.v1.karigars.show');
+
+        Route::get('/job-orders', [JobOrderController::class, 'index'])
+            ->middleware('can:job_order.view')
+            ->name('mobile.v1.job_orders.index');
+
+        Route::get('/job-orders/{jobOrder}', [JobOrderController::class, 'show'])
+            ->middleware('can:job_order.view')
+            ->name('mobile.v1.job_orders.show');
+
+        // ─── M8: Returns read endpoints ────────────────────────────────
+        // returns.approve covers viewing too for owners/managers; staff
+        // with returns.approve can read. For general staff read access,
+        // we gate on sales.view which all sales staff have.
+        Route::get('/returns', [ReturnController::class, 'index'])
+            ->middleware('can:sales.view')
+            ->name('mobile.v1.returns.index');
+
+        Route::get('/returns/{returnOrder}', [ReturnController::class, 'show'])
+            ->middleware('can:sales.view')
+            ->name('mobile.v1.returns.show');
+
+        // ─── M10: Reference price read endpoints ───────────────────────
+        Route::get('/reference-prices', [ReferencePriceController::class, 'index'])
+            ->middleware('can:settings.view')
+            ->name('mobile.v1.reference_prices.index');
+
+        // ─── Mutation routes (idempotency-protected) ───────────────────
+        Route::middleware(['mobile.idempotency'])->group(function () {
+
+            // M5 — item + customer PATCH
+            Route::patch('/items/{item}', [ItemController::class, 'update'])
+                ->middleware('can:inventory.edit')
+                ->name('mobile.v1.items.update');
+
+            Route::patch('/customers/{customer}', [CustomerController::class, 'update'])
+                ->middleware('can:customers.edit')
+                ->name('mobile.v1.customers.update');
+
+            // M8 — return create + approve
+            Route::post('/returns', [ReturnController::class, 'store'])
+                ->middleware('can:sales.create')
+                ->name('mobile.v1.returns.store');
+
+            Route::post('/returns/{returnOrder}/approve', [ReturnController::class, 'approve'])
+                ->middleware('can:returns.approve')
+                ->name('mobile.v1.returns.approve');
+
+            // M9 — karigar job-order issue + receipt
+            Route::post('/job-orders', [JobOrderController::class, 'store'])
+                ->middleware('can:job_order.manage')
+                ->name('mobile.v1.job_orders.store');
+
+            Route::post('/job-orders/{jobOrder}/receipt', [JobOrderController::class, 'receipt'])
+                ->middleware('can:job_order.manage')
+                ->name('mobile.v1.job_orders.receipt');
+
+        });
+    });
