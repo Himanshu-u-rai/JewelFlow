@@ -226,6 +226,22 @@ class ShopController extends Controller
                     ->whereNull('shop_id')
                     ->where('user_id', $user->id)
                     ->update(['shop_id' => $shop->id]);
+
+                // Issue the deferred platform invoice now that the shop exists.
+                // In pay-before-shop onboarding the invoice is skipped at payment
+                // time (platform_invoices.shop_id is NOT NULL). Guard against
+                // duplicates so renewals — which invoice at payment time — aren't
+                // double-billed.
+                $subscription = ShopSubscription::find($subscriptionId);
+                if ($subscription
+                    && $subscription->shop_id
+                    && (float) $subscription->price_paid > 0
+                    && ! \App\Models\Platform\PlatformInvoice::where('shop_subscription_id', $subscription->id)->exists()
+                ) {
+                    $invoice = app(\App\Services\PlatformInvoiceService::class)
+                        ->issueForSubscription($subscription);
+                    dispatch(new \App\Jobs\SendPlatformInvoiceEmail($invoice->id));
+                }
             }
 
             $shop->forceFill([

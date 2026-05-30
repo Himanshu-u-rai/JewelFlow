@@ -450,16 +450,22 @@
         box-shadow: 0 10px 20px rgba(20, 33, 61, 0.18), 0 0 0 4px rgba(245, 158, 11, 0.14);
     }
     .items-list-clear {
-        font-size: 12px;
-        color: var(--danger);
-        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        height: 38px;
+        padding: 0 14px;
+        font-size: 13px;
         font-weight: 600;
-        background: none;
-        border: none;
-        padding: 4px 8px;
-        border-radius: 8px;
+        color: #dc2626;
+        background: #fff;
+        border: 1px solid #fecaca;
+        cursor: pointer;
+        border-radius: 12px;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
-    .items-list-clear:hover { background: rgba(220,38,38,0.06); }
+    .items-list-clear:hover { background: #fef2f2; border-color: #f87171; color: #b91c1c; }
+    .items-list-clear svg { width: 15px; height: 15px; flex-shrink: 0; }
     .items-desktop-view {
         display: block;
     }
@@ -915,6 +921,24 @@
     .pay-row-remove:hover { background: rgba(220,38,38,0.08); }
     .pay-remaining { font-size: 13px; font-weight: 600; margin-top: 4px; }
 
+    /* ─── Payment status banners ──────────────────────── */
+    .pay-status-wrap { margin-top: 10px; }
+    .pay-status {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 16px; border-radius: 14px; border: 1px solid;
+    }
+    .pay-status svg { flex-shrink: 0; }
+    .pay-status-body { display: flex; flex-direction: column; line-height: 1.25; }
+    .pay-status-label {
+        font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.4px; opacity: 0.8;
+    }
+    .pay-status-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .pay-status-remaining { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .pay-status-emi        { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+    .pay-status-paid       { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+    .pay-status-paid-text  { font-size: 15px; font-weight: 700; }
+
     /* ─── Metal payment sub-fields ────────────────────── */
     .pay-metal-fields {
         display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px;
@@ -1124,6 +1148,25 @@
     .offers-mobile-card {
         display: none;
     }
+
+    /* ─── Offers & Redemption trigger (opens modal) ───── */
+    .offers-trigger {
+        width: 100%; display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; padding: 0; background: none; border: none; cursor: pointer;
+        text-align: left; color: inherit;
+    }
+    .offers-trigger-action {
+        flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;
+        font-size: 13px; font-weight: 600; color: var(--accent);
+    }
+    .offers-trigger-action svg { width: 16px; height: 16px; }
+    .offers-modal-footer { margin-top: 20px; display: flex; justify-content: flex-end; }
+    .offers-modal-done {
+        padding: 10px 22px; font-size: 14px; font-weight: 700; color: #fff;
+        background: #14213d; border: none; border-radius: 12px; cursor: pointer;
+        transition: background 0.15s;
+    }
+    .offers-modal-done:hover { background: #1f2f54; }
 
     .discount-card-title {
         margin-bottom: 14px;
@@ -1611,8 +1654,9 @@
                                 <path d="M5 12h14"></path>
                             </svg>
                         </button>
-                        <button class="items-list-clear" x-show="items.length > 0" x-cloak @click="clearItems()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-0.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear All
+                        <button type="button" class="items-list-clear" x-show="items.length > 0" x-cloak @click="clearItems()">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            Clear All
                         </button>
                     </div>
                 </div>
@@ -1882,107 +1926,26 @@
                             <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
                         </div>
                     </template>
-                    <template x-if="posQuoteV2Enabled">
-                        <div class="field">
-                            <label class="field-label">Round-off (auto)</label>
-                            <div class="field-input" style="background:#f8fafc;color:#475569;cursor:not-allowed;"
-                                 x-text="(Number(quoteRoundingAdjustment || 0) >= 0 ? '+ ₹' : '- ₹') + Math.abs(Number(quoteRoundingAdjustment || 0)).toFixed(2)"></div>
-                            <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Derived from shop's rounding strategy.</p>
-                        </div>
-                    </template>
+                    {{-- Auto round-off (Quote V2) is shown in the Price Summary
+                         below, so it's intentionally not duplicated here. The
+                         legacy manual round-off input above remains for non-V2 shops. --}}
                 </div>
             </div>
 
-            <div class="card card-accordion offers-mobile-card" x-data="{ offerSectionOpen: true }" :class="{ 'is-open': offerSectionOpen }">
-                <div class="card-title">
-                    <button type="button"
-                            class="card-toggle"
-                            :class="{ 'is-open': offerSectionOpen }"
-                            @click="offerSectionOpen = !offerSectionOpen"
-                            :aria-expanded="offerSectionOpen.toString()">
-                        <span class="card-toggle-copy">
-                            <span class="card-title-icon"></span>
-                            <span class="card-toggle-text">
-                                <span class="card-toggle-heading">Offers & Redemption</span>
-                                <span class="card-toggle-summary" x-text="offerAccordionSummary()"></span>
-                            </span>
+            <div class="card offers-mobile-card">
+                <button type="button" class="offers-trigger" @click="$dispatch('open-modal', 'offers-modal')">
+                    <span class="card-toggle-copy">
+                        <span class="card-title-icon"></span>
+                        <span class="card-toggle-text">
+                            <span class="card-toggle-heading">Offers &amp; Redemption</span>
+                            <span class="card-toggle-summary" x-text="offerAccordionSummary()"></span>
                         </span>
-                        <span class="card-toggle-icon" :class="{ 'is-open': offerSectionOpen }" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m6 9 6 6 6-6"></path>
-                            </svg>
-                        </span>
-                    </button>
-                </div>
-                <div class="collapsible-shell"
-                     x-cloak
-                     :class="{ 'is-open': offerSectionOpen }">
-                    <div class="collapsible-card-body">
-                        <div class="offers-stack">
-                            <div class="field">
-                                <label class="field-label">Offer / Scheme</label>
-                                <div class="offer-mode-wrap">
-                                    <div class="offer-mode-top">
-                                        <span class="offer-mode-label">Offer Mode</span>
-                                        <span class="offer-mode-state" :class="ignoreAutoOffer ? 'skip' : 'auto'" x-text="ignoreAutoOffer ? 'Skipped' : 'Auto Active'"></span>
-                                    </div>
-                                    <div class="offer-mode-toggle">
-                                        <button type="button"
-                                                class="offer-mode-btn"
-                                                :class="!ignoreAutoOffer ? 'active-auto' : ''"
-                                                @click="enableAutoOfferForThisBill()">
-                                            Auto Apply
-                                        </button>
-                                        <button type="button"
-                                                class="offer-mode-btn"
-                                                :class="ignoreAutoOffer ? 'active-skip' : ''"
-                                                @click="skipOfferForThisBill()">
-                                            Skip This Bill
-                                        </button>
-                                    </div>
-                                    <p class="offer-mode-help" x-text="ignoreAutoOffer ? 'No auto-offer will apply on this bill unless you manually choose one below.' : 'Best eligible auto-offer will apply if no manual offer is selected.'"></p>
-                                </div>
-                                <select class="field-select offer-select-offset" x-model="selectedOfferId" @change="onOfferSelectionChange()">
-                                    <option value="" x-text="ignoreAutoOffer ? 'Auto offer disabled for this bill' : 'Auto best offer (if eligible)'"></option>
-                                    <template x-for="offer in offers" :key="offer.id">
-                                        <option :value="String(offer.id)" x-text="offerLabel(offer)"></option>
-                                    </template>
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Applied Offer Discount</label>
-                                <div class="field-input offer-discount-box">
-                                    <span x-text="appliedOfferLabel()"></span>
-                                    <span class="offer-discount-value" x-text="'₹' + offerDiscountAmount().toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
-                                </div>
-                            </div>
-                            <template x-if="redeemableEnrollments.length > 0">
-                                <div class="offers-stack">
-                                    <div class="field">
-                                        <label class="field-label">Gold Saving Redemption (Optional)</label>
-                                        <select class="field-select" x-model="schemeRedemptionEnrollmentId" @change="onRedemptionEnrollmentChange()">
-                                            <option value="">Do not redeem now</option>
-                                            <template x-for="plan in redeemableEnrollments" :key="plan.id">
-                                                <option :value="String(plan.id)" x-text="redemptionPlanLabel(plan)"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-                                    <div class="field">
-                                        <label class="field-label">Redeem Amount (₹)</label>
-                                        <input type="number"
-                                               class="field-input"
-                                               x-model.number="schemeRedemptionAmount"
-                                               step="0.01"
-                                               min="0"
-                                               :max="maxRedeemableForSelection()"
-                                               :disabled="!schemeRedemptionEnrollmentId"
-                                               @input="normalizeRedemptionAmount(); recalc(); applyAutoRoundOff(); fetchQuoteDebounced()">
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
+                    </span>
+                    <span class="offers-trigger-action">
+                        Manage
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+                    </span>
+                </button>
             </div>
 
             <div class="summary-card summary-mobile-card">
@@ -1995,9 +1958,9 @@
                     <span class="summary-row-val" x-text="'₹ ' + Number(sellingPrice).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
-                <div class="summary-row" x-show="discount > 0">
+                <div class="summary-row">
                     <span>Manual Discount</span>
-                    <span class="summary-row-val summary-row-danger" x-text="'- ₹ ' + Number(discount).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
+                    <span class="summary-row-val" :class="{ 'summary-row-danger': displayDiscount() > 0 }" x-text="(displayDiscount() > 0 ? '- ₹ ' : '₹ ') + Number(displayDiscount()).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
                 <div class="summary-row" x-show="offerDiscountAmount() > 0">
@@ -2006,15 +1969,19 @@
                 </div>
 
                 <div class="summary-row">
-                    <span>GST (<span x-text="gstRate"></span>%) <template x-if="(discount + offerDiscountAmount()) > 0"><span class="summary-gst-base" x-text="'on ₹' + Number(Math.max(sellingPrice - discount - offerDiscountAmount(), 0)).toLocaleString('en-IN', {minimumFractionDigits:2})"></span></template></span>
+                    <span>GST (<span x-text="gstRate"></span>%) <template x-if="(displayDiscount() + offerDiscountAmount()) > 0"><span class="summary-gst-base" x-text="'on ₹' + Number(Math.max(sellingPrice - displayDiscount() - offerDiscountAmount(), 0)).toLocaleString('en-IN', {minimumFractionDigits:2})"></span></template></span>
                     <span class="summary-row-val" x-text="'₹ ' + Number(gst).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
                 <div class="summary-divider"></div>
 
-                <div class="summary-row" x-show="roundOff != 0">
-                    <span>Round-off</span>
-                    <span class="summary-row-val" x-text="(roundOff >= 0 ? '+ ' : '- ') + '₹ ' + Math.abs(roundOff).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
+                <div class="summary-row">
+                    <span>
+                        Round-off
+                        <span style="display:block;font-size:11px;font-weight:400;color:#94a3b8;margin-top:2px;"
+                              x-text="roundOff > 0 ? 'Rounded up — paise added' : (roundOff < 0 ? 'Rounded down — paise waived' : 'No rounding applied')"></span>
+                    </span>
+                    <span class="summary-row-val" x-text="(roundOff > 0 ? '+ ₹ ' : roundOff < 0 ? '- ₹ ' : '₹ ') + Math.abs(roundOff).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
                 <div class="summary-total">
@@ -2137,15 +2104,30 @@
                     </div>
                 </template>
 
-                <div class="pay-remaining" :class="hasEmiMode() ? 'text-amber-700' : (remaining() > 0.01 ? 'text-red-600' : (excess() > 0.5 ? '' : 'text-green-600'))">
+                <div class="pay-status-wrap">
                     <template x-if="hasEmiMode() && remaining() > 0.01">
-                        <span class="text-amber-700">₹<span x-text="remaining().toLocaleString('en-IN', {minimumFractionDigits:2})"></span> will be scheduled in EMI plan</span>
+                        <div class="pay-status pay-status-emi">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <div class="pay-status-body">
+                                <div class="pay-status-label">Will be scheduled in EMI</div>
+                                <div class="pay-status-value">₹<span x-text="remaining().toLocaleString('en-IN', {minimumFractionDigits:2})"></span></div>
+                            </div>
+                        </div>
                     </template>
                     <template x-if="!hasEmiMode() && remaining() > 0.01">
-                        <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-0.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>₹<span x-text="remaining().toLocaleString('en-IN', {minimumFractionDigits:2})"></span> remaining</span>
+                        <div class="pay-status pay-status-remaining">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+                            <div class="pay-status-body">
+                                <div class="pay-status-label">Remaining to pay</div>
+                                <div class="pay-status-value">₹<span x-text="remaining().toLocaleString('en-IN', {minimumFractionDigits:2})"></span></div>
+                            </div>
+                        </div>
                     </template>
                     <template x-if="!hasEmiMode() && remaining() <= 0.01 && excess() <= 0.5">
-                        <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-0.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Fully paid</span>
+                        <div class="pay-status pay-status-paid">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <span class="pay-status-paid-text">Fully paid</span>
+                        </div>
                     </template>
                     <template x-if="excess() > 0.5">
                         <div class="excess-alert">
@@ -2238,107 +2220,26 @@
                             <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Only for paise adjustment (max ±₹1). For larger discounts, use the Discount field above.</p>
                         </div>
                     </template>
-                    <template x-if="posQuoteV2Enabled">
-                        <div class="field">
-                            <label class="field-label">Round-off (auto)</label>
-                            <div class="field-input" style="background:#f8fafc;color:#475569;cursor:not-allowed;"
-                                 x-text="(Number(quoteRoundingAdjustment || 0) >= 0 ? '+ ₹' : '- ₹') + Math.abs(Number(quoteRoundingAdjustment || 0)).toFixed(2)"></div>
-                            <p class="field-hint" style="font-size:11px;color:#94a3b8;margin-top:3px;">Derived from shop's rounding strategy.</p>
-                        </div>
-                    </template>
+                    {{-- Auto round-off (Quote V2) is shown in the Price Summary
+                         below, so it's intentionally not duplicated here. The
+                         legacy manual round-off input above remains for non-V2 shops. --}}
                 </div>
             </div>
 
-            <div class="summary-card card-accordion offers-sidebar-card" x-data="{ offerSectionOpen: false }" :class="{ 'is-open': offerSectionOpen }">
-                <div class="card-title">
-                    <button type="button"
-                            class="card-toggle"
-                            :class="{ 'is-open': offerSectionOpen }"
-                            @click="offerSectionOpen = !offerSectionOpen"
-                            :aria-expanded="offerSectionOpen.toString()">
-                        <span class="card-toggle-copy">
-                            <span class="card-title-icon"></span>
-                            <span class="card-toggle-text">
-                                <span class="card-toggle-heading">Offers & Redemption</span>
-                                <span class="card-toggle-summary" x-text="offerAccordionSummary()"></span>
-                            </span>
+            <div class="summary-card offers-sidebar-card">
+                <button type="button" class="offers-trigger" @click="$dispatch('open-modal', 'offers-modal')">
+                    <span class="card-toggle-copy">
+                        <span class="card-title-icon"></span>
+                        <span class="card-toggle-text">
+                            <span class="card-toggle-heading">Offers &amp; Redemption</span>
+                            <span class="card-toggle-summary" x-text="offerAccordionSummary()"></span>
                         </span>
-                        <span class="card-toggle-icon" :class="{ 'is-open': offerSectionOpen }" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m6 9 6 6 6-6"></path>
-                            </svg>
-                        </span>
-                    </button>
-                </div>
-                <div class="collapsible-shell"
-                     x-cloak
-                     :class="{ 'is-open': offerSectionOpen }">
-                    <div class="collapsible-card-body">
-                        <div class="offers-stack">
-                            <div class="field">
-                                <label class="field-label">Offer / Scheme</label>
-                                <div class="offer-mode-wrap">
-                                    <div class="offer-mode-top">
-                                        <span class="offer-mode-label">Offer Mode</span>
-                                        <span class="offer-mode-state" :class="ignoreAutoOffer ? 'skip' : 'auto'" x-text="ignoreAutoOffer ? 'Skipped' : 'Auto Active'"></span>
-                                    </div>
-                                    <div class="offer-mode-toggle">
-                                        <button type="button"
-                                                class="offer-mode-btn"
-                                                :class="!ignoreAutoOffer ? 'active-auto' : ''"
-                                                @click="enableAutoOfferForThisBill()">
-                                            Auto Apply
-                                        </button>
-                                        <button type="button"
-                                                class="offer-mode-btn"
-                                                :class="ignoreAutoOffer ? 'active-skip' : ''"
-                                                @click="skipOfferForThisBill()">
-                                            Skip This Bill
-                                        </button>
-                                    </div>
-                                    <p class="offer-mode-help" x-text="ignoreAutoOffer ? 'No auto-offer will apply on this bill unless you manually choose one below.' : 'Best eligible auto-offer will apply if no manual offer is selected.'"></p>
-                                </div>
-                                <select class="field-select offer-select-offset" x-model="selectedOfferId" @change="onOfferSelectionChange()">
-                                    <option value="" x-text="ignoreAutoOffer ? 'Auto offer disabled for this bill' : 'Auto best offer (if eligible)'"></option>
-                                    <template x-for="offer in offers" :key="offer.id">
-                                        <option :value="String(offer.id)" x-text="offerLabel(offer)"></option>
-                                    </template>
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Applied Offer Discount</label>
-                                <div class="field-input offer-discount-box">
-                                    <span x-text="appliedOfferLabel()"></span>
-                                    <span class="offer-discount-value" x-text="'₹' + offerDiscountAmount().toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
-                                </div>
-                            </div>
-                            <template x-if="redeemableEnrollments.length > 0">
-                                <div class="offers-stack">
-                                    <div class="field">
-                                        <label class="field-label">Gold Saving Redemption (Optional)</label>
-                                        <select class="field-select" x-model="schemeRedemptionEnrollmentId" @change="onRedemptionEnrollmentChange()">
-                                            <option value="">Do not redeem now</option>
-                                            <template x-for="plan in redeemableEnrollments" :key="plan.id">
-                                                <option :value="String(plan.id)" x-text="redemptionPlanLabel(plan)"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-                                    <div class="field">
-                                        <label class="field-label">Redeem Amount (₹)</label>
-                                        <input type="number"
-                                               class="field-input"
-                                               x-model.number="schemeRedemptionAmount"
-                                               step="0.01"
-                                               min="0"
-                                               :max="maxRedeemableForSelection()"
-                                               :disabled="!schemeRedemptionEnrollmentId"
-                                               @input="normalizeRedemptionAmount(); recalc(); applyAutoRoundOff(); fetchQuoteDebounced()">
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
+                    </span>
+                    <span class="offers-trigger-action">
+                        Manage
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+                    </span>
+                </button>
             </div>
 
             <div class="summary-card summary-sidebar-card">
@@ -2351,9 +2252,9 @@
                     <span class="summary-row-val" x-text="'₹ ' + Number(sellingPrice).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
-                <div class="summary-row" x-show="discount > 0">
+                <div class="summary-row">
                     <span>Manual Discount</span>
-                    <span class="summary-row-val summary-row-danger" x-text="'- ₹ ' + Number(discount).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
+                    <span class="summary-row-val" :class="{ 'summary-row-danger': displayDiscount() > 0 }" x-text="(displayDiscount() > 0 ? '- ₹ ' : '₹ ') + Number(displayDiscount()).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
                 <div class="summary-row" x-show="offerDiscountAmount() > 0">
@@ -2362,15 +2263,19 @@
                 </div>
 
                 <div class="summary-row">
-                    <span>GST (<span x-text="gstRate"></span>%) <template x-if="(discount + offerDiscountAmount()) > 0"><span class="summary-gst-base" x-text="'on ₹' + Number(Math.max(sellingPrice - discount - offerDiscountAmount(), 0)).toLocaleString('en-IN', {minimumFractionDigits:2})"></span></template></span>
+                    <span>GST (<span x-text="gstRate"></span>%) <template x-if="(displayDiscount() + offerDiscountAmount()) > 0"><span class="summary-gst-base" x-text="'on ₹' + Number(Math.max(sellingPrice - displayDiscount() - offerDiscountAmount(), 0)).toLocaleString('en-IN', {minimumFractionDigits:2})"></span></template></span>
                     <span class="summary-row-val" x-text="'₹ ' + Number(gst).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
                 <div class="summary-divider"></div>
 
-                <div class="summary-row" x-show="roundOff != 0">
-                    <span>Round-off</span>
-                    <span class="summary-row-val" x-text="(roundOff >= 0 ? '+ ' : '- ') + '₹ ' + Math.abs(roundOff).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
+                <div class="summary-row">
+                    <span>
+                        Round-off
+                        <span style="display:block;font-size:11px;font-weight:400;color:#94a3b8;margin-top:2px;"
+                              x-text="roundOff > 0 ? 'Rounded up — paise added' : (roundOff < 0 ? 'Rounded down — paise waived' : 'No rounding applied')"></span>
+                    </span>
+                    <span class="summary-row-val" x-text="(roundOff > 0 ? '+ ₹ ' : roundOff < 0 ? '- ₹ ' : '₹ ') + Math.abs(roundOff).toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
                 </div>
 
                 <div class="summary-total">
@@ -2403,6 +2308,87 @@
             </div>
         </div>
     </div>
+
+    {{-- Offers & Redemption Modal — shared by the mobile + desktop triggers.
+         Inside the x-data scope so it reads/writes the same Alpine state. --}}
+    <x-modal name="offers-modal" maxWidth="lg">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-base font-bold text-gray-900">Offers &amp; Redemption</h3>
+                <button type="button" class="text-gray-400 hover:text-gray-600 transition" @click="$dispatch('close-modal', 'offers-modal')" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+
+            <div class="offers-stack">
+                <div class="field">
+                    <label class="field-label">Offer / Scheme</label>
+                    <div class="offer-mode-wrap">
+                        <div class="offer-mode-top">
+                            <span class="offer-mode-label">Offer Mode</span>
+                            <span class="offer-mode-state" :class="ignoreAutoOffer ? 'skip' : 'auto'" x-text="ignoreAutoOffer ? 'Skipped' : 'Auto Active'"></span>
+                        </div>
+                        <div class="offer-mode-toggle">
+                            <button type="button"
+                                    class="offer-mode-btn"
+                                    :class="!ignoreAutoOffer ? 'active-auto' : ''"
+                                    @click="enableAutoOfferForThisBill()">
+                                Auto Apply
+                            </button>
+                            <button type="button"
+                                    class="offer-mode-btn"
+                                    :class="ignoreAutoOffer ? 'active-skip' : ''"
+                                    @click="skipOfferForThisBill()">
+                                Skip This Bill
+                            </button>
+                        </div>
+                        <p class="offer-mode-help" x-text="ignoreAutoOffer ? 'No auto-offer will apply on this bill unless you manually choose one below.' : 'Best eligible auto-offer will apply if no manual offer is selected.'"></p>
+                    </div>
+                    <select class="field-select offer-select-offset" x-model="selectedOfferId" @change="onOfferSelectionChange()">
+                        <option value="" x-text="ignoreAutoOffer ? 'Auto offer disabled for this bill' : 'Auto best offer (if eligible)'"></option>
+                        <template x-for="offer in offers" :key="offer.id">
+                            <option :value="String(offer.id)" x-text="offerLabel(offer)"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label">Applied Offer Discount</label>
+                    <div class="field-input offer-discount-box">
+                        <span x-text="appliedOfferLabel()"></span>
+                        <span class="offer-discount-value" x-text="'₹' + offerDiscountAmount().toLocaleString('en-IN', {minimumFractionDigits:2})"></span>
+                    </div>
+                </div>
+                <template x-if="redeemableEnrollments.length > 0">
+                    <div class="offers-stack">
+                        <div class="field">
+                            <label class="field-label">Gold Saving Redemption (Optional)</label>
+                            <select class="field-select" x-model="schemeRedemptionEnrollmentId" @change="onRedemptionEnrollmentChange()">
+                                <option value="">Do not redeem now</option>
+                                <template x-for="plan in redeemableEnrollments" :key="plan.id">
+                                    <option :value="String(plan.id)" x-text="redemptionPlanLabel(plan)"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Redeem Amount (₹)</label>
+                            <input type="number"
+                                   class="field-input"
+                                   x-model.number="schemeRedemptionAmount"
+                                   step="0.01"
+                                   min="0"
+                                   :max="maxRedeemableForSelection()"
+                                   :disabled="!schemeRedemptionEnrollmentId"
+                                   @input="normalizeRedemptionAmount(); recalc(); applyAutoRoundOff(); fetchQuoteDebounced()">
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="offers-modal-footer">
+                <button type="button" class="offers-modal-done" @click="$dispatch('close-modal', 'offers-modal')">Done</button>
+            </div>
+        </div>
+    </x-modal>
 
     {{-- Compliance Modal — inside x-data scope so it can access Alpine state directly --}}
     <x-modal name="compliance-modal" maxWidth="lg">
@@ -2566,6 +2552,11 @@ function retailerPos() {
         discount: 0,
         discountPercent: 0,
         discountInputSource: 'amount',
+        // Server-computed discount amount (rupees) from the Quote V2 breakdown.
+        // Used for DISPLAY only so a percentage discount shows its rupee value
+        // in the Price Summary without being fed back into the quote payload
+        // (which would double-apply it). Mirrors `discount` in legacy mode.
+        quoteManualDiscount: 0,
         roundOff: 0,
         loyaltyPointsPerHundred: {{ $loyaltyPointsPerHundred ?? 1 }},
         total: 0,
@@ -2950,6 +2941,15 @@ function retailerPos() {
             this.fetchQuoteDebounced();
         },
 
+        /* Discount amount (rupees) to SHOW in the Price Summary.
+         * In Quote V2 the server is authoritative, so we display the
+         * server-computed value (covers percentage discounts, which never
+         * populate the local `discount` field). In legacy mode local
+         * `discount` already holds the computed rupee value. */
+        displayDiscount() {
+            return this.posQuoteV2Enabled ? Number(this.quoteManualDiscount || 0) : Number(this.discount || 0);
+        },
+
         /* ── Price calculation ──────────────────── */
         recalc() {
             // Quote v2 takes over the totals when enabled — skip local math so
@@ -3046,6 +3046,10 @@ function retailerPos() {
 
                 const b = data.breakdown || {};
                 if (b.subtotal !== undefined) this.sellingPrice = Number(b.subtotal);
+                // Surface the server-computed manual/percentage discount so the
+                // Price Summary can display it (display-only — never fed back into
+                // the next quote payload, which would double-apply the discount).
+                this.quoteManualDiscount = (b.manual_discount !== undefined) ? Number(b.manual_discount) : 0;
                 if (b.gst !== undefined) this.gst = Number(b.gst);
                 if (b.gst_rate !== undefined) this.gstRate = Number(b.gst_rate);
                 if (b.final_total !== undefined) this.total = Number(b.final_total);
@@ -3123,6 +3127,12 @@ function retailerPos() {
            Always computes against rawTotal (not this.total) to avoid including
            a previous roundOff in the gap calculation. */
         applyAutoRoundOff() {
+            // Quote V2 owns rounding (shop rounding strategy, computed server-side
+            // and applied in fetchQuote). Running the legacy payment-gap round-off
+            // here would set a local estimate that fetchQuote then overwrites
+            // ~150ms later — the visible "round-off jumps / summary realigns"
+            // flicker. Skip entirely in V2.
+            if (this.posQuoteV2Enabled) return;
             if (this.payments.length === 0) {
                 if (this.roundOff !== 0) { this.roundOff = 0; this.recalc(); }
                 return;

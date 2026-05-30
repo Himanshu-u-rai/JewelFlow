@@ -182,9 +182,15 @@ class SubscriptionPaymentService
                     'reason' => 'Payment via Razorpay: ' . $paymentId,
                 ]);
 
-                // Generate platform invoice for this payment
-                $invoice   = app(PlatformInvoiceService::class)->issueForSubscription($subscription);
-                $invoiceId = $invoice->id;
+                // Generate platform invoice for this payment — but only when the
+                // shop already exists. In the pay-before-shop onboarding flow the
+                // subscription is created with a null shop_id, and platform_invoices
+                // requires a shop_id (NOT NULL). The invoice is therefore deferred
+                // until the shop is created in ShopController::store().
+                if ($subscription->shop_id) {
+                    $invoice   = app(PlatformInvoiceService::class)->issueForSubscription($subscription);
+                    $invoiceId = $invoice->id;
+                }
 
                 if (Auth::user()->shop_id && Auth::user()->shop) {
                     Auth::user()->shop->forceFill([
