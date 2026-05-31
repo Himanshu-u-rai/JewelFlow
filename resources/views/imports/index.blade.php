@@ -114,24 +114,6 @@
 
     <div class="content-inner space-y-6 ops-treatment-page">
 
-        @if ($errors->any())
-            <div class="bg-red-50 border border-red-200 text-red-700 p-4" style="border-radius:16px;">
-                <p class="text-sm font-semibold">We couldn't read that file:</p>
-                <ul class="text-sm mt-1 list-disc list-inside space-y-0.5">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-                <p class="text-xs text-red-500 mt-2">Tip: download the sample template below and match its columns exactly (column names are case-sensitive).</p>
-            </div>
-        @endif
-
-        @if (session('success'))
-            <div class="bg-green-50 border border-green-200 text-green-700 p-4 text-sm font-medium" style="border-radius:16px;">
-                {{ session('success') }}
-            </div>
-        @endif
-
         <div class="bg-white border border-gray-200 shadow-sm p-4" style="border-radius:16px;">
             <h2 class="text-base font-semibold text-gray-900">How It Works</h2>
             <p class="text-sm text-gray-500 mt-1">1. Download sample CSV template 2. Fill your rows 3. Upload and preview 4. Execute import.</p>

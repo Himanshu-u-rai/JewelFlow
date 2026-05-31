@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessBulkImportJob;
 use App\Models\Import;
 use App\Services\BulkImportService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use LogicException;
 
@@ -46,7 +48,7 @@ class BulkImportController extends Controller
                 $request->file('file')
             );
         } catch (LogicException $e) {
-            return back()->withErrors(['import' => $e->getMessage()]);
+            return back()->with('error', $e->getMessage());
         }
 
         return redirect()->route('imports.show', $import)->with('success', 'Catalog import preview created.');
@@ -64,7 +66,7 @@ class BulkImportController extends Controller
                 $request->file('file')
             );
         } catch (LogicException $e) {
-            return back()->withErrors(['import' => $e->getMessage()]);
+            return back()->with('error', $e->getMessage());
         }
 
         return redirect()->route('imports.show', $import)->with('success', 'Manufacture import preview created.');
@@ -82,7 +84,7 @@ class BulkImportController extends Controller
                 $request->file('file')
             );
         } catch (LogicException $e) {
-            return back()->withErrors(['import' => $e->getMessage()]);
+            return back()->with('error', $e->getMessage());
         }
 
         return redirect()->route('imports.show', $import)->with('success', 'Stock import preview created.');
@@ -97,11 +99,11 @@ class BulkImportController extends Controller
         ]);
 
         if ($import->status !== Import::STATUS_PREVIEW) {
-            return back()->withErrors(['import' => 'Only preview imports can be executed.']);
+            return back()->with('error', 'Only preview imports can be executed.');
         }
 
         if ((int) $import->valid_rows === 0) {
-            return back()->withErrors(['import' => 'No valid rows to import.']);
+            return back()->with('error', 'No valid rows to import.');
         }
 
         $import->update([
@@ -112,7 +114,7 @@ class BulkImportController extends Controller
         try {
             ProcessBulkImportJob::dispatchSync($import->id, $request->input('mode'));
         } catch (LogicException $e) {
-            return back()->withErrors(['import' => $e->getMessage()]);
+            return back()->with('error', $e->getMessage());
         }
 
         return redirect()->route('imports.show', $import)->with('success', 'Import completed successfully.');
@@ -131,7 +133,7 @@ class BulkImportController extends Controller
         abort_if($import->shop_id !== auth()->user()->shop_id, 403);
 
         if (!in_array($import->status, [Import::STATUS_PREVIEW, Import::STATUS_QUEUED], true)) {
-            return back()->withErrors(['import' => 'Only preview or queued imports can be cancelled.']);
+            return back()->with('error', 'Only preview or queued imports can be cancelled.');
         }
 
         $import->update(['status' => Import::STATUS_CANCELLED]);
@@ -229,7 +231,11 @@ class BulkImportController extends Controller
 
     private function validateCsvUpload(Request $request, string $importName): void
     {
-        $request->validate(
+        // Surface upload errors as a toast (session 'error') rather than the
+        // default field-error bag, so the imports page stays clean — see the
+        // global #global-toast handler in layouts/app.blade.php.
+        $validator = Validator::make(
+            $request->all(),
             [
                 'file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
             ],
@@ -238,10 +244,13 @@ class BulkImportController extends Controller
                 'file.file' => "The uploaded file for {$importName} is invalid.",
                 'file.mimes' => "Only CSV files (.csv) are allowed for {$importName}.",
                 'file.max' => "The {$importName} CSV must be 10 MB or smaller.",
-            ],
-            [
-                'file' => "{$importName} CSV file",
             ]
         );
+
+        if ($validator->fails()) {
+            throw new HttpResponseException(
+                back()->with('error', $validator->errors()->first())
+            );
+        }
     }
 }
