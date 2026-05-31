@@ -709,7 +709,11 @@ class BulkImportService
             'making_charges' => $makingCharge,
             'stone_charges' => $stoneCharge,
             'cost_price' => $pricingPayload['cost_price'],
-            'selling_price' => ((float) ($payload['selling_price'] ?? 0)) ?: null,
+            // Use the CSV-provided selling price if given; otherwise fall back to
+            // the rate-derived retail price (same as the Add Item form). Previously
+            // a blank selling_price was stored as null/₹0, so auto-priced imports
+            // showed ₹0 until the item was opened and re-saved.
+            'selling_price' => ((float) ($payload['selling_price'] ?? 0)) ?: ($pricingPayload['selling_price'] ?? null),
             'huid' => $payload['huid'] ?: null,
             'vendor_id' => $vendorId,
             'source' => 'import',
