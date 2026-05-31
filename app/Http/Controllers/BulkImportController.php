@@ -159,16 +159,9 @@ class BulkImportController extends Controller
                     'stone_type',
                     'notes',
                 ],
-                'sample' => [
-                    'D-1001',
-                    'Floral Ring',
-                    'Gold Jewellery',
-                    'Rings',
-                    '22',
-                    '8.500',
-                    '1200',
-                    'None',
-                    'Sample row. Replace with your own data.',
+                'samples' => [
+                    ['D-1001', 'Floral Ring', 'Gold Jewellery', 'Rings', '22', '8.500', '1200', 'None', 'Sample row — replace with your own data.'],
+                    ['D-1002', 'Temple Necklace', 'Silver Jewellery', 'Necklaces', '925', '18.000', '900', 'None', 'Silver uses fineness (925), gold uses karat (22/18/14).'],
                 ],
             ],
             Import::TYPE_MANUFACTURE => [
@@ -184,16 +177,8 @@ class BulkImportController extends Controller
                     'making_charge',
                     'stone_charge',
                 ],
-                'sample' => [
-                    'RJ-001-001',
-                    'D-1001',
-                    '1',
-                    '12.000',
-                    '0.500',
-                    '22',
-                    '2',
-                    '1500',
-                    '0',
+                'samples' => [
+                    ['RJ-001-001', 'D-1001', '1', '12.000', '0.500', '22', '2', '1500', '0'],
                 ],
             ],
             Import::TYPE_STOCK => [
@@ -213,20 +198,11 @@ class BulkImportController extends Controller
                     'design',
                     'selling_price',
                 ],
-                'sample' => [
-                    'BRC-0001',
-                    'Gold Jewellery',
-                    'Rings',
-                    'gold',
-                    '8.500',
-                    '0.200',
-                    '22',
-                    '1200',
-                    '500',
-                    'AB1234CD5678',
-                    'Kumar Jewellers',
-                    'Floral Ring',
-                    '42000',
+                'samples' => [
+                    // Gold: metal_type 'gold', purity in karat (22/18/14). selling_price optional — retailer shops auto-price from daily rates if left blank.
+                    ['BRC-0001', 'Gold Jewellery', 'Rings', 'gold', '8.500', '0.200', '22', '1200', '500', 'AB1234CD5678', 'Kumar Jewellers', 'Floral Ring', ''],
+                    // Silver: metal_type 'silver', purity in fineness (925/999). huid optional for silver.
+                    ['BRC-0002', 'Silver Jewellery', 'Anklets', 'silver', '18.000', '0.300', '925', '900', '300', '', 'Patel Jewellers', 'Temple Anklet', ''],
                 ],
             ],
         ];
@@ -234,7 +210,15 @@ class BulkImportController extends Controller
         abort_unless(array_key_exists($type, $templates), 404);
 
         $template = $templates[$type];
-        $content = implode(',', $template['headers']) . "\n" . implode(',', $template['sample']) . "\n";
+        $lines = [implode(',', $template['headers'])];
+        foreach ($template['samples'] as $sample) {
+            // Quote any value containing a comma so multi-word notes stay in one cell.
+            $lines[] = implode(',', array_map(
+                fn ($v) => str_contains((string) $v, ',') ? '"' . $v . '"' : (string) $v,
+                $sample
+            ));
+        }
+        $content = implode("\n", $lines) . "\n";
 
         return Response::make($content, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',

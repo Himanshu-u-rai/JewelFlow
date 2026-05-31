@@ -67,7 +67,7 @@ class TenantHealthService
                 $notes[] = 'Read-only mode';
             }
 
-            if (!in_array($status, ['active', 'grace'], true)) {
+            if (!in_array($status, ['active', 'trial', 'grace'], true)) {
                 $score -= 25;
                 $notes[] = 'Subscription not active';
             }

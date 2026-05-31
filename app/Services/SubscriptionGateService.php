@@ -73,7 +73,9 @@ class SubscriptionGateService
         }
 
         $status = (string) $subscription->status;
-        if (in_array($status, ['active', 'grace'], true)) {
+        // 'trial' is a fully-writable state — a shop on its free trial must be
+        // able to transact. 'active' and 'grace' are the paid writable states.
+        if (in_array($status, ['active', 'trial', 'grace'], true)) {
             return [true, $status, ''];
         }
 
