@@ -311,6 +311,43 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/api/price-preview', [PosController::class, 'preview'])->middleware('can:sales.pos')->name('pos.preview');
     Route::get('/api/item-by-barcode/{barcode}', [PosController::class, 'findByBarcode'])->middleware('can:sales.pos')->name('pos.barcode');
 
+    // ======= RETURNS & EXCHANGES (web surface re-connection — RETURNS_SYSTEM_DIAGNOSTIC.md) =======
+    // Maps 1:1 to the already-committed Returns\ReturnsController & Returns\ExchangeController.
+    // No controller/semantics changes — pure route re-registration. Static segments
+    // (control-center) are declared BEFORE the {returnOrder} wildcard.
+    Route::prefix('returns')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Returns\ReturnsController::class, 'index'])->middleware('can:returns.view')->name('returns.index');
+        Route::get('/control-center', [\App\Http\Controllers\Returns\ReturnsController::class, 'controlCenter'])->middleware('can:returns.approve')->name('returns.control-center');
+        Route::post('/batch-restock', [\App\Http\Controllers\Returns\ReturnsController::class, 'batchRestock'])->middleware('can:returns.approve')->name('returns.batch-restock');
+
+        // Disposition / recovery on returned items.
+        Route::post('/items/{item}/redispose', [\App\Http\Controllers\Returns\ReturnsController::class, 'redisposeItem'])->middleware('can:returns.approve')->name('returns.items.redispose');
+        Route::post('/items/{item}/fix-orphan-status', [\App\Http\Controllers\Returns\ReturnsController::class, 'fixOrphanStatus'])->middleware('can:returns.approve')->name('returns.items.fix-orphan-status');
+        Route::get('/items/{disposition}/recover', [\App\Http\Controllers\Returns\ReturnsController::class, 'showRecover'])->middleware('can:returns.approve')->name('returns.items.recover');
+        Route::post('/items/{disposition}/recover', [\App\Http\Controllers\Returns\ReturnsController::class, 'storeRecover'])->middleware('can:returns.approve')->name('returns.items.recover.store');
+
+        // Single return order.
+        Route::get('/{returnOrder}', [\App\Http\Controllers\Returns\ReturnsController::class, 'show'])->middleware('can:returns.view')->name('returns.show');
+        Route::get('/{returnOrder}/approve-review', [\App\Http\Controllers\Returns\ReturnsController::class, 'showApprove'])->middleware('can:returns.approve')->name('returns.approve-review');
+        Route::post('/{returnOrder}/approve', [\App\Http\Controllers\Returns\ReturnsController::class, 'approve'])->middleware('can:returns.approve')->name('returns.approve');
+        Route::post('/{returnOrder}/reject', [\App\Http\Controllers\Returns\ReturnsController::class, 'reject'])->middleware('can:returns.approve')->name('returns.reject');
+        Route::post('/{returnOrder}/dispositions/{disposition}/recover-inline', [\App\Http\Controllers\Returns\ReturnsController::class, 'inlineRecover'])->middleware('can:returns.approve')->name('returns.disposition.recover-inline');
+    });
+
+    // Start-a-return + unified exchange entry points are invoice-scoped.
+    Route::get('/invoices/{invoice}/returns/create', [\App\Http\Controllers\Returns\ReturnsController::class, 'create'])->middleware('can:returns.create')->name('returns.create');
+    Route::post('/invoices/{invoice}/returns', [\App\Http\Controllers\Returns\ReturnsController::class, 'store'])->middleware('can:returns.create')->name('returns.store');
+    Route::get('/invoices/{invoice}/exchange', [\App\Http\Controllers\Returns\ExchangeController::class, 'createUnified'])->middleware('can:returns.create')->name('exchanges.unified.create');
+    Route::post('/invoices/{invoice}/exchange', [\App\Http\Controllers\Returns\ExchangeController::class, 'storeUnified'])->middleware('can:returns.create')->name('exchanges.unified.store');
+
+    Route::prefix('exchanges')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Returns\ExchangeController::class, 'index'])->middleware('can:returns.view')->name('exchanges.index');
+        Route::get('/create/{returnOrder}', [\App\Http\Controllers\Returns\ExchangeController::class, 'create'])->middleware('can:returns.create')->name('exchanges.create');
+        Route::post('/{returnOrder}', [\App\Http\Controllers\Returns\ExchangeController::class, 'store'])->middleware('can:returns.create')->name('exchanges.store');
+        Route::get('/{exchange}', [\App\Http\Controllers\Returns\ExchangeController::class, 'show'])->middleware('can:returns.view')->name('exchanges.show');
+        Route::get('/{exchange}/receipt', [\App\Http\Controllers\Returns\ExchangeController::class, 'receipt'])->middleware('can:returns.view')->name('exchanges.receipt');
+    });
+
     // ======= REPAIRS =======
     // Staff: view + create + edit + status update + deliver (repairs.create/edit permission).
     // Delete = owner + manager only.

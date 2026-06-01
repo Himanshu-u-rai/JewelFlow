@@ -31,6 +31,18 @@
                 </svg>
                 Print
             </a>
+            @can('returns.create')
+                @if($invoice->status === \App\Models\Invoice::STATUS_FINALIZED)
+                <a href="{{ route('returns.create', $invoice) }}" class="btn btn-secondary btn-sm" data-turbo-frame="_top">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h11a4 4 0 014 4v0a4 4 0 01-4 4H7m-4-8l4-4m-4 4l4 4"/></svg>
+                    Return
+                </a>
+                <a href="{{ route('exchanges.unified.create', $invoice) }}" class="btn btn-secondary btn-sm" data-turbo-frame="_top">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/></svg>
+                    Exchange
+                </a>
+                @endif
+            @endcan
             <a href="{{ route('invoices.index') }}" 
                class="btn btn-secondary btn-sm">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

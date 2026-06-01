@@ -84,6 +84,14 @@ class Item extends Model
         return $this->belongsTo(MetalLot::class);
     }
 
+    // Latest disposition decision recorded against this returned item. Referenced
+    // by the committed Returns Control Center (Queue 2); restored here for
+    // compatibility during the returns web-surface re-connection.
+    public function latestReturnDisposition()
+    {
+        return $this->hasOne(ReturnedItemDisposition::class, 'item_id')->latestOfMany('dispositioned_at');
+    }
+
     public function shop()
     {
         return $this->belongsTo(Shop::class);

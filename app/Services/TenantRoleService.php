@@ -57,6 +57,7 @@ class TenantRoleService
             $staffPermissions = Permission::query()->whereIn('name', [
                 'inventory.view',
                 'sales.view', 'sales.create', 'sales.pos',
+                'returns.view', 'returns.create',
                 'customers.view', 'customers.create', 'customers.edit',
                 'repairs.view', 'repairs.create', 'repairs.edit',
                 'cash.view',

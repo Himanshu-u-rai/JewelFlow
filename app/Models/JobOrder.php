@@ -14,6 +14,14 @@ class JobOrder extends Model
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
 
+    // job_type values (DB CHECK: manufacture | repair | rework). These constants
+    // are referenced by the committed Returns\ReturnsController + control-center
+    // view but were never defined on the model — restored here for compatibility
+    // during the returns web-surface re-connection (RETURNS_SYSTEM_DIAGNOSTIC.md).
+    public const JOB_TYPE_MANUFACTURE = 'manufacture';
+    public const JOB_TYPE_REPAIR = 'repair';
+    public const JOB_TYPE_REWORK = 'rework';
+
     public const FLAG_EXCESS_WASTAGE = 'EXCESS_WASTAGE';
     public const FLAG_SHORT_RETURN = 'SHORT_RETURN';
     public const FLAG_EXCESS_RETURN = 'EXCESS_RETURN';
@@ -68,6 +76,14 @@ class JobOrder extends Model
     public function karigar()
     {
         return $this->belongsTo(Karigar::class);
+    }
+
+    // Source item for repair/rework jobs (job sourced from an existing piece).
+    // Referenced by the committed Returns control-center flow; restored here for
+    // compatibility during the returns web-surface re-connection.
+    public function sourceItem()
+    {
+        return $this->belongsTo(Item::class, 'source_item_id');
     }
 
     public function issuances()
