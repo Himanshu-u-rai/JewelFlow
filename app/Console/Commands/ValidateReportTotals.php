@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\CreditNote;
 use App\Reporting\GstReportingService;
 use App\Reporting\ReportPeriod;
+use App\Reporting\TaxService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -34,7 +35,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst): int
+    public function handle(GstReportingService $gst, TaxService $tax): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -53,6 +54,7 @@ class ValidateReportTotals extends Command
 
         foreach ($shopIds as $shopId) {
             $failures += $this->validateShop((int) $shopId, $period, $gst);
+            $failures += $this->validateTaxPack((int) $shopId, $period, $gst, $tax);
         }
 
         $this->newLine();
@@ -122,6 +124,48 @@ class ValidateReportTotals extends Command
             'GST-4 net liability == collected − reversed',
             abs($data->netGstLiability - $expectedNet) <= self::TOLERANCE,
             "net={$data->netGstLiability} expected={$expectedNet}"
+        );
+
+        return $failures;
+    }
+
+    /**
+     * CA tax-pack invariants (Phase 2 M1). GSTR-1 / GSTR-3B / CN-register must
+     * reconcile to the canonical GST summary — they consume it, so any drift
+     * means a re-aggregation slipped in.
+     */
+    private function validateTaxPack(int $shopId, ReportPeriod $period, GstReportingService $gst, TaxService $tax): int
+    {
+        $failures = 0;
+        $summary = $gst->summary($shopId, $period);
+        $gstr1   = $tax->gstr1($shopId, $period);
+        $gstr3b  = $tax->gstr3b($shopId, $period);
+        $register = $tax->creditNoteRegister($shopId, $period);
+
+        // GST-5 — GSTR-1 B2B + B2CS taxable sums to the GST report taxable.
+        $b2bTaxable  = (float) $gstr1->b2b->sum('taxable');
+        $b2csTaxable = (float) $gstr1->b2cs->sum('taxable');
+        $failures += $this->assert(
+            $shopId,
+            'GST-5 GSTR-1 B2B+B2CS taxable == GST taxable',
+            abs(($b2bTaxable + $b2csTaxable) - $summary->taxableAmount) <= self::TOLERANCE,
+            'gstr1=' . round($b2bTaxable + $b2csTaxable, 2) . ' summary=' . $summary->taxableAmount
+        );
+
+        // GST-6 — GSTR-3B net GST == canonical net liability.
+        $failures += $this->assert(
+            $shopId,
+            'GST-6 GSTR-3B net == liability net',
+            abs($gstr3b->netGst - $summary->netGstLiability) <= self::TOLERANCE,
+            'gstr3b=' . $gstr3b->netGst . ' liability=' . $summary->netGstLiability
+        );
+
+        // GST-7 — CN register GST reversed == GST report CN reversed.
+        $failures += $this->assert(
+            $shopId,
+            'GST-7 CN register == GST CN reversed',
+            abs($register->totalGst - $summary->cnGstReversed) <= self::TOLERANCE,
+            'register=' . $register->totalGst . ' summary=' . $summary->cnGstReversed
         );
 
         return $failures;
