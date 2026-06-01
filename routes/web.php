@@ -381,6 +381,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/gstr3b', [\App\Http\Controllers\Reporting\TaxReportController::class, 'gstr3b'])->middleware('can:reports.view')->name('report.gstr3b');
     Route::get('/report/cn-register', [\App\Http\Controllers\Reporting\TaxReportController::class, 'creditNoteRegister'])->middleware('can:reports.view')->name('report.cn-register');
     Route::get('/report/cn-register/export', [\App\Http\Controllers\Reporting\TaxReportController::class, 'creditNoteRegisterCsv'])->middleware('can:reports.view')->name('report.cn-register.csv');
+    // CA Ledger & Reconciliation pack (Phase 2 M2) — read-only, reports.view gated.
+    Route::get('/report/payment-reconciliation', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'paymentReconciliation'])->middleware('can:reports.view')->name('report.payment-reconciliation');
+    Route::get('/report/payment-reconciliation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'paymentReconciliationCsv'])->middleware('can:reports.view')->name('report.payment-reconciliation.csv');
+    Route::get('/report/day-book', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'dayBook'])->middleware('can:reports.view')->name('report.day-book');
+    Route::get('/report/day-book/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'dayBookCsv'])->middleware('can:reports.view')->name('report.day-book.csv');
+    Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuation'])->middleware('can:reports.view')->name('report.inventory-valuation');
+    Route::get('/report/inventory-valuation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuationCsv'])->middleware('can:reports.view')->name('report.inventory-valuation.csv');
     Route::get('/report/closing', [\App\Http\Controllers\ClosingController::class, 'index'])->middleware('can:reports.daily_closing')->name('report.closing');
     Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware('can:reports.view')->name('report.repairs');
     Route::get('/report/reference-prices', [\App\Http\Controllers\ReferencePriceHistoryController::class, 'index'])->middleware('can:reports.view')->name('report.reference-prices');

@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\CreditNote;
 use App\Reporting\GstReportingService;
 use App\Reporting\ReportPeriod;
+use App\Reporting\SalesService;
 use App\Reporting\TaxService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst, TaxService $tax): int
+    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -55,6 +56,7 @@ class ValidateReportTotals extends Command
         foreach ($shopIds as $shopId) {
             $failures += $this->validateShop((int) $shopId, $period, $gst);
             $failures += $this->validateTaxPack((int) $shopId, $period, $gst, $tax);
+            $failures += $this->validateReconciliation((int) $shopId, $period, $gst, $sales);
         }
 
         $this->newLine();
@@ -166,6 +168,45 @@ class ValidateReportTotals extends Command
             'GST-7 CN register == GST CN reversed',
             abs($register->totalGst - $summary->cnGstReversed) <= self::TOLERANCE,
             'register=' . $register->totalGst . ' summary=' . $summary->cnGstReversed
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Reconciliation pack invariants (Phase 2 M2). Payment reconciliation must
+     * agree with the canonical sale scope, and its mode breakdown must sum to
+     * the collected total.
+     */
+    private function validateReconciliation(int $shopId, ReportPeriod $period, GstReportingService $gst, SalesService $sales): int
+    {
+        $failures = 0;
+        $summary = $gst->summary($shopId, $period);
+        $recon = $sales->paymentReconciliation($shopId, $period);
+
+        // PAY-1 — same set of finalized invoices as the GST report.
+        $failures += $this->assert(
+            $shopId,
+            'PAY-1 payment-recon invoice total == GST total sales',
+            abs($recon->invoiceTotal - $summary->totalSales) <= self::TOLERANCE,
+            'recon=' . $recon->invoiceTotal . ' gst=' . $summary->totalSales
+        );
+
+        // PAY-2 — collected equals the sum of the mode breakdown.
+        $modeSum = round((float) $recon->modeBreakdown->sum(), 2);
+        $failures += $this->assert(
+            $shopId,
+            'PAY-2 collected == sum of payment modes',
+            abs($recon->collected - $modeSum) <= self::TOLERANCE,
+            'collected=' . $recon->collected . ' modeSum=' . $modeSum
+        );
+
+        // PAY-3 — invoice counts agree.
+        $failures += $this->assert(
+            $shopId,
+            'PAY-3 payment-recon count == GST invoice count',
+            $recon->invoiceCount === $summary->invoiceCount,
+            'recon=' . $recon->invoiceCount . ' gst=' . $summary->invoiceCount
         );
 
         return $failures;
