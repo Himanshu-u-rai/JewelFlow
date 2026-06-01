@@ -26,7 +26,6 @@ use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\PublicCatalogController;
 use App\Http\Controllers\StockPurchaseController;
 use App\Http\Controllers\PaymentMethodController;
-use App\Http\Controllers\TransactionHistoryReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -377,7 +376,6 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/pnl', [\App\Http\Controllers\PnlController::class, 'index'])->middleware('can:reports.view')->name('report.pnl');
     Route::get('/report/gst', [\App\Http\Controllers\GstController::class, 'index'])->middleware('can:reports.view')->name('report.gst');
     Route::get('/report/closing', [\App\Http\Controllers\ClosingController::class, 'index'])->middleware('can:reports.daily_closing')->name('report.closing');
-    Route::get('/report/transactions', [TransactionHistoryReportController::class, 'index'])->middleware('can:reports.view')->name('report.transactions');
     Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware('can:reports.view')->name('report.repairs');
     Route::get('/report/reference-prices', [\App\Http\Controllers\ReferencePriceHistoryController::class, 'index'])->middleware('can:reports.view')->name('report.reference-prices');
     Route::get('/report/audit', function () {
