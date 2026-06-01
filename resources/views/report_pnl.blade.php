@@ -14,7 +14,7 @@
                     <button type="submit" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>View Date</button>
                 @endif
             </form>
-            <span class="header-badge">{{ \Carbon\Carbon::parse($date)->format('d M Y') }}</span>
+            <span class="header-badge">{{ $periodLabel }}</span>
         </div>
     </x-page-header>
 
@@ -46,7 +46,7 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-xs uppercase tracking-wide text-gray-500">Gold Cost</p>
+                        <p class="text-xs uppercase tracking-wide text-gray-500">Cost of Goods</p>
                         <p class="text-xl font-semibold text-gray-900">₹{{ number_format($goldValue, 2) }}</p>
                     </div>
                 </div>
@@ -204,8 +204,8 @@
                                 </svg>
                             </div>
                             <div>
-                                <div class="text-sm font-medium text-gray-600">Gold Cost</div>
-                                <div class="text-xs text-gray-500">Material value sold</div>
+                                <div class="text-sm font-medium text-gray-600">Cost of Goods (COGS)</div>
+                                <div class="text-xs text-gray-500">Recorded cost of items sold</div>
                             </div>
                         </div>
                         <div class="text-right">
@@ -216,27 +216,28 @@
                         </div>
                     </div>
 
-                    <!-- Profit Calculation Visual -->
+                    <!-- Gross Profit = Revenue − COGS -->
                     <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <h3 class="text-sm font-semibold text-gray-700 mb-3">Profit Calculation</h3>
+                        <h3 class="text-sm font-semibold text-gray-700 mb-3">Gross Profit Calculation</h3>
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Making Charges</span>
-                                <span class="font-medium text-gray-900">₹{{ number_format($making, 2) }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">+ Stone Charges</span>
-                                <span class="font-medium text-gray-900">₹{{ number_format($stones, 2) }}</span>
+                                <span class="text-gray-600">Net Sales (excl. GST, after returns)</span>
+                                <span class="font-medium text-gray-900">₹{{ number_format($sales, 2) }}</span>
                             </div>
                             <div class="flex justify-between border-b pb-2">
-                                <span class="text-gray-600">+ Wastage Recovered</span>
-                                <span class="font-medium text-gray-900">₹{{ number_format($wastageRecovered, 2) }}</span>
+                                <span class="text-gray-600">− Cost of Goods Sold</span>
+                                <span class="font-medium text-rose-600">−₹{{ number_format($goldValue, 2) }}</span>
                             </div>
                             <div class="flex justify-between pt-2 text-base font-bold">
-                                <span class="text-emerald-700">= Gross Profit</span>
-                                <span class="text-emerald-700">₹{{ number_format($profit, 2) }}</span>
+                                <span class="{{ $profit >= 0 ? 'text-emerald-700' : 'text-rose-700' }}">= Gross Profit</span>
+                                <span class="{{ $profit >= 0 ? 'text-emerald-700' : 'text-rose-700' }}">₹{{ number_format($profit, 2) }}</span>
                             </div>
                         </div>
+                        @if(($costUnknownLines ?? 0) > 0)
+                            <p class="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                                {{ $costUnknownLines }} of {{ $soldLineCount }} sold items have no recorded cost and are excluded from COGS — actual profit may be lower.
+                            </p>
+                        @endif
                     </div>
 
                     <!-- Performance Indicator -->
@@ -292,7 +293,7 @@
                             <td class="px-6 py-4 text-sm text-right text-gray-600 whitespace-nowrap">100.0%</td>
                         </tr>
                         <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 text-sm text-gray-700 pl-12">Gold Cost</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 pl-12">Cost of Goods Sold</td>
                             <td class="px-6 py-4 text-sm text-right text-gray-900 whitespace-nowrap">₹{{ number_format($goldValue, 2) }}</td>
                             <td class="px-6 py-4 text-sm text-right text-gray-600 whitespace-nowrap">
                                 @if($sales > 0){{ number_format(($goldValue / $sales) * 100, 1) }}%@else-@endif

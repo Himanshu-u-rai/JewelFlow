@@ -2,61 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Invoice;
-use App\Models\InvoiceItem;
-use App\Models\MetalMovement;
-use Illuminate\Support\Facades\DB;
+use App\Reporting\ProfitReportingService;
+use App\Reporting\ReportPeriod;
+use Illuminate\Http\Request;
 
 class PnlController extends Controller
 {
-    public function index()
+    public function __construct(private ProfitReportingService $profitReporting) {}
+
+    public function index(Request $request)
     {
-        $shopId = auth()->user()->shop_id;
-        $date = request('date', now()->toDateString());
+        $shopId = (int) auth()->user()->shop_id;
 
-        // Total sales
-        $sales = Invoice::where('shop_id', $shopId)
-            ->whereDate('created_at', $date)
-            ->sum('total');
+        // A specific date → that day; otherwise the current month (a range, not
+        // just "today"). Parsing/validation lives in ReportPeriod.
+        $period = $request->filled('date')
+            ? ReportPeriod::day($request->input('date'))
+            : ReportPeriod::month();
 
-        // Making charges
-        $making = InvoiceItem::whereHas('invoice', function ($q) use ($shopId, $date) {
-            $q->where('shop_id', $shopId)->whereDate('created_at', $date);
-        })->sum('making_charges');
+        $data = $this->profitReporting->summary($shopId, $period);
 
-        // Stone charges
-        $stones = InvoiceItem::whereHas('invoice', function ($q) use ($shopId, $date) {
-            $q->where('shop_id', $shopId)->whereDate('created_at', $date);
-        })->sum('stone_amount');
+        return view('report_pnl', [
+            // Filter/header state.
+            'date'        => $request->input('date', ''),
+            'periodLabel' => $period->label(),
 
-        // Gold sold (fine weight × rate)
-        $goldSold = MetalMovement::where('shop_id', $shopId)
-            ->where('type', 'sale')
-            ->whereDate('created_at', $date)
-            ->sum('fine_weight');
+            // Honest gross-margin figures (mapped to the view's existing names).
+            'sales'            => $data->revenue,       // ex-GST net sales (revenue base)
+            'goldValue'        => $data->cogs,          // now true COGS, not an avg-rate estimate
+            'profit'           => $data->grossProfit,   // revenue − COGS (can be negative)
+            'making'           => $data->makingCharges,
+            'stones'           => $data->stoneCharges,
+            'wastageRecovered' => $data->wastageRecovered,
 
-        $avgRate = Invoice::where('shop_id', $shopId)
-            ->whereDate('created_at', $date)
-            ->avg('gold_rate');
-
-        $goldValue = $goldSold * ($avgRate ?? 0);
-
-        // Wastage recovered from customers
-        $wastageRecovered = Invoice::where('shop_id', $shopId)
-            ->whereDate('created_at', $date)
-            ->sum('wastage_charge');
-
-        // Profit = making + stone + wastage recovered
-        $profit = $making + $stones + $wastageRecovered;
-
-        return view('report_pnl', compact(
-            'date',  // Added this
-            'sales',
-            'goldValue',
-            'making',
-            'stones',
-            'wastageRecovered',
-            'profit'
-        ));
+            // New transparency fields.
+            'marginPct'        => $data->marginPct,
+            'grossSales'       => $data->grossSales,
+            'returns'          => $data->returns,
+            'discount'         => $data->discount,
+            'costUnknownLines' => $data->costUnknownLines,
+            'soldLineCount'    => $data->soldLineCount,
+        ]);
     }
 }

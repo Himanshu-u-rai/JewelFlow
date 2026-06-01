@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Reporting\Concerns\HasSalesScopes;
 use App\Services\AccountingAuditService;
 use App\Services\BusinessIdentifierService;
 use LogicException;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 class Invoice extends Model
 {
     use BelongsToShop;
+    use HasSalesScopes;
 
     public const STATUS_DRAFT = 'draft';
     public const STATUS_FINALIZED = 'finalized';

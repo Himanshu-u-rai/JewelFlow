@@ -71,6 +71,12 @@
                     <td>Invoices</td>
                     <td>{{ $invoiceCount }}</td>
                 </tr>
+                <tr>
+                    <td>GST Reversed (Returns)</td>
+                    <td>−₹{{ number_format($cnGstReversed ?? 0, 2) }}</td>
+                    <td>Net GST Liability</td>
+                    <td>₹{{ number_format($netGstLiability ?? $gstCollected, 2) }}</td>
+                </tr>
             </table>
         </div>
 
@@ -158,10 +164,10 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse($gstBreakdown as $row)
                                 @php
-                                    // Use subtraction for SGST so CGST + SGST always equals Total GST exactly,
-                                    // avoiding the rounding error where round(x/2)*2 ≠ x for odd paise.
-                                    $cgst = round((float) $row->gst / 2, 2);
-                                    $sgst = round((float) $row->gst - $cgst, 2);
+                                    // Real persisted CGST/SGST split (backfilled). Fall back to a
+                                    // gst/2 split only for legacy rows where the columns are null.
+                                    $cgst = round((float) ($row->cgst ?? ($row->gst / 2)), 2);
+                                    $sgst = round((float) ($row->sgst ?? ($row->gst - $cgst)), 2);
                                 @endphp
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-4 py-3.5 whitespace-nowrap">
@@ -201,8 +207,8 @@
                         </tbody>
                         @if($gstBreakdown->isNotEmpty())
                             @php
-                                $totalCgst = round($gstCollected / 2, 2);
-                                $totalSgst = round($gstCollected - $totalCgst, 2);
+                                $totalCgst = round((float) ($cgstCollected ?? ($gstCollected / 2)), 2);
+                                $totalSgst = round((float) ($sgstCollected ?? ($gstCollected - $totalCgst)), 2);
                             @endphp
                             <tfoot class="bg-gray-50 border-t-2 border-gray-300">
                                 <tr class="font-bold">
@@ -250,12 +256,18 @@
                         @endif
                         <div class="flex justify-between gap-3">
                             <span class="text-gray-600">CGST:</span>
-                            <span class="font-medium text-emerald-600 text-right">₹{{ number_format($gstCollected / 2, 2) }}</span>
+                            <span class="font-medium text-emerald-600 text-right">₹{{ number_format($cgstCollected ?? ($gstCollected / 2), 2) }}</span>
                         </div>
                         <div class="flex justify-between gap-3">
                             <span class="text-gray-600">SGST:</span>
-                            <span class="font-medium text-emerald-600 text-right">₹{{ number_format($gstCollected / 2, 2) }}</span>
+                            <span class="font-medium text-emerald-600 text-right">₹{{ number_format($sgstCollected ?? ($gstCollected / 2), 2) }}</span>
                         </div>
+                        @if(($igstCollected ?? 0) > 0)
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-600">IGST:</span>
+                            <span class="font-medium text-emerald-600 text-right">₹{{ number_format($igstCollected, 2) }}</span>
+                        </div>
+                        @endif
                         <div class="flex justify-between gap-3">
                             <span class="text-gray-600">Total Tax:</span>
                             <span class="font-medium text-emerald-600 text-right">₹{{ number_format($gstCollected, 2) }}</span>
@@ -310,19 +322,76 @@
                     </div>
                 </div>
 
-                <!-- Quick Stats -->
+                <!-- Net Tax Liability (after returns) -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                    <p class="text-xs text-gray-500 mb-1">Tax Liability</p>
-                    <p class="text-2xl font-bold text-emerald-600">₹{{ number_format($gstCollected, 2) }}</p>
-                    <p class="text-xs mt-2 leading-relaxed text-gray-500">
-                        @if($taxableAmount > 0)
-                            Effective Rate: {{ number_format(($gstCollected / $taxableAmount) * 100, 2) }}%
-                        @else
-                            No sales this period
+                    <p class="text-xs text-gray-500 mb-1">Net Tax Liability</p>
+                    <p class="text-2xl font-bold text-emerald-600">₹{{ number_format($netGstLiability ?? $gstCollected, 2) }}</p>
+                    <div class="text-xs mt-3 space-y-1 leading-relaxed text-gray-500">
+                        <div class="flex justify-between gap-3">
+                            <span>GST collected</span>
+                            <span class="text-gray-700">₹{{ number_format($gstCollected, 2) }}</span>
+                        </div>
+                        @if(($cnGstReversed ?? 0) > 0)
+                        <div class="flex justify-between gap-3">
+                            <span>Less: GST on returns</span>
+                            <span class="text-rose-600">−₹{{ number_format($cnGstReversed, 2) }}</span>
+                        </div>
                         @endif
-                    </p>
+                        <div class="flex justify-between gap-3 pt-1 border-t border-gray-100 font-medium">
+                            <span class="text-gray-700">Net payable</span>
+                            <span class="text-emerald-700">₹{{ number_format($netGstLiability ?? $gstCollected, 2) }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Credit Notes (Returns) — reduces output tax liability -->
+        <div class="gst-cn-panel mt-6 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Credit Notes Issued (Returns)</h2>
+                <p class="text-xs text-gray-500 mt-1">GST reversed on settled returns this period — already subtracted from net liability above</p>
+            </div>
+            @if(($cnData ?? collect())->isEmpty())
+                <div class="px-4 py-8 text-center text-gray-500 text-sm">No credit notes issued this period.</div>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3.5 text-left text-xs font-medium text-gray-500 uppercase leading-5">CN Number</th>
+                                <th class="px-4 py-3.5 text-left text-xs font-medium text-gray-500 uppercase leading-5">Date</th>
+                                <th class="px-4 py-3.5 text-left text-xs font-medium text-gray-500 uppercase leading-5">Original Invoice</th>
+                                <th class="px-4 py-3.5 text-left text-xs font-medium text-gray-500 uppercase leading-5">Customer</th>
+                                <th class="px-4 py-3.5 text-right text-xs font-medium text-gray-500 uppercase leading-5">Taxable</th>
+                                <th class="px-4 py-3.5 text-right text-xs font-medium text-gray-500 uppercase leading-5">GST Reversed</th>
+                                <th class="px-4 py-3.5 text-right text-xs font-medium text-gray-500 uppercase leading-5">CN Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach($cnData as $cn)
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3.5 whitespace-nowrap text-sm font-mono text-gray-800">{{ $cn->credit_note_number }}</td>
+                                    <td class="px-4 py-3.5 whitespace-nowrap text-sm text-gray-600">{{ \Carbon\Carbon::parse($cn->issued_at)->format('d M Y') }}</td>
+                                    <td class="px-4 py-3.5 whitespace-nowrap text-sm font-mono text-gray-600">{{ $cn->original_invoice_number ?? '—' }}</td>
+                                    <td class="px-4 py-3.5 whitespace-nowrap text-sm text-gray-600">{{ $cn->customer_name }}</td>
+                                    <td class="px-4 py-3.5 whitespace-nowrap text-right text-sm text-gray-900">₹{{ number_format($cn->cn_subtotal, 2) }}</td>
+                                    <td class="px-4 py-3.5 whitespace-nowrap text-right text-sm text-rose-600">−₹{{ number_format($cn->cn_gst, 2) }}</td>
+                                    <td class="px-4 py-3.5 whitespace-nowrap text-right text-sm font-semibold text-gray-900">₹{{ number_format($cn->cn_total, 2) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot class="bg-gray-50 border-t-2 border-gray-300">
+                            <tr class="font-bold">
+                                <td colspan="4" class="px-4 py-3.5 text-xs text-gray-900 uppercase leading-5">{{ $cnCount ?? 0 }} credit note(s)</td>
+                                <td class="px-4 py-3.5 text-right text-sm leading-5">₹{{ number_format($cnSubtotalReversed ?? 0, 2) }}</td>
+                                <td class="px-4 py-3.5 text-right text-sm text-rose-700 leading-5">−₹{{ number_format($cnGstReversed ?? 0, 2) }}</td>
+                                <td class="px-4 py-3.5 text-right text-sm leading-5">₹{{ number_format($cnTotalReversed ?? 0, 2) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            @endif
         </div>
 
         <!-- Quick Links -->

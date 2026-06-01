@@ -37,10 +37,11 @@ class ClosingController extends Controller
         $goldOut = (float) ($goldAgg->gold_out ?? 0);
         $wastage = (float) ($goldAgg->wastage  ?? 0);
 
-        // CASH — single aggregate for all invoice figures.
+        // CASH — single aggregate for all invoice figures. Uses the canonical
+        // sale scope (finalized + accounting date) so this total matches the GST
+        // and P&L reports for the same day (audit A4/A5).
         $invoiceAgg = Invoice::where('shop_id', $shopId)
-            ->where('status', Invoice::STATUS_FINALIZED)
-            ->whereDate('created_at', $date)
+            ->salesIn(\App\Reporting\ReportPeriod::day($date))
             ->selectRaw('SUM(total) as sales, SUM(gst) as gst, SUM(discount) as discount, COUNT(*) as invoice_count')
             ->first();
 

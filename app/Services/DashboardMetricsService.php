@@ -17,8 +17,13 @@ class DashboardMetricsService
         $shop = Shop::query()->find($shopId);
         $isRetailer = $shop?->isRetailer() ?? false;
 
+        // Canonical sale definition: finalized only (drafts/cancelled excluded),
+        // dated by accounting date — matches the GST, Closing and P&L reports so
+        // "today's sales" is the same number everywhere (audit A4).
+        $todayPeriod = \App\Reporting\ReportPeriod::day($today);
+
         $invoicesToday = Invoice::where('shop_id', $shopId)
-            ->whereDate('created_at', $today)
+            ->salesIn($todayPeriod)
             ->count();
 
         $openRepairs = Repair::where('shop_id', $shopId)
@@ -39,8 +44,7 @@ class DashboardMetricsService
 
         if ($isRetailer) {
             $todaysInvoices = Invoice::where('shop_id', $shopId)
-                ->whereDate('created_at', $today)
-                ->where('status', '!=', Invoice::STATUS_CANCELLED)
+                ->salesIn($todayPeriod)
                 ->get();
             $todaysRevenue = $todaysInvoices->sum('total');
 
@@ -60,7 +64,7 @@ class DashboardMetricsService
         }
 
         $invoiceTrend = Invoice::where('shop_id', $shopId)
-            ->where('status', '!=', Invoice::STATUS_CANCELLED)
+            ->finalizedSale()
             ->where('created_at', '>=', now()->subDays(6)->startOfDay())
             ->selectRaw("DATE(created_at) as date, COUNT(*) as count, COALESCE(SUM(total), 0) as revenue")
             ->groupByRaw('DATE(created_at)')
@@ -72,7 +76,7 @@ class DashboardMetricsService
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
             ->leftJoin('items', 'items.id', '=', 'invoice_items.item_id')
             ->where('invoices.shop_id', $shopId)
-            ->where('invoices.status', '!=', Invoice::STATUS_CANCELLED)
+            ->where('invoices.status', Invoice::STATUS_FINALIZED)
             ->where('invoices.created_at', '>=', now()->subDays(6)->startOfDay())
             ->selectRaw('DATE(invoices.created_at) as date, COALESCE(SUM(invoice_items.line_total - COALESCE(items.cost_price, 0)), 0) as profit')
             ->groupByRaw('DATE(invoices.created_at)')
@@ -94,7 +98,7 @@ class DashboardMetricsService
         }
 
         $monthlyRevenueRows = Invoice::where('shop_id', $shopId)
-            ->where('status', '!=', Invoice::STATUS_CANCELLED)
+            ->finalizedSale()
             ->where('created_at', '>=', now()->subDays(29)->startOfDay())
             ->selectRaw("DATE(created_at) as date, COALESCE(SUM(total), 0) as revenue, COUNT(*) as invoice_count")
             ->groupByRaw('DATE(created_at)')
@@ -127,7 +131,7 @@ class DashboardMetricsService
         $topCustomers = DB::table('invoices')
             ->join('customers', 'customers.id', '=', 'invoices.customer_id')
             ->where('invoices.shop_id', $shopId)
-            ->where('invoices.status', '!=', Invoice::STATUS_CANCELLED)
+            ->where('invoices.status', Invoice::STATUS_FINALIZED)
             ->where('invoices.created_at', '>=', now()->subDays(30)->startOfDay())
             ->groupBy('customers.id', 'customers.first_name', 'customers.last_name', 'customers.mobile')
             ->selectRaw('
