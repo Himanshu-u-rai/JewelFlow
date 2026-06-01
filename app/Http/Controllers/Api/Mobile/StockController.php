@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Item;
+use App\Services\CatalogShareService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class StockController extends Controller
 {
+    public function __construct(private CatalogShareService $catalog) {}
+
     public function index(Request $request): JsonResponse
     {
         $shopId = (int) $request->user()->shop_id;
@@ -60,6 +63,11 @@ class StockController extends Controller
         $perPage = min(100, max(1, (int) $request->input('per_page', 20)));
         $items = $query->orderBy('created_at', 'desc')
             ->paginate($perPage);
+
+        $items->getCollection()->transform(function (Item $item) use ($request) {
+            $item->image = $this->catalog->resolveImageUrl($request, $item);
+            return $item;
+        });
 
         return response()->json($items);
     }
