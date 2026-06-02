@@ -326,10 +326,10 @@
                                                         class="inline-flex items-center rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100 transition {{ $suggestedDisp === 'sent_to_melt' ? 'ring-2 ring-orange-400 ring-offset-1' : '' }}">
                                                     Send to Melt{{ $suggestedDisp === 'sent_to_melt' ? ' ✓' : '' }}
                                                 </button>
-                                                <button type="submit" name="disposition" value="sent_to_rework"
-                                                        class="inline-flex items-center rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 hover:bg-blue-100 transition">
-                                                    Send to Karigar
-                                                </button>
+                                                {{-- "Send to Karigar" retired (M11): the rework job-work backend was
+                                                     never built, so this only trapped items in an unclearable queue.
+                                                     To rework a returned piece: Send to Melt → record recovery into the
+                                                     vault → create a karigar job from that lot. --}}
                                                 <button type="submit" name="disposition" value="written_off"
                                                         class="inline-flex items-center rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition {{ $suggestedDisp === 'written_off' ? 'ring-2 ring-slate-400 ring-offset-1' : '' }}">
                                                     Write Off{{ $suggestedDisp === 'written_off' ? ' ✓' : '' }}
@@ -520,17 +520,17 @@
             </div>
             @endif
 
-            {{-- Rework job not created --}}
+            {{-- Legacy rework items (sent_to_rework retired in M11) --}}
             <div>
                 <div class="flex items-center gap-3 mb-1">
-                    <h3 class="text-sm font-semibold text-slate-700">Rework job not created</h3>
+                    <h3 class="text-sm font-semibold text-slate-700">Pieces marked for rework (legacy)</h3>
                     @if($withKarigar->count() > 0)
                         <span class="inline-flex items-center justify-center min-w-[22px] h-[20px] px-1.5 rounded-full bg-slate-400 text-white text-[10px] font-bold leading-none">
                             {{ $withKarigar->count() }}
                         </span>
                     @endif
                 </div>
-                <p class="text-sm text-slate-500 mb-3">These pieces were sent out for rework but no karigar job has been created yet.</p>
+                <p class="text-sm text-slate-500 mb-3">These pieces were marked for rework under the old flow. To rework a returned piece now: choose <span class="font-semibold">Send to Melt</span> above, record the recovery into the vault, then create a karigar job from that gold lot.</p>
 
                 @if($withKarigar->isEmpty())
                     <x-empty-state

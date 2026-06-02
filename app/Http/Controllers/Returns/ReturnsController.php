@@ -124,7 +124,8 @@ class ReturnsController extends Controller
             'lines.*.disposition'     => ['required', Rule::in([
                 ReturnedItemDisposition::DISPOSITION_RESTOCKED,
                 ReturnedItemDisposition::DISPOSITION_SENT_TO_MELT,
-                ReturnedItemDisposition::DISPOSITION_SENT_TO_REWORK,
+                // sent_to_rework retired (M11): rework job-work was never built;
+                // rework a piece via melt → vault → karigar job instead.
                 ReturnedItemDisposition::DISPOSITION_WRITTEN_OFF,
             ])],
             'lines.*.reason'                    => 'nullable|string|max:255',
@@ -486,7 +487,8 @@ class ReturnsController extends Controller
             'disposition'   => ['required', \Illuminate\Validation\Rule::in([
                 ReturnedItemDisposition::DISPOSITION_RESTOCKED,
                 ReturnedItemDisposition::DISPOSITION_SENT_TO_MELT,
-                ReturnedItemDisposition::DISPOSITION_SENT_TO_REWORK,
+                // sent_to_rework retired (M11): rework job-work was never built;
+                // rework a piece via melt → vault → karigar job instead.
                 ReturnedItemDisposition::DISPOSITION_WRITTEN_OFF,
             ])],
             'notes'         => 'nullable|string|max:500',
