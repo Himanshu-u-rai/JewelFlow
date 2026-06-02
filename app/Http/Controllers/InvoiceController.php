@@ -106,6 +106,13 @@ class InvoiceController extends Controller
         $action = $validated['action']
             ?? (($request->input('status') === 'cancelled' || $request->filled('cancellation_reason')) ? 'cancel' : 'finalize');
 
+        // Cancel / void is a higher-privilege action than finalizing a draft.
+        // The route is gated 'sales.create' so cashiers can finalize; the void
+        // branch requires 'sales.void' here.
+        if ($action === 'cancel') {
+            abort_unless($request->user()->can('sales.void'), 403);
+        }
+
         try {
             if ($action === 'finalize') {
                 InvoiceAccountingService::finalizeDraft($invoice, isset($validated['gst_rate']) ? (float) $validated['gst_rate'] : null);

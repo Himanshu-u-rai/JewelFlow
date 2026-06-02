@@ -43,7 +43,8 @@
                     </form>
                 </div>
 
-                {{-- Cancel Draft --}}
+                {{-- Cancel Draft (void is a higher privilege than finalize) --}}
+                @can('sales.void')
                 <div class="bg-white shadow-sm border border-gray-200 rounded-lg invoices-edit-card">
                     <div class="p-4 border-b border-gray-200">
                         <h2 class="text-base font-semibold text-gray-900">Cancel Draft</h2>
@@ -66,10 +67,12 @@
                         </button>
                     </form>
                 </div>
+                @endcan
 
             @elseif($invoice->status === \App\Models\Invoice::STATUS_FINALIZED)
 
-                {{-- Cancel via Reversal --}}
+                {{-- Cancel via Reversal (void privilege) --}}
+                @can('sales.void')
                 <div class="bg-white shadow-sm border border-gray-200 rounded-lg invoices-edit-card">
                     <div class="p-4 border-b border-gray-200">
                         <h2 class="text-base font-semibold text-gray-900">Cancel Invoice via Reversal</h2>
@@ -92,6 +95,7 @@
                         </button>
                     </form>
                 </div>
+                @endcan
 
             @else
 

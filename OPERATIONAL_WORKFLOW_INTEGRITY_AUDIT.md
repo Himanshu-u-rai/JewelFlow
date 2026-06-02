@@ -66,7 +66,7 @@ Ordered by severity. ✔︎ = lead-auditor spot-verified; ◦ = sub-audit eviden
 | **R2** | Control Center "Send to Karigar" button | LIVE but dead-ends | UX-regression / dead-lifecycle | **P1** | ◦ |
 | **R3** | Orphan "Fix Status" recovery action | UNREACHABLE (filters rows never created) | recovery-failure (latent) | **P2** | ◦ |
 | **R4** | Job-order cancel → restore source item status | DEAD (cancel ignores `source_item_id`) | recovery-failure (latent) | **P2** | ◦ |
-| **P1** | Draft-invoice **finalize** mis-gated by `sales.void` | BROKEN for `sales.create`-only staff | permission-breakage | **P1** | ◦ |
+| **P1** | Draft-invoice **finalize** mis-gated by `sales.void` | **FIXED M8** (route→sales.create; cancel branch gated sales.void in-controller; Edit button status-aware) | permission-breakage | **P1→done** | ✔︎ |
 | **P2** | Bulk import gated by `reports.export` (not `imports.*`) | MIS-GATED | permission-breakage | **P1** | ◦ |
 | **SEC1** | KYC PII (PAN/Aadhaar/passport) on **public** disk + public URL | EXPOSED | data-exposure | **P1** | ◦ |
 | **F-SC** | Store-credit **consumption** (`applyToInvoice`) has no UI trigger | HIDDEN (endpoint OK, no button) | workflow-regression / hidden-workflow | **P2** | ✔︎ |

@@ -490,8 +490,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // ======= LEDGER & INVOICE (sales.* permissions) =======
     Route::get('/ledger', [\App\Http\Controllers\LedgerController::class, 'index'])->middleware('can:reports.view')->name('ledger.index');
     Route::get('/invoices', [\App\Http\Controllers\InvoiceController::class, 'index'])->middleware('can:sales.view')->name('invoices.index');
-    Route::get('/invoices/{invoice}/edit', [\App\Http\Controllers\InvoiceController::class, 'edit'])->middleware('can:sales.void')->name('invoices.edit');
-    Route::put('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->middleware('can:sales.void')->name('invoices.update');
+    Route::get('/invoices/{invoice}/edit', [\App\Http\Controllers\InvoiceController::class, 'edit'])->middleware('can:sales.create')->name('invoices.edit');
+    // Route gate is the lower 'sales.create' so cashiers can FINALIZE drafts;
+    // the cancel/void branch is separately gated 'sales.void' inside update().
+    Route::put('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->middleware('can:sales.create')->name('invoices.update');
     Route::get('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'show'])->middleware('can:sales.view')->name('invoices.show');
     Route::get('/invoice/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->middleware('can:sales.view')->name('invoices.print');
 
