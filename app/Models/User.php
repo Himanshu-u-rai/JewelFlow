@@ -25,6 +25,13 @@ class User extends Authenticatable
         'email',
         'password',
         'role_id',
+        // shop_id is set server-side only (StaffController uses the owner's
+        // shop_id; registration leaves it null until shop creation). It was
+        // missing here, so StaffController's create() silently dropped it and
+        // staff were created with NULL shop_id → treated as new users on login
+        // and bounced to subscription/plans. Both create() sites pass fixed
+        // arrays (never $request->all()), so this is not a mass-assignment risk.
+        'shop_id',
         'is_active',
         'first_name',
         'last_name',
