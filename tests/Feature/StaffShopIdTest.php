@@ -48,4 +48,31 @@ class StaffShopIdTest extends TestCase
         $this->assertSame((int) $shop->id, (int) $staff->fresh()->shop_id,
             'staff must be created with the shop_id (was silently dropped before)');
     }
+
+    public function test_mobile_uniqueness_must_be_global_not_per_shop(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        // A user already holds this mobile globally (mirrors the orphaned staff
+        // that had shop_id = NULL). DB has a GLOBAL unique on mobile_number.
+        User::create([
+            'name' => 'Existing', 'mobile_number' => '9876512345',
+            'password' => Hash::make('Secret123!'),
+        ]);
+
+        // The fixed rule (global) correctly rejects the duplicate → friendly
+        // validation error instead of a 500 on the DB constraint.
+        $globalRule = \Illuminate\Support\Facades\Validator::make(
+            ['mobile_number' => '9876512345'],
+            ['mobile_number' => [\Illuminate\Validation\Rule::unique('users', 'mobile_number')]]
+        );
+        $this->assertTrue($globalRule->fails(), 'global unique must reject a duplicate mobile');
+
+        // The OLD per-shop rule would have MISSED it (the bug that caused the 500):
+        $perShopRule = \Illuminate\Support\Facades\Validator::make(
+            ['mobile_number' => '9876512345'],
+            ['mobile_number' => [\Illuminate\Validation\Rule::unique('users', 'mobile_number')->where('shop_id', $shop->id)]]
+        );
+        $this->assertFalse($perShopRule->fails(), 'per-shop rule missed the global duplicate (root cause of the 500)');
+    }
 }
