@@ -280,6 +280,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // KYC docs follow customer access: create-class can attach, delete-class can remove.
     Route::post('/kyc-documents', [\App\Http\Controllers\KycDocumentController::class, 'store'])->middleware('can:customers.create')->name('kyc-documents.store');
+    Route::get('/kyc-documents/{kycDocument}/file', [\App\Http\Controllers\KycDocumentController::class, 'show'])->middleware('can:customers.view')->name('kyc-documents.show');
     Route::delete('/kyc-documents/{kycDocument}', [\App\Http\Controllers\KycDocumentController::class, 'destroy'])->middleware('can:customers.edit')->name('kyc-documents.destroy');
 
     Route::get('/customers/{customer}/gold', [\App\Http\Controllers\CustomerGoldController::class, 'create'])

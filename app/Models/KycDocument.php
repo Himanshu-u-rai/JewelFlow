@@ -60,7 +60,14 @@ class KycDocument extends Model
             return Storage::disk('s3')->temporaryUrl($this->file_path, now()->addMinutes(15));
         }
 
-        return Storage::disk($disk)->url($this->file_path);
+        // Legacy documents stored on the public disk keep their direct URL.
+        if ($disk === 'public') {
+            return Storage::disk('public')->url($this->file_path);
+        }
+
+        // Identity documents (PAN/Aadhaar/passport) live on a PRIVATE disk and
+        // are served only through the authenticated, shop-scoped stream route.
+        return route('kyc-documents.show', $this);
     }
 
     public function typeLabelAttribute(): string

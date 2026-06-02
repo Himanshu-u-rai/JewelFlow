@@ -68,7 +68,7 @@ Ordered by severity. ✔︎ = lead-auditor spot-verified; ◦ = sub-audit eviden
 | **R4** | Job-order cancel → restore source item status | DEAD (cancel ignores `source_item_id`) | recovery-failure (latent) | **P2** | ◦ |
 | **P1** | Draft-invoice **finalize** mis-gated by `sales.void` | **FIXED M8** (route→sales.create; cancel branch gated sales.void in-controller; Edit button status-aware) | permission-breakage | **P1→done** | ✔︎ |
 | **P2** | Bulk import gated by `reports.export` (not `imports.*`) | **FIXED M9** (all 9 import routes → `imports.manage`; nav link gated to match; export routes keep `reports.export`) | permission-breakage | **P1→done** | ✔︎ |
-| **SEC1** | KYC PII (PAN/Aadhaar/passport) on **public** disk + public URL | EXPOSED | data-exposure | **P1** | ◦ |
+| **SEC1** | KYC PII (PAN/Aadhaar/passport) on **public** disk + public URL | **FIXED M10** (new uploads → private 'local' disk; served via authed shop-scoped stream route; destroy deletes the file. Legacy public-disk rows keep their URL — bulk migration is a follow-up) | data-exposure | **P1→done** | ✔︎ |
 | **F-SC** | Store-credit **consumption** (`applyToInvoice`) has no UI trigger | HIDDEN (endpoint OK, no button) | workflow-regression / hidden-workflow | **P2** | ✔︎ |
 | **H1** | `ItemStoneController` — stone add/edit/revalue/delete | DEAD (zero routes) | hidden-workflow | **P2** | ◦ |
 | **H2** | `GstCategoryController` — GST category management | DEAD (zero routes); destroy leaves no default | hidden-workflow / latent-corruption | **P2** | ◦ |

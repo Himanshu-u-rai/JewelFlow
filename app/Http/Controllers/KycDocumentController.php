@@ -29,10 +29,12 @@ class KycDocumentController extends Controller
         // Derive extension from validated MIME type, not the client-supplied filename
         $mimeToExt = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'application/pdf' => 'pdf'];
         $ext = $mimeToExt[$file->getMimeType()] ?? 'bin';
+        // Identity documents are PII — store on the PRIVATE 'local' disk, never
+        // the public disk. Served only via the authenticated stream route.
         $path = $file->storeAs(
             "kyc/{$shopId}",
             Str::ulid() . '.' . $ext,
-            'public'
+            'local'
         );
 
         $doc = KycDocument::create([
@@ -41,7 +43,7 @@ class KycDocumentController extends Controller
             'uploaded_by'       => auth()->id(),
             'document_type'     => $validated['document_type'],
             'file_path'         => $path,
-            'file_disk'         => 'public',
+            'file_disk'         => 'local',
             'original_filename' => $file->getClientOriginalName(),
             'mime_type'         => $file->getMimeType(),
             'file_size_bytes'   => $file->getSize(),
@@ -65,9 +67,34 @@ class KycDocumentController extends Controller
         ]);
     }
 
+    /**
+     * Stream a private KYC document to an authenticated, same-shop user.
+     * The file never has a public URL.
+     */
+    public function show(KycDocument $kycDocument)
+    {
+        abort_unless($kycDocument->shop_id === auth()->user()->shop_id, 403);
+
+        $disk = $kycDocument->file_disk ?? 'public';
+        abort_unless(Storage::disk($disk)->exists($kycDocument->file_path), 404);
+
+        return Storage::disk($disk)->response(
+            $kycDocument->file_path,
+            $kycDocument->original_filename,
+            ['Content-Type' => $kycDocument->mime_type ?? 'application/octet-stream']
+        );
+    }
+
     public function destroy(KycDocument $kycDocument)
     {
         $this->authorize('update', $kycDocument->customer);
+
+        // Actually remove the PII file from disk — a soft deactivate alone left
+        // the identity document on disk forever.
+        $disk = $kycDocument->file_disk ?? 'public';
+        if ($kycDocument->file_path && Storage::disk($disk)->exists($kycDocument->file_path)) {
+            Storage::disk($disk)->delete($kycDocument->file_path);
+        }
 
         $kycDocument->deactivate();
 
