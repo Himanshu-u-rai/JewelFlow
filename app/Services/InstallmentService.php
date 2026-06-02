@@ -144,6 +144,62 @@ class InstallmentService
     }
 
     /**
+     * Close an unrecoverable EMI plan as DEFAULTED (write-off).
+     *
+     * This is the terminal, operator-initiated exit for a plan the customer has
+     * stopped paying (or a negotiated short settlement). It is deliberately an
+     * OPERATIONAL close, NOT an accounting reversal:
+     *   - The linked invoice is finalized (goods were sold) — revenue stays
+     *     recognized; ImmutableLedger forbids touching it, and we must not.
+     *   - Recorded InvoicePayment / CashTransaction rows reflect money actually
+     *     received and are left untouched.
+     *   - The uncollected `remaining_amount` is preserved on the row as the
+     *     historical written-off figure, and captured in the audit trail.
+     * No cash, ledger, or vault entry is created — no money moved.
+     */
+    public function markDefaulted(InstallmentPlan $plan, ?string $reason, int $userId): InstallmentPlan
+    {
+        return DB::transaction(function () use ($plan, $reason, $userId) {
+            SubscriptionGateService::assertShopWritable((int) $plan->shop_id);
+
+            $lockedPlan = InstallmentPlan::whereKey($plan->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedPlan->status !== 'active') {
+                throw new LogicException('Only an active EMI plan can be closed as defaulted.');
+            }
+
+            $writtenOff = (float) $lockedPlan->remaining_amount;
+
+            $lockedPlan->update([
+                'status'        => 'defaulted',
+                'next_due_date' => null,
+            ]);
+
+            \App\Models\AuditLog::create([
+                'shop_id'     => $lockedPlan->shop_id,
+                'user_id'     => $userId,
+                'action'      => 'installment_plan_defaulted',
+                'model_type'  => 'installment_plan',
+                'model_id'    => $lockedPlan->id,
+                'description' => 'EMI plan closed as defaulted (write-off of '
+                    . number_format($writtenOff, 2) . ').'
+                    . ($reason ? ' Reason: ' . $reason : ''),
+                'data'        => [
+                    'invoice_id'        => $lockedPlan->invoice_id,
+                    'amount_written_off' => round($writtenOff, 2),
+                    'emis_paid'         => $lockedPlan->emis_paid,
+                    'total_emis'        => $lockedPlan->total_emis,
+                    'reason'            => $reason,
+                ],
+            ]);
+
+            return $lockedPlan->refresh();
+        });
+    }
+
+    /**
      * Get all overdue plans for a shop.
      */
     public function getOverduePlans(): \Illuminate\Database\Eloquent\Collection

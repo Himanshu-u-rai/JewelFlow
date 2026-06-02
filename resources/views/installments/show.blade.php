@@ -107,6 +107,18 @@
                             <button type="submit" class="w-full px-4 py-2 rounded-md text-sm font-medium text-white" style="background: #0d9488;">Record Payment</button>
                         </div>
                     </form>
+
+                    @can('sales.void')
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-xs text-gray-500 mb-2">If the customer has stopped paying, you can close this plan and write off the unpaid balance. This does not change the original bill.</p>
+                        <form method="POST" action="{{ route('installments.default', $plan) }}" data-turbo-frame="_top"
+                              data-confirm-message="{{ __('Close this plan as defaulted and write off the unpaid balance? This cannot be undone.') }}">
+                            @csrf
+                            <input type="text" name="reason" placeholder="Reason (optional)" class="w-full mb-2 rounded-md border-gray-300 shadow-sm text-sm focus:border-red-500 focus:ring-red-500">
+                            <button type="submit" class="w-full px-4 py-2 rounded-md text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200">Close as Defaulted (write off)</button>
+                        </form>
+                    </div>
+                    @endcan
                 </div>
                 @endif
             </div>

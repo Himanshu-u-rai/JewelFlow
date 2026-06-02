@@ -53,7 +53,7 @@ Ordered by severity. ✔︎ = lead-auditor spot-verified; ◦ = sub-audit eviden
 
 | ID | Workflow / Surface | Status | Risk class | Sev | Ver |
 |----|--------------------|--------|-----------|-----|-----|
-| **D1** | Installment `defaulted` unreachable + no settle/write-off/close | DANGEROUS-INCOMPLETE | dangerous-incomplete-flow | **P0** | ◦ |
+| **D1** | Installment `defaulted` unreachable + no settle/write-off/close | **FIXED M2** (operator write-off close → `defaulted`, invoice untouched, audited) | dangerous-incomplete-flow | **P0→done** | ✔︎ |
 | **D2** | Scheme enrollment cancel + contribution refund | DEAD (service exists, no route/UI) | dead-lifecycle / recovery-failure | **P0** | ◦ |
 | **D3** | Scheme maturity is payment-count-only; no date-based maturity/bonus | DEAD transition | dead-lifecycle | **P0** | ◦ |
 | **A1** | Admin "deactivate tenant user" | ~~no-op~~ **CORRECTED → inconsistent-state** (observer is dormant; toggle works but left `employment_status` stale). **FIXED M1.** | workflow-regression | **P0→done** | ✔︎ |

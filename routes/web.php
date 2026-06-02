@@ -584,6 +584,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/installments', [InstallmentController::class, 'store'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.store');
     Route::get('/installments/{plan}', [InstallmentController::class, 'show'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.show');
     Route::post('/installments/{plan}/pay', [InstallmentController::class, 'recordPayment'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.pay');
+    Route::post('/installments/{plan}/default', [InstallmentController::class, 'markDefaulted'])->middleware(['edition:retailer', 'can:sales.void'])->name('installments.default');
     Route::get('/installments/{plan}/payments/{payment}/receipt', [InstallmentController::class, 'receipt'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.receipt');
 
     // --- Reorder Alerts (inventory.view to see; inventory.edit to mutate rules) ---

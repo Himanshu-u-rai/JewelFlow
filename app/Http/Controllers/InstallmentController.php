@@ -250,6 +250,33 @@ class InstallmentController extends Controller
             ->with('success', 'EMI payment recorded.');
     }
 
+    /**
+     * Close an unrecoverable plan as defaulted (write-off). Operational close
+     * only — does not touch the finalized invoice or recorded payments.
+     */
+    public function markDefaulted(Request $request, InstallmentPlan $plan)
+    {
+        abort_if($plan->shop_id !== auth()->user()->shop_id, 403);
+
+        if (!$plan->isActive()) {
+            return redirect()->route('installments.show', $plan)
+                ->with('error', 'Only an active plan can be closed.');
+        }
+
+        $data = $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $this->installmentService->markDefaulted($plan, $data['reason'] ?? null, (int) auth()->id());
+        } catch (\LogicException $e) {
+            return redirect()->route('installments.show', $plan)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('installments.show', $plan)
+            ->with('success', 'Plan closed as defaulted. The unpaid balance has been written off and recorded.');
+    }
+
     public function receipt(InstallmentPlan $plan, InstallmentPayment $payment)
     {
         abort_if($plan->shop_id !== auth()->user()->shop_id, 403);
