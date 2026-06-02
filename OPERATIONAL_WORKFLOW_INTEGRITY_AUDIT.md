@@ -60,7 +60,7 @@ Ordered by severity. ✔︎ = lead-auditor spot-verified; ◦ = sub-audit eviden
 | **A1b** | `UserObserver` (is_active ↔ employment_status invariant) | DEAD (never registered → invariant unenforced) | dead-lifecycle / latent-corruption | **P2** | ✔︎ |
 | **A2** | KarigarInvoice / KarigarPayment reverse/void/correct | **FIXED M5** (compensating-entry payment reversal; reopens invoice to unpaid for correction) | accounting-risk | **P1→done** | ✔︎ |
 | **A2b** | `karigar_invoices_finalized_guard` trigger guards non-existent `OLD.status` | **FIXED M5** (latent P0 — crashed ALL karigar-invoice updates incl. payment recording; trigger repaired to freeze content-after-payment on `payment_status`+totals, name preserved) | silent-corruption / dangerous-incomplete-flow | **P0→done** | ✔︎ |
-| **A3** | Vault manual adjustment (sanctioned compensating entry) | ABSENT (no route/svc/UI) | accounting-risk | **P1** | ◦ |
+| **A3** | Vault manual adjustment (sanctioned compensating entry) | **FIXED M6** (`adjustLot` → `vault_adjustment` movement + lot update; reason required; non-negative guard; vault:reconcile stays clean) | accounting-risk | **P1→done** | ✔︎ |
 | **A4** | Confirmed/stocked stock-purchase reversal | ABSENT (one-way) | workflow-regression / accounting-risk | **P1** | ◦ |
 | **R1** | Rework lifecycle: `sent_to_rework` → JobOrder | DEAD (`target_job_order_id` never set) | dead-lifecycle | **P1** | ✔︎ |
 | **R2** | Control Center "Send to Karigar" button | LIVE but dead-ends | UX-regression / dead-lifecycle | **P1** | ◦ |

@@ -2,13 +2,79 @@
 
 namespace App\Services;
 
+use App\Models\AuditLog;
 use App\Models\JobOrder;
 use App\Models\MetalLot;
 use App\Models\MetalMovement;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use LogicException;
 
 class BullionVaultService
 {
+    /**
+     * Sanctioned manual vault correction — the compensating-entry path for a
+     * physical-vs-system fine-weight variance (the Recovery runbook depends on
+     * this existing). It NEVER edits past movements; it appends a single
+     * `vault_adjustment` MetalMovement and moves the lot's remaining fine weight
+     * accordingly. A signed delta (+ adds, − removes) plus a mandatory reason.
+     */
+    public function adjustLot(MetalLot $lot, float $deltaFine, string $reason, int $userId): MetalMovement
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new LogicException('A reason is required for a vault adjustment.');
+        }
+        $deltaFine = round($deltaFine, 6);
+        if (abs($deltaFine) < 0.000001) {
+            throw new LogicException('Adjustment amount must be non-zero.');
+        }
+
+        return DB::transaction(function () use ($lot, $deltaFine, $reason, $userId) {
+            $locked = MetalLot::query()->whereKey($lot->id)->lockForUpdate()->firstOrFail();
+
+            $newRemaining = round((float) $locked->fine_weight_remaining + $deltaFine, 6);
+            if ($newRemaining < -0.000001) {
+                throw new LogicException('Adjustment would make the lot balance negative ('
+                    . number_format($newRemaining, 4) . 'g). Reduce the amount.');
+            }
+
+            $movement = MetalMovement::record([
+                'shop_id'        => $locked->shop_id,
+                'from_lot_id'    => $deltaFine < 0 ? $locked->id : null,
+                'to_lot_id'      => $deltaFine > 0 ? $locked->id : null,
+                'fine_weight'    => abs($deltaFine),
+                'type'           => 'vault_adjustment',
+                'reference_type'        => 'metal_lot',
+                'reference_id'          => $locked->id,
+                'user_id'               => $userId,
+                'adjustment_reason'     => $reason,
+                'adjustment_approved_by' => $userId,
+            ]);
+
+            $locked->fine_weight_remaining = max(0, $newRemaining);
+            $locked->save();
+
+            AuditLog::create([
+                'shop_id'     => $locked->shop_id,
+                'user_id'     => $userId,
+                'action'      => 'vault_adjusted',
+                'model_type'  => 'metal_lot',
+                'model_id'    => $locked->id,
+                'description' => 'Vault manual adjustment of ' . number_format($deltaFine, 4)
+                    . 'g fine on lot #' . $locked->lot_number . '. Reason: ' . $reason,
+                'data'        => [
+                    'delta_fine'      => $deltaFine,
+                    'new_remaining'   => (float) $locked->fine_weight_remaining,
+                    'movement_id'     => $movement->id,
+                    'reason'          => $reason,
+                ],
+            ]);
+
+            return $movement;
+        });
+    }
+
     /**
      * Vault balances grouped by purity, with in-vault and with-karigar fine totals.
      *

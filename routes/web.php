@@ -376,6 +376,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         Route::get('/vault/lots/create', [\App\Http\Controllers\BullionVaultController::class, 'createLot'])->middleware('can:vault.manage')->name('vault.lots.create');
         Route::post('/vault/lots', [\App\Http\Controllers\BullionVaultController::class, 'storeLot'])->middleware('can:vault.manage')->name('vault.lots.store');
         Route::get('/vault/lots/{metalLot}', [\App\Http\Controllers\BullionVaultController::class, 'showLot'])->middleware('can:vault.view')->name('vault.lots.show');
+        Route::post('/vault/lots/{metalLot}/adjust', [\App\Http\Controllers\BullionVaultController::class, 'adjustLot'])->middleware('can:vault.manage')->name('vault.lots.adjust');
 
         // Karigars — view to read; manage to mutate.
         Route::get('/karigars', [\App\Http\Controllers\KarigarController::class, 'index'])->middleware('can:karigar.view')->name('karigars.index');

@@ -178,5 +178,35 @@
                 </div>
             @endif
         </div>
+
+        @can('vault.manage')
+        <div class="mt-6 bg-white rounded-lg border border-amber-200 shadow-sm p-5">
+            <h3 class="text-sm font-semibold text-gray-900 mb-1">Correct vault balance</h3>
+            <p class="text-xs text-gray-500 mb-3">Use this only to fix a difference between the physical weight and the system. It records a tracked adjustment with your reason — it does not change past entries.</p>
+            <form method="POST" action="{{ route('vault.lots.adjust', $metalLot) }}" data-turbo-frame="_top"
+                  data-confirm-message="{{ __('Record this vault adjustment? It cannot be undone (only offset by another adjustment).') }}"
+                  class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                @csrf
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Direction</label>
+                    <select name="direction" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <option value="add">Add to vault (+)</option>
+                        <option value="remove">Remove from vault (−)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Fine weight (g)</label>
+                    <input type="number" name="fine_weight" step="0.0001" min="0.0001" required class="w-full rounded-md border-gray-300 shadow-sm text-sm font-mono">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Reason (required)</label>
+                    <input type="text" name="reason" maxlength="500" required placeholder="e.g. physical count correction" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                </div>
+                <div class="sm:col-span-4">
+                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200">Record Adjustment</button>
+                </div>
+            </form>
+        </div>
+        @endcan
     </div>
 </x-app-layout>

@@ -116,6 +116,31 @@ class BullionVaultController extends Controller
         return view('vault.show-lot', compact('metalLot', 'movements', 'jobOrders'));
     }
 
+    /**
+     * Sanctioned manual vault correction (compensating entry) for a single lot.
+     */
+    public function adjustLot(Request $request, MetalLot $metalLot)
+    {
+        abort_unless($metalLot->shop_id === auth()->user()->shop_id, 403);
+
+        $validated = $request->validate([
+            'direction' => 'required|in:add,remove',
+            'fine_weight' => 'required|numeric|min:0.0001',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $delta = (float) $validated['fine_weight'] * ($validated['direction'] === 'remove' ? -1 : 1);
+
+        try {
+            $this->vault->adjustLot($metalLot, $delta, $validated['reason'], (int) auth()->id());
+        } catch (\LogicException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('vault.lots.show', $metalLot)
+            ->with('success', 'Vault adjustment recorded.');
+    }
+
     public function createLot()
     {
         $vendors = Vendor::active()->orderBy('name')->get(['id', 'name']);
