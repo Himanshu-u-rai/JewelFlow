@@ -286,7 +286,10 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 repairs-kpi-card">
+            {{-- Delivered repairs were hidden from the list forever (H4). This
+                 KPI card now links to the delivered filter so repair history is
+                 reachable after billing. --}}
+            <a href="{{ route('repairs.index', ['status' => 'delivered']) }}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 repairs-kpi-card block hover:border-emerald-300 transition" title="View delivered repairs">
                 <div class="flex items-center gap-3">
                     <div class="bg-emerald-100 text-emerald-700 rounded-lg p-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -298,8 +301,14 @@
                         <p class="text-xl font-semibold text-gray-900">{{ $deliveredCount }}</p>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
+        @if(request('status') === 'delivered')
+            <div class="mb-4 flex items-center gap-3 text-sm">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Showing delivered repairs</span>
+                <a href="{{ route('repairs.index') }}" class="text-gray-500 hover:text-gray-700 underline">← Back to active repairs</a>
+            </div>
+        @endif
 
         @php $canCreateRepair = auth()->user()->can('repairs.create'); @endphp
         <div class="grid grid-cols-1 {{ $canCreateRepair ? 'lg:grid-cols-3' : 'lg:grid-cols-1' }} gap-6 repairs-layout">

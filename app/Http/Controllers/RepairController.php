@@ -21,8 +21,15 @@ class RepairController extends Controller
         $shopId = auth()->user()->shop_id;
 
         $query = Repair::where('shop_id', $shopId)
-            ->whereNotIn('status', ['delivered'])
             ->with(['customer', 'invoice']);
+
+        // Default view is active work; an explicit ?status= reveals any state —
+        // including 'delivered', which was previously hidden forever (H4).
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        } else {
+            $query->whereNotIn('status', ['delivered']);
+        }
 
         if ($request->filled('search')) {
             $s = trim($request->input('search'));
