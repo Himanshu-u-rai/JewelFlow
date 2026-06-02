@@ -81,7 +81,18 @@ class InvoiceController extends Controller
                 && $outstandingAmount > 0,
         ];
 
-        return view('invoices.show', compact('invoice', 'emiMeta'));
+        // Store-credit application: only when the finalized invoice has an
+        // outstanding balance, a customer, and that customer has wallet credit.
+        $storeCreditAvailable = 0.0;
+        if ($invoice->customer_id
+            && $invoice->status === Invoice::STATUS_FINALIZED
+            && $outstandingAmount > 0) {
+            $storeCreditAvailable = app(\App\Services\StoreCreditService::class)
+                ->balance((int) $invoice->shop_id, (int) $invoice->customer_id);
+        }
+        $storeCreditApplicable = round(min($outstandingAmount, $storeCreditAvailable), 2);
+
+        return view('invoices.show', compact('invoice', 'emiMeta', 'outstandingAmount', 'storeCreditAvailable', 'storeCreditApplicable'));
     }
 
     public function edit(Invoice $invoice)

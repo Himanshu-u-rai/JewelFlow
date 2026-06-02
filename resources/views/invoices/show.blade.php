@@ -287,6 +287,28 @@
                 </div>
             </div>
 
+            {{-- Apply Store Credit — only when the customer has wallet credit and
+                 the finalized invoice still has an outstanding balance (M12). --}}
+            @can('sales.create')
+            @if(($storeCreditApplicable ?? 0) > 0)
+            <div class="col-span-12 bg-white shadow-sm border border-emerald-200 rounded-lg p-4">
+                <h2 class="text-sm font-semibold text-gray-900 mb-1">Apply Store Credit</h2>
+                <p class="text-xs text-gray-500 mb-3">This customer has ₹{{ number_format($storeCreditAvailable, 2) }} in store credit. Outstanding on this bill: ₹{{ number_format($outstandingAmount, 2) }}.</p>
+                <form method="POST" action="{{ route('store-credit.apply', $invoice) }}" data-turbo-frame="_top" class="flex flex-wrap items-end gap-3">
+                    @csrf
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Amount to apply (₹)</label>
+                        <input type="number" name="amount" step="0.01" min="0.01" max="{{ $storeCreditApplicable }}"
+                               value="{{ $storeCreditApplicable }}" required
+                               class="w-40 rounded-md border-gray-300 shadow-sm text-sm font-mono focus:border-emerald-500 focus:ring-emerald-500">
+                        <p class="text-[11px] text-gray-400 mt-1">Max ₹{{ number_format($storeCreditApplicable, 2) }}</p>
+                    </div>
+                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700">Apply Store Credit</button>
+                </form>
+            </div>
+            @endif
+            @endcan
+
             <!-- Items Table -->
             <div class="col-span-12 bg-white shadow-sm border border-gray-200 invoice-show-table-card">
                 <div class="px-4 py-3 border-b border-gray-200">
