@@ -14,6 +14,7 @@
 /.agents
 /.augment
 /.claude/worktrees
+/.claude/skills
 /auth.json
 /node_modules
 /public/build
@@ -22,6 +23,7 @@
 skills-lock.json
 /storage/*.key
 /storage/pail
+/test-results
 /vendor
 Homestead.json
 Homestead.yaml
