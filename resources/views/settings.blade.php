@@ -2308,7 +2308,10 @@
                                     
                                     <div class="role-body">
                                         @foreach($permissionGroups as $group => $groupPerms)
-                                            @if($group === 'Dhiran (Gold Loans)') @continue @endif
+                                            {{-- Dhiran is a separate product (own subdomain); never surface its
+                                                 permission group in the JewelFlow Roles UI. The DB group key is
+                                                 'dhiran' (this guard previously checked a label that never matched). --}}
+                                            @if($group === 'dhiran') @continue @endif
                                             <div class="perm-group">
                                                 <div class="perm-group-title">{{ __($group) }}</div>
                                                 @foreach($groupPerms as $perm)

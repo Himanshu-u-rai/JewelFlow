@@ -641,7 +641,15 @@ class SettingsController extends Controller
 
         // Snapshot the current permission set so we can audit the diff.
         $beforeIds = $role->permissions()->pluck('permissions.id')->sort()->values()->all();
-        $afterIds = collect($validated['permissions'] ?? [])->map(fn ($id) => (int) $id)->sort()->values()->all();
+        $afterIds = collect($validated['permissions'] ?? [])->map(fn ($id) => (int) $id);
+
+        // Dhiran permissions are hidden from the JewelFlow Roles UI (separate
+        // product). They are therefore never present in this form's payload —
+        // preserve any the role already has so saving here never strips them.
+        $preserveIds = $role->permissions()
+            ->where('permissions.group', 'dhiran')
+            ->pluck('permissions.id');
+        $afterIds = $afterIds->merge($preserveIds)->unique()->sort()->values()->all();
 
         $role->permissions()->sync($afterIds);
 
