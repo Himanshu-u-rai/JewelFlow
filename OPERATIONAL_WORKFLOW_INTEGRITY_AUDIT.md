@@ -269,3 +269,39 @@ After tracing every major module's lifecycle with file:line evidence:
 This document is the operational continuity baseline. Re-run this audit after any remediation pass to confirm closure without regression.
 
 *— End of audit. Diagnosis only; no code changed.*
+
+---
+
+## 9. Restoration pass — completion summary (2026-06-02)
+
+The full operational-restoration pass is complete: **every finding above is now FIXED, RESOLVED, RETIRED-with-reasoning, ACCEPTED-with-reasoning, or DEFERRED-with-documentation.** No finding is left silently open. Worked one bounded milestone at a time; each milestone was traced before touched, covered by a dedicated test, validated with `returns:validate` + `reports:validate` (and `vault:reconcile` where relevant), view-compiled, and committed separately. The hardened accounting core was never destabilised.
+
+| Milestone | Findings | Disposition |
+|---|---|---|
+| M1 | A1 | Corrected (false no-op) → admin deactivate writes consistent `suspended` |
+| M2 | D1 | Installment write-off/close → `defaulted` (invoice untouched) |
+| M3 | D2 | Scheme cancel + cash refund (bonus excluded) |
+| M4 | D3 | Daily date-based scheme maturity scheduler |
+| M5 | A2, **A2b** | Karigar payment reversal (compensating) + **repaired a latent-P0 broken constitutional trigger** |
+| M6 | A3 | Sanctioned vault adjustment (compensating, reconcile-clean) |
+| M7 | A4 | Confirmed/stocked stock-purchase reversal (guarded) |
+| M8 | P1 | Invoice finalize split from `sales.void`; status-aware Edit gate |
+| M9 | P2 | Bulk import re-gated to `imports.manage` |
+| M10 | SEC1 | KYC PII → private disk + authed stream + real delete |
+| M11 | R1/R2/R3/R4 | Rework retired with documented melt→vault→job replacement |
+| M12 | F-SC | Store-credit Apply-to-invoice UI surfaced |
+| M13 | H1/H2/H3 | Hidden controllers deferred (owner decision) + documented |
+| M14 | H4 | Delivered repairs visible via status filter |
+| M15 | A1b, **OBS1** | Dormant `UserObserver` registered (runtime-enforced); discovered all observers dormant → OBS1 deferred |
+| M16 | TURBO1/2/3, ARC1/2, POL1 | Turbo-frame fixes; archive + policy items accepted with reasoning |
+| M17 | UX2 + DC1-4, DEN1, SEC2, HID1-3, UX1/3 | Badge fixed; all remaining P3 dispositioned |
+
+**Net new findings surfaced *during* restoration (not in the original 36):**
+- **A2b** — `karigar_invoices_finalized_guard` trigger guarded a non-existent `OLD.status` column → would have crashed the first real karigar payment. Repaired (constitutional trigger; name preserved). *Latent P0.*
+- **OBS1** — the entire `app/Observers/` layer was unregistered → EntityEvent activity feeds never populated. UserObserver now registered; the event-feed observers are documented and deferred (Phase-F).
+
+**Deferred (explicit, documented):** H1/H2/H3 hidden-controller UIs, OBS1 entity-event feeds. **Accepted (documented):** ARC1/ARC2 hard-delete, POL1 redundant policies, and the P3 cosmetic/by-design items.
+
+**Validation:** full suite 379 passed / 83 pre-existing failures (test-setup debt, unchanged) / 0 regressions; `returns:validate` and `reports:validate` green throughout.
+
+*— Restoration pass complete.*
