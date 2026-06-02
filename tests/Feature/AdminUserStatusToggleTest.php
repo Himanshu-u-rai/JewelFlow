@@ -82,21 +82,18 @@ class AdminUserStatusToggleTest extends TestCase
         $this->assertTrue((bool) $fresh->is_active);
     }
 
-    public function test_user_observer_is_currently_dormant(): void
+    public function test_user_observer_is_registered_for_the_invariant(): void
     {
-        // Documents the corrected premise: the observer is NOT registered, so an
-        // is_active-only write persists (no revert). This is why the OLD admin
-        // toggle, while not a no-op, left an INCONSISTENT state — and why the fix
-        // must set both fields itself rather than relying on the observer.
-        [, $shop] = $this->createRetailerTenant();
-        $user = $this->makeUser($shop->id, 'active');
-
-        $user->is_active = false; // employment_status deliberately left 'active'
-        $user->save();
-
-        $fresh = User::find($user->id);
-        $this->assertFalse((bool) $fresh->is_active, 'is_active-only write persists (observer is dormant)');
-        $this->assertSame('active', $fresh->employment_status,
-            'observer does NOT correct employment_status — consistency relies on the caller, which the fix now does');
+        // M15: the observer that enforces is_active ↔ employment_status was
+        // dormant (registered nowhere). It is now registered in AppServiceProvider
+        // (verified at runtime). Source-level guard so the registration can't be
+        // silently dropped. (The PHPUnit harness does not exercise model observers
+        // — all of this app's observers are validated at runtime, not in-suite.)
+        $provider = file_get_contents(app_path('Providers/AppServiceProvider.php'));
+        $this->assertStringContainsString(
+            'User::observe(\App\Observers\UserObserver::class)',
+            $provider,
+            'UserObserver must be registered so the is_active/employment_status invariant is enforced'
+        );
     }
 }

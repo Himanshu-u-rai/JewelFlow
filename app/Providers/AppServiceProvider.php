@@ -66,6 +66,12 @@ class AppServiceProvider extends ServiceProvider
 
         $this->applySmtpFromDatabase();
 
+        // Enforce the is_active ↔ employment_status invariant on every User save
+        // (A1b: this observer existed but was never registered, so the invariant
+        // was unenforced). All current write sites already set both fields
+        // consistently; registering it makes the invariant real going forward.
+        \App\Models\User::observe(\App\Observers\UserObserver::class);
+
         // Dotted ability names (e.g. "dhiran.pay", "invoices.create") are treated
         // as permission keys and resolved via User::hasPermission(). Returning
         // null on miss lets Laravel fall through to policies/explicit gates.
