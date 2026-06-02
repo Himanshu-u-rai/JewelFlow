@@ -103,4 +103,42 @@ class ReceivablesReportTest extends TestCase
         $this->assertSame(0, $data->invoiceCount);
         $this->assertTrue($data->rows->isEmpty());
     }
+
+    private function plan(int $shopId, ?int $customerId, float $totalPayable, float $remaining, string $status, int $dueInDays): int
+    {
+        $due = Carbon::now()->addDays($dueInDays)->toDateString();
+        $invId = $this->invoice($shopId, $customerId, $totalPayable, 0);
+        return (int) DB::table('installment_plans')->insertGetId([
+            'shop_id' => $shopId, 'customer_id' => $customerId, 'invoice_id' => $invId,
+            'total_amount' => $totalPayable, 'down_payment' => 0, 'remaining_amount' => $remaining,
+            'emi_amount' => 1000, 'total_emis' => 10, 'emis_paid' => 2, 'next_due_date' => $due,
+            'status' => $status, 'principal_amount' => $totalPayable, 'interest_rate_annual' => 0,
+            'interest_amount' => 0, 'total_payable' => $totalPayable,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    public function test_emi_visibility_active_only_overdue_and_upcoming(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $c = $this->createCustomer($shop->id);
+
+        $this->plan($shop->id, $c->id, 10000, 6000, 'active', -10);  // overdue (due 10d ago)
+        $this->plan($shop->id, $c->id, 8000, 5000, 'active', 3);     // upcoming (due in 3d)
+        $this->plan($shop->id, $c->id, 5000, 2000, 'active', 40);    // active, not due soon
+        $this->plan($shop->id, $c->id, 9000, 9000, 'defaulted', -5); // excluded
+        $this->plan($shop->id, $c->id, 7000, 0, 'completed', -2);    // excluded
+
+        $data = TenantContext::runFor($shop->id, fn () =>
+            app(ReceivablesService::class)->emiVisibility($shop->id)
+        );
+
+        $this->assertSame(3, $data->planCount, 'only active plans');
+        $this->assertEqualsWithDelta(13000.0, $data->totalOutstanding, 0.01, '6000+5000+2000');
+        $this->assertSame(1, $data->overdueCount);
+        $this->assertEqualsWithDelta(6000.0, $data->overdueAmount, 0.01);
+        $this->assertSame(1, $data->upcomingCount);
+        $this->assertEqualsWithDelta(5000.0, $data->upcomingAmount, 0.01);
+        $this->assertEqualsWithDelta($data->totalOutstanding, (float) $data->rows->sum('remaining'), 0.01);
+    }
 }

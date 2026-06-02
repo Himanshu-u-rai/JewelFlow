@@ -63,4 +63,37 @@ class ReceivablesReportController extends Controller
 
         return CsvReportExporter::fromRows('dues-aging-' . $data->asOf . '.csv', $headers, $rows);
     }
+
+    // ---- #9 Pending EMI / installment visibility ----
+
+    public function emi(Request $request)
+    {
+        $asOf = $this->asOf($request);
+        $data = $this->receivables->emiVisibility($this->shopId(), $asOf);
+
+        return view('reports.emi-visibility', [
+            'data' => $data,
+            'asOf' => $asOf->format('Y-m-d'),
+        ]);
+    }
+
+    public function emiCsv(Request $request)
+    {
+        $asOf = $this->asOf($request);
+        $data = $this->receivables->emiVisibility($this->shopId(), $asOf);
+
+        $headers = ['Customer', 'Invoice', 'Total Payable', 'Paid', 'Remaining', 'EMIs', 'Next Due', 'Overdue Days'];
+        $rows = $data->rows->map(fn ($r) => [
+            $r->customer_name,
+            $r->invoice_number ?? '',
+            number_format($r->total_payable, 2, '.', ''),
+            number_format($r->paid, 2, '.', ''),
+            number_format($r->remaining, 2, '.', ''),
+            $r->emis_paid . '/' . $r->total_emis,
+            $r->next_due_date ? \Carbon\Carbon::parse($r->next_due_date)->format('Y-m-d') : '',
+            $r->overdue ? $r->days_overdue : '0',
+        ])->all();
+
+        return CsvReportExporter::fromRows('emi-visibility-' . $data->asOf . '.csv', $headers, $rows);
+    }
 }

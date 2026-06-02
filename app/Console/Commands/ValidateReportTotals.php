@@ -254,6 +254,29 @@ class ValidateReportTotals extends Command
             'independent=' . $independent . ' service=' . $dues->totalOutstanding
         );
 
+        // #9 EMI visibility.
+        $emi = $receivables->emiVisibility($shopId);
+
+        // EMI-1 — per-plan rows sum to the reported outstanding.
+        $rowSum = round((float) $emi->rows->sum('remaining'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'EMI-1 plan rows sum to total outstanding',
+            abs($rowSum - $emi->totalOutstanding) <= self::TOLERANCE,
+            'rows=' . $rowSum . ' total=' . $emi->totalOutstanding
+        );
+
+        // EMI-2 — total matches an independent Σ remaining_amount of active plans.
+        $emiIndependent = round((float) DB::table('installment_plans')
+            ->where('shop_id', $shopId)->where('status', 'active')
+            ->sum('remaining_amount'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'EMI-2 outstanding == active plans remaining (independent recompute)',
+            abs($emiIndependent - $emi->totalOutstanding) <= self::TOLERANCE,
+            'independent=' . $emiIndependent . ' service=' . $emi->totalOutstanding
+        );
+
         return $failures;
     }
 

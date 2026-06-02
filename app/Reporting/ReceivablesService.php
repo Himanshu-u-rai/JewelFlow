@@ -4,6 +4,7 @@ namespace App\Reporting;
 
 use App\Models\Invoice;
 use App\Reporting\Data\DuesAgingData;
+use App\Reporting\Data\EmiData;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -104,6 +105,75 @@ class ReceivablesService
             totalOutstanding: round($bC + $b3160 + $b6190 + $b90, 2),
             customerCount: $rows->count(),
             invoiceCount: $invCount,
+            asOf: $asOf->format('Y-m-d'),
+        );
+    }
+
+    /**
+     * #9 Pending EMI / installment visibility — active plans, outstanding
+     * (`remaining_amount`), overdue + upcoming surfacing. Completed/defaulted
+     * plans carry no live receivable and are excluded.
+     */
+    public function emiVisibility(int $shopId, ?Carbon $asOf = null): EmiData
+    {
+        $asOf = ($asOf ?? Carbon::now())->copy()->startOfDay();
+        $upcomingCutoff = $asOf->copy()->addDays(7)->endOfDay();
+
+        $plans = DB::table('installment_plans as p')
+            ->where('p.shop_id', $shopId)
+            ->where('p.status', 'active')
+            ->leftJoin('customers as c', 'c.id', '=', 'p.customer_id')
+            ->leftJoin('invoices as i', 'i.id', '=', 'p.invoice_id')
+            ->select(
+                'p.id', 'p.total_payable', 'p.remaining_amount', 'p.emis_paid', 'p.total_emis',
+                'p.next_due_date',
+                'i.invoice_number',
+                DB::raw("COALESCE(NULLIF(TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), ''), 'Walk-in') as customer_name")
+            )
+            ->orderBy('p.next_due_date')
+            ->get();
+
+        $totalOutstanding = 0.0; $overdueAmount = 0.0; $upcomingAmount = 0.0;
+        $overdueCount = 0; $upcomingCount = 0;
+
+        $rows = $plans->map(function ($p) use ($asOf, $upcomingCutoff, &$totalOutstanding, &$overdueAmount, &$upcomingAmount, &$overdueCount, &$upcomingCount) {
+            $remaining = round((float) $p->remaining_amount, 2);
+            $totalOutstanding += $remaining;
+
+            $due = $p->next_due_date ? Carbon::parse($p->next_due_date)->startOfDay() : null;
+            $overdue = $due !== null && $due->lt($asOf);
+            $daysOverdue = $overdue ? $due->diffInDays($asOf) : 0;
+
+            if ($overdue) {
+                $overdueCount++;
+                $overdueAmount += $remaining;
+            } elseif ($due !== null && $due->lte($upcomingCutoff)) {
+                $upcomingCount++;
+                $upcomingAmount += $remaining;
+            }
+
+            return (object) [
+                'customer_name' => $p->customer_name,
+                'invoice_number' => $p->invoice_number,
+                'total_payable' => round((float) $p->total_payable, 2),
+                'paid'          => round((float) $p->total_payable - $remaining, 2),
+                'remaining'     => $remaining,
+                'emis_paid'     => (int) $p->emis_paid,
+                'total_emis'    => (int) $p->total_emis,
+                'next_due_date' => $p->next_due_date,
+                'overdue'       => $overdue,
+                'days_overdue'  => (int) $daysOverdue,
+            ];
+        });
+
+        return new EmiData(
+            rows: $rows,
+            totalOutstanding: round($totalOutstanding, 2),
+            overdueAmount: round($overdueAmount, 2),
+            upcomingAmount: round($upcomingAmount, 2),
+            planCount: $rows->count(),
+            overdueCount: $overdueCount,
+            upcomingCount: $upcomingCount,
             asOf: $asOf->format('Y-m-d'),
         );
     }
