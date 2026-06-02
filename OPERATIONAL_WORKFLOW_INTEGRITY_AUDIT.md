@@ -69,9 +69,9 @@ Ordered by severity. ✔︎ = lead-auditor spot-verified; ◦ = sub-audit eviden
 | **P2** | Bulk import gated by `reports.export` (not `imports.*`) | **FIXED M9** (all 9 import routes → `imports.manage`; nav link gated to match; export routes keep `reports.export`) | permission-breakage | **P1→done** | ✔︎ |
 | **SEC1** | KYC PII (PAN/Aadhaar/passport) on **public** disk + public URL | **FIXED M10** (new uploads → private 'local' disk; served via authed shop-scoped stream route; destroy deletes the file. Legacy public-disk rows keep their URL — bulk migration is a follow-up) | data-exposure | **P1→done** | ✔︎ |
 | **F-SC** | Store-credit **consumption** (`applyToInvoice`) has no UI trigger | **FIXED M12** (Apply-Store-Credit form on invoice show when finalized+outstanding+customer has credit; gated sales.create) | workflow-regression / hidden-workflow | **P2→done** | ✔︎ |
-| **H1** | `ItemStoneController` — stone add/edit/revalue/delete | DEAD (zero routes) | hidden-workflow | **P2** | ◦ |
-| **H2** | `GstCategoryController` — GST category management | DEAD (zero routes); destroy leaves no default | hidden-workflow / latent-corruption | **P2** | ◦ |
-| **H3** | `MobileDeviceSessionController` — web session revocation | DEAD (zero routes; `tab=devices` missing) | hidden-workflow | **P2** | ◦ |
+| **H1** | `ItemStoneController` — stone add/edit/revalue/delete | **DEFERRED M13** (no UI ever; building the AJAX stone editor = feature expansion, out of scope. Replacement: stones are captured at item intake via services. Stays unrouted.) | hidden-workflow | **P2→deferred** | ✔︎ |
+| **H2** | `GstCategoryController` — GST category management | **DEFERRED M13** (no UI ever; CRUD UI = feature expansion. Replacement: a default GST category is seeded and `GstRateResolver` resolves rates without manual management. destroy-no-default bug is unreachable while unrouted.) | hidden-workflow / latent-corruption | **P2→deferred** | ✔︎ |
+| **H3** | `MobileDeviceSessionController` — web session revocation | **DEFERRED M13** (no UI ever; devices tab = feature expansion. Replacement: mobile sessions are revoked on staff termination via bulk token delete, and one-session-per-user is enforced at login.) | hidden-workflow | **P2→deferred** | ✔︎ |
 | **H4** | Delivered repairs — history after billing | INVISIBLE (index filters out `delivered`) | hidden-workflow | **P2** | ◦ |
 | **ARC1** | **Item** archive / recover | DOES NOT EXIST (hard delete) | recovery-failure (by-design gap) | **P2** | ◦ |
 | **ARC2** | **Customer** archive / recover | DOES NOT EXIST (hard delete) | recovery-failure (by-design gap) | **P2** | ◦ |
@@ -242,7 +242,7 @@ These were traced end-to-end and confirmed **WORKING** — the platform's spine 
 
 **P2 — reconnect hidden capability / recover paths**
 - F-SC Add the store-credit "Apply to invoice" button on the billing screen.
-- H1 Route `ItemStoneController`; H2 route `GstCategoryController` (+ re-promote default on destroy); H3 route `MobileDeviceSessionController` (+ `tab=devices`).
+- H1/H2/H3 **DEFERRED (M13, owner decision)** — all three have complete backends but no UI; building those UIs is feature expansion, explicitly out of scope for this restoration phase. Replacement paths documented in §3. Revisit post-pilot as deliberate features (stone editor, GST-category CRUD, devices tab).
 - H4 Add a delivered/archived repairs view.
 - ARC1/ARC2 Decide policy: introduce soft-archive+restore for items & customers, or document hard-delete as intended.
 - POL1 Either invoke the new policies via `authorize()` or remove them.
