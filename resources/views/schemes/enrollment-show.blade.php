@@ -102,6 +102,18 @@
                             <button type="submit" class="w-full px-4 py-2 rounded-md text-sm font-medium text-white" style="background: #0d9488;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Record Payment</button>
                         </div>
                     </form>
+
+                    @can('sales.void')
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-xs text-gray-500 mb-2">If the customer wants to leave the scheme, cancel the enrollment. All contributions paid so far (₹{{ number_format($redeemableValue, 2) }}) will be refunded in cash. The maturity bonus is not paid on cancellation.</p>
+                        <form method="POST" action="{{ route('schemes.enrollment.cancel', $enrollment) }}" data-turbo-frame="_top"
+                              data-confirm-message="{{ __('Cancel this enrollment and refund the contributions in cash? This cannot be undone.') }}">
+                            @csrf
+                            <input type="text" name="reason" placeholder="Reason (optional)" class="w-full mb-2 rounded-md border-gray-300 shadow-sm text-sm focus:border-red-500 focus:ring-red-500">
+                            <button type="submit" class="w-full px-4 py-2 rounded-md text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200">Cancel &amp; Refund Contributions</button>
+                        </form>
+                    </div>
+                    @endcan
                 </div>
                 @endif
 

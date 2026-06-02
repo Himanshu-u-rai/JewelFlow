@@ -338,24 +338,81 @@ class SchemeService
         });
     }
 
-    public function cancelEnrollment(SchemeEnrollment $enrollment): SchemeEnrollment
+    /**
+     * Cancel an active scheme enrollment and refund the customer's contributions.
+     *
+     * The refundable amount is the current ledger balance — i.e. everything the
+     * customer paid in, minus anything already redeemed. It deliberately
+     * EXCLUDES the maturity bonus (only earned at maturity/redemption), and only
+     * 'active' enrollments may be cancelled (matured ones must be redeemed). The
+     * refund moves cash OUT and a reversing 'cancellation_refund' debit zeroes
+     * the scheme ledger, so the ledger remains internally consistent.
+     */
+    public function cancelEnrollment(SchemeEnrollment $enrollment, ?string $reason = null): SchemeEnrollment
     {
-        SubscriptionGateService::assertShopWritable((int) $enrollment->shop_id);
-        $this->assertFinancialLockOpen((int) $enrollment->shop_id, now()->toDateString());
+        return DB::transaction(function () use ($enrollment, $reason) {
+            $locked = SchemeEnrollment::query()
+                ->whereKey($enrollment->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $enrollment->update(['status' => 'cancelled']);
+            SubscriptionGateService::assertShopWritable((int) $locked->shop_id);
+            $this->assertFinancialLockOpen((int) $locked->shop_id, now()->toDateString());
 
-        AccountingAuditService::log([
-            'shop_id' => $enrollment->shop_id,
-            'action' => 'scheme_enrollment_cancelled',
-            'model_type' => 'scheme_enrollment',
-            'model_id' => $enrollment->id,
-            'description' => 'Scheme enrollment cancelled.',
-            'after' => $enrollment->fresh()->toArray(),
-            'target' => ['type' => 'scheme_enrollment', 'id' => $enrollment->id],
-        ]);
+            if ($locked->status !== 'active') {
+                throw new LogicException('Only an active scheme enrollment can be cancelled. A matured enrollment must be redeemed.');
+            }
 
-        return $enrollment->fresh();
+            // Refundable = current ledger balance (contributions in − redemptions
+            // out). For an active enrollment this is total_paid with NO bonus.
+            $refundable = round((float) SchemeLedgerEntry::query()
+                ->where('shop_id', $locked->shop_id)
+                ->where('scheme_enrollment_id', $locked->id)
+                ->lockForUpdate()
+                ->orderByDesc('id')
+                ->value('balance_after'), 2);
+            $refundable = max(0, $refundable);
+
+            if ($refundable > 0) {
+                CashTransaction::record([
+                    'shop_id'      => $locked->shop_id,
+                    'user_id'      => auth()->id(),
+                    'type'         => 'out',
+                    'amount'       => $refundable,
+                    'source_type'  => 'scheme_refund',
+                    'source_id'    => $locked->id,
+                    'invoice_id'   => null,
+                    'payment_mode' => 'cash',
+                    'description'  => "Scheme cancellation refund - Enrollment {$locked->id}",
+                ]);
+
+                $this->appendLedgerEntry(
+                    $locked,
+                    'cancellation_refund',
+                    'debit',
+                    $refundable,
+                    ['reason' => $reason],
+                    null,
+                    null,
+                    'Scheme cancellation refund'
+                );
+            }
+
+            $locked->update(['status' => 'cancelled']);
+
+            AccountingAuditService::log([
+                'shop_id' => $locked->shop_id,
+                'action' => 'scheme_enrollment_cancelled',
+                'model_type' => 'scheme_enrollment',
+                'model_id' => $locked->id,
+                'description' => 'Scheme enrollment cancelled. Refunded ' . number_format($refundable, 2) . ' in cash.'
+                    . ($reason ? ' Reason: ' . $reason : ''),
+                'after' => $locked->fresh()->toArray(),
+                'target' => ['type' => 'scheme_enrollment', 'id' => $locked->id],
+            ]);
+
+            return $locked->fresh();
+        });
     }
 
     /**

@@ -571,6 +571,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/scheme-enrollments/{enrollment}', [SchemeController::class, 'enrollmentShow'])->middleware(['edition:retailer', 'can:sales.view'])->name('schemes.enrollment.show');
     Route::post('/scheme-enrollments/{enrollment}/pay', [SchemeController::class, 'recordPayment'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enrollment.pay');
     Route::post('/scheme-enrollments/{enrollment}/redeem', [SchemeController::class, 'redeemToInvoice'])->middleware(['edition:retailer', 'can:sales.create'])->name('schemes.enrollment.redeem');
+    Route::post('/scheme-enrollments/{enrollment}/cancel', [SchemeController::class, 'cancelEnrollment'])->middleware(['edition:retailer', 'can:sales.void'])->name('schemes.enrollment.cancel');
 
     // --- Loyalty Points (read = customers.view; adjust = customers.edit; the two redirects don't need stricter gating since they redirect to customer views which are themselves gated) ---
     Route::get('/loyalty', fn () => redirect()->route('customers.index', ['view' => 'loyalty']))->middleware(['edition:retailer', 'can:customers.view'])->name('loyalty.index');

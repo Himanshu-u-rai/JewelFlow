@@ -235,6 +235,28 @@ class SchemeController extends Controller
             ->with('success', 'Payment recorded.');
     }
 
+    /**
+     * Cancel an active enrollment and refund the customer's contributions in cash.
+     */
+    public function cancelEnrollment(Request $request, SchemeEnrollment $enrollment)
+    {
+        $this->authorize('update', $enrollment);
+
+        $data = $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $this->schemeService->cancelEnrollment($enrollment, $data['reason'] ?? null);
+        } catch (\LogicException $e) {
+            return redirect()->route('schemes.enrollment.show', $enrollment)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('schemes.enrollment.show', $enrollment)
+            ->with('success', 'Enrollment cancelled and contributions refunded in cash.');
+    }
+
     public function redeemToInvoice(Request $request, SchemeEnrollment $enrollment)
     {
         $this->authorize('update', $enrollment);
