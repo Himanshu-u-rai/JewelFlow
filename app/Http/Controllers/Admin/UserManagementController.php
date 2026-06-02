@@ -69,9 +69,28 @@ class UserManagementController extends Controller
             'is_active' => ['required', 'boolean'],
         ]);
 
-        $before = ['is_active' => (bool) $user->is_active];
+        $makeActive = (bool) $validated['is_active'];
 
-        $user->is_active = (bool) $validated['is_active'];
+        $before = [
+            'is_active'         => (bool) $user->is_active,
+            'employment_status' => $user->employment_status,
+        ];
+
+        // UserObserver::saving keeps is_active consistent with employment_status,
+        // so writing is_active alone is silently reverted (the toggle was a
+        // no-op). We must move employment_status in lockstep. A platform-admin
+        // deactivation is a reversible SUSPENSION — distinct from the shop's own
+        // HR termination flow, which we preserve if it is already set.
+        if ($makeActive) {
+            $user->employment_status = 'active';
+            $user->is_active         = true;
+        } else {
+            if ($user->employment_status !== 'terminated') {
+                $user->employment_status = 'suspended';
+            }
+            $user->is_active = false;
+        }
+
         $user->save();
         $user->refresh();
 
@@ -81,12 +100,12 @@ class UserManagementController extends Controller
             User::class,
             $user->id,
             $before,
-            ['is_active' => (bool) $user->fresh()->is_active],
+            ['is_active' => (bool) $user->is_active, 'employment_status' => $user->employment_status],
             null,
             $request
         );
 
-        return back()->with('success', $user->is_active ? 'User activated.' : 'User deactivated.');
+        return back()->with('success', $user->is_active ? 'User activated.' : 'User deactivated (suspended).');
     }
 
     public function resetPassword(Request $request, User $user): RedirectResponse
