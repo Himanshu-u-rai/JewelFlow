@@ -268,6 +268,29 @@ class KarigarInvoiceController extends Controller
             ->with('success', $count === 1 ? 'Payment recorded.' : "{$count} payment splits recorded.");
     }
 
+    /**
+     * Reverse a recorded karigar payment via a compensating entry. Restores the
+     * invoice's payment status (and, if fully reversed, re-enables editing).
+     */
+    public function reversePayment(Request $request, KarigarInvoice $karigarInvoice, \App\Models\KarigarPayment $payment)
+    {
+        $this->authorizeShop($karigarInvoice);
+        abort_unless($payment->shop_id === auth()->user()->shop_id, 403);
+
+        $data = $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $this->service->reversePayment($karigarInvoice, $payment, $data['reason'] ?? null, (int) auth()->id());
+        } catch (\LogicException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('karigar-invoices.show', $karigarInvoice)
+            ->with('success', 'Payment reversed.');
+    }
+
     private function authorizeShop(KarigarInvoice $invoice): void
     {
         abort_unless($invoice->shop_id === auth()->user()->shop_id, 403);

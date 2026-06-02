@@ -895,6 +895,7 @@
                                     <th>Account</th>
                                     <th>Reference</th>
                                     <th class="ki-show-text-right">Amount</th>
+                                    @can('karigar_invoice.manage')<th class="ki-show-text-right">Action</th>@endcan
                                 </tr>
                             </thead>
                             <tbody>
@@ -905,6 +906,19 @@
                                         <td>{{ $pay->paymentMethod?->name ?? '—' }}</td>
                                         <td class="ki-show-line-meta">{{ $pay->reference ?: '—' }}</td>
                                         <td class="ki-show-text-right ki-show-mono">₹{{ number_format($pay->amount, 2) }}</td>
+                                        @can('karigar_invoice.manage')
+                                        <td class="ki-show-text-right">
+                                            @if($pay->amount > 0 && !\Illuminate\Support\Str::startsWith((string) $pay->reference, 'REVERSAL:'))
+                                                <form method="POST" action="{{ route('karigar-invoices.payments.reverse', [$invoice, $pay]) }}" data-turbo-frame="_top"
+                                                      data-confirm-message="{{ __('Reverse this payment? A compensating entry will be recorded.') }}">
+                                                    @csrf
+                                                    <button type="submit" class="ki-show-line-meta" style="color:#b91c1c;background:none;border:none;cursor:pointer;padding:0;">Reverse</button>
+                                                </form>
+                                            @else
+                                                <span class="ki-show-line-meta">—</span>
+                                            @endif
+                                        </td>
+                                        @endcan
                                     </tr>
                                 @endforeach
                             </tbody>

@@ -159,6 +159,85 @@ class KarigarInvoiceService
         });
     }
 
+    /**
+     * Reverse a previously-recorded karigar payment via a COMPENSATING entry.
+     *
+     * KarigarPayment is an immutable ledger (BelongsToShop + ImmutableLedger), so
+     * we never edit or delete the original — we append a negative offset that
+     * nets it out, mirroring the CONSTITUTION §3 compensating-entry doctrine.
+     * Reversing all of an invoice's payments returns it to 'unpaid', which
+     * re-enables correcting/editing the invoice (blocked while paid). The
+     * reversal is tagged 'REVERSAL:{id}' so it cannot be double-reversed and so a
+     * reversal can never itself be reversed.
+     */
+    public function reversePayment(KarigarInvoice $invoice, KarigarPayment $payment, ?string $reason, int $userId): KarigarPayment
+    {
+        return DB::transaction(function () use ($invoice, $payment, $reason, $userId) {
+            $locked = KarigarInvoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            if ((int) $payment->karigar_invoice_id !== (int) $locked->id
+                || (int) $payment->shop_id !== (int) $locked->shop_id) {
+                throw new LogicException('Payment does not belong to this invoice.');
+            }
+            if ((float) $payment->amount <= 0) {
+                throw new LogicException('Only an actual payment can be reversed, not a reversal entry.');
+            }
+
+            $marker = 'REVERSAL:' . $payment->id;
+            if (KarigarPayment::query()
+                ->where('karigar_invoice_id', $locked->id)
+                ->where('reference', $marker)
+                ->exists()) {
+                throw new LogicException('This payment has already been reversed.');
+            }
+
+            $reversal = KarigarPayment::record([
+                'shop_id'            => $locked->shop_id,
+                'karigar_id'         => $locked->karigar_id,
+                'karigar_invoice_id' => $locked->id,
+                'payment_method_id'  => $payment->payment_method_id,
+                'amount'             => -1 * (float) $payment->amount,
+                'mode'               => $payment->mode,
+                'reference'          => $marker,
+                'paid_on'            => now()->toDateString(),
+                'notes'              => 'Reversal of payment #' . $payment->id . ($reason ? ': ' . $reason : ''),
+                'created_by_user_id' => $userId,
+            ]);
+
+            $totalPaid = (float) $locked->payments()->sum('amount');
+            $locked->amount_paid = $totalPaid;
+            if ($totalPaid + self::AMOUNT_TOLERANCE >= (float) $locked->total_after_tax) {
+                $locked->payment_status = KarigarInvoice::PAYMENT_PAID;
+            } elseif ($totalPaid > 0) {
+                $locked->payment_status = KarigarInvoice::PAYMENT_PARTIAL;
+            } else {
+                $locked->payment_status = KarigarInvoice::PAYMENT_UNPAID;
+            }
+            $locked->save();
+
+            \App\Models\AuditLog::create([
+                'shop_id'     => $locked->shop_id,
+                'user_id'     => $userId,
+                'action'      => 'karigar_payment_reversed',
+                'model_type'  => 'karigar_payment',
+                'model_id'    => $payment->id,
+                'description' => 'Reversed karigar payment #' . $payment->id . ' of '
+                    . number_format((float) $payment->amount, 2) . ' on invoice ' . $locked->karigar_invoice_number . '.'
+                    . ($reason ? ' Reason: ' . $reason : ''),
+                'data'        => [
+                    'karigar_invoice_id'   => $locked->id,
+                    'reversed_payment_id'  => $payment->id,
+                    'reversal_payment_id'  => $reversal->id,
+                    'amount'               => (float) $payment->amount,
+                    'new_amount_paid'      => $totalPaid,
+                    'new_payment_status'   => $locked->payment_status,
+                ],
+            ]);
+
+            return $reversal;
+        });
+    }
+
     public function recalculate(KarigarInvoice $invoice): void
     {
         $lines = $invoice->lines()->get();

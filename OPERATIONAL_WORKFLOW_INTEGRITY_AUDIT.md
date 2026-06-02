@@ -58,7 +58,8 @@ Ordered by severity. ✔︎ = lead-auditor spot-verified; ◦ = sub-audit eviden
 | **D3** | Scheme maturity is payment-count-only; no date-based maturity/bonus | **FIXED M4** (daily `schemes:process-maturity`; bonus iff fully paid, else matures w/o bonus) | dead-lifecycle | **P0→done** | ✔︎ |
 | **A1** | Admin "deactivate tenant user" | ~~no-op~~ **CORRECTED → inconsistent-state** (observer is dormant; toggle works but left `employment_status` stale). **FIXED M1.** | workflow-regression | **P0→done** | ✔︎ |
 | **A1b** | `UserObserver` (is_active ↔ employment_status invariant) | DEAD (never registered → invariant unenforced) | dead-lifecycle / latent-corruption | **P2** | ✔︎ |
-| **A2** | KarigarInvoice / KarigarPayment reverse/void/correct | ABSENT | accounting-risk | **P1** | ◦ |
+| **A2** | KarigarInvoice / KarigarPayment reverse/void/correct | **FIXED M5** (compensating-entry payment reversal; reopens invoice to unpaid for correction) | accounting-risk | **P1→done** | ✔︎ |
+| **A2b** | `karigar_invoices_finalized_guard` trigger guards non-existent `OLD.status` | **FIXED M5** (latent P0 — crashed ALL karigar-invoice updates incl. payment recording; trigger repaired to freeze content-after-payment on `payment_status`+totals, name preserved) | silent-corruption / dangerous-incomplete-flow | **P0→done** | ✔︎ |
 | **A3** | Vault manual adjustment (sanctioned compensating entry) | ABSENT (no route/svc/UI) | accounting-risk | **P1** | ◦ |
 | **A4** | Confirmed/stocked stock-purchase reversal | ABSENT (one-way) | workflow-regression / accounting-risk | **P1** | ◦ |
 | **R1** | Rework lifecycle: `sent_to_rework` → JobOrder | DEAD (`target_job_order_id` never set) | dead-lifecycle | **P1** | ✔︎ |

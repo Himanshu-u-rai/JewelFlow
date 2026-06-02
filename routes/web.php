@@ -410,6 +410,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         Route::delete('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'destroy'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.destroy');
         Route::get('/karigar-invoices/{karigarInvoice}/print', [\App\Http\Controllers\KarigarInvoiceController::class, 'print'])->middleware('can:karigar_invoice.view')->name('karigar-invoices.print');
         Route::post('/karigar-invoices/{karigarInvoice}/payments', [\App\Http\Controllers\KarigarInvoiceController::class, 'recordPayment'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.pay');
+        Route::post('/karigar-invoices/{karigarInvoice}/payments/{payment}/reverse', [\App\Http\Controllers\KarigarInvoiceController::class, 'reversePayment'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.payments.reverse');
     });
 
     // ======= REPORTS (permission-gated: reports.view for most; reports.daily_closing for closing) =======
