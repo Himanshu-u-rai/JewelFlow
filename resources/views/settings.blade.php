@@ -1200,6 +1200,9 @@
             <a href="{{ route('settings.edit', ['tab' => 'preferences']) }}" class="nav-item {{ $activeTab === 'preferences' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span> {{ __('Preferences') }}
             </a>
+            <a href="{{ route('settings.edit', ['tab' => 'return-policy']) }}" class="nav-item {{ $activeTab === 'return-policy' ? 'active' : '' }}" data-turbo-frame="settings-content">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></span> {{ __('Return Policy') }}
+            </a>
             @endcan
             {{-- Pricing — only users with pricing.update --}}
             @if($shop->isRetailer())
@@ -2007,6 +2010,118 @@
                     @if($canEditSettings)
                     <div class="form-footer">
                         <button type="submit" class="btn-primary">{{ __('Save Changes') }}</button>
+                    </div>
+                    @endif
+                </form>
+            @endif
+
+            @if($activeTab === 'return-policy')
+                <div class="settings-header">
+                    <h2 class="settings-title">{{ __('Return Policy') }}</h2>
+                    <p class="settings-desc">{{ __('Controls how much is refunded on returns and exchanges. These rules are applied at return time and recorded on every credit note.') }}</p>
+                </div>
+
+                @unless($preferences->hasConfiguredReturnPolicy())
+                <div class="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <span class="font-semibold">{{ __('Not configured yet.') }}</span>
+                    {{ __('Until you save this once, returns default to refunding 100% of everything. Review and save to activate your policy.') }}
+                </div>
+                @endunless
+
+                <form method="POST" action="{{ route('settings.update.return-policy') }}">
+                    @csrf
+                    @method('PATCH')
+
+                    <div class="section-label">{{ __('What is refunded') }}</div>
+                    <div class="form-row cols-4">
+                        <div class="field">
+                            <label class="field-label">{{ __('Refund metal/gold value') }}</label>
+                            <select class="field-input" disabled>
+                                <option selected>{{ __('Always refunded') }}</option>
+                            </select>
+                            <span class="field-hint">{{ __('Metal value is always refunded.') }}</span>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Refund making charges') }}</label>
+                            <select name="refund_making_charges" class="field-input">
+                                <option value="1" {{ (bool)($preferences->refund_making_charges ?? true) ? 'selected' : '' }}>{{ __('Yes') }}</option>
+                                <option value="0" {{ !(bool)($preferences->refund_making_charges ?? true) ? 'selected' : '' }}>{{ __('No (retain)') }}</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Refund stone charges') }}</label>
+                            <select name="refund_stone_charges" class="field-input">
+                                <option value="1" {{ (bool)($preferences->refund_stone_charges ?? true) ? 'selected' : '' }}>{{ __('Yes') }}</option>
+                                <option value="0" {{ !(bool)($preferences->refund_stone_charges ?? true) ? 'selected' : '' }}>{{ __('No (retain)') }}</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Refund hallmark charges') }}</label>
+                            <select name="refund_hallmark_charges" class="field-input">
+                                <option value="1" {{ (bool)($preferences->refund_hallmark_charges ?? true) ? 'selected' : '' }}>{{ __('Yes') }}</option>
+                                <option value="0" {{ !(bool)($preferences->refund_hallmark_charges ?? true) ? 'selected' : '' }}>{{ __('No (retain)') }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row cols-4">
+                        <div class="field">
+                            <label class="field-label">{{ __('Refund GST') }}</label>
+                            <select name="refund_gst" class="field-input">
+                                <option value="1" {{ (bool)($preferences->refund_gst ?? true) ? 'selected' : '' }}>{{ __('Yes') }}</option>
+                                <option value="0" {{ !(bool)($preferences->refund_gst ?? true) ? 'selected' : '' }}>{{ __('No (retain)') }}</option>
+                            </select>
+                            <span class="field-hint">{{ __('GST is reversed proportionally on the refunded amount when Yes.') }}</span>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
+                    <div class="section-label">{{ __('Deductions') }}</div>
+                    <div class="form-row cols-4">
+                        <div class="field">
+                            <label class="field-label">{{ __('Wear / handling loss (%)') }}</label>
+                            <input type="number" name="wear_loss_pct" value="{{ old('wear_loss_pct', $preferences->wear_loss_pct ?? 0) }}" class="field-input" min="0" max="25" step="0.01">
+                            <span class="field-hint">{{ __('Flat % deducted from the refundable value. 0 = none.') }}</span>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Restocking fee (%)') }}</label>
+                            <input type="number" name="restocking_fee_pct" value="{{ old('restocking_fee_pct', $preferences->restocking_fee_pct ?? 0) }}" class="field-input" min="0" max="25" step="0.01">
+                            <span class="field-hint">{{ __('Retained by the shop on top of other deductions. 0 = none.') }}</span>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
+                    <div class="section-label">{{ __('Windows & settlement') }}</div>
+                    <div class="form-row cols-4">
+                        <div class="field">
+                            <label class="field-label">{{ __('Return window (days)') }}</label>
+                            <input type="number" name="return_window_days" value="{{ old('return_window_days', $preferences->return_window_days ?? 0) }}" class="field-input" min="0" max="3650">
+                            <span class="field-hint">{{ __('0 = no limit. Returns past this need manager approval.') }}</span>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Exchange window (days)') }}</label>
+                            <input type="number" name="exchange_window_days" value="{{ old('exchange_window_days', $preferences->exchange_window_days ?? 0) }}" class="field-input" min="0" max="3650">
+                            <span class="field-hint">{{ __('0 = no limit.') }}</span>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Refund settlement') }}</label>
+                            <select name="return_settlement_mode" class="field-input">
+                                <option value="cash_or_credit"     {{ ($preferences->return_settlement_mode ?? 'cash_or_credit') === 'cash_or_credit'     ? 'selected' : '' }}>{{ __('Cash or store credit') }}</option>
+                                <option value="cash_only"          {{ ($preferences->return_settlement_mode ?? 'cash_or_credit') === 'cash_only'          ? 'selected' : '' }}>{{ __('Cash only') }}</option>
+                                <option value="store_credit_only"  {{ ($preferences->return_settlement_mode ?? 'cash_or_credit') === 'store_credit_only'  ? 'selected' : '' }}>{{ __('Store credit only') }}</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Lock exchange gold rate basis') }}</label>
+                            <select name="exchange_rate_basis_locked" class="field-input">
+                                <option value="0" {{ !(bool)($preferences->exchange_rate_basis_locked ?? false) ? 'selected' : '' }}>{{ __('No — staff can choose') }}</option>
+                                <option value="1" {{ (bool)($preferences->exchange_rate_basis_locked ?? false) ? 'selected' : '' }}>{{ __('Yes — lock to shop default') }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    @if($canEditSettings)
+                    <div class="form-footer">
+                        <button type="submit" class="btn-primary">{{ __('Save Return Policy') }}</button>
                     </div>
                     @endif
                 </form>

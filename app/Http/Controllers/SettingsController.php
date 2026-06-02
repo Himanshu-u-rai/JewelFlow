@@ -51,6 +51,7 @@ class SettingsController extends Controller
             'billing'         => 'settings.view',
             'payment-methods' => 'settings.view',
             'preferences'     => 'settings.view',
+            'return-policy'   => 'settings.view',
             'pricing'         => 'pricing.update',
             'materials'       => 'settings.view',
             'website'         => 'settings.view',
@@ -568,6 +569,57 @@ class SettingsController extends Controller
 
         return redirect()->route('settings.edit', ['tab' => 'preferences'])
             ->with('success', 'Preferences updated successfully.');
+    }
+
+    /**
+     * Update the shop's return / exchange policy.
+     *
+     * Isolated from updatePreferences() so this surface is reversible. Persists
+     * the refund flags + windows and stamps return_policy_configured_at, which
+     * is what unblocks the returns/exchange flow (ReturnsController::create()
+     * redirects here until the policy is configured). No accounting logic here —
+     * RefundPolicyResolver reads these persisted values at return time.
+     */
+    public function updateReturnPolicy(Request $request)
+    {
+        $shop = Auth::user()->shop;
+
+        $validated = $request->validate([
+            'refund_making_charges'      => 'nullable|boolean',
+            'refund_stone_charges'       => 'nullable|boolean',
+            'refund_hallmark_charges'    => 'nullable|boolean',
+            'refund_gst'                 => 'nullable|boolean',
+            'wear_loss_pct'              => 'nullable|numeric|min:0|max:25',
+            'restocking_fee_pct'         => 'nullable|numeric|min:0|max:25',
+            'return_window_days'         => 'nullable|integer|min:0|max:3650',
+            'exchange_window_days'       => 'nullable|integer|min:0|max:3650',
+            'return_settlement_mode'     => 'nullable|in:cash_only,store_credit_only,cash_or_credit',
+            'exchange_rate_basis_locked' => 'nullable|boolean',
+        ]);
+
+        // Safe defaults — refunds default to refundable (matches the column
+        // defaults and the documented zero-config "refund everything" intent);
+        // fees default to 0; windows 0 = unlimited.
+        $validated['refund_making_charges']   = (bool) ($validated['refund_making_charges']   ?? true);
+        $validated['refund_stone_charges']    = (bool) ($validated['refund_stone_charges']    ?? true);
+        $validated['refund_hallmark_charges'] = (bool) ($validated['refund_hallmark_charges'] ?? true);
+        $validated['refund_gst']              = (bool) ($validated['refund_gst']              ?? true);
+        $validated['wear_loss_pct']           = $validated['wear_loss_pct']        ?? 0;
+        $validated['restocking_fee_pct']      = $validated['restocking_fee_pct']   ?? 0;
+        $validated['return_window_days']      = $validated['return_window_days']   ?? 0;
+        $validated['exchange_window_days']    = $validated['exchange_window_days'] ?? 0;
+        $validated['return_settlement_mode']  = $validated['return_settlement_mode'] ?? 'cash_or_credit';
+        $validated['exchange_rate_basis_locked'] = (bool) ($validated['exchange_rate_basis_locked'] ?? false);
+
+        // The stamp that unblocks the returns flow.
+        $validated['return_policy_configured_at'] = now();
+
+        $preferences = $shop->preferences ?? new ShopPreferences(['shop_id' => $shop->id]);
+        $preferences->fill($validated);
+        $preferences->save();
+
+        return redirect()->route('settings.edit', ['tab' => 'return-policy'])
+            ->with('success', 'Return policy saved. Returns and exchanges are now active.');
     }
 
     /**
