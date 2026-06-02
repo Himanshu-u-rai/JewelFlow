@@ -244,10 +244,10 @@
                         This item is marked for rework. Link a karigar job order to track the work.
                     </span>
                 </div>
-                <a href="{{ route('job-orders.rework.create', ['from_return_disposition' => $disposition->id]) }}"
-                   class="btn btn-dark btn-sm">
-                    Start Karigar Job
-                </a>
+                <span class="btn btn-secondary btn-sm" style="opacity:.6;cursor:not-allowed"
+                      title="In-app rework job creation is not available yet — track the karigar rework manually.">
+                    Rework (track manually)
+                </span>
             </div>
             @endforeach
         </section>

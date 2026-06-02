@@ -585,10 +585,10 @@
                                             {{ $daysOut }}d
                                         </td>
                                         <td class="px-5 py-4 text-right">
-                                            <a href="{{ route('job-orders.rework.create', ['from_return_disposition' => $disp->id]) }}"
-                                               class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
-                                                Start Karigar Job
-                                            </a>
+                                            <span class="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-400 cursor-not-allowed"
+                                                  title="In-app rework job creation is not available yet — track the karigar rework manually.">
+                                                Rework (manual)
+                                            </span>
                                         </td>
                                     </tr>
                                 @endforeach

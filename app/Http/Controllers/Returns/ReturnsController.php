@@ -550,22 +550,15 @@ class ReturnsController extends Controller
             \Log::warning('OrchestrationEventService: failed to record returned_item_fate: ' . $e->getMessage());
         }
 
-        // For rework: redirect to repair job creation pre-filled with this disposition
+        // For rework: the item is flagged sent_to_rework. The in-app karigar
+        // rework-job flow is not built (see PRODUCT_SURFACE_INTEGRITY_AUDIT.md §3.B
+        // — retired, not wired), so we record the disposition and inform the
+        // operator instead of redirecting to a non-existent route.
         if ($validated['disposition'] === ReturnedItemDisposition::DISPOSITION_SENT_TO_REWORK) {
-            $newDisposition = ReturnedItemDisposition::where('item_id', $item->id)
-                ->where('disposition', ReturnedItemDisposition::DISPOSITION_SENT_TO_REWORK)
-                ->whereNull('target_job_order_id')
-                ->latest('id')
-                ->first();
-
-            if ($newDisposition) {
-                $reworkMessage = $hasDuplicateRework
-                    ? 'This item already had a "send for rework" entry with no karigar job linked. A second entry has been created. Please create a karigar job now so the item is properly tracked.'
-                    : 'Item marked for rework. Create a karigar job to track the work.';
-                return redirect()->route('job-orders.repair.create', [
-                    'from_return_disposition' => $newDisposition->id,
-                ])->with('info', $reworkMessage);
-            }
+            $reworkMessage = $hasDuplicateRework
+                ? 'This item already had a "send for rework" entry with no karigar job linked. A second entry has been created. Track the karigar rework manually for now.'
+                : 'Item marked for rework. Track the karigar rework manually for now.';
+            return back()->with('info', $reworkMessage);
         }
 
         return back()->with('success', 'Item re-dispositioned successfully.');
