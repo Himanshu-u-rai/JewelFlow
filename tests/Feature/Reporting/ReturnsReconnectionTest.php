@@ -89,6 +89,15 @@ class ReturnsReconnectionTest extends TestCase
         $this->actingAs($approver)->get(route('returns.control-center'))->assertOk();
     }
 
+    public function test_approve_review_renders_an_existing_view(): void
+    {
+        // showApprove() (route returns.approve-review, linked from the Control
+        // Center "Review" button) must render a view that exists — it previously
+        // pointed at a non-existent 'returns.approve-review' blade (live 500).
+        $this->assertTrue(view()->exists('returns.approve'), 'showApprove target view must exist');
+        $this->assertFalse(view()->exists('returns.approve-review'), 'the missing blade should not be referenced');
+    }
+
     public function test_exchanges_index_renders(): void
     {
         [$user] = $this->createRetailerTenant();

@@ -472,7 +472,7 @@ class ReturnsController extends Controller
         $lineRefundTotals = $returnOrder->pending_data['line_refund_totals'] ?? [];
         $approvalReason = $approvalService->checkRequired($returnOrder->invoice, $selections, $lineRefundTotals, $shopPolicy);
 
-        return view('returns.approve-review', compact('returnOrder', 'approvalReason'));
+        return view('returns.approve', compact('returnOrder', 'approvalReason'));
     }
 
     public function redisposeItem(Request $request, \App\Models\Item $item)
