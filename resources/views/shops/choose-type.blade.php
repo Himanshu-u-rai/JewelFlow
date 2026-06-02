@@ -248,6 +248,11 @@
             </svg>
             <div class="brand-name">Jewel<span>flow</span></div>
         </div>
+        {{-- Always allow an escape back to login during onboarding. --}}
+        <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+            @csrf
+            <button type="submit" style="background:none;border:0;padding:0;font:inherit;font-weight:600;color:#d97706;cursor:pointer;text-decoration:underline;">{{ __('Log out') }}</button>
+        </form>
     </div>
 
     <form method="POST" action="{{ route('shops.choose-type') }}" class="main" id="editionForm">

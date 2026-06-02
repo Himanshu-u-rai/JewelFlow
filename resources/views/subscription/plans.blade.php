@@ -28,7 +28,15 @@
       </svg>
       <div class="header-brand-text">Jewel<span>Flow</span></div>
     </div>
-    <div class="header-step">Step 2 of 3 — Choose Plan</div>
+    <div class="header-step" style="display:flex;align-items:center;gap:18px;">
+      <span>Step 2 of 3 — Choose Plan</span>
+      {{-- Always allow an escape: a user without a plan must still be able to
+           log out and sign into an account that does have one. --}}
+      <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+        @csrf
+        <button type="submit" style="background:none;border:0;padding:0;font:inherit;font-weight:600;color:#b45309;cursor:pointer;text-decoration:underline;">{{ __('Log out') }}</button>
+      </form>
+    </div>
   </div>
 
   {{-- Hero --}}

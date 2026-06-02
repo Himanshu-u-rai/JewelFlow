@@ -410,7 +410,14 @@
                     <div class="sub-pay-brand-subtitle">Subscription onboarding</div>
                 </div>
             </div>
-            <div class="sub-pay-step">Step 3 of 3 - Payment</div>
+            <div class="sub-pay-step" style="display:flex;align-items:center;gap:18px;">
+                <span>Step 3 of 3 - Payment</span>
+                {{-- Always allow an escape back to login. --}}
+                <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+                    @csrf
+                    <button type="submit" style="background:none;border:0;padding:0;font:inherit;font-weight:600;color:#b45309;cursor:pointer;text-decoration:underline;">{{ __('Log out') }}</button>
+                </form>
+            </div>
         </div>
     </header>
 
