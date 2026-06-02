@@ -1293,7 +1293,7 @@
                             <p class="font-semibold text-red-900">{{ __('Logout') }}</p>
                             <p class="text-red-700 text-xs mt-1">{{ __('You will be signed out of JewelFlow on this device.') }}</p>
                         </div>
-                        <form method="POST" action="{{ route('logout') }}">
+                        <form method="POST" action="{{ route('logout') }}" data-turbo-frame="_top">
                             @csrf
                             <button type="submit" class="btn btn-danger"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>{{ __('Logout') }}</button>
                         </form>
@@ -1307,7 +1307,7 @@
                     <p class="settings-desc">{{ __('Business identity and tax configuration') }}</p>
                 </div>
                 
-                <form method="POST" action="{{ route('settings.update.shop') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('settings.update.shop') }}" enctype="multipart/form-data" data-turbo-frame="_top">
                     @csrf
                     @method('PATCH')
                     
@@ -1531,7 +1531,7 @@
                     <p class="settings-desc">{{ __('Customize invoice appearance and payment details') }}</p>
                 </div>
                 
-                <form method="POST" action="{{ route('settings.update.billing') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('settings.update.billing') }}" enctype="multipart/form-data" data-turbo-frame="_top">
                     @csrf
                     @method('PATCH')
 
@@ -1872,7 +1872,7 @@
                     <p class="settings-desc">{{ __('Display and formatting options') }}</p>
                 </div>
                 
-                <form method="POST" action="{{ route('settings.update.preferences') }}">
+                <form method="POST" action="{{ route('settings.update.preferences') }}" data-turbo-frame="_top">
                     @csrf
                     @method('PATCH')
                     
@@ -2028,7 +2028,7 @@
                 </div>
                 @endunless
 
-                <form method="POST" action="{{ route('settings.update.return-policy') }}">
+                <form method="POST" action="{{ route('settings.update.return-policy') }}" data-turbo-frame="_top">
                     @csrf
                     @method('PATCH')
 
@@ -2302,7 +2302,7 @@
                             @if($role->name === 'owner')
                                 <div class="locked-msg">{{ __('All permissions (locked)') }}</div>
                             @else
-                                <form method="POST" action="{{ route('settings.update.role', $role) }}">
+                                <form method="POST" action="{{ route('settings.update.role', $role) }}" data-turbo-frame="_top">
                                     @csrf
                                     @method('PATCH')
                                     
@@ -2409,7 +2409,7 @@
                                     <span class="text-xs text-gray-400 italic">{{ __('You') }}</span>
                                 @elseif(($member->employment_status ?? 'active') === 'terminated')
                                     {{-- Recovery: restore a previously-removed staff member. --}}
-                                    <form method="POST" action="{{ route('staff.reactivate', $member) }}"
+                                    <form method="POST" action="{{ route('staff.reactivate', $member) }}" data-turbo-frame="_top"
                                           data-confirm-message="{{ __('Recover :name?', ['name' => $member->name ?? $member->mobile_number]) }}">
                                         @csrf @method('PATCH')
                                         <button type="submit"
@@ -2425,7 +2425,7 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                             {{ __('Edit') }}
                                         </a>
-                                        <form method="POST" action="{{ route('staff.destroy', $member) }}"
+                                        <form method="POST" action="{{ route('staff.destroy', $member) }}" data-turbo-frame="_top"
                                               data-confirm-message="{{ __('Remove :name? They can be recovered later.', ['name' => $member->name ?? $member->mobile_number]) }}">
                                             @csrf @method('DELETE')
                                             <button type="submit"
