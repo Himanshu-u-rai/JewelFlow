@@ -58,11 +58,24 @@ class ReturnsReconnectionTest extends TestCase
 
     public function test_returns_inbox_renders_for_viewer(): void
     {
-        [$user] = $this->createRetailerTenant();
+        [$user, $shop] = $this->createRetailerTenant();
         $this->grant($user, 'returns.view');
 
-        // Rendering inbox resolves all its internal route('returns.*') calls.
-        $this->actingAs($user)->get(route('returns.index'))->assertOk()->assertSee('Returns', false);
+        // A real shop has a preferences row, so the return-policy-banner partial
+        // actually invokes ShopPreferences::hasConfiguredReturnPolicy(). (The
+        // earlier version had no preferences row and silently skipped it — which
+        // is exactly how the live "Something Went Wrong" slipped past.)
+        DB::table('shop_preferences')->insert([
+            'shop_id' => $shop->id, 'return_policy_configured_at' => null,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        // Rendering inbox resolves all its internal route('returns.*') calls AND
+        // the banner method; unconfigured policy → the warning banner shows.
+        $this->actingAs($user)->get(route('returns.index'))
+            ->assertOk()
+            ->assertSee('Returns', false)
+            ->assertSee('Return policy not configured', false);
     }
 
     public function test_control_center_requires_approve_permission(): void
@@ -114,6 +127,20 @@ class ReturnsReconnectionTest extends TestCase
         $latestDisp = (new \App\Models\Item)->latestReturnDisposition();
         $this->assertInstanceOf(\Illuminate\Database\Eloquent\Relations\HasOne::class, $latestDisp);
         $this->assertSame('item_id', $latestDisp->getForeignKeyName());
+
+        // ShopPreferences methods consumed by the returns flow + return-policy
+        // banner (the live "Something Went Wrong" was these being undefined).
+        $prefs = new \App\Models\ShopPreferences(['return_policy_configured_at' => null]);
+        $this->assertFalse($prefs->hasConfiguredReturnPolicy());
+        $prefs->return_policy_configured_at = now();
+        $this->assertTrue($prefs->hasConfiguredReturnPolicy());
+
+        $deductions = (new \App\Models\ShopPreferences([
+            'refund_making_charges' => false, 'refund_stone_charges' => true,
+        ]))->toRefundDeductions();
+        $this->assertFalse($deductions['making_charges_refundable']);
+        $this->assertTrue($deductions['stone_charges_refundable']);
+        $this->assertArrayHasKey('hallmark_charges_refundable', $deductions);
     }
 
     public function test_default_role_permissions_include_returns_view_and_create_for_staff(): void
