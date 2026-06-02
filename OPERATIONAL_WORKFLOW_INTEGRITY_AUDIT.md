@@ -77,21 +77,21 @@ Ordered by severity. ✔︎ = lead-auditor spot-verified; ◦ = sub-audit eviden
 | **ARC1** | **Item** archive / recover | **ACCEPTED M16** (hard delete is documented-as-intended: `ItemController::destroy` only deletes `in_stock` items with no sale/return/karigar history, so there is nothing to recover; soft-archive is deferred feature work) | recovery-failure (by-design gap) | **P2→accepted** | ✔︎ |
 | **ARC2** | **Customer** archive / recover | **ACCEPTED M16** (hard delete only permitted when the customer has no invoices/gold/repairs — i.e. no history to lose; soft-archive deferred) | recovery-failure (by-design gap) | **P2→accepted** | ✔︎ |
 | **POL1** | New policies (JobOrder/Karigar/KarigarInvoice/StockPurchase/ShopPaymentMethod) | **ACCEPTED M16** (redundant-but-harmless: real authz is route `can:` middleware + per-controller `authorizeShop()`; the uninvoked policies are belt-and-suspenders, not a live hole. Left in place; flagged as a code-review process note, not a bug) | permission-breakage (latent) | **P2→accepted** | ✔︎ |
-| **DC1** | Vault reconciliation `STATUS_CORRECTED` | NEVER WRITTEN (3-state really 2) | dead-lifecycle | **P3** | ◦ |
-| **DC2** | Staff `suspended` employment state | DEAD (no flow sets it) | dead-lifecycle | **P3** | ◦ |
-| **DC3** | Item statuses `transferred` / `pending_listing` never set; `written_off` not in DB CHECK | DEAD / latent | dead-lifecycle / latent-corruption | **P3** | ◦ |
+| **DC1** | Vault reconciliation `STATUS_CORRECTED` | **ACCEPTED M17** (reconciliation is read-only by Constitution; corrections flow through the new vault adjustment M6, not a run-status transition — the constant is harmless) | dead-lifecycle | **P3→accepted** | ✔︎ |
+| **DC2** | Staff `suspended` employment state | **RESOLVED by M1** (admin deactivate now writes `suspended` — the state has a real writer) | dead-lifecycle | **P3→done** | ✔︎ |
+| **DC3** | Item statuses `transferred`/`pending_listing`/`written_off` | **ACCEPTED M17** (verified NOT a live crash: write-off disposition sets status `returned`, not `written_off`; the only `written_off` reference is in the dormant ItemObserver. Unused statuses are inert) | dead-lifecycle / latent-corruption | **P3→accepted** | ✔︎ |
 | **TURBO1** | Core settings tabs save → no success toast | **FIXED M16** (`data-turbo-frame="_top"` on shop/billing/preferences/return-policy + role forms) | UX-regression | **P2→done** | ✔︎ |
 | **TURBO2** | Logout from Settings→General | **FIXED M16** (`data-turbo-frame="_top"` on the logout form) | workflow-regression | **P2→done** | ✔︎ |
 | **TURBO3** | Staff Remove/Recover forms lack `data-turbo-frame="_top"` | **FIXED M16** (added to staff.destroy + staff.reactivate forms) | UX-regression | **P3→done** | ✔︎ |
-| **SEC2** | Mobile `logoutOtherDevices()` | NO-OP (empty password at verify) | UX/security-minor | **P3** | ◦ |
-| **DEN1** | Category/Product string denormalization (rename/delete) | SILENT drop-out of filters/reorder | silent-corruption (minor) | **P3** | ◦ |
-| **HID1** | Reference-Prices history report | UNLINKED (route exists, no nav) | hidden-workflow | **P3** | ◦ |
-| **HID2** | Metal Ledger report | semi-hidden (one link only) | hidden-workflow | **P3** | ◦ |
-| **HID3** | Loyalty `index`/`customerHistory` controller methods | BYPASSED by closure redirects | cosmetic / dead | **P3** | ◦ |
-| **DC4** | `AuditController` | UNROUTED dead code (live viewer is in Settings) | cosmetic | **P3** | ◦ |
-| **UX1** | Vendor archive/restore only via edit checkbox (no toggle) | UX-regression | UX-regression | **P3** | ◦ |
-| **UX2** | Invoice status badge compares to `'paid'` (never a status) | cosmetic | cosmetic | **P3** | ◦ |
-| **UX3** | Command-palette report links gate on `$isOwner` while routes allow `reports.view` | UX mismatch (managers reach via nav) | UX-regression | **P3** | ◦ |
+| **SEC2** | Mobile `logoutOtherDevices()` | **ACCEPTED M17** (minor: the primary revocation path — staff termination bulk token-delete + one-session-per-user at login — works; this opt-in helper is a no-op, documented for a later fix) | UX/security-minor | **P3→accepted** | ✔︎ |
+| **DEN1** | Category/Product string denormalization | **ACCEPTED M17** (by-design denormalization; a FK refactor/cascade is feature work. Documented limitation: renaming/deleting a category doesn't rewrite item strings) | silent-corruption (minor) | **P3→accepted** | ✔︎ |
+| **HID1** | Reference-Prices history report | **ACCEPTED M17** (reachable by URL; nav link is minor UI polish, deferred) | hidden-workflow | **P3→accepted** | ✔︎ |
+| **HID2** | Metal Ledger report | **ACCEPTED M17** (reachable via daily-report link; additional nav is minor polish) | hidden-workflow | **P3→accepted** | ✔︎ |
+| **HID3** | Loyalty `index`/`customerHistory` methods | **ACCEPTED M17** (dead controller methods; live loyalty views are reached via the closures — harmless redundancy) | cosmetic / dead | **P3→accepted** | ✔︎ |
+| **DC4** | `AuditController` | **ACCEPTED M17** (unrouted dead code; live audit viewer is in SettingsController — harmless) | cosmetic | **P3→accepted** | ✔︎ |
+| **UX1** | Vendor archive/restore via edit checkbox | **ACCEPTED M17** (functional via the edit form; a one-click toggle is minor polish, deferred) | UX-regression | **P3→accepted** | ✔︎ |
+| **UX2** | Invoice status badge compares to `'paid'` | **FIXED M17** (badge now colours by real status: finalized=green, cancelled=red, draft=amber) | cosmetic | **P3→done** | ✔︎ |
+| **UX3** | Command-palette report links gate on `$isOwner` | **ACCEPTED M17** (managers still reach reports via nav; palette gating is minor cosmetic mismatch) | UX-regression | **P3→accepted** | ✔︎ |
 
 ---
 

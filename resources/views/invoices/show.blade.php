@@ -146,7 +146,17 @@
                             <div class="text-lg font-semibold text-amber-600">Repair Service</div>
                         </div>
                         @endif
-                        <span class="inline-flex items-center px-3 py-1.5 text-sm font-medium {{ $invoice->status == 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
+                        @php
+                            // Colour by the actual Invoice status (draft/finalized/cancelled).
+                            // The old check compared to 'paid', which is never an Invoice
+                            // status, so every badge rendered amber (UX2).
+                            $statusBadgeClass = match($invoice->status) {
+                                \App\Models\Invoice::STATUS_FINALIZED => 'bg-emerald-100 text-emerald-800',
+                                \App\Models\Invoice::STATUS_CANCELLED => 'bg-rose-100 text-rose-800',
+                                default                               => 'bg-amber-100 text-amber-800',
+                            };
+                        @endphp
+                        <span class="inline-flex items-center px-3 py-1.5 text-sm font-medium {{ $statusBadgeClass }}">
                             {{ ucfirst($invoice->status) }}
                         </span>
                     </div>
