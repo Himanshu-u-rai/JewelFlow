@@ -531,6 +531,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/staff/{staff}/edit', [\App\Http\Controllers\StaffController::class, 'edit'])->middleware('can:staff.manage')->name('staff.edit');
     Route::put('/staff/{staff}', [\App\Http\Controllers\StaffController::class, 'update'])->middleware('can:staff.manage')->name('staff.update');
     Route::delete('/staff/{staff}', [\App\Http\Controllers\StaffController::class, 'destroy'])->middleware('can:staff.manage')->name('staff.destroy');
+    Route::patch('/staff/{staff}/reactivate', [\App\Http\Controllers\StaffController::class, 'reactivate'])->middleware('can:staff.manage')->name('staff.reactivate');
 
     // ======= RETAILER FEATURES (edition:retailer) =======
 

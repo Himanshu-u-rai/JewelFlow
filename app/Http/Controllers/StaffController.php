@@ -163,25 +163,76 @@ class StaffController extends Controller
         if ($staff->shop_id !== auth()->user()->shop_id) {
             abort(403);
         }
-        
-        // Cannot delete yourself
+
+        // Cannot remove yourself
         if ($staff->id === auth()->id()) {
-            return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], 'You cannot delete your own account.', 'error');
+            return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], 'You cannot remove your own account.', 'error');
         }
-        
+
+        // Soft removal: TERMINATE the employment rather than hard-deleting the
+        // user. A hard delete is irreversible and orphans the staff member's
+        // attribution on past invoices/cash/audit (FK set-null). Termination
+        // preserves the record, disables login (observer forces is_active=false
+        // for 'terminated'), and is fully recoverable via reactivate().
         $name = $staff->name ?? $staff->mobile_number;
-        $staff->tokens()->delete();
-        $staff->delete();
-        
+        $staff->tokens()->delete(); // revoke active mobile/API sessions immediately
+
+        $staff->forceFill([
+            'employment_status'         => 'terminated',
+            'terminated_at'             => now(),
+            'terminated_by_user_id'     => auth()->id(),
+            'terminated_with_role_name' => $staff->role?->name,
+            'is_active'                 => false,
+        ])->save();
+
         AuditLog::create([
             'shop_id' => auth()->user()->shop_id,
             'user_id' => auth()->id(),
-            'action' => 'staff_deleted',
+            'action' => 'staff_terminated',
             'model_type' => 'User',
             'model_id' => $staff->id,
-            'description' => "Removed staff: {$name}",
+            'description' => "Removed (terminated) staff: {$name}",
         ]);
-        
-        return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], 'Staff member removed successfully.');
+
+        return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], 'Staff member removed. You can recover them anytime from the staff list.');
+    }
+
+    /**
+     * Recover a previously-removed (terminated) staff member — restores login
+     * access and re-counts them against the plan's staff limit.
+     */
+    public function reactivate(User $staff)
+    {
+        if ($staff->shop_id !== auth()->user()->shop_id) {
+            abort(403);
+        }
+
+        if ($staff->employment_status !== 'terminated') {
+            return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], 'This staff member is already active.', 'error');
+        }
+
+        // A recovered staff member counts toward the active-staff limit again.
+        if (! $staff->shop->canAddStaff()) {
+            $limit = $staff->shop->staffLimit();
+            return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], "Staff limit reached ({$limit} accounts allowed on your plan). Remove another member before recovering this one.", 'error');
+        }
+
+        $name = $staff->name ?? $staff->mobile_number;
+        $staff->forceFill([
+            'employment_status' => 'active',
+            'reactivated_at'    => now(),
+            'is_active'         => true,
+        ])->save();
+
+        AuditLog::create([
+            'shop_id' => auth()->user()->shop_id,
+            'user_id' => auth()->id(),
+            'action' => 'staff_reactivated',
+            'model_type' => 'User',
+            'model_id' => $staff->id,
+            'description' => "Recovered staff: {$name}",
+        ]);
+
+        return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], 'Staff member recovered successfully.');
     }
 }

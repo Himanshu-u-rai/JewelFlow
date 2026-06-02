@@ -2400,8 +2400,25 @@
                                 </span>
                             </div>
                             <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                <span class="text-xs text-gray-400">{{ __('Joined') }} {{ $member->created_at->format('d M Y') }}</span>
-                                @if($member->role?->name !== 'owner')
+                                @if(($member->employment_status ?? 'active') === 'terminated')
+                                    <span class="text-xs text-rose-500">{{ __('Removed') }} {{ optional($member->terminated_at)->format('d M Y') }}</span>
+                                @else
+                                    <span class="text-xs text-gray-400">{{ __('Joined') }} {{ $member->created_at->format('d M Y') }}</span>
+                                @endif
+                                @if($member->role?->name === 'owner')
+                                    <span class="text-xs text-gray-400 italic">{{ __('You') }}</span>
+                                @elseif(($member->employment_status ?? 'active') === 'terminated')
+                                    {{-- Recovery: restore a previously-removed staff member. --}}
+                                    <form method="POST" action="{{ route('staff.reactivate', $member) }}"
+                                          data-confirm-message="{{ __('Recover :name?', ['name' => $member->name ?? $member->mobile_number]) }}">
+                                        @csrf @method('PATCH')
+                                        <button type="submit"
+                                                class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg>
+                                            {{ __('Recover') }}
+                                        </button>
+                                    </form>
+                                @else
                                     <div class="flex gap-2">
                                         <a href="{{ route('staff.edit', $member) }}" data-turbo-frame="_top"
                                            class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
@@ -2409,7 +2426,7 @@
                                             {{ __('Edit') }}
                                         </a>
                                         <form method="POST" action="{{ route('staff.destroy', $member) }}"
-                                              data-confirm-message="{{ __('Remove :name?', ['name' => $member->name ?? $member->mobile_number]) }}">
+                                              data-confirm-message="{{ __('Remove :name? They can be recovered later.', ['name' => $member->name ?? $member->mobile_number]) }}">
                                             @csrf @method('DELETE')
                                             <button type="submit"
                                                     class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
@@ -2418,8 +2435,6 @@
                                             </button>
                                         </form>
                                     </div>
-                                @else
-                                    <span class="text-xs text-gray-400 italic">{{ __('You') }}</span>
                                 @endif
                             </div>
                         </div>
