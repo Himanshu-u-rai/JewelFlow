@@ -55,7 +55,7 @@ Ordered by severity. ✔︎ = lead-auditor spot-verified; ◦ = sub-audit eviden
 |----|--------------------|--------|-----------|-----|-----|
 | **D1** | Installment `defaulted` unreachable + no settle/write-off/close | **FIXED M2** (operator write-off close → `defaulted`, invoice untouched, audited) | dangerous-incomplete-flow | **P0→done** | ✔︎ |
 | **D2** | Scheme enrollment cancel + contribution refund | **FIXED M3** (cash refund of ledger balance excl. bonus, reversing ledger debit, route+UI gated sales.void) | dead-lifecycle / recovery-failure | **P0→done** | ✔︎ |
-| **D3** | Scheme maturity is payment-count-only; no date-based maturity/bonus | DEAD transition | dead-lifecycle | **P0** | ◦ |
+| **D3** | Scheme maturity is payment-count-only; no date-based maturity/bonus | **FIXED M4** (daily `schemes:process-maturity`; bonus iff fully paid, else matures w/o bonus) | dead-lifecycle | **P0→done** | ✔︎ |
 | **A1** | Admin "deactivate tenant user" | ~~no-op~~ **CORRECTED → inconsistent-state** (observer is dormant; toggle works but left `employment_status` stale). **FIXED M1.** | workflow-regression | **P0→done** | ✔︎ |
 | **A1b** | `UserObserver` (is_active ↔ employment_status invariant) | DEAD (never registered → invariant unenforced) | dead-lifecycle / latent-corruption | **P2** | ✔︎ |
 | **A2** | KarigarInvoice / KarigarPayment reverse/void/correct | ABSENT | accounting-risk | **P1** | ◦ |

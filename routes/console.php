@@ -123,6 +123,7 @@ Schedule::command('backup:run')->daily();
 Schedule::command('loyalty:expire')->daily();
 Schedule::command('subscription:check-expiry')->daily();
 Schedule::command('scan:cleanup')->daily();
+Schedule::command('schemes:process-maturity')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('cache:warm-shops')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('dhiran:accrue-interest')->daily();
 Schedule::command('dhiran:overdue-reminders')->daily();

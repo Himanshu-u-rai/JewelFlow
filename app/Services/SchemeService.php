@@ -339,6 +339,98 @@ class SchemeService
     }
 
     /**
+     * Mature a single enrollment whose term (maturity_date) has been reached.
+     *
+     * Idempotent and safe to re-run. The maturity bonus is accrued under the
+     * EXACT same condition the payment path already uses — only when the plan is
+     * fully paid (installments_paid >= total_installments). An under-paid plan
+     * still matures (its contribution window is closed and the paid amount
+     * becomes redeemable) but earns NO bonus. This mirrors recordPayment()'s
+     * count-based maturity and introduces no new bonus liability.
+     */
+    public function matureEnrollment(SchemeEnrollment $enrollment): SchemeEnrollment
+    {
+        return DB::transaction(function () use ($enrollment) {
+            $locked = SchemeEnrollment::query()
+                ->whereKey($enrollment->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->status !== 'active') {
+                return $locked; // already matured / cancelled / redeemed — no-op
+            }
+
+            SubscriptionGateService::assertShopWritable((int) $locked->shop_id);
+            $this->assertFinancialLockOpen((int) $locked->shop_id, now()->toDateString());
+
+            $fullyPaid   = (int) $locked->installments_paid >= (int) $locked->total_installments;
+            $accrueBonus = $fullyPaid && ! $locked->is_bonus_accrued && (float) $locked->bonus_amount > 0;
+
+            $updates = ['status' => 'matured'];
+            if ($accrueBonus) {
+                $updates['is_bonus_accrued']          = true;
+                $updates['maturity_bonus_accrued_at'] = now();
+            }
+            $locked->update($updates);
+            $locked->refresh();
+
+            if ($accrueBonus) {
+                $this->appendLedgerEntry(
+                    $locked,
+                    'bonus_accrual',
+                    'credit',
+                    round((float) $locked->bonus_amount, 2),
+                    [
+                        'accrued_at_maturity' => true,
+                        'matured_by'          => 'date',
+                        'maturity_date'       => optional($locked->maturity_date)->toDateString(),
+                    ],
+                    null,
+                    null,
+                    'Scheme maturity bonus accrued (term reached)'
+                );
+            }
+
+            AccountingAuditService::log([
+                'shop_id'     => $locked->shop_id,
+                'action'      => 'scheme_enrollment_matured',
+                'model_type'  => 'scheme_enrollment',
+                'model_id'    => $locked->id,
+                'description' => 'Scheme enrollment matured on term date'
+                    . ($accrueBonus ? ' with bonus accrued.' : ' (under-paid — no bonus).'),
+                'after'       => $locked->fresh()->toArray(),
+                'target'      => ['type' => 'scheme_enrollment', 'id' => $locked->id],
+            ]);
+
+            return $locked->fresh();
+        });
+    }
+
+    /**
+     * Mature every active enrollment in a shop whose maturity_date has passed.
+     * Returns the number matured. Intended to be driven by a daily scheduler.
+     */
+    public function processMaturedEnrollments(int $shopId, ?string $asOf = null): int
+    {
+        $asOf = $asOf ?: now()->toDateString();
+
+        $due = SchemeEnrollment::query()
+            ->where('shop_id', $shopId)
+            ->where('status', 'active')
+            ->whereNotNull('maturity_date')
+            ->whereDate('maturity_date', '<=', $asOf)
+            ->get();
+
+        $count = 0;
+        foreach ($due as $enrollment) {
+            $this->matureEnrollment($enrollment);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
      * Cancel an active scheme enrollment and refund the customer's contributions.
      *
      * The refundable amount is the current ledger balance — i.e. everything the
