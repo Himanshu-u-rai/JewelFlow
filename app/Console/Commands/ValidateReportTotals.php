@@ -36,7 +36,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales): int
+    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -57,6 +57,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateShop((int) $shopId, $period, $gst);
             $failures += $this->validateTaxPack((int) $shopId, $period, $gst, $tax);
             $failures += $this->validateReconciliation((int) $shopId, $period, $gst, $sales);
+            $failures += $this->validateReceivables((int) $shopId, $receivables);
         }
 
         $this->newLine();
@@ -207,6 +208,50 @@ class ValidateReportTotals extends Command
             'PAY-3 payment-recon count == GST invoice count',
             $recon->invoiceCount === $summary->invoiceCount,
             'recon=' . $recon->invoiceCount . ' gst=' . $summary->invoiceCount
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Receivables invariants (Phase 2 M3, report #8 — dues aging). Point-in-time,
+     * so independent of the period being validated.
+     */
+    private function validateReceivables(int $shopId, \App\Reporting\ReceivablesService $receivables): int
+    {
+        $failures = 0;
+        $dues = $receivables->duesAging($shopId);
+
+        // DUE-1 — the four age buckets sum to the reported total.
+        $bucketSum = round(
+            $dues->bucketCurrent + $dues->bucket3160 + $dues->bucket6190 + $dues->bucket90plus,
+            2
+        );
+        $failures += $this->assert(
+            $shopId,
+            'DUE-1 dues buckets sum to total',
+            abs($bucketSum - $dues->totalOutstanding) <= self::TOLERANCE,
+            'buckets=' . $bucketSum . ' total=' . $dues->totalOutstanding
+        );
+
+        // DUE-2 — total matches an INDEPENDENT recompute straight from the
+        // persisted tables: Σ max(0, finalized invoice total − collected).
+        $independent = round((float) DB::table('invoices as i')
+            ->where('i.shop_id', $shopId)
+            ->where('i.status', \App\Models\Invoice::STATUS_FINALIZED)
+            ->leftJoinSub(
+                DB::table('invoice_payments')->select('invoice_id', DB::raw('SUM(amount) as collected'))
+                    ->where('shop_id', $shopId)->groupBy('invoice_id'),
+                'p', 'p.invoice_id', '=', 'i.id'
+            )
+            ->selectRaw('COALESCE(SUM(GREATEST(i.total - COALESCE(p.collected, 0), 0)), 0) as due')
+            ->value('due'), 2);
+
+        $failures += $this->assert(
+            $shopId,
+            'DUE-2 dues total == invoices outstanding (independent recompute)',
+            abs($independent - $dues->totalOutstanding) <= self::TOLERANCE,
+            'independent=' . $independent . ' service=' . $dues->totalOutstanding
         );
 
         return $failures;

@@ -436,6 +436,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/day-book/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'dayBookCsv'])->middleware('can:reports.view')->name('report.day-book.csv');
     Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuation'])->middleware('can:reports.view')->name('report.inventory-valuation');
     Route::get('/report/inventory-valuation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuationCsv'])->middleware('can:reports.view')->name('report.inventory-valuation.csv');
+    Route::get('/report/dues-aging', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'duesAging'])->middleware('can:reports.view')->name('report.dues-aging');
+    Route::get('/report/dues-aging/export', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'duesAgingCsv'])->middleware('can:reports.view')->name('report.dues-aging.csv');
     Route::get('/report/closing', [\App\Http\Controllers\ClosingController::class, 'index'])->middleware('can:reports.daily_closing')->name('report.closing');
     Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware('can:reports.view')->name('report.repairs');
     Route::get('/report/reference-prices', [\App\Http\Controllers\ReferencePriceHistoryController::class, 'index'])->middleware('can:reports.view')->name('report.reference-prices');
