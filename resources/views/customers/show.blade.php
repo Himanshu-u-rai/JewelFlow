@@ -17,6 +17,12 @@
                     </button>
                 </form>
             @endif
+            @if(auth()->user()?->isOwner())
+            <a href="{{ route('store-credit.adjust.create', $customer) }}" class="btn btn-secondary btn-sm" data-turbo-frame="_top">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Store Credit
+            </a>
+            @endif
             <a href="{{ route('customers.index') }}" class="btn btn-secondary btn-sm customers-show-back-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                 <span class="customers-show-back-label-full">Back to Customers</span>

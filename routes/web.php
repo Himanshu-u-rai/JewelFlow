@@ -290,6 +290,14 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware(['edition:manufacturer', 'can:customers.edit'])
         ->name('customers.gold.store');
 
+    // ======= STORE CREDIT (surface re-connection — PRODUCT_SURFACE_INTEGRITY_AUDIT.md §3.C) =======
+    // Maps to the already-committed StoreCreditController. Manual adjustment is
+    // owner-only (enforced in the controller via ensureOwner()); redemption
+    // (applyToInvoice) is gated by sales.create like recording any payment.
+    Route::get('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustCreate'])->name('store-credit.adjust.create');
+    Route::post('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustStore'])->name('store-credit.adjust.store');
+    Route::post('/invoices/{invoice}/store-credit/apply', [\App\Http\Controllers\StoreCreditController::class, 'applyToInvoice'])->middleware('can:sales.create')->name('store-credit.apply');
+
     // ======= PROFILE =======
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
