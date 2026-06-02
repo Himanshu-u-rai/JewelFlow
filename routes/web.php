@@ -173,33 +173,33 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware(['can:reports.export', 'edition:manufacturer'])
         ->name('export.all');
 
-    // ======= BULK IMPORTS (reuse reports.export — no separate imports.access permission seeded) =======
+    // ======= BULK IMPORTS (gated on the purpose-built imports.manage; held by owner+manager) =======
     Route::get('/imports', [BulkImportController::class, 'index'])
-        ->middleware('can:reports.export')
+        ->middleware('can:imports.manage')
         ->name('imports.index');
     Route::get('/imports/{import}', [BulkImportController::class, 'show'])
-        ->middleware('can:reports.export')
+        ->middleware('can:imports.manage')
         ->name('imports.show');
     Route::post('/imports/catalog/preview', [BulkImportController::class, 'previewCatalog'])
-        ->middleware('can:reports.export', 'edition:manufacturer')
+        ->middleware('can:imports.manage', 'edition:manufacturer')
         ->name('imports.catalog.preview');
     Route::post('/imports/manufacture/preview', [BulkImportController::class, 'previewManufacture'])
-        ->middleware('can:reports.export', 'edition:manufacturer')
+        ->middleware('can:imports.manage', 'edition:manufacturer')
         ->name('imports.manufacture.preview');
     Route::post('/imports/stock/preview', [BulkImportController::class, 'previewStock'])
-        ->middleware('can:reports.export', 'edition:retailer')
+        ->middleware('can:imports.manage', 'edition:retailer')
         ->name('imports.stock.preview');
     Route::post('/imports/{import}/execute', [BulkImportController::class, 'execute'])
-        ->middleware('can:reports.export')
+        ->middleware('can:imports.manage')
         ->name('imports.execute');
     Route::get('/imports/template/{type}', [BulkImportController::class, 'downloadTemplate'])
-        ->middleware('can:reports.export')
+        ->middleware('can:imports.manage')
         ->name('imports.template');
     Route::get('/imports/{import}/errors', [BulkImportController::class, 'downloadErrors'])
-        ->middleware('can:reports.export')
+        ->middleware('can:imports.manage')
         ->name('imports.errors');
     Route::post('/imports/{import}/cancel', [BulkImportController::class, 'cancel'])
-        ->middleware('can:reports.export')
+        ->middleware('can:imports.manage')
         ->name('imports.cancel');
 
     // ======= PRODUCT MASTER (inventory.view to read; catalog.manage to mutate) =======
