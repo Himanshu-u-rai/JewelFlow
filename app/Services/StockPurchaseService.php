@@ -156,6 +156,87 @@ class StockPurchaseService
         $purchase->delete();
     }
 
+    /**
+     * Reverse a confirmed or stocked purchase back to an editable DRAFT (the
+     * "undo" the audit found missing). It is intentionally conservative:
+     *
+     *   - confirmed (not yet stocked): nothing was created → just revert to draft.
+     *   - stocked: only reversible while NOTHING downstream has consumed it —
+     *     every created item must still be 'in_stock', and no bullion line may
+     *     have been vaulted yet (a lot once created is handled via the vault
+     *     adjustment flow, not here). The created in-stock items are removed and
+     *     the lines unlinked, returning the purchase to a clean draft.
+     *
+     * This never silently unwinds vaulted metal or items already in use; it
+     * blocks with a clear message so the operator resolves those first.
+     */
+    public function reversePurchase(StockPurchase $purchase, int $userId): void
+    {
+        if ($purchase->isDraft()) {
+            throw new LogicException('Draft purchases are not confirmed yet — edit or delete it instead.');
+        }
+
+        DB::transaction(function () use ($purchase, $userId): void {
+            $purchase = StockPurchase::where('id', $purchase->id)->lockForUpdate()->firstOrFail();
+            $wasStocked = $purchase->isStocked();
+            $purchase->load('lines');
+
+            $itemsRemoved = 0;
+
+            if ($wasStocked) {
+                // Guard: no bullion line may already be vaulted.
+                $vaulted = $purchase->lines->whereNotNull('metal_lot_id')->count();
+                if ($vaulted > 0) {
+                    throw new LogicException('This purchase has vaulted bullion. Adjust or remove the vault lot first, then reverse.');
+                }
+
+                // Guard: every created item must still be untouched in stock.
+                $itemIds = $purchase->lines->pluck('item_id')->filter()->all();
+                if (! empty($itemIds)) {
+                    $notInStock = Item::whereIn('id', $itemIds)
+                        ->where('status', '!=', 'in_stock')
+                        ->count();
+                    if ($notInStock > 0) {
+                        throw new LogicException('Some items from this purchase are no longer in stock (sold, returned, or with a karigar). Cannot reverse.');
+                    }
+
+                    Item::whereIn('id', $itemIds)->where('status', 'in_stock')->delete();
+                    $itemsRemoved = count($itemIds);
+
+                    foreach ($purchase->lines as $line) {
+                        if ($line->item_id !== null) {
+                            $line->item_id = null;
+                            $line->save();
+                        }
+                    }
+                }
+
+                $purchase->stocked_at         = null;
+                $purchase->stocked_by_user_id = null;
+            }
+
+            // Return to an editable draft (the table's status CHECK allows only
+            // draft/confirmed/stocked, so 'draft' is the clean undo target).
+            $purchase->status               = 'draft';
+            $purchase->confirmed_at         = null;
+            $purchase->confirmed_by_user_id = null;
+            $purchase->save();
+
+            AuditLog::create([
+                'shop_id'    => $purchase->shop_id,
+                'user_id'    => $userId,
+                'action'     => 'purchase_reversed',
+                'model_type' => 'stock_purchase',
+                'model_id'   => $purchase->id,
+                'data'       => [
+                    'purchase_number' => $purchase->purchase_number,
+                    'was_stocked'     => $wasStocked,
+                    'items_removed'   => $itemsRemoved,
+                ],
+            ]);
+        });
+    }
+
     private function generateBarcodeForLine(int $purchaseId, int $lineIndex): string
     {
         return 'PUR' . str_pad((string) $purchaseId, 6, '0', STR_PAD_LEFT) . str_pad((string) $lineIndex, 3, '0', STR_PAD_LEFT);

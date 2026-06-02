@@ -546,6 +546,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::put('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'update'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.update');
     Route::patch('/inventory/purchases/{purchase}/confirm', [StockPurchaseController::class, 'confirm'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.confirm');
     Route::patch('/inventory/purchases/{purchase}/stock', [StockPurchaseController::class, 'addToInventory'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.stock');
+    Route::patch('/inventory/purchases/{purchase}/reverse', [StockPurchaseController::class, 'reverse'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.reverse');
     Route::get('/inventory/purchases/{purchase}/vault/{line}', [StockPurchaseController::class, 'vaultLineForm'])->middleware(['edition:retailer', 'can:vault.manage'])->name('inventory.purchases.vault-line.form');
     Route::post('/inventory/purchases/{purchase}/vault/{line}', [StockPurchaseController::class, 'vaultLine'])->middleware(['edition:retailer', 'can:vault.manage'])->name('inventory.purchases.vault-line');
     Route::delete('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'destroy'])->middleware(['edition:retailer', 'can:inventory.delete'])->name('inventory.purchases.destroy');

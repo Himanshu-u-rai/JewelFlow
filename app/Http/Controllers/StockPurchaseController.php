@@ -395,6 +395,21 @@ class StockPurchaseController extends Controller
             ->with('success', "{$itemCount} item(s) from purchase {$purchase->purchase_number} added to shop inventory.");
     }
 
+    public function reverse(StockPurchase $purchase)
+    {
+        $this->authorizeShop($purchase);
+
+        try {
+            $this->purchaseService->reversePurchase($purchase, auth()->id());
+        } catch (LogicException $e) {
+            return redirect()->route('inventory.purchases.show', $purchase)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('inventory.purchases.show', $purchase)
+            ->with('success', "Purchase {$purchase->purchase_number} reversed back to draft.");
+    }
+
     public function destroy(StockPurchase $purchase)
     {
         $this->authorizeShop($purchase);
