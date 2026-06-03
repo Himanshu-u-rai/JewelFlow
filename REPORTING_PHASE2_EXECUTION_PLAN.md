@@ -191,3 +191,21 @@ Do NOT: rebuild reporting into analytics chaos, duplicate financial semantics, c
 3. Stop, verify (`php artisan test` reporting suite + `reports:validate` + `returns:validate` green), report, then proceed to M2 on confirmation.
 
 Goal: **trustworthy, CA-respectable, operationally useful, scalable — without ERP bloat.**
+
+---
+
+## 11. Execution status (2026-06-03)
+
+**Shipped & verified** (each: DTO → service → fixture test → `reports:validate` invariant → thin controller → nav + screen → CSV; reporting suite green, validators green):
+
+- **M0/M1/M2** — export scaffolding, CA Tax Pack (GSTR-1/3B/tax-liability/CN-register), CA Ledger & Reconciliation (payment-recon/day-book/inventory-valuation). *(pre-existing, re-confirmed green)*
+- **M3 Receivables & Liability** — #8 dues aging (DUE-1/2), #9 EMI visibility (EMI-1/2), #10 scheme liability (SCH-1/2), #11 metal/old-gold liability (MTL-1/2).
+- **M4 (data-ready operational)** — #12 dead stock / inventory aging (DS-1/2), #13 karigar settlement (KAR-1/2), #14 purchase efficiency vs market rate (PUR-1).
+
+**Deferred — each blocked on a specific dependency, NOT on reporting work (per "trust before features", a half-reconcilable report is not shipped):**
+
+- **#15 Shrinkage / loss variance** — *blocked on the gram-accounting model gap.* Wastage is tracked in rupees, not grams, and finished-item fine weight is not cleanly linked back to the issuing job order, so an issued−received−wastage−produced gram reconciliation cannot be made trustworthy today. Needs the Material Flow "Tier 1" gram-accounting completion (emit a gram-level `wastage` MetalMovement at receipt) first. Karigar settlement (#13) already surfaces the *issued vs received vs wastage → outstanding* balance, which covers the operational need until then.
+- **#16 Operator performance** — *blocked on a missing sales dimension.* `invoices` has no `user_id`/seller column, so sales/returns/discounts cannot be attributed to an operator. Requires a schema addition (`invoices.user_id`) **and** writing it on the finalization path — an accounting-write change, out of reporting scope. (Cash entries carry `user_id`, but that is payments, not sales.)
+- **#17 Suspicious activity / audit** — *reclassified to platform/admin tier.* This is already produced by the `platform:detect-fraud` command + fraud-flag surfaces at the platform level. A shop-facing operational version is a product decision, not a CA/operational reporting gap.
+
+**Next (open):** M5 (legacy report-controller extraction onto `Reporting\*` with parity tests), M6 (validation expansion), M7 (reporting UX/exports). The #15/#16 dependencies are pre-requisites to be scheduled deliberately, not bundled into a report PR.
