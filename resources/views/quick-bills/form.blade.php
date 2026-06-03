@@ -25,7 +25,7 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner max-w-[1380px] mx-auto ops-treatment-page" x-data="quickBillForm({
+    <div class="content-inner max-w-[1440px] mx-auto" x-data="quickBillForm({
         customers: @js($customerDirectory),
         items: @js($initialItems),
         payments: @js($initialPayments),
