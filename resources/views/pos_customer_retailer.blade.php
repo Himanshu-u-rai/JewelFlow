@@ -315,14 +315,16 @@
         width: 100%;
         border: 0;
         border-bottom: 1px solid #eef2f7;
+        border-left: 2px solid transparent;
         background: #ffffff;
-        padding: 12px 14px;
+        padding: 12px 14px 12px 14px;
         text-align: left;
         display: flex;
         flex-direction: column;
         gap: 3px;
         cursor: pointer;
-        transition: background 0.12s ease, padding-left 0.12s ease;
+        transition: background-color 140ms cubic-bezier(0.23,1,0.32,1),
+                    border-left-color 140ms cubic-bezier(0.23,1,0.32,1);
     }
 
     .item-picker-option:last-child {
@@ -331,13 +333,17 @@
 
     .item-picker-option:hover,
     .item-picker-option.is-active {
-        background: #f8fbff;
-        padding-left: 18px;
+        background: rgba(13,148,136,.06);
+        border-left-color: #0d9488;
     }
 
     .item-picker-option.is-focused {
-        background: #eef4ff;
-        padding-left: 18px;
+        background: rgba(13,148,136,.10);
+        border-left-color: #0d9488;
+    }
+
+    .item-picker-option:active {
+        background: rgba(13,148,136,.13);
     }
 
     .item-picker-option.is-disabled {
