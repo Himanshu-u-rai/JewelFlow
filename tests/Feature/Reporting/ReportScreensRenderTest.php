@@ -54,7 +54,7 @@ class ReportScreensRenderTest extends TestCase
             // M3 Receivables & Liability
             'report.dues-aging', 'report.emi', 'report.scheme-liability', 'report.metal-liability',
             // M4 Operational
-            'report.dead-stock', 'report.karigar-settlement', 'report.purchase-efficiency',
+            'report.dead-stock', 'report.karigar-settlement', 'report.purchase-efficiency', 'report.operator-performance',
             // Legacy / existing reports (full-surface render coverage)
             'report.gst', 'report.pnl', 'report.gold', 'report.daily', 'report.cash',
             'report.closing', 'report.repairs', 'report.metal-exchange',

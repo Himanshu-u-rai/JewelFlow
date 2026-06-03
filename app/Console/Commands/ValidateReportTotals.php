@@ -36,7 +36,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar): int
+    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar, \App\Reporting\AuditService $audit): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -60,6 +60,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateReceivables((int) $shopId, $receivables);
             $failures += $this->validateInventory((int) $shopId, $period, $inventory);
             $failures += $this->validateKarigar((int) $shopId, $karigar);
+            $failures += $this->validateOperator((int) $shopId, $period, $audit, $gst);
         }
 
         $this->newLine();
@@ -403,6 +404,24 @@ class ValidateReportTotals extends Command
         );
 
         return $failures;
+    }
+
+    /**
+     * Operator performance invariant (#16). The per-operator sales total
+     * (including the Unattributed bucket) must equal the canonical GST total
+     * sales for the period.
+     */
+    private function validateOperator(int $shopId, ReportPeriod $period, \App\Reporting\AuditService $audit, GstReportingService $gst): int
+    {
+        $op = $audit->operatorPerformance($shopId, $period);
+        $summary = $gst->summary($shopId, $period);
+
+        return $this->assert(
+            $shopId,
+            'OP-1 operator sales total == GST total sales',
+            abs($op->totalSales - $summary->totalSales) <= self::TOLERANCE,
+            'operator=' . $op->totalSales . ' gst=' . $summary->totalSales
+        );
     }
 
     private function assert(int $shopId, string $name, bool $ok, string $detail): int

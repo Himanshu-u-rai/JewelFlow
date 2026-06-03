@@ -41,6 +41,15 @@ class Invoice extends Model
 
     protected static function booted(): void
     {
+        // Seller attribution (#16): capture who created the invoice, at creation
+        // only. This is the draft write — never the finalized/locked path — so it
+        // touches no accounting figure, guard, or trigger.
+        static::creating(function ($invoice) {
+            if (empty($invoice->user_id) && auth()->check()) {
+                $invoice->user_id = auth()->id();
+            }
+        });
+
         static::deleting(function ($invoice) {
             if (auth()->check()) {
                 AccountingAuditService::log([
@@ -80,6 +89,12 @@ class Invoice extends Model
     public function customer()
     {
         return $this->belongsTo(\App\Models\Customer::class);
+    }
+
+    /** The operator who created (sold) this invoice (#16). Nullable for legacy rows. */
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class);
     }
 
     public function items()
