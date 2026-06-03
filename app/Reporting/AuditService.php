@@ -4,6 +4,7 @@ namespace App\Reporting;
 
 use App\Models\Invoice;
 use App\Reporting\Data\OperatorPerfData;
+use App\Reporting\Data\SuspiciousActivityData;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -73,6 +74,59 @@ class AuditService
             totalDiscount: round($totalDiscount, 2),
             totalReturnsValue: round($totalReturns, 2),
             operatorCount: $rows->count(),
+            periodLabel: $period->label(),
+        );
+    }
+
+    /**
+     * #17 Suspicious activity — surfaces the compliance alerts the system already
+     * detects (split transaction / missing PAN / threshold breach) for the period,
+     * for owner review. Reads compliance_alerts only.
+     */
+    public function suspiciousActivity(int $shopId, ReportPeriod $period): SuspiciousActivityData
+    {
+        $labels = [
+            'split_transaction' => 'Possible split transaction',
+            'missing_pan'       => 'Missing PAN on high-value sale',
+            'threshold_breach'  => 'Cash threshold breach',
+        ];
+
+        $alerts = DB::table('compliance_alerts as a')
+            ->where('a.shop_id', $shopId)
+            ->whereBetween('a.created_at', [$period->start(), $period->end()])
+            ->leftJoin('invoices as i', 'i.id', '=', 'a.invoice_id')
+            ->leftJoin('customers as c', 'c.id', '=', 'a.customer_id')
+            ->select(
+                'a.alert_type', 'a.alert_data', 'a.resolved', 'a.created_at',
+                'i.invoice_number',
+                DB::raw("COALESCE(NULLIF(TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), ''), 'Walk-in') as customer_name")
+            )
+            ->orderByDesc('a.created_at')
+            ->get();
+
+        $unresolved = 0;
+        $rows = $alerts->map(function ($a) use ($labels, &$unresolved) {
+            if (! $a->resolved) {
+                $unresolved++;
+            }
+            return (object) [
+                'alert_type'     => $a->alert_type,
+                'label'          => $labels[$a->alert_type] ?? ucfirst(str_replace('_', ' ', $a->alert_type)),
+                'customer_name'  => $a->customer_name,
+                'invoice_number' => $a->invoice_number,
+                'created_at'     => $a->created_at,
+                'resolved'       => (bool) $a->resolved,
+                'detail'         => $a->alert_data,
+            ];
+        });
+
+        $countsByType = $rows->groupBy('alert_type')->map(fn ($g) => $g->count());
+
+        return new SuspiciousActivityData(
+            rows: $rows,
+            countsByType: $countsByType,
+            totalCount: $rows->count(),
+            unresolvedCount: $unresolved,
             periodLabel: $period->label(),
         );
     }

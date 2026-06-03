@@ -57,4 +57,34 @@ class AuditReportController extends Controller
 
         return CsvReportExporter::fromRows('operator-performance-' . $period->start()->format('Y-m') . '.csv', $headers, $rows);
     }
+
+    public function suspiciousActivity(Request $request)
+    {
+        $period = $this->period($request);
+        $data = $this->audit->suspiciousActivity($this->shopId(), $period);
+
+        return view('reports.suspicious-activity', [
+            'data'   => $data,
+            'period' => $period,
+            'month'  => (int) $period->start()->month,
+            'year'   => (int) $period->start()->year,
+        ]);
+    }
+
+    public function suspiciousActivityCsv(Request $request)
+    {
+        $period = $this->period($request);
+        $data = $this->audit->suspiciousActivity($this->shopId(), $period);
+
+        $headers = ['Type', 'Customer', 'Invoice', 'Date', 'Resolved'];
+        $rows = $data->rows->map(fn ($r) => [
+            $r->label,
+            $r->customer_name,
+            $r->invoice_number ?? '',
+            \Carbon\Carbon::parse($r->created_at)->format('Y-m-d'),
+            $r->resolved ? 'yes' : 'no',
+        ])->all();
+
+        return CsvReportExporter::fromRows('suspicious-activity-' . $period->start()->format('Y-m') . '.csv', $headers, $rows);
+    }
 }

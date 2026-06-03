@@ -61,6 +61,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateInventory((int) $shopId, $period, $inventory);
             $failures += $this->validateKarigar((int) $shopId, $karigar);
             $failures += $this->validateOperator((int) $shopId, $period, $audit, $gst);
+            $failures += $this->validateSuspicious((int) $shopId, $period, $audit);
         }
 
         $this->newLine();
@@ -421,6 +422,21 @@ class ValidateReportTotals extends Command
             'OP-1 operator sales total == GST total sales',
             abs($op->totalSales - $summary->totalSales) <= self::TOLERANCE,
             'operator=' . $op->totalSales . ' gst=' . $summary->totalSales
+        );
+    }
+
+    private function validateSuspicious(int $shopId, ReportPeriod $period, \App\Reporting\AuditService $audit): int
+    {
+        $sus = $audit->suspiciousActivity($shopId, $period);
+
+        $byType = (int) $sus->countsByType->sum();
+        $byResolved = $sus->unresolvedCount + ($sus->totalCount - $sus->unresolvedCount);
+
+        return $this->assert(
+            $shopId,
+            'SUS-1 alert counts (by-type and resolved split) sum to total',
+            $byType === $sus->totalCount && $byResolved === $sus->totalCount,
+            'total=' . $sus->totalCount . ' byType=' . $byType . ' byResolved=' . $byResolved
         );
     }
 

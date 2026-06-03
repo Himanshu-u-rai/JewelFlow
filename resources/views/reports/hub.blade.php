@@ -33,6 +33,7 @@
                 ['Karigar Settlement', 'Gold out vs in (open jobs) and money owed to karigars', 'report.karigar-settlement', null],
                 ['Purchase Efficiency', 'Rate paid on stock purchases vs your market rate', 'report.purchase-efficiency', null],
                 ['Operator Performance', 'Sales, discounts and returns by who handled them', 'report.operator-performance', null],
+                ['Suspicious Activity', 'Compliance alerts to review — split bills, missing PAN, threshold breaches', 'report.suspicious-activity', null],
                 ['Profit & Loss', 'Gross margin over the period', 'report.pnl', null],
                 ['Gold Balances', 'Vault fine-weight by metal and purity', 'report.gold', null],
                 ['Metal Exchange', 'Old-gold exchange activity', 'report.metal-exchange', 'retailer'],
