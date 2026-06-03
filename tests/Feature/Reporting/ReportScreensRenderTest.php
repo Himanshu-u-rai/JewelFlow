@@ -43,6 +43,8 @@ class ReportScreensRenderTest extends TestCase
     public static function reportRoutes(): array
     {
         return array_map(fn ($r) => [$r], [
+            // Reports hub (grouped landing)
+            'report.hub',
             // M1 CA Tax Pack
             'report.gstr1', 'report.gstr3b', 'report.cn-register',
             // M2 Ledger & Reconciliation
