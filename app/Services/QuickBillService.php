@@ -288,7 +288,11 @@ class QuickBillService
             // MC-3: resolve making via the one canonical helper. Default FIXED
             // (value = the raw making_charge) → resolved == $making, byte-identical.
             // Percentage = of metalValue; per-gram = of net weight.
-            $makingType = MakingChargeType::normalize(Arr::get($item, 'making_charge_type'));
+            // MC-4: flag-gated — flag OFF forces fixed so behaviour is
+            // byte-identical regardless of any submitted mode.
+            $makingType = config('features.making_charge_modes', false)
+                ? MakingChargeType::normalize(Arr::get($item, 'making_charge_type'))
+                : MakingChargeType::FIXED;
             $makingValue = $makingType === MakingChargeType::FIXED
                 ? $making
                 : round(max(0, (float) Arr::get($item, 'making_charge_value', 0)), 2);

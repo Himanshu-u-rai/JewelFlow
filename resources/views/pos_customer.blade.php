@@ -976,8 +976,17 @@
 
                 <div class="field-row field-row-2">
                     <div class="field">
-                        <label class="field-label">Making Charges (₹)</label>
+                        <label class="field-label" id="makingLabel">Making Charges (₹)</label>
+                        @if(config('features.making_charge_modes'))
+                        {{-- MC-4: making-charge mode selector (flag-gated). Changes the meaning of the value below. --}}
+                        <select id="makingType" class="field-input" style="margin-bottom:6px;" onchange="onMakingTypeChange()">
+                            <option value="fixed">Fixed amount (₹)</option>
+                            <option value="percentage">% of metal value</option>
+                            <option value="per_gram">₹ per gram (net)</option>
+                        </select>
+                        @endif
                         <input type="number" name="making" id="makingInput" class="field-input" value="500" step="0.01" min="0" oninput="updatePreview()">
+                        <div id="makingResolvedHint" style="color:#64748b;font-size:12px;margin-top:4px;"></div>
                     </div>
                     <div class="field">
                         <label class="field-label">Stone Charges (₹)</label>
@@ -1368,6 +1377,23 @@ function updatePreview() {
     previewTimer = setTimeout(_fetchPreview, 250);
 }
 
+// MC-4: making-charge mode. Relabels the value field and re-previews so the
+// cashier sees the resolved ₹ ("why this amount"). No client-side money math —
+// the server resolves and returns the amount + label.
+function onMakingTypeChange() {
+    const t = document.getElementById('makingType')?.value || 'fixed';
+    const label = document.getElementById('makingLabel');
+    const input = document.getElementById('makingInput');
+    if (label) label.textContent = t === 'percentage' ? 'Making (% of metal value)'
+        : (t === 'per_gram' ? 'Making (₹ per gram)' : 'Making Charges (₹)');
+    if (input) input.placeholder = t === 'percentage' ? 'e.g. 12' : (t === 'per_gram' ? 'e.g. 350' : '');
+    updatePreview();
+}
+function updateMakingHint(label) {
+    const el = document.getElementById('makingResolvedHint');
+    if (el) el.textContent = label ? ('= resolved from ' + label) : '';
+}
+
 function _fetchPreview() {
     const itemId = document.getElementById('itemSelect').value;
     if (!itemId) return;
@@ -1400,6 +1426,8 @@ function _fetchPreview() {
             customer_id: CUSTOMER_ID,
             gold_rate: goldRate,
             making: document.getElementById('makingInput').value || 0,
+            making_charge_type: (document.getElementById('makingType')?.value || 'fixed'),
+            making_charge_value: document.getElementById('makingInput').value || 0,
             stone: document.getElementById('stoneInput').value || 0,
             discount: document.getElementById('discountInput').value || 0,
             round_off: document.getElementById('roundOffInput').value || 0,
@@ -1408,10 +1436,11 @@ function _fetchPreview() {
     .then(r => r.ok ? r.json() : r.json().then(j => { throw new Error(j.message || 'Error'); }))
     .then(d => {
         lastPreview = d;
+        updateMakingHint(d.making_label);
 
         const lines = [
             ['Gold Value', '\u20B9' + n(d.gold_value)],
-            ['Making', '\u20B9' + n(d.making)],
+            ['Making', '\u20B9' + n(d.making) + (d.making_label ? ' (' + d.making_label + ')' : '')],
             d.stone > 0 ? ['Stone', '\u20B9' + n(d.stone)] : null,
             d.wastage_charge > 0 ? ['Wastage', '\u20B9' + n(d.wastage_charge)] : null,
             ['GST (' + d.gst_rate + '%)', '\u20B9' + n(d.gst)],
@@ -1454,6 +1483,8 @@ function _fetchQuoteV2(itemId, goldRate) {
         customer_id: CUSTOMER_ID,
         gold_rate: goldRate,
         making: document.getElementById('makingInput').value || 0,
+        making_charge_type: (document.getElementById('makingType')?.value || 'fixed'),
+        making_charge_value: document.getElementById('makingInput').value || 0,
         stone: document.getElementById('stoneInput').value || 0,
         manual_discount: document.getElementById('discountInput').value || 0,
     };
@@ -1760,6 +1791,8 @@ function completeSale() {
             item_id: itemId,
             gold_rate: goldRate,
             making: document.getElementById('makingInput').value || 0,
+            making_charge_type: (document.getElementById('makingType')?.value || 'fixed'),
+            making_charge_value: document.getElementById('makingInput').value || 0,
             stone: document.getElementById('stoneInput').value || 0,
             discount: document.getElementById('discountInput').value || 0,
             round_off: document.getElementById('roundOffInput').value || 0,

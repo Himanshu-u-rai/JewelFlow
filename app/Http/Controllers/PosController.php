@@ -14,6 +14,7 @@ use App\Models\ShopPaymentMethod;
 use App\Rules\PanFormatRule;
 use App\Services\ComplianceService;
 use App\Services\PricingEngine;
+use App\Services\PricingEngine\MakingChargeType;
 use App\Services\PricingEngine\QuoteInput;
 use App\Services\SalesService;
 use App\Services\RetailerSalesService;
@@ -29,6 +30,51 @@ class PosController extends Controller
     use \App\Http\Controllers\Concerns\ResolvesPosQuote;
 
     public function __construct(private ShopPricingService $pricing) {}
+
+    /**
+     * MC-4: resolve the making-charge mode from the request, flag-gated.
+     * When features.making_charge_modes is OFF, always returns fixed → the
+     * engine behaves exactly as pre-rollout regardless of what a client sends.
+     *
+     * @return array{0:string,1:?float} [makingType, makingValue]
+     */
+    private function makingMode(Request $request): array
+    {
+        if (! config('features.making_charge_modes', false)) {
+            return [MakingChargeType::FIXED, null];
+        }
+        $type  = MakingChargeType::normalize($request->input('making_charge_type'));
+        $value = $request->input('making_charge_value');
+
+        return [$type, $value !== null ? (float) $value : null];
+    }
+
+    /** Validation rules for the optional making-charge mode fields (additive). */
+    private function makingModeRules(): array
+    {
+        return [
+            'making_charge_type'  => 'nullable|string|in:fixed,percentage,per_gram',
+            'making_charge_value' => 'nullable|numeric|min:0|max:9999999.99',
+        ];
+    }
+
+    /**
+     * MC-4: plain-English "why this making amount" label for the preview, so
+     * the cashier always understands how the charge was derived. NULL for fixed.
+     */
+    private function makingLabel(string $type, ?float $value, float $netWeight): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $num = static fn (float $v, int $dp) => rtrim(rtrim(number_format($v, $dp, '.', ''), '0'), '.');
+
+        return match ($type) {
+            MakingChargeType::PERCENTAGE => $num($value, 2) . '% of metal value',
+            MakingChargeType::PER_GRAM   => '₹' . $num($value, 2) . '/g × ' . $num($netWeight, 3) . 'g net',
+            default                      => null,
+        };
+    }
 
     public function index(Request $request)
     {
@@ -150,6 +196,8 @@ class PosController extends Controller
             ],
             'gold_rate' => 'required|numeric|min:' . config('business.gold_rate_min') . '|max:' . config('business.gold_rate_max'),
             'making'    => 'nullable|numeric|min:0',
+            'making_charge_type'  => 'nullable|string|in:fixed,percentage,per_gram',
+            'making_charge_value' => 'nullable|numeric|min:0|max:9999999.99',
             'stone'     => 'nullable|numeric|min:0',
             'discount'  => 'nullable|numeric|min:0|max:999999',
             // Tally-style rounding allows up to ~₹10 adjustment (nearest=10).
@@ -194,6 +242,8 @@ class PosController extends Controller
             $saleRoundOff = (float) ($validated['round_off'] ?? 0);
         }
 
+        [$makingType, $makingValue] = $this->makingMode($request);
+
         try {
             $invoice = SalesService::sellItem(
                 $validated['customer_id'],
@@ -204,6 +254,8 @@ class PosController extends Controller
                 $saleDiscount,
                 $saleRoundOff,
                 $validated['payments'],
+                makingType: $makingType,
+                makingValue: $makingValue,
             );
         } catch (ValidationException $e) {
             $errors = $e->errors();
@@ -554,6 +606,8 @@ class PosController extends Controller
             'customer_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('customers', 'id')->where('shop_id', $shopId)],
             'gold_rate'   => 'nullable|numeric|min:0',
             'making'      => 'nullable|numeric|min:0',
+            'making_charge_type'  => 'nullable|string|in:fixed,percentage,per_gram',
+            'making_charge_value' => 'nullable|numeric|min:0|max:9999999.99',
             'stone'       => 'nullable|numeric|min:0',
             'discount'    => 'nullable|numeric|min:0',
             'round_off'   => 'nullable|numeric',
@@ -615,6 +669,7 @@ class PosController extends Controller
 
         $making = round((float) $request->making, 2);
         $stone  = round((float) $request->stone, 2);
+        [$makingType, $makingValue] = $this->makingMode($request);
 
         $input = QuoteInput::manufacturer(
             shopId: (int) $shopId,
@@ -624,6 +679,8 @@ class PosController extends Controller
             making: $making,
             stone: $stone,
             manualDiscount: $inputDiscount,
+            makingType: $makingType,
+            makingValue: $makingValue,
         );
         $breakdown = $engine->compute($input);
 
@@ -644,6 +701,7 @@ class PosController extends Controller
             'gold_charged'       => round($goldCharged, 3),
             'gold_value'         => $goldValue,
             'making'             => round((float) ($line['making'] ?? $making), 2),
+            'making_label'       => $this->makingLabel($makingType, $makingValue, (float) ($line['weight'] ?? 0)),
             'stone'              => round((float) ($line['stone']  ?? $stone),  2),
             'subtotal'           => round($breakdown->subtotal, 2),
             'gst_rate'           => round($breakdown->gstRate, 2),
@@ -765,9 +823,13 @@ class PosController extends Controller
                 ],
                 'gold_rate' => 'required|numeric|min:' . config('business.gold_rate_min') . '|max:' . config('business.gold_rate_max'),
                 'making'    => 'nullable|numeric|min:0',
+                'making_charge_type'  => 'nullable|string|in:fixed,percentage,per_gram',
+                'making_charge_value' => 'nullable|numeric|min:0|max:9999999.99',
                 'stone'     => 'nullable|numeric|min:0',
                 'manual_discount' => 'nullable|numeric|min:0|max:999999',
             ]);
+
+            [$makingType, $makingValue] = $this->makingMode($request);
 
             $input = QuoteInput::manufacturer(
                 shopId: $shopId,
@@ -778,6 +840,8 @@ class PosController extends Controller
                 stone: (float) ($validated['stone'] ?? 0),
                 manualDiscount: (float) ($validated['manual_discount'] ?? 0),
                 client: 'web',
+                makingType: $makingType,
+                makingValue: $makingValue,
             );
         }
 

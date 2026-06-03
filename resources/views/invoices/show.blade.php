@@ -413,6 +413,11 @@
                                     </td>
                                     <td class="px-4 py-3 text-right text-sm text-gray-700">
                                         ₹{{ number_format($invoiceItem->making_charges, 2) }}
+                                        @if($invoiceItem->making_charge_type === 'percentage')
+                                            <span class="block text-xs text-gray-400">{{ rtrim(rtrim(number_format($invoiceItem->making_charge_value, 2), '0'), '.') }}% of metal</span>
+                                        @elseif($invoiceItem->making_charge_type === 'per_gram')
+                                            <span class="block text-xs text-gray-400">₹{{ rtrim(rtrim(number_format($invoiceItem->making_charge_value, 2), '0'), '.') }}/g</span>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3 text-right text-sm text-gray-700">
                                         ₹{{ number_format($invoiceItem->stone_amount, 2) }}

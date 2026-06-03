@@ -163,6 +163,8 @@ class QuickBillController extends Controller
             'items.*.net_weight' => 'nullable|numeric|min:0|max:999999.999',
             'items.*.rate' => 'nullable|numeric|min:0|max:9999999.99',
             'items.*.making_charge' => 'nullable|numeric|min:0|max:9999999.99',
+            'items.*.making_charge_type' => 'nullable|string|in:fixed,percentage,per_gram',
+            'items.*.making_charge_value' => 'nullable|numeric|min:0|max:9999999.99',
             'items.*.stone_charge' => 'nullable|numeric|min:0|max:9999999.99',
             'items.*.hallmark_charge' => 'nullable|numeric|min:0|max:9999999.99',
             'items.*.rhodium_charge' => 'nullable|numeric|min:0|max:9999999.99',
