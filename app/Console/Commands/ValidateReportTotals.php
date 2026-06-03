@@ -277,6 +277,34 @@ class ValidateReportTotals extends Command
             'independent=' . $emiIndependent . ' service=' . $emi->totalOutstanding
         );
 
+        // #10 Scheme liability.
+        $sch = $receivables->schemeLiability($shopId);
+
+        // SCH-1 — per-enrollment balances sum to the reported liability.
+        $schRowSum = round((float) $sch->rows->sum('current_balance'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'SCH-1 enrollment balances sum to total liability',
+            abs($schRowSum - $sch->totalLiability) <= self::TOLERANCE,
+            'rows=' . $schRowSum . ' total=' . $sch->totalLiability
+        );
+
+        // SCH-2 — liability == independent Σ latest ledger balance for non-terminal enrollments.
+        $schIndependent = round((float) DB::table('scheme_enrollments as se')
+            ->where('se.shop_id', $shopId)
+            ->whereIn('se.status', ['active', 'matured'])
+            ->leftJoin('scheme_ledger_entries as e', 'e.id', '=', DB::raw(
+                '(SELECT MAX(id) FROM scheme_ledger_entries le WHERE le.scheme_enrollment_id = se.id)'
+            ))
+            ->selectRaw('COALESCE(SUM(COALESCE(e.balance_after, 0)), 0) as liab')
+            ->value('liab'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'SCH-2 liability == non-terminal enrollment ledger balance (independent)',
+            abs($schIndependent - $sch->totalLiability) <= self::TOLERANCE,
+            'independent=' . $schIndependent . ' service=' . $sch->totalLiability
+        );
+
         return $failures;
     }
 

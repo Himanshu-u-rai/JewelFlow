@@ -141,4 +141,50 @@ class ReceivablesReportTest extends TestCase
         $this->assertEqualsWithDelta(5000.0, $data->upcomingAmount, 0.01);
         $this->assertEqualsWithDelta($data->totalOutstanding, (float) $data->rows->sum('remaining'), 0.01);
     }
+
+    private function enrollment(int $shopId, int $schemeId, int $customerId, string $status, float $totalPaid, float $balance, float $bonus = 0, bool $bonusAccrued = false): int
+    {
+        $eid = (int) DB::table('scheme_enrollments')->insertGetId([
+            'shop_id' => $shopId, 'scheme_id' => $schemeId, 'customer_id' => $customerId,
+            'start_date' => now()->subMonths(3)->toDateString(), 'monthly_amount' => 1000,
+            'total_paid' => $totalPaid, 'installments_paid' => 3, 'total_installments' => 11,
+            'maturity_date' => now()->addMonths(8)->toDateString(), 'status' => $status,
+            'bonus_amount' => $bonus, 'is_bonus_accrued' => DB::raw($bonusAccrued ? 'true' : 'false'),
+            'redeemed_amount' => 0, 'redemption_count' => 0,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        // Two ledger entries; the latest balance_after is the liability.
+        DB::table('scheme_ledger_entries')->insert([
+            'shop_id' => $shopId, 'scheme_enrollment_id' => $eid, 'entry_type' => 'contribution',
+            'direction' => 'credit', 'amount' => $balance, 'balance_after' => $balance,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        return $eid;
+    }
+
+    public function test_scheme_liability_active_and_matured_only(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $c = $this->createCustomer($shop->id);
+        $scheme = (int) DB::table('schemes')->insertGetId([
+            'shop_id' => $shop->id, 'name' => 'GHS', 'type' => 'gold_savings',
+            'start_date' => now()->subYear()->toDateString(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->enrollment($shop->id, $scheme, $c->id, 'active', 3000, 3000);
+        $this->enrollment($shop->id, $scheme, $c->id, 'matured', 11000, 12000, 1000, true); // +bonus accrued
+        $this->enrollment($shop->id, $scheme, $c->id, 'cancelled', 2000, 0);   // excluded
+        $this->enrollment($shop->id, $scheme, $c->id, 'redeemed', 12000, 0);   // excluded
+
+        $data = TenantContext::runFor($shop->id, fn () =>
+            app(ReceivablesService::class)->schemeLiability($shop->id)
+        );
+
+        $this->assertSame(2, $data->enrollmentCount, 'only active + matured');
+        $this->assertSame(1, $data->maturedCount);
+        $this->assertEqualsWithDelta(15000.0, $data->totalLiability, 0.01, '3000 + 12000 ledger balances');
+        $this->assertEqualsWithDelta(14000.0, $data->totalContributions, 0.01, '3000 + 11000 total_paid');
+        $this->assertEqualsWithDelta(1000.0, $data->bonusAccrued, 0.01);
+        $this->assertEqualsWithDelta($data->totalLiability, (float) $data->rows->sum('current_balance'), 0.01);
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Reporting;
 use App\Models\Invoice;
 use App\Reporting\Data\DuesAgingData;
 use App\Reporting\Data\EmiData;
+use App\Reporting\Data\SchemeLiabilityData;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -175,6 +176,72 @@ class ReceivablesService
             overdueCount: $overdueCount,
             upcomingCount: $upcomingCount,
             asOf: $asOf->format('Y-m-d'),
+        );
+    }
+
+    /**
+     * #10 Scheme liability exposure — current ledger balance the shop owes on
+     * non-terminal (active + matured) gold-savings enrollments. The balance
+     * already includes any maturity bonus that has been accrued into the ledger.
+     */
+    public function schemeLiability(int $shopId): SchemeLiabilityData
+    {
+        // Latest ledger balance per enrollment (max id wins).
+        $latestBalances = DB::table('scheme_ledger_entries as e')
+            ->where('e.shop_id', $shopId)
+            ->whereIn('e.id', function ($q) use ($shopId) {
+                $q->from('scheme_ledger_entries')
+                    ->where('shop_id', $shopId)
+                    ->selectRaw('MAX(id)')
+                    ->groupBy('scheme_enrollment_id');
+            })
+            ->pluck('e.balance_after', 'e.scheme_enrollment_id');
+
+        $enrollments = DB::table('scheme_enrollments as se')
+            ->where('se.shop_id', $shopId)
+            ->whereIn('se.status', ['active', 'matured'])
+            ->leftJoin('schemes as s', 's.id', '=', 'se.scheme_id')
+            ->leftJoin('customers as c', 'c.id', '=', 'se.customer_id')
+            ->select(
+                'se.id', 'se.status', 'se.total_paid', 'se.bonus_amount', 'se.is_bonus_accrued',
+                'se.maturity_date', 's.name as scheme_name',
+                DB::raw("COALESCE(NULLIF(TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), ''), 'Walk-in') as customer_name")
+            )
+            ->orderByDesc('se.total_paid')
+            ->get();
+
+        $totalLiability = 0.0; $totalContributions = 0.0; $bonusAccrued = 0.0; $maturedCount = 0;
+
+        $rows = $enrollments->map(function ($e) use ($latestBalances, &$totalLiability, &$totalContributions, &$bonusAccrued, &$maturedCount) {
+            $balance = round((float) ($latestBalances[$e->id] ?? 0), 2);
+            $paid = round((float) $e->total_paid, 2);
+            $bonus = $e->is_bonus_accrued ? round((float) $e->bonus_amount, 2) : 0.0;
+
+            $totalLiability += $balance;
+            $totalContributions += $paid;
+            $bonusAccrued += $bonus;
+            if ($e->status === 'matured') {
+                $maturedCount++;
+            }
+
+            return (object) [
+                'customer_name'   => $e->customer_name,
+                'scheme_name'     => $e->scheme_name,
+                'status'          => $e->status,
+                'total_paid'      => $paid,
+                'bonus_accrued'   => $bonus,
+                'current_balance' => $balance,
+                'maturity_date'   => $e->maturity_date,
+            ];
+        });
+
+        return new SchemeLiabilityData(
+            rows: $rows,
+            totalLiability: round($totalLiability, 2),
+            totalContributions: round($totalContributions, 2),
+            bonusAccrued: round($bonusAccrued, 2),
+            enrollmentCount: $rows->count(),
+            maturedCount: $maturedCount,
         );
     }
 }

@@ -96,4 +96,31 @@ class ReceivablesReportController extends Controller
 
         return CsvReportExporter::fromRows('emi-visibility-' . $data->asOf . '.csv', $headers, $rows);
     }
+
+    // ---- #10 Scheme liability exposure ----
+
+    public function schemeLiability()
+    {
+        $data = $this->receivables->schemeLiability($this->shopId());
+
+        return view('reports.scheme-liability', ['data' => $data]);
+    }
+
+    public function schemeLiabilityCsv()
+    {
+        $data = $this->receivables->schemeLiability($this->shopId());
+
+        $headers = ['Customer', 'Scheme', 'Status', 'Contributed', 'Bonus Accrued', 'Current Balance', 'Maturity Date'];
+        $rows = $data->rows->map(fn ($r) => [
+            $r->customer_name,
+            $r->scheme_name ?? '',
+            $r->status,
+            number_format($r->total_paid, 2, '.', ''),
+            number_format($r->bonus_accrued, 2, '.', ''),
+            number_format($r->current_balance, 2, '.', ''),
+            $r->maturity_date ? \Carbon\Carbon::parse($r->maturity_date)->format('Y-m-d') : '',
+        ])->all();
+
+        return CsvReportExporter::fromRows('scheme-liability-' . now()->format('Y-m-d') . '.csv', $headers, $rows);
+    }
 }
