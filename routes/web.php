@@ -441,6 +441,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/dead-stock/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'deadStockCsv'])->middleware('can:reports.view')->name('report.dead-stock.csv');
     Route::get('/report/karigar-settlement', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'settlement'])->middleware('can:reports.view')->name('report.karigar-settlement');
     Route::get('/report/karigar-settlement/export', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'settlementCsv'])->middleware('can:reports.view')->name('report.karigar-settlement.csv');
+    Route::get('/report/shrinkage', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'shrinkage'])->middleware('can:reports.view')->name('report.shrinkage');
+    Route::get('/report/shrinkage/export', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'shrinkageCsv'])->middleware('can:reports.view')->name('report.shrinkage.csv');
     Route::get('/report/purchase-efficiency', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'purchaseEfficiency'])->middleware('can:reports.view')->name('report.purchase-efficiency');
     Route::get('/report/purchase-efficiency/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'purchaseEfficiencyCsv'])->middleware('can:reports.view')->name('report.purchase-efficiency.csv');
     Route::get('/report/operator-performance', [\App\Http\Controllers\Reporting\AuditReportController::class, 'operatorPerformance'])->middleware('can:reports.view')->name('report.operator-performance');

@@ -62,6 +62,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateKarigar((int) $shopId, $karigar);
             $failures += $this->validateOperator((int) $shopId, $period, $audit, $gst);
             $failures += $this->validateSuspicious((int) $shopId, $period, $audit);
+            $failures += $this->validateShrinkage((int) $shopId, $period, $karigar);
         }
 
         $this->newLine();
@@ -437,6 +438,21 @@ class ValidateReportTotals extends Command
             'SUS-1 alert counts (by-type and resolved split) sum to total',
             $byType === $sus->totalCount && $byResolved === $sus->totalCount,
             'total=' . $sus->totalCount . ' byType=' . $byType . ' byResolved=' . $byResolved
+        );
+    }
+
+    private function validateShrinkage(int $shopId, ReportPeriod $period, \App\Reporting\KarigarService $karigar): int
+    {
+        $shr = $karigar->shrinkage($shopId, $period);
+
+        // Independent recompute: unaccounted must equal issued − returned − leftover − wastage.
+        $recomputed = round($shr->totalIssued - $shr->totalReturned - $shr->totalLeftover - $shr->totalWastage, 4);
+
+        return $this->assert(
+            $shopId,
+            'SHR-1 unaccounted == issued − items − leftover − wastage (independent recompute)',
+            abs($recomputed - $shr->totalUnaccounted) <= self::TOLERANCE,
+            'reported=' . $shr->totalUnaccounted . ' recomputed=' . $recomputed
         );
     }
 

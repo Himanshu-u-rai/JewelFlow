@@ -31,6 +31,7 @@
             'Operational' => [
                 ['Dead Stock', 'Stock not turning over, aged and valued at cost', 'report.dead-stock', null],
                 ['Karigar Settlement', 'Gold out vs in (open jobs) and money owed to karigars', 'report.karigar-settlement', null],
+                ['Metal Loss / Shrinkage', 'Gold that went out for making vs what came back — wastage and unaccounted grams', 'report.shrinkage', null],
                 ['Purchase Efficiency', 'Rate paid on stock purchases vs your market rate', 'report.purchase-efficiency', null],
                 ['Operator Performance', 'Sales, discounts and returns by who handled them', 'report.operator-performance', null],
                 ['Suspicious Activity', 'Compliance alerts to review — split bills, missing PAN, threshold breaches', 'report.suspicious-activity', null],

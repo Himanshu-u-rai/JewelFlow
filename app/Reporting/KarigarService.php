@@ -92,4 +92,100 @@ class KarigarService
             karigarCount: $rows->count(),
         );
     }
+
+    /**
+     * #15 Metal shrinkage / loss variance over COMPLETED job orders in the
+     * period. Reconciles the gram trail per job:
+     *   unaccounted = issued − items_returned − leftover_returned − declared_wastage
+     * Declared wastage is legitimate making loss; unaccounted is the residual the
+     * receive path could not explain (should be ~0). Reads completed job_orders
+     * only — never touches the receive path.
+     */
+    public function shrinkage(int $shopId, ReportPeriod $period): \App\Reporting\Data\ShrinkageData
+    {
+        $base = DB::table('job_orders as jo')
+            ->where('jo.shop_id', $shopId)
+            ->where('jo.status', 'completed')
+            ->whereBetween('jo.completed_at', [$period->start(), $period->end()]);
+
+        $issuedExpr    = 'COALESCE(jo.issued_fine_weight, 0)';
+        $returnedExpr  = 'COALESCE(jo.returned_fine_weight, 0)';
+        $leftoverExpr  = 'COALESCE(jo.leftover_returned_fine_weight, 0)';
+        $wastageExpr   = 'COALESCE(jo.actual_wastage_fine, 0)';
+        $unaccExpr     = "($issuedExpr - $returnedExpr - $leftoverExpr - $wastageExpr)";
+
+        // Per-karigar aggregation.
+        $perKarigar = (clone $base)
+            ->groupBy('jo.karigar_id')
+            ->select(
+                'jo.karigar_id',
+                DB::raw('COUNT(*) as job_count'),
+                DB::raw("SUM($issuedExpr) as issued_fine"),
+                DB::raw("SUM($returnedExpr) as returned_fine"),
+                DB::raw("SUM($leftoverExpr) as leftover_fine"),
+                DB::raw("SUM($wastageExpr) as wastage_fine"),
+                DB::raw("SUM($unaccExpr) as unaccounted_fine")
+            )
+            ->get();
+
+        $names = DB::table('karigars')->where('shop_id', $shopId)
+            ->whereIn('id', $perKarigar->pluck('karigar_id')->filter()->all())
+            ->pluck('name', 'id');
+
+        $rows = $perKarigar->map(function ($r) use ($names) {
+            $issued = round((float) $r->issued_fine, 4);
+            $wastage = round((float) $r->wastage_fine, 4);
+            return (object) [
+                'karigar_name'     => $names[$r->karigar_id] ?? ('Karigar #' . $r->karigar_id),
+                'job_count'        => (int) $r->job_count,
+                'issued_fine'      => $issued,
+                'returned_fine'    => round((float) $r->returned_fine, 4),
+                'leftover_fine'    => round((float) $r->leftover_fine, 4),
+                'wastage_fine'     => $wastage,
+                'wastage_pct'      => $issued > 0 ? round($wastage / $issued * 100, 2) : 0.0,
+                'unaccounted_fine' => round((float) $r->unaccounted_fine, 4),
+            ];
+        })->sortByDesc('unaccounted_fine')->values();
+
+        // Per-metal aggregation.
+        $byMetal = (clone $base)
+            ->groupBy('jo.metal_type')
+            ->select(
+                'jo.metal_type',
+                DB::raw("SUM($issuedExpr) as issued_fine"),
+                DB::raw("SUM($wastageExpr) as wastage_fine"),
+                DB::raw("SUM($unaccExpr) as unaccounted_fine")
+            )
+            ->get()
+            ->map(function ($r) {
+                $issued = round((float) $r->issued_fine, 4);
+                $wastage = round((float) $r->wastage_fine, 4);
+                return (object) [
+                    'metal_type'       => $r->metal_type ?? 'unknown',
+                    'issued_fine'      => $issued,
+                    'wastage_fine'     => $wastage,
+                    'wastage_pct'      => $issued > 0 ? round($wastage / $issued * 100, 2) : 0.0,
+                    'unaccounted_fine' => round((float) $r->unaccounted_fine, 4),
+                ];
+            })->sortByDesc('issued_fine')->values();
+
+        $totalIssued    = round((float) $rows->sum('issued_fine'), 4);
+        $totalReturned  = round((float) $rows->sum('returned_fine'), 4);
+        $totalLeftover  = round((float) $rows->sum('leftover_fine'), 4);
+        $totalWastage   = round((float) $rows->sum('wastage_fine'), 4);
+        $totalUnacc     = round((float) $rows->sum('unaccounted_fine'), 4);
+
+        return new \App\Reporting\Data\ShrinkageData(
+            rows: $rows,
+            byMetal: $byMetal,
+            totalIssued: $totalIssued,
+            totalReturned: $totalReturned,
+            totalLeftover: $totalLeftover,
+            totalWastage: $totalWastage,
+            totalUnaccounted: $totalUnacc,
+            wastagePct: $totalIssued > 0 ? round($totalWastage / $totalIssued * 100, 2) : 0.0,
+            jobCount: (int) $rows->sum('job_count'),
+            periodLabel: $period->label(),
+        );
+    }
 }
