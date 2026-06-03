@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InvoicePayment;
-use App\Models\MetalLot;
+use App\Reporting\SalesService;
 use Illuminate\Http\Request;
 
 class MetalExchangeReportController extends Controller
 {
+    public function __construct(private SalesService $sales) {}
+
     public function index(Request $request)
     {
-        $shopId = auth()->user()->shop_id;
+        $shopId = (int) auth()->user()->shop_id;
         $view   = $request->input('view', 'transactions');
 
         $from = $request->input('from', now()->startOfMonth()->toDateString());
@@ -20,45 +21,21 @@ class MetalExchangeReportController extends Controller
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to))   $to   = now()->toDateString();
 
         if ($view === 'lots') {
-            $weeklyLots = MetalLot::where('shop_id', $shopId)
-                ->weekly()
-                ->where('created_at', '>=', $from)
-                ->where('created_at', '<=', $to . ' 23:59:59')
-                ->with([
-                    'payments' => fn ($q) => $q->with('invoice.customer')
-                        ->whereIn('mode', ['old_gold', 'old_silver']),
-                ])
-                ->orderByDesc('iso_year')
-                ->orderByDesc('iso_week')
-                ->paginate(20);
+            $weeklyLots = $this->sales->metalExchangeLots($shopId, $from, $to);
 
             return view('report_metal_exchange', compact('weeklyLots', 'view', 'from', 'to'));
         }
 
-        // Default: transaction-level view (unchanged)
-        $rows = InvoicePayment::with(['invoice.customer'])
-            ->whereHas('invoice', fn ($q) => $q->where('shop_id', $shopId))
-            ->whereIn('mode', ['old_gold', 'old_silver'])
-            ->whereHas('invoice', fn ($q) => $q->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to))
-            ->orderByDesc('created_at')
-            ->get();
+        // Default: transaction-level view.
+        $data = $this->sales->metalExchange($shopId, $from, $to);
 
-        $goldRows   = $rows->where('mode', 'old_gold');
-        $silverRows = $rows->where('mode', 'old_silver');
-
-        $goldSummary = [
-            'gross'  => $goldRows->sum('metal_gross_weight'),
-            'fine'   => $goldRows->sum('metal_fine_weight'),
-            'value'  => $goldRows->sum('amount'),
-            'count'  => $goldRows->count(),
-        ];
-        $silverSummary = [
-            'gross'  => $silverRows->sum('metal_gross_weight'),
-            'fine'   => $silverRows->sum('metal_fine_weight'),
-            'value'  => $silverRows->sum('amount'),
-            'count'  => $silverRows->count(),
-        ];
-
-        return view('report_metal_exchange', compact('rows', 'from', 'to', 'goldSummary', 'silverSummary', 'view'));
+        return view('report_metal_exchange', [
+            'rows'          => $data->rows,
+            'from'          => $from,
+            'to'            => $to,
+            'goldSummary'   => $data->goldSummary,
+            'silverSummary' => $data->silverSummary,
+            'view'          => $view,
+        ]);
     }
 }

@@ -2,24 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\DB;
-use App\Models\MetalMovement;
+use App\Reporting\LedgerService;
 
 class DailyReportController extends Controller
 {
+    public function __construct(private LedgerService $ledger) {}
+
     public function index()
     {
-        $shopId = auth()->user()->shop_id;
+        $shopId = (int) auth()->user()->shop_id;
         $date = request('date', now()->toDateString());
 
-        $rows = MetalMovement::where('shop_id', $shopId)
-            ->whereDate('created_at', $date)
-            ->select(
-                'type',
-                DB::raw('SUM(fine_weight) as total')
-            )
-            ->groupBy('type')
-            ->get();
+        $rows = $this->ledger->metalMovementDay($shopId, $date);
 
         return view('report_daily', compact('rows', 'date'));
     }

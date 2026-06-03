@@ -10,5 +10,8 @@
       "Bash(php artisan migrate:status *)",
       "Bash(php -l *)"
     ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
   }
 }

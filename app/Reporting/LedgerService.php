@@ -2,9 +2,13 @@
 
 namespace App\Reporting;
 
+use App\Models\CashTransaction;
 use App\Models\CreditNote;
 use App\Models\Invoice;
+use App\Models\MetalMovement;
+use App\Reporting\Data\CashDayData;
 use App\Reporting\Data\DayBookData;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -103,6 +107,41 @@ class LedgerService
             cashOut: round($cashOut, 2),
             eventCount: $events->count(),
         );
+    }
+
+    /**
+     * One day's cash ledger (M5 extraction of CashReportController). Same two
+     * grouped queries, no behaviour change.
+     */
+    public function cashDay(int $shopId, string $date): CashDayData
+    {
+        $rows = CashTransaction::where('shop_id', $shopId)
+            ->whereDate('created_at', $date)
+            ->select('type', DB::raw('SUM(amount) as total'))
+            ->groupBy('type')
+            ->get();
+
+        $modeBreakdown = CashTransaction::where('shop_id', $shopId)
+            ->whereDate('created_at', $date)
+            ->whereNotNull('payment_mode')
+            ->select('payment_mode', DB::raw('SUM(amount) as total'))
+            ->groupBy('payment_mode')
+            ->pluck('total', 'payment_mode');
+
+        return new CashDayData(rows: $rows, modeBreakdown: $modeBreakdown);
+    }
+
+    /**
+     * One day's metal movements grouped by type (M5 extraction of
+     * DailyReportController). Same query, no behaviour change.
+     */
+    public function metalMovementDay(int $shopId, string $date): Collection
+    {
+        return MetalMovement::where('shop_id', $shopId)
+            ->whereDate('created_at', $date)
+            ->select('type', DB::raw('SUM(fine_weight) as total'))
+            ->groupBy('type')
+            ->get();
     }
 
     private function event($occurredAt, string $type, ?string $reference, ?string $party, float $amount, string $direction, string $source): object
