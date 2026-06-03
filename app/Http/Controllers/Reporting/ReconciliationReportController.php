@@ -164,4 +164,39 @@ class ReconciliationReportController extends Controller
 
         return CsvReportExporter::fromRows('dead-stock-' . $data->asOf . '.csv', $headers, $rows);
     }
+
+    // ---- #14 Purchase efficiency ----
+
+    public function purchaseEfficiency(Request $request)
+    {
+        $period = $this->period($request);
+        $data = $this->inventory->purchaseEfficiency($this->shopId(), $period);
+
+        return view('reports.purchase-efficiency', [
+            'data'   => $data,
+            'period' => $period,
+            'month'  => (int) $period->start()->month,
+            'year'   => (int) $period->start()->year,
+        ]);
+    }
+
+    public function purchaseEfficiencyCsv(Request $request)
+    {
+        $period = $this->period($request);
+        $data = $this->inventory->purchaseEfficiency($this->shopId(), $period);
+
+        $headers = ['Metal', 'Lines', 'No Market Rate', 'Gross (g)', 'Paid', 'Market', 'Premium', 'Premium %'];
+        $rows = $data->rows->map(fn ($r) => [
+            $r->metal_type,
+            $r->line_count,
+            $r->lines_no_market,
+            number_format($r->total_gross, 3, '.', ''),
+            number_format($r->purchase_cost, 2, '.', ''),
+            number_format($r->market_cost, 2, '.', ''),
+            number_format($r->premium, 2, '.', ''),
+            number_format($r->premium_pct, 2, '.', ''),
+        ])->all();
+
+        return CsvReportExporter::fromRows('purchase-efficiency-' . $period->start()->format('Y-m') . '.csv', $headers, $rows);
+    }
 }

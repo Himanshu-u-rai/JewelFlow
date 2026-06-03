@@ -58,7 +58,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateTaxPack((int) $shopId, $period, $gst, $tax);
             $failures += $this->validateReconciliation((int) $shopId, $period, $gst, $sales);
             $failures += $this->validateReceivables((int) $shopId, $receivables);
-            $failures += $this->validateInventory((int) $shopId, $inventory);
+            $failures += $this->validateInventory((int) $shopId, $period, $inventory);
             $failures += $this->validateKarigar((int) $shopId, $karigar);
         }
 
@@ -335,7 +335,7 @@ class ValidateReportTotals extends Command
     /**
      * Inventory invariants (Phase 2 M4, #12 — dead stock aging). Point-in-time.
      */
-    private function validateInventory(int $shopId, \App\Reporting\InventoryService $inventory): int
+    private function validateInventory(int $shopId, ReportPeriod $period, \App\Reporting\InventoryService $inventory): int
     {
         $failures = 0;
         $ds = $inventory->deadStock($shopId);
@@ -358,6 +358,16 @@ class ValidateReportTotals extends Command
             'DS-2 total value == in_stock cost (independent recompute)',
             abs($independent - $ds->totalValue) <= self::TOLERANCE,
             'independent=' . $independent . ' service=' . $ds->totalValue
+        );
+
+        // #14 Purchase efficiency — per-metal premium sums to the total.
+        $pe = $inventory->purchaseEfficiency($shopId, $period);
+        $peRowSum = round((float) $pe->rows->sum('premium'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'PUR-1 per-metal premium sums to total',
+            abs($peRowSum - $pe->totalPremium) <= self::TOLERANCE,
+            'rows=' . $peRowSum . ' total=' . $pe->totalPremium
         );
 
         return $failures;
