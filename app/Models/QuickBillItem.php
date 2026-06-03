@@ -20,6 +20,7 @@ class QuickBillItem extends Model
         'net_weight' => 'decimal:3',
         'rate' => 'decimal:2',
         'making_charge' => 'decimal:2',
+        'making_charge_value' => 'decimal:2',
         'stone_charge' => 'decimal:2',
         'hallmark_charge' => 'decimal:2',
         'rhodium_charge' => 'decimal:2',

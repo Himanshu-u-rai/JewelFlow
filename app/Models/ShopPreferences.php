@@ -27,6 +27,7 @@ class ShopPreferences extends Model
         'wa_custom_footer',
         // New
         'default_pricing_mode',
+        'default_making_charge_type',
         'default_payment_mode',
         'auto_logout_minutes',
         'loyalty_welcome_bonus',

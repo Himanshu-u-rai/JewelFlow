@@ -12,4 +12,18 @@ return [
     |
     */
     'pos_quote_v2' => env('FEATURE_POS_QUOTE_V2', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Multi-mode making charges (percentage / per-gram / fixed)
+    |--------------------------------------------------------------------------
+    |
+    | Master switch for the making-charge mode rollout. When OFF (default),
+    | making is fixed-only and pricing / canonical-quote output is
+    | byte-identical to pre-rollout behaviour. MC-2 gates the canonical-JSON
+    | extension on this flag; MC-4 gates the UI mode selectors; validators only
+    | accept a non-fixed making_charge_type when this is ON.
+    |
+    */
+    'making_charge_modes' => env('FEATURE_MAKING_CHARGE_MODES', false),
 ];

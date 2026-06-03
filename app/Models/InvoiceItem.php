@@ -9,6 +9,14 @@ class InvoiceItem extends Model
 {
     protected $guarded = ['*'];
 
+    /**
+     * MC-1: cast only the additive making-charge mode value. Existing columns
+     * keep their raw representation (this model deliberately carried no casts).
+     */
+    protected $casts = [
+        'making_charge_value' => 'decimal:2',
+    ];
+
     protected static function booted(): void
     {
         static::updating(function ($line) {
