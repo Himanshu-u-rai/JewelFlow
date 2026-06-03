@@ -67,21 +67,42 @@
 
     <style>
         .sub-status-page {
-            --sub-border: #d9e2ef;
-            --sub-border-strong: #c8d5e7;
+            --sub-border: #e6edf6;
+            --sub-border-strong: #d3deec;
             --sub-surface: #ffffff;
-            --sub-surface-soft: #f7f9fc;
-            --sub-text: #16213d;
-            --sub-text-soft: #64748b;
+            --sub-surface-soft: #f6f9fc;
+            --sub-text: #0c1733;
+            --sub-text-soft: #51607a;
+            --sub-text-muted: #7d8aa3;
             --sub-accent: #0d9488;
-            --sub-accent-soft: rgba(13, 148, 136, 0.1);
-            --sub-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
+            --sub-accent-deep: #0f766e;
+            --sub-accent-soft: rgba(13, 148, 136, 0.10);
+            /* Layered soft shadow: crisp contact + diffuse lift. */
+            --sub-shadow: 0 1px 2px rgba(12, 23, 51, 0.04), 0 18px 40px -20px rgba(12, 23, 51, 0.22);
+            --sub-shadow-hover: 0 2px 4px rgba(12, 23, 51, 0.05), 0 26px 52px -22px rgba(12, 23, 51, 0.26);
         }
 
         .sub-status-page .sub-status-wrap {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 18px;
+        }
+
+        /* Motion-safe entrance: base state is fully visible; the keyframe only
+           plays when motion is allowed, so headless/print/reduced-motion render
+           the content immediately (never gated on a class). */
+        @media (prefers-reduced-motion: no-preference) {
+            .sub-status-page .sub-hero,
+            .sub-status-page .sub-grid > *,
+            .sub-status-page .sub-billing-section {
+                animation: subRise 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+            }
+            .sub-status-page .sub-grid > *:nth-child(2) { animation-delay: 0.06s; }
+            .sub-status-page .sub-billing-section { animation-delay: 0.12s; }
+            @keyframes subRise {
+                from { opacity: 0; transform: translateY(12px); }
+                to   { opacity: 1; transform: translateY(0); }
+            }
         }
 
         .sub-status-page .sub-alert {
@@ -112,8 +133,25 @@
             box-shadow: var(--sub-shadow);
         }
 
+        /* Hero: a quiet premium surface — soft vertical wash plus a faint teal
+           glow in the top-right corner for depth (not glass, not a gradient on
+           text). */
         .sub-status-page .sub-hero {
-            padding: 20px;
+            position: relative;
+            padding: 26px 26px 24px;
+            background:
+                radial-gradient(120% 140% at 100% 0%, rgba(13, 148, 136, 0.07) 0%, rgba(13, 148, 136, 0) 46%),
+                linear-gradient(180deg, #fcfdff 0%, #ffffff 60%);
+            overflow: hidden;
+        }
+
+        .sub-status-page .sub-hero::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--sub-accent) 0%, #2dd4bf 100%);
+            opacity: 0.9;
         }
 
         .sub-status-page .sub-hero-top {
@@ -121,82 +159,107 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 18px;
+            margin-bottom: 20px;
         }
 
         .sub-status-page .sub-kicker {
-            margin: 0 0 6px;
-            color: var(--sub-text-soft);
+            margin: 0 0 8px;
+            color: var(--sub-accent-deep);
             font-size: 11px;
             font-weight: 700;
-            letter-spacing: 0.18em;
+            letter-spacing: 0.16em;
             text-transform: uppercase;
         }
 
         .sub-status-page .sub-plan-name {
             margin: 0;
             color: var(--sub-text);
-            font-size: 30px;
+            font-size: 32px;
             font-weight: 800;
-            line-height: 1.1;
+            line-height: 1.08;
+            letter-spacing: -0.02em;
+            text-wrap: balance;
         }
 
         .sub-status-page .sub-plan-copy {
-            margin: 8px 0 0;
+            margin: 10px 0 0;
+            max-width: 60ch;
             color: var(--sub-text-soft);
             font-size: 14px;
-            line-height: 1.55;
+            line-height: 1.6;
+            text-wrap: pretty;
         }
 
         .sub-status-page .sub-status-pill {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            min-height: 36px;
-            padding: 0 12px;
+            gap: 7px;
+            min-height: 34px;
+            padding: 0 14px;
             border-radius: 999px;
             font-size: 12px;
             font-weight: 700;
+            letter-spacing: 0.01em;
             white-space: nowrap;
             flex-shrink: 0;
+            box-shadow: 0 1px 2px rgba(12, 23, 51, 0.06);
+        }
+
+        /* Status dot inside the pill (pure CSS, uses currentColor). */
+        .sub-status-page .sub-status-pill::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: currentColor;
+            box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
         }
 
         .sub-status-page .sub-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
         }
 
         .sub-status-page .sub-kpi {
-            border: 1px solid #e5edf6;
+            border: 1px solid #e9eff7;
             background: #fbfcfe;
-            padding: 14px;
-            border-radius: 18px;
+            padding: 15px 16px;
+            border-radius: 16px;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+
+        .sub-status-page .sub-kpi:hover {
+            border-color: var(--sub-border-strong);
+            box-shadow: 0 10px 24px -16px rgba(12, 23, 51, 0.4);
+            transform: translateY(-1px);
         }
 
         .sub-status-page .sub-kpi-label {
-            margin: 0 0 6px;
-            color: var(--sub-text-soft);
-            font-size: 11px;
+            margin: 0 0 8px;
+            color: var(--sub-text-muted);
+            font-size: 10.5px;
             font-weight: 700;
-            letter-spacing: 0.15em;
+            letter-spacing: 0.13em;
             text-transform: uppercase;
         }
 
         .sub-status-page .sub-kpi-value {
             margin: 0;
             color: var(--sub-text);
-            font-size: 20px;
+            font-size: 21px;
             font-weight: 800;
             line-height: 1.2;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
         }
 
         .sub-status-page .sub-health {
-            border: 1px solid #e5edf6;
-            border-radius: 20px;
-            background: linear-gradient(180deg, #fbfcfe 0%, #ffffff 100%);
-            padding: 16px;
+            border: 1px solid #e9eff7;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #fbfdfe 0%, #ffffff 100%);
+            padding: 18px;
         }
 
         .sub-status-page .sub-health-head {
@@ -239,17 +302,31 @@
 
         .sub-status-page .sub-progress-track {
             width: 100%;
-            height: 10px;
-            margin-top: 10px;
+            height: 9px;
+            margin-top: 12px;
             border-radius: 999px;
-            background: #e2e8f0;
+            background: #e8eef6;
             overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(12, 23, 51, 0.06);
         }
 
         .sub-status-page .sub-progress-fill {
             height: 100%;
             border-radius: 999px;
-            background: linear-gradient(90deg, #0d9488 0%, #14b8a6 100%);
+            background: linear-gradient(90deg, #0d9488 0%, #2dd4bf 100%);
+            transform-origin: left center;
+        }
+
+        /* Grow the fill on load (GPU transform, not layout). Width stays inline;
+           reduced motion skips straight to the final state. */
+        @media (prefers-reduced-motion: no-preference) {
+            .sub-status-page .sub-progress-fill {
+                animation: subFill 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+            }
+            @keyframes subFill {
+                from { transform: scaleX(0); }
+                to   { transform: scaleX(1); }
+            }
         }
 
         .sub-status-page .sub-grid {
@@ -291,10 +368,16 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 12px;
-            padding: 13px 14px;
-            border: 1px solid #e5edf6;
-            border-radius: 16px;
+            padding: 14px 15px;
+            border: 1px solid #e9eff7;
+            border-radius: 14px;
             background: #fbfcfe;
+            transition: border-color 0.18s ease, background-color 0.18s ease;
+        }
+
+        .sub-status-page .sub-detail-item:hover {
+            border-color: var(--sub-border-strong);
+            background: #ffffff;
         }
 
         .sub-status-page .sub-detail-label {
@@ -337,23 +420,34 @@
 
         .sub-status-page .sub-feature-item {
             display: flex;
-            align-items: flex-start;
-            gap: 10px;
+            align-items: center;
+            gap: 11px;
             min-width: 0;
             padding: 12px 13px;
-            border: 1px solid #e5edf6;
-            border-radius: 16px;
+            border: 1px solid #e9eff7;
+            border-radius: 14px;
             background: #fbfcfe;
-            color: #334155;
+            color: #2b3a52;
             font-size: 13px;
-            line-height: 1.55;
+            font-weight: 500;
+            line-height: 1.5;
+            transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
         }
 
+        .sub-status-page .sub-feature-item:hover {
+            border-color: #bfe6e0;
+            background: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        /* Checkmark sits in a soft accent chip rather than floating bare. */
         .sub-status-page .sub-dot {
-            width: 16px;
-            height: 16px;
-            margin-top: 1px;
-            color: var(--sub-accent);
+            width: 22px;
+            height: 22px;
+            padding: 4px;
+            border-radius: 999px;
+            color: var(--sub-accent-deep);
+            background: var(--sub-accent-soft);
             flex-shrink: 0;
         }
 
@@ -362,37 +456,50 @@
             align-items: center;
             justify-content: center;
             min-height: 42px;
-            padding: 0 14px;
+            padding: 0 18px;
             border: 1px solid transparent;
-            border-radius: 14px;
+            border-radius: 12px;
             font-size: 13px;
             font-weight: 700;
+            letter-spacing: 0.01em;
             text-decoration: none;
-            transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+            transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+        }
+
+        .sub-btn:focus-visible {
+            outline: 2px solid var(--sub-accent);
+            outline-offset: 2px;
         }
 
         .sub-btn:hover {
             transform: translateY(-1px);
         }
 
+        .sub-btn:active {
+            transform: translateY(0);
+        }
+
         .sub-btn.primary {
             background: var(--sub-accent, #0d9488);
             color: #fff;
-            box-shadow: 0 10px 24px rgba(13, 148, 136, 0.2);
+            box-shadow: 0 1px 2px rgba(13, 148, 136, 0.25), 0 12px 26px -10px rgba(13, 148, 136, 0.5);
         }
 
         .sub-btn.primary:hover {
-            background: #0f766e;
+            background: var(--sub-accent-deep, #0f766e);
+            box-shadow: 0 2px 4px rgba(13, 148, 136, 0.3), 0 16px 30px -10px rgba(13, 148, 136, 0.55);
         }
 
         .sub-btn.secondary {
             background: #fff;
-            color: var(--sub-text, #16213d);
-            border-color: var(--sub-border-strong, #c8d5e7);
+            color: var(--sub-text, #0c1733);
+            border-color: var(--sub-border-strong, #d3deec);
+            box-shadow: 0 1px 2px rgba(12, 23, 51, 0.04);
         }
 
         .sub-btn.secondary:hover {
-            background: var(--sub-surface-soft, #f7f9fc);
+            background: var(--sub-surface-soft, #f6f9fc);
+            border-color: #b9c6d8;
         }
 
         @media (max-width: 1100px) {
@@ -501,10 +608,10 @@
         }
         .sub-status-page .sub-billing-card {
             background: #ffffff;
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: 14px;
+            border: 1px solid var(--sub-border);
+            border-radius: 18px;
             overflow: hidden;
-            box-shadow: 0 14px 24px rgba(15, 23, 42, 0.05);
+            box-shadow: var(--sub-shadow);
         }
         .sub-status-page .sub-billing-table-wrap {
             overflow-x: auto;
