@@ -16,11 +16,13 @@
                 </a>
             @elseif(($emiMeta['is_retailer'] ?? false) && ($emiMeta['has_plan'] ?? false))
                 <a href="{{ route('installments.show', $emiMeta['plan_id']) }}" class="btn btn-secondary btn-sm invoice-emi-primary-action">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M9 3h6v4H9V3z"/></svg>
                     View EMI Plan
                 </a>
             @endif
-            @php($canEditInvoice = ($invoice->status === \App\Models\Invoice::STATUS_DRAFT && auth()->user()->can('sales.create')) || ($invoice->status !== \App\Models\Invoice::STATUS_DRAFT && auth()->user()->can('sales.void')))
+            @php
+                $canEditInvoice = ($invoice->status === \App\Models\Invoice::STATUS_DRAFT && auth()->user()->can('sales.create')) || ($invoice->status !== \App\Models\Invoice::STATUS_DRAFT && auth()->user()->can('sales.void'));
+            @endphp
             @if($canEditInvoice)
             <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-secondary btn-sm invoice-edit-action">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
@@ -67,7 +69,7 @@
                         </a>
                     @elseif(($emiMeta['is_retailer'] ?? false) && ($emiMeta['has_plan'] ?? false))
                         <a href="{{ route('installments.show', $emiMeta['plan_id']) }}" class="invoice-emi-mobile-fab-link" @click="invoiceEmiFabOpen = false">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M9 3h6v4H9V3z"/></svg>
                             <span>View EMI Plan</span>
                         </a>
                     @endif
