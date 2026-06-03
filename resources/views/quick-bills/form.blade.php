@@ -64,8 +64,8 @@
                 @method('PUT')
             @endif
 
-            <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-                <div class="space-y-6">
+            <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
+                <div class="space-y-6 xl:col-span-8">
                     <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
                         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-7">
                             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-12">
@@ -300,52 +300,9 @@
                         </div>
                     </div>
 
-                    <div x-data="{ open: {{ $paymentsPanelOpen ? 'true' : 'false' }} }" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
-                            <div class="text-sm font-semibold text-slate-900" x-text="payments.length === 0 ? 'Payment tracker' : (payments.length === 1 ? '1 payment' : payments.length + ' payments')"></div>
-                            <div class="flex items-center gap-2">
-                                <button type="button" @click="addPayment(); open = true" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                    Add Payment
-                                </button>
-                                <button type="button" @click="open = !open" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                                    <span x-text="open ? 'Collapse' : 'Expand'"></span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div x-show="open" x-transition x-cloak class="border-t border-slate-200 p-5 sm:p-6">
-                            <div class="space-y-3">
-                                <template x-if="payments.length === 0">
-                                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                                        No payment rows yet. Leave this empty if the bill is fully due.
-                                    </div>
-                                </template>
-
-                                <template x-for="(payment, index) in payments" :key="index">
-                                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                        <div class="grid grid-cols-2 gap-3 xl:grid-cols-[150px_minmax(0,1fr)_150px_auto]">
-                                            <select :name="'payments['+index+'][payment_mode]'" x-model="payment.payment_mode" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                <option value="Cash">Cash</option>
-                                                <option value="UPI">UPI</option>
-                                                <option value="Card">Card</option>
-                                                <option value="Bank">Bank</option>
-                                                <option value="Other">Other</option>
-                                            </select>
-                                            <input :name="'payments['+index+'][amount]'" x-model.number="payment.amount" type="number" step="0.01" min="0" placeholder="Amount" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
-                                            <input :name="'payments['+index+'][reference_no]'" x-model="payment.reference_no" type="text" placeholder="Reference / note" class="col-span-2 w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10 xl:col-span-1">
-                                            <button type="button" @click="removePayment(index)" class="col-span-2 inline-flex items-center justify-center rounded-xl border border-rose-200 bg-white px-3 py-3 text-sm font-medium text-rose-700 transition hover:bg-rose-50 xl:col-span-1">
-                                                Remove
-                                            </button>
-                                        </div>
-                                        <input type="hidden" :name="'payments['+index+'][notes]'" x-model="payment.notes">
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
-                <div class="space-y-6 xl:sticky xl:top-6">
+                <div class="space-y-6 xl:sticky xl:top-6 xl:col-span-4">
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                         <input type="hidden" name="pricing_mode" :value="pricingMode">
 
@@ -405,6 +362,50 @@
                             <div class="md:col-span-2 xl:col-span-1">
                                 <label class="mb-2 block text-sm font-medium text-slate-600">Round off</label>
                                 <input type="number" name="round_off" x-model.number="roundOff" step="0.01" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div x-data="{ open: {{ $paymentsPanelOpen ? 'true' : 'false' }} }" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
+                            <div class="text-sm font-semibold text-slate-900" x-text="payments.length === 0 ? 'Payment tracker' : (payments.length === 1 ? '1 payment' : payments.length + ' payments')"></div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" @click="addPayment(); open = true" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                                    Add Payment
+                                </button>
+                                <button type="button" @click="open = !open" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                                    <span x-text="open ? 'Collapse' : 'Expand'"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div x-show="open" x-transition x-cloak class="border-t border-slate-200 p-5 sm:p-6">
+                            <div class="space-y-3">
+                                <template x-if="payments.length === 0">
+                                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                                        No payment rows yet. Leave this empty if the bill is fully due.
+                                    </div>
+                                </template>
+
+                                <template x-for="(payment, index) in payments" :key="index">
+                                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <select :name="'payments['+index+'][payment_mode]'" x-model="payment.payment_mode" class="w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                <option value="Cash">Cash</option>
+                                                <option value="UPI">UPI</option>
+                                                <option value="Card">Card</option>
+                                                <option value="Bank">Bank</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                            <input :name="'payments['+index+'][amount]'" x-model.number="payment.amount" type="number" step="0.01" min="0" placeholder="Amount" class="w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
+                                            <input :name="'payments['+index+'][reference_no]'" x-model="payment.reference_no" type="text" placeholder="Reference / note" class="col-span-2 w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
+                                            <button type="button" @click="removePayment(index)" class="col-span-2 inline-flex items-center justify-center rounded-xl border border-rose-200 bg-white px-3 py-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50">
+                                                Remove
+                                            </button>
+                                        </div>
+                                        <input type="hidden" :name="'payments['+index+'][notes]'" x-model="payment.notes">
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
