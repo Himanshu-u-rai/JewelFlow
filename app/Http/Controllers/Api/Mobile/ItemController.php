@@ -330,6 +330,8 @@ class ItemController extends Controller
             'cost_price' => (float) $item->cost_price,
             'selling_price' => (float) $item->selling_price,
             'making_charges' => (float) $item->making_charges,
+            'making_charge_type' => $item->making_charge_type,
+            'making_charge_value' => $item->making_charge_value !== null ? (float) $item->making_charge_value : null,
             'stone_charges' => (float) $item->stone_charges,
             'hallmark_charges' => (float) $item->hallmark_charges,
             'rhodium_charges' => (float) $item->rhodium_charges,

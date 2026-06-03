@@ -82,7 +82,7 @@ class InvoiceController extends Controller
 
         $invoice->load([
             'customer:id,first_name,last_name,mobile,customer_code',
-            'items:id,invoice_id,item_id,weight,rate,making_charges,stone_amount,line_total,gst_rate,gst_amount,created_at',
+            'items:id,invoice_id,item_id,weight,rate,making_charges,making_charge_type,making_charge_value,stone_amount,line_total,gst_rate,gst_amount,created_at',
             'items.item:id,barcode,design,category,purity,huid',
             'payments:id,invoice_id,payment_method_id,mode,amount,reference,metal_type,metal_gross_weight,metal_purity,metal_fine_weight,metal_rate_per_gram,created_at',
             'payments.paymentMethod:id,type,name,upi_id,bank_name,account_number,wallet_id',
@@ -119,6 +119,8 @@ class InvoiceController extends Controller
                     'weight' => (float) ($line->weight ?? 0),
                     'rate' => (float) ($line->rate ?? 0),
                     'making_charges' => (float) ($line->making_charges ?? 0),
+                    'making_charge_type' => $line->making_charge_type,
+                    'making_charge_value' => $line->making_charge_value !== null ? (float) $line->making_charge_value : null,
                     'stone_amount' => (float) ($line->stone_amount ?? 0),
                     'line_total' => (float) ($line->line_total ?? 0),
                     'gst_rate' => (float) ($line->gst_rate ?? 0),
