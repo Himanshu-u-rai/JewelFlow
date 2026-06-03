@@ -39,11 +39,14 @@ class SalesService
         float $roundOff = 0,
         array $payments = [],
         float $creditOffset = 0,
-        array $rateContext = []
+        array $rateContext = [],
+        string $makingType = 'fixed',
+        ?float $makingValue = null
     ) {
         return DB::transaction(function () use (
             $customerId, $itemId, $goldRate, $making, $stone,
-            $discount, $roundOff, $payments, $creditOffset, $rateContext
+            $discount, $roundOff, $payments, $creditOffset, $rateContext,
+            $makingType, $makingValue
         ) {
             $shop = auth()->user()->shop;
             if (!$shop || !$shop->isManufacturer()) {
@@ -92,6 +95,8 @@ class SalesService
                 stone: (float) $stone,
                 manualDiscount: (float) $discount,
                 creditOffset: (float) $creditOffset,
+                makingType: $makingType,
+                makingValue: $makingValue,
             );
             $breakdown = $engine->compute($quoteInput);
 
@@ -123,15 +128,21 @@ class SalesService
 
             // Create invoice line
             InvoiceItem::record([
-                'invoice_id'     => $invoice->id,
-                'item_id'        => $item->id,
-                'weight'         => $item->net_metal_weight,
-                'rate'           => $goldRate,
-                'making_charges' => $making,
-                'stone_amount'   => $stone,
-                'line_total'     => $line['line_total'],
-                'gst_rate'       => $gstRate,
-                'gst_amount'     => $line['gst_amount'],
+                'invoice_id'          => $invoice->id,
+                'item_id'             => $item->id,
+                'weight'              => $item->net_metal_weight,
+                'rate'                => $goldRate,
+                // MC-3: persist the RESOLVED making (== $making for fixed mode)
+                // as the accounting truth, plus the mode metadata snapshot
+                // (NULL for fixed). Reproducible: a future rate change can never
+                // alter this finalized amount.
+                'making_charges'      => round((float) ($line['making'] ?? $making), 2),
+                'making_charge_type'  => $line['making_type'] ?? null,
+                'making_charge_value' => $line['making_value'] ?? null,
+                'stone_amount'        => $stone,
+                'line_total'          => $line['line_total'],
+                'gst_rate'            => $gstRate,
+                'gst_amount'          => $line['gst_amount'],
             ]);
 
             $invoice = InvoiceAccountingService::finalizeDraft($invoice, (float) $gstRate);

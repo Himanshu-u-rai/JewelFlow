@@ -127,6 +127,10 @@ class RetailerSalesService
                     'weight'         => $item->net_metal_weight,
                     'rate'           => $item->selling_price,
                     'making_charges' => $item->making_charges ?? 0,
+                    // MC-3: snapshot the item's making mode (resolved at item
+                    // registration for retail; NULL ⇒ fixed for legacy items).
+                    'making_charge_type'  => $item->making_charge_type ?? null,
+                    'making_charge_value' => $item->making_charge_value ?? null,
                     'stone_amount'   => $item->stone_charges ?? 0,
                     'line_total'     => $item->selling_price,
                     'gst_rate'       => $gstRate,
@@ -425,6 +429,10 @@ class RetailerSalesService
                     'weight'         => $item->net_metal_weight,
                     'rate'           => $item->selling_price,
                     'making_charges' => $item->making_charges ?? 0,
+                    // MC-3: snapshot the item's making mode (resolved at item
+                    // registration for retail; NULL ⇒ fixed for legacy items).
+                    'making_charge_type'  => $item->making_charge_type ?? null,
+                    'making_charge_value' => $item->making_charge_value ?? null,
                     'stone_amount'   => $item->stone_charges ?? 0,
                     'line_total'     => $item->selling_price,
                     'gst_rate'       => $gstRate,

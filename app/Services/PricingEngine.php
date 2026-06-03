@@ -7,6 +7,8 @@ use App\Models\CustomerGoldTransaction;
 use App\Models\Item;
 use App\Models\PosQuote;
 use App\Models\ShopPreferences;
+use App\Services\PricingEngine\MakingChargeResolver;
+use App\Services\PricingEngine\MakingChargeType;
 use App\Services\PricingEngine\PricingBreakdown;
 use App\Services\PricingEngine\QuoteInput;
 use Illuminate\Database\Eloquent\Builder;
@@ -366,7 +368,6 @@ class PricingEngine
         }
 
         $goldRate = (float) ($input->goldRate ?? 0);
-        $making   = (float) $input->making;
         $stone    = (float) $input->stone;
 
         $fineMultiplier = \App\Services\MetalRegistry::fineWeightMultiplier((string) $item->metal_type, (float) $item->purity);
@@ -375,6 +376,16 @@ class PricingEngine
         }
         $fineGold = (float) $item->net_metal_weight * $fineMultiplier;
         $metalValue = round($fineGold * $goldRate, 2);
+
+        // MC-2: resolve making via the one canonical helper. For FIXED mode the
+        // value mirrors $input->making → resolved == $input->making (byte-identical).
+        $making = MakingChargeResolver::resolve(
+            $input->makingType,
+            $input->makingValue ?? (float) $input->making,
+            $metalValue,
+            (float) $item->net_metal_weight,
+        );
+
         $lineTotal  = round($metalValue + $making + $stone, 2);
 
         // Manufacturer per-shop wastage recovery (matches SalesService line 75-78).
@@ -406,7 +417,7 @@ class PricingEngine
         $customerGold = $this->customerGoldBalance($input->shopId, $input->customerId, $fineGold);
         $compliance   = $this->complianceFor($input->shopId, $input->customerId, $finalTotal);
 
-        $lines = [[
+        $line = [
             'item_id'    => (int) $item->id,
             'line_total' => $lineTotal,
             'gst_amount' => (float) ($apportioned[$item->id] ?? 0.0),
@@ -414,7 +425,14 @@ class PricingEngine
             'rate'       => $goldRate,
             'making'     => $making,
             'stone'      => $stone,
-        ]];
+        ];
+        // MC-2: append mode metadata ONLY for non-fixed modes → fixed-mode
+        // canonical bytes are unchanged and historical signed quotes verify.
+        if ($input->makingType !== MakingChargeType::FIXED) {
+            $line['making_type']  = $input->makingType;
+            $line['making_value'] = (float) $input->makingValue;
+        }
+        $lines = [$line];
 
         return new PricingBreakdown(
             shopId: $input->shopId,

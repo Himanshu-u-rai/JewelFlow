@@ -8,6 +8,8 @@ use App\Models\QuickBill;
 use App\Models\ShopPaymentMethod;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\PricingEngine\MakingChargeResolver;
+use App\Services\PricingEngine\MakingChargeType;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -282,6 +284,16 @@ class QuickBillService
             $wastagePercent = round(max(0, (float) Arr::get($item, 'wastage_percent', 0)), 2);
             $lineDiscount = round(max(0, (float) Arr::get($item, 'line_discount', 0)), 2);
             $metalValue = round($netWeight * $rate, 2);
+
+            // MC-3: resolve making via the one canonical helper. Default FIXED
+            // (value = the raw making_charge) → resolved == $making, byte-identical.
+            // Percentage = of metalValue; per-gram = of net weight.
+            $makingType = MakingChargeType::normalize(Arr::get($item, 'making_charge_type'));
+            $makingValue = $makingType === MakingChargeType::FIXED
+                ? $making
+                : round(max(0, (float) Arr::get($item, 'making_charge_value', 0)), 2);
+            $making = MakingChargeResolver::resolve($makingType, $makingValue, $metalValue, $netWeight);
+
             $wastageAmount = round($metalValue * ($wastagePercent / 100), 2);
             $lineTotal = round(max(0, $metalValue + $making + $stoneCharge + $hallmarkCharge + $rhodiumCharge + $otherCharge + $wastageAmount - $lineDiscount), 2);
 
@@ -296,6 +308,8 @@ class QuickBillService
                 'net_weight' => $netWeight,
                 'rate' => $rate,
                 'making_charge' => $making,
+                'making_charge_type' => $makingType === MakingChargeType::FIXED ? null : $makingType,
+                'making_charge_value' => $makingType === MakingChargeType::FIXED ? null : $makingValue,
                 'stone_charge' => $stoneCharge,
                 'hallmark_charge' => $hallmarkCharge,
                 'rhodium_charge' => $rhodiumCharge,

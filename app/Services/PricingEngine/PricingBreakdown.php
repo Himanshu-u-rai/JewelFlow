@@ -56,7 +56,7 @@ final class PricingBreakdown
     public function toCanonicalArray(): array
     {
         $lines = array_map(function (array $line): array {
-            return [
+            $out = [
                 'item_id'    => isset($line['item_id']) ? (int) $line['item_id'] : null,
                 'line_total' => self::money($line['line_total'] ?? 0.0),
                 'gst_amount' => self::money($line['gst_amount'] ?? 0.0),
@@ -65,6 +65,17 @@ final class PricingBreakdown
                 'making'     => isset($line['making']) ? self::money($line['making']) : null,
                 'stone'      => isset($line['stone']) ? self::money($line['stone']) : null,
             ];
+
+            // MC-2 append-only extension: emit mode metadata ONLY when present
+            // (non-fixed modes). Absent ⇒ byte-identical to pre-MC canonical so
+            // historical signed quotes keep verifying. NEVER insert these keys
+            // before `stone` and NEVER reorder the keys above.
+            if (isset($line['making_type']) && $line['making_type'] !== null) {
+                $out['making_type']  = (string) $line['making_type'];
+                $out['making_value'] = self::money($line['making_value'] ?? 0.0);
+            }
+
+            return $out;
         }, $this->lines);
 
         return [

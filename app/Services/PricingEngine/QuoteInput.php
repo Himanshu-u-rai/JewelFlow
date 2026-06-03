@@ -31,9 +31,19 @@ final class QuoteInput
         public readonly float $stone = 0.0,
         public readonly float $creditOffset = 0.0,
         public readonly string $client = 'web',
+        // MC-2 additive: making-charge mode + raw value. Default FIXED with
+        // makingValue mirroring $making → byte-identical to pre-MC behaviour.
+        public readonly string $makingType = MakingChargeType::FIXED,
+        public readonly ?float $makingValue = null,
     ) {
         if (! in_array($mode, [self::MODE_RETAILER, self::MODE_MANUFACTURER], true)) {
             throw new InvalidArgumentException("QuoteInput mode must be 'retailer' or 'manufacturer'.");
+        }
+        if (! MakingChargeType::isValid($makingType)) {
+            throw new InvalidArgumentException("QuoteInput makingType must be one of: " . implode(', ', MakingChargeType::all()) . '.');
+        }
+        if ($makingValue !== null && $makingValue < 0) {
+            throw new InvalidArgumentException('QuoteInput makingValue must be >= 0.');
         }
         if ($shopId <= 0) {
             throw new InvalidArgumentException('QuoteInput shopId must be a positive integer.');
@@ -90,7 +100,15 @@ final class QuoteInput
         float $manualDiscount = 0.0,
         float $creditOffset = 0.0,
         string $client = 'web',
+        string $makingType = MakingChargeType::FIXED,
+        ?float $makingValue = null,
     ): self {
+        // For fixed mode the raw value IS the rupee amount ($making); for
+        // percentage/per-gram the caller supplies makingValue (% or ₹/g).
+        $resolvedValue = $makingType === MakingChargeType::FIXED
+            ? round(max(0.0, $makingValue ?? $making), 2)
+            : round(max(0.0, (float) ($makingValue ?? 0.0)), 2);
+
         return new self(
             shopId: $shopId,
             customerId: $customerId,
@@ -102,6 +120,8 @@ final class QuoteInput
             stone: round(max(0.0, $stone), 2),
             creditOffset: round(max(0.0, $creditOffset), 2),
             client: $client,
+            makingType: $makingType,
+            makingValue: $resolvedValue,
         );
     }
 
@@ -129,6 +149,13 @@ final class QuoteInput
             $base['making']        = $this->making;
             $base['stone']         = $this->stone;
             $base['credit_offset'] = $this->creditOffset;
+
+            // MC-2: append mode metadata ONLY for non-fixed modes, so fixed-mode
+            // input_payload stays byte-identical to pre-MC stored quotes.
+            if ($this->makingType !== MakingChargeType::FIXED) {
+                $base['making_type']  = $this->makingType;
+                $base['making_value'] = $this->makingValue;
+            }
         }
 
         return $base;
@@ -161,6 +188,9 @@ final class QuoteInput
             manualDiscount: (float) ($payload['manual_discount'] ?? 0),
             creditOffset: (float) ($payload['credit_offset'] ?? 0),
             client: (string) ($payload['client'] ?? 'web'),
+            // MC-2: absent ⇒ fixed (legacy/pre-MC payloads replay identically).
+            makingType: MakingChargeType::normalize($payload['making_type'] ?? null),
+            makingValue: isset($payload['making_value']) ? (float) $payload['making_value'] : null,
         );
     }
 }
