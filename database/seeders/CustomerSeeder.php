@@ -12,7 +12,7 @@ class CustomerSeeder extends Seeder
 {
     public function run(): void
     {
-        $shops = Shop::query()->get(['id']);
+        $shops = Shop::query()->where('name', 'Goldlux')->get(['id']);
 
         if ($shops->isEmpty()) {
             $this->command?->warn('CustomerSeeder: no shops found, nothing seeded.');
