@@ -36,7 +36,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory): int
+    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -59,6 +59,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateReconciliation((int) $shopId, $period, $gst, $sales);
             $failures += $this->validateReceivables((int) $shopId, $receivables);
             $failures += $this->validateInventory((int) $shopId, $inventory);
+            $failures += $this->validateKarigar((int) $shopId, $karigar);
         }
 
         $this->newLine();
@@ -357,6 +358,38 @@ class ValidateReportTotals extends Command
             'DS-2 total value == in_stock cost (independent recompute)',
             abs($independent - $ds->totalValue) <= self::TOLERANCE,
             'independent=' . $independent . ' service=' . $ds->totalValue
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Karigar settlement invariants (Phase 2 M4, #13). Point-in-time.
+     */
+    private function validateKarigar(int $shopId, \App\Reporting\KarigarService $karigar): int
+    {
+        $failures = 0;
+        $s = $karigar->settlement($shopId);
+
+        // KAR-1 — per-karigar payables sum to the reported total.
+        $rowSum = round((float) $s->rows->sum('outstanding_payable'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'KAR-1 karigar payables sum to total',
+            abs($rowSum - $s->totalOutstandingPayable) <= self::TOLERANCE,
+            'rows=' . $rowSum . ' total=' . $s->totalOutstandingPayable
+        );
+
+        // KAR-2 — total payable == independent Σ(total_after_tax − amount_paid).
+        $independent = round((float) DB::table('karigar_invoices')
+            ->where('shop_id', $shopId)
+            ->selectRaw('COALESCE(SUM(total_after_tax - COALESCE(amount_paid,0)), 0) as payable')
+            ->value('payable'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'KAR-2 payable == invoiced − paid (independent recompute)',
+            abs($independent - $s->totalOutstandingPayable) <= self::TOLERANCE,
+            'independent=' . $independent . ' service=' . $s->totalOutstandingPayable
         );
 
         return $failures;

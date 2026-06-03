@@ -438,6 +438,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/inventory-valuation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuationCsv'])->middleware('can:reports.view')->name('report.inventory-valuation.csv');
     Route::get('/report/dead-stock', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'deadStock'])->middleware('can:reports.view')->name('report.dead-stock');
     Route::get('/report/dead-stock/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'deadStockCsv'])->middleware('can:reports.view')->name('report.dead-stock.csv');
+    Route::get('/report/karigar-settlement', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'settlement'])->middleware('can:reports.view')->name('report.karigar-settlement');
+    Route::get('/report/karigar-settlement/export', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'settlementCsv'])->middleware('can:reports.view')->name('report.karigar-settlement.csv');
     Route::get('/report/dues-aging', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'duesAging'])->middleware('can:reports.view')->name('report.dues-aging');
     Route::get('/report/dues-aging/export', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'duesAgingCsv'])->middleware('can:reports.view')->name('report.dues-aging.csv');
     Route::get('/report/emi', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'emi'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.emi');
