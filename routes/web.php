@@ -442,6 +442,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/emi/export', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'emiCsv'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.emi.csv');
     Route::get('/report/scheme-liability', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'schemeLiability'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.scheme-liability');
     Route::get('/report/scheme-liability/export', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'schemeLiabilityCsv'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.scheme-liability.csv');
+    Route::get('/report/metal-liability', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'metalLiability'])->middleware('can:reports.view')->name('report.metal-liability');
+    Route::get('/report/metal-liability/export', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'metalLiabilityCsv'])->middleware('can:reports.view')->name('report.metal-liability.csv');
     Route::get('/report/closing', [\App\Http\Controllers\ClosingController::class, 'index'])->middleware('can:reports.daily_closing')->name('report.closing');
     Route::get('/report/repairs', [RepairReportController::class, 'index'])->middleware('can:reports.view')->name('report.repairs');
     Route::get('/report/reference-prices', [\App\Http\Controllers\ReferencePriceHistoryController::class, 'index'])->middleware('can:reports.view')->name('report.reference-prices');

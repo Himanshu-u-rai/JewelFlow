@@ -305,6 +305,28 @@ class ValidateReportTotals extends Command
             'independent=' . $schIndependent . ' service=' . $sch->totalLiability
         );
 
+        // #11 Metal / old-gold liability (fine grams).
+        $metal = $receivables->metalLiability($shopId);
+
+        // MTL-1 — per-customer gross deposits sum to the reported gross total.
+        $depSum = round((float) $metal->rows->sum('fine_deposited'), 4);
+        $failures += $this->assert(
+            $shopId,
+            'MTL-1 per-customer deposits sum to gross deposited',
+            abs($depSum - $metal->totalDeposited) <= self::TOLERANCE,
+            'rows=' . $depSum . ' total=' . $metal->totalDeposited
+        );
+
+        // MTL-2 — advance liability is non-negative and covered by gold on hand
+        // (the customer_advance lot is a subset of all lots).
+        $failures += $this->assert(
+            $shopId,
+            'MTL-2 advance liability >= 0 and <= vault on hand',
+            $metal->totalAdvanceLiability >= -self::TOLERANCE
+                && $metal->totalAdvanceLiability <= $metal->vaultOnHandFine + self::TOLERANCE,
+            'liability=' . $metal->totalAdvanceLiability . ' onHand=' . $metal->vaultOnHandFine
+        );
+
         return $failures;
     }
 

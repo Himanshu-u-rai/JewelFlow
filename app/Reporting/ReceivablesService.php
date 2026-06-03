@@ -5,6 +5,7 @@ namespace App\Reporting;
 use App\Models\Invoice;
 use App\Reporting\Data\DuesAgingData;
 use App\Reporting\Data\EmiData;
+use App\Reporting\Data\MetalLiabilityData;
 use App\Reporting\Data\SchemeLiabilityData;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -242,6 +243,56 @@ class ReceivablesService
             bonusAccrued: round($bonusAccrued, 2),
             enrollmentCount: $rows->count(),
             maturedCount: $maturedCount,
+        );
+    }
+
+    /**
+     * #11 Metal / old-gold liability — fine gold the shop owes customers from
+     * advance deposits. NET liability is the pooled customer_advance lot's
+     * remaining; per-customer rows are GROSS deposited. Old gold accepted at POS
+     * is shop stock (informational). All figures are fine grams.
+     */
+    public function metalLiability(int $shopId): MetalLiabilityData
+    {
+        $advanceLiability = round((float) DB::table('metal_lots')
+            ->where('shop_id', $shopId)
+            ->where('source', 'customer_advance')
+            ->sum('fine_weight_remaining'), 4);
+
+        $deposits = DB::table('customer_gold_transactions as t')
+            ->where('t.shop_id', $shopId)
+            ->where('t.type', 'advance')
+            ->leftJoin('customers as c', 'c.id', '=', 't.customer_id')
+            ->groupBy('t.customer_id', 'c.first_name', 'c.last_name')
+            ->select(
+                DB::raw("COALESCE(NULLIF(TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), ''), 'Walk-in') as customer_name"),
+                DB::raw('SUM(t.fine_gold) as fine')
+            )
+            ->orderByDesc('fine')
+            ->get()
+            ->map(fn ($r) => (object) [
+                'customer_name'  => $r->customer_name,
+                'fine_deposited' => round((float) $r->fine, 4),
+            ]);
+
+        $totalDeposited = round((float) $deposits->sum('fine_deposited'), 4);
+
+        $oldGoldAccepted = round((float) DB::table('customer_gold_transactions')
+            ->where('shop_id', $shopId)
+            ->where('type', 'old_metal_in')
+            ->sum('fine_gold'), 4);
+
+        $vaultOnHand = round((float) DB::table('metal_lots')
+            ->where('shop_id', $shopId)
+            ->sum('fine_weight_remaining'), 4);
+
+        return new MetalLiabilityData(
+            rows: $deposits,
+            totalAdvanceLiability: $advanceLiability,
+            totalDeposited: $totalDeposited,
+            oldGoldAcceptedFine: $oldGoldAccepted,
+            vaultOnHandFine: $vaultOnHand,
+            customerCount: $deposits->count(),
         );
     }
 }

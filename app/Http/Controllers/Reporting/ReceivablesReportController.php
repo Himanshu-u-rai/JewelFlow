@@ -123,4 +123,26 @@ class ReceivablesReportController extends Controller
 
         return CsvReportExporter::fromRows('scheme-liability-' . now()->format('Y-m-d') . '.csv', $headers, $rows);
     }
+
+    // ---- #11 Metal / old-gold liability ----
+
+    public function metalLiability()
+    {
+        $data = $this->receivables->metalLiability($this->shopId());
+
+        return view('reports.metal-liability', ['data' => $data]);
+    }
+
+    public function metalLiabilityCsv()
+    {
+        $data = $this->receivables->metalLiability($this->shopId());
+
+        $headers = ['Customer', 'Fine Gold Deposited (g)'];
+        $rows = $data->rows->map(fn ($r) => [
+            $r->customer_name,
+            number_format($r->fine_deposited, 4, '.', ''),
+        ])->all();
+
+        return CsvReportExporter::fromRows('metal-liability-' . now()->format('Y-m-d') . '.csv', $headers, $rows);
+    }
 }

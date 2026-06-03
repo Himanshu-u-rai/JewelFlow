@@ -187,4 +187,53 @@ class ReceivablesReportTest extends TestCase
         $this->assertEqualsWithDelta(1000.0, $data->bonusAccrued, 0.01);
         $this->assertEqualsWithDelta($data->totalLiability, (float) $data->rows->sum('current_balance'), 0.01);
     }
+
+    private function goldTxn(int $shopId, int $customerId, string $type, float $fineGold): void
+    {
+        DB::table('customer_gold_transactions')->insert([
+            'shop_id' => $shopId, 'customer_id' => $customerId, 'fine_gold' => $fineGold,
+            'gross_weight' => $fineGold, 'purity' => 24, 'type' => $type,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    private function lot(int $shopId, string $source, float $remaining): void
+    {
+        DB::table('metal_lots')->insert([
+            'shop_id' => $shopId, 'source' => $source, 'purity' => 24,
+            'fine_weight_total' => $remaining, 'fine_weight_remaining' => $remaining,
+            'cost_per_fine_gram' => 6000, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    public function test_metal_liability_advances_vs_old_gold(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $c1 = $this->createCustomer($shop->id);
+        $c2 = $this->createCustomer($shop->id);
+
+        // Per-customer gross advance deposits.
+        $this->goldTxn($shop->id, $c1->id, 'advance', 20.0);
+        $this->goldTxn($shop->id, $c1->id, 'advance', 5.0);
+        $this->goldTxn($shop->id, $c2->id, 'advance', 10.0);
+        // Old gold accepted = shop stock, not liability.
+        $this->goldTxn($shop->id, $c1->id, 'old_metal_in', 8.0);
+
+        // Pooled customer_advance lot remaining = NET liability (some consumed).
+        $this->lot($shop->id, 'customer_advance', 30.0);
+        $this->lot($shop->id, 'purchase', 100.0);
+
+        $data = TenantContext::runFor($shop->id, fn () =>
+            app(ReceivablesService::class)->metalLiability($shop->id)
+        );
+
+        $this->assertEqualsWithDelta(30.0, $data->totalAdvanceLiability, 0.001, 'net = pooled customer_advance lot remaining');
+        $this->assertEqualsWithDelta(35.0, $data->totalDeposited, 0.001, 'gross = 20+5+10');
+        $this->assertEqualsWithDelta(8.0, $data->oldGoldAcceptedFine, 0.001, 'old gold is informational, excluded from liability');
+        $this->assertEqualsWithDelta(130.0, $data->vaultOnHandFine, 0.001, '30 + 100');
+        $this->assertSame(2, $data->customerCount);
+        $this->assertEqualsWithDelta($data->totalDeposited, (float) $data->rows->sum('fine_deposited'), 0.001);
+        // Liability is a subset of on-hand gold (coverage invariant).
+        $this->assertLessThanOrEqual($data->vaultOnHandFine + 0.001, $data->totalAdvanceLiability);
+    }
 }
