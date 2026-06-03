@@ -25,7 +25,7 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner max-w-[1440px] mx-auto" x-data="quickBillForm({
+    <div class="content-inner max-w-[1380px] mx-auto" x-data="quickBillForm({
         customers: @js($customerDirectory),
         items: @js($initialItems),
         payments: @js($initialPayments),
@@ -64,8 +64,8 @@
                 @method('PUT')
             @endif
 
-            <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
-                <div class="space-y-6 xl:col-span-8">
+            <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+                <div class="space-y-6 min-w-0">
                     <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
                         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-7">
                             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-12">
@@ -302,7 +302,7 @@
 
                 </div>
 
-                <div class="space-y-6 xl:sticky xl:top-6 xl:col-span-4">
+                <div class="space-y-6 xl:sticky xl:top-6">
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                         <input type="hidden" name="pricing_mode" :value="pricingMode">
 
