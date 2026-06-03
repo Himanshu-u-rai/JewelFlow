@@ -25,6 +25,15 @@
         </div>
     </x-page-header>
 
+    {{-- Two-column layout via raw CSS so it never depends on which Tailwind
+         arbitrary/responsive utilities made it into the pre-built bundle. --}}
+    <style>
+        .qb-grid { display: flex; flex-direction: column; gap: 1.5rem; }
+        @media (min-width: 1280px) {
+            .qb-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+            .qb-sidebar { position: sticky; top: 1.5rem; }
+        }
+    </style>
     <div class="content-inner max-w-[1380px] mx-auto" x-data="quickBillForm({
         customers: @js($customerDirectory),
         items: @js($initialItems),
@@ -64,7 +73,7 @@
                 @method('PUT')
             @endif
 
-            <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div class="qb-grid">
                 <div class="space-y-6 min-w-0">
                     <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
                         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-7">
@@ -302,7 +311,7 @@
 
                 </div>
 
-                <div class="space-y-6 xl:sticky xl:top-6">
+                <div class="space-y-6 qb-sidebar">
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                         <input type="hidden" name="pricing_mode" :value="pricingMode">
 
