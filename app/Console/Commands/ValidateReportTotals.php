@@ -36,7 +36,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables): int
+    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -58,6 +58,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateTaxPack((int) $shopId, $period, $gst, $tax);
             $failures += $this->validateReconciliation((int) $shopId, $period, $gst, $sales);
             $failures += $this->validateReceivables((int) $shopId, $receivables);
+            $failures += $this->validateInventory((int) $shopId, $inventory);
         }
 
         $this->newLine();
@@ -325,6 +326,37 @@ class ValidateReportTotals extends Command
             $metal->totalAdvanceLiability >= -self::TOLERANCE
                 && $metal->totalAdvanceLiability <= $metal->vaultOnHandFine + self::TOLERANCE,
             'liability=' . $metal->totalAdvanceLiability . ' onHand=' . $metal->vaultOnHandFine
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Inventory invariants (Phase 2 M4, #12 — dead stock aging). Point-in-time.
+     */
+    private function validateInventory(int $shopId, \App\Reporting\InventoryService $inventory): int
+    {
+        $failures = 0;
+        $ds = $inventory->deadStock($shopId);
+
+        // DS-1 — the four age buckets sum to the reported total value.
+        $bucketSum = round($ds->freshValue + $ds->agingValue + $ds->staleValue + $ds->deadValue, 2);
+        $failures += $this->assert(
+            $shopId,
+            'DS-1 dead-stock buckets sum to total value',
+            abs($bucketSum - $ds->totalValue) <= self::TOLERANCE,
+            'buckets=' . $bucketSum . ' total=' . $ds->totalValue
+        );
+
+        // DS-2 — total matches an independent Σ cost_price of in_stock items.
+        $independent = round((float) DB::table('items')
+            ->where('shop_id', $shopId)->where('status', 'in_stock')
+            ->sum(DB::raw('COALESCE(cost_price, 0)')), 2);
+        $failures += $this->assert(
+            $shopId,
+            'DS-2 total value == in_stock cost (independent recompute)',
+            abs($independent - $ds->totalValue) <= self::TOLERANCE,
+            'independent=' . $independent . ' service=' . $ds->totalValue
         );
 
         return $failures;

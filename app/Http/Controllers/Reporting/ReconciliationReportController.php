@@ -137,4 +137,31 @@ class ReconciliationReportController extends Controller
 
         return CsvReportExporter::fromRows('inventory-valuation-' . now()->format('Y-m-d') . '.csv', ['Inventory Valuation'], $rows);
     }
+
+    // ---- #12 Dead stock / inventory aging ----
+
+    public function deadStock()
+    {
+        $data = $this->inventory->deadStock($this->shopId());
+
+        return view('reports.dead-stock', ['data' => $data]);
+    }
+
+    public function deadStockCsv()
+    {
+        $data = $this->inventory->deadStock($this->shopId());
+
+        $headers = ['Barcode', 'Design', 'Category', 'Metal', 'Cost', 'Age (days)', 'Stocked'];
+        $rows = $data->oldest->map(fn ($i) => [
+            $i->barcode,
+            $i->design,
+            $i->category,
+            $i->metal_type,
+            number_format($i->cost_price, 2, '.', ''),
+            $i->age_days,
+            \Carbon\Carbon::parse($i->created_at)->format('Y-m-d'),
+        ])->all();
+
+        return CsvReportExporter::fromRows('dead-stock-' . $data->asOf . '.csv', $headers, $rows);
+    }
 }
