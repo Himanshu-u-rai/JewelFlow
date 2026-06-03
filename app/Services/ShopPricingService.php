@@ -9,6 +9,8 @@ use App\Models\Shop;
 use App\Models\ShopDailyMetalRate;
 use App\Models\ShopMetalPurityProfile;
 use App\Models\ShopPreferences;
+use App\Services\PricingEngine\MakingChargeResolver;
+use App\Services\PricingEngine\MakingChargeType;
 use Carbon\CarbonInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -477,6 +479,10 @@ class ShopPricingService
                 'cost_price'             => $costPrice,
                 'overhead_cost'          => $overheadCost,
                 'selling_price'          => $sellingPrice,
+                // Piece-price has no metal rate → making stays fixed.
+                'making_charges'         => $makingCharges,
+                'making_charge_type'     => null,
+                'making_charge_value'    => null,
             ];
         }
 
@@ -491,13 +497,19 @@ class ShopPricingService
             throw new LogicException('Could not resolve today\'s rate for the selected purity.');
         }
 
-        $makingCharges   = round((float) ($attributes['making_charges']   ?? 0), 2);
         $stoneCharges    = round((float) ($attributes['stone_charges']    ?? 0), 2);
         $hallmarkCharges = round((float) ($attributes['hallmark_charges'] ?? 0), 2);
         $rhodiumCharges  = round((float) ($attributes['rhodium_charges']  ?? 0), 2);
         $otherCharges    = round((float) ($attributes['other_charges']    ?? 0), 2);
 
         $metalCost    = $this->costPriceFromResolvedRate($netMetalWeight, $resolvedRate);
+
+        // MC-5: resolve making at REGISTRATION (rate is known here) and bake it
+        // into selling_price. Percentage = of metal cost; per-gram = of net
+        // weight. The sale path stays rate-free — this is the only place a
+        // retailer making mode resolves. Flag OFF ⇒ flat input (byte-identical).
+        [$makingCharges, $mcType, $mcValue] = $this->resolveRetailerMaking($attributes, $metalCost, $netMetalWeight);
+
         $overheadCost = round($makingCharges + $stoneCharges + $hallmarkCharges + $rhodiumCharges + $otherCharges, 2);
         $sellingPrice = round($metalCost + $overheadCost, 2);
 
@@ -509,7 +521,36 @@ class ShopPricingService
             'cost_price'             => $metalCost,
             'overhead_cost'          => $overheadCost,
             'selling_price'          => $sellingPrice,
+            'making_charges'         => $makingCharges,
+            'making_charge_type'     => $mcType,
+            'making_charge_value'    => $mcValue,
         ];
+    }
+
+    /**
+     * MC-5: resolve a retailer item's making charge at registration.
+     * Flag-gated; returns [resolvedMaking, type|null, value|null]. NULL type
+     * means fixed — the flat making_charges input is used as-is (legacy).
+     *
+     * @return array{0:float,1:?string,2:?float}
+     */
+    private function resolveRetailerMaking(array $attributes, float $metalValue, float $netWeight): array
+    {
+        $flat = round((float) ($attributes['making_charges'] ?? 0), 2);
+
+        if (! config('features.making_charge_modes', false)) {
+            return [$flat, null, null];
+        }
+
+        $type = MakingChargeType::normalize($attributes['making_charge_type'] ?? null);
+        if ($type === MakingChargeType::FIXED) {
+            return [$flat, null, null];
+        }
+
+        $value    = round(max(0.0, (float) ($attributes['making_charge_value'] ?? 0)), 2);
+        $resolved = MakingChargeResolver::resolve($type, $value, $metalValue, $netWeight);
+
+        return [$resolved, $type, $value];
     }
 
     public function repriceInStockItems(int $shopId): int

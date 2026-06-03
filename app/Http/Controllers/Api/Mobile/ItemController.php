@@ -90,6 +90,8 @@ class ItemController extends Controller
             'category' => 'sometimes|required|string|max:255',
             'sub_category' => 'nullable|string|max:255',
             'making_charges' => 'nullable|numeric|min:0',
+            'making_charge_type' => 'nullable|string|in:fixed,percentage,per_gram',
+            'making_charge_value' => 'nullable|numeric|min:0|max:9999999.99',
             'stone_charges' => 'nullable|numeric|min:0',
             'image_base64'    => 'nullable|string',
             'image_upload_id' => 'nullable|string|max:80',
@@ -242,6 +244,10 @@ class ItemController extends Controller
                     $updates['purity'] = $retailerPricing['purity'];
                     $updates['cost_price'] = $retailerPricing['cost_price'];
                     $updates['selling_price'] = $retailerPricing['selling_price'];
+                    // MC-5: persist the resolved making + mode (== flat input when flag off).
+                    $updates['making_charges'] = $retailerPricing['making_charges'] ?? $updates['making_charges'] ?? $item->making_charges;
+                    $updates['making_charge_type'] = $retailerPricing['making_charge_type'] ?? null;
+                    $updates['making_charge_value'] = $retailerPricing['making_charge_value'] ?? null;
                     $updates['hallmark_charges'] = array_key_exists('hallmark_charges', $validated) ? $validated['hallmark_charges'] : $item->hallmark_charges;
                     $updates['rhodium_charges'] = array_key_exists('rhodium_charges', $validated) ? $validated['rhodium_charges'] : $item->rhodium_charges;
                     $updates['other_charges'] = array_key_exists('other_charges', $validated) ? $validated['other_charges'] : $item->other_charges;
@@ -473,7 +479,12 @@ class ItemController extends Controller
                 'stone_weight' => $validated['stone_weight'] ?? 0,
                 'net_metal_weight' => $netMetalWeight,
                 'purity' => $pricingPayload['purity'] ?? $validated['purity'],
-                'making_charges' => $validated['making_charges'] ?? 0,
+                // MC-5: retailer making resolved at registration (== flat input when flag off).
+                'making_charges' => $isRetailer
+                    ? ($pricingPayload['making_charges'] ?? ($validated['making_charges'] ?? 0))
+                    : ($validated['making_charges'] ?? 0),
+                'making_charge_type' => $isRetailer ? ($pricingPayload['making_charge_type'] ?? null) : null,
+                'making_charge_value' => $isRetailer ? ($pricingPayload['making_charge_value'] ?? null) : null,
                 'stone_charges' => $validated['stone_charges'] ?? 0,
                 'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
                 'rhodium_charges' => $validated['rhodium_charges'] ?? 0,

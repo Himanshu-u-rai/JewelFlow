@@ -328,7 +328,10 @@ class ItemController extends Controller
                     'stone_weight' => $validated['stone_weight'] ?? 0,
                     'net_metal_weight' => $pricing['net_metal_weight'],
                     'purity' => $pricing['purity'],
-                    'making_charges' => $validated['making_charges'] ?? 0,
+                    // MC-5: resolved making (== flat input when flag off / fixed) + mode snapshot.
+                    'making_charges' => $pricing['making_charges'] ?? ($validated['making_charges'] ?? 0),
+                    'making_charge_type' => $pricing['making_charge_type'] ?? null,
+                    'making_charge_value' => $pricing['making_charge_value'] ?? null,
                     'stone_charges' => $validated['stone_charges'] ?? 0,
                     'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
                     'rhodium_charges' => $validated['rhodium_charges'] ?? 0,
@@ -631,7 +634,10 @@ class ItemController extends Controller
                     'purity' => $pricing['purity'],
                     'cost_price' => $pricing['cost_price'],
                     'selling_price' => $pricing['selling_price'],
-                    'making_charges' => $validated['making_charges'] ?? 0,
+                    // MC-5: resolved making (== flat input when flag off / fixed) + mode snapshot.
+                    'making_charges' => $pricing['making_charges'] ?? ($validated['making_charges'] ?? 0),
+                    'making_charge_type' => $pricing['making_charge_type'] ?? null,
+                    'making_charge_value' => $pricing['making_charge_value'] ?? null,
                     'stone_charges' => $validated['stone_charges'] ?? 0,
                     'hallmark_charges' => $validated['hallmark_charges'] ?? 0,
                     'rhodium_charges' => $validated['rhodium_charges'] ?? 0,

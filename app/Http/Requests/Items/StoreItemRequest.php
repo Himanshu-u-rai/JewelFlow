@@ -55,6 +55,8 @@ abstract class StoreItemRequest extends FormRequest
             'cost_price' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'making_charges' => 'nullable|numeric|min:0',
+            'making_charge_type' => 'nullable|string|in:fixed,percentage,per_gram',
+            'making_charge_value' => 'nullable|numeric|min:0|max:9999999.99',
             'stone_charges' => 'nullable|numeric|min:0',
             'hallmark_charges' => 'nullable|numeric|min:0',
             'rhodium_charges' => 'nullable|numeric|min:0',
