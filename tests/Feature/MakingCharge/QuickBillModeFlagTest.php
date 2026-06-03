@@ -65,6 +65,27 @@ class QuickBillModeFlagTest extends TestCase
         $this->assertEqualsWithDelta(4625.00, (float) $line->line_total, 0.01);
     }
 
+    public function test_upi_payment_persists_selected_method(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $methodId = (int) \Illuminate\Support\Facades\DB::table('shop_payment_methods')->insertGetId([
+            'shop_id' => $shop->id, 'type' => 'upi', 'name' => 'GPay',
+            'is_active' => \Illuminate\Support\Facades\DB::raw('true'),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $shopModel = Shop::withoutGlobalScopes()->findOrFail($shop->id);
+
+        $bill = TenantContext::runFor($shop->id, fn () => app(QuickBillService::class)->create($shopModel, $user, [
+            'pricing_mode' => 'no_gst',
+            'items' => [['description' => 'Ring', 'net_weight' => 10, 'rate' => 6000, 'metal_type' => 'gold', 'purity' => '22K']],
+            'payments' => [['payment_mode' => 'UPI', 'payment_method_id' => $methodId, 'amount' => 100]],
+        ]));
+
+        $pay = TenantContext::runFor($shop->id, fn () => $bill->payments()->first());
+        $this->assertSame($methodId, (int) $pay->payment_method_id);
+        $this->assertSame('upi', $pay->payment_mode);
+    }
+
     public function test_platinum_is_piece_priced_no_purity_factor(): void
     {
         [$user, $shop] = $this->createRetailerTenant();

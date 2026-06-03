@@ -173,6 +173,7 @@ class QuickBillController extends Controller
             'items.*.line_discount' => 'nullable|numeric|min:0|max:9999999.99',
             'payments' => 'nullable|array',
             'payments.*.payment_mode' => 'nullable|string|max:30',
+            'payments.*.payment_method_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('shop_payment_methods', 'id')->where('shop_id', auth()->user()->shop_id)],
             'payments.*.reference_no' => 'nullable|string|max:100',
             'payments.*.amount' => 'nullable|numeric|min:0|max:9999999.99',
             'payments.*.notes' => 'nullable|string|max:500',
@@ -255,6 +256,20 @@ class QuickBillController extends Controller
         // purity field (no profiles), and the purity factor stays 1 for them.
         $enabledMetals = \App\Services\MetalRegistry::enabledMetalsForShop($shopId);
 
+        // Shop's saved UPI / Bank / Wallet accounts → method picker on payment
+        // rows (same as POS). QuickBillService already requires + validates a
+        // method id for upi/bank/wallet modes.
+        $paymentMethods = \App\Models\ShopPaymentMethod::where('shop_id', $shopId)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($m) => [
+                'id' => (int) $m->id,
+                'type' => (string) $m->type,
+                'label' => trim($m->name . ($m->account_label ? ' · ' . $m->account_label : '')),
+            ])->values()->all();
+
         return [
             'quickBill' => $quickBill,
             'customers' => $customers,
@@ -262,6 +277,7 @@ class QuickBillController extends Controller
             'initialPayments' => $initialPayments,
             'purityProfiles' => $purityProfiles,
             'enabledMetals' => array_values($enabledMetals),
+            'paymentMethods' => $paymentMethods,
         ];
     }
 }

@@ -130,6 +130,7 @@
         payments: @js($initialPayments),
         purityProfiles: @js($purityProfiles ?? []),
         enabledMetals: @js($enabledMetals ?? []),
+        paymentMethods: @js($paymentMethods ?? []),
         selectedCustomerId: @js(old('customer_id', $quickBill->customer_id)),
         customerName: @js(old('customer_name', $quickBill->customer_name)),
         customerMobile: @js(old('customer_mobile', $quickBill->customer_mobile)),
@@ -521,11 +522,12 @@
                             <template x-for="(payment, index) in payments" :key="index">
                                 <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-3 space-y-2">
                                     <div class="flex items-center gap-2">
-                                        <select :name="'payments['+index+'][payment_mode]'" x-model="payment.payment_mode" class="flex-1 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 font-medium">
+                                        <select :name="'payments['+index+'][payment_mode]'" x-model="payment.payment_mode" @change="onPaymentModeChange(payment)" class="flex-1 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 font-medium">
                                             <option value="Cash">Cash</option>
                                             <option value="UPI">UPI</option>
                                             <option value="Card">Card</option>
                                             <option value="Bank">Bank</option>
+                                            <option value="Wallet">Wallet</option>
                                             <option value="Other">Other</option>
                                         </select>
                                         <input :name="'payments['+index+'][amount]'" x-model.number="payment.amount" type="number" step="0.01" min="0" placeholder="Amount" class="w-32 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 font-bold text-right">
@@ -533,6 +535,16 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
                                     </div>
+                                    {{-- UPI / Bank / Wallet → pick the saved account from shop settings. --}}
+                                    <template x-if="needsMethod(payment.payment_mode)">
+                                        <div>
+                                            <select :name="'payments['+index+'][payment_method_id]'" x-model="payment.payment_method_id" class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900">
+                                                <option value="">Select account…</option>
+                                                <template x-for="m in methodsForType(payment.payment_mode)" :key="m.id"><option :value="m.id" x-text="m.label"></option></template>
+                                            </select>
+                                            <p x-show="methodsForType(payment.payment_mode).length === 0" class="mt-1 text-[11px] text-amber-600">No <span x-text="payment.payment_mode"></span> account in Settings — add one to record this.</p>
+                                        </div>
+                                    </template>
                                     <input :name="'payments['+index+'][reference_no]'" x-model="payment.reference_no" type="text" placeholder="Ref / note (e.g. Transaction ID)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-600">
                                     <input type="hidden" :name="'payments['+index+'][notes]'" x-model="payment.notes">
                                 </div>
@@ -637,6 +649,7 @@
                 customers: config.customers || [],
                 purityProfiles: config.purityProfiles || [],
                 enabledMetals: config.enabledMetals || [],
+                paymentMethods: config.paymentMethods || [],
                 selectedCustomerId: config.selectedCustomerId ? String(config.selectedCustomerId) : '',
                 customerName: config.customerName || '',
                 customerMobile: config.customerMobile || '',
@@ -652,7 +665,8 @@
                     Number(item.hallmark_charge || 0) > 0 || Number(item.rhodium_charge || 0) > 0 || Number(item.other_charge || 0) > 0
                 )),
                 payments: (config.payments || []).map(payment => ({
-                    payment_mode: payment.payment_mode || 'Cash',
+                    payment_mode: ({ cash: 'Cash', upi: 'UPI', card: 'Card', bank: 'Bank', wallet: 'Wallet', other: 'Other' })[String(payment.payment_mode || '').toLowerCase()] || (payment.payment_mode || 'Cash'),
+                    payment_method_id: payment.payment_method_id || '',
                     reference_no: payment.reference_no || '',
                     amount: Number(payment.amount || 0),
                     notes: payment.notes || '',
@@ -678,6 +692,7 @@
                 addPayment() {
                     this.payments.push({
                         payment_mode: 'Cash',
+                        payment_method_id: '',
                         reference_no: '',
                         amount: 0,
                         notes: '',
@@ -721,6 +736,20 @@
                 onMetalChange(item) {
                     const choices = this.purityChoicesFor(item.metal_type);
                     item.purity = choices.length ? choices[0].label : '';
+                },
+                // Payment-method picker (UPI / Bank / Wallet) from shop settings.
+                needsMethod(mode) { return ['upi', 'bank', 'wallet'].includes(String(mode || '').toLowerCase()); },
+                methodsForType(mode) {
+                    const t = String(mode || '').toLowerCase();
+                    return this.paymentMethods.filter(m => m.type === t);
+                },
+                onPaymentModeChange(payment) {
+                    if (this.needsMethod(payment.payment_mode)) {
+                        const list = this.methodsForType(payment.payment_mode);
+                        payment.payment_method_id = list.length ? list[0].id : '';
+                    } else {
+                        payment.payment_method_id = '';
+                    }
                 },
                 netWeightOf(item) {
                     const gross = this.safeNumber(item.gross_weight);
