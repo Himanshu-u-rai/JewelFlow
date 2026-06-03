@@ -35,16 +35,16 @@
             border-radius: 12px;
             padding: 10px 14px;
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 600;
             transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
             white-space: nowrap;
         }
 
         .vault-action-secondary {
-            border: 1px solid #dbe3ee;
+            border: 1px solid #d9dfe8;
             background: #ffffff;
             color: #1f2a44;
-            box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
+            box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
         }
 
         .vault-action-secondary:hover {
@@ -67,30 +67,19 @@
 
         .vault-card {
             border: 1px solid #dbe3ee;
-            border-radius: 20px;
+            border-radius: 16px;
             background: #ffffff;
-            box-shadow: 0 14px 28px rgba(15, 23, 42, .06);
+            box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 12px 28px -16px rgba(16, 24, 40, .16);
             overflow: hidden;
         }
 
         .vault-summary-card {
-            position: relative;
             border: 1px solid var(--jf-border);
-            border-radius: var(--jf-radius-2xl);
-            background: linear-gradient(180deg, var(--jf-surface-accent) 0%, #ffffff 36%);
+            border-radius: 16px;
+            background: #ffffff;
             padding: 22px 22px 20px;
-            box-shadow: var(--jf-shadow-md);
+            box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 12px 28px -16px rgba(16, 24, 40, .16);
             overflow: hidden;
-        }
-
-        .vault-summary-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, transparent 0%, var(--jf-gold) 20%, var(--jf-gold-glow) 50%, var(--jf-gold) 80%, transparent 100%);
         }
 
         .vault-summary-head {
@@ -104,7 +93,7 @@
         .vault-summary-kicker {
             color: #b45309;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: .14em;
             text-transform: uppercase;
         }
@@ -113,7 +102,7 @@
             margin-top: 4px;
             color: #0f172a;
             font-size: 22px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: -.03em;
         }
 
@@ -131,10 +120,10 @@
         }
 
         .vault-summary-stat {
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-            padding: 13px 14px;
+            border: 1px solid #eef1f6;
+            border-radius: 12px;
+            background: #fafbfd;
+            padding: 14px 15px;
             min-width: 0;
         }
 
@@ -142,7 +131,7 @@
             display: block;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: .04em;
             text-transform: uppercase;
         }
@@ -153,7 +142,7 @@
             color: #0f172a;
             font-size: 22px;
             line-height: 1.1;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: -.03em;
         }
 
@@ -170,7 +159,7 @@
             margin: 0;
             color: #0f172a;
             font-size: 14px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .vault-section-copy {
@@ -191,8 +180,7 @@
             padding: 7px 12px;
             color: #0f172a;
             font-size: 12px;
-            font-weight: 900;
-            box-shadow: 0 8px 16px rgba(15, 23, 42, .05);
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -214,7 +202,7 @@
             background: var(--jf-warn-bg);
             color: var(--jf-warn-ink);
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .vault-empty-state {
@@ -225,7 +213,7 @@
         .vault-empty-title {
             color: #0f172a;
             font-size: 16px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .vault-empty-copy {
@@ -285,7 +273,7 @@
             color: #0f172a;
             text-decoration: none;
             font-size: 12px;
-            font-weight: 800;
+            font-weight: 600;
             letter-spacing: .01em;
             box-shadow: 0 14px 24px rgba(15, 23, 42, .14);
             transform: translateY(18px) scale(.92);
@@ -404,10 +392,10 @@
 
         .vault-purity-card {
             border: 1px solid #e2e8f0;
-            border-radius: 18px;
+            border-radius: 16px;
             background: #ffffff;
             padding: 16px;
-            box-shadow: 0 10px 22px rgba(15, 23, 42, .05);
+            box-shadow: 0 1px 2px rgba(16, 24, 40, .03), 0 10px 24px -16px rgba(16, 24, 40, .14);
             min-width: 0;
         }
 
@@ -418,33 +406,47 @@
             gap: 14px;
         }
 
+        /* Metal token — clean circular badge carrying the metal's identity.
+           Gold by default; silver and neutral variants for other metals. */
         .vault-purity-chip {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 52px;
-            height: 52px;
+            width: 50px;
+            height: 50px;
             border-radius: 999px;
-            border: 1px solid #f59e0b;
-            background: #fffbeb;
-            color: #92400e;
-            box-shadow: inset 0 0 0 4px #fef3c7, 0 10px 18px rgba(245, 158, 11, .16);
-            font-size: 15px;
-            font-weight: 950;
+            border: 0;
+            background: linear-gradient(150deg, #fbe9c2 0%, #e8c067 100%);
+            color: #7a4f15;
+            box-shadow: inset 0 0 0 1px rgba(122, 79, 21, .18);
+            font-size: 14px;
+            font-weight: 700;
             flex-shrink: 0;
+        }
+
+        .vault-purity-chip.is-silver {
+            background: linear-gradient(150deg, #f3f5f8 0%, #c7cfdb 100%);
+            color: #41506a;
+            box-shadow: inset 0 0 0 1px rgba(65, 80, 106, .18);
+        }
+
+        .vault-purity-chip.is-alt {
+            background: #f1f4f8;
+            color: #475569;
+            box-shadow: inset 0 0 0 1px rgba(71, 85, 105, .14);
         }
 
         .vault-label {
             margin-bottom: 4px;
             color: #64748b;
             font-size: 11px;
-            font-weight: 800;
+            font-weight: 600;
             letter-spacing: .02em;
         }
 
         .vault-value {
             color: #0f172a;
-            font-weight: 900;
+            font-weight: 700;
             line-height: 1.1;
         }
 
@@ -456,10 +458,10 @@
         }
 
         .vault-mini-stat {
-            border: 1px solid #fde68a;
-            border-radius: 14px;
-            background: #fffdf5;
-            padding: 10px 11px;
+            border: 1px solid #eef1f6;
+            border-radius: 12px;
+            background: #fafbfd;
+            padding: 11px 12px;
             min-width: 0;
         }
 
@@ -473,15 +475,15 @@
             justify-content: space-between;
             gap: 16px;
             padding: 18px 20px;
-            border-bottom: 1px solid #e2e8f0;
-            background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+            border-bottom: 1px solid #eef1f6;
+            background: #ffffff;
         }
 
         .vault-panel-title {
             margin: 0;
             color: #0f172a;
             font-size: 14px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .vault-panel-copy {
@@ -509,7 +511,7 @@
             color: #334155;
             padding: 8px 12px;
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 700;
             transition: all .16s ease;
         }
 
@@ -536,7 +538,7 @@
             background: rgba(148, 163, 184, .14);
             color: inherit;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .vault-section-panel {
@@ -577,7 +579,7 @@
             background: #f8fafc;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: .08em;
             text-transform: uppercase;
         }
@@ -588,7 +590,7 @@
         }
 
         .vault-table-link {
-            font-weight: 800;
+            font-weight: 600;
         }
 
         .vault-table-meta {
@@ -599,7 +601,7 @@
         }
 
         .vault-table-strong {
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .vault-table-status {
@@ -609,13 +611,13 @@
             border-radius: 999px;
             padding: 2px 9px;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             white-space: nowrap;
         }
 
         .vault-mobile-card {
             border: 1px solid #dbe3ee;
-            border-radius: 18px;
+            border-radius: 16px;
             background: #ffffff;
             padding: 14px;
             box-shadow: 0 8px 18px rgba(15, 23, 42, .05);
@@ -634,7 +636,7 @@
         .vault-mobile-title {
             color: #0f172a;
             font-size: 15px;
-            font-weight: 900;
+            font-weight: 700;
             line-height: 1.2;
         }
 
@@ -647,7 +649,7 @@
 
         .vault-mobile-value {
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 600;
             color: #0f172a;
         }
 
@@ -760,7 +762,7 @@
 
             .vault-summary-card,
             .vault-card {
-                border-radius: 18px;
+                border-radius: 16px;
             }
 
             .vault-summary-card {
@@ -1094,7 +1096,7 @@
                                             <h3 class="text-2xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-sm font-bold text-amber-700">fine</span></h3>
                                             <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                         </div>
-                                        <div class="vault-purity-chip">{{ $purityLabel }}</div>
+                                        <div class="vault-purity-chip {{ strtolower($row['metal_type'] ?? '') === 'gold' ? '' : (strtolower($row['metal_type'] ?? '') === 'silver' ? 'is-silver' : 'is-alt') }}">{{ $purityLabel }}</div>
                                     </div>
                                     <div class="vault-purity-stats">
                                         <div class="vault-mini-stat">
@@ -1130,7 +1132,7 @@
                                                 <h3 class="text-2xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-sm font-bold text-slate-500">fine</span></h3>
                                                 <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                             </div>
-                                            <div class="vault-purity-chip">{{ $purityLabel }}</div>
+                                            <div class="vault-purity-chip {{ strtolower($row['metal_type'] ?? '') === 'gold' ? '' : (strtolower($row['metal_type'] ?? '') === 'silver' ? 'is-silver' : 'is-alt') }}">{{ $purityLabel }}</div>
                                         </div>
                                         <div class="vault-purity-stats">
                                             <div class="vault-mini-stat">
@@ -1630,7 +1632,7 @@
                                             <h3 class="text-xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-xs font-bold text-amber-700">fine</span></h3>
                                             <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                         </div>
-                                        <div class="vault-purity-chip">{{ $purityLabel }}</div>
+                                        <div class="vault-purity-chip {{ strtolower($row['metal_type'] ?? '') === 'gold' ? '' : (strtolower($row['metal_type'] ?? '') === 'silver' ? 'is-silver' : 'is-alt') }}">{{ $purityLabel }}</div>
                                     </div>
                                     <div class="vault-purity-stats">
                                         <div class="vault-mini-stat">
@@ -1657,7 +1659,7 @@
                                             <h3 class="text-xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-xs font-bold text-slate-500">fine</span></h3>
                                             <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                         </div>
-                                        <div class="vault-purity-chip">{{ $purityLabel }}</div>
+                                        <div class="vault-purity-chip {{ strtolower($row['metal_type'] ?? '') === 'gold' ? '' : (strtolower($row['metal_type'] ?? '') === 'silver' ? 'is-silver' : 'is-alt') }}">{{ $purityLabel }}</div>
                                     </div>
                                     <div class="vault-purity-stats">
                                         <div class="vault-mini-stat">

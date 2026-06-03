@@ -66,26 +66,33 @@
     @endphp
 
     <style>
+        /* ──────────────────────────────────────────────────────────────
+           Subscription status — restrained, hairline-led surface.
+           No edge accent bars, no decorative glow, no box-in-box tinting.
+           Teal is a precise accent (status, progress, primary action),
+           not a wash. Type leans on weight + scale contrast, not all-800.
+           ────────────────────────────────────────────────────────────── */
         .sub-status-page {
-            --sub-border: #e6edf6;
-            --sub-border-strong: #d3deec;
+            --sub-border: #e7ebf1;
+            --sub-border-soft: #eef1f6;
+            --sub-border-strong: #d9dfe8;
             --sub-surface: #ffffff;
-            --sub-surface-soft: #f6f9fc;
-            --sub-text: #0c1733;
-            --sub-text-soft: #51607a;
-            --sub-text-muted: #7d8aa3;
+            --sub-ink: #0f172a;
+            --sub-ink-2: #3d4861;
+            --sub-muted: #6a7588;
             --sub-accent: #0d9488;
             --sub-accent-deep: #0f766e;
-            --sub-accent-soft: rgba(13, 148, 136, 0.10);
-            /* Layered soft shadow: crisp contact + diffuse lift. */
-            --sub-shadow: 0 1px 2px rgba(12, 23, 51, 0.04), 0 18px 40px -20px rgba(12, 23, 51, 0.22);
-            --sub-shadow-hover: 0 2px 4px rgba(12, 23, 51, 0.05), 0 26px 52px -22px rgba(12, 23, 51, 0.26);
+            --sub-accent-soft: rgba(13, 148, 136, 0.08);
+            /* Whisper shadow: a hairline border carries the structure, the
+               shadow only lifts the surface a touch off the page. */
+            --sub-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px -20px rgba(16, 24, 40, 0.20);
+            --sub-ease: cubic-bezier(0.23, 1, 0.32, 1);
         }
 
         .sub-status-page .sub-status-wrap {
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 28px;
         }
 
         /* Motion-safe entrance: base state is fully visible; the keyframe only
@@ -95,12 +102,12 @@
             .sub-status-page .sub-hero,
             .sub-status-page .sub-grid > *,
             .sub-status-page .sub-billing-section {
-                animation: subRise 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+                animation: subRise 0.5s var(--sub-ease) both;
             }
-            .sub-status-page .sub-grid > *:nth-child(2) { animation-delay: 0.06s; }
-            .sub-status-page .sub-billing-section { animation-delay: 0.12s; }
+            .sub-status-page .sub-grid > *:nth-child(2) { animation-delay: 0.05s; }
+            .sub-status-page .sub-billing-section { animation-delay: 0.1s; }
             @keyframes subRise {
-                from { opacity: 0; transform: translateY(12px); }
+                from { opacity: 0; transform: translateY(8px); }
                 to   { opacity: 1; transform: translateY(0); }
             }
         }
@@ -108,7 +115,7 @@
         .sub-status-page .sub-alert {
             border: 1px solid transparent;
             padding: 12px 14px;
-            border-radius: 18px;
+            border-radius: 12px;
             font-size: 13px;
             font-weight: 600;
         }
@@ -128,30 +135,14 @@
         .sub-status-page .sub-hero,
         .sub-status-page .sub-card {
             border: 1px solid var(--sub-border);
-            border-radius: 24px;
+            border-radius: 16px;
             background: var(--sub-surface);
             box-shadow: var(--sub-shadow);
         }
 
-        /* Hero: a quiet premium surface — soft vertical wash plus a faint teal
-           glow in the top-right corner for depth (not glass, not a gradient on
-           text). */
+        /* Hero: a calm white surface. No top accent bar, no corner glow. */
         .sub-status-page .sub-hero {
-            position: relative;
-            padding: 26px 26px 24px;
-            background:
-                radial-gradient(120% 140% at 100% 0%, rgba(13, 148, 136, 0.07) 0%, rgba(13, 148, 136, 0) 46%),
-                linear-gradient(180deg, #fcfdff 0%, #ffffff 60%);
-            overflow: hidden;
-        }
-
-        .sub-status-page .sub-hero::before {
-            content: "";
-            position: absolute;
-            inset: 0 0 auto 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--sub-accent) 0%, #2dd4bf 100%);
-            opacity: 0.9;
+            padding: 28px 28px 26px;
         }
 
         .sub-status-page .sub-hero-top {
@@ -159,32 +150,23 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .sub-status-page .sub-kicker {
-            margin: 0 0 8px;
-            color: var(--sub-accent-deep);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
+            margin-bottom: 26px;
         }
 
         .sub-status-page .sub-plan-name {
             margin: 0;
-            color: var(--sub-text);
-            font-size: 32px;
-            font-weight: 800;
-            line-height: 1.08;
+            color: var(--sub-ink);
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.12;
             letter-spacing: -0.02em;
             text-wrap: balance;
         }
 
         .sub-status-page .sub-plan-copy {
-            margin: 10px 0 0;
-            max-width: 60ch;
-            color: var(--sub-text-soft);
+            margin: 8px 0 0;
+            max-width: 58ch;
+            color: var(--sub-muted);
             font-size: 14px;
             line-height: 1.6;
             text-wrap: pretty;
@@ -194,87 +176,84 @@
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            min-height: 34px;
-            padding: 0 14px;
+            min-height: 30px;
+            padding: 0 13px;
             border-radius: 999px;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 600;
             letter-spacing: 0.01em;
             white-space: nowrap;
             flex-shrink: 0;
-            box-shadow: 0 1px 2px rgba(12, 23, 51, 0.06);
         }
 
         /* Status dot inside the pill (pure CSS, uses currentColor). */
         .sub-status-page .sub-status-pill::before {
             content: "";
-            width: 7px;
-            height: 7px;
+            width: 6px;
+            height: 6px;
             border-radius: 999px;
             background: currentColor;
-            box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
+            box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
         }
 
+        /* KPI strip: one bordered panel divided by hairline rules — a ledger,
+           not four separate tinted boxes. */
         .sub-status-page .sub-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-            margin-bottom: 18px;
+            margin-bottom: 26px;
+            border: 1px solid var(--sub-border);
+            border-radius: 12px;
+            overflow: hidden;
         }
 
         .sub-status-page .sub-kpi {
-            border: 1px solid #e9eff7;
-            background: #fbfcfe;
-            padding: 15px 16px;
-            border-radius: 16px;
-            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+            padding: 16px 18px;
+            border-right: 1px solid var(--sub-border);
         }
 
-        .sub-status-page .sub-kpi:hover {
-            border-color: var(--sub-border-strong);
-            box-shadow: 0 10px 24px -16px rgba(12, 23, 51, 0.4);
-            transform: translateY(-1px);
+        .sub-status-page .sub-kpi:last-child {
+            border-right: 0;
         }
 
         .sub-status-page .sub-kpi-label {
-            margin: 0 0 8px;
-            color: var(--sub-text-muted);
-            font-size: 10.5px;
-            font-weight: 700;
-            letter-spacing: 0.13em;
-            text-transform: uppercase;
+            margin: 0 0 7px;
+            color: var(--sub-muted);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
         }
 
         .sub-status-page .sub-kpi-value {
             margin: 0;
-            color: var(--sub-text);
-            font-size: 21px;
-            font-weight: 800;
+            color: var(--sub-ink);
+            font-size: 19px;
+            font-weight: 650;
             line-height: 1.2;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.01em;
             font-variant-numeric: tabular-nums;
         }
 
+        /* Plan health: separated from the KPI strip by a hairline, not boxed. */
         .sub-status-page .sub-health {
-            border: 1px solid #e9eff7;
-            border-radius: 18px;
-            background: linear-gradient(180deg, #fbfdfe 0%, #ffffff 100%);
-            padding: 18px;
+            border-top: 1px solid var(--sub-border-soft);
+            padding-top: 22px;
         }
 
         .sub-status-page .sub-health-head {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: space-between;
             gap: 12px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .sub-status-page .sub-health-title {
             margin: 0;
-            color: var(--sub-text);
-            font-size: 16px;
-            font-weight: 700;
+            color: var(--sub-ink);
+            font-size: 15px;
+            font-weight: 600;
             line-height: 1.3;
         }
 
@@ -282,38 +261,37 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 30px;
-            padding: 0 10px;
+            min-height: 26px;
+            padding: 0 11px;
             border-radius: 999px;
-            border: 1px solid #d6e5e2;
+            border: 1px solid #cfe6e2;
             background: var(--sub-accent-soft);
             color: #0f766e;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 600;
             white-space: nowrap;
         }
 
         .sub-status-page .sub-health-copy {
             margin: 0;
-            color: var(--sub-text-soft);
-            font-size: 14px;
+            color: var(--sub-muted);
+            font-size: 13.5px;
             line-height: 1.6;
         }
 
         .sub-status-page .sub-progress-track {
             width: 100%;
-            height: 9px;
-            margin-top: 12px;
+            height: 6px;
+            margin-top: 14px;
             border-radius: 999px;
-            background: #e8eef6;
+            background: #eceff4;
             overflow: hidden;
-            box-shadow: inset 0 1px 2px rgba(12, 23, 51, 0.06);
         }
 
         .sub-status-page .sub-progress-fill {
             height: 100%;
             border-radius: 999px;
-            background: linear-gradient(90deg, #0d9488 0%, #2dd4bf 100%);
+            background: var(--sub-accent);
             transform-origin: left center;
         }
 
@@ -321,7 +299,7 @@
            reduced motion skips straight to the final state. */
         @media (prefers-reduced-motion: no-preference) {
             .sub-status-page .sub-progress-fill {
-                animation: subFill 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+                animation: subFill 0.7s var(--sub-ease) 0.08s both;
             }
             @keyframes subFill {
                 from { transform: scaleX(0); }
@@ -332,79 +310,79 @@
         .sub-status-page .sub-grid {
             display: grid;
             grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-            gap: 16px;
+            gap: 20px;
         }
 
         .sub-status-page .sub-card-head {
-            padding: 18px 20px 0;
+            padding: 22px 24px 0;
         }
 
         .sub-status-page .sub-card-title {
             margin: 0;
-            color: var(--sub-text);
-            font-size: 20px;
-            font-weight: 800;
-            line-height: 1.2;
+            color: var(--sub-ink);
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            letter-spacing: -0.01em;
         }
 
         .sub-status-page .sub-card-copy {
-            margin: 6px 0 0;
-            color: var(--sub-text-soft);
+            margin: 5px 0 0;
+            color: var(--sub-muted);
             font-size: 13px;
             line-height: 1.55;
         }
 
         .sub-status-page .sub-card-body {
-            padding: 18px 20px 20px;
+            padding: 16px 24px 22px;
         }
 
+        /* Billing overview: a clean key/value ledger with hairline rows —
+           no inner boxes. */
         .sub-status-page .sub-detail-list {
             display: grid;
-            gap: 12px;
         }
 
         .sub-status-page .sub-detail-item {
             display: flex;
-            align-items: flex-start;
+            align-items: baseline;
             justify-content: space-between;
-            gap: 12px;
-            padding: 14px 15px;
-            border: 1px solid #e9eff7;
-            border-radius: 14px;
-            background: #fbfcfe;
-            transition: border-color 0.18s ease, background-color 0.18s ease;
+            gap: 16px;
+            padding: 13px 0;
+            border-bottom: 1px solid var(--sub-border-soft);
         }
 
-        .sub-status-page .sub-detail-item:hover {
-            border-color: var(--sub-border-strong);
-            background: #ffffff;
+        .sub-status-page .sub-detail-item:first-child { padding-top: 4px; }
+
+        .sub-status-page .sub-detail-item:last-child {
+            border-bottom: 0;
+            padding-bottom: 4px;
         }
 
         .sub-status-page .sub-detail-label {
             margin: 0;
-            color: var(--sub-text-soft);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
+            color: var(--sub-muted);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+            flex-shrink: 0;
         }
 
         .sub-status-page .sub-detail-value {
-            margin: 4px 0 0;
-            color: var(--sub-text);
-            font-size: 14px;
-            font-weight: 700;
+            margin: 0;
+            color: var(--sub-ink);
+            font-size: 13.5px;
+            font-weight: 600;
             line-height: 1.45;
             text-align: right;
         }
 
         .sub-status-page .sub-note {
-            margin-top: 14px;
-            padding: 13px 14px;
-            border: 1px solid #e5edf6;
-            border-radius: 16px;
-            background: #fbfcfe;
-            color: var(--sub-text-soft);
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid var(--sub-border-soft);
+            color: var(--sub-muted);
             font-size: 13px;
             line-height: 1.6;
         }
@@ -415,39 +393,35 @@
             padding: 0;
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
+            column-gap: 28px;
         }
 
         .sub-status-page .sub-feature-item {
             display: flex;
             align-items: center;
-            gap: 11px;
+            gap: 10px;
             min-width: 0;
-            padding: 12px 13px;
-            border: 1px solid #e9eff7;
-            border-radius: 14px;
-            background: #fbfcfe;
-            color: #2b3a52;
-            font-size: 13px;
+            padding: 11px 0;
+            border-bottom: 1px solid var(--sub-border-soft);
+            color: var(--sub-ink-2);
+            font-size: 13.5px;
             font-weight: 500;
-            line-height: 1.5;
-            transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+            line-height: 1.45;
         }
 
-        .sub-status-page .sub-feature-item:hover {
-            border-color: #bfe6e0;
-            background: #ffffff;
-            transform: translateY(-1px);
+        /* Last row in each column shouldn't carry a divider. Odd total leaves
+           one cell in the final row; covering the last two is the simplest
+           robust rule for a 2-column grid. */
+        .sub-status-page .sub-feature-item:last-child,
+        .sub-status-page .sub-feature-item:nth-last-child(2):nth-child(odd) {
+            border-bottom: 0;
         }
 
-        /* Checkmark sits in a soft accent chip rather than floating bare. */
+        /* Bare accent check — no chip. */
         .sub-status-page .sub-dot {
-            width: 22px;
-            height: 22px;
-            padding: 4px;
-            border-radius: 999px;
-            color: var(--sub-accent-deep);
-            background: var(--sub-accent-soft);
+            width: 16px;
+            height: 16px;
+            color: var(--sub-accent);
             flex-shrink: 0;
         }
 
@@ -455,15 +429,15 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 42px;
-            padding: 0 18px;
+            min-height: 40px;
+            padding: 0 17px;
             border: 1px solid transparent;
-            border-radius: 12px;
+            border-radius: 10px;
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 600;
             letter-spacing: 0.01em;
             text-decoration: none;
-            transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+            transition: transform 0.16s var(--sub-ease), background-color 0.16s var(--sub-ease), border-color 0.16s var(--sub-ease), box-shadow 0.16s var(--sub-ease);
         }
 
         .sub-btn:focus-visible {
@@ -471,35 +445,29 @@
             outline-offset: 2px;
         }
 
-        .sub-btn:hover {
-            transform: translateY(-1px);
-        }
-
         .sub-btn:active {
-            transform: translateY(0);
+            transform: scale(0.97);
         }
 
         .sub-btn.primary {
             background: var(--sub-accent, #0d9488);
             color: #fff;
-            box-shadow: 0 1px 2px rgba(13, 148, 136, 0.25), 0 12px 26px -10px rgba(13, 148, 136, 0.5);
+            box-shadow: 0 1px 2px rgba(13, 148, 136, 0.22);
         }
 
         .sub-btn.primary:hover {
             background: var(--sub-accent-deep, #0f766e);
-            box-shadow: 0 2px 4px rgba(13, 148, 136, 0.3), 0 16px 30px -10px rgba(13, 148, 136, 0.55);
         }
 
         .sub-btn.secondary {
             background: #fff;
-            color: var(--sub-text, #0c1733);
-            border-color: var(--sub-border-strong, #d3deec);
-            box-shadow: 0 1px 2px rgba(12, 23, 51, 0.04);
+            color: var(--sub-ink, #0f172a);
+            border-color: var(--sub-border-strong, #d9dfe8);
         }
 
         .sub-btn.secondary:hover {
-            background: var(--sub-surface-soft, #f6f9fc);
-            border-color: #b9c6d8;
+            background: #f7f9fc;
+            border-color: #c5cedb;
         }
 
         @media (max-width: 1100px) {
@@ -507,30 +475,32 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+            /* Hairline grid for a 2-up layout: drop the right edge on the
+               right column, drop the bottom edge on the last row. */
+            .sub-status-page .sub-kpi {
+                border-bottom: 1px solid var(--sub-border);
+            }
+            .sub-status-page .sub-kpi:nth-child(2n) { border-right: 0; }
+            .sub-status-page .sub-kpi:nth-child(n+3) { border-bottom: 0; }
+
             .sub-status-page .sub-grid {
                 grid-template-columns: 1fr;
             }
         }
 
         @media (max-width: 767px) {
-            .sub-status-page .sub-hero,
-            .sub-status-page .sub-card,
-            .sub-status-page .sub-alert {
-                border-radius: 20px;
-            }
-
             .sub-status-page .sub-hero {
-                padding: 16px;
+                padding: 20px;
             }
 
             .sub-status-page .sub-hero-top {
                 flex-direction: column;
                 align-items: flex-start;
-                margin-bottom: 14px;
+                margin-bottom: 20px;
             }
 
             .sub-status-page .sub-plan-name {
-                font-size: 24px;
+                font-size: 23px;
             }
 
             .sub-status-page .sub-plan-copy {
@@ -538,78 +508,61 @@
             }
 
             .sub-status-page .sub-kpi-grid {
-                gap: 10px;
-                margin-bottom: 14px;
+                grid-template-columns: 1fr;
+                margin-bottom: 22px;
             }
 
             .sub-status-page .sub-kpi {
-                padding: 12px;
-                border-radius: 16px;
+                border-right: 0;
+                border-bottom: 1px solid var(--sub-border);
             }
-
-            .sub-status-page .sub-kpi-value {
-                font-size: 17px;
-            }
-
-            .sub-status-page .sub-health {
-                padding: 14px;
-                border-radius: 18px;
-            }
+            .sub-status-page .sub-kpi:last-child { border-bottom: 0; }
 
             .sub-status-page .sub-health-head {
-                flex-direction: column;
                 align-items: flex-start;
             }
 
             .sub-status-page .sub-card-head {
-                padding: 16px 16px 0;
-            }
-
-            .sub-status-page .sub-card-title {
-                font-size: 18px;
+                padding: 20px 18px 0;
             }
 
             .sub-status-page .sub-card-body {
-                padding: 16px;
-            }
-
-            .sub-status-page .sub-detail-item {
-                flex-direction: column;
-            }
-
-            .sub-status-page .sub-detail-value {
-                text-align: left;
+                padding: 14px 18px 20px;
             }
 
             .sub-status-page .sub-feature-list {
                 grid-template-columns: 1fr;
-                gap: 8px;
+            }
+
+            /* Single column on phones: only the very last item loses its rule. */
+            .sub-status-page .sub-feature-item:nth-last-child(2):nth-child(odd) {
+                border-bottom: 1px solid var(--sub-border-soft);
+            }
+            .sub-status-page .sub-feature-item:last-child {
+                border-bottom: 0;
             }
         }
 
         /* ─── Billing History section ─── */
-        .sub-status-page .sub-billing-section {
-            margin-top: 24px;
-        }
         .sub-status-page .sub-billing-head {
-            margin-bottom: 14px;
+            margin-bottom: 16px;
         }
         .sub-status-page .sub-billing-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: #0f172a;
-            margin: 4px 0 6px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--sub-ink);
+            margin: 0 0 5px;
             letter-spacing: -0.01em;
         }
         .sub-status-page .sub-billing-copy {
             font-size: 13px;
-            color: #64748b;
+            color: var(--sub-muted);
             margin: 0;
         }
         .sub-status-page .sub-billing-card {
             background: #ffffff;
             border: 1px solid var(--sub-border);
-            border-radius: 18px;
+            border-radius: 16px;
             overflow: hidden;
             box-shadow: var(--sub-shadow);
         }
@@ -622,43 +575,43 @@
             font-size: 13px;
         }
         .sub-status-page .sub-billing-table thead th {
-            padding: 12px 16px;
+            padding: 13px 18px;
             text-align: left;
-            font-weight: 700;
+            font-weight: 500;
             font-size: 12px;
-            color: #475569;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
+            color: var(--sub-muted);
+            background: #fafbfd;
+            border-bottom: 1px solid var(--sub-border);
+            text-transform: none;
+            letter-spacing: 0;
             white-space: nowrap;
         }
         .sub-status-page .sub-billing-table thead th.text-right { text-align: right; }
         .sub-status-page .sub-billing-table tbody td {
-            padding: 12px 16px;
-            border-bottom: 1px solid #f1f5f9;
-            color: #1e293b;
+            padding: 13px 18px;
+            border-bottom: 1px solid var(--sub-border-soft);
+            color: var(--sub-ink-2);
             vertical-align: middle;
         }
         .sub-status-page .sub-billing-table tbody tr:last-child td { border-bottom: 0; }
-        .sub-status-page .sub-billing-table tbody tr:hover { background: #f8fafc; }
+        .sub-status-page .sub-billing-table tbody tr:hover { background: #fafbfd; }
         .sub-status-page .sub-billing-table td.text-right { text-align: right; }
         .sub-status-page .sub-billing-num {
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             font-size: 12px;
-            font-weight: 700;
-            color: #0f172a;
+            font-weight: 600;
+            color: var(--sub-ink);
         }
-        .sub-status-page .sub-billing-capitalize { text-transform: capitalize; color: #475569; }
-        .sub-status-page .sub-billing-muted { color: #64748b; font-size: 12px; }
-        .sub-status-page .sub-billing-amount { font-weight: 700; color: #0f172a; }
+        .sub-status-page .sub-billing-capitalize { text-transform: capitalize; color: var(--sub-ink-2); }
+        .sub-status-page .sub-billing-muted { color: var(--sub-muted); font-size: 12.5px; }
+        .sub-status-page .sub-billing-amount { font-weight: 600; color: var(--sub-ink); font-variant-numeric: tabular-nums; }
         .sub-status-page .sub-billing-pill {
             display: inline-flex;
             align-items: center;
             padding: 2px 10px;
             border-radius: 9999px;
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             line-height: 1.6;
         }
         .sub-status-page .sub-billing-pill-paid {
@@ -668,21 +621,21 @@
             background: #fef2f2; color: #991b1b; box-shadow: inset 0 0 0 1px #fecaca;
         }
         .sub-status-page .sub-billing-view {
-            font-size: 12px;
-            font-weight: 700;
-            color: #4338ca;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--sub-accent-deep);
             text-decoration: none;
         }
-        .sub-status-page .sub-billing-view:hover { color: #312e81; text-decoration: underline; }
+        .sub-status-page .sub-billing-view:hover { color: var(--sub-accent); text-decoration: underline; }
         .sub-status-page .sub-billing-empty {
             text-align: center;
-            color: #94a3b8;
+            color: var(--sub-muted);
             padding: 32px 16px !important;
             font-size: 13px;
         }
         .sub-status-page .sub-billing-pagination {
-            padding: 14px 16px;
-            border-top: 1px solid #f1f5f9;
+            padding: 14px 18px;
+            border-top: 1px solid var(--sub-border-soft);
             background: #fafbfd;
         }
 
@@ -764,7 +717,6 @@
 <section class="sub-hero">
                 <div class="sub-hero-top">
                     <div>
-                        <p class="sub-kicker">Current Plan</p>
                         <h2 class="sub-plan-name">{{ $plan->name }}</h2>
                         <p class="sub-plan-copy">Billed {{ strtolower($billingCycle) }} with your current access, renewal timeline, and plan limits shown below.</p>
                     </div>
@@ -929,7 +881,6 @@
             <section class="sub-billing-section">
                 <div class="sub-billing-head">
                     <div>
-                        <p class="sub-kicker">Billing</p>
                         <h2 class="sub-billing-title">Billing History</h2>
                         <p class="sub-billing-copy">All invoices issued for your subscription. Click any row to view or print.</p>
                     </div>

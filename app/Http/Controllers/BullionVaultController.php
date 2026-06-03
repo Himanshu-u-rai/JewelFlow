@@ -143,8 +143,28 @@ class BullionVaultController extends Controller
 
     public function createLot()
     {
+        $shopId = auth()->user()->shop_id;
         $vendors = Vendor::active()->orderBy('name')->get(['id', 'name']);
-        return view('vault.create-lot', compact('vendors'));
+
+        // Shop's own purity standards drive a constrained dropdown (instead of a
+        // free-typed number that could corrupt the immutable vault on a typo).
+        // Units already match this backend: gold = karat (<=24), silver =
+        // fineness (<=1000). A manual fallback stays for one-off assay values.
+        $purityProfiles = \App\Models\ShopMetalPurityProfile::where('shop_id', $shopId)
+            ->whereRaw('is_active = true')
+            ->orderBy('metal_type')
+            ->orderByDesc('purity_value')
+            ->get(['metal_type', 'label', 'purity_value'])
+            ->map(fn ($p) => [
+                'metal' => strtolower(trim((string) $p->metal_type)),
+                'label' => (string) $p->label,
+                'value' => (float) $p->purity_value,
+            ])
+            ->filter(fn ($p) => in_array($p['metal'], ['gold', 'silver'], true))
+            ->values()
+            ->all();
+
+        return view('vault.create-lot', compact('vendors', 'purityProfiles'));
     }
 
     public function storeLot(Request $request)

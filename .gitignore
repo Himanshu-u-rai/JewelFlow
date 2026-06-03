@@ -28,3 +28,7 @@ skills-lock.json
 Homestead.json
 Homestead.yaml
 Thumbs.db
+.claude/skills/
+.claude/worktrees/
+.github/skills/
+/impeccable.md

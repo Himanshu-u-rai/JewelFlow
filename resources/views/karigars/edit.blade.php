@@ -1,15 +1,14 @@
 <x-app-layout>
     <x-page-header :title="'Edit Karigar — ' . $karigar->name" />
 
-    <div class="content-inner">
-
-        <form method="POST" action="{{ route('karigars.update', $karigar) }}" class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 max-w-3xl">
+    <div class="content-inner kf-shell">
+        <form method="POST" action="{{ route('karigars.update', $karigar) }}" class="kf-card kf-form">
             @csrf @method('PUT')
             @include('karigars._form')
 
-            <div class="mt-5 flex items-center gap-3">
-                <button type="submit" class="btn btn-success btn-sm">Update</button>
-                <a href="{{ route('karigars.show', $karigar) }}" class="text-sm text-gray-500">Cancel</a>
+            <div class="kf-actions">
+                <button type="submit" class="kf-submit">Update Karigar</button>
+                <a href="{{ route('karigars.show', $karigar) }}" class="kf-cancel">Cancel</a>
             </div>
         </form>
     </div>
