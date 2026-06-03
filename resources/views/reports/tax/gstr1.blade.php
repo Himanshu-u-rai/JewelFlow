@@ -17,6 +17,7 @@
                     @endfor
                 </select>
                 <button type="submit" class="btn btn-secondary btn-sm">View</button>
+                <x-print-button />
                 <a href="{{ route('report.gstr1.csv', ['month' => $month, 'year' => $year]) }}" class="btn btn-success btn-sm">Export CSV</a>
             </form>
         </div>

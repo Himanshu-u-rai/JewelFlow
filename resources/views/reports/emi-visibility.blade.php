@@ -11,6 +11,7 @@
                     <input type="date" name="as_of" value="{{ $asOf }}" class="rounded-lg border-slate-200 text-sm h-10">
                 </div>
                 <button type="submit" class="btn btn-secondary btn-sm">View</button>
+                <x-print-button />
                 <a href="{{ route('report.emi.csv', ['as_of' => $asOf]) }}" class="btn btn-success btn-sm">Export CSV</a>
             </form>
         </div>

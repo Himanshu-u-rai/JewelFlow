@@ -5,6 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">What the shop owes on active &amp; matured gold-savings enrollments (contributions + accrued bonus)</p>
         </div>
         <div class="page-actions">
+            <x-print-button />
             <a href="{{ route('report.scheme-liability.csv') }}" class="btn btn-success btn-sm">Export CSV</a>
         </div>
     </x-page-header>

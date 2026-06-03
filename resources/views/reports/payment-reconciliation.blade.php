@@ -13,6 +13,7 @@
                     @for($y = now()->year; $y >= now()->year - 5; $y--)<option value="{{ $y }}" {{ $year === $y ? 'selected' : '' }}>{{ $y }}</option>@endfor
                 </select>
                 <button type="submit" class="btn btn-secondary btn-sm">View</button>
+                <x-print-button />
                 <a href="{{ route('report.payment-reconciliation.csv', ['month' => $month, 'year' => $year]) }}" class="btn btn-success btn-sm">Export CSV</a>
             </form>
         </div>

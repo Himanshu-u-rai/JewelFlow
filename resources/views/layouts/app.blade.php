@@ -24,6 +24,23 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        {{-- M7: CA-friendly print. Hides app chrome so any report prints clean via Ctrl+P. --}}
+        <style>
+            .print-only { display: none; }
+            @media print {
+                .sidebar, .sidebar-overlay, #_auto-logout-form,
+                [data-mobile-menu-toggle], [data-mobile-drawer-overlay],
+                .page-actions, .no-print, .impersonation-banner { display: none !important; }
+                .app-shell { display: block !important; }
+                .content-area { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
+                .content-body, .content-inner { padding: 0 !important; }
+                .page-header { border: none !important; padding: 0 0 8px !important; }
+                .bg-white, table, .rounded-xl { box-shadow: none !important; }
+                .print-only { display: block !important; }
+                @page { margin: 14mm; }
+            }
+        </style>
     </head>
     <body class="app-shell">
 
@@ -579,6 +596,11 @@
                     </x-page-header>
                 @endisset
                 <div class="content-body">
+                    {{-- M7: print-only letterhead so a printed report is CA-presentable. --}}
+                    <div class="print-only" style="margin-bottom:12px;border-bottom:1px solid #111;padding-bottom:6px;overflow:hidden;">
+                        <strong style="font-size:15px;">{{ auth()->user()?->shop?->name ?? config('app.name', 'JewelFlow') }}</strong>
+                        <span style="float:right;font-size:12px;">Printed {{ now()->format('d M Y') }}</span>
+                    </div>
                     {{ $slot ?? '' }}
                 </div>
             </main>

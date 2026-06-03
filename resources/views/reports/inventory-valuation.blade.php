@@ -11,6 +11,7 @@
                     days
                 </label>
                 <button type="submit" class="btn btn-secondary btn-sm">View</button>
+                <x-print-button />
                 <a href="{{ route('report.inventory-valuation.csv', ['dead_days' => $data->deadCapitalDays]) }}" class="btn btn-success btn-sm">Export CSV</a>
             </form>
         </div>

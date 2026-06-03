@@ -5,6 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">On-hand stock at cost, by how long it's been sitting — as of {{ \Carbon\Carbon::parse($data->asOf)->format('d M Y') }}</p>
         </div>
         <div class="page-actions">
+            <x-print-button />
             <a href="{{ route('report.dead-stock.csv') }}" class="btn btn-success btn-sm">Export CSV</a>
         </div>
     </x-page-header>

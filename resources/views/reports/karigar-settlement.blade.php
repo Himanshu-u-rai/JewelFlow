@@ -5,6 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">Gold out vs in (open jobs) and money invoiced vs paid, per karigar</p>
         </div>
         <div class="page-actions">
+            <x-print-button />
             <a href="{{ route('report.karigar-settlement.csv') }}" class="btn btn-success btn-sm">Export CSV</a>
         </div>
     </x-page-header>

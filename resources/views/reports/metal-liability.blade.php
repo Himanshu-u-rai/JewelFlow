@@ -5,6 +5,7 @@
             <p class="text-sm text-gray-500 mt-1">Fine gold owed to customers from advance deposits — vs gold on hand. All figures in fine grams.</p>
         </div>
         <div class="page-actions">
+            <x-print-button />
             <a href="{{ route('report.metal-liability.csv') }}" class="btn btn-success btn-sm">Export CSV</a>
         </div>
     </x-page-header>
