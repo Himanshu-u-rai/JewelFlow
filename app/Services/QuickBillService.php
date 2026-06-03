@@ -283,7 +283,22 @@ class QuickBillService
             $otherCharge = round(max(0, (float) Arr::get($item, 'other_charge', 0)), 2);
             $wastagePercent = round(max(0, (float) Arr::get($item, 'wastage_percent', 0)), 2);
             $lineDiscount = round(max(0, (float) Arr::get($item, 'line_discount', 0)), 2);
-            $metalValue = round($netWeight * $rate, 2);
+
+            // Purity factor: the rate entered is the PURE (24K / 999) rate; scale
+            // it by purity. Gold = purity/24 (karats), silver = purity/1000
+            // (fineness) — matches MetalRegistry::fineWeightMultiplier. Unknown
+            // metal or no purity ⇒ factor 1 (net × rate), so nothing regresses.
+            $purityNum = (float) preg_replace('/[^0-9.]/', '', (string) Arr::get($item, 'purity', ''));
+            $metalRaw  = strtolower(trim((string) Arr::get($item, 'metal_type', '')));
+            $purityFactor = 1.0;
+            if ($purityNum > 0) {
+                if (str_contains($metalRaw, 'gold')) {
+                    $purityFactor = min($purityNum, 24.0) / 24.0;
+                } elseif (str_contains($metalRaw, 'silver')) {
+                    $purityFactor = min($purityNum, 1000.0) / 1000.0;
+                }
+            }
+            $metalValue = round($netWeight * $rate * $purityFactor, 2);
 
             // MC-3: resolve making via the one canonical helper. Default FIXED
             // (value = the raw making_charge) → resolved == $making, byte-identical.

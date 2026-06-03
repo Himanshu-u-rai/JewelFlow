@@ -284,6 +284,7 @@
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">Purity</label>
                                                     <input :name="'items['+index+'][purity]'" x-model="item.purity" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                    <p class="mt-1 text-xs text-slate-400">Gold: karats (e.g. 22) · Silver: fineness (e.g. 925)</p>
                                                 </div>
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">HSN</label>
@@ -316,8 +317,8 @@
                                                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
                                                     <div class="grid gap-3 grid-cols-2">
                                                         <div>
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Rate</label>
-                                                            <input :name="'items['+index+'][rate]'" x-model.number="item.rate" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Rate (pure 24K/999)</label>
+                                                            <input :name="'items['+index+'][rate]'" x-model.number="item.rate" type="number" step="0.01" min="0" placeholder="Pure metal rate / g" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
                                                         <div>
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Making</label>
@@ -681,24 +682,38 @@
                     const num = Number(value);
                     return Number.isFinite(num) ? num : 0;
                 },
-                // Resolve making per mode (preview only — server re-resolves on save).
-                // percentage = of metal value (net × rate); per_gram = of net weight.
-                lineMaking(item) {
+                netWeightOf(item) {
                     const gross = this.safeNumber(item.gross_weight);
                     const stoneWeight = this.safeNumber(item.stone_weight);
-                    const net = this.safeNumber(item.net_weight) > 0 ? this.safeNumber(item.net_weight) : Math.max(0, gross - stoneWeight);
-                    const metalValue = net * this.safeNumber(item.rate);
+                    return this.safeNumber(item.net_weight) > 0 ? this.safeNumber(item.net_weight) : Math.max(0, gross - stoneWeight);
+                },
+                // Metal value = net × PURE rate × purity factor. Gold = purity/24
+                // (karats), silver = purity/1000 (fineness); unknown metal or no
+                // purity ⇒ factor 1. Mirrors QuickBillService exactly so the
+                // preview matches what's saved.
+                metalValueOf(item) {
+                    const net = this.netWeightOf(item);
+                    const rate = this.safeNumber(item.rate);
+                    const purityNum = parseFloat(String(item.purity || '').replace(/[^0-9.]/g, '')) || 0;
+                    const metal = String(item.metal_type || '').toLowerCase();
+                    let factor = 1;
+                    if (purityNum > 0) {
+                        if (metal.includes('gold')) factor = Math.min(purityNum, 24) / 24;
+                        else if (metal.includes('silver')) factor = Math.min(purityNum, 1000) / 1000;
+                    }
+                    return net * rate * factor;
+                },
+                // Resolve making per mode (preview only — server re-resolves on save).
+                // percentage = of metal value; per_gram = of net weight.
+                lineMaking(item) {
+                    const metalValue = this.metalValueOf(item);
                     const v = this.safeNumber(item.making_charge);
                     const type = item.making_charge_type || 'fixed';
                     if (type === 'percentage') return metalValue * (v / 100);
-                    if (type === 'per_gram') return net * v;
+                    if (type === 'per_gram') return this.netWeightOf(item) * v;
                     return v;
                 },
                 lineTotal(item) {
-                    const gross = this.safeNumber(item.gross_weight);
-                    const stoneWeight = this.safeNumber(item.stone_weight);
-                    const net = this.safeNumber(item.net_weight) > 0 ? this.safeNumber(item.net_weight) : Math.max(0, gross - stoneWeight);
-                    const rate = this.safeNumber(item.rate);
                     const making = this.lineMaking(item);
                     const stoneCharge = this.safeNumber(item.stone_charge);
                     const hallmarkCharge = this.safeNumber(item.hallmark_charge);
@@ -706,7 +721,7 @@
                     const otherCharge = this.safeNumber(item.other_charge);
                     const wastagePercent = this.safeNumber(item.wastage_percent);
                     const discount = this.safeNumber(item.line_discount);
-                    const metalValue = net * rate;
+                    const metalValue = this.metalValueOf(item);
                     const wastageAmount = metalValue * (wastagePercent / 100);
                     return Math.max(0, metalValue + making + stoneCharge + hallmarkCharge + rhodiumCharge + otherCharge + wastageAmount - discount);
                 },
