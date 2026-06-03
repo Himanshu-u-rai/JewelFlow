@@ -279,12 +279,31 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Making Charges (₹)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" id="making_charges_label">Making Charges (₹)</label>
+                                @if(config('features.making_charge_modes'))
+                                @php $mcType = old('making_charge_type', $item->making_charge_type ?? 'fixed'); @endphp
+                                <div class="flex gap-2">
+                                    <select id="making_charge_type" name="making_charge_type"
+                                            class="w-2/5 rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                        <option value="fixed" @selected($mcType === 'fixed' || $mcType === null)>Fixed (₹)</option>
+                                        <option value="percentage" @selected($mcType === 'percentage')>% of metal</option>
+                                        <option value="per_gram" @selected($mcType === 'per_gram')>₹ / gram</option>
+                                    </select>
+                                    <input type="number" name="making_charges" id="making_charges"
+                                           value="{{ old('making_charges', ($item->making_charge_type ? $item->making_charge_value : $item->making_charges)) }}"
+                                           step="0.01" min="0"
+                                           class="w-3/5 rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                           placeholder="0.00">
+                                </div>
+                                <input type="hidden" name="making_charge_value" id="making_charge_value" value="{{ old('making_charge_value', ($item->making_charge_value ?? $item->making_charges)) }}">
+                                <p class="mt-1 text-xs text-gray-500" id="making_resolved_hint"></p>
+                                @else
                                 <input type="number" name="making_charges" id="making_charges"
                                        value="{{ old('making_charges', $item->making_charges) }}"
                                        step="0.01" min="0"
                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
                                        placeholder="0.00">
+                                @endif
                             </div>
 
                             <div>
@@ -564,7 +583,7 @@
             const metalType = document.getElementById('metal_type').value;
             const purity = normalizePurityValue(document.getElementById('purity').value);
             const net = Number.parseFloat(document.getElementById('net_weight_display').value) || 0;
-            const making = Number.parseFloat(document.getElementById('making_charges').value) || 0;
+            const makingInput = Number.parseFloat(document.getElementById('making_charges').value) || 0;
             const stoneCharges = Number.parseFloat(document.getElementById('stone_charges').value) || 0;
             const hallmark = Number.parseFloat(document.getElementById('hallmark_charges').value) || 0;
             const rhodium = Number.parseFloat(document.getElementById('rhodium_charges').value) || 0;
@@ -574,6 +593,27 @@
             const rate = rateEntry ? Number.parseFloat(rateEntry.rate_per_gram) || 0 : 0;
             const purityLabel = rateEntry ? rateEntry.label : (purity ? (metalType === 'gold' ? purity + 'K' : purity) : '—');
             const metalCost = rate > 0 ? Math.round(net * rate * 100) / 100 : 0;
+
+            // MC: resolve making per mode (preview only — server re-resolves on save).
+            const makingType = document.getElementById('making_charge_type')?.value || 'fixed';
+            let making;
+            if (makingType === 'percentage') {
+                making = Math.round(metalCost * (makingInput / 100) * 100) / 100;
+            } else if (makingType === 'per_gram') {
+                making = Math.round(net * makingInput * 100) / 100;
+            } else {
+                making = makingInput;
+            }
+            const mcv = document.getElementById('making_charge_value');
+            if (mcv) mcv.value = makingInput;
+            const mcLabel = document.getElementById('making_charges_label');
+            if (mcLabel) mcLabel.textContent = makingType === 'percentage' ? 'Making (% of metal value)'
+                : (makingType === 'per_gram' ? 'Making (₹ per gram, net)' : 'Making Charges (₹)');
+            const mcHint = document.getElementById('making_resolved_hint');
+            if (mcHint) mcHint.textContent = makingType === 'percentage'
+                ? '= ₹' + making.toFixed(2) + ' (' + makingInput + '% of metal value)'
+                : (makingType === 'per_gram' ? '= ₹' + making.toFixed(2) + ' (₹' + makingInput + '/g × ' + net.toFixed(3) + 'g)' : '');
+
             const selling = rate > 0 ? Math.round((metalCost + making + stoneCharges + hallmark + rhodium + other) * 100) / 100 : 0;
 
             document.getElementById('resolved_rate_display').value = rate > 0 ? formatCurrency(rate) : 'Unavailable';
