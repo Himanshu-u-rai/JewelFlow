@@ -685,6 +685,67 @@
             border-top: 1px solid #f1f5f9;
             background: #fafbfd;
         }
+
+        /* ─── Billing History on phones: table → stacked cards (no sideways
+           scroll). Each invoice becomes a card; column headers become inline
+           labels via data-label. ─── */
+        @media (max-width: 767px) {
+            .sub-status-page .sub-billing-table-wrap { overflow-x: visible; }
+            .sub-status-page .sub-billing-table thead { display: none; }
+            .sub-status-page .sub-billing-table,
+            .sub-status-page .sub-billing-table tbody,
+            .sub-status-page .sub-billing-table tr,
+            .sub-status-page .sub-billing-table td {
+                display: block;
+                width: 100%;
+            }
+            .sub-status-page .sub-billing-table tr {
+                padding: 4px 16px 12px;
+                border-bottom: 8px solid #f1f5f9;
+            }
+            .sub-status-page .sub-billing-table tbody tr:last-child { border-bottom: 0; }
+            .sub-status-page .sub-billing-table td {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                padding: 10px 0;
+                border-bottom: 1px solid #f4f7fb;
+                text-align: right;
+                white-space: normal;
+            }
+            .sub-status-page .sub-billing-table td:last-child { border-bottom: 0; }
+            .sub-status-page .sub-billing-table td[data-label]::before {
+                content: attr(data-label);
+                flex-shrink: 0;
+                text-align: left;
+                color: #7d8aa3;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+            }
+            /* View action: full-width button at the foot of each card. */
+            .sub-status-page .sub-billing-table td.sub-billing-action { padding-top: 12px; }
+            .sub-status-page .sub-billing-table td.sub-billing-action::before { display: none; }
+            .sub-status-page .sub-billing-view {
+                display: block;
+                width: 100%;
+                text-align: center;
+                padding: 10px 12px;
+                border-radius: 12px;
+                border: 1px solid var(--sub-border-strong);
+                background: #f6f9fc;
+                color: var(--sub-accent-deep);
+            }
+            .sub-status-page .sub-billing-view:hover { background: #eef4fb; text-decoration: none; }
+            /* Empty state stays a centered full-width message. */
+            .sub-status-page .sub-billing-table td.sub-billing-empty {
+                display: block;
+                text-align: center;
+                padding: 28px 16px !important;
+            }
+        }
     </style>
 
     <x-page-header class="ops-treatment-header">
@@ -892,25 +953,25 @@
                             <tbody>
                                 @forelse($invoices as $inv)
                                     <tr>
-                                        <td class="sub-billing-num">{{ $inv->invoice_number }}</td>
-                                        <td>{{ $inv->plan?->name ?? '—' }}</td>
-                                        <td class="sub-billing-capitalize">{{ $inv->billing_cycle }}</td>
-                                        <td class="sub-billing-muted">
+                                        <td class="sub-billing-num" data-label="Invoice #">{{ $inv->invoice_number }}</td>
+                                        <td data-label="Plan">{{ $inv->plan?->name ?? '—' }}</td>
+                                        <td class="sub-billing-capitalize" data-label="Cycle">{{ $inv->billing_cycle }}</td>
+                                        <td class="sub-billing-muted" data-label="Period">
                                             {{ $inv->billing_period_start->format('d M Y') }}
                                             –
                                             {{ $inv->billing_period_end->format('d M Y') }}
                                         </td>
-                                        <td class="text-right sub-billing-amount">₹{{ number_format($inv->total_amount, 2) }}</td>
-                                        <td class="sub-billing-muted">{{ $inv->issued_at->format('d M Y') }}</td>
-                                        <td>
+                                        <td class="text-right sub-billing-amount" data-label="Amount">₹{{ number_format($inv->total_amount, 2) }}</td>
+                                        <td class="sub-billing-muted" data-label="Date">{{ $inv->issued_at->format('d M Y') }}</td>
+                                        <td data-label="Status">
                                             @if($inv->status === 'issued')
                                                 <span class="sub-billing-pill sub-billing-pill-paid">Paid</span>
                                             @else
                                                 <span class="sub-billing-pill sub-billing-pill-cancelled">Cancelled</span>
                                             @endif
                                         </td>
-                                        <td class="text-right">
-                                            <a href="{{ route('billing.invoices.show', $inv) }}" class="sub-billing-view">View</a>
+                                        <td class="text-right sub-billing-action">
+                                            <a href="{{ route('billing.invoices.show', $inv) }}" class="sub-billing-view">View invoice</a>
                                         </td>
                                     </tr>
                                 @empty
