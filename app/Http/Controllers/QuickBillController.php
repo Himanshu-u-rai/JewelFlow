@@ -249,12 +249,19 @@ class QuickBillController extends Controller
                 'value' => (float) $p->purity_value,
             ])->values()->all();
 
+        // Metals the owner has enabled (gold/silver always; platinum/copper when
+        // opted in). Platinum/copper are piece-priced — purity never multiplies
+        // their price — so they appear in the metal dropdown but use an optional
+        // purity field (no profiles), and the purity factor stays 1 for them.
+        $enabledMetals = \App\Services\MetalRegistry::enabledMetalsForShop($shopId);
+
         return [
             'quickBill' => $quickBill,
             'customers' => $customers,
             'initialItems' => $initialItems,
             'initialPayments' => $initialPayments,
             'purityProfiles' => $purityProfiles,
+            'enabledMetals' => array_values($enabledMetals),
         ];
     }
 }

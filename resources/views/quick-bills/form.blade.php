@@ -129,6 +129,7 @@
         items: @js($initialItems),
         payments: @js($initialPayments),
         purityProfiles: @js($purityProfiles ?? []),
+        enabledMetals: @js($enabledMetals ?? []),
         selectedCustomerId: @js(old('customer_id', $quickBill->customer_id)),
         customerName: @js(old('customer_name', $quickBill->customer_name)),
         customerMobile: @js(old('customer_mobile', $quickBill->customer_mobile)),
@@ -280,26 +281,29 @@
                                             <div class="grid gap-3 grid-cols-2 xl:grid-cols-4">
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">Metal</label>
-                                                    <template x-if="purityProfiles.length">
+                                                    <template x-if="metalChoices().length">
                                                         <select :name="'items['+index+'][metal_type]'" x-model="item.metal_type" @change="onMetalChange(item)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                             <template x-for="m in metalChoices()" :key="m"><option :value="cap(m)" x-text="cap(m)"></option></template>
                                                         </select>
                                                     </template>
-                                                    <template x-if="!purityProfiles.length">
+                                                    <template x-if="!metalChoices().length">
                                                         <input :name="'items['+index+'][metal_type]'" x-model="item.metal_type" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                     </template>
                                                 </div>
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">Purity</label>
-                                                    <template x-if="purityProfiles.length">
+                                                    {{-- Gold/silver: standards dropdown (drives the purity factor).
+                                                         Platinum/copper (no profiles): optional grade text — price is
+                                                         net × rate, purity never multiplies. --}}
+                                                    <template x-if="purityChoicesFor(item.metal_type).length">
                                                         <select :name="'items['+index+'][purity]'" x-model="item.purity" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                             <template x-for="p in purityChoicesFor(item.metal_type)" :key="p.label"><option :value="p.label" x-text="p.label"></option></template>
                                                         </select>
                                                     </template>
-                                                    <template x-if="!purityProfiles.length">
+                                                    <template x-if="!purityChoicesFor(item.metal_type).length">
                                                         <div>
-                                                            <input :name="'items['+index+'][purity]'" x-model="item.purity" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                            <p class="mt-1 text-xs text-slate-400">Gold: karats (e.g. 22) · Silver: fineness (e.g. 925)</p>
+                                                            <input :name="'items['+index+'][purity]'" x-model="item.purity" type="text" placeholder="Optional" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <p class="mt-1 text-xs text-slate-400">Optional for platinum/copper (price is net × rate). Gold: karats · Silver: fineness.</p>
                                                         </div>
                                                     </template>
                                                 </div>
@@ -632,6 +636,7 @@
             return {
                 customers: config.customers || [],
                 purityProfiles: config.purityProfiles || [],
+                enabledMetals: config.enabledMetals || [],
                 selectedCustomerId: config.selectedCustomerId ? String(config.selectedCustomerId) : '',
                 customerName: config.customerName || '',
                 customerMobile: config.customerMobile || '',
@@ -702,7 +707,13 @@
                 },
                 // Cascading metal/purity from the shop's configured standards.
                 cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); },
-                metalChoices() { return [...new Set(this.purityProfiles.map(p => p.metal))]; },
+                metalChoices() {
+                    // Metals the owner enabled (gold/silver + platinum/copper if on);
+                    // fall back to whatever has purity profiles, then gold/silver.
+                    if (this.enabledMetals.length) return this.enabledMetals;
+                    const fromProfiles = [...new Set(this.purityProfiles.map(p => p.metal))];
+                    return fromProfiles.length ? fromProfiles : ['gold', 'silver'];
+                },
                 purityChoicesFor(metal) {
                     const m = String(metal || '').toLowerCase();
                     return this.purityProfiles.filter(p => p.metal === m);

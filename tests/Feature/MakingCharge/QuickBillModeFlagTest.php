@@ -65,6 +65,20 @@ class QuickBillModeFlagTest extends TestCase
         $this->assertEqualsWithDelta(4625.00, (float) $line->line_total, 0.01);
     }
 
+    public function test_platinum_is_piece_priced_no_purity_factor(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+
+        $bill = $this->makeBill($shop->id, $user, [
+            'metal_type' => 'platinum', 'purity' => 'Pt950', 'rate' => 3000, 'net_weight' => 5,
+            'making_charge' => 0,
+        ]);
+
+        $line = TenantContext::runFor($shop->id, fn () => $bill->items()->first());
+        // Platinum is piece-priced: factor 1 → ₹3000 × 5 = ₹15,000 (purity ignored).
+        $this->assertEqualsWithDelta(15000.00, (float) $line->line_total, 0.01);
+    }
+
     public function test_flag_off_ignores_mode_and_stays_fixed(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
