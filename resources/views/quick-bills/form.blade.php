@@ -8,6 +8,15 @@
             'mobile' => $customer->mobile,
             'address' => $customer->address,
         ])->values();
+        $reviewPanelOpen = false;
+        foreach ($errors->keys() as $errorKey) {
+            foreach (['pricing_mode', 'gst_rate', 'discount_type', 'discount_value', 'round_off', 'payments'] as $prefix) {
+                if ($errorKey === $prefix || str_starts_with($errorKey, $prefix.'.')) {
+                    $reviewPanelOpen = true;
+                    break 2;
+                }
+            }
+        }
     @endphp
 
     <x-page-header class="ops-treatment-header">
@@ -25,15 +34,96 @@
         </div>
     </x-page-header>
 
-    {{-- Two-column layout via raw CSS so it never depends on which Tailwind
-         arbitrary/responsive utilities made it into the pre-built bundle. --}}
+    {{-- Keep this page layout independent from generated utility coverage. --}}
     <style>
-        .qb-grid { display: flex; flex-direction: column; gap: 1.5rem; }
+        .qb-entry-layout,
+        .qb-top-grid,
+        .qb-item-edit-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
         @media (min-width: 1280px) {
-            .qb-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
-            .qb-sidebar { position: sticky; top: 1.5rem; }
+            .qb-entry-layout {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 300px;
+                align-items: start;
+            }
+
+            .qb-review-rail {
+                position: sticky;
+                top: 1.5rem;
+            }
+
+            .qb-item-edit-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 300px;
+                align-items: start;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .qb-top-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+                align-items: stretch;
+            }
+
+            .qb-top-grid > * {
+                height: 100%;
+            }
+        }
+
+        .qb-review-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 70;
+            background: rgb(15 23 42 / 0.38);
+        }
+
+        .qb-review-drawer {
+            position: fixed;
+            inset: 0 0 0 auto;
+            z-index: 80;
+            display: flex;
+            width: min(440px, 100%);
+            flex-direction: column;
+            border-left: 1px solid #cbd5e1;
+            background: #fff;
+        }
+
+        .qb-review-scroll {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .qb-tax-mode {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.25rem;
+            border-radius: 0.75rem;
+            background: #f1f5f9;
+            padding: 0.25rem;
+        }
+
+        .qb-review-actions {
+            flex: 0 0 auto;
+            border-top: 1px solid #e2e8f0;
+            background: #fff;
+            padding: 1rem;
+        }
+
+        @media (max-width: 767px) {
+            .qb-review-drawer {
+                inset: 0;
+                width: 100%;
+                border-left: 0;
+            }
         }
     </style>
+
     <div class="content-inner max-w-[1380px] mx-auto" x-data="quickBillForm({
         customers: @js($customerDirectory),
         items: @js($initialItems),
@@ -47,7 +137,8 @@
         discountType: @js(old('discount_type', $quickBill->discount_type)),
         discountValue: @js((float) old('discount_value', $quickBill->discount_value ?? 0)),
         roundOff: @js((float) old('round_off', $quickBill->round_off ?? 0)),
-    })">
+        reviewOpen: @js($reviewPanelOpen),
+    })" x-effect="document.body.classList.toggle('overflow-hidden', reviewOpen)" @keydown.escape.window="closeReview()">
         @if($errors->any())
             <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
                 <div class="mb-2 font-semibold">Please fix the highlighted quick bill details.</div>
@@ -59,24 +150,19 @@
             </div>
         @endif
 
-        @php
-            $notesPanelValue = trim((string) old('notes', $quickBill->notes));
-            $termsPanelValue = trim((string) old('terms', $quickBill->terms ?: $shop?->billingSettings?->terms_and_conditions));
-            $notesPanelOpen = $notesPanelValue !== '' || $termsPanelValue !== '';
-            $paymentDraft = old('payments', $initialPayments ?? []);
-            $paymentsPanelOpen = is_countable($paymentDraft) && count($paymentDraft) > 0;
-        @endphp
-
         <form method="POST" action="{{ $editing ? route('quick-bills.update', $quickBill) : route('quick-bills.store') }}" class="space-y-6">
             @csrf
             @if($editing)
                 @method('PUT')
             @endif
 
-            <div class="qb-grid">
+            <div class="qb-entry-layout">
                 <div class="space-y-6 min-w-0">
-                    <div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
-                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-7">
+                    <div class="qb-top-grid">
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                            <div class="mb-4">
+                                <div class="text-sm font-semibold text-slate-900">Customer details</div>
+                            </div>
                             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-12">
                                 <div class="sm:col-span-2 xl:col-span-7">
                                     <label class="mb-2 block text-sm font-medium text-slate-600">Existing customer</label>
@@ -106,28 +192,26 @@
                             </div>
                         </div>
 
-                        <div class="xl:col-span-5" x-data="{ open: {{ $notesPanelOpen ? 'true' : 'false' }} }">
-                            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                                <button type="button" @click="open = !open" class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left sm:px-6">
-                                    <div>
-                                        <div class="text-sm font-semibold text-slate-900">Notes & Terms</div>
-                                        <div class="mt-1 text-xs text-slate-500">Keep collapsed when the bill does not need extra text.</div>
-                                    </div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" />
-                                    </svg>
-                                </button>
+                        <div x-data="{ open: true }" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <button type="button" @click="open = !open" class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left sm:px-6">
+                                <div>
+                                    <div class="text-sm font-semibold text-slate-900">Notes & Terms</div>
+                                    <div class="mt-1 text-xs text-slate-500">Keep collapsed when the bill does not need extra text.</div>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" />
+                                </svg>
+                            </button>
 
-                                <div x-show="open" x-transition x-cloak class="border-t border-slate-200 p-5 sm:p-6">
-                                    <div class="grid gap-4 2xl:grid-cols-2">
-                                        <div>
-                                            <label class="mb-2 block text-sm font-medium text-slate-600">Internal notes</label>
-                                            <textarea name="notes" rows="4" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Any freeform quick bill notes...">{{ old('notes', $quickBill->notes) }}</textarea>
-                                        </div>
-                                        <div>
-                                            <label class="mb-2 block text-sm font-medium text-slate-600">Bill terms</label>
-                                            <textarea name="terms" rows="4" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Terms printed on the quick bill...">{{ old('terms', $quickBill->terms ?: $shop?->billingSettings?->terms_and_conditions) }}</textarea>
-                                        </div>
+                            <div x-show="open" x-transition x-cloak class="border-t border-slate-200 p-5 sm:p-6">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="mb-2 block text-sm font-medium text-slate-600">Internal notes</label>
+                                        <textarea name="notes" rows="4" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Any freeform quick bill notes...">{{ old('notes', $quickBill->notes) }}</textarea>
+                                    </div>
+                                    <div>
+                                        <label class="mb-2 block text-sm font-medium text-slate-600">Bill terms</label>
+                                        <textarea name="terms" rows="4" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10" placeholder="Terms printed on the quick bill...">{{ old('terms', $quickBill->terms ?: $shop?->billingSettings?->terms_and_conditions) }}</textarea>
                                     </div>
                                 </div>
                             </div>
@@ -185,8 +269,8 @@
                                         </div>
                                     </div>
 
-                                    <div x-show="openIndex === index" x-transition x-cloak class="mt-4 grid gap-4 xl:grid-cols-12">
-                                        <div class="space-y-4 xl:col-span-8">
+                                    <div x-show="openIndex === index" x-transition x-cloak class="qb-item-edit-grid mt-4">
+                                        <div class="space-y-4">
                                             <div>
                                                 <label class="mb-2 block text-sm font-medium text-slate-600">Description</label>
                                                 <input :name="'items['+index+'][description]'" x-model="item.description" type="text" placeholder="Gold ring / pendant / chain" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
@@ -237,7 +321,16 @@
                                                         </div>
                                                         <div>
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Making</label>
-                                                            <input :name="'items['+index+'][making_charge]'" x-model.number="item.making_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <div class="flex gap-2">
+                                                                <select :name="'items['+index+'][making_charge_type]'" x-model="item.making_charge_type" class="w-[42%] rounded-xl border-slate-300 bg-white px-2 py-3 text-xs text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                                    <option value="fixed">Fixed ₹</option>
+                                                                    <option value="percentage">% metal</option>
+                                                                    <option value="per_gram">₹/g</option>
+                                                                </select>
+                                                                <input :name="'items['+index+'][making_charge]'" x-model.number="item.making_charge" type="number" step="0.01" min="0" class="w-[58%] rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            </div>
+                                                            <input type="hidden" :name="'items['+index+'][making_charge_value]'" :value="item.making_charge">
+                                                            <p class="mt-1 text-xs text-slate-400" x-show="item.making_charge_type !== 'fixed'" x-text="item.making_charge_type === 'percentage' ? ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (' + (item.making_charge||0) + '% of metal)') : ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (₹' + (item.making_charge||0) + '/g)')"></p>
                                                         </div>
                                                         <div>
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Stone amount</label>
@@ -252,50 +345,50 @@
                                             </div>
                                         </div>
 
-                                        <div class="space-y-4 xl:col-span-4">
-                                            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                                                <div class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">Line total</div>
-                                                <div class="mt-1 text-2xl font-semibold text-slate-900" x-text="currency(lineTotal(item))"></div>
+                                        <div class="space-y-4">
+                                            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-inner">
+                                                <div class="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-700">Line total</div>
+                                                <div class="mt-1 text-2xl font-bold text-slate-900" x-text="currency(lineTotal(item))"></div>
                                                 <div class="mt-4 grid grid-cols-2 gap-2">
-                                                    <div class="rounded-xl border border-white/80 bg-white/80 px-3 py-2.5">
-                                                        <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Pieces</div>
+                                                    <div class="rounded-xl border border-white/60 bg-white/40 px-3 py-2.5 backdrop-blur-sm">
+                                                        <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Pieces</div>
                                                         <div class="mt-1 text-sm font-semibold text-slate-900" x-text="Number(item.pcs || 1)"></div>
                                                     </div>
-                                                    <div class="rounded-xl border border-white/80 bg-white/80 px-3 py-2.5">
-                                                        <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Wastage</div>
+                                                    <div class="rounded-xl border border-white/60 bg-white/40 px-3 py-2.5 backdrop-blur-sm">
+                                                        <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Wastage</div>
                                                         <div class="mt-1 text-sm font-semibold text-slate-900" x-text="Number(item.wastage_percent || 0).toFixed(2) + '%'"></div>
                                                     </div>
-                                                    <div class="col-span-2 rounded-xl border border-white/80 bg-white/80 px-3 py-2.5">
-                                                        <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Extra charges</div>
+                                                    <div class="col-span-2 rounded-xl border border-white/60 bg-white/40 px-3 py-2.5 backdrop-blur-sm">
+                                                        <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Extra charges</div>
                                                         <div class="mt-1 text-sm font-semibold text-slate-900" x-text="currency(safeNumber(item.hallmark_charge) + safeNumber(item.rhodium_charge) + safeNumber(item.other_charge))"></div>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                                                <button type="button" @click="item._chargesOpen = !item._chargesOpen" class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+                                            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all">
+                                                <button type="button" @click="item._chargesOpen = !item._chargesOpen" class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50">
                                                     <div>
                                                         <div class="text-sm font-medium text-slate-900">Additional charges</div>
-                                                        <div class="mt-1 text-xs text-slate-500">Open only when hallmark, rhodium, or other needs entry.</div>
+                                                        <div class="mt-0.5 text-[11px] text-slate-500">Hallmark, Rhodium, etc.</div>
                                                     </div>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500 transition-transform" :class="item._chargesOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 transition-transform" :class="item._chargesOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" />
                                                     </svg>
                                                 </button>
 
-                                                <div x-show="item._chargesOpen" x-transition x-cloak class="border-t border-slate-200 p-4">
+                                                <div x-show="item._chargesOpen" x-transition x-cloak class="border-t border-slate-100 p-4">
                                                     <div class="grid gap-3 grid-cols-2">
                                                         <div>
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Hallmark</label>
-                                                            <input :name="'items['+index+'][hallmark_charge]'" x-model.number="item.hallmark_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Hallmark</label>
+                                                            <input :name="'items['+index+'][hallmark_charge]'" x-model.number="item.hallmark_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
                                                         <div>
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Rhodium</label>
-                                                            <input :name="'items['+index+'][rhodium_charge]'" x-model.number="item.rhodium_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Rhodium</label>
+                                                            <input :name="'items['+index+'][rhodium_charge]'" x-model.number="item.rhodium_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
                                                         <div class="col-span-2">
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Other</label>
-                                                            <input :name="'items['+index+'][other_charge]'" x-model.number="item.other_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <label class="mb-1.5 block text-xs font-medium text-slate-500 uppercase tracking-wider">Other</label>
+                                                            <input :name="'items['+index+'][other_charge]'" x-model.number="item.other_charge" type="number" step="0.01" min="0" class="w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -311,175 +404,180 @@
 
                 </div>
 
-                <div class="space-y-6 qb-sidebar">
+                <div class="qb-review-rail">
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                        <input type="hidden" name="pricing_mode" :value="pricingMode">
+                        <div class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Review</div>
+                        <p class="mt-2 text-sm leading-5 text-slate-600">Finish GST, discount, payment, and issue details after item entry.</p>
 
-                        <div class="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
-                            <button type="button" @click="pricingMode='no_gst'" class="rounded-lg px-3 py-2.5 text-xs font-semibold transition" :class="pricingMode === 'no_gst' ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:text-slate-900'">No GST</button>
-                            <button type="button" @click="pricingMode='gst_exclusive'" class="rounded-lg px-3 py-2.5 text-xs font-semibold transition" :class="pricingMode === 'gst_exclusive' ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:text-slate-900'">Exclusive</button>
-                            <button type="button" @click="pricingMode='gst_inclusive'" class="rounded-lg px-3 py-2.5 text-xs font-semibold transition" :class="pricingMode === 'gst_inclusive' ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:text-slate-900'">Inclusive</button>
+                        <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-sm text-slate-600">Line total</span>
+                                <span class="text-lg font-semibold text-slate-900" x-text="currency(subtotal)"></span>
+                            </div>
+                            <div class="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+                                <span x-text="items.length === 1 ? '1 item line' : items.length + ' item lines'"></span>
+                                <span x-text="payments.length === 0 ? 'Payment pending' : (payments.length === 1 ? '1 payment row' : payments.length + ' payment rows')"></span>
+                            </div>
                         </div>
 
-                        <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-                            <div class="md:col-span-2 xl:col-span-1">
-                                <div class="mb-2 flex items-center justify-between gap-2">
-                                    <label class="block text-sm font-medium text-slate-600">GST rate (%)</label>
+                        <button type="button" @click="openReview()" class="mt-4 inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                            Review & Payment
+                        </button>
+                    </div>
+
+                    <div x-show="reviewOpen" x-transition.opacity x-cloak class="qb-review-backdrop" @click="closeReview()"></div>
+                    <section x-show="reviewOpen" x-transition x-cloak class="qb-review-drawer" role="dialog" aria-modal="true" aria-label="Review and payment">
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+                            <div>
+                                <div class="text-base font-semibold text-slate-900">Review & Payment</div>
+                                <div class="mt-1 text-xs text-slate-500">GST, payment tracker, and final totals</div>
+                            </div>
+                            <button type="button" @click="closeReview()" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50" aria-label="Close review">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="qb-review-scroll space-y-4">
+                    {{-- Side: Pricing & Tax --}}
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                        <div class="mb-4 flex items-center justify-between">
+                            <h3 class="text-sm font-bold uppercase tracking-widest text-slate-800">Tax & Discount</h3>
+                            <input type="hidden" name="pricing_mode" :value="pricingMode">
+                        </div>
+
+                        <div class="qb-tax-mode">
+                            <button type="button" @click="pricingMode='no_gst'" class="rounded-lg px-2 py-2 text-[11px] font-bold transition" :class="pricingMode === 'no_gst' ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-900'">No GST</button>
+                            <button type="button" @click="pricingMode='gst_exclusive'" class="rounded-lg px-2 py-2 text-[11px] font-bold transition" :class="pricingMode === 'gst_exclusive' ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-900'">Excl.</button>
+                            <button type="button" @click="pricingMode='gst_inclusive'" class="rounded-lg px-2 py-2 text-[11px] font-bold transition" :class="pricingMode === 'gst_inclusive' ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-900'">Incl.</button>
+                        </div>
+
+                        <div class="mt-5 space-y-4">
+                            <div>
+                                <div class="mb-2 flex items-center justify-between">
+                                    <label class="text-xs font-semibold text-slate-600">GST rate (%)</label>
                                     <div class="flex items-center gap-1.5">
-                                        <button
-                                            type="button"
-                                            @click="if (pricingMode !== 'no_gst') gstRate = 0"
-                                            :disabled="pricingMode === 'no_gst'"
-                                            class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition"
-                                            :class="pricingMode === 'no_gst' ? 'cursor-not-allowed opacity-50' : 'hover:bg-slate-50'"
-                                        >0%</button>
-                                        <button
-                                            type="button"
-                                            @click="if (pricingMode !== 'no_gst') gstRate = 3"
-                                            :disabled="pricingMode === 'no_gst'"
-                                            class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition"
-                                            :class="pricingMode === 'no_gst' ? 'cursor-not-allowed opacity-50' : 'hover:bg-slate-50'"
-                                        >3%</button>
+                                        <button type="button" @click="if (pricingMode !== 'no_gst') gstRate = 0" :disabled="pricingMode === 'no_gst'" class="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30">0%</button>
+                                        <button type="button" @click="if (pricingMode !== 'no_gst') gstRate = 3" :disabled="pricingMode === 'no_gst'" class="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30">3%</button>
                                     </div>
                                 </div>
-                                <input
-                                    type="number"
-                                    name="gst_rate"
-                                    x-model.number="gstRate"
-                                    :readonly="pricingMode === 'no_gst'"
-                                    step="0.01"
-                                    min="0"
-                                    max="100"
-                                    class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10"
-                                    :class="pricingMode === 'no_gst' ? 'cursor-not-allowed bg-slate-100 text-slate-500' : ''"
-                                >
+                                <input type="number" name="gst_rate" x-model.number="gstRate" :readonly="pricingMode === 'no_gst'" step="0.01" min="0" max="100" class="w-full rounded-xl border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10 disabled:bg-slate-50">
                             </div>
 
-                            <div>
-                                <label class="mb-2 block text-sm font-medium text-slate-600">Discount type</label>
-                                <select name="discount_type" x-model="discountType" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                    <option value="">None</option>
-                                    <option value="fixed">Fixed</option>
-                                    <option value="percent">Percent</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="mb-2 block text-sm font-medium text-slate-600">Discount value</label>
-                                <input type="number" name="discount_value" x-model.number="discountValue" step="0.01" min="0" placeholder="0.00" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
-                            </div>
-
-                            <div class="md:col-span-2 xl:col-span-1">
-                                <label class="mb-2 block text-sm font-medium text-slate-600">Round off</label>
-                                <input type="number" name="round_off" x-model.number="roundOff" step="0.01" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="mb-2 block text-xs font-semibold text-slate-600">Discount type</label>
+                                    <select name="discount_type" x-model="discountType" class="w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-900 focus:ring-slate-900/10">
+                                        <option value="">None</option>
+                                        <option value="fixed">Fixed</option>
+                                        <option value="percent">%</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-xs font-semibold text-slate-600">Value</label>
+                                    <input type="number" name="discount_value" x-model.number="discountValue" step="0.01" min="0" placeholder="0.00" class="w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900">
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div x-data="{ open: {{ $paymentsPanelOpen ? 'true' : 'false' }} }" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
-                            <div class="text-sm font-semibold text-slate-900" x-text="payments.length === 0 ? 'Payment tracker' : (payments.length === 1 ? '1 payment' : payments.length + ' payments')"></div>
-                            <div class="flex items-center gap-2">
-                                <button type="button" @click="addPayment(); open = true" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                    Add Payment
-                                </button>
-                                <button type="button" @click="open = !open" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                                    <span x-text="open ? 'Collapse' : 'Expand'"></span>
-                                </button>
-                            </div>
+                    {{-- Side: Payment Tracker --}}
+                    <div x-data="{ open: true }" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
+                            <h3 class="text-sm font-bold uppercase tracking-widest text-slate-800">Payments</h3>
+                            <button type="button" @click="addPayment()" class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-slate-800 transition">
+                                Add
+                            </button>
                         </div>
 
-                        <div x-show="open" x-transition x-cloak class="border-t border-slate-200 p-5 sm:p-6">
-                            <div class="space-y-3">
-                                <template x-if="payments.length === 0">
-                                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                                        No payment rows yet. Leave this empty if the bill is fully due.
+                        <div class="p-4 space-y-3">
+                            <template x-if="payments.length === 0">
+                                <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-6 text-center">
+                                    <p class="text-xs text-slate-400">No payments added yet.</p>
+                                </div>
+                            </template>
+
+                            <template x-for="(payment, index) in payments" :key="index">
+                                <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-3 space-y-2">
+                                    <div class="flex items-center gap-2">
+                                        <select :name="'payments['+index+'][payment_mode]'" x-model="payment.payment_mode" class="flex-1 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 font-medium">
+                                            <option value="Cash">Cash</option>
+                                            <option value="UPI">UPI</option>
+                                            <option value="Card">Card</option>
+                                            <option value="Bank">Bank</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        <input :name="'payments['+index+'][amount]'" x-model.number="payment.amount" type="number" step="0.01" min="0" placeholder="Amount" class="w-32 rounded-lg border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 font-bold text-right">
+                                        <button type="button" @click="removePayment(index)" class="text-rose-500 hover:text-rose-700">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
                                     </div>
-                                </template>
-
-                                <template x-for="(payment, index) in payments" :key="index">
-                                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                        <div class="grid grid-cols-2 gap-3">
-                                            <select :name="'payments['+index+'][payment_mode]'" x-model="payment.payment_mode" class="w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                <option value="Cash">Cash</option>
-                                                <option value="UPI">UPI</option>
-                                                <option value="Card">Card</option>
-                                                <option value="Bank">Bank</option>
-                                                <option value="Other">Other</option>
-                                            </select>
-                                            <input :name="'payments['+index+'][amount]'" x-model.number="payment.amount" type="number" step="0.01" min="0" placeholder="Amount" class="w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
-                                            <input :name="'payments['+index+'][reference_no]'" x-model="payment.reference_no" type="text" placeholder="Reference / note" class="col-span-2 w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
-                                            <button type="button" @click="removePayment(index)" class="col-span-2 inline-flex items-center justify-center rounded-xl border border-rose-200 bg-white px-3 py-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50">
-                                                Remove
-                                            </button>
-                                        </div>
-                                        <input type="hidden" :name="'payments['+index+'][notes]'" x-model="payment.notes">
-                                    </div>
-                                </template>
-                            </div>
+                                    <input :name="'payments['+index+'][reference_no]'" x-model="payment.reference_no" type="text" placeholder="Ref / note (e.g. Transaction ID)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-600">
+                                    <input type="hidden" :name="'payments['+index+'][notes]'" x-model="payment.notes">
+                                </div>
+                            </template>
                         </div>
                     </div>
 
+                    {{-- Side: Totals --}}
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                        <div class="grid grid-cols-2 gap-3 text-sm">
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Subtotal</div>
-                                <div class="mt-1 text-base font-semibold text-slate-900" x-text="currency(subtotal)"></div>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-500">Subtotal</span>
+                                <span class="font-medium text-slate-700" x-text="currency(subtotal)"></span>
                             </div>
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Discount</div>
-                                <div class="mt-1 text-base font-semibold text-slate-900" x-text="'- ' + currency(discountAmount)"></div>
+                            <div x-show="discountAmount > 0" class="flex items-center justify-between text-sm">
+                                <span class="text-slate-500">Discount</span>
+                                <span class="font-medium text-rose-600" x-text="'-' + currency(discountAmount)"></span>
                             </div>
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Taxable</div>
-                                <div class="mt-1 text-base font-semibold text-slate-900" x-text="currency(taxableAmount)"></div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-500">Taxable</span>
+                                <span class="font-medium text-slate-700" x-text="currency(taxableAmount)"></span>
                             </div>
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">GST</div>
-                                <div class="mt-1 text-base font-semibold text-slate-900" x-text="currency(gstAmount)"></div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-slate-500">GST (<span x-text="gstRate + '%'"></span>)</span>
+                                <span class="font-medium text-slate-700" x-text="currency(gstAmount)"></span>
                             </div>
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Paid</div>
-                                <div class="mt-1 text-base font-semibold text-slate-900" x-text="currency(paidAmount)"></div>
-                            </div>
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Round off</div>
-                                <div class="mt-1 text-base font-semibold text-slate-900" x-text="currency(roundOff)"></div>
+                            <div class="pt-3 flex items-center justify-between border-t border-slate-100">
+                                <span class="text-base font-bold text-slate-900">Grand Total</span>
+                                <span class="text-xl font-black text-slate-900" x-text="currency(totalAmount)"></span>
                             </div>
                         </div>
 
-                        <div class="mt-3 rounded-2xl bg-slate-900 px-4 py-4 text-white">
-                            <div class="flex items-center justify-between gap-3">
-                                <span class="text-sm font-medium text-slate-300">Grand total</span>
-                                <span class="text-2xl font-semibold" x-text="currency(totalAmount)"></span>
+                        <div class="mt-5 space-y-2">
+                            <div class="flex items-center justify-between text-sm px-3 py-2 bg-slate-50 rounded-xl">
+                                <span class="text-slate-500 font-medium">Paid</span>
+                                <span class="font-bold text-emerald-600" x-text="currency(paidAmount)"></span>
                             </div>
-                            <div class="mt-3 flex items-center justify-between text-sm">
-                                <span class="text-slate-300">Due</span>
-                                <span class="font-semibold" :class="dueAmount > 0 ? 'text-amber-300' : 'text-emerald-300'" x-text="currency(dueAmount)"></span>
+                            <div class="flex items-center justify-between text-sm px-3 py-2 bg-slate-50 rounded-xl">
+                                <span class="text-slate-500 font-medium">Due</span>
+                                <span class="font-bold" :class="dueAmount > 0 ? 'text-rose-600' : 'text-slate-900'" x-text="currency(dueAmount)"></span>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                        <div class="flex flex-col gap-3">
+                        <div class="mt-6 flex flex-col gap-3">
                             @if(!$editing || $quickBill->status === \App\Models\QuickBill::STATUS_DRAFT)
-                                <button type="submit" name="save_action" value="issue" class="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                                <button type="submit" name="save_action" value="issue" class="w-full flex min-h-[52px] items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-slate-200 transition hover:bg-slate-800 active:scale-[0.98]">
                                     Issue Quick Bill
                                 </button>
-                                <button type="submit" name="save_action" value="draft" class="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                                <button type="submit" name="save_action" value="draft" class="w-full flex min-h-[52px] items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]">
                                     Save Draft
                                 </button>
                             @else
-                                <button type="submit" name="save_action" value="issue" class="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                                <button type="submit" name="save_action" value="issue" class="w-full flex min-h-[52px] items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-slate-200 transition hover:bg-slate-800 active:scale-[0.98]">
                                     Update Quick Bill
                                 </button>
                             @endif
                             @if($editing)
-                                <a href="{{ route('quick-bills.show', $quickBill) }}" class="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                                    Cancel
+                                <a href="{{ route('quick-bills.show', $quickBill) }}" class="w-full flex min-h-[52px] items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]">
+                                    Cancel Changes
                                 </a>
                             @endif
                         </div>
                     </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         </form>
@@ -498,6 +596,7 @@
                 net_weight: Number(item.net_weight || 0),
                 rate: Number(item.rate || 0),
                 making_charge: Number(item.making_charge || 0),
+                making_charge_type: item.making_charge_type || 'fixed',
                 stone_charge: Number(item.stone_charge || 0),
                 hallmark_charge: Number(item.hallmark_charge || 0),
                 rhodium_charge: Number(item.rhodium_charge || 0),
@@ -509,7 +608,7 @@
             const blankItem = () => initItem({
                 description: '', hsn_code: '', metal_type: 'Gold', purity: '22K',
                 pcs: 1, gross_weight: 0, stone_weight: 0, net_weight: 0,
-                rate: 0, making_charge: 0, stone_charge: 0,
+                rate: 0, making_charge: 0, making_charge_type: 'fixed', stone_charge: 0,
                 hallmark_charge: 0, rhodium_charge: 0, other_charge: 0,
                 wastage_percent: 0, line_discount: 0,
             }, false);
@@ -525,6 +624,7 @@
                 discountType: config.discountType || '',
                 discountValue: Number(config.discountValue || 0),
                 roundOff: Number(config.roundOff || 0),
+                reviewOpen: Boolean(config.reviewOpen),
                 openIndex: 0,
                 items: (config.items || []).map((item, i) => initItem(item,
                     Number(item.hallmark_charge || 0) > 0 || Number(item.rhodium_charge || 0) > 0 || Number(item.other_charge || 0) > 0
@@ -564,6 +664,12 @@
                 removePayment(index) {
                     this.payments.splice(index, 1);
                 },
+                openReview() {
+                    this.reviewOpen = true;
+                },
+                closeReview() {
+                    this.reviewOpen = false;
+                },
                 applyCustomer(customerId) {
                     const customer = this.customers.find(entry => String(entry.id) === String(customerId));
                     if (!customer) {
@@ -577,12 +683,25 @@
                     const num = Number(value);
                     return Number.isFinite(num) ? num : 0;
                 },
+                // Resolve making per mode (preview only — server re-resolves on save).
+                // percentage = of metal value (net × rate); per_gram = of net weight.
+                lineMaking(item) {
+                    const gross = this.safeNumber(item.gross_weight);
+                    const stoneWeight = this.safeNumber(item.stone_weight);
+                    const net = this.safeNumber(item.net_weight) > 0 ? this.safeNumber(item.net_weight) : Math.max(0, gross - stoneWeight);
+                    const metalValue = net * this.safeNumber(item.rate);
+                    const v = this.safeNumber(item.making_charge);
+                    const type = item.making_charge_type || 'fixed';
+                    if (type === 'percentage') return metalValue * (v / 100);
+                    if (type === 'per_gram') return net * v;
+                    return v;
+                },
                 lineTotal(item) {
                     const gross = this.safeNumber(item.gross_weight);
                     const stoneWeight = this.safeNumber(item.stone_weight);
                     const net = this.safeNumber(item.net_weight) > 0 ? this.safeNumber(item.net_weight) : Math.max(0, gross - stoneWeight);
                     const rate = this.safeNumber(item.rate);
-                    const making = this.safeNumber(item.making_charge);
+                    const making = this.lineMaking(item);
                     const stoneCharge = this.safeNumber(item.stone_charge);
                     const hallmarkCharge = this.safeNumber(item.hallmark_charge);
                     const rhodiumCharge = this.safeNumber(item.rhodium_charge);
