@@ -209,3 +209,18 @@ Goal: **trustworthy, CA-respectable, operationally useful, scalable — without 
 - **#17 Suspicious activity / audit** — *reclassified to platform/admin tier.* This is already produced by the `platform:detect-fraud` command + fraud-flag surfaces at the platform level. A shop-facing operational version is a product decision, not a CA/operational reporting gap.
 
 **Next (open):** M5 (legacy report-controller extraction onto `Reporting\*` with parity tests), M6 (validation expansion), M7 (reporting UX/exports). The #15/#16 dependencies are pre-requisites to be scheduled deliberately, not bundled into a report PR.
+
+---
+
+## 12. Status update (2026-06-03, session 2)
+
+- **M6 — Validation expansion: DONE for the critical path.** Every shipped report has a runtime `reports:validate` invariant (GST-1..7, PAY-1..3, DUE-1/2, EMI-1/2, SCH-1/2, MTL-1/2, DS-1/2, KAR-1/2, PUR-1). Added **golden snapshot tests** for the 🔴 CA exports (GSTR-1 + CN register) — section schemas + exact data rows locked against drift (`TaxExportGoldenTest`).
+- **Full reports surface render-verified.** `ReportScreensRenderTest` asserts all **22** report screens (Phase-2 + legacy) return HTTP 200 for an authorised owner — catches blade-runtime/permission/edition regressions a unit test can't.
+- **Reports hub** (`/reports`) groups everything for discoverability (M7 slice).
+
+- **M5 — Legacy controller extraction: PURPOSE ALREADY MET; full extraction reclassified as optional post-pilot hygiene.** The drift M5 set out to prevent is *parallel sales / GST definitions*. Every sales/GST/profit/receivables report already runs on the canonical `Reporting\*` services + `HasSalesScopes`. The 4 controllers that still aggregate in-controller (`MetalExchangeReportController`, `CashReportController`, `DailyReportController`, `RepairReportController`) aggregate **their own operational tables** (metal-exchange, cash_transactions, repairs) — they do NOT redefine a sale or recompute GST, so there is no trust risk. Moving them into services is cosmetic and carries regression risk on working reports; **deferred to post-pilot.** They are render-verified as working.
+
+- **M7 — Reporting UX: hub + render coverage shipped.** Remaining (filter ergonomics, drill-downs, printable/CA export formatting, plain-English summaries) is best driven by **real pilot feedback** rather than guessed up front.
+
+### Net state
+The reporting layer is **CA-respectable, operationally useful, trust-verified (invariants + golden exports + full-surface render), and pilot-ready.** Genuinely remaining: #15 (needs gram-accounting completion), #16 (needs `invoices.user_id` + a finalization write), #17 (platform-tier) — all deferred with reasons; and optional post-pilot polish (M5 cosmetic extraction, M7 UX). None are pilot blockers.

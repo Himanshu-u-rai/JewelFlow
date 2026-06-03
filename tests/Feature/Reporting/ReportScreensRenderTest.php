@@ -32,8 +32,10 @@ class ReportScreensRenderTest extends TestCase
         [$owner, $shop] = $this->createRetailerTenant();
 
         $role = Role::withoutGlobalScopes()->findOrFail($owner->role_id);
-        $perm = Permission::firstOrCreate(['name' => 'reports.view'], ['display_name' => 'View Reports', 'group' => 'reports']);
-        $role->permissions()->syncWithoutDetaching([$perm->id]);
+        foreach (['reports.view', 'reports.daily_closing'] as $name) {
+            $perm = Permission::firstOrCreate(['name' => $name], ['display_name' => $name, 'group' => 'reports']);
+            $role->permissions()->syncWithoutDetaching([$perm->id]);
+        }
 
         $this->actingAs($owner)
             ->get(route($routeName))
@@ -53,6 +55,9 @@ class ReportScreensRenderTest extends TestCase
             'report.dues-aging', 'report.emi', 'report.scheme-liability', 'report.metal-liability',
             // M4 Operational
             'report.dead-stock', 'report.karigar-settlement', 'report.purchase-efficiency',
+            // Legacy / existing reports (full-surface render coverage)
+            'report.gst', 'report.pnl', 'report.gold', 'report.daily', 'report.cash',
+            'report.closing', 'report.repairs', 'report.metal-exchange',
         ]);
     }
 }
