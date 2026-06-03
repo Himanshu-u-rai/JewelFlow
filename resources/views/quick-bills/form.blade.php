@@ -128,6 +128,7 @@
         customers: @js($customerDirectory),
         items: @js($initialItems),
         payments: @js($initialPayments),
+        purityProfiles: @js($purityProfiles ?? []),
         selectedCustomerId: @js(old('customer_id', $quickBill->customer_id)),
         customerName: @js(old('customer_name', $quickBill->customer_name)),
         customerMobile: @js(old('customer_mobile', $quickBill->customer_mobile)),
@@ -279,12 +280,28 @@
                                             <div class="grid gap-3 grid-cols-2 xl:grid-cols-4">
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">Metal</label>
-                                                    <input :name="'items['+index+'][metal_type]'" x-model="item.metal_type" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                    <template x-if="purityProfiles.length">
+                                                        <select :name="'items['+index+'][metal_type]'" x-model="item.metal_type" @change="onMetalChange(item)" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <template x-for="m in metalChoices()" :key="m"><option :value="cap(m)" x-text="cap(m)"></option></template>
+                                                        </select>
+                                                    </template>
+                                                    <template x-if="!purityProfiles.length">
+                                                        <input :name="'items['+index+'][metal_type]'" x-model="item.metal_type" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                    </template>
                                                 </div>
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">Purity</label>
-                                                    <input :name="'items['+index+'][purity]'" x-model="item.purity" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                    <p class="mt-1 text-xs text-slate-400">Gold: karats (e.g. 22) · Silver: fineness (e.g. 925)</p>
+                                                    <template x-if="purityProfiles.length">
+                                                        <select :name="'items['+index+'][purity]'" x-model="item.purity" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <template x-for="p in purityChoicesFor(item.metal_type)" :key="p.label"><option :value="p.label" x-text="p.label"></option></template>
+                                                        </select>
+                                                    </template>
+                                                    <template x-if="!purityProfiles.length">
+                                                        <div>
+                                                            <input :name="'items['+index+'][purity]'" x-model="item.purity" type="text" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <p class="mt-1 text-xs text-slate-400">Gold: karats (e.g. 22) · Silver: fineness (e.g. 925)</p>
+                                                        </div>
+                                                    </template>
                                                 </div>
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">HSN</label>
@@ -614,6 +631,7 @@
 
             return {
                 customers: config.customers || [],
+                purityProfiles: config.purityProfiles || [],
                 selectedCustomerId: config.selectedCustomerId ? String(config.selectedCustomerId) : '',
                 customerName: config.customerName || '',
                 customerMobile: config.customerMobile || '',
@@ -681,6 +699,17 @@
                 safeNumber(value) {
                     const num = Number(value);
                     return Number.isFinite(num) ? num : 0;
+                },
+                // Cascading metal/purity from the shop's configured standards.
+                cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); },
+                metalChoices() { return [...new Set(this.purityProfiles.map(p => p.metal))]; },
+                purityChoicesFor(metal) {
+                    const m = String(metal || '').toLowerCase();
+                    return this.purityProfiles.filter(p => p.metal === m);
+                },
+                onMetalChange(item) {
+                    const choices = this.purityChoicesFor(item.metal_type);
+                    item.purity = choices.length ? choices[0].label : '';
                 },
                 netWeightOf(item) {
                     const gross = this.safeNumber(item.gross_weight);

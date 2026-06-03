@@ -234,11 +234,27 @@ class QuickBillController extends Controller
             ])->values()->all()
             : []);
 
+        // Shop's configured purity standards → cascading metal/purity dropdowns.
+        // metal lowercased for matching; label is the display ("22K"/"925") and
+        // also the submitted value (server parses the number for the factor).
+        $shopId = (int) (auth()->user()->shop_id ?? $quickBill->shop_id);
+        $purityProfiles = \App\Models\ShopMetalPurityProfile::where('shop_id', $shopId)
+            ->whereRaw('is_active = true')
+            ->orderBy('metal_type')
+            ->orderBy('sort_order')
+            ->get(['metal_type', 'label', 'purity_value'])
+            ->map(fn ($p) => [
+                'metal' => strtolower(trim((string) $p->metal_type)),
+                'label' => (string) $p->label,
+                'value' => (float) $p->purity_value,
+            ])->values()->all();
+
         return [
             'quickBill' => $quickBill,
             'customers' => $customers,
             'initialItems' => $initialItems,
             'initialPayments' => $initialPayments,
+            'purityProfiles' => $purityProfiles,
         ];
     }
 }

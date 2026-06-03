@@ -37,6 +37,34 @@ class QuickBillModeFlagTest extends TestCase
         ]));
     }
 
+    public function test_purity_factor_scales_metal_value(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+
+        $bill = $this->makeBill($shop->id, $user, [
+            'metal_type' => 'gold', 'purity' => '22K', 'rate' => 7200, 'net_weight' => 10,
+            'making_charge' => 0,
+        ]);
+
+        $line = TenantContext::runFor($shop->id, fn () => $bill->items()->first());
+        // Pure 24K rate ₹7200 × 10g × (22/24) = ₹66,000 (no GST, no other charges).
+        $this->assertEqualsWithDelta(66000.00, (float) $line->line_total, 0.01);
+    }
+
+    public function test_silver_purity_factor_uses_thousandths(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+
+        $bill = $this->makeBill($shop->id, $user, [
+            'metal_type' => 'silver', 'purity' => '925', 'rate' => 100, 'net_weight' => 50,
+            'making_charge' => 0,
+        ]);
+
+        $line = TenantContext::runFor($shop->id, fn () => $bill->items()->first());
+        // ₹100 × 50g × (925/1000) = ₹4,625.
+        $this->assertEqualsWithDelta(4625.00, (float) $line->line_total, 0.01);
+    }
+
     public function test_flag_off_ignores_mode_and_stays_fixed(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
