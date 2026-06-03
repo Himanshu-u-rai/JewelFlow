@@ -321,14 +321,12 @@
                                                         </div>
                                                         <div>
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Making</label>
-                                                            <div class="flex gap-2">
-                                                                <select :name="'items['+index+'][making_charge_type]'" x-model="item.making_charge_type" class="w-[42%] rounded-xl border-slate-300 bg-white px-2 py-3 text-xs text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                                    <option value="fixed">Fixed ₹</option>
-                                                                    <option value="percentage">% metal</option>
-                                                                    <option value="per_gram">₹/g</option>
-                                                                </select>
-                                                                <input :name="'items['+index+'][making_charge]'" x-model.number="item.making_charge" type="number" step="0.01" min="0" class="w-[58%] rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                            </div>
+                                                            <select :name="'items['+index+'][making_charge_type]'" x-model="item.making_charge_type" class="mb-2 w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                                <option value="fixed">Fixed ₹</option>
+                                                                <option value="percentage">% of metal</option>
+                                                                <option value="per_gram">₹ / gram</option>
+                                                            </select>
+                                                            <input :name="'items['+index+'][making_charge]'" x-model.number="item.making_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                             <input type="hidden" :name="'items['+index+'][making_charge_value]'" :value="item.making_charge">
                                                             <p class="mt-1 text-xs text-slate-400" x-show="item.making_charge_type !== 'fixed'" x-text="item.making_charge_type === 'percentage' ? ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (' + (item.making_charge||0) + '% of metal)') : ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (₹' + (item.making_charge||0) + '/g)')"></p>
                                                         </div>
