@@ -159,6 +159,53 @@
                             @endif
                         </table>
                     </div>
+
+                    {{-- Mobile card list (rate breakdown) --}}
+                    <div class="gst-mobile-list">
+                        @forelse($gstBreakdown as $row)
+                            @php
+                                $cgst = round((float) ($row->cgst ?? ($row->gst / 2)), 2);
+                                $sgst = round((float) ($row->sgst ?? ($row->gst - $cgst)), 2);
+                            @endphp
+                            <div class="gst-mcard">
+                                <div class="gst-mcard-head">
+                                    <span class="gst-rate-pill">{{ number_format($row->gst_rate, 2) }}%</span>
+                                    <span class="gst-num gst-strong">₹{{ number_format($row->total, 2) }}</span>
+                                </div>
+                                <dl class="gst-mcard-grid">
+                                    <div><dt>Taxable</dt><dd class="gst-num">₹{{ number_format($row->taxable, 2) }}</dd></div>
+                                    <div><dt>Discount</dt><dd class="gst-num gst-neg">{{ $row->discount > 0 ? '−₹' . number_format($row->discount, 2) : '-' }}</dd></div>
+                                    <div><dt>CGST</dt><dd class="gst-num">₹{{ number_format($cgst, 2) }}</dd></div>
+                                    <div><dt>SGST</dt><dd class="gst-num">₹{{ number_format($sgst, 2) }}</dd></div>
+                                    <div><dt>Total GST</dt><dd class="gst-num gst-accent">₹{{ number_format($row->gst, 2) }}</dd></div>
+                                    <div><dt>Count</dt><dd>{{ $row->count }}</dd></div>
+                                </dl>
+                            </div>
+                        @empty
+                            <div class="gst-empty gst-empty--pad">No GST transactions for this period</div>
+                        @endforelse
+
+                        @if($gstBreakdown->isNotEmpty())
+                            @php
+                                $totalCgst = round((float) ($cgstCollected ?? ($gstCollected / 2)), 2);
+                                $totalSgst = round((float) ($sgstCollected ?? ($gstCollected - $totalCgst)), 2);
+                            @endphp
+                            <div class="gst-mcard gst-mcard--total">
+                                <div class="gst-mcard-head">
+                                    <span class="gst-foot-label">Total</span>
+                                    <span class="gst-num gst-strong">₹{{ number_format($totalSales, 2) }}</span>
+                                </div>
+                                <dl class="gst-mcard-grid">
+                                    <div><dt>Taxable</dt><dd class="gst-num gst-strong">₹{{ number_format($taxableAmount, 2) }}</dd></div>
+                                    <div><dt>Discount</dt><dd class="gst-num gst-neg">{{ $totalDiscount > 0 ? '−₹' . number_format($totalDiscount, 2) : '-' }}</dd></div>
+                                    <div><dt>CGST</dt><dd class="gst-num gst-accent">₹{{ number_format($totalCgst, 2) }}</dd></div>
+                                    <div><dt>SGST</dt><dd class="gst-num gst-accent">₹{{ number_format($totalSgst, 2) }}</dd></div>
+                                    <div><dt>Total GST</dt><dd class="gst-num gst-accent gst-strong">₹{{ number_format($gstCollected, 2) }}</dd></div>
+                                    <div><dt>Invoices</dt><dd class="gst-strong">{{ $invoiceCount }}</dd></div>
+                                </dl>
+                            </div>
+                        @endif
+                    </div>
                 </div>
 
             {{-- GSTR-1 summary — a balanced card row instead of a tall sidebar --}}
@@ -285,6 +332,35 @@
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+
+                    {{-- Mobile card list (credit notes) --}}
+                    <div class="gst-mobile-list gst-mobile-list--cn">
+                        @foreach($cnData as $cn)
+                            <div class="gst-mcard">
+                                <div class="gst-mcard-head">
+                                    <span class="gst-mono gst-strong">{{ $cn->credit_note_number }}</span>
+                                    <span class="gst-num gst-strong">₹{{ number_format($cn->cn_total, 2) }}</span>
+                                </div>
+                                <dl class="gst-mcard-grid">
+                                    <div><dt>Date</dt><dd>{{ \Carbon\Carbon::parse($cn->issued_at)->format('d M Y') }}</dd></div>
+                                    <div><dt>Invoice</dt><dd class="gst-mono">{{ $cn->original_invoice_number ?? '-' }}</dd></div>
+                                    <div><dt>Customer</dt><dd>{{ $cn->customer_name }}</dd></div>
+                                    <div><dt>Taxable</dt><dd class="gst-num">₹{{ number_format($cn->cn_subtotal, 2) }}</dd></div>
+                                    <div><dt>GST Reversed</dt><dd class="gst-num gst-neg">−₹{{ number_format($cn->cn_gst, 2) }}</dd></div>
+                                </dl>
+                            </div>
+                        @endforeach
+                        <div class="gst-mcard gst-mcard--total">
+                            <div class="gst-mcard-head">
+                                <span class="gst-foot-label">{{ $cnCount ?? 0 }} credit note(s)</span>
+                                <span class="gst-num gst-strong">₹{{ number_format($cnTotalReversed ?? 0, 2) }}</span>
+                            </div>
+                            <dl class="gst-mcard-grid">
+                                <div><dt>Taxable</dt><dd class="gst-num gst-strong">₹{{ number_format($cnSubtotalReversed ?? 0, 2) }}</dd></div>
+                                <div><dt>GST Reversed</dt><dd class="gst-num gst-neg gst-strong">−₹{{ number_format($cnGstReversed ?? 0, 2) }}</dd></div>
+                            </dl>
+                        </div>
                     </div>
                 @endif
             </div>
@@ -476,12 +552,36 @@
         .gst-empty { padding: 32px 16px; text-align: center; color: var(--gst-muted); font-size: 13px; }
         .gst-empty--pad { padding: 40px 16px; }
 
+        /* Mobile card lists for the data tables */
+        .gst-mobile-list { display: none; padding: 12px 16px 16px; }
+        .gst-mcard {
+            border: 1px solid var(--gst-border); border-radius: 12px;
+            background: #fafbfd; padding: 13px 14px; margin-bottom: 10px;
+        }
+        .gst-mcard:last-child { margin-bottom: 0; }
+        .gst-mcard--total { background: #f1f5f4; border-color: #cfe6e2; }
+        .gst-mcard-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--gst-border);
+        }
+        .gst-mcard-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px 16px; margin: 0; }
+        .gst-mcard-grid dt { color: var(--gst-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 1px; }
+        .gst-mcard-grid dd { margin: 0; color: var(--gst-ink); font-size: 13px; font-weight: 600; word-break: break-word; }
+
         /* Responsive */
+        @media (max-width: 767px) {
+            /* Wide financial tables → stacked cards (no sideways scroll) */
+            .gst-table-wrap { display: none; }
+            .gst-mobile-list { display: block; }
+        }
         @media (max-width: 760px) {
             .gst-snapshot { grid-template-columns: repeat(2, minmax(0,1fr)); }
             .gst-snap { border-bottom: 1px solid var(--gst-border); }
             .gst-snap:nth-child(2n) { border-right: 0; }
             .gst-snap:nth-last-child(-n+2) { border-bottom: 0; }
+        }
+        @media (max-width: 420px) {
+            .gst-mcard-grid { grid-template-columns: 1fr; }
         }
         @media (max-width: 460px) {
             .gst-snapshot { grid-template-columns: 1fr; }
