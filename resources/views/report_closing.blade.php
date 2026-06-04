@@ -1,42 +1,5 @@
 <x-app-layout>
-    <x-page-header class="closing-page-header" title="Daily Closing" :subtitle="'Summary for ' . $date">
-        <x-slot:actions>
-            <form method="GET" action="{{ route('report.closing') }}" class="inline-flex items-center gap-2 closing-header-filter">
-                <input type="date" name="date" value="{{ $date }}" class="clr-date closing-header-date">
-                @if(request()->filled('date'))
-                    <a href="{{ route('report.closing') }}" class="btn btn-secondary btn-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                        Clear
-                    </a>
-                @else
-                    <button type="submit" class="btn btn-success btn-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-                        </svg>
-                        Filter
-                    </button>
-                @endif
-            </form>
-
-            <button onclick="window.print()" class="btn btn-secondary btn-sm closing-print-btn">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
-                </svg>
-                Print
-            </button>
-
-            @if(auth()->user()->shop?->isManufacturer())
-                <a href="{{ route('report.pnl', ['date' => $date]) }}" class="btn btn-secondary btn-sm closing-pnl-btn">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-                    </svg>
-                    View P&amp;L
-                </a>
-            @endif
-        </x-slot:actions>
-    </x-page-header>
+    <x-page-header title="Daily Closing" :subtitle="'Summary for ' . $date" />
 
     <div class="content-inner clr-page">
         @php
@@ -52,6 +15,28 @@
         <div class="closing-print-head">
             <h2>Daily Closing Report</h2>
             <span class="closing-print-date">Report Date: {{ $reportDatePretty }}</span>
+        </div>
+
+        {{-- Controls toolbar (date filter + actions) --}}
+        <div class="clr-toolbar">
+            <form method="GET" action="{{ route('report.closing') }}" class="clr-toolbar-filter">
+                <span class="clr-toolbar-label">Date</span>
+                <input type="date" name="date" value="{{ $date }}" class="clr-date">
+                @if(request()->filled('date'))
+                    <a href="{{ route('report.closing') }}" class="clr-btn">Clear</a>
+                @else
+                    <button type="submit" class="clr-btn clr-btn--primary">Filter</button>
+                @endif
+            </form>
+            <div class="clr-toolbar-actions">
+                <button type="button" onclick="window.print()" class="clr-btn">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+                    Print
+                </button>
+                @if(auth()->user()->shop?->isManufacturer())
+                    <a href="{{ route('report.pnl', ['date' => $date]) }}" class="clr-btn">View P&amp;L</a>
+                @endif
+            </div>
         </div>
 
         {{-- Snapshot KPI strip (replaces the dark banner) --}}
@@ -352,6 +337,36 @@
             background: #fff;
             box-shadow: 0 0 0 3px rgba(15,118,110,.13);
             outline: none;
+        }
+
+        /* Controls toolbar — date filter (left) + actions (right) */
+        .clr-toolbar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 14px; flex-wrap: wrap;
+            padding: 13px 18px; border: 1px solid var(--clr-border); border-radius: 16px;
+            background: #fff; box-shadow: var(--clr-shadow);
+        }
+        .clr-toolbar-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .clr-toolbar-label { color: var(--clr-muted); font-size: 12px; font-weight: 600; margin-right: 2px; }
+        .clr-toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .clr-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            height: 40px; padding: 0 15px;
+            border: 1px solid var(--clr-border-strong); border-radius: 10px;
+            background: #fff; color: var(--clr-ink-2); font-size: 13px; font-weight: 600;
+            text-decoration: none; cursor: pointer;
+            transition: background-color .15s var(--clr-ease), transform .15s var(--clr-ease);
+        }
+        .clr-btn:hover { background: #f7f9fc; }
+        .clr-btn:active { transform: scale(.98); }
+        .clr-btn--primary { border-color: var(--clr-accent-deep); background: var(--clr-accent-deep); color: #fff; }
+        .clr-btn--primary:hover { background: #115e56; }
+
+        @media (max-width: 600px) {
+            .clr-toolbar { flex-direction: column; align-items: stretch; }
+            .clr-toolbar-filter, .clr-toolbar-actions { width: 100%; }
+            .clr-toolbar-filter .clr-date { flex: 1; }
+            .clr-toolbar-actions .clr-btn { flex: 1; }
         }
 
         /* ── Snapshot KPI strip ── */
@@ -720,32 +735,6 @@
             .clr-panel-head, .clr-panel-body, .clr-card { padding-left: 16px; padding-right: 16px; }
         }
 
-        /* ── Mobile header layout (kept from original) ── */
-        @media (max-width: 768px) {
-            .closing-page-header {
-                display: grid;
-                grid-template-columns: 40px minmax(0, 1fr);
-                column-gap: 8px;
-                row-gap: 8px;
-                align-items: center;
-            }
-            .closing-page-header .content-header-nav { grid-column: 1; grid-row: 1; margin-right: 0; padding-top: 0; }
-            .closing-page-header > :nth-child(2) { grid-column: 2; grid-row: 1; min-width: 0; text-align: left; }
-            .closing-page-header .page-title { margin: 0; font-size: 1rem; line-height: 1.25; white-space: normal; }
-            .closing-page-header .page-subtitle { display: block; margin-top: 0.1rem; font-size: 0.72rem; line-height: 1.25; }
-            .closing-page-header .page-actions { grid-column: 1 / -1; grid-row: 2; width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
-            .closing-page-header .closing-header-filter { width: auto; min-width: 0; }
-            .closing-page-header .closing-header-date { min-width: 8.8rem; }
-        }
-
-        @media (max-width: 640px) {
-            .closing-page-header .closing-header-filter { width: auto; justify-content: center; flex-wrap: nowrap; flex: 0 1 auto; }
-            .closing-page-header .closing-header-date { width: 6.9rem; min-width: 6.9rem; max-width: 6.9rem; }
-            .closing-page-header .page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-            .closing-page-header .closing-print-btn { order: 2; }
-            .closing-page-header .closing-pnl-btn { order: 3; flex-basis: 100%; width: max-content; }
-        }
-
         /* ── Print ── */
         @media print {
             @page { size: A4; margin: 12mm; }
@@ -767,7 +756,7 @@
             .closing-print-head h2 { margin: 0; font-size: 20px; font-weight: 700; color: #111827; }
             .closing-print-date { font-size: 11px; font-weight: 600; color: #111827; white-space: nowrap; }
 
-            .clr-snapshot, .clr-insights { display: none !important; }
+            .clr-toolbar, .clr-snapshot, .clr-insights { display: none !important; }
 
             .clr-grid { gap: 6mm !important; grid-template-columns: 1fr !important; }
             .clr-grid > * { break-inside: avoid; page-break-inside: avoid; }

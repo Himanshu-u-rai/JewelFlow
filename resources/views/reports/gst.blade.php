@@ -8,47 +8,7 @@
         $reportDate = now()->format('d M Y');
         $isRetailer = auth()->user()->shop?->isRetailer();
     @endphp
-    <x-page-header class="gst-page-header ops-treatment-header">
-        <div>
-            <div class="gst-title-row">
-                <h1 class="page-title">GST Report</h1>
-                <span class="gst-period-badge gst-period-badge-mobile">{{ \Carbon\Carbon::create()->month($safeMonth)->format('F') }} {{ $safeYear }}</span>
-            </div>
-            <p class="text-sm text-gray-600 mt-1">Monthly GST summary and rate-wise breakdown</p>
-        </div>
-        <div class="page-actions">
-            <form method="GET" action="{{ route('report.gst') }}" class="flex flex-wrap gap-2 items-end" data-enhance-selects="true" data-enhance-selects-variant="compact">
-                <select name="month" class="gst-select gst-month-select">
-                    @for($i = 1; $i <= 12; $i++)
-                        <option value="{{ $i }}" {{ $safeMonth === $i ? 'selected' : '' }}>
-                            {{ \Carbon\Carbon::create()->month($i)->format('F') }}
-                        </option>
-                    @endfor
-                </select>
-                <select name="year" class="gst-select gst-year-select">
-                    @for($y = now()->year; $y >= now()->year - 5; $y--)
-                        <option value="{{ $y }}" {{ $safeYear === $y ? 'selected' : '' }}>{{ $y }}</option>
-                    @endfor
-                </select>
-                @if(request()->hasAny(['month', 'year']))
-                    <a href="{{ route('report.gst') }}" class="gst-btn gst-view-toggle-btn" title="Clear" aria-label="Clear">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="gst-action-icon"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        <span class="gst-action-label">Clear</span>
-                    </a>
-                @else
-                    <button type="submit" class="gst-btn gst-btn--primary gst-view-toggle-btn" title="View" aria-label="View">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="gst-action-icon"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                        <span class="gst-action-label">View</span>
-                    </button>
-                @endif
-                <button type="button" onclick="window.print()" class="gst-btn gst-print-btn" title="Print" aria-label="Print">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="gst-action-icon"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                    <span class="gst-action-label">Print</span>
-                </button>
-            </form>
-            <span class="gst-period-badge gst-period-badge-desktop">{{ \Carbon\Carbon::create()->month($safeMonth)->format('F') }} {{ $safeYear }}</span>
-        </div>
-    </x-page-header>
+    <x-page-header title="GST Report" subtitle="Monthly GST summary and rate-wise breakdown" />
 
     <div class="content-inner gst-page jf-skeleton-host is-loading">
         {{-- Print-only header --}}
@@ -75,6 +35,34 @@
         </div>
 
         <div class="gst-flow">
+            {{-- Controls toolbar (period filter + print) --}}
+            <div class="gst-toolbar">
+                <form method="GET" action="{{ route('report.gst') }}" class="gst-toolbar-filter" data-enhance-selects="true" data-enhance-selects-variant="compact">
+                    <span class="gst-toolbar-label">Period</span>
+                    <select name="month" class="gst-select">
+                        @for($i = 1; $i <= 12; $i++)
+                            <option value="{{ $i }}" {{ $safeMonth === $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
+                        @endfor
+                    </select>
+                    <select name="year" class="gst-select">
+                        @for($y = now()->year; $y >= now()->year - 5; $y--)
+                            <option value="{{ $y }}" {{ $safeYear === $y ? 'selected' : '' }}>{{ $y }}</option>
+                        @endfor
+                    </select>
+                    @if(request()->hasAny(['month', 'year']))
+                        <a href="{{ route('report.gst') }}" class="gst-btn">Clear</a>
+                    @else
+                        <button type="submit" class="gst-btn gst-btn--primary">View</button>
+                    @endif
+                </form>
+                <div class="gst-toolbar-actions">
+                    <button type="button" onclick="window.print()" class="gst-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+                        Print
+                    </button>
+                </div>
+            </div>
+
             {{-- KPI snapshot strip --}}
             <div class="gst-screen-summary gst-snapshot">
                 <div class="gst-snap">
@@ -398,26 +386,27 @@
             @keyframes gstRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         }
 
-        /* Header period badge + selects + buttons */
-        .gst-period-badge {
-            display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
-            border-radius: 999px; background: var(--gst-accent-soft, rgba(13,148,136,.08));
-            border: 1px solid #cfe6e2; color: #0f766e; font-size: 11.5px; font-weight: 650;
+        /* Controls toolbar — period filter (left) + actions (right) */
+        .gst-toolbar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 14px; flex-wrap: wrap;
+            padding: 13px 18px; border: 1px solid var(--gst-border); border-radius: 16px;
+            background: #fff; box-shadow: var(--gst-shadow);
         }
-        .gst-period-badge-mobile { margin-left: 8px; }
-        .gst-period-badge-desktop { margin-left: 8px; }
+        .gst-toolbar-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .gst-toolbar-label { color: var(--gst-muted); font-size: 12px; font-weight: 600; margin-right: 2px; }
+        .gst-toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
         .gst-select {
-            height: 40px; padding: 0 10px;
+            height: 40px; padding: 0 10px; min-width: 7rem;
             border: 1px solid var(--gst-border-strong); border-radius: 10px;
             background: #f4f6fa; color: var(--gst-ink); font-size: 13px;
             transition: border-color .15s var(--gst-ease), box-shadow .15s var(--gst-ease), background-color .15s var(--gst-ease);
         }
-        .gst-month-select { width: 6.4rem; }
-        .gst-year-select { width: 5.2rem; }
         .gst-select:focus { border-color: var(--gst-accent-deep); background: #fff; box-shadow: 0 0 0 3px rgba(15,118,110,.12); outline: none; }
         .gst-btn {
-            display: inline-flex; align-items: center; gap: 5px;
-            height: 40px; padding: 0 13px;
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            height: 40px; padding: 0 15px;
             border: 1px solid var(--gst-border-strong); border-radius: 10px;
             background: #fff; color: var(--gst-ink-2); font-size: 13px; font-weight: 600;
             text-decoration: none; cursor: pointer;
@@ -427,6 +416,13 @@
         .gst-btn:active { transform: scale(.98); }
         .gst-btn--primary { border-color: var(--gst-accent-deep); background: var(--gst-accent-deep); color: #fff; }
         .gst-btn--primary:hover { background: #115e56; }
+
+        @media (max-width: 600px) {
+            .gst-toolbar { flex-direction: column; align-items: stretch; }
+            .gst-toolbar-filter, .gst-toolbar-actions { width: 100%; }
+            .gst-toolbar-filter .gst-select { flex: 1; min-width: 0; }
+            .gst-toolbar-actions .gst-btn { flex: 1; }
+        }
 
         /* KPI snapshot strip */
         .gst-snapshot {
@@ -589,29 +585,12 @@
             .gst-snap:last-child { border-bottom: 0; }
         }
 
-        /* Header mobile layout */
-        @media (max-width: 768px) {
-            .content-header.gst-page-header.ops-treatment-header { flex-wrap: wrap; align-items: center; }
-            .content-header.gst-page-header.ops-treatment-header > :nth-child(2) { flex: 1 1 calc(100% - 40px); min-width: 0; }
-            .content-header.gst-page-header.ops-treatment-header .page-actions {
-                flex: 1 0 100%; width: calc(100% - 40px); max-width: calc(100% - 40px);
-                margin-left: 40px; justify-content: flex-start; align-items: center;
-            }
-            .content-header.gst-page-header.ops-treatment-header .page-actions form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
-            .gst-page-header .gst-view-toggle-btn, .gst-page-header .gst-print-btn { width: 38px; padding: 0; justify-content: center; }
-            .gst-page-header .gst-action-label { display: none; }
-            .gst-period-badge-desktop { display: none; }
-        }
-        @media (min-width: 769px) {
-            .gst-period-badge-mobile { display: none; }
-        }
-
         /* ── Print ── */
         @media print {
             @page { size: A4 landscape; margin: 10mm; }
             html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
             .mobile-menu-btn, .sidebar-overlay, .sidebar, .content-header,
-            .gst-screen-summary, .gst-summary-grid { display: none !important; }
+            .gst-toolbar, .gst-screen-summary, .gst-summary-grid { display: none !important; }
             .workspace, .content-area, .content-body { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
             .content-inner { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; }
 

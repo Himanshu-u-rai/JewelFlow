@@ -1,23 +1,5 @@
 <x-app-layout>
-    <x-page-header class="cashbook-page-header" title="Cash Ledger" subtitle="Transaction-by-transaction cash history">
-        <x-slot:actions>
-            @can('cash.create')
-                <a href="{{ route('cashbook.create') }}" class="cb-add-btn">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <line x1="12" y1="5" x2="12" y2="19" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    Add Ledger Entry
-                </a>
-            @endcan
-            <a href="{{ route('report.cash') }}" class="cb-header-btn cashbook-dashboard-btn">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
-                </svg>
-                <span class="cashbook-dashboard-label-full">Cash Flow Dashboard</span>
-                <span class="cashbook-dashboard-label-short">Cash Flow</span>
-            </a>
-        </x-slot:actions>
-    </x-page-header>
+    <x-page-header title="Cash Ledger" subtitle="Transaction-by-transaction cash history" />
 
     <div class="content-inner cb-page">
         @unless(auth()->user()->can('cash.create'))
@@ -31,6 +13,25 @@
         @endphp
 
         <div class="cb-flow">
+            {{-- Controls toolbar (entry count + actions) --}}
+            <div class="cb-toolbar">
+                <span class="cb-toolbar-label">{{ number_format($transactions->total()) }} {{ Str::plural('entry', $transactions->total()) }}</span>
+                <div class="cb-toolbar-actions">
+                    @can('cash.create')
+                        <a href="{{ route('cashbook.create') }}" class="cb-add-btn">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <line x1="12" y1="5" x2="12" y2="19" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            Add Ledger Entry
+                        </a>
+                    @endcan
+                    <a href="{{ route('report.cash') }}" class="cb-header-btn">
+                        <svg width="14" height="14" class="mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                        Cash Flow Dashboard
+                    </a>
+                </div>
+            </div>
+
             {{-- KPI snapshot strip --}}
             <div class="cb-snapshot">
                 <div class="cb-snap">
@@ -249,6 +250,22 @@
             transition: background-color .15s var(--cb-ease);
         }
         .cb-header-btn:hover { background: #f7f9fc; }
+
+        /* Controls toolbar — entry count (left) + actions (right) */
+        .cb-toolbar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 14px; flex-wrap: wrap;
+            padding: 13px 18px; border: 1px solid var(--cb-border); border-radius: 16px;
+            background: #fff; box-shadow: var(--cb-shadow);
+        }
+        .cb-toolbar-label { color: var(--cb-ink-2); font-size: 13px; font-weight: 600; }
+        .cb-toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        @media (max-width: 600px) {
+            .cb-toolbar { flex-direction: column; align-items: stretch; }
+            .cb-toolbar-label { text-align: center; }
+            .cb-toolbar-actions { width: 100%; }
+            .cb-toolbar-actions > * { flex: 1; justify-content: center; }
+        }
 
         /* KPI snapshot strip */
         .cb-snapshot {
