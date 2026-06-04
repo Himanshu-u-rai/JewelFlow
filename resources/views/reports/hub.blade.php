@@ -1,10 +1,5 @@
 <x-app-layout>
-    <x-page-header>
-        <div>
-            <h1 class="page-title">Reports</h1>
-            <p class="text-sm text-gray-500 mt-1">Tax, receivables, reconciliation, and operational reports — all in one place</p>
-        </div>
-    </x-page-header>
+    <x-page-header title="Reports" subtitle="Tax, receivables, reconciliation, and operational reports — all in one place" />
 
     @php
         // [title, description, route-name, edition] — edition: null (any) | 'retailer' | 'manufacturer'
@@ -41,34 +36,120 @@
                 ['Repairs', 'Repair jobs and revenue', 'report.repairs', null],
             ],
         ];
+
+        // One category icon per section (path-only SVGs, safe in the body loop).
+        $sectionIcons = [
+            'Tax & Compliance (for your CA)' => '<path d="M9 7h6M9 11h6M9 15h4M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>',
+            'Receivables & Liability'        => '<path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H18v3"/><path d="M3 6.5V18a2 2 0 0 0 2 2h15v-5"/><path d="M17 12.5a2 2 0 0 0 0 4h4v-4z"/>',
+            'Ledger & Reconciliation'        => '<path d="M6.5 3H19a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/>',
+            'Operational'                    => '<path d="M22 12h-4l-3 8L9 4l-3 8H2"/>',
+        ];
     @endphp
 
-    <div class="content-inner space-y-8">
-        @foreach($sections as $heading => $cards)
-            @php
-                $visible = collect($cards)->filter(fn ($c) =>
-                    \Illuminate\Support\Facades\Route::has($c[2])
-                    && ($c[3] === null
-                        || ($c[3] === 'retailer' && $isRetailer)
-                        || ($c[3] === 'manufacturer' && $isManufacturer))
-                );
-            @endphp
-            @if($visible->isNotEmpty())
-            <div>
-                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{{ $heading }}</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    @foreach($visible as $c)
-                        <a href="{{ route($c[2]) }}" class="block bg-white rounded-xl border border-gray-200 p-4 hover:border-amber-300 hover:shadow-sm transition">
-                            <div class="flex items-start justify-between gap-2">
-                                <h3 class="font-semibold text-gray-900">{{ $c[0] }}</h3>
-                                <svg class="w-4 h-4 text-gray-300 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1 leading-relaxed">{{ $c[1] }}</p>
-                        </a>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-        @endforeach
+    <div class="content-inner rh-page">
+        <div class="rh-flow">
+            @foreach($sections as $heading => $cards)
+                @php
+                    $visible = collect($cards)->filter(fn ($c) =>
+                        \Illuminate\Support\Facades\Route::has($c[2])
+                        && ($c[3] === null
+                            || ($c[3] === 'retailer' && $isRetailer)
+                            || ($c[3] === 'manufacturer' && $isManufacturer))
+                    );
+                @endphp
+                @if($visible->isNotEmpty())
+                <section class="rh-section">
+                    <div class="rh-section-head">
+                        <span class="rh-section-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">{!! $sectionIcons[$heading] ?? '<circle cx="12" cy="12" r="9"/>' !!}</svg>
+                        </span>
+                        <h2 class="rh-section-title">{{ $heading }}</h2>
+                        <span class="rh-section-count">{{ $visible->count() }} {{ Str::plural('report', $visible->count()) }}</span>
+                    </div>
+                    <div class="rh-grid">
+                        @foreach($visible as $c)
+                            <a href="{{ route($c[2]) }}" class="rh-card">
+                                <div class="rh-card-top">
+                                    <h3 class="rh-card-title">{{ $c[0] }}</h3>
+                                    <svg class="rh-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+                                </div>
+                                <p class="rh-card-desc">{{ $c[1] }}</p>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+                @endif
+            @endforeach
+        </div>
     </div>
+
+    <style>
+        /* ── Reports hub — calm teal/hairline system (matches the report pages) ── */
+        .rh-page {
+            --rh-border:        #e7ebf1;
+            --rh-border-soft:   #eef1f6;
+            --rh-border-strong: #d9dfe8;
+            --rh-ink:           #0f172a;
+            --rh-ink-2:         #3d4861;
+            --rh-muted:         #6a7588;
+            --rh-accent:        #0d9488;
+            --rh-accent-deep:   #0f766e;
+            --rh-accent-soft:   rgba(13,148,136,.09);
+            --rh-shadow:        0 1px 2px rgba(16,24,40,.04), 0 14px 28px -18px rgba(16,24,40,.20);
+            --rh-ease:          cubic-bezier(0.23,1,0.32,1);
+            max-width: 1280px;
+        }
+
+        .rh-flow { display: flex; flex-direction: column; gap: 28px; }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .rh-section { animation: rhRise .5s var(--rh-ease) both; }
+            .rh-section:nth-child(2) { animation-delay: .05s; }
+            .rh-section:nth-child(3) { animation-delay: .1s; }
+            .rh-section:nth-child(4) { animation-delay: .15s; }
+            @keyframes rhRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        }
+
+        .rh-section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .rh-section-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; flex-shrink: 0;
+            border-radius: 9px; background: var(--rh-accent-soft); color: var(--rh-accent-deep);
+        }
+        .rh-section-icon svg { width: 16px; height: 16px; }
+        .rh-section-title { margin: 0; color: var(--rh-ink); font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
+        .rh-section-count { margin-left: auto; color: var(--rh-muted); font-size: 12.5px; font-weight: 500; flex-shrink: 0; }
+
+        .rh-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+            gap: 14px;
+        }
+
+        .rh-card {
+            display: flex; flex-direction: column; gap: 6px;
+            padding: 16px 17px;
+            border: 1px solid var(--rh-border); border-radius: 14px;
+            background: #ffffff; box-shadow: 0 1px 2px rgba(16,24,40,.04);
+            text-decoration: none;
+            transition: border-color .16s var(--rh-ease), box-shadow .16s var(--rh-ease), transform .16s var(--rh-ease);
+        }
+        .rh-card:hover { border-color: #bfe6e0; box-shadow: var(--rh-shadow); }
+        .rh-card:active { transform: scale(.99); }
+
+        .rh-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+        .rh-card-title { margin: 0; color: var(--rh-ink); font-size: 14px; font-weight: 650; line-height: 1.3; letter-spacing: -.01em; }
+        .rh-card-arrow { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; color: #cbd5e1; transition: color .16s var(--rh-ease), transform .16s var(--rh-ease); }
+        .rh-card-desc { margin: 0; color: var(--rh-muted); font-size: 12px; line-height: 1.55; }
+
+        @media (hover: hover) and (pointer: fine) {
+            .rh-card:hover { transform: translateY(-1px); }
+            .rh-card:hover .rh-card-arrow { color: var(--rh-accent-deep); transform: translateX(2px); }
+        }
+
+        @media (max-width: 480px) {
+            .rh-flow { gap: 22px; }
+            .rh-grid { grid-template-columns: 1fr; }
+        }
+    </style>
 </x-app-layout>
