@@ -219,6 +219,12 @@
 
         .cb-flow { display: flex; flex-direction: column; gap: 20px; }
 
+        /* Keep the header title beside the menu button on mobile (don't wrap below). */
+        @media (max-width: 767px) {
+            .content-header { flex-wrap: nowrap; align-items: center; }
+            .content-header > :nth-child(2) { min-width: 0; }
+        }
+
         @media (prefers-reduced-motion: no-preference) {
             .cb-page .cb-snapshot, .cb-page .cb-card {
                 animation: cbRise .5s var(--cb-ease) both;

@@ -377,6 +377,12 @@
 
         .gst-flow { display: flex; flex-direction: column; gap: 20px; }
 
+        /* Keep the header title beside the menu button on mobile (don't wrap below). */
+        @media (max-width: 767px) {
+            .content-header { flex-wrap: nowrap; align-items: center; }
+            .content-header > :nth-child(2) { min-width: 0; }
+        }
+
         @media (prefers-reduced-motion: no-preference) {
             .gst-page .gst-snapshot, .gst-page .gst-breakdown-panel,
             .gst-page .gst-summary-grid > *, .gst-page .gst-cn-panel {

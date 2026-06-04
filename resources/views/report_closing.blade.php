@@ -321,6 +321,12 @@
 
         .closing-print-head { display: none; }
 
+        /* Keep the header title beside the menu button on mobile (don't wrap below). */
+        @media (max-width: 767px) {
+            .content-header { flex-wrap: nowrap; align-items: center; }
+            .content-header > :nth-child(2) { min-width: 0; }
+        }
+
         /* Header date input — recessed, teal focus (matches the system) */
         .clr-date {
             height: 40px;

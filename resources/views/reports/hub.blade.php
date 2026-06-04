@@ -102,6 +102,15 @@
 
         .rh-flow { display: flex; flex-direction: column; gap: 28px; }
 
+        /* Keep the page-header title beside the menu button on mobile.
+           The default .content-header wraps (flex-wrap: wrap), which drops a
+           long-subtitle title below the hamburger; nowrap keeps it inline and
+           lets the subtitle wrap within its own block. */
+        @media (max-width: 767px) {
+            .content-header { flex-wrap: nowrap; align-items: center; }
+            .content-header > :nth-child(2) { min-width: 0; }
+        }
+
         @media (prefers-reduced-motion: no-preference) {
             .rh-section { animation: rhRise .5s var(--rh-ease) both; }
             .rh-section:nth-child(2) { animation-delay: .05s; }
