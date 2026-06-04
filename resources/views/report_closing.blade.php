@@ -2,7 +2,7 @@
     <x-page-header class="closing-page-header" title="Daily Closing" :subtitle="'Summary for ' . $date">
         <x-slot:actions>
             <form method="GET" action="{{ route('report.closing') }}" class="inline-flex items-center gap-2 closing-header-filter">
-                <input type="date" name="date" value="{{ $date }}" class="border border-slate-200 rounded-md px-3 py-2 text-sm bg-white shadow-sm focus:border-amber-500 focus:ring-amber-500 closing-header-date">
+                <input type="date" name="date" value="{{ $date }}" class="clr-date closing-header-date">
                 @if(request()->filled('date'))
                     <a href="{{ route('report.closing') }}" class="btn btn-secondary btn-sm">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,134 +38,131 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner closing-report-page">
+    <div class="content-inner clr-page">
         @php
             $reportDatePretty = \Carbon\Carbon::parse($date)->format('l, d M Y');
             $shopName = auth()->user()->shop->name ?? 'JewelFlow';
+            $netGold = $goldIn - $goldOut - $wastage;
+            $totalCash = $sales + $repairs;
+            $isRetailer = auth()->user()->shop?->isRetailer();
+            $snapCols = $isRetailer ? 4 : 5;
         @endphp
 
+        {{-- Print-only header --}}
         <div class="closing-print-head">
             <h2>Daily Closing Report</h2>
             <span class="closing-print-date">Report Date: {{ $reportDatePretty }}</span>
         </div>
 
-        @php
-            $netGold = $goldIn - $goldOut - $wastage;
-            $totalCash = $sales + $repairs;
-            $isRetailer = auth()->user()->shop?->isRetailer();
-        @endphp
-
-        <div class="closing-spotlight">
-            <div class="closing-spotlight-main">
-                <p class="closing-spotlight-kicker">Operational Snapshot</p>
-                <h2 class="closing-spotlight-title">{{ $isRetailer ? 'Retailer Daily Closing' : 'Manufacturer Daily Closing' }}</h2>
-                <p class="closing-spotlight-subtitle">{{ $reportDatePretty }} · {{ $shopName }}</p>
+        {{-- Snapshot KPI strip (replaces the dark banner) --}}
+        <div class="clr-snapshot" data-cols="{{ $snapCols }}">
+            <div class="clr-snap">
+                <p class="clr-snap-label">Total Collections</p>
+                <p class="clr-snap-value clr-snap-value--accent">₹{{ number_format($totalCash, 2) }}</p>
+                <p class="clr-snap-sub">Sales + Repairs</p>
             </div>
-            <div class="closing-spotlight-metrics">
-                <span class="closing-edition-pill {{ $isRetailer ? 'closing-edition-pill--retailer' : 'closing-edition-pill--manufacturer' }}">
-                    {{ $isRetailer ? 'Retailer Service' : 'Manufacturer Service' }}
-                </span>
-                <span class="closing-spotlight-chip">Collections: ₹{{ number_format($totalCash, 2) }}</span>
-                @if(!$isRetailer)
-                    <span class="closing-spotlight-chip {{ $netGold >= 0 ? 'is-positive' : 'is-negative' }}">
-                        Net Gold: {{ number_format($netGold, 6) }} g
-                    </span>
-                @endif
+            <div class="clr-snap">
+                <p class="clr-snap-label">Sales</p>
+                <p class="clr-snap-value">₹{{ number_format($sales, 2) }}</p>
+                <p class="clr-snap-sub">incl. GST</p>
             </div>
+            <div class="clr-snap">
+                <p class="clr-snap-label">Repairs</p>
+                <p class="clr-snap-value">₹{{ number_format($repairs, 2) }}</p>
+                <p class="clr-snap-sub">Repair income</p>
+            </div>
+            <div class="clr-snap">
+                <p class="clr-snap-label">Invoices</p>
+                <p class="clr-snap-value">{{ number_format($invoiceCount) }}</p>
+                <p class="clr-snap-sub">Finalized today</p>
+            </div>
+            @if(!$isRetailer)
+            <div class="clr-snap">
+                <p class="clr-snap-label">Net Gold</p>
+                <p class="clr-snap-value {{ $netGold >= 0 ? 'clr-snap-value--pos' : 'clr-snap-value--neg' }}">{{ number_format($netGold, 4) }} g</p>
+                <p class="clr-snap-sub">In − Out − Wastage</p>
+            </div>
+            @endif
         </div>
 
-        <div class="closing-report-grid grid grid-cols-1 {{ $isRetailer ? '' : 'lg:grid-cols-2' }} gap-6">
+        <div class="closing-report-grid clr-grid {{ $isRetailer ? 'clr-grid--single' : '' }}">
             @if(!$isRetailer)
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden closing-panel-card">
-                <div class="p-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Gold Summary</h2>
-                    <p class="text-sm text-gray-500 mt-1">Fine gold movements for the day (grams)</p>
+            {{-- Gold Summary ledger --}}
+            <section class="clr-panel closing-panel-card">
+                <div class="clr-panel-head">
+                    <h2 class="clr-panel-title">Gold Summary</h2>
+                    <p class="clr-panel-copy">Fine gold movements for the day (grams)</p>
                 </div>
-                <div class="p-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 closing-kpi-card closing-kpi-card--gold-in" data-kpi-symbol="IN">
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Gold In</div>
-                            <div class="text-xl font-semibold text-gray-900">{{ number_format($goldIn, 6) }} g</div>
-                            <div class="text-xs text-gray-500 mt-2">Buyback, advance, repair return</div>
+                <div class="clr-panel-body">
+                    <div class="clr-ledger">
+                        <div class="clr-ledger-row">
+                            <span class="clr-ledger-label">Gold In<span class="clr-ledger-sub">Buyback, advance, repair return</span></span>
+                            <span class="clr-ledger-value">{{ number_format($goldIn, 4) }} g</span>
                         </div>
-
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 closing-kpi-card closing-kpi-card--gold-out" data-kpi-symbol="OUT">
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Gold Out</div>
-                            <div class="text-xl font-semibold text-gray-900">{{ number_format($goldOut, 6) }} g</div>
-                            <div class="text-xs text-gray-500 mt-2">Sale, manufacture, repair issue</div>
+                        <div class="clr-ledger-row">
+                            <span class="clr-ledger-label">Gold Out<span class="clr-ledger-sub">Sale, manufacture, repair issue</span></span>
+                            <span class="clr-ledger-value">{{ number_format($goldOut, 4) }} g</span>
                         </div>
-
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 closing-kpi-card closing-kpi-card--wastage" data-kpi-symbol="WS">
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Wastage</div>
-                            <div class="text-xl font-semibold text-gray-900">{{ number_format($wastage, 6) }} g</div>
-                            <div class="text-xs text-gray-500 mt-2">Recorded wastage</div>
+                        <div class="clr-ledger-row">
+                            <span class="clr-ledger-label">Wastage<span class="clr-ledger-sub">Recorded wastage</span></span>
+                            <span class="clr-ledger-value">{{ number_format($wastage, 4) }} g</span>
                         </div>
-
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 closing-kpi-card closing-kpi-card--net-gold" data-kpi-symbol="NET">
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Net Movement</div>
-                            <div class="text-xl font-semibold {{ $netGold >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">{{ number_format($netGold, 6) }} g</div>
-                            <div class="text-xs text-gray-500 mt-2">In − Out − Wastage</div>
+                        <div class="clr-ledger-row clr-ledger-row--total">
+                            <span class="clr-ledger-label">Net Movement<span class="clr-ledger-sub">In − Out − Wastage</span></span>
+                            <span class="clr-ledger-value clr-ledger-value--total {{ $netGold >= 0 ? 'clr-ledger-value--pos' : 'clr-ledger-value--neg' }}">{{ number_format($netGold, 4) }} g</span>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
             @endif
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden closing-panel-card">
-                <div class="p-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Cash Summary</h2>
-                    <p class="text-sm text-gray-500 mt-1">Sales, repairs, and GST collected (GST included in sales total)</p>
+            {{-- Cash Summary ledger --}}
+            <section class="clr-panel closing-panel-card">
+                <div class="clr-panel-head">
+                    <h2 class="clr-panel-title">Cash Summary</h2>
+                    <p class="clr-panel-copy">Sales, repairs, and GST collected (GST is included in the sales total)</p>
                 </div>
-                <div class="p-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 closing-kpi-card closing-kpi-card--sales" data-kpi-symbol="S">
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Sales (incl. GST)</div>
-                            <div class="text-xl font-semibold text-gray-900">₹{{ number_format($sales, 2) }}</div>
-                            <div class="text-xs text-gray-500 mt-2">{{ $invoiceCount }} {{ Str::plural('invoice', $invoiceCount) }}</div>
+                <div class="clr-panel-body">
+                    <div class="clr-ledger">
+                        <div class="clr-ledger-row">
+                            <span class="clr-ledger-label">Sales (incl. GST)<span class="clr-ledger-sub">{{ $invoiceCount }} {{ Str::plural('invoice', $invoiceCount) }}</span></span>
+                            <span class="clr-ledger-value">₹{{ number_format($sales, 2) }}</span>
                         </div>
-
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 closing-kpi-card closing-kpi-card--repairs" data-kpi-symbol="R">
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Repairs</div>
-                            <div class="text-xl font-semibold text-gray-900">₹{{ number_format($repairs, 2) }}</div>
-                            <div class="text-xs text-gray-500 mt-2">Repair transactions</div>
+                        <div class="clr-ledger-row">
+                            <span class="clr-ledger-label">Repairs<span class="clr-ledger-sub">Repair transactions</span></span>
+                            <span class="clr-ledger-value">₹{{ number_format($repairs, 2) }}</span>
                         </div>
-
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 closing-kpi-card closing-kpi-card--gst" data-kpi-symbol="GST">
-                            <div class="text-xs uppercase tracking-wide text-gray-500">GST Collected</div>
-                            <div class="text-xl font-semibold text-gray-900">₹{{ number_format($gst, 2) }}</div>
-                            <div class="text-xs text-gray-500 mt-2">Already included in sales</div>
+                        <div class="clr-ledger-row">
+                            <span class="clr-ledger-label">GST Collected<span class="clr-ledger-sub">Already included in sales</span></span>
+                            <span class="clr-ledger-value">₹{{ number_format($gst, 2) }}</span>
                         </div>
-
                         @if($discount > 0)
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 closing-kpi-card closing-kpi-card--discount" data-kpi-symbol="D">
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Discount Given</div>
-                            <div class="text-xl font-semibold text-rose-600">−₹{{ number_format($discount, 2) }}</div>
-                            <div class="text-xs text-gray-500 mt-2">Already deducted from sales</div>
+                        <div class="clr-ledger-row">
+                            <span class="clr-ledger-label">Discount Given<span class="clr-ledger-sub">Already deducted from sales</span></span>
+                            <span class="clr-ledger-value clr-ledger-value--neg">−₹{{ number_format($discount, 2) }}</span>
                         </div>
                         @endif
-
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 closing-kpi-card closing-kpi-card--collections" data-kpi-symbol="TC">
-                            <div class="text-xs uppercase tracking-wide text-gray-500">Total Collections</div>
-                            <div class="text-xl font-semibold text-gray-900">₹{{ number_format($totalCash, 2) }}</div>
-                            <div class="text-xs text-gray-500 mt-2">Sales + Repairs</div>
+                        <div class="clr-ledger-row clr-ledger-row--total">
+                            <span class="clr-ledger-label">Total Collections<span class="clr-ledger-sub">Sales + Repairs</span></span>
+                            <span class="clr-ledger-value clr-ledger-value--total">₹{{ number_format($totalCash, 2) }}</span>
                         </div>
                     </div>
 
                     @if(!empty($paymentBreakdown) && count($paymentBreakdown) > 0)
-                    <div class="mt-6">
-                        <h3 class="text-sm font-semibold text-gray-700 mb-3">Payment Mode Breakdown</h3>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 closing-mode-grid">
+                    <div class="clr-mode-block">
+                        <h3 class="clr-subhead">Payment Mode Breakdown</h3>
+                        <div class="clr-mode-grid">
                             @foreach($paymentBreakdown as $mode => $modeTotal)
-                            <div class="bg-white border border-gray-200 rounded-lg p-3 closing-mode-card">
-                                <div class="text-xs uppercase tracking-wide text-gray-500">{{ ucfirst(str_replace('_', ' ', $mode)) }}</div>
-                                <div class="text-lg font-semibold text-gray-900">₹{{ number_format($modeTotal, 2) }}</div>
+                            <div class="clr-mode">
+                                <p class="clr-mode-label">{{ ucfirst(str_replace('_', ' ', $mode)) }}</p>
+                                <p class="clr-mode-value">₹{{ number_format($modeTotal, 2) }}</p>
                             </div>
                             @endforeach
                         </div>
                     </div>
                     @endif
                 </div>
-            </div>
+            </section>
         </div>
 
         @if($isRetailer)
@@ -183,392 +180,547 @@
                 $trendAverage = (float) $trendRows->avg('total');
             @endphp
 
-            <div class="closing-retail-insights mt-6 space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-white shadow-sm border border-gray-200 rounded-xl p-4 closing-insight-card">
-                        <h3 class="text-sm font-semibold text-gray-900">Sales vs Repairs Mix</h3>
-                        <p class="text-xs text-gray-500 mt-1">Today's collection composition</p>
-                        <div class="mt-4 h-3 w-full overflow-hidden rounded-full bg-slate-100">
-                            <div class="h-full flex">
-                                <div class="bg-slate-900" style="width: {{ $salesShare }}%"></div>
-                                <div class="bg-emerald-500" style="width: {{ $repairsShare }}%"></div>
-                            </div>
+            <div class="closing-retail-insights clr-insights">
+                <div class="clr-insight-row clr-insight-row--3">
+                    {{-- Sales vs Repairs mix --}}
+                    <section class="clr-card closing-insight-card">
+                        <h3 class="clr-card-title">Sales vs Repairs Mix</h3>
+                        <p class="clr-card-copy">Today's collection composition</p>
+                        <div class="clr-stack-bar">
+                            <div class="clr-stack-fill clr-stack-fill--ink" style="width: {{ $salesShare }}%"></div>
+                            <div class="clr-stack-fill clr-stack-fill--accent" style="width: {{ $repairsShare }}%"></div>
                         </div>
-                        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div class="clr-mix-legend">
                             <div>
-                                <p class="text-[11px] uppercase tracking-wide text-gray-500">Sales</p>
-                                <p class="font-semibold text-slate-900">₹{{ number_format($sales, 2) }}</p>
-                                <p class="text-xs text-gray-500">{{ number_format($salesShare, 1) }}%</p>
+                                <p class="clr-mini-label">Sales</p>
+                                <p class="clr-mini-value">₹{{ number_format($sales, 2) }}</p>
+                                <p class="clr-mini-sub">{{ number_format($salesShare, 1) }}%</p>
                             </div>
                             <div>
-                                <p class="text-[11px] uppercase tracking-wide text-gray-500">Repairs</p>
-                                <p class="font-semibold text-emerald-700">₹{{ number_format($repairs, 2) }}</p>
-                                <p class="text-xs text-gray-500">{{ number_format($repairsShare, 1) }}%</p>
+                                <p class="clr-mini-label">Repairs</p>
+                                <p class="clr-mini-value clr-text-accent">₹{{ number_format($repairs, 2) }}</p>
+                                <p class="clr-mini-sub">{{ number_format($repairsShare, 1) }}%</p>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white shadow-sm border border-gray-200 rounded-xl p-4 closing-insight-card">
-                        <h3 class="text-sm font-semibold text-gray-900">Average Bill Value</h3>
-                        <p class="text-xs text-gray-500 mt-1">Sales divided by finalized invoices</p>
-                        <div class="mt-4">
-                            <p class="text-3xl font-bold text-slate-900">₹{{ number_format($avgBillValue, 2) }}</p>
-                            <p class="text-xs text-gray-500 mt-2">
-                                Based on {{ number_format($invoiceCount) }} {{ Str::plural('invoice', $invoiceCount) }}
-                            </p>
+                    {{-- Average Bill Value --}}
+                    <section class="clr-card closing-insight-card">
+                        <h3 class="clr-card-title">Average Bill Value</h3>
+                        <p class="clr-card-copy">Sales divided by finalized invoices</p>
+                        <div class="clr-hero-stat">
+                            <p class="clr-hero-value">₹{{ number_format($avgBillValue, 2) }}</p>
+                            <p class="clr-card-copy">Based on {{ number_format($invoiceCount) }} {{ Str::plural('invoice', $invoiceCount) }}</p>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white shadow-sm border border-gray-200 rounded-xl p-4 closing-insight-card">
-                        <h3 class="text-sm font-semibold text-gray-900">Discount Impact</h3>
-                        <p class="text-xs text-gray-500 mt-1">How much margin was given away</p>
-                        <div class="mt-4 space-y-2">
-                            <div class="flex items-baseline justify-between">
-                                <span class="text-xs uppercase tracking-wide text-gray-500">Discount</span>
-                                <span class="text-lg font-semibold text-rose-600">₹{{ number_format($discount, 2) }}</span>
+                    {{-- Discount Impact --}}
+                    <section class="clr-card closing-insight-card">
+                        <h3 class="clr-card-title">Discount Impact</h3>
+                        <p class="clr-card-copy">How much margin was given away</p>
+                        <div class="clr-discount-block">
+                            <div class="clr-kv">
+                                <span class="clr-mini-label">Discount</span>
+                                <span class="clr-kv-value clr-text-neg">₹{{ number_format($discount, 2) }}</span>
                             </div>
-                            <div class="flex items-baseline justify-between">
-                                <span class="text-xs uppercase tracking-wide text-gray-500">Discount Rate</span>
-                                <span class="text-sm font-semibold text-slate-900">{{ number_format($discountRate, 2) }}%</span>
+                            <div class="clr-kv">
+                                <span class="clr-mini-label">Discount Rate</span>
+                                <span class="clr-kv-value">{{ number_format($discountRate, 2) }}%</span>
                             </div>
-                            <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                <div class="h-full bg-rose-500" style="width: {{ min($discountRate, 100) }}%"></div>
+                            <div class="clr-track">
+                                <div class="clr-track-fill clr-track-fill--neg" style="width: {{ min($discountRate, 100) }}%"></div>
                             </div>
-                            <p class="text-xs text-gray-500">Pre-discount base: ₹{{ number_format($preDiscountSales, 2) }}</p>
+                            <p class="clr-mini-sub">Pre-discount base: ₹{{ number_format($preDiscountSales, 2) }}</p>
                         </div>
-                    </div>
+                    </section>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-white shadow-sm border border-gray-200 rounded-xl p-4 closing-insight-card">
-                        <h3 class="text-sm font-semibold text-gray-900">Payment Mode Share</h3>
-                        <p class="text-xs text-gray-500 mt-1">Distribution of today's collected payments</p>
-                        <div class="mt-4 space-y-3">
+                <div class="clr-insight-row clr-insight-row--2">
+                    {{-- Payment Mode Share --}}
+                    <section class="clr-card closing-insight-card">
+                        <h3 class="clr-card-title">Payment Mode Share</h3>
+                        <p class="clr-card-copy">Distribution of today's collected payments</p>
+                        <div class="clr-share-list">
                             @forelse($paymentRows as $mode => $modeTotal)
                                 @php
                                     $modePct = $paymentTotal > 0 ? round(((float) $modeTotal / $paymentTotal) * 100, 1) : 0;
                                     $modeBar = $modeTotal > 0 ? max($modePct, 2) : 0;
                                 @endphp
-                                <div>
-                                    <div class="flex items-center justify-between text-xs mb-1">
-                                        <span class="font-medium text-slate-700 uppercase tracking-wide">{{ ucfirst(str_replace('_', ' ', $mode)) }}</span>
-                                        <span class="text-slate-600">₹{{ number_format((float) $modeTotal, 2) }} · {{ number_format($modePct, 1) }}%</span>
+                                <div class="clr-share-row">
+                                    <div class="clr-share-head">
+                                        <span class="clr-share-label">{{ ucfirst(str_replace('_', ' ', $mode)) }}</span>
+                                        <span class="clr-share-val">₹{{ number_format((float) $modeTotal, 2) }} · {{ number_format($modePct, 1) }}%</span>
                                     </div>
-                                    <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                        <div class="h-full bg-slate-900" style="width: {{ min($modeBar, 100) }}%"></div>
+                                    <div class="clr-track">
+                                        <div class="clr-track-fill clr-track-fill--ink" style="width: {{ min($modeBar, 100) }}%"></div>
                                     </div>
                                 </div>
                             @empty
-                                <div class="text-sm text-gray-500">No payment mode data for this date.</div>
+                                <p class="clr-card-copy">No payment mode data for this date.</p>
                             @endforelse
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white shadow-sm border border-gray-200 rounded-xl p-4 closing-insight-card">
-                        <h3 class="text-sm font-semibold text-gray-900">Collections Trend (Last 7 Days)</h3>
-                        <p class="text-xs text-gray-500 mt-1">Sales + repairs ending on selected date</p>
-                        <div class="mt-4 overflow-x-auto closing-trend-shell">
-                            <div class="h-44 min-w-[340px] flex items-end gap-2 closing-trend-bars">
+                    {{-- Collections Trend --}}
+                    <section class="clr-card closing-insight-card">
+                        <h3 class="clr-card-title">Collections Trend (Last 7 Days)</h3>
+                        <p class="clr-card-copy">Sales + repairs ending on the selected date</p>
+                        <div class="clr-trend-shell">
+                            <div class="clr-trend-bars">
                                 @foreach($trendRows as $point)
                                     @php
                                         $barHeight = $trendMax > 0 ? (($point['total'] / $trendMax) * 100) : 0;
                                         $barHeight = max($barHeight, 6);
                                         $isSelectedPoint = $point['date'] === $date;
                                     @endphp
-                                    <div class="flex-1 min-w-[38px] h-full flex flex-col items-center justify-end gap-2">
-                                        <div class="w-full max-w-[30px] rounded-t-md {{ $isSelectedPoint ? 'bg-amber-500' : 'bg-slate-900/85' }}" style="height: {{ min($barHeight, 100) }}%"></div>
-                                        <div class="text-[10px] uppercase tracking-wide {{ $isSelectedPoint ? 'text-amber-700 font-semibold' : 'text-slate-500' }}">{{ $point['day'] }}</div>
+                                    <div class="clr-trend-col">
+                                        <div class="clr-trend-bar {{ $isSelectedPoint ? 'clr-trend-bar--active' : '' }}" style="height: {{ min($barHeight, 100) }}%"></div>
+                                        <div class="clr-trend-day {{ $isSelectedPoint ? 'clr-trend-day--active' : '' }}">{{ $point['day'] }}</div>
                                     </div>
                                 @endforeach
                             </div>
                         </div>
-                        <div class="mt-4 grid grid-cols-3 gap-2 text-xs">
-                            <div class="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5">
-                                <p class="uppercase tracking-wide text-slate-500">Today</p>
-                                <p class="font-semibold text-slate-900">₹{{ number_format($todayTrendTotal, 2) }}</p>
+                        <div class="clr-trend-stats">
+                            <div class="clr-trend-stat">
+                                <p class="clr-mini-label">Today</p>
+                                <p class="clr-mini-value">₹{{ number_format($todayTrendTotal, 2) }}</p>
                             </div>
-                            <div class="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5">
-                                <p class="uppercase tracking-wide text-slate-500">Best Day</p>
-                                <p class="font-semibold text-slate-900">₹{{ number_format((float) $trendMax, 2) }}</p>
+                            <div class="clr-trend-stat">
+                                <p class="clr-mini-label">Best Day</p>
+                                <p class="clr-mini-value">₹{{ number_format((float) $trendMax, 2) }}</p>
                             </div>
-                            <div class="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5">
-                                <p class="uppercase tracking-wide text-slate-500">7-Day Avg</p>
-                                <p class="font-semibold text-slate-900">₹{{ number_format($trendAverage, 2) }}</p>
+                            <div class="clr-trend-stat">
+                                <p class="clr-mini-label">7-Day Avg</p>
+                                <p class="clr-mini-value">₹{{ number_format($trendAverage, 2) }}</p>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
         @endif
     </div>
 
     <style>
-        .closing-report-page {
-            --closing-charcoal: #1f2937;
-            --closing-charcoal-soft: #243244;
-            --closing-charcoal-border: #314156;
-            --closing-charcoal-ink: #f8fafc;
-            --closing-charcoal-muted: #b8c7db;
-            --closing-palette-ink-deep: #0d1f23;
-            --closing-palette-ink: #132e35;
-            --closing-palette-mid: #2d4a53;
-            --closing-palette-muted: #69818d;
-            --closing-palette-soft: #afb3b7;
-            --closing-palette-smoke: #5a636a;
-        }
-
-        .closing-print-head {
-            display: none;
-        }
-
-        .closing-report-page {
+        /* ── Daily Closing — calm teal/hairline system, one light theme ── */
+        .clr-page {
+            --clr-border:        #e7ebf1;
+            --clr-border-soft:   #eef1f6;
+            --clr-border-strong: #d9dfe8;
+            --clr-ink:           #0f172a;
+            --clr-ink-2:         #3d4861;
+            --clr-muted:         #6a7588;
+            --clr-accent:        #0d9488;
+            --clr-accent-deep:   #0f766e;
+            --clr-pos:           #0f766e;
+            --clr-neg:           #b42318;
+            --clr-shadow:        0 1px 2px rgba(16,24,40,.04), 0 12px 28px -16px rgba(16,24,40,.16);
+            --clr-ease:          cubic-bezier(0.23,1,0.32,1);
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 20px;
+            max-width: 1360px;
         }
 
-        .closing-spotlight {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 1rem;
-            padding: 1rem 1.1rem;
-            border: 1px solid var(--closing-charcoal-border);
-            border-radius: 1rem;
-            background: var(--closing-charcoal);
-            box-shadow: 0 14px 24px -18px rgba(2, 6, 23, 0.7);
-        }
-
-        .closing-spotlight-main {
-            min-width: 0;
-        }
-
-        .closing-spotlight-kicker {
-            margin: 0;
-            font-size: 0.67rem;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            font-weight: 700;
-            color: var(--closing-charcoal-muted);
-        }
-
-        .closing-spotlight-title {
-            margin: 0.2rem 0 0;
-            font-size: 1.05rem;
-            line-height: 1.25;
-            font-weight: 700;
-            color: var(--closing-charcoal-ink);
-        }
-
-        .closing-spotlight-subtitle {
-            margin: 0.35rem 0 0;
-            font-size: 0.8rem;
-            color: var(--closing-charcoal-muted);
-        }
-
-        .closing-spotlight-metrics {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            gap: 0.45rem;
-            min-width: 0;
-        }
-
-        .closing-edition-pill,
-        .closing-spotlight-chip {
-            display: inline-flex;
-            align-items: center;
-            min-height: 1.95rem;
-            padding: 0.35rem 0.62rem;
-            border-radius: 999px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            line-height: 1;
-            white-space: nowrap;
-            border: 1px solid transparent;
-        }
-
-        .closing-edition-pill--retailer {
-            background: var(--closing-charcoal-soft);
-            color: var(--closing-charcoal-ink);
-            border-color: #22c55e;
-        }
-
-        .closing-edition-pill--manufacturer {
-            background: var(--closing-charcoal-soft);
-            color: var(--closing-charcoal-ink);
-            border-color: #f59e0b;
-        }
-
-        .closing-spotlight-chip {
-            background: var(--closing-charcoal-soft);
-            color: var(--closing-charcoal-ink);
-            border-color: var(--closing-charcoal-border);
-        }
-
-        .closing-spotlight-chip.is-positive {
-            background: var(--closing-charcoal-soft);
-            border-color: #86efac;
-            color: #bbf7d0;
-        }
-
-        .closing-spotlight-chip.is-negative {
-            background: var(--closing-charcoal-soft);
-            border-color: #fda4af;
-            color: #fecdd3;
-        }
-
-        .closing-report-grid {
-            margin-top: 0.1rem;
-        }
-
-        .closing-report-page .closing-panel-card,
-        .closing-report-page .closing-kpi-card,
-        .closing-report-page .closing-insight-card,
-        .closing-report-page .closing-mode-card {
-            min-width: 0;
-        }
-
-        .closing-report-page .closing-panel-card {
-            border-color: #dbe4ef;
-            border-radius: 1rem;
-            box-shadow: 0 14px 26px -24px rgba(15, 23, 42, 0.65);
-            background: #ffffff;
-        }
-
-        .closing-report-page .closing-panel-card > .border-b {
-            background: #f8fafc;
-        }
-
-        .closing-report-page .closing-kpi-card {
-            position: relative;
-            overflow: hidden;
-            border-color: #dbe4ef;
-            border-left-width: 4px;
-            border-radius: 0.8rem;
-            background: #ffffff;
-            padding-left: 3.2rem;
-            transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
-        }
-
-        .closing-report-page .closing-kpi-card::before {
-            content: attr(data-kpi-symbol);
-            position: absolute;
-            left: 0.8rem;
-            top: 0.8rem;
-            width: 1.8rem;
-            height: 1.8rem;
-            border-radius: 999px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.58rem;
-            font-weight: 800;
-            letter-spacing: 0.07em;
-            color: var(--closing-palette-soft);
-            background: var(--closing-palette-ink);
-            border: 1px solid var(--closing-palette-mid);
-        }
-
-        .closing-report-page .closing-kpi-card:hover {
-            transform: translateY(-1px);
-            border-color: #c0cedf;
-            box-shadow: 0 10px 20px -18px rgba(15, 23, 42, 0.85);
-        }
-
-        .closing-kpi-card--gold-in,
-        .closing-kpi-card--sales,
-        .closing-kpi-card--collections {
-            border-left-color: var(--closing-palette-mid);
-        }
-
-        .closing-kpi-card--gold-in::before,
-        .closing-kpi-card--sales::before,
-        .closing-kpi-card--collections::before {
-            background: var(--closing-palette-ink);
-            border-color: var(--closing-palette-mid);
-            color: var(--closing-palette-soft);
-        }
-
-        .closing-kpi-card--gold-out,
-        .closing-kpi-card--discount {
-            border-left-color: var(--closing-palette-smoke);
-        }
-
-        .closing-kpi-card--gold-out::before,
-        .closing-kpi-card--discount::before {
-            background: var(--closing-palette-smoke);
-            border-color: var(--closing-palette-mid);
-            color: #e5e7eb;
-        }
-
-        .closing-kpi-card--wastage,
-        .closing-kpi-card--gst {
-            border-left-color: var(--closing-palette-muted);
-        }
-
-        .closing-kpi-card--wastage::before,
-        .closing-kpi-card--gst::before {
-            background: var(--closing-palette-muted);
-            border-color: var(--closing-palette-mid);
-            color: #f8fafc;
-        }
-
-        .closing-kpi-card--net-gold,
-        .closing-kpi-card--repairs {
-            border-left-color: var(--closing-palette-ink-deep);
-        }
-
-        .closing-kpi-card--net-gold::before,
-        .closing-kpi-card--repairs::before {
-            background: var(--closing-palette-ink-deep);
-            border-color: var(--closing-palette-mid);
-            color: var(--closing-palette-soft);
-        }
-
-        .closing-kpi-card .text-emerald-600,
-        .closing-kpi-card .text-rose-600 {
-            color: var(--closing-palette-mid) !important;
-        }
-
-        .closing-report-page .closing-insight-card {
-            border-color: #dbe4ef;
-            box-shadow: 0 12px 22px -22px rgba(15, 23, 42, 0.72);
-            background: #ffffff;
-            transition: border-color 160ms ease;
-        }
-
-        .closing-report-page .closing-insight-card:hover,
-        .closing-report-page .closing-mode-card:hover {
-            border-color: #c0cedf;
-        }
-
-        .closing-report-page .closing-mode-grid {
-            align-items: stretch;
-        }
-
-        .closing-report-page .closing-mode-card {
-            background: #ffffff;
-            border-color: #dbe4ef;
-        }
-
-        .closing-report-page .closing-trend-shell {
-            width: 100%;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 0.15rem;
-        }
-
-        .closing-report-page .closing-trend-bars {
-            width: 100%;
-        }
-
-        @media (max-width: 1024px) {
-            .closing-report-page .closing-kpi-card {
-                padding: 0.85rem;
-                padding-left: 2.9rem;
+        @media (prefers-reduced-motion: no-preference) {
+            .clr-page .clr-snapshot,
+            .clr-page .clr-grid > *,
+            .clr-page .clr-insight-row > * {
+                animation: clrRise .5s var(--clr-ease) both;
+            }
+            .clr-page .clr-grid > *:nth-child(2) { animation-delay: .05s; }
+            @keyframes clrRise {
+                from { opacity: 0; transform: translateY(8px); }
+                to   { opacity: 1; transform: translateY(0); }
             }
         }
 
+        .closing-print-head { display: none; }
+
+        /* Header date input — recessed, teal focus (matches the system) */
+        .clr-date {
+            height: 40px;
+            padding: 0 12px;
+            border: 1px solid var(--clr-border-strong);
+            border-radius: 10px;
+            background: #f4f6fa;
+            color: var(--clr-ink);
+            font-size: 13px;
+            transition: border-color .15s var(--clr-ease), box-shadow .15s var(--clr-ease), background-color .15s var(--clr-ease);
+        }
+        .clr-date:focus {
+            border-color: var(--clr-accent-deep);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(15,118,110,.13);
+            outline: none;
+        }
+
+        /* ── Snapshot KPI strip ── */
+        .clr-snapshot {
+            display: grid;
+            border: 1px solid var(--clr-border);
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: var(--clr-shadow);
+            overflow: hidden;
+        }
+        .clr-snapshot[data-cols="4"] { grid-template-columns: repeat(4, minmax(0,1fr)); }
+        .clr-snapshot[data-cols="5"] { grid-template-columns: repeat(5, minmax(0,1fr)); }
+
+        .clr-snap {
+            padding: 16px 18px;
+            border-right: 1px solid var(--clr-border);
+        }
+        .clr-snap:last-child { border-right: 0; }
+
+        .clr-snap-label {
+            margin: 0 0 6px;
+            color: var(--clr-muted);
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .clr-snap-value {
+            margin: 0;
+            color: var(--clr-ink);
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -.01em;
+            font-variant-numeric: tabular-nums;
+        }
+        .clr-snap-value--accent { color: var(--clr-accent-deep); }
+        .clr-snap-value--pos { color: var(--clr-pos); }
+        .clr-snap-value--neg { color: var(--clr-neg); }
+        .clr-snap-sub {
+            margin: 3px 0 0;
+            color: var(--clr-muted);
+            font-size: 11.5px;
+        }
+
+        /* ── Panels grid ── */
+        .clr-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0,1fr));
+            gap: 20px;
+        }
+        .clr-grid--single { grid-template-columns: 1fr; }
+
+        .clr-panel {
+            border: 1px solid var(--clr-border);
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: var(--clr-shadow);
+            min-width: 0;
+        }
+        .clr-panel-head {
+            padding: 20px 22px;
+            border-bottom: 1px solid var(--clr-border-soft);
+        }
+        .clr-panel-title {
+            margin: 0;
+            color: var(--clr-ink);
+            font-size: 15px;
+            font-weight: 650;
+            letter-spacing: -.01em;
+        }
+        .clr-panel-copy {
+            margin: 4px 0 0;
+            color: var(--clr-muted);
+            font-size: 12.5px;
+            line-height: 1.5;
+        }
+        .clr-panel-body { padding: 8px 22px 20px; }
+
+        /* ── Ledger rows (no side stripes, no badges) ── */
+        .clr-ledger-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 13px 0;
+            border-bottom: 1px solid var(--clr-border-soft);
+        }
+        .clr-ledger-row:last-child { border-bottom: 0; padding-bottom: 4px; }
+        .clr-ledger-row--total {
+            border-bottom: 0;
+            border-top: 1px solid var(--clr-border);
+            margin-top: 4px;
+            padding-top: 15px;
+        }
+        .clr-ledger-label {
+            color: var(--clr-ink-2);
+            font-size: 13.5px;
+            font-weight: 500;
+        }
+        .clr-ledger-sub {
+            display: block;
+            margin-top: 2px;
+            color: var(--clr-muted);
+            font-size: 11.5px;
+            font-weight: 400;
+        }
+        .clr-ledger-value {
+            flex-shrink: 0;
+            color: var(--clr-ink);
+            font-size: 15px;
+            font-weight: 650;
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .clr-ledger-value--total { font-size: 17px; font-weight: 700; }
+        .clr-ledger-value--pos { color: var(--clr-pos); }
+        .clr-ledger-value--neg { color: var(--clr-neg); }
+
+        /* ── Payment mode breakdown ── */
+        .clr-mode-block { margin-top: 20px; }
+        .clr-subhead {
+            margin: 0 0 12px;
+            color: var(--clr-ink);
+            font-size: 12.5px;
+            font-weight: 650;
+        }
+        .clr-mode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+            gap: 10px;
+        }
+        .clr-mode {
+            border: 1px solid var(--clr-border);
+            border-radius: 10px;
+            background: #fafbfd;
+            padding: 11px 12px;
+            min-width: 0;
+        }
+        .clr-mode-label {
+            margin: 0 0 4px;
+            color: var(--clr-muted);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .clr-mode-value {
+            margin: 0;
+            color: var(--clr-ink);
+            font-size: 15px;
+            font-weight: 650;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Retailer insight cards ── */
+        .clr-insights {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .clr-insight-row { display: grid; gap: 20px; }
+        .clr-insight-row--3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+        .clr-insight-row--2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+
+        .clr-card {
+            border: 1px solid var(--clr-border);
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: var(--clr-shadow);
+            padding: 20px 22px;
+            min-width: 0;
+        }
+        .clr-card-title {
+            margin: 0;
+            color: var(--clr-ink);
+            font-size: 14px;
+            font-weight: 650;
+            letter-spacing: -.01em;
+        }
+        .clr-card-copy {
+            margin: 4px 0 0;
+            color: var(--clr-muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .clr-stack-bar {
+            display: flex;
+            height: 8px;
+            width: 100%;
+            margin-top: 16px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: #eceff4;
+        }
+        .clr-stack-fill { height: 100%; }
+        .clr-stack-fill--ink { background: #1f2a44; }
+        .clr-stack-fill--accent { background: var(--clr-accent); }
+
+        .clr-mix-legend {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0,1fr));
+            gap: 14px;
+            margin-top: 16px;
+        }
+        .clr-mini-label {
+            margin: 0;
+            color: var(--clr-muted);
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+        .clr-mini-value {
+            margin: 4px 0 0;
+            color: var(--clr-ink);
+            font-size: 15px;
+            font-weight: 650;
+            font-variant-numeric: tabular-nums;
+        }
+        .clr-mini-sub {
+            margin: 2px 0 0;
+            color: var(--clr-muted);
+            font-size: 11.5px;
+        }
+        .clr-text-accent { color: var(--clr-accent-deep) !important; }
+        .clr-text-neg { color: var(--clr-neg) !important; }
+
+        .clr-hero-stat { margin-top: 18px; }
+        .clr-hero-value {
+            margin: 0;
+            color: var(--clr-ink);
+            font-size: 30px;
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -.02em;
+            font-variant-numeric: tabular-nums;
+        }
+        .clr-hero-stat .clr-card-copy { margin-top: 8px; }
+
+        .clr-discount-block { margin-top: 16px; }
+        .clr-kv {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .clr-kv-value {
+            color: var(--clr-ink);
+            font-size: 15px;
+            font-weight: 650;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .clr-track {
+            height: 8px;
+            width: 100%;
+            border-radius: 999px;
+            background: #eceff4;
+            overflow: hidden;
+        }
+        .clr-track-fill { height: 100%; border-radius: 999px; }
+        .clr-track-fill--ink { background: #1f2a44; }
+        .clr-track-fill--neg { background: #e0584a; }
+        .clr-discount-block .clr-mini-sub { margin-top: 8px; }
+
+        .clr-share-list {
+            margin-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 13px;
+        }
+        .clr-share-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        .clr-share-label {
+            color: var(--clr-ink-2);
+            font-size: 12.5px;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .clr-share-val {
+            color: var(--clr-muted);
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Trend chart ── */
+        .clr-trend-shell {
+            margin-top: 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .clr-trend-bars {
+            height: 168px;
+            min-width: 320px;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .clr-trend-col {
+            flex: 1;
+            min-width: 36px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .clr-trend-bar {
+            width: 100%;
+            max-width: 30px;
+            border-radius: 6px 6px 0 0;
+            background: #1f2a44;
+        }
+        .clr-trend-bar--active { background: var(--clr-accent); }
+        .clr-trend-day {
+            font-size: 10.5px;
+            font-weight: 500;
+            color: var(--clr-muted);
+        }
+        .clr-trend-day--active { color: var(--clr-accent-deep); font-weight: 650; }
+
+        .clr-trend-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0,1fr));
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .clr-trend-stat {
+            border: 1px solid var(--clr-border);
+            border-radius: 10px;
+            background: #fafbfd;
+            padding: 9px 11px;
+        }
+        .clr-trend-stat .clr-mini-value { margin-top: 3px; font-size: 13.5px; }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .clr-track-fill, .clr-stack-fill { transition: width .6s var(--clr-ease); }
+            .clr-trend-bar { transition: height .6s var(--clr-ease); }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 1024px) {
+            .clr-insight-row--3 { grid-template-columns: 1fr; }
+            .clr-insight-row--2 { grid-template-columns: 1fr; }
+            .clr-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 760px) {
+            .clr-snapshot { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+            .clr-snap { border-bottom: 1px solid var(--clr-border); }
+            .clr-snap:nth-child(2n) { border-right: 0; }
+            .clr-snap:last-child { border-bottom: 0; }
+            .clr-snap:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
+        }
+
+        @media (max-width: 460px) {
+            .clr-snapshot { grid-template-columns: 1fr !important; }
+            .clr-snap { border-right: 0; border-bottom: 1px solid var(--clr-border); }
+            .clr-snap:last-child { border-bottom: 0; }
+            .clr-panel-head, .clr-panel-body, .clr-card { padding-left: 16px; padding-right: 16px; }
+        }
+
+        /* ── Mobile header layout (kept from original) ── */
         @media (max-width: 768px) {
             .closing-page-header {
                 display: grid;
@@ -577,170 +729,31 @@
                 row-gap: 8px;
                 align-items: center;
             }
-
-            .closing-page-header .content-header-nav {
-                grid-column: 1;
-                grid-row: 1;
-                margin-right: 0;
-                padding-top: 0;
-            }
-
-            .closing-page-header > :nth-child(2) {
-                grid-column: 2;
-                grid-row: 1;
-                min-width: 0;
-                text-align: left;
-            }
-
-            .closing-page-header .page-title {
-                margin: 0;
-                font-size: 1rem;
-                line-height: 1.25;
-                white-space: normal;
-            }
-
-            .closing-page-header .page-subtitle {
-                display: block;
-                margin-top: 0.1rem;
-                font-size: 0.72rem;
-                line-height: 1.25;
-            }
-
-            .closing-page-header .page-actions {
-                grid-column: 1 / -1;
-                grid-row: 2;
-                width: 100%;
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-                align-items: center;
-                gap: 6px;
-            }
-
-            .closing-page-header .closing-header-filter {
-                width: auto;
-                min-width: 0;
-            }
-
-            .closing-page-header .closing-header-date {
-                min-width: 8.8rem;
-            }
+            .closing-page-header .content-header-nav { grid-column: 1; grid-row: 1; margin-right: 0; padding-top: 0; }
+            .closing-page-header > :nth-child(2) { grid-column: 2; grid-row: 1; min-width: 0; text-align: left; }
+            .closing-page-header .page-title { margin: 0; font-size: 1rem; line-height: 1.25; white-space: normal; }
+            .closing-page-header .page-subtitle { display: block; margin-top: 0.1rem; font-size: 0.72rem; line-height: 1.25; }
+            .closing-page-header .page-actions { grid-column: 1 / -1; grid-row: 2; width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
+            .closing-page-header .closing-header-filter { width: auto; min-width: 0; }
+            .closing-page-header .closing-header-date { min-width: 8.8rem; }
         }
 
         @media (max-width: 640px) {
-            .closing-spotlight {
-                flex-direction: column;
-                padding: 0.85rem;
-            }
-
-            .closing-spotlight-title {
-                font-size: 0.95rem;
-            }
-
-            .closing-spotlight-subtitle {
-                font-size: 0.75rem;
-            }
-
-            .closing-spotlight-metrics {
-                justify-content: flex-start;
-            }
-
-            .closing-page-header .closing-header-filter {
-                width: auto;
-                justify-content: center;
-                flex-wrap: nowrap;
-                flex: 0 1 auto;
-            }
-
-            .closing-page-header .closing-header-date {
-                width: 6.9rem;
-                min-width: 6.9rem;
-                max-width: 6.9rem;
-            }
-
-            .closing-page-header .page-actions {
-                display: flex;
-                flex-wrap: wrap;
-                align-items: center;
-                gap: 6px;
-            }
-
-            .closing-page-header .closing-print-btn {
-                order: 2;
-            }
-
-            .closing-page-header .closing-pnl-btn {
-                order: 3;
-                flex-basis: 100%;
-                width: max-content;
-            }
-
-            .closing-report-grid {
-                gap: 1rem;
-            }
-
-            .closing-report-page .closing-panel-card > div,
-            .closing-report-page .closing-insight-card {
-                padding-left: 0.875rem;
-                padding-right: 0.875rem;
-            }
-
-            .closing-report-page .closing-kpi-card {
-                padding-left: 2.65rem;
-            }
-
-            .closing-report-page .closing-kpi-card::before {
-                left: 0.62rem;
-                top: 0.72rem;
-                width: 1.58rem;
-                height: 1.58rem;
-                font-size: 0.5rem;
-            }
-
-            .closing-report-page .closing-mode-grid {
-                grid-template-columns: repeat(1, minmax(0, 1fr));
-            }
+            .closing-page-header .closing-header-filter { width: auto; justify-content: center; flex-wrap: nowrap; flex: 0 1 auto; }
+            .closing-page-header .closing-header-date { width: 6.9rem; min-width: 6.9rem; max-width: 6.9rem; }
+            .closing-page-header .page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+            .closing-page-header .closing-print-btn { order: 2; }
+            .closing-page-header .closing-pnl-btn { order: 3; flex-basis: 100%; width: max-content; }
         }
 
+        /* ── Print ── */
         @media print {
-            @page {
-                size: A4;
-                margin: 12mm;
-            }
-
-            html,
-            body {
-                background: #fff !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            .mobile-menu-btn,
-            .sidebar-overlay,
-            .sidebar {
-                display: none !important;
-            }
-
-            .workspace,
-            .content-area,
-            .content-body {
-                display: block !important;
-                height: auto !important;
-                overflow: visible !important;
-                background: #fff !important;
-            }
-
-            .content-header {
-                display: none !important;
-            }
-
-            .content-inner {
-                max-width: none !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                gap: 0 !important;
-            }
+            @page { size: A4; margin: 12mm; }
+            html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+            .mobile-menu-btn, .sidebar-overlay, .sidebar { display: none !important; }
+            .workspace, .content-area, .content-body { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
+            .content-header { display: none !important; }
+            .content-inner { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; }
 
             .closing-print-head {
                 display: flex !important;
@@ -751,61 +764,16 @@
                 align-items: flex-start;
                 gap: 8mm;
             }
+            .closing-print-head h2 { margin: 0; font-size: 20px; font-weight: 700; color: #111827; }
+            .closing-print-date { font-size: 11px; font-weight: 600; color: #111827; white-space: nowrap; }
 
-            .closing-print-head h2 {
-                margin: 0;
-                font-size: 20px;
-                font-weight: 700;
-                color: #111827;
-                letter-spacing: 0;
-            }
+            .clr-snapshot, .clr-insights { display: none !important; }
 
-            .closing-print-date {
-                font-size: 11px;
-                font-weight: 600;
-                color: #111827;
-                white-space: nowrap;
-            }
-
-            .closing-report-grid {
-                gap: 6mm !important;
-            }
-
-            .closing-report-grid > * {
-                break-inside: avoid;
-                page-break-inside: avoid;
-            }
-
-            .closing-report-grid .bg-white {
-                border: 1px solid #d1d5db !important;
-                box-shadow: none !important;
-            }
-
-            .closing-report-grid .border-b {
-                border-bottom: 1px solid #d1d5db !important;
-            }
-
-            .closing-report-grid .bg-gray-50 {
-                background: #fff !important;
-            }
-
-            .closing-spotlight,
-            .closing-kpi-card::before {
-                display: none !important;
-            }
-
-            .closing-kpi-card {
-                padding-left: 1rem !important;
-            }
-
-            .closing-report-grid .text-emerald-600,
-            .closing-report-grid .text-rose-600 {
-                color: #111827 !important;
-            }
-
-            .closing-retail-insights {
-                display: none !important;
-            }
+            .clr-grid { gap: 6mm !important; grid-template-columns: 1fr !important; }
+            .clr-grid > * { break-inside: avoid; page-break-inside: avoid; }
+            .clr-panel { border: 1px solid #d1d5db !important; box-shadow: none !important; border-radius: 0 !important; }
+            .clr-panel-head { background: #fff !important; border-bottom: 1px solid #d1d5db !important; }
+            .clr-ledger-value--pos, .clr-ledger-value--neg { color: #111827 !important; }
         }
     </style>
 
