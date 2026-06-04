@@ -6,6 +6,7 @@
         $reportPeriod = \Carbon\Carbon::create()->month($safeMonth)->format('F') . ' ' . $safeYear;
         $shopName = auth()->user()->shop->name ?? 'JewelFlow';
         $reportDate = now()->format('d M Y');
+        $isRetailer = auth()->user()->shop?->isRetailer();
     @endphp
     <x-page-header class="gst-page-header ops-treatment-header">
         <div>
@@ -212,16 +213,30 @@
                         </div>
                     </div>
 
-                    {{-- Filing reminder --}}
+                    {{-- Filing reminder + quick jump --}}
                     <div class="gst-note">
-                        <svg class="gst-note-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                        <div>
+                        <div class="gst-note-top">
+                            <svg class="gst-note-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
                             <p class="gst-note-title">Filing reminder</p>
-                            <ul class="gst-note-list">
-                                <li>File GSTR-1 by the 11th</li>
-                                <li>Verify all invoices</li>
-                                <li>Consult your CA if needed</li>
-                            </ul>
+                        </div>
+                        <ul class="gst-note-list">
+                            <li>File GSTR-1 by the 11th</li>
+                            <li>Verify all invoices</li>
+                            <li>Consult your CA if needed</li>
+                        </ul>
+                        <div class="gst-note-links">
+                            <span class="gst-note-links-label">Quick jump</span>
+                            <div class="gst-note-links-row">
+                                @if($isRetailer)
+                                    <a href="{{ route('cashbook.index') }}" class="gst-note-link">Cash Ledger</a>
+                                    <a href="{{ route('report.closing') }}" class="gst-note-link">Daily Closing</a>
+                                @else
+                                    <a href="{{ route('report.daily') }}" class="gst-note-link">Daily</a>
+                                    <a href="{{ route('report.cash') }}" class="gst-note-link">Cash</a>
+                                    <a href="{{ route('report.pnl') }}" class="gst-note-link">P&amp;L</a>
+                                    <a href="{{ route('report.gold') }}" class="gst-note-link">Gold</a>
+                                @endif
+                            </div>
                         </div>
                     </div>
             </div>
@@ -274,22 +289,6 @@
                 @endif
             </div>
 
-            {{-- Quick links --}}
-            @php $isRetailer = auth()->user()->shop?->isRetailer(); @endphp
-            <div class="gst-quick-links gst-links">
-                <span class="gst-links-label">Quick jump</span>
-                <div class="gst-links-row">
-                    @if($isRetailer)
-                        <a href="{{ route('cashbook.index') }}" class="gst-link-pill">Cash Ledger</a>
-                        <a href="{{ route('report.closing') }}" class="gst-link-pill">Daily Closing</a>
-                    @else
-                        <a href="{{ route('report.daily') }}" class="gst-link-pill">Daily</a>
-                        <a href="{{ route('report.cash') }}" class="gst-link-pill">Cash</a>
-                        <a href="{{ route('report.pnl') }}" class="gst-link-pill">P&amp;L</a>
-                        <a href="{{ route('report.gold') }}" class="gst-link-pill">Gold</a>
-                    @endif
-                </div>
-            </div>
         </div>
     </div>
 
@@ -382,7 +381,6 @@
         .gst-summary-grid .gst-panel-body { flex: 1; display: flex; flex-direction: column; }
         .gst-summary-grid .gst-panel-body .gst-kv-list { flex: 1; justify-content: space-between; }
         .gst-summary-grid .gst-liability .gst-kv-list--compact { margin-top: auto; }
-        .gst-summary-grid .gst-note { align-items: center; }
 
         /* Panels */
         .gst-panel {
@@ -452,36 +450,31 @@
             font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
         }
 
-        /* Filing note — full border, no side stripe */
+        /* Filing note (+ embedded quick jump) — full border, no side stripe */
         .gst-note {
-            display: flex; gap: 12px; padding: 16px 18px;
-            border: 1px solid #f0e2c0; border-radius: 14px; background: #fdfaf1;
+            display: flex; flex-direction: column; gap: 12px; padding: 16px 18px;
+            border: 1px solid #f0e2c0; border-radius: 16px; background: #fdfaf1;
         }
-        .gst-note-icon { width: 18px; height: 18px; flex-shrink: 0; color: #b45309; margin-top: 1px; }
-        .gst-note-title { margin: 0 0 6px; color: #92400e; font-size: 12.5px; font-weight: 650; }
-        .gst-note-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .gst-note-top { display: flex; align-items: center; gap: 9px; }
+        .gst-note-icon { width: 17px; height: 17px; flex-shrink: 0; color: #b45309; }
+        .gst-note-title { margin: 0; color: #92400e; font-size: 12.5px; font-weight: 650; }
+        .gst-note-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
         .gst-note-list li { color: #9a6a1c; font-size: 12px; line-height: 1.5; position: relative; padding-left: 14px; }
         .gst-note-list li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 4px; height: 4px; border-radius: 999px; background: #c2872f; }
+        .gst-note-links { margin-top: auto; padding-top: 12px; border-top: 1px solid #f0e2c0; }
+        .gst-note-links-label { display: block; margin-bottom: 8px; color: #9a6a1c; font-size: 11px; font-weight: 600; }
+        .gst-note-links-row { display: flex; flex-wrap: wrap; gap: 7px; }
+        .gst-note-link {
+            display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
+            border: 1px solid #ead9b0; border-radius: 999px; background: #fffdf7;
+            color: #8a5a18; font-size: 12px; font-weight: 600; text-decoration: none;
+            transition: background-color .14s var(--gst-ease), border-color .14s var(--gst-ease);
+        }
+        .gst-note-link:hover { background: #fbf2dd; border-color: #d9bf86; }
 
         /* Empty states */
         .gst-empty { padding: 32px 16px; text-align: center; color: var(--gst-muted); font-size: 13px; }
         .gst-empty--pad { padding: 40px 16px; }
-
-        /* Quick links */
-        .gst-links {
-            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-            padding: 16px 20px; border: 1px solid var(--gst-border); border-radius: 16px;
-            background: #fff; box-shadow: var(--gst-shadow);
-        }
-        .gst-links-label { color: var(--gst-muted); font-size: 12px; font-weight: 600; }
-        .gst-links-row { display: flex; flex-wrap: wrap; gap: 8px; }
-        .gst-link-pill {
-            display: inline-flex; align-items: center; height: 32px; padding: 0 14px;
-            border: 1px solid var(--gst-border-strong); border-radius: 999px;
-            background: #fff; color: var(--gst-ink-2); font-size: 12.5px; font-weight: 600;
-            text-decoration: none; transition: background-color .14s var(--gst-ease), border-color .14s var(--gst-ease), color .14s var(--gst-ease);
-        }
-        .gst-link-pill:hover { background: rgba(13,148,136,.06); border-color: #a3d6cf; color: var(--gst-accent-deep); }
 
         /* Responsive */
         @media (max-width: 760px) {
@@ -518,7 +511,7 @@
             @page { size: A4 landscape; margin: 10mm; }
             html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
             .mobile-menu-btn, .sidebar-overlay, .sidebar, .content-header,
-            .gst-screen-summary, .gst-summary-grid, .gst-quick-links { display: none !important; }
+            .gst-screen-summary, .gst-summary-grid { display: none !important; }
             .workspace, .content-area, .content-body { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
             .content-inner { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; }
 
