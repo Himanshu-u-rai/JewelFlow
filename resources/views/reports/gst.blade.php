@@ -94,9 +94,8 @@
                 </div>
             </div>
 
-            <div class="gst-main-grid">
-                {{-- GST Breakdown by Rate --}}
-                <div class="gst-breakdown-panel gst-panel">
+            {{-- GST Breakdown by Rate (full width) --}}
+            <div class="gst-breakdown-panel gst-panel">
                     <div class="gst-panel-head">
                         <h2 class="gst-panel-title">GST Breakdown by Rate</h2>
                         <p class="gst-panel-copy">Itemized tax collection details</p>
@@ -161,8 +160,8 @@
                     </div>
                 </div>
 
-                {{-- GSTR-1 sidebar --}}
-                <div class="gst-side-panel">
+            {{-- GSTR-1 summary — a balanced card row instead of a tall sidebar --}}
+            <div class="gst-summary-grid">
                     {{-- B2C Sales --}}
                     <div class="gst-panel">
                         <div class="gst-panel-head">
@@ -225,7 +224,6 @@
                             </ul>
                         </div>
                     </div>
-                </div>
             </div>
 
             {{-- Credit Notes (Returns) --}}
@@ -317,10 +315,11 @@
         .gst-flow { display: flex; flex-direction: column; gap: 20px; }
 
         @media (prefers-reduced-motion: no-preference) {
-            .gst-page .gst-snapshot, .gst-page .gst-main-grid > *, .gst-page .gst-cn-panel {
+            .gst-page .gst-snapshot, .gst-page .gst-breakdown-panel,
+            .gst-page .gst-summary-grid > *, .gst-page .gst-cn-panel {
                 animation: gstRise .5s var(--gst-ease) both;
             }
-            .gst-page .gst-main-grid > *:nth-child(2) { animation-delay: .05s; }
+            .gst-page .gst-summary-grid > *:nth-child(2) { animation-delay: .05s; }
             @keyframes gstRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         }
 
@@ -369,9 +368,14 @@
         }
         .gst-snap-value--accent { color: var(--gst-accent-deep); }
 
-        /* Main grid: breakdown (2) + sidebar (1) */
-        .gst-main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start; }
-        .gst-side-panel { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        /* GSTR-1 summary cards — a balanced row, not a tall narrow sidebar
+           (the breakdown table is short, so a sidebar left a huge void). */
+        .gst-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            align-items: start;
+        }
 
         /* Panels */
         .gst-panel {
@@ -473,9 +477,6 @@
         .gst-link-pill:hover { background: rgba(13,148,136,.06); border-color: #a3d6cf; color: var(--gst-accent-deep); }
 
         /* Responsive */
-        @media (max-width: 1024px) {
-            .gst-main-grid { grid-template-columns: 1fr; }
-        }
         @media (max-width: 760px) {
             .gst-snapshot { grid-template-columns: repeat(2, minmax(0,1fr)); }
             .gst-snap { border-bottom: 1px solid var(--gst-border); }
@@ -510,7 +511,7 @@
             @page { size: A4 landscape; margin: 10mm; }
             html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
             .mobile-menu-btn, .sidebar-overlay, .sidebar, .content-header,
-            .gst-screen-summary, .gst-side-panel, .gst-quick-links { display: none !important; }
+            .gst-screen-summary, .gst-summary-grid, .gst-quick-links { display: none !important; }
             .workspace, .content-area, .content-body { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
             .content-inner { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; }
 
@@ -527,7 +528,6 @@
             .gst-print-summary td:nth-child(odd) { width: 22%; font-weight: 600; color: #374151; background: #f9fafb; }
 
             .gst-flow { gap: 6mm !important; }
-            .gst-main-grid { display: block !important; }
             .gst-panel, .gst-breakdown-panel, .gst-cn-panel {
                 border: 1px solid #d1d5db !important; border-radius: 0 !important; box-shadow: none !important;
                 break-inside: avoid; page-break-inside: avoid; width: 100% !important; margin-bottom: 6mm;
