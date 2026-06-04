@@ -369,13 +369,20 @@
         .gst-snap-value--accent { color: var(--gst-accent-deep); }
 
         /* GSTR-1 summary cards — a balanced row, not a tall narrow sidebar
-           (the breakdown table is short, so a sidebar left a huge void). */
+           (the breakdown table is short, so a sidebar left a huge void).
+           Cards stretch to equal height and distribute their content to fill,
+           so the row reads as even regardless of how many rows each holds. */
         .gst-summary-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 16px;
-            align-items: start;
+            align-items: stretch;
         }
+        .gst-summary-grid > .gst-panel { display: flex; flex-direction: column; }
+        .gst-summary-grid .gst-panel-body { flex: 1; display: flex; flex-direction: column; }
+        .gst-summary-grid .gst-panel-body .gst-kv-list { flex: 1; justify-content: space-between; }
+        .gst-summary-grid .gst-liability .gst-kv-list--compact { margin-top: auto; }
+        .gst-summary-grid .gst-note { align-items: center; }
 
         /* Panels */
         .gst-panel {
