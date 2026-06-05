@@ -523,7 +523,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::delete('/settings/catalog-pages/{page}', [\App\Http\Controllers\CatalogWebsiteSettingsController::class, 'destroyPage'])->middleware('can:catalog.manage')->name('settings.catalog-pages.destroy');
 
     // ======= LEDGER & INVOICE (sales.* permissions) =======
-    Route::get('/ledger', [\App\Http\Controllers\LedgerController::class, 'index'])->middleware('can:reports.view')->name('ledger.index');
+    // Metal Movement Ledger — served by the reporting spine (Phase 3). Same URL/name/permission.
+    Route::get('/ledger', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'metal-ledger')->middleware('can:reports.view')->name('ledger.index');
     Route::get('/invoices', [\App\Http\Controllers\InvoiceController::class, 'index'])->middleware('can:sales.view')->name('invoices.index');
     Route::get('/invoices/{invoice}/edit', [\App\Http\Controllers\InvoiceController::class, 'edit'])->middleware('can:sales.create')->name('invoices.edit');
     // Route gate is the lower 'sales.create' so cashiers can FINALIZE drafts;
