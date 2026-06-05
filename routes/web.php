@@ -435,7 +435,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/payment-reconciliation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'paymentReconciliationCsv'])->middleware('can:reports.view')->name('report.payment-reconciliation.csv');
     Route::get('/report/day-book', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'day-book')->middleware('can:reports.view')->name('report.day-book');
     // report.day-book.csv retired (Phase 3 Cleanup #1) — use the spine export.
-    Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuation'])->middleware('can:reports.view')->name('report.inventory-valuation');
+    // Inventory Valuation — served by the reporting spine (Phase 3). Same URL/name/permission.
+    Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'inventory-valuation')->middleware('can:reports.view')->name('report.inventory-valuation');
     Route::get('/report/inventory-valuation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuationCsv'])->middleware('can:reports.view')->name('report.inventory-valuation.csv');
     Route::get('/report/dead-stock', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'deadStock'])->middleware('can:reports.view')->name('report.dead-stock');
     Route::get('/report/dead-stock/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'deadStockCsv'])->middleware('can:reports.view')->name('report.dead-stock.csv');

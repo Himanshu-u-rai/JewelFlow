@@ -11,6 +11,7 @@ use App\Services\Reporting\Reports\DayBookDataset;
 use App\Services\Reporting\Reports\GstReportDataset;
 use App\Services\Reporting\Reports\Gstr1Dataset;
 use App\Services\Reporting\Reports\Gstr3bDataset;
+use App\Services\Reporting\Reports\InventoryValuationDataset;
 use App\Services\Reporting\Reports\MetalMovementLedgerDataset;
 use App\Services\Reporting\Reports\SalesRegisterDataset;
 use Illuminate\Contracts\Container\Container;
@@ -68,6 +69,11 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 3 — Accounting: Metal Movement Ledger (reconciles to vault:reconcile).
         if (! $registry->has(MetalMovementLedgerDataset::KEY)) {
             $registry->register(MetalMovementLedgerDataset::KEY, MetalMovementLedgerDataset::class);
+        }
+
+        // Phase 3 — Accounting: Inventory Valuation (reconciles to items cost aggregate).
+        if (! $registry->has(InventoryValuationDataset::KEY)) {
+            $registry->register(InventoryValuationDataset::KEY, InventoryValuationDataset::class);
         }
     }
 }

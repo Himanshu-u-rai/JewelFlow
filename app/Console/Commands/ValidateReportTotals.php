@@ -363,6 +363,38 @@ class ValidateReportTotals extends Command
             'independent=' . $independent . ' service=' . $ds->totalValue
         );
 
+        // Inventory Valuation (Phase 3) — wraps InventoryService::valuation().
+        $val = $inventory->valuation($shopId);
+
+        // VAL-1 — by-category cost buckets sum to the grand total at cost.
+        $catSum = round((float) $val->byCategory->sum('cost_value'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'VAL-1 valuation by-category cost == total at cost',
+            abs($catSum - $val->totalAtCost) <= self::TOLERANCE,
+            'category=' . $catSum . ' total=' . $val->totalAtCost
+        );
+
+        // VAL-2 — by-metal cost buckets sum to the grand total at cost.
+        $metalSum = round((float) $val->byMetal->sum('cost_value'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'VAL-2 valuation by-metal cost == total at cost',
+            abs($metalSum - $val->totalAtCost) <= self::TOLERANCE,
+            'metal=' . $metalSum . ' total=' . $val->totalAtCost
+        );
+
+        // VAL-3 — grand total == independent Σ cost_price of in_stock items.
+        $valIndependent = round((float) DB::table('items')
+            ->where('shop_id', $shopId)->where('status', 'in_stock')
+            ->sum(DB::raw('COALESCE(cost_price, 0)')), 2);
+        $failures += $this->assert(
+            $shopId,
+            'VAL-3 total at cost == in_stock cost (independent recompute)',
+            abs($valIndependent - $val->totalAtCost) <= self::TOLERANCE,
+            'independent=' . $valIndependent . ' service=' . $val->totalAtCost
+        );
+
         // #14 Purchase efficiency — per-metal premium sums to the total.
         $pe = $inventory->purchaseEfficiency($shopId, $period);
         $peRowSum = round((float) $pe->rows->sum('premium'), 2);
