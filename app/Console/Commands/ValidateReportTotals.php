@@ -36,7 +36,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar, \App\Reporting\AuditService $audit): int
+    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar, \App\Reporting\AuditService $audit, \App\Reporting\LedgerService $ledger): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -59,6 +59,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateReconciliation((int) $shopId, $period, $gst, $sales);
             $failures += $this->validateReceivables((int) $shopId, $receivables);
             $failures += $this->validateInventory((int) $shopId, $period, $inventory);
+            $failures += $this->validateCashFlow((int) $shopId, $period, $ledger);
             $failures += $this->validateKarigar((int) $shopId, $karigar);
             $failures += $this->validateOperator((int) $shopId, $period, $audit, $gst);
             $failures += $this->validateSuspicious((int) $shopId, $period, $audit);
@@ -403,6 +404,51 @@ class ValidateReportTotals extends Command
             'PUR-1 per-metal premium sums to total',
             abs($peRowSum - $pe->totalPremium) <= self::TOLERANCE,
             'rows=' . $peRowSum . ' total=' . $pe->totalPremium
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Cash flow invariants (Phase 3). Wraps LedgerService::cashFlow().
+     */
+    private function validateCashFlow(int $shopId, ReportPeriod $period, \App\Reporting\LedgerService $ledger): int
+    {
+        $failures = 0;
+        $cf = $ledger->cashFlow($shopId, $period);
+        [$start, $end] = $period->bounds();
+
+        // CASH-1 — the balance equation holds.
+        $failures += $this->assert(
+            $shopId,
+            'CASH-1 opening + in − out == closing',
+            abs(($cf->opening + $cf->cashIn - $cf->cashOut) - $cf->closing) <= self::TOLERANCE,
+            "opening={$cf->opening} in={$cf->cashIn} out={$cf->cashOut} closing={$cf->closing}"
+        );
+
+        // CASH-2 — closing == independent Σ(in − out) over all cash up to period end.
+        $independentClosing = round((float) DB::table('cash_transactions')
+            ->where('shop_id', $shopId)
+            ->where('created_at', '<=', $end)
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'in' THEN amount ELSE -amount END), 0) as net")
+            ->value('net'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'CASH-2 closing == cash_transactions aggregate (independent)',
+            abs($independentClosing - $cf->closing) <= self::TOLERANCE,
+            "independent={$independentClosing} service={$cf->closing}"
+        );
+
+        // CASH-3 — period in/out totals reconcile to source data.
+        $independentIn = round((float) DB::table('cash_transactions')->where('shop_id', $shopId)
+            ->whereBetween('created_at', [$start, $end])->where('type', 'in')->sum('amount'), 2);
+        $independentOut = round((float) DB::table('cash_transactions')->where('shop_id', $shopId)
+            ->whereBetween('created_at', [$start, $end])->where('type', 'out')->sum('amount'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'CASH-3 period in/out == cash_transactions in/out (independent)',
+            abs($independentIn - $cf->cashIn) <= self::TOLERANCE && abs($independentOut - $cf->cashOut) <= self::TOLERANCE,
+            "in: svc={$cf->cashIn} indep={$independentIn} · out: svc={$cf->cashOut} indep={$independentOut}"
         );
 
         return $failures;

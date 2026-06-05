@@ -10,6 +10,7 @@ use App\Services\Reporting\Reports\CreditNoteRegisterDataset;
 use App\Services\Reporting\Reports\DayBookDataset;
 use App\Services\Reporting\Reports\GstReportDataset;
 use App\Services\Reporting\Reports\Gstr1Dataset;
+use App\Services\Reporting\Reports\CashFlowDataset;
 use App\Services\Reporting\Reports\Gstr3bDataset;
 use App\Services\Reporting\Reports\InventoryValuationDataset;
 use App\Services\Reporting\Reports\MetalMovementLedgerDataset;
@@ -74,6 +75,11 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 3 — Accounting: Inventory Valuation (reconciles to items cost aggregate).
         if (! $registry->has(InventoryValuationDataset::KEY)) {
             $registry->register(InventoryValuationDataset::KEY, InventoryValuationDataset::class);
+        }
+
+        // Phase 3 — Accounting: Cash Flow (reconciles to cash_transactions aggregate).
+        if (! $registry->has(CashFlowDataset::KEY)) {
+            $registry->register(CashFlowDataset::KEY, CashFlowDataset::class);
         }
     }
 }

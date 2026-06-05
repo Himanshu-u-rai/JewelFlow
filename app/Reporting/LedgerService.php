@@ -7,6 +7,7 @@ use App\Models\CreditNote;
 use App\Models\Invoice;
 use App\Models\MetalMovement;
 use App\Reporting\Data\CashDayData;
+use App\Reporting\Data\CashFlowData;
 use App\Reporting\Data\DayBookData;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -142,6 +143,72 @@ class LedgerService
             ->select('type', DB::raw('SUM(fine_weight) as total'))
             ->groupBy('type')
             ->get();
+    }
+
+    /**
+     * Cash flow over a period (Phase 3): opening + in − out = closing, with the
+     * per-entry ledger carrying a running balance. Canonical aggregation over
+     * cash_transactions — the report wraps this without re-deriving balances.
+     */
+    public function cashFlow(int $shopId, ReportPeriod $period): CashFlowData
+    {
+        [$start, $end] = $period->bounds();
+
+        // Opening = net cash (in − out) before the period start.
+        $opening = round((float) DB::table('cash_transactions')
+            ->where('shop_id', $shopId)
+            ->where('created_at', '<', $start)
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'in' THEN amount ELSE -amount END), 0) as net")
+            ->value('net'), 2);
+
+        $txns = DB::table('cash_transactions as c')
+            ->leftJoin('users as u', 'u.id', '=', 'c.user_id')
+            ->where('c.shop_id', $shopId)
+            ->whereBetween('c.created_at', [$start, $end])
+            ->orderBy('c.created_at')->orderBy('c.id')
+            ->select(
+                'c.created_at as occurred_at', 'c.type', 'c.amount', 'c.payment_mode',
+                'c.source_type', 'c.description',
+                DB::raw("COALESCE(u.name, 'System') as operator")
+            )
+            ->get();
+
+        $cashIn = 0.0;
+        $cashOut = 0.0;
+        $running = $opening;
+        $rows = collect();
+        foreach ($txns as $t) {
+            $amount = (float) $t->amount;
+            if ($t->type === 'in') {
+                $cashIn += $amount;
+                $running += $amount;
+            } else {
+                $cashOut += $amount;
+                $running -= $amount;
+            }
+            $rows->push((object) [
+                'occurred_at' => $t->occurred_at,
+                'type' => $t->type === 'in' ? 'Cash In' : 'Cash Out',
+                'source' => $t->source_type ?: ($t->description ?: 'cash'),
+                'payment_mode' => $t->payment_mode,
+                'description' => $t->description,
+                'operator' => $t->operator,
+                'amount' => round($amount, 2),
+                'running_balance' => round($running, 2),
+            ]);
+        }
+
+        $cashIn = round($cashIn, 2);
+        $cashOut = round($cashOut, 2);
+
+        return new CashFlowData(
+            opening: $opening,
+            cashIn: $cashIn,
+            cashOut: $cashOut,
+            closing: round($opening + $cashIn - $cashOut, 2),
+            rows: $rows,
+            count: $rows->count(),
+        );
     }
 
     private function event($occurredAt, string $type, ?string $reference, ?string $party, float $amount, string $direction, string $source): object

@@ -421,7 +421,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/metal-exchange', [\App\Http\Controllers\MetalExchangeReportController::class, 'index'])->middleware(['can:reports.view', 'edition:retailer'])->name('report.metal-exchange');
     Route::post('/old-metal-lots/{metalLot}/dispatch', [\App\Http\Controllers\OldMetalWeeklyLotController::class, 'dispatch'])->middleware(['can:vault.manage', 'edition:retailer'])->name('old-metal-lots.dispatch');
     Route::get('/report/daily', [\App\Http\Controllers\DailyReportController::class, 'index'])->middleware('can:reports.view')->name('report.daily');
-    Route::get('/report/cash', [\App\Http\Controllers\CashReportController::class, 'index'])->middleware('can:reports.view')->name('report.cash');
+    // Cash Flow — served by the reporting spine (Phase 3). Same URL/name/permission.
+    Route::get('/report/cash', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cash-flow')->middleware('can:reports.view')->name('report.cash');
     Route::get('/report/pnl', [\App\Http\Controllers\PnlController::class, 'index'])->middleware('can:reports.view')->name('report.pnl');
     Route::get('/report/gst', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gst')->middleware('can:reports.view')->name('report.gst');
     // CA / compliance tax pack (Phase 2 M1) — all read-only, reports.view gated.
