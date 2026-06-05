@@ -127,20 +127,12 @@ class TaxServiceTest extends TestCase
         $this->grant($user, 'reports.view');
         $q = ['month' => self::MONTH, 'year' => self::YEAR];
 
-        // Screens now served by the spine (report-document architecture).
+        // Screens served by the spine (report-document architecture).
+        // CSV exports are covered against the spine format by TaxExportGoldenTest
+        // (the legacy *.csv routes were retired in Phase 3 Cleanup #1).
         $this->actingAs($user)->get(route('report.gstr1', $q))->assertOk()->assertSee('GSTR-1', false)->assertDontSee('window.print');
         $this->actingAs($user)->get(route('report.gstr3b', $q))->assertOk()->assertSee('Net tax liability', false);
         $this->actingAs($user)->get(route('report.cn-register', $q))->assertOk()->assertSee('CN-001', false);
-
-        // Legacy machine-CSV routes are unchanged (kept for the golden-file consumers).
-        $csv = $this->actingAs($user)->get(route('report.cn-register.csv', $q));
-        $csv->assertOk();
-        $this->assertStringContainsString('text/csv', $csv->headers->get('Content-Type'));
-        $this->assertStringContainsString('CN-001', $csv->streamedContent());
-
-        $gstr1Csv = $this->actingAs($user)->get(route('report.gstr1.csv', $q));
-        $gstr1Csv->assertOk();
-        $this->assertStringContainsString('B2B', $gstr1Csv->streamedContent());
     }
 
     public function test_reports_validate_passes_with_tax_pack_checks(): void

@@ -81,24 +81,8 @@ class ReconciliationReportController extends Controller
         ]);
     }
 
-    public function dayBookCsv(Request $request)
-    {
-        $period = $this->period($request);
-        $data = $this->ledger->dayBook($this->shopId(), $period);
-
-        $headers = ['Date/Time', 'Event', 'Reference', 'Party', 'Amount', 'Direction', 'Source'];
-        $rows = $data->events->map(fn ($e) => [
-            \Carbon\Carbon::parse($e->occurred_at)->format('Y-m-d H:i:s'),
-            $e->event_type,
-            $e->reference,
-            $e->party,
-            number_format($e->amount, 2, '.', ''),
-            $e->direction,
-            $e->source,
-        ])->all();
-
-        return CsvReportExporter::fromRows('day-book-' . $period->start()->format('Y-m') . '.csv', $headers, $rows);
-    }
+    // dayBookCsv() retired (Phase 3 Cleanup #1) — the Day Book CSV is produced by
+    // the reporting spine (clean single CSV). See COMPLIANCE_CSV_MIGRATION_NOTE.md.
 
     // ---- Inventory valuation (snapshot) ----
 
