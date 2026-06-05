@@ -109,6 +109,13 @@ class ReportScreenController extends Controller
      */
     private function resolvePeriod(Request $request): \App\Services\Reporting\Filters\ResolvedPeriod
     {
+        // Legacy single-date bookmark (?date=YYYY-MM-DD) — e.g. Daily Closing / Cash.
+        if ($request->filled('date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->input('date'))) {
+            $day = CarbonImmutable::parse($request->input('date'));
+
+            return $this->filters->resolve(DatePreset::Custom, $day, $day);
+        }
+
         if ($request->filled('month') && $request->filled('year')) {
             $from = CarbonImmutable::create((int) $request->input('year'), (int) $request->input('month'), 1)->startOfDay();
 

@@ -36,7 +36,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar, \App\Reporting\AuditService $audit, \App\Reporting\LedgerService $ledger): int
+    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar, \App\Reporting\AuditService $audit, \App\Reporting\LedgerService $ledger, \App\Reporting\ClosingService $closing): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -60,6 +60,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateReceivables((int) $shopId, $receivables);
             $failures += $this->validateInventory((int) $shopId, $period, $inventory);
             $failures += $this->validateCashFlow((int) $shopId, $period, $ledger);
+            $failures += $this->validateClosing((int) $shopId, $period, $closing);
             $failures += $this->validateKarigar((int) $shopId, $karigar);
             $failures += $this->validateOperator((int) $shopId, $period, $audit, $gst);
             $failures += $this->validateSuspicious((int) $shopId, $period, $audit);
@@ -449,6 +450,61 @@ class ValidateReportTotals extends Command
             'CASH-3 period in/out == cash_transactions in/out (independent)',
             abs($independentIn - $cf->cashIn) <= self::TOLERANCE && abs($independentOut - $cf->cashOut) <= self::TOLERANCE,
             "in: svc={$cf->cashIn} indep={$independentIn} · out: svc={$cf->cashOut} indep={$independentOut}"
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Daily Closing invariants (Phase 3) — the cross-phase tie-out. Validated for
+     * the first day of the period; the closing aggregator delegates to the GST and
+     * cash services, so this proves the COMBINATION agrees with the raw tables.
+     */
+    private function validateClosing(int $shopId, ReportPeriod $period, \App\Reporting\ClosingService $closing): int
+    {
+        $failures = 0;
+        $date = $period->start()->toDateString();
+        $c = $closing->dailyClosing($shopId, $date);
+        $day = ReportPeriod::day($date);
+        [, $dayEnd] = $day->bounds();
+
+        // CLOSE-1 — daily sales == Sales Register / GST scope (raw salesIn Σ total).
+        $rawSales = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->sum('total'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'CLOSE-1 closing sales == Sales Register total (raw salesIn)',
+            abs($c->totalSales - $rawSales) <= self::TOLERANCE,
+            "closing={$c->totalSales} raw={$rawSales}"
+        );
+
+        // CLOSE-2 — GST totals == GST Report scope (raw salesIn Σ gst).
+        $rawGst = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->sum('gst'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'CLOSE-2 closing GST == GST Report total (raw salesIn)',
+            abs($c->gstCollected - $rawGst) <= self::TOLERANCE,
+            "closing={$c->gstCollected} raw={$rawGst}"
+        );
+
+        // CLOSE-3 — cash movement == Cash Flow (raw cash_transactions net up to day end).
+        $rawCash = round((float) DB::table('cash_transactions')
+            ->where('shop_id', $shopId)->where('created_at', '<=', $dayEnd)
+            ->selectRaw("COALESCE(SUM(CASE WHEN type='in' THEN amount ELSE -amount END),0) as net")->value('net'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'CLOSE-3 closing cash == Cash Flow closing (raw cash_transactions)',
+            abs($c->cashClosing - $rawCash) <= self::TOLERANCE,
+            "closing={$c->cashClosing} raw={$rawCash}"
+        );
+
+        // CLOSE-4 — combined closing reconciliation: the cash equation holds and the
+        // combined totals are internally consistent.
+        $failures += $this->assert(
+            $shopId,
+            'CLOSE-4 combined closing reconciliation (cash equation + consistency)',
+            abs(($c->cashOpening + $c->cashIn - $c->cashOut) - $c->cashClosing) <= self::TOLERANCE
+                && abs(($c->cgst + $c->sgst + $c->igst) - $c->gstCollected) <= max(self::TOLERANCE, 0.02),
+            "cash {$c->cashOpening}+{$c->cashIn}-{$c->cashOut} vs {$c->cashClosing}; gst split vs {$c->gstCollected}"
         );
 
         return $failures;
