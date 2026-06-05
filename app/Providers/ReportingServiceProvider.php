@@ -6,6 +6,7 @@ use App\Services\Reporting\Definition\ReportRegistry;
 use App\Services\Reporting\ExportSizeRouter;
 use App\Services\Reporting\Render\ChromiumPdfService;
 use App\Services\Reporting\Render\HtmlToPdf;
+use App\Services\Reporting\Reports\SalesRegisterDataset;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 
@@ -28,5 +29,16 @@ class ReportingServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(ExportSizeRouter::class, fn () => ExportSizeRouter::fromConfig());
+    }
+
+    public function boot(): void
+    {
+        /** @var ReportRegistry $registry */
+        $registry = $this->app->make(ReportRegistry::class);
+
+        // Phase 1 pilot: the canonical Sales / Invoice Register (Addendum C §27).
+        if (! $registry->has(SalesRegisterDataset::KEY)) {
+            $registry->register(SalesRegisterDataset::KEY, SalesRegisterDataset::class);
+        }
     }
 }

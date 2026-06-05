@@ -465,6 +465,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     })->middleware('can:settings.view');
 
     // ======= REPORTING-EXPORT SPINE (Phase 0; per-report gates enforced in ExportRequest) =======
+    // Phase 1 pilot — Sales / Invoice Register screen.
+    Route::get('/report/sales-register', [\App\Http\Controllers\Reporting\SalesRegisterController::class, 'index'])
+        ->middleware('can:reports.view')->name('report.sales-register');
     Route::get('/reports/{report}/export', [\App\Http\Controllers\Reporting\ExportController::class, 'panel'])->name('reporting.export.panel');
     Route::post('/reports/{report}/export', [\App\Http\Controllers\Reporting\ExportController::class, 'export'])->name('reporting.export');
     Route::get('/reporting/exports/{export}/download', [\App\Http\Controllers\Reporting\ExportDownloadController::class, 'download'])
