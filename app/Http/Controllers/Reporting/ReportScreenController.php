@@ -50,13 +50,7 @@ class ReportScreenController extends Controller
         $canSensitive = $user->can($definition->permissions->sensitive);
 
         $profile = $this->resolveProfile($definition, $request, $isRigid);
-        $preset = DatePreset::tryFrom((string) $request->input('date_preset')) ?? DatePreset::ThisMonth;
-        $period = $this->filters->resolve(
-            $preset,
-            $request->filled('date_from') ? CarbonImmutable::parse($request->date('date_from')) : null,
-            $request->filled('date_to') ? CarbonImmutable::parse($request->date('date_to')) : null,
-            $request->input('fy_name'),
-        );
+        $period = $this->resolvePeriod($request);
 
         $includeSensitive = ! $isRigid && $request->boolean('include_sensitive') && $canSensitive;
         $resolution = $this->columns->resolve($definition, $profile, $user, includeSensitive: $includeSensitive);
@@ -107,6 +101,28 @@ class ReportScreenController extends Controller
             'isRigid' => $isRigid,
             'canExportSensitive' => $canSensitive,
         ]);
+    }
+
+    /**
+     * Resolve the screen period. Honours legacy ?month=&year= bookmarks from the
+     * pre-spine report URLs (bookmark preservation), else the FY-first presets.
+     */
+    private function resolvePeriod(Request $request): \App\Services\Reporting\Filters\ResolvedPeriod
+    {
+        if ($request->filled('month') && $request->filled('year')) {
+            $from = CarbonImmutable::create((int) $request->input('year'), (int) $request->input('month'), 1)->startOfDay();
+
+            return $this->filters->resolve(DatePreset::Custom, $from, $from->endOfMonth());
+        }
+
+        $preset = DatePreset::tryFrom((string) $request->input('date_preset')) ?? DatePreset::ThisMonth;
+
+        return $this->filters->resolve(
+            $preset,
+            $request->filled('date_from') ? CarbonImmutable::parse($request->date('date_from')) : null,
+            $request->filled('date_to') ? CarbonImmutable::parse($request->date('date_to')) : null,
+            $request->input('fy_name'),
+        );
     }
 
     private function resolveProfile($definition, Request $request, bool $isRigid): ReportProfile

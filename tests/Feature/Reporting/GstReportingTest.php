@@ -161,16 +161,22 @@ class GstReportingTest extends TestCase
         $this->assertSame(2, $count);
     }
 
-    public function test_gst_report_page_renders_credit_note_section_and_net_liability(): void
+    public function test_gst_report_pages_render_on_the_spine(): void
     {
+        // Post Phase-2 sign-off: report.gst now serves the spine GST Summary;
+        // net liability and credit-note detail live on GSTR-3B and the Credit
+        // Note Register. The legacy ?month=&year= bookmark still works.
         [$user, $shop] = $this->seedFixture();
         $this->grant($user, 'reports.view');
+        $q = ['month' => self::MONTH, 'year' => self::YEAR];
 
-        $response = $this->actingAs($user)->get(route('report.gst', ['month' => self::MONTH, 'year' => self::YEAR]));
+        $this->actingAs($user)->get(route('report.gst', $q))
+            ->assertOk()->assertSee('1,50,000', false)->assertDontSee('window.print');
 
-        $response->assertOk();
-        $response->assertSee('Credit Notes Issued (Returns)', false);
-        $response->assertSee('Net Tax Liability', false);
+        $this->actingAs($user)->get(route('report.gstr3b', $q))
+            ->assertOk()->assertSee('Net tax liability', false);
+
+        $this->actingAs($user)->get(route('report.cn-register', $q))->assertOk();
     }
 
     public function test_reports_validate_command_passes_on_consistent_data(): void

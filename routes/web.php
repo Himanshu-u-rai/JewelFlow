@@ -423,17 +423,17 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/daily', [\App\Http\Controllers\DailyReportController::class, 'index'])->middleware('can:reports.view')->name('report.daily');
     Route::get('/report/cash', [\App\Http\Controllers\CashReportController::class, 'index'])->middleware('can:reports.view')->name('report.cash');
     Route::get('/report/pnl', [\App\Http\Controllers\PnlController::class, 'index'])->middleware('can:reports.view')->name('report.pnl');
-    Route::get('/report/gst', [\App\Http\Controllers\GstController::class, 'index'])->middleware('can:reports.view')->name('report.gst');
+    Route::get('/report/gst', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gst')->middleware('can:reports.view')->name('report.gst');
     // CA / compliance tax pack (Phase 2 M1) — all read-only, reports.view gated.
-    Route::get('/report/gstr1', [\App\Http\Controllers\Reporting\TaxReportController::class, 'gstr1'])->middleware('can:reports.view')->name('report.gstr1');
+    Route::get('/report/gstr1', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gstr1')->middleware('can:reports.view')->name('report.gstr1');
     Route::get('/report/gstr1/export', [\App\Http\Controllers\Reporting\TaxReportController::class, 'gstr1Csv'])->middleware('can:reports.view')->name('report.gstr1.csv');
-    Route::get('/report/gstr3b', [\App\Http\Controllers\Reporting\TaxReportController::class, 'gstr3b'])->middleware('can:reports.view')->name('report.gstr3b');
-    Route::get('/report/cn-register', [\App\Http\Controllers\Reporting\TaxReportController::class, 'creditNoteRegister'])->middleware('can:reports.view')->name('report.cn-register');
+    Route::get('/report/gstr3b', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gstr3b')->middleware('can:reports.view')->name('report.gstr3b');
+    Route::get('/report/cn-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cn-register')->middleware('can:reports.view')->name('report.cn-register');
     Route::get('/report/cn-register/export', [\App\Http\Controllers\Reporting\TaxReportController::class, 'creditNoteRegisterCsv'])->middleware('can:reports.view')->name('report.cn-register.csv');
     // CA Ledger & Reconciliation pack (Phase 2 M2) — read-only, reports.view gated.
     Route::get('/report/payment-reconciliation', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'paymentReconciliation'])->middleware('can:reports.view')->name('report.payment-reconciliation');
     Route::get('/report/payment-reconciliation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'paymentReconciliationCsv'])->middleware('can:reports.view')->name('report.payment-reconciliation.csv');
-    Route::get('/report/day-book', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'dayBook'])->middleware('can:reports.view')->name('report.day-book');
+    Route::get('/report/day-book', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'day-book')->middleware('can:reports.view')->name('report.day-book');
     Route::get('/report/day-book/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'dayBookCsv'])->middleware('can:reports.view')->name('report.day-book.csv');
     Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuation'])->middleware('can:reports.view')->name('report.inventory-valuation');
     Route::get('/report/inventory-valuation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuationCsv'])->middleware('can:reports.view')->name('report.inventory-valuation.csv');
