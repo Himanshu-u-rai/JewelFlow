@@ -468,6 +468,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // Phase 1 pilot — Sales / Invoice Register screen.
     Route::get('/report/sales-register', [\App\Http\Controllers\Reporting\SalesRegisterController::class, 'index'])
         ->middleware('can:reports.view')->name('report.sales-register');
+    // Generic spine report screen (any registered report; rigidity enforced in the controller).
+    Route::get('/reporting/{report}/screen', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])
+        ->middleware('can:reports.view')->name('reporting.report.screen');
     Route::get('/reports/{report}/export', [\App\Http\Controllers\Reporting\ExportController::class, 'panel'])->name('reporting.export.panel');
     Route::post('/reports/{report}/export', [\App\Http\Controllers\Reporting\ExportController::class, 'export'])->name('reporting.export');
     Route::get('/reporting/exports/{export}/download', [\App\Http\Controllers\Reporting\ExportDownloadController::class, 'download'])

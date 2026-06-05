@@ -6,6 +6,11 @@ use App\Services\Reporting\Definition\ReportRegistry;
 use App\Services\Reporting\ExportSizeRouter;
 use App\Services\Reporting\Render\ChromiumPdfService;
 use App\Services\Reporting\Render\HtmlToPdf;
+use App\Services\Reporting\Reports\CreditNoteRegisterDataset;
+use App\Services\Reporting\Reports\DayBookDataset;
+use App\Services\Reporting\Reports\GstReportDataset;
+use App\Services\Reporting\Reports\Gstr1Dataset;
+use App\Services\Reporting\Reports\Gstr3bDataset;
 use App\Services\Reporting\Reports\SalesRegisterDataset;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
@@ -39,6 +44,24 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 1 pilot: the canonical Sales / Invoice Register (Addendum C §27).
         if (! $registry->has(SalesRegisterDataset::KEY)) {
             $registry->register(SalesRegisterDataset::KEY, SalesRegisterDataset::class);
+        }
+
+        // Phase 2: the compliance family + the day book (each wraps an existing
+        // canonical service so totals reconcile by construction).
+        if (! $registry->has(GstReportDataset::KEY)) {
+            $registry->register(GstReportDataset::KEY, GstReportDataset::class);
+        }
+        if (! $registry->has(Gstr1Dataset::KEY)) {
+            $registry->register(Gstr1Dataset::KEY, Gstr1Dataset::class);
+        }
+        if (! $registry->has(Gstr3bDataset::KEY)) {
+            $registry->register(Gstr3bDataset::KEY, Gstr3bDataset::class);
+        }
+        if (! $registry->has(CreditNoteRegisterDataset::KEY)) {
+            $registry->register(CreditNoteRegisterDataset::KEY, CreditNoteRegisterDataset::class);
+        }
+        if (! $registry->has(DayBookDataset::KEY)) {
+            $registry->register(DayBookDataset::KEY, DayBookDataset::class);
         }
     }
 }
