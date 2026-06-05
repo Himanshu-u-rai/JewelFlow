@@ -132,6 +132,7 @@ Schedule::command('platform:evaluate-alerts')->everyFifteenMinutes()->withoutOve
 Schedule::command('platform:detect-fraud')->dailyAt('03:00');
 Schedule::command('storage:recompute-stats')->daily()->withoutOverlapping();
 Schedule::command('platform:archive-audit-logs')->monthly();
+Schedule::command('reporting:sweep-expired-exports')->daily()->withoutOverlapping();
 Schedule::command('platform:check-shop-health')->dailyAt('06:00')->withoutOverlapping();
 Schedule::command('mobile:prune-idempotency-keys')->daily();
 Schedule::command('mobile:prune-uploads')->daily();

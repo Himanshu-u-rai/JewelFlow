@@ -464,6 +464,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         return redirect()->route('settings.edit', ['tab' => 'audit']);
     })->middleware('can:settings.view');
 
+    // ======= REPORTING-EXPORT SPINE (Phase 0; per-report gates enforced in ExportRequest) =======
+    Route::get('/reports/{report}/export', [\App\Http\Controllers\Reporting\ExportController::class, 'panel'])->name('reporting.export.panel');
+    Route::post('/reports/{report}/export', [\App\Http\Controllers\Reporting\ExportController::class, 'export'])->name('reporting.export');
+    Route::get('/reporting/exports/{export}/download', [\App\Http\Controllers\Reporting\ExportDownloadController::class, 'download'])
+        ->middleware('signed')
+        ->name('reporting.exports.download');
+
     // ======= SETTINGS =======
     Route::get('/profile/mobile/change', [\App\Http\Controllers\MobileChangeController::class, 'showForm'])->name('profile.mobile.change');
     Route::post('/profile/mobile/change-request', [\App\Http\Controllers\MobileChangeController::class, 'requestChange'])->name('profile.mobile.request');

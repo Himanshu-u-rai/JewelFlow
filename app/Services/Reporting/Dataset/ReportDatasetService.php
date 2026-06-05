@@ -20,5 +20,21 @@ abstract class ReportDatasetService
 {
     abstract public function definition(): ReportDefinition;
 
-    abstract public function build(ReportRequest $request): ReportDataset;
+    /**
+     * Build the canonical RowSet. The cross-cutting `ReportMeta` (provenance,
+     * watermark, period label, shop furniture) is computed by the pipeline and
+     * passed in, so the report only produces sections/rows/totals and attaches
+     * the given meta verbatim.
+     */
+    abstract public function build(ReportRequest $request, ReportMeta $meta): ReportDataset;
+
+    /**
+     * Optional row-count estimate used by the size router to decide sync vs
+     * queued (frozen §20). Return null when unknown — the router then treats it
+     * as small (sync). Reports SHOULD override with a cheap COUNT for accuracy.
+     */
+    public function estimateRowCount(ReportRequest $request): ?int
+    {
+        return null;
+    }
 }
