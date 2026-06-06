@@ -417,7 +417,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // ======= REPORTS (permission-gated: reports.view for most; reports.daily_closing for closing) =======
     Route::get('/reports', [ReportController::class, 'hub'])->middleware('can:reports.view')->name('report.hub');
-    Route::get('/report/gold', [ReportController::class, 'gold'])->middleware('can:reports.view')->name('report.gold');
+    // Gold Balances — served by the reporting spine (Phase 4). Same URL/name/permission.
+    Route::get('/report/gold', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gold-balances')->middleware('can:reports.view')->name('report.gold');
     Route::get('/report/metal-exchange', [\App\Http\Controllers\MetalExchangeReportController::class, 'index'])->middleware(['can:reports.view', 'edition:retailer'])->name('report.metal-exchange');
     Route::post('/old-metal-lots/{metalLot}/dispatch', [\App\Http\Controllers\OldMetalWeeklyLotController::class, 'dispatch'])->middleware(['can:vault.manage', 'edition:retailer'])->name('old-metal-lots.dispatch');
     // Daily Sales Summary — served by the reporting spine (Phase 3). Same URL/name/permission;

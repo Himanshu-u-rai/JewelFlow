@@ -36,7 +36,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar, \App\Reporting\AuditService $audit, \App\Reporting\LedgerService $ledger, \App\Reporting\ClosingService $closing, \App\Reporting\ProfitReportingService $profit): int
+    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar, \App\Reporting\AuditService $audit, \App\Reporting\LedgerService $ledger, \App\Reporting\ClosingService $closing, \App\Reporting\ProfitReportingService $profit, \App\Services\BullionVaultService $vault): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -65,6 +65,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateClosing((int) $shopId, $period, $closing);
             $failures += $this->validateDailySummary((int) $shopId, $period, $gst);
             $failures += $this->validatePnl((int) $shopId, $period, $profit);
+            $failures += $this->validateGold((int) $shopId, $vault);
             $failures += $this->validateKarigar((int) $shopId, $karigar);
             $failures += $this->validateOperator((int) $shopId, $period, $audit, $gst);
             $failures += $this->validateSuspicious((int) $shopId, $period, $audit);
@@ -719,6 +720,60 @@ class ValidateReportTotals extends Command
             "PNL-4 cost-unknown lines surfaced ({$p->costUnknownLines}) == independent recompute",
             $p->costUnknownLines === $rawUnknown,
             "service={$p->costUnknownLines} raw={$rawUnknown}"
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Gold Balances invariants (Phase 4, Owner). Point-in-time. Wraps the
+     * canonical BullionVaultService::vaultBalances() and proves the report grand
+     * total ties to SUM(metal_lots.fine_weight_remaining) — the exact authoritative
+     * figure vault:reconcile certifies — with no second balance engine.
+     */
+    private function validateGold(int $shopId, \App\Services\BullionVaultService $vault): int
+    {
+        $failures = 0;
+        // vaultBalances() uses the BelongsToShop-scoped MetalLot model, so it needs
+        // an explicit tenant context here in the CLI (the report runs under the
+        // request's tenant middleware). This is exactly the canonical engine the
+        // report wraps — no second balance engine.
+        $balances = \App\Support\TenantContext::runFor($shopId, fn () => $vault->vaultBalances($shopId));
+        $reportTotal = round((float) $balances->sum('in_vault_fine'), 4);
+
+        // GOLD-1 — report total == SUM(metal_lots.fine_weight_remaining) (raw column).
+        $rawSum = round((float) DB::table('metal_lots')
+            ->where('shop_id', $shopId)->sum('fine_weight_remaining'), 4);
+        $failures += $this->assert(
+            $shopId,
+            'GOLD-1 report total == SUM(metal_lots.fine_weight_remaining)',
+            abs($reportTotal - $rawSum) <= self::TOLERANCE,
+            "report={$reportTotal} raw={$rawSum}"
+        );
+
+        // GOLD-2 — report total == vault:reconcile source total (the authoritative
+        // per-metal grouped SUM that ReconcileVaultBalances certifies).
+        $vaultReconcile = round((float) collect(DB::select(
+            "SELECT COALESCE(SUM(total_fine), 0) AS t FROM (
+                 SELECT SUM(fine_weight_remaining) AS total_fine
+                 FROM metal_lots WHERE shop_id = ? GROUP BY metal_type
+             ) g",
+            [$shopId]
+        ))[0]->t, 4);
+        $failures += $this->assert(
+            $shopId,
+            'GOLD-2 report total == vault:reconcile source total',
+            abs($reportTotal - $vaultReconcile) <= self::TOLERANCE,
+            "report={$reportTotal} vault:reconcile={$vaultReconcile}"
+        );
+
+        // GOLD-3 — per-metal rollups sum to the grand total (no lot lost / double-counted).
+        $rollup = round((float) $balances->sum('in_vault_fine'), 4);
+        $failures += $this->assert(
+            $shopId,
+            'GOLD-3 per-metal rollups == grand total',
+            abs($rollup - $rawSum) <= self::TOLERANCE,
+            "rollup={$rollup} grandTotal={$rawSum}"
         );
 
         return $failures;

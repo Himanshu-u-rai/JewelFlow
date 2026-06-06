@@ -9,6 +9,7 @@ use App\Services\Reporting\Render\HtmlToPdf;
 use App\Services\Reporting\Reports\CreditNoteRegisterDataset;
 use App\Services\Reporting\Reports\DailySummaryDataset;
 use App\Services\Reporting\Reports\DayBookDataset;
+use App\Services\Reporting\Reports\GoldBalancesDataset;
 use App\Services\Reporting\Reports\GstReportDataset;
 use App\Services\Reporting\Reports\Gstr1Dataset;
 use App\Services\Reporting\Reports\CashFlowDataset;
@@ -110,6 +111,11 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 4 — Owner: Profit & Loss (revenue − COGS = gross margin).
         if (! $registry->has(ProfitLossDataset::KEY)) {
             $registry->register(ProfitLossDataset::KEY, ProfitLossDataset::class);
+        }
+
+        // Phase 4 — Owner: Gold Balances (vault fine-weight holdings by metal/purity).
+        if (! $registry->has(GoldBalancesDataset::KEY)) {
+            $registry->register(GoldBalancesDataset::KEY, GoldBalancesDataset::class);
         }
     }
 }
