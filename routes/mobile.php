@@ -92,6 +92,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->name('mobile.vendors.ledger');
 
         // Customers — view/create/edit gated by respective permissions.
+        // /customers (index) is registered before /customers/search so the more
+        // specific path is never shadowed.
+        Route::get('/customers', [CustomerController::class, 'index'])
+            ->middleware(['throttle:api-pos-read', 'can:customers.view']);
         Route::get('/customers/search', [CustomerController::class, 'search'])
             ->middleware(['throttle:api-pos-read', 'can:customers.view']);
         Route::get('/customers/{customer}/context', [CustomerController::class, 'context'])

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\CustomerGoldTransaction;
 use App\Models\Invoice;
+use App\Models\LoyaltyTransaction;
 use App\Models\Repair;
 use App\Services\PosSearchCacheService;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +23,33 @@ class CustomerController extends Controller
         $results = PosSearchCacheService::customers($shopId, $request->input('search'));
 
         return response()->json($results);
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $perPage = min((int) ($request->query('per_page', 25)), 100);
+        $search  = trim((string) $request->query('search', ''));
+
+        // Customer uses the BelongsToShop global scope, so this is auto-scoped to
+        // the authenticated user's shop (TenantContext set by the `tenant`
+        // middleware) — no cross-tenant rows can be returned.
+        $query = Customer::query()->orderByDesc('updated_at');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'ilike', '%' . $search . '%')
+                  ->orWhere('last_name', 'ilike', '%' . $search . '%')
+                  ->orWhere('mobile', 'like', '%' . $search . '%')
+                  ->orWhereRaw(
+                      "CONCAT(first_name, ' ', COALESCE(last_name, '')) ILIKE ?",
+                      ['%' . $search . '%']
+                  );
+            });
+        }
+
+        $paginated = $query->paginate($perPage);
+
+        return response()->json($paginated);
     }
 
     public function store(Request $request): JsonResponse
@@ -144,6 +173,53 @@ class CustomerController extends Controller
             ->where('status', '!=', 'delivered')
             ->count();
 
+        // Edition-gated history. Loyalty is a retailer concept, the customer gold
+        // account a manufacturer concept. Gate on the canonical edition checks
+        // (a shop may hold multiple editions; shops.shop_type is only a scalar).
+        // LoyaltyTransaction / CustomerGoldTransaction use the BelongsToShop scope,
+        // so querying by customer_id is already shop-scoped — no manual shop_id.
+        $shop = $request->user()->shop;
+
+        $loyaltyHistory = [];
+        if ($shop?->isRetailer()) {
+            $loyaltyHistory = LoyaltyTransaction::query()
+                ->where('customer_id', $customer->id)
+                ->latest('created_at')
+                ->limit(20)
+                ->get(['type', 'points', 'balance_after', 'description', 'invoice_id', 'created_at'])
+                ->map(fn ($t) => [
+                    'date' => optional($t->created_at)?->toDateString(),
+                    'type' => $t->type,
+                    'points' => (int) $t->points,
+                    'balance_after' => (int) $t->balance_after,
+                    'description' => $t->description,
+                    'invoice_id' => $t->invoice_id,
+                ])
+                ->all();
+        }
+
+        $goldBalanceGrams = null;
+        $goldTransactions = [];
+        if ($shop?->isManufacturer()) {
+            // fine_gold is signed (+credit / −debit), so the balance is its sum.
+            $goldBalanceGrams = round((float) CustomerGoldTransaction::query()
+                ->where('customer_id', $customer->id)
+                ->sum('fine_gold'), 3);
+
+            $goldTransactions = CustomerGoldTransaction::query()
+                ->where('customer_id', $customer->id)
+                ->latest('created_at')
+                ->limit(20)
+                ->get(['type', 'fine_gold', 'created_at'])
+                ->map(fn ($t) => [
+                    'date' => optional($t->created_at)?->toDateString(),
+                    'type' => ((float) $t->fine_gold) >= 0 ? 'credit' : 'debit',
+                    'fine_gold_grams' => round(abs((float) $t->fine_gold), 3),
+                    'description' => $this->goldTransactionDescription($t->type),
+                ])
+                ->all();
+        }
+
         return response()->json([
             'customer' => [
                 'id' => $customer->id,
@@ -153,6 +229,13 @@ class CustomerController extends Controller
                 'mobile' => $customer->mobile,
                 'customer_code' => $customer->customer_code,
                 'loyalty_points' => (int) ($customer->loyalty_points ?? 0),
+                'email' => $customer->email,
+                'address' => $customer->address,
+                'date_of_birth' => optional($customer->date_of_birth)?->toDateString(),
+                'anniversary_date' => optional($customer->anniversary_date)?->toDateString(),
+                'wedding_date' => optional($customer->wedding_date)?->toDateString(),
+                'notes' => $customer->notes,
+                'member_since' => optional($customer->created_at)?->toDateString(),
             ],
             'summary' => [
                 'total_invoices' => $totalInvoices,
@@ -161,6 +244,26 @@ class CustomerController extends Controller
                 'open_repairs' => $openRepairs,
             ],
             'timeline' => $timeline,
+            'loyalty_history' => $loyaltyHistory,
+            'gold_balance_grams' => $goldBalanceGrams,
+            'gold_transactions' => $goldTransactions,
         ]);
+    }
+
+    /**
+     * Human-friendly label for a customer gold transaction type (simple English).
+     * customer_gold_transactions has no description column, so derive from `type`.
+     */
+    private function goldTransactionDescription(?string $type): string
+    {
+        return match ($type) {
+            'advance' => 'Gold deposit',
+            'old_metal_in' => 'Old gold taken in',
+            'adjust' => 'Adjustment',
+            'refund' => 'Gold refund',
+            'sale_offset' => 'Used against sale',
+            'credit_note_reversal' => 'Return reversal',
+            default => $type ? ucwords(str_replace('_', ' ', $type)) : 'Gold transaction',
+        };
     }
 }
