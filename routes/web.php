@@ -420,7 +420,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/gold', [ReportController::class, 'gold'])->middleware('can:reports.view')->name('report.gold');
     Route::get('/report/metal-exchange', [\App\Http\Controllers\MetalExchangeReportController::class, 'index'])->middleware(['can:reports.view', 'edition:retailer'])->name('report.metal-exchange');
     Route::post('/old-metal-lots/{metalLot}/dispatch', [\App\Http\Controllers\OldMetalWeeklyLotController::class, 'dispatch'])->middleware(['can:vault.manage', 'edition:retailer'])->name('old-metal-lots.dispatch');
-    Route::get('/report/daily', [\App\Http\Controllers\DailyReportController::class, 'index'])->middleware('can:reports.view')->name('report.daily');
+    // Daily Sales Summary — served by the reporting spine (Phase 3). Same URL/name/permission;
+    // honours the legacy ?date=YYYY-MM-DD bookmark. Sales/GST + the day's metal movement.
+    Route::get('/report/daily', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'daily-summary')->middleware('can:reports.view')->name('report.daily');
     // Cash Flow — served by the reporting spine (Phase 3). Same URL/name/permission.
     Route::get('/report/cash', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cash-flow')->middleware('can:reports.view')->name('report.cash');
     Route::get('/report/pnl', [\App\Http\Controllers\PnlController::class, 'index'])->middleware('can:reports.view')->name('report.pnl');

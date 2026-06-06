@@ -7,6 +7,7 @@ use App\Services\Reporting\ExportSizeRouter;
 use App\Services\Reporting\Render\ChromiumPdfService;
 use App\Services\Reporting\Render\HtmlToPdf;
 use App\Services\Reporting\Reports\CreditNoteRegisterDataset;
+use App\Services\Reporting\Reports\DailySummaryDataset;
 use App\Services\Reporting\Reports\DayBookDataset;
 use App\Services\Reporting\Reports\GstReportDataset;
 use App\Services\Reporting\Reports\Gstr1Dataset;
@@ -92,6 +93,11 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 3 — Accounting: Payment Reconciliation (billed vs collected; variance).
         if (! $registry->has(PaymentReconciliationDataset::KEY)) {
             $registry->register(PaymentReconciliationDataset::KEY, PaymentReconciliationDataset::class);
+        }
+
+        // Phase 3 — Accounting: Daily Sales Summary (one day's sales/GST + metal movement).
+        if (! $registry->has(DailySummaryDataset::KEY)) {
+            $registry->register(DailySummaryDataset::KEY, DailySummaryDataset::class);
         }
     }
 }

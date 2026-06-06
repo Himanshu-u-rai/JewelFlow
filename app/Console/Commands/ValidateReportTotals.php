@@ -62,6 +62,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateInventory((int) $shopId, $period, $inventory);
             $failures += $this->validateCashFlow((int) $shopId, $period, $ledger);
             $failures += $this->validateClosing((int) $shopId, $period, $closing);
+            $failures += $this->validateDailySummary((int) $shopId, $period, $gst);
             $failures += $this->validateKarigar((int) $shopId, $karigar);
             $failures += $this->validateOperator((int) $shopId, $period, $audit, $gst);
             $failures += $this->validateSuspicious((int) $shopId, $period, $audit);
@@ -561,6 +562,57 @@ class ValidateReportTotals extends Command
             abs(($c->cashOpening + $c->cashIn - $c->cashOut) - $c->cashClosing) <= self::TOLERANCE
                 && abs(($c->cgst + $c->sgst + $c->igst) - $c->gstCollected) <= max(self::TOLERANCE, 0.02),
             "cash {$c->cashOpening}+{$c->cashIn}-{$c->cashOut} vs {$c->cashClosing}; gst split vs {$c->gstCollected}"
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Daily (Sales Summary) invariants (Phase 3) — the lightweight daily report.
+     * Validated for the first day of the period. Wraps GstReportingService::summary()
+     * for that day and proves sales/count/GST tie to the raw finalized invoices
+     * (the Sales Register / GST Report scope) INDEPENDENTLY.
+     */
+    private function validateDailySummary(int $shopId, ReportPeriod $period, GstReportingService $gst): int
+    {
+        $failures = 0;
+        $date = $period->start()->toDateString();
+        $day = ReportPeriod::day($date);
+        $s = $gst->summary($shopId, $day);
+
+        // DAILY-1 — daily sales == Sales Register total for the day (raw salesIn Σ total).
+        $rawSales = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->sum('total'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'DAILY-1 daily sales == Sales Register total (raw salesIn)',
+            abs($s->totalSales - $rawSales) <= self::TOLERANCE,
+            "summary={$s->totalSales} raw={$rawSales}"
+        );
+
+        // DAILY-2 — daily invoice count == finalized invoice count for the day (raw salesIn).
+        $rawCount = (int) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->count();
+        $failures += $this->assert(
+            $shopId,
+            'DAILY-2 daily bills == finalized invoice count (raw salesIn)',
+            $s->invoiceCount === $rawCount,
+            "summary={$s->invoiceCount} raw={$rawCount}"
+        );
+
+        // DAILY-3 — daily GST == GST Report total for the day (raw salesIn Σ gst).
+        $rawGst = round((float) Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($day)->sum('gst'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'DAILY-3 daily GST == GST Report total (raw salesIn)',
+            abs($s->gstCollected - $rawGst) <= self::TOLERANCE,
+            "summary={$s->gstCollected} raw={$rawGst}"
+        );
+
+        // DAILY-4 — summary totals are internally consistent (CGST+SGST+IGST == GST).
+        $failures += $this->assert(
+            $shopId,
+            'DAILY-4 summary reconciliation (CGST+SGST+IGST == GST)',
+            abs(($s->cgstCollected + $s->sgstCollected + $s->igstCollected) - $s->gstCollected) <= max(self::TOLERANCE, 0.02),
+            "split=" . round($s->cgstCollected + $s->sgstCollected + $s->igstCollected, 2) . " gst={$s->gstCollected}"
         );
 
         return $failures;
