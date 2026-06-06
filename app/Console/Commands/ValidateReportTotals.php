@@ -59,6 +59,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validatePaymentRecon((int) $shopId, $period, $sales);
             $failures += $this->validateReconciliation((int) $shopId, $period, $gst, $sales);
             $failures += $this->validateReceivables((int) $shopId, $receivables);
+            $failures += $this->validateMetalLiability((int) $shopId, $receivables);
             $failures += $this->validateInventory((int) $shopId, $period, $inventory);
             $failures += $this->validateCashFlow((int) $shopId, $period, $ledger);
             $failures += $this->validateClosing((int) $shopId, $period, $closing);
@@ -369,26 +370,61 @@ class ValidateReportTotals extends Command
             'independent=' . $schIndependent . ' service=' . $sch->totalLiability
         );
 
-        // #11 Metal / old-gold liability (fine grams).
+        return $failures;
+    }
+
+    /**
+     * Metal Liability invariants (Phase 3, #11 — customer-advance gold owed vs on
+     * hand). Point-in-time. Wraps ReceivablesService::metalLiability() and proves
+     * the liability, the customer breakdown and the on-hand figure tie to the raw
+     * tables — the on-hand check using the SAME source as vault:reconcile
+     * (SUM(metal_lots.fine_weight_remaining)).
+     */
+    private function validateMetalLiability(int $shopId, \App\Reporting\ReceivablesService $receivables): int
+    {
+        $failures = 0;
         $metal = $receivables->metalLiability($shopId);
 
-        // MTL-1 — per-customer gross deposits sum to the reported gross total.
+        // METAL-1 — total liability == independent Σ(customer_advance lot remaining).
+        $rawLiability = round((float) DB::table('metal_lots')
+            ->where('shop_id', $shopId)->where('source', 'customer_advance')
+            ->sum('fine_weight_remaining'), 4);
+        $failures += $this->assert(
+            $shopId,
+            'METAL-1 total liability == customer_advance lot remaining (independent)',
+            abs($metal->totalAdvanceLiability - $rawLiability) <= self::TOLERANCE,
+            "service={$metal->totalAdvanceLiability} raw={$rawLiability}"
+        );
+
+        // METAL-2 — customer breakdown sums to the reported gross total deposited.
         $depSum = round((float) $metal->rows->sum('fine_deposited'), 4);
         $failures += $this->assert(
             $shopId,
-            'MTL-1 per-customer deposits sum to gross deposited',
+            'METAL-2 customer breakdown sums to total deposited',
             abs($depSum - $metal->totalDeposited) <= self::TOLERANCE,
-            'rows=' . $depSum . ' total=' . $metal->totalDeposited
+            "rows={$depSum} total={$metal->totalDeposited}"
         );
 
-        // MTL-2 — advance liability is non-negative and covered by gold on hand
-        // (the customer_advance lot is a subset of all lots).
+        // METAL-3 — on-hand == vault:reconcile source (Σ metal_lots fine remaining),
+        // and the liability is covered by gold on hand.
+        $rawOnHand = round((float) DB::table('metal_lots')
+            ->where('shop_id', $shopId)->sum('fine_weight_remaining'), 4);
         $failures += $this->assert(
             $shopId,
-            'MTL-2 advance liability >= 0 and <= vault on hand',
-            $metal->totalAdvanceLiability >= -self::TOLERANCE
+            'METAL-3 on-hand == vault:reconcile source & liability <= on-hand',
+            abs($metal->vaultOnHandFine - $rawOnHand) <= self::TOLERANCE
                 && $metal->totalAdvanceLiability <= $metal->vaultOnHandFine + self::TOLERANCE,
-            'liability=' . $metal->totalAdvanceLiability . ' onHand=' . $metal->vaultOnHandFine
+            "onHand svc={$metal->vaultOnHandFine} raw={$rawOnHand}; liability={$metal->totalAdvanceLiability}"
+        );
+
+        // METAL-4 — grand-total reconciliation: report grand total == customer
+        // breakdown total == service total (and the row count agrees).
+        $failures += $this->assert(
+            $shopId,
+            'METAL-4 grand total == breakdown total == service total',
+            abs($metal->totalDeposited - $depSum) <= self::TOLERANCE
+                && $metal->rows->count() === $metal->customerCount,
+            "service={$metal->totalDeposited} breakdown={$depSum} rows={$metal->rows->count()} count={$metal->customerCount}"
         );
 
         return $failures;

@@ -15,6 +15,7 @@ use App\Services\Reporting\Reports\CashFlowDataset;
 use App\Services\Reporting\Reports\DailyClosingDataset;
 use App\Services\Reporting\Reports\Gstr3bDataset;
 use App\Services\Reporting\Reports\InventoryValuationDataset;
+use App\Services\Reporting\Reports\MetalLiabilityDataset;
 use App\Services\Reporting\Reports\MetalMovementLedgerDataset;
 use App\Services\Reporting\Reports\PaymentReconciliationDataset;
 use App\Services\Reporting\Reports\SalesRegisterDataset;
@@ -98,6 +99,11 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 3 — Accounting: Daily Sales Summary (one day's sales/GST + metal movement).
         if (! $registry->has(DailySummaryDataset::KEY)) {
             $registry->register(DailySummaryDataset::KEY, DailySummaryDataset::class);
+        }
+
+        // Phase 3 — Accounting: Metal Liability (customer-advance gold owed vs on hand).
+        if (! $registry->has(MetalLiabilityDataset::KEY)) {
+            $registry->register(MetalLiabilityDataset::KEY, MetalLiabilityDataset::class);
         }
     }
 }
