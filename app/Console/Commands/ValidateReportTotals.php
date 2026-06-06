@@ -36,7 +36,7 @@ class ValidateReportTotals extends Command
 
     private const TOLERANCE = 0.01;
 
-    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar, \App\Reporting\AuditService $audit, \App\Reporting\LedgerService $ledger, \App\Reporting\ClosingService $closing): int
+    public function handle(GstReportingService $gst, TaxService $tax, SalesService $sales, \App\Reporting\ReceivablesService $receivables, \App\Reporting\InventoryService $inventory, \App\Reporting\KarigarService $karigar, \App\Reporting\AuditService $audit, \App\Reporting\LedgerService $ledger, \App\Reporting\ClosingService $closing, \App\Reporting\ProfitReportingService $profit): int
     {
         $shopFilter = $this->option('shop');
         $shopIds = $shopFilter !== null
@@ -64,6 +64,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateCashFlow((int) $shopId, $period, $ledger);
             $failures += $this->validateClosing((int) $shopId, $period, $closing);
             $failures += $this->validateDailySummary((int) $shopId, $period, $gst);
+            $failures += $this->validatePnl((int) $shopId, $period, $profit);
             $failures += $this->validateKarigar((int) $shopId, $karigar);
             $failures += $this->validateOperator((int) $shopId, $period, $audit, $gst);
             $failures += $this->validateSuspicious((int) $shopId, $period, $audit);
@@ -649,6 +650,75 @@ class ValidateReportTotals extends Command
             'DAILY-4 summary reconciliation (CGST+SGST+IGST == GST)',
             abs(($s->cgstCollected + $s->sgstCollected + $s->igstCollected) - $s->gstCollected) <= max(self::TOLERANCE, 0.02),
             "split=" . round($s->cgstCollected + $s->sgstCollected + $s->igstCollected, 2) . " gst={$s->gstCollected}"
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Profit & Loss invariants (Phase 4, Owner). Wraps
+     * ProfitReportingService::summary() and proves revenue / COGS / margin tie to
+     * the raw tables INDEPENDENTLY: revenue to the Sales Register scope, COGS to
+     * the items.cost_price basis. The cost-unknown line count is always surfaced
+     * (it silently suppresses COGS, so it must be visible in the audit output).
+     */
+    private function validatePnl(int $shopId, ReportPeriod $period, \App\Reporting\ProfitReportingService $profit): int
+    {
+        $failures = 0;
+        $p = $profit->summary($shopId, $period);
+        [$start, $end] = $period->bounds();
+
+        // PNL-1 — revenue == Sales Register scope (Σ salesIn subtotal) − discount − returns.
+        $inv = Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($period)
+            ->selectRaw('COALESCE(SUM(subtotal),0) AS gross, COALESCE(SUM(discount),0) AS disc')->first();
+        $rawReturns = (float) CreditNote::withoutTenant()->where('shop_id', $shopId)
+            ->whereBetween('issued_at', [$start, $end])->sum('subtotal');
+        $rawRevenue = round((float) $inv->gross - (float) $inv->disc - $rawReturns, 2);
+        $failures += $this->assert(
+            $shopId,
+            'PNL-1 revenue == Sales Register subtotal − discounts − returns (raw)',
+            abs($p->revenue - $rawRevenue) <= self::TOLERANCE,
+            "service={$p->revenue} raw={$rawRevenue}"
+        );
+
+        // PNL-2 — COGS == Σ items.cost_price of sold lines (finalized, in period).
+        $rawCogs = round((float) DB::table('invoice_items')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->leftJoin('items', 'items.id', '=', 'invoice_items.item_id')
+            ->where('invoices.shop_id', $shopId)
+            ->where('invoices.status', Invoice::STATUS_FINALIZED)
+            ->whereRaw('COALESCE(invoices.finalized_at, invoices.created_at) BETWEEN ? AND ?', [$start, $end])
+            ->sum(DB::raw('COALESCE(items.cost_price, 0)')), 2);
+        $failures += $this->assert(
+            $shopId,
+            'PNL-2 COGS == sold items.cost_price (raw)',
+            abs($p->cogs - $rawCogs) <= self::TOLERANCE,
+            "service={$p->cogs} raw={$rawCogs}"
+        );
+
+        // PNL-3 — margin == revenue − COGS.
+        $failures += $this->assert(
+            $shopId,
+            'PNL-3 gross profit == revenue − COGS',
+            abs($p->grossProfit - round($p->revenue - $p->cogs, 2)) <= self::TOLERANCE,
+            "grossProfit={$p->grossProfit} revenue−cogs=" . round($p->revenue - $p->cogs, 2)
+        );
+
+        // PNL-4 — cost-unknown lines surfaced and == independent recompute. The count
+        // is in the check name so it is ALWAYS visible in the validator output.
+        $rawUnknown = (int) DB::table('invoice_items')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->leftJoin('items', 'items.id', '=', 'invoice_items.item_id')
+            ->where('invoices.shop_id', $shopId)
+            ->where('invoices.status', Invoice::STATUS_FINALIZED)
+            ->whereRaw('COALESCE(invoices.finalized_at, invoices.created_at) BETWEEN ? AND ?', [$start, $end])
+            ->whereNull('items.cost_price')
+            ->count();
+        $failures += $this->assert(
+            $shopId,
+            "PNL-4 cost-unknown lines surfaced ({$p->costUnknownLines}) == independent recompute",
+            $p->costUnknownLines === $rawUnknown,
+            "service={$p->costUnknownLines} raw={$rawUnknown}"
         );
 
         return $failures;

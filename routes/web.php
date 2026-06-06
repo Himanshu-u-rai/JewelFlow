@@ -425,7 +425,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/daily', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'daily-summary')->middleware('can:reports.view')->name('report.daily');
     // Cash Flow — served by the reporting spine (Phase 3). Same URL/name/permission.
     Route::get('/report/cash', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cash-flow')->middleware('can:reports.view')->name('report.cash');
-    Route::get('/report/pnl', [\App\Http\Controllers\PnlController::class, 'index'])->middleware('can:reports.view')->name('report.pnl');
+    // Profit & Loss — served by the reporting spine (Phase 4). Same URL/name/permission;
+    // honours the legacy ?date=YYYY-MM-DD single-day bookmark, else the current month.
+    Route::get('/report/pnl', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'pnl')->middleware('can:reports.view')->name('report.pnl');
     Route::get('/report/gst', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gst')->middleware('can:reports.view')->name('report.gst');
     // CA / compliance tax pack (Phase 2 M1) — all read-only, reports.view gated.
     Route::get('/report/gstr1', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gstr1')->middleware('can:reports.view')->name('report.gstr1');

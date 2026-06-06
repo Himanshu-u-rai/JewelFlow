@@ -18,6 +18,7 @@ use App\Services\Reporting\Reports\InventoryValuationDataset;
 use App\Services\Reporting\Reports\MetalLiabilityDataset;
 use App\Services\Reporting\Reports\MetalMovementLedgerDataset;
 use App\Services\Reporting\Reports\PaymentReconciliationDataset;
+use App\Services\Reporting\Reports\ProfitLossDataset;
 use App\Services\Reporting\Reports\SalesRegisterDataset;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
@@ -104,6 +105,11 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 3 — Accounting: Metal Liability (customer-advance gold owed vs on hand).
         if (! $registry->has(MetalLiabilityDataset::KEY)) {
             $registry->register(MetalLiabilityDataset::KEY, MetalLiabilityDataset::class);
+        }
+
+        // Phase 4 — Owner: Profit & Loss (revenue − COGS = gross margin).
+        if (! $registry->has(ProfitLossDataset::KEY)) {
+            $registry->register(ProfitLossDataset::KEY, ProfitLossDataset::class);
         }
     }
 }
