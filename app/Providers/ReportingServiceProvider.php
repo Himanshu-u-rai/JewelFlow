@@ -15,6 +15,7 @@ use App\Services\Reporting\Reports\DailyClosingDataset;
 use App\Services\Reporting\Reports\Gstr3bDataset;
 use App\Services\Reporting\Reports\InventoryValuationDataset;
 use App\Services\Reporting\Reports\MetalMovementLedgerDataset;
+use App\Services\Reporting\Reports\PaymentReconciliationDataset;
 use App\Services\Reporting\Reports\SalesRegisterDataset;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
@@ -86,6 +87,11 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 3 — Accounting: Daily Closing (cross-phase: Sales + GST + Cash).
         if (! $registry->has(DailyClosingDataset::KEY)) {
             $registry->register(DailyClosingDataset::KEY, DailyClosingDataset::class);
+        }
+
+        // Phase 3 — Accounting: Payment Reconciliation (billed vs collected; variance).
+        if (! $registry->has(PaymentReconciliationDataset::KEY)) {
+            $registry->register(PaymentReconciliationDataset::KEY, PaymentReconciliationDataset::class);
         }
     }
 }

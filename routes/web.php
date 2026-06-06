@@ -432,8 +432,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/cn-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'cn-register')->middleware('can:reports.view')->name('report.cn-register');
     // report.cn-register.csv retired (Phase 3 Cleanup #1) — use the spine export.
     // CA Ledger & Reconciliation pack (Phase 2 M2) — read-only, reports.view gated.
-    Route::get('/report/payment-reconciliation', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'paymentReconciliation'])->middleware('can:reports.view')->name('report.payment-reconciliation');
-    Route::get('/report/payment-reconciliation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'paymentReconciliationCsv'])->middleware('can:reports.view')->name('report.payment-reconciliation.csv');
+    // Payment Reconciliation — served by the reporting spine (Phase 3). Same URL/name/permission.
+    Route::get('/report/payment-reconciliation', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'payment-reconciliation')->middleware('can:reports.view')->name('report.payment-reconciliation');
+    // report.payment-reconciliation.csv retired (Phase 3) — use the spine export (POST /reports/payment-reconciliation/export).
     Route::get('/report/day-book', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'day-book')->middleware('can:reports.view')->name('report.day-book');
     // report.day-book.csv retired (Phase 3 Cleanup #1) — use the spine export.
     // Inventory Valuation — served by the reporting spine (Phase 3). Same URL/name/permission.

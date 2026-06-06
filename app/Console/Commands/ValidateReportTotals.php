@@ -56,6 +56,7 @@ class ValidateReportTotals extends Command
         foreach ($shopIds as $shopId) {
             $failures += $this->validateShop((int) $shopId, $period, $gst);
             $failures += $this->validateTaxPack((int) $shopId, $period, $gst, $tax);
+            $failures += $this->validatePaymentRecon((int) $shopId, $period, $sales);
             $failures += $this->validateReconciliation((int) $shopId, $period, $gst, $sales);
             $failures += $this->validateReceivables((int) $shopId, $receivables);
             $failures += $this->validateInventory((int) $shopId, $period, $inventory);
@@ -192,29 +193,84 @@ class ValidateReportTotals extends Command
         $summary = $gst->summary($shopId, $period);
         $recon = $sales->paymentReconciliation($shopId, $period);
 
-        // PAY-1 — same set of finalized invoices as the GST report.
+        // PAY-5 — same set of finalized invoices as the GST report.
         $failures += $this->assert(
             $shopId,
-            'PAY-1 payment-recon invoice total == GST total sales',
+            'PAY-5 payment-recon invoice total == GST total sales',
             abs($recon->invoiceTotal - $summary->totalSales) <= self::TOLERANCE,
             'recon=' . $recon->invoiceTotal . ' gst=' . $summary->totalSales
         );
 
-        // PAY-2 — collected equals the sum of the mode breakdown.
+        // PAY-6 — collected equals the sum of the mode breakdown.
         $modeSum = round((float) $recon->modeBreakdown->sum(), 2);
         $failures += $this->assert(
             $shopId,
-            'PAY-2 collected == sum of payment modes',
+            'PAY-6 collected == sum of payment modes',
             abs($recon->collected - $modeSum) <= self::TOLERANCE,
             'collected=' . $recon->collected . ' modeSum=' . $modeSum
         );
 
-        // PAY-3 — invoice counts agree.
+        // PAY-7 — invoice counts agree.
         $failures += $this->assert(
             $shopId,
-            'PAY-3 payment-recon count == GST invoice count',
+            'PAY-7 payment-recon count == GST invoice count',
             $recon->invoiceCount === $summary->invoiceCount,
             'recon=' . $recon->invoiceCount . ' gst=' . $summary->invoiceCount
+        );
+
+        return $failures;
+    }
+
+    /**
+     * Payment Reconciliation invariants (Phase 3) — the financial-integrity report.
+     * Wraps SalesService::paymentReconciliation() and proves billed/collected/variance
+     * tie to the raw source tables INDEPENDENTLY of the GST service.
+     */
+    private function validatePaymentRecon(int $shopId, ReportPeriod $period, SalesService $sales): int
+    {
+        $failures = 0;
+        $recon = $sales->paymentReconciliation($shopId, $period);
+
+        // PAY-1 — Σ invoice totals == raw salesIn Σ(invoices.total).
+        $rawInvoiceTotal = round((float) Invoice::withoutTenant()
+            ->where('shop_id', $shopId)->salesIn($period)->sum('total'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'PAY-1 Σ invoice totals == source invoices aggregate (raw salesIn)',
+            abs($recon->invoiceTotal - $rawInvoiceTotal) <= self::TOLERANCE,
+            "recon={$recon->invoiceTotal} raw={$rawInvoiceTotal}"
+        );
+
+        // PAY-2 — Σ collected == raw Σ(invoice_payments.amount) over the same invoices.
+        $ids = Invoice::withoutTenant()->where('shop_id', $shopId)->salesIn($period)->pluck('id')->all();
+        $rawCollected = empty($ids) ? 0.0 : round((float) DB::table('invoice_payments')
+            ->where('shop_id', $shopId)->whereIn('invoice_id', $ids)->sum('amount'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'PAY-2 Σ collected == invoice_payments aggregate (raw)',
+            abs($recon->collected - $rawCollected) <= self::TOLERANCE,
+            "recon={$recon->collected} raw={$rawCollected}"
+        );
+
+        // PAY-3 — Σ variances == Σ invoice totals − Σ collected.
+        $sumVariance = round((float) $recon->rows->sum('pending'), 2);
+        $expectedVariance = round($recon->invoiceTotal - $recon->collected, 2);
+        $failures += $this->assert(
+            $shopId,
+            'PAY-3 Σ variances == Σ invoice totals − Σ collected',
+            abs($sumVariance - $expectedVariance) <= self::TOLERANCE,
+            "Σvariance={$sumVariance} expected={$expectedVariance}"
+        );
+
+        // PAY-4 — every invoice row satisfies invoice_total − collected == variance.
+        $rowDrift = $recon->rows->filter(
+            fn ($r) => abs(((float) $r->total - (float) $r->collected) - (float) $r->pending) > self::TOLERANCE
+        )->count();
+        $failures += $this->assert(
+            $shopId,
+            'PAY-4 per-row invoice_total − collected == variance',
+            $rowDrift === 0,
+            "{$rowDrift} row(s) with variance drift"
         );
 
         return $failures;

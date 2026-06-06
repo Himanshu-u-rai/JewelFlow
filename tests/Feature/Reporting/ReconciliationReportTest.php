@@ -139,13 +139,12 @@ class ReconciliationReportTest extends TestCase
         $this->grant($user, 'reports.view');
         $q = ['month' => self::MONTH, 'year' => self::YEAR];
 
+        // Payment Reconciliation now served by the reporting spine (Phase 3); its
+        // CSV is the spine export (POST /reports/payment-reconciliation/export),
+        // exercised by PaymentReconciliationReportTest.
         $this->actingAs($user)->get(route('report.payment-reconciliation', $q))->assertOk()->assertSee('Payment Reconciliation', false);
         $this->actingAs($user)->get(route('report.day-book', $q))->assertOk()->assertSee('Day Book', false);
         $this->actingAs($user)->get(route('report.inventory-valuation'))->assertOk()->assertSee('Inventory Valuation', false);
-
-        $csv = $this->actingAs($user)->get(route('report.payment-reconciliation.csv', $q));
-        $csv->assertOk();
-        $this->assertStringContainsString('text/csv', $csv->headers->get('Content-Type'));
     }
 
     public function test_reports_validate_passes_with_reconciliation_checks(): void
