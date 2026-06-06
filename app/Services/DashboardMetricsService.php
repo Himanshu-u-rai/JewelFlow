@@ -26,8 +26,12 @@ class DashboardMetricsService
             ->salesIn($todayPeriod)
             ->count();
 
+        // "Open" = any repair not yet delivered — the canonical definition used by
+        // RepairController::index(). The repair lifecycle is received → in_repair →
+        // ready → delivered; there is no 'pending' status (the old filter matched
+        // nothing, so the KPI always read 0).
         $openRepairs = Repair::where('shop_id', $shopId)
-            ->where('status', 'pending')
+            ->whereNotIn('status', ['delivered'])
             ->count();
 
         $stock = Item::where('shop_id', $shopId)
