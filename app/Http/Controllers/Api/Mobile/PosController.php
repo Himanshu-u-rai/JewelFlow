@@ -7,6 +7,8 @@ use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Scheme;
 use App\Models\ShopPaymentMethod;
+use App\Models\ShopPreferences;
+use App\Services\ComplianceService;
 use App\Services\OfferEngineService;
 use App\Services\PricingEngine;
 use App\Services\PricingEngine\MakingChargeType;
@@ -458,6 +460,20 @@ class PosController extends Controller
 
             $this->validateMobilePosPaymentMethods($payments, $shopId);
 
+            // KYC gate (parity with web pos/sell) — block any high-value sale (≥ the
+            // shop's ₹2L threshold) when the customer is missing mandatory compliance
+            // fields. Server-side and unconditional; the app cannot bypass it.
+            if ($resolvedBreakdown !== null && isset($resolvedBreakdown['total'])) {
+                $kycEstimate = (float) $resolvedBreakdown['total'];
+            } else {
+                $kycBase = (float) Item::whereIn('id', $validated['item_ids'])->where('shop_id', $shopId)->sum('selling_price');
+                $kycGst  = (float) ($shop?->gst_rate ?? config('business.gst_rate_default'));
+                $kycEstimate = round(max($kycBase - (float) ($validated['discount'] ?? 0), 0) * (1 + $kycGst / 100), 2);
+            }
+            if ($resp = $this->complianceGate($shopId, (int) $validated['customer_id'], $kycEstimate)) {
+                return $resp;
+            }
+
             $hasEmiMode = collect($payments)
                 ->contains(fn ($payment) => ($payment['mode'] ?? null) === 'emi');
 
@@ -597,6 +613,20 @@ class PosController extends Controller
         $resolvedBreakdown = $resolution['breakdown'] ?? null;
 
         $this->validateMobilePosPaymentMethods($validated['payments'], $shopId);
+
+        // KYC gate (parity with web pos/sell)
+        if ($resolvedBreakdown !== null && isset($resolvedBreakdown['total'])) {
+            $kycEstimate = (float) $resolvedBreakdown['total'];
+        } else {
+            $item = \App\Models\Item::where('shop_id', $shopId)->find((int) $validated['item_id']);
+            $fineWeight = $item ? round((float) $item->net_metal_weight * ((float) $item->purity / 24), 4) : 0.0;
+            $kycBase = round($fineWeight * (float) $validated['gold_rate'] + (float) ($validated['making'] ?? 0) + (float) ($validated['stone'] ?? 0) - (float) ($validated['discount'] ?? 0), 2);
+            $kycGst  = (float) ($shop?->gst_rate ?? config('business.gst_rate_default'));
+            $kycEstimate = round(max($kycBase, 0) * (1 + $kycGst / 100), 2);
+        }
+        if ($resp = $this->complianceGate($shopId, (int) $validated['customer_id'], $kycEstimate)) {
+            return $resp;
+        }
 
         if ($resolvedBreakdown !== null) {
             $saleDiscount = (float) $resolvedBreakdown['manual_discount'];
@@ -998,5 +1028,20 @@ class PosController extends Controller
     private function retailerPricingBlockedResponse(string $message): JsonResponse
     {
         return response()->json(['message' => $message], 409);
+    }
+
+    private function complianceGate(int $shopId, int $customerId, float $estimatedTotal): ?JsonResponse
+    {
+        $missing = app(ComplianceService::class)->checkRequired($shopId, $customerId, $estimatedTotal);
+        if ($missing === null || empty($missing)) {
+            return null;
+        }
+        $prefs = ShopPreferences::where('shop_id', $shopId)->first();
+        return response()->json([
+            'compliance_required' => true,
+            'missing_fields'      => $missing,
+            'threshold'           => (float) ($prefs?->compliance_threshold ?? 200000),
+            'message'             => 'Government KYC required for high-value jewellery transactions.',
+        ], 422);
     }
 }

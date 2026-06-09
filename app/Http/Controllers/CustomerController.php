@@ -8,6 +8,8 @@ use App\Models\Invoice;
 use App\Models\LoyaltyTransaction;
 use App\Models\CustomerGoldTransaction;
 use App\Http\Concerns\RespondsDynamically;
+use App\Rules\PanFormatRule;
+use App\Services\ComplianceService;
 use App\Services\PosSearchCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -332,6 +334,42 @@ class CustomerController extends Controller
 
         return redirect()->route('customers.show', $customer->id)
             ->with('success', 'Customer updated successfully.');
+    }
+
+    /**
+     * Verify a customer's KYC/compliance from the profile page (PAN + consent +
+     * optional ID/address) — the same canonical engine the POS ₹2L high-value rule
+     * uses. Lets a shop verify proactively, not only at checkout.
+     */
+    public function verifyCompliance(Request $request, Customer $customer)
+    {
+        $this->authorize('update', $customer);
+
+        $validated = $request->validate([
+            'pan'     => ['nullable', 'string', 'max:10', new PanFormatRule()],
+            'aadhaar' => ['nullable', 'digits:12'],
+            'mobile'  => ['nullable', 'digits:10'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'consent' => ['required', 'accepted'],
+        ]);
+
+        // Aadhaar persists in customers.id_number (its documented purpose).
+        $errors = app(ComplianceService::class)->saveComplianceData($customer, [
+            'pan'       => $validated['pan'] ?? null,
+            'id_number' => $validated['aadhaar'] ?? null,
+            'mobile'    => $validated['mobile'] ?? null,
+            'address'   => $validated['address'] ?? null,
+            'consent'   => $validated['consent'],
+        ], (int) auth()->id());
+
+        if (! empty($errors)) {
+            return back()->withErrors($errors)->withInput();
+        }
+
+        Cache::forget(PosSearchCacheService::customersCacheKey((int) $customer->shop_id, null));
+
+        return redirect()->route('customers.show', $customer->id)
+            ->with('success', 'Customer KYC verified successfully.');
     }
 
     public function destroy(Customer $customer)

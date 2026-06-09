@@ -203,6 +203,8 @@ class SettingsController extends Controller
             ];
         }
 
+        $user = auth()->user();
+
         return view('settings', compact(
             'shop',
             'billing',
@@ -221,7 +223,8 @@ class SettingsController extends Controller
             'catalogPages',
             'pricingData',
             'pricingTimezones',
-            'methods'
+            'methods',
+            'user'
         ));
     }
 

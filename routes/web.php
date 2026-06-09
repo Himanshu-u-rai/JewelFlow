@@ -276,6 +276,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware('can:customers.view')->name('customers.show');
     Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->middleware('can:customers.edit')->name('customers.edit');
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware('can:customers.edit')->name('customers.update');
+    Route::post('/customers/{customer}/verify-compliance', [CustomerController::class, 'verifyCompliance'])->middleware('can:customers.edit')->name('customers.verify-compliance');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('can:customers.delete')->name('customers.destroy');
 
     // KYC docs follow customer access: create-class can attach, delete-class can remove.
@@ -299,10 +300,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustStore'])->name('store-credit.adjust.store');
     Route::post('/invoices/{invoice}/store-credit/apply', [\App\Http\Controllers\StoreCreditController::class, 'applyToInvoice'])->middleware('can:sales.create')->name('store-credit.apply');
 
-    // ======= PROFILE =======
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // ======= PROFILE — owner only (settings.edit = Owner by default) =======
+    Route::get('/profile', [ProfileController::class, 'edit'])->middleware('can:settings.edit')->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->middleware('can:settings.edit')->name('profile.update');
+    Route::post('/profile/deactivate', [ProfileController::class, 'deactivate'])->middleware('can:settings.edit')->name('profile.deactivate');
 
     // ======= POS =======
     Route::get('/pos', [PosController::class, 'index'])->middleware('can:sales.pos')->name('pos.index');
@@ -488,9 +489,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->name('reporting.exports.download');
 
     // ======= SETTINGS =======
-    Route::get('/profile/mobile/change', [\App\Http\Controllers\MobileChangeController::class, 'showForm'])->name('profile.mobile.change');
-    Route::post('/profile/mobile/change-request', [\App\Http\Controllers\MobileChangeController::class, 'requestChange'])->name('profile.mobile.request');
-    Route::post('/profile/mobile/change-verify', [\App\Http\Controllers\MobileChangeController::class, 'verifyChange'])->name('profile.mobile.verify');
+    Route::get('/profile/mobile/change', [\App\Http\Controllers\MobileChangeController::class, 'showForm'])->middleware('can:settings.edit')->name('profile.mobile.change');
+    Route::post('/profile/mobile/change-request', [\App\Http\Controllers\MobileChangeController::class, 'requestChange'])->middleware('can:settings.edit')->name('profile.mobile.request');
+    Route::post('/profile/mobile/change-verify', [\App\Http\Controllers\MobileChangeController::class, 'verifyChange'])->middleware('can:settings.edit')->name('profile.mobile.verify');
 
     // Settings — read access: anyone with `settings.view` permission (default: Owner + Manager).
     Route::get('/settings', [SettingsController::class, 'edit'])->middleware('can:settings.view')->name('settings.edit');

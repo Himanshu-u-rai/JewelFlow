@@ -59,12 +59,22 @@ class MobileChangeController extends Controller
             'new_mobile_number'   => ['required', 'string', 'digits:10'],
         ]);
 
+        $pwRlKey = 'mobile-change-password:' . $user->id;
+        if (RateLimiter::tooManyAttempts($pwRlKey, 5)) {
+            $seconds = RateLimiter::availableIn($pwRlKey);
+            throw ValidationException::withMessages([
+                'current_password' => "Too many failed attempts. Try again in {$seconds} seconds.",
+            ]);
+        }
+
         if (! Hash::check($validated['current_password'], $user->password)) {
-            RateLimiter::hit('mobile-change-password:' . $user->id, 300);
+            RateLimiter::hit($pwRlKey, 300);
             throw ValidationException::withMessages([
                 'current_password' => 'Password is incorrect.',
             ]);
         }
+
+        RateLimiter::clear($pwRlKey);
 
         if ($validated['new_mobile_number'] === $user->mobile_number) {
             throw ValidationException::withMessages([
@@ -139,7 +149,7 @@ class MobileChangeController extends Controller
 
         $pending->increment('attempts');
 
-        if ($pending->attempts > self::MAX_ATTEMPTS) {
+        if ($pending->attempts >= self::MAX_ATTEMPTS) {
             $pending->update(['consumed_at' => now()]);
             return back()->with('error', 'Too many invalid attempts. Please start over.');
         }

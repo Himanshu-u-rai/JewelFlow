@@ -6,6 +6,7 @@ use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 
@@ -34,15 +35,16 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        return Redirect::back()->with('status', 'profile-updated');
     }
 
     /**
-     * Delete the user's account.
+     * Deactivate the user's account (sets is_active = false, logs out).
+     * Account data is preserved; the user cannot log back in until reactivated by an admin.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function deactivate(Request $request): RedirectResponse
     {
-        $request->validateWithBag('userDeletion', [
+        $request->validateWithBag('userDeactivation', [
             'password' => ['required', 'current_password'],
         ]);
 
@@ -50,11 +52,13 @@ class ProfileController extends Controller
 
         Auth::guard('web')->logout();
 
-        $user->delete();
+        DB::table('users')
+            ->where('id', $user->id)
+            ->update(['is_active' => DB::raw('false')]);
 
-        $request->session()->regenerate();
+        $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return Redirect::to('/');
+        return Redirect::to('/login')->with('status', 'Your account has been deactivated. Contact the shop owner to reactivate.');
     }
 }

@@ -1,9 +1,10 @@
-@extends('layouts.app')
+<x-app-layout>
+    <x-slot name="header">
+        <h1 class="page-title">{{ __('Change Login Mobile') }}</h1>
+    </x-slot>
 
-@section('title', __('Change Login Mobile'))
-
-@section('content')
-<div class="p-6 max-w-2xl mx-auto">
+    <div class="content-inner">
+    <div class="max-w-2xl mx-auto">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900">{{ __('Change Login Mobile Number') }}</h1>
         <p class="text-sm text-gray-500 mt-1">
@@ -96,7 +97,7 @@
 
                 <div class="rounded-md bg-gray-50 border border-gray-200 p-3 text-xs text-gray-600">
                     {{ __('After you submit, we will email a 6-digit code to') }} <strong>{{ $user->email }}</strong>.
-                    {{ __('Enter it on the next screen to complete the change. All other devices will be signed out.') }}
+                    {{ __('Enter it on the next screen to complete the change.') }}
                 </div>
 
                 <button type="submit" class="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">
@@ -106,4 +107,5 @@
         @endif
     </div>
 </div>
-@endsection
+    </div>
+</x-app-layout>

@@ -102,6 +102,16 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware(['throttle:api-pos-read', 'can:customers.view']);
         Route::post('/customers', [CustomerController::class, 'store'])
             ->middleware(['throttle:api-pos-sale', 'can:customers.create']);
+        Route::put('/customers/{customer}', [CustomerController::class, 'update'])
+            ->middleware(['throttle:api-pos-sale', 'can:customers.edit']);
+        Route::post('/customers/{customer}/verify-compliance', [CustomerController::class, 'verifyCompliance'])
+            ->middleware(['throttle:api-pos-sale', 'can:customers.edit']);
+        Route::post('/customers/{customer}/kyc-documents', [CustomerController::class, 'uploadKycDocument'])
+            ->middleware(['throttle:api-pos-sale', 'can:customers.edit']);
+        Route::get('/customers/{customer}/kyc-documents/{kycDocument}', [CustomerController::class, 'showKycDocument'])
+            ->middleware(['throttle:api-pos-read', 'can:customers.view']);
+        Route::delete('/customers/{customer}/kyc-documents/{kycDocument}', [CustomerController::class, 'deleteKycDocument'])
+            ->middleware(['throttle:api-pos-sale', 'can:customers.edit']);
 
         // Stock
         Route::get('/stock', [StockController::class, 'index'])

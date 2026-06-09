@@ -74,6 +74,8 @@
                 </a>
             </nav>
 
+            @include('customers.partials.compliance-card')
+
             <div class="customers-show-retailer-grid">
                 <main class="customers-show-retailer-primary">
                     <section class="customers-show-retailer-panel customers-show-retailer-panel--info">
@@ -315,6 +317,8 @@
                     <p class="text-lg font-semibold text-gray-900 mt-1">Add Gold</p>
                 </a>
             </div>
+
+            @include('customers.partials.compliance-card')
 
             <div class="customers-show-main-grid grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 space-y-6">
