@@ -62,13 +62,12 @@ class PosSearchCacheService
             }
 
             return $query
-                ->with('compliance')
                 ->orderByDesc('updated_at')
                 ->limit(50)
                 ->get()
                 ->map(function ($customer) {
                     $row = $customer->toArray();
-                    $row['kyc_status'] = $customer->compliance?->status ?? null;
+                    $row['kyc_status'] = $customer->complianceStatus();
                     return $row;
                 });
         });

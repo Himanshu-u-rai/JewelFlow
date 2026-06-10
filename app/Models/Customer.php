@@ -127,13 +127,7 @@ class Customer extends Model
 
     public function complianceStatus(): string
     {
-        if ($this->isComplianceVerified()) {
-            return 'compliant';
-        }
-        if ($this->hasPan()) {
-            return 'pending_verification';
-        }
-        return 'missing_pan';
+        return !empty($this->pan) ? 'compliant' : 'missing_pan';
     }
 
     public function addLoyaltyPoints(int $points, ?int $invoiceId = null, string $description = 'Points earned', $expiresAt = null): LoyaltyTransaction
