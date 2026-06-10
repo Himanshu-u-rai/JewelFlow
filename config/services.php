@@ -46,4 +46,11 @@ return [
         'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
     ],
 
+    // Expo push notifications (mobile app). access_token is optional and only
+    // needed when "Enhanced Security for Push Notifications" is enabled in Expo.
+    'expo' => [
+        'push_url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
+        'access_token' => env('EXPO_PUSH_ACCESS_TOKEN'),
+    ],
+
 ];

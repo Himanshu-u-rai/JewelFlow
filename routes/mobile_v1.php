@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\Mobile\V1\KarigarController;
 use App\Http\Controllers\Api\Mobile\V1\ReferencePriceController;
 use App\Http\Controllers\Api\Mobile\V1\RegistryController;
 use App\Http\Controllers\Api\Mobile\V1\ReturnController;
+use App\Http\Controllers\Api\Mobile\V1\DevicePushTokenController;
 use App\Http\Controllers\Api\Mobile\V1\SessionController;
 use App\Http\Controllers\Api\Mobile\V1\UploadController;
 
@@ -72,6 +73,14 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             ->name('mobile.v1.sessions.index');
         Route::get('/sessions/me', [SessionController::class, 'me'])
             ->name('mobile.v1.sessions.me');
+
+        // ─── Push notification token (per device session) ─────────────
+        // Registering your own device's token needs no extra permission —
+        // the token binds to the caller's current session only.
+        Route::post('/device/push-token', [DevicePushTokenController::class, 'store'])
+            ->name('mobile.v1.device.push_token.store');
+        Route::delete('/device/push-token', [DevicePushTokenController::class, 'destroy'])
+            ->name('mobile.v1.device.push_token.destroy');
 
         // ─── M1: Material registry snapshot ───────────────────────────
         Route::get('/registry/materials', [RegistryController::class, 'materials'])

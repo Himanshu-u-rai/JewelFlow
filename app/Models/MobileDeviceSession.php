@@ -35,13 +35,17 @@ class MobileDeviceSession extends Model
         'locked_at',
         'logged_out_at',
         'ended_reason',
+        'push_token',
+        'push_token_provider',
+        'push_token_updated_at',
     ];
 
     protected $casts = [
-        'logged_in_at'  => 'datetime',
-        'last_seen_at'  => 'datetime',
-        'locked_at'     => 'datetime',
-        'logged_out_at' => 'datetime',
+        'logged_in_at'          => 'datetime',
+        'last_seen_at'          => 'datetime',
+        'locked_at'             => 'datetime',
+        'logged_out_at'         => 'datetime',
+        'push_token_updated_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
@@ -63,6 +67,32 @@ class MobileDeviceSession extends Model
     public function isActive(): bool
     {
         return $this->logged_out_at === null;
+    }
+
+    /**
+     * Live, push-capable sessions: still logged in AND carrying a token.
+     * The single source of truth for who a push may be delivered to.
+     */
+    public function scopePushable($query)
+    {
+        return $query->whereNull('logged_out_at')->whereNotNull('push_token');
+    }
+
+    public function setPushToken(string $token, string $provider = 'expo'): void
+    {
+        $this->update([
+            'push_token'            => $token,
+            'push_token_provider'   => $provider,
+            'push_token_updated_at' => now(),
+        ]);
+    }
+
+    public function clearPushToken(): void
+    {
+        $this->update([
+            'push_token'            => null,
+            'push_token_updated_at' => now(),
+        ]);
     }
 
     /**
