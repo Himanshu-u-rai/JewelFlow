@@ -55,6 +55,12 @@ class CustomerController extends Controller
 
         $paginated = $query->paginate($perPage);
 
+        $paginated->getCollection()->transform(function ($customer) {
+            $arr = $customer->toArray();
+            $arr['kyc_status'] = $customer->complianceStatus();
+            return $arr;
+        });
+
         return response()->json($paginated);
     }
 
