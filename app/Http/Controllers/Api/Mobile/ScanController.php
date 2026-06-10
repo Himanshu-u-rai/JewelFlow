@@ -14,8 +14,9 @@ class ScanController extends Controller
 {
     public function connect(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'token' => 'required|string|size:48',
+            'device_install_id' => 'nullable|string|max:64',
         ]);
 
         $session = ScanSession::where('token', $request->token)
@@ -41,10 +42,14 @@ class ScanController extends Controller
             ], 404);
         }
 
-        // Mark mobile as connected (first time only)
-        if (!$session->mobile_connected_at) {
-            $session->update(['mobile_connected_at' => now()]);
-        }
+        // Record this device as a connected scanner. Multiple scanners may feed
+        // one session; this column tracks the most recent connector for display.
+        // Per-scan ownership is recorded on each scan_event (posted_by_user_id).
+        $session->forceFill([
+            'mobile_connected_at' => $session->mobile_connected_at ?? now(),
+            'connected_user_id'   => (int) $request->user()->id,
+            'device_install_id'   => $validated['device_install_id'] ?? $session->device_install_id,
+        ])->save();
 
         $this->logAuditSafely(
             $request,
@@ -60,10 +65,11 @@ class ScanController extends Controller
         );
 
         return response()->json([
-            'session_id' => $session->id,
-            'status' => $session->status,
-            'expires_at' => $session->expires_at->toIso8601String(),
-            'message' => 'Connected to POS scan session.',
+            'session_id'   => $session->id,
+            'status'       => $session->status,
+            'expires_at'   => $session->expires_at->toIso8601String(),
+            'pos_listening' => $session->isPosListening(),
+            'message'      => 'Connected to POS scan session.',
         ]);
     }
 
@@ -98,10 +104,13 @@ class ScanController extends Controller
             ], 404);
         }
 
+        // Attribute every scan to the sending user + token (multi-scanner truth).
         $event = ScanEvent::create([
-            'scan_session_id' => $session->id,
-            'barcode' => $request->barcode,
-            'processed' => false,
+            'scan_session_id'    => $session->id,
+            'barcode'            => $request->barcode,
+            'processed'          => false,
+            'posted_by_user_id'  => (int) $request->user()->id,
+            'posted_by_token_id' => $request->user()->currentAccessToken()?->id,
         ]);
 
         $this->logAuditSafely(
@@ -118,10 +127,59 @@ class ScanController extends Controller
             ],
         );
 
+        // Delivery confirmation contract: a scan is only QUEUED here. The client
+        // must call /scan/status to learn when it is actually consumed by the
+        // POS (processed=true => "added to cart"). pos_listening tells the
+        // scanner up-front whether anyone is currently polling.
         return response()->json([
-            'event_id' => $event->id,
-            'barcode' => $event->barcode,
-            'message' => 'Barcode sent to POS.',
+            'event_id'      => $event->id,
+            'barcode'       => $event->barcode,
+            'status'        => 'queued',
+            'pos_listening' => $session->isPosListening(),
+            'message'       => 'Barcode queued for POS.',
+        ]);
+    }
+
+    /**
+     * Delivery-confirmation poll (Option B). The scanner reports the event ids
+     * it is tracking; we return which are now processed (= reached the cart)
+     * and whether the POS is actively listening. No writes — pure read.
+     */
+    public function status(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token'      => 'required|string|size:48',
+            'event_ids'  => 'nullable|array|max:100',
+            'event_ids.*' => 'integer',
+        ]);
+
+        $session = ScanSession::where('token', $validated['token'])
+            ->where('shop_id', $request->user()->shop_id)
+            ->active()
+            ->first();
+
+        if (! $session) {
+            return response()->json([
+                'message' => 'Invalid or expired scan session.',
+            ], 404);
+        }
+
+        $events = [];
+        if (! empty($validated['event_ids'])) {
+            $events = ScanEvent::where('scan_session_id', $session->id)
+                ->whereIn('id', $validated['event_ids'])
+                ->get(['id', 'processed'])
+                ->map(fn ($e) => [
+                    'event_id'  => (int) $e->id,
+                    'processed' => (bool) $e->processed,
+                ])
+                ->values();
+        }
+
+        return response()->json([
+            'pos_listening' => $session->isPosListening(),
+            'expires_at'    => $session->expires_at->toIso8601String(),
+            'events'        => $events,
         ]);
     }
 

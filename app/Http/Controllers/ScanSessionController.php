@@ -121,6 +121,10 @@ class ScanSessionController extends Controller
             return response()->json(['status' => 'expired', 'barcodes' => []]);
         }
 
+        // POS presence heartbeat: record that this terminal is actively polling.
+        // Scanners read this (via /scan/status) to know the POS is listening.
+        $session->forceFill(['last_seen_at' => now()])->save();
+
         // Auto-renew session if expiring soon (less than 30 min left)
         $this->renewIfExpiringSoon($session);
 
@@ -161,9 +165,37 @@ class ScanSessionController extends Controller
 
         $session->refresh();
 
+        // Resolve submitter names once for both the consumed scans and the
+        // connected-scanner roster (multi-scanner attribution).
+        $scannerRows = ScanEvent::where('scan_session_id', $session->id)
+            ->whereNotNull('posted_by_user_id')
+            ->selectRaw('posted_by_user_id, count(*) as scan_count, max(created_at) as last_at')
+            ->groupBy('posted_by_user_id')
+            ->get();
+
+        $names = \App\Models\User::whereIn('id', $scannerRows->pluck('posted_by_user_id'))
+            ->pluck('name', 'id');
+
+        $scanners = $scannerRows->map(fn ($r) => [
+            'user_id'    => (int) $r->posted_by_user_id,
+            'name'       => $names[$r->posted_by_user_id] ?? ('User #' . $r->posted_by_user_id),
+            'scan_count' => (int) $r->scan_count,
+            'last_at'    => $r->last_at,
+        ])->values();
+
+        // Per-scan attribution for the barcodes delivered this poll — so the POS
+        // can show WHO submitted each item when several scanners are connected.
+        $scans = $events->map(fn ($e) => [
+            'barcode'     => $e->barcode,
+            'by_user_id'  => $e->posted_by_user_id ? (int) $e->posted_by_user_id : null,
+            'by_name'     => $e->posted_by_user_id ? ($names[$e->posted_by_user_id] ?? null) : null,
+        ])->values();
+
         return response()->json([
             'status'           => 'active',
-            'barcodes'         => $events->pluck('barcode')->values(),
+            'barcodes'         => $events->pluck('barcode')->values(), // kept for backward-compat
+            'scans'            => $scans,                              // enriched, attributed
+            'scanners'         => $scanners,                           // connected-scanner roster
             'expires_at'       => $session->expires_at->toIso8601String(),
             'mobile_connected' => (bool) $session->mobile_connected_at,
         ]);

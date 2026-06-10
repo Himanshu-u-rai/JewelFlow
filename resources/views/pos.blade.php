@@ -1685,6 +1685,7 @@
         </div>
         <div class="scan-modal-body">
             <div class="scan-status-badge waiting" id="scanStatusBadge">Scan to Connect</div>
+            <div class="scan-scanners" id="scanScannersWrap" style="display:none;font-size:12px;color:#475569;margin-top:6px;line-height:1.5;"></div>
 
             <div class="scan-qr-wrap" id="scanQrWrap">
                 <div class="scan-qr-loading" id="scanQrLoading">
@@ -2565,6 +2566,23 @@
         if (btn) btn.classList.toggle('active', sessionActive);
     }
 
+    // ── Connected scanners roster (multi-scanner) ─────
+    function renderConnectedScanners(scanners) {
+        const el = document.getElementById('scanScannersWrap');
+        if (!el) return;
+        if (!Array.isArray(scanners) || scanners.length === 0) {
+            el.style.display = 'none';
+            el.innerHTML = '';
+            return;
+        }
+        const label = scanners.length === 1 ? 'Scanner connected' : (scanners.length + ' scanners connected');
+        const rows = scanners.map(s =>
+            '• ' + (s.name || ('User #' + s.user_id)) + ' (' + (s.scan_count || 0) + ')'
+        ).join('<br>');
+        el.innerHTML = '<strong>' + label + '</strong><br>' + rows;
+        el.style.display = '';
+    }
+
     // ── Action button state ──────────────────────────
     function updateActionButton() {
         const btn = document.getElementById('btnScanAction');
@@ -2637,9 +2655,22 @@
                     setScanStatus('waiting', 'Scan QR to Connect');
                 }
 
-                if (data.barcodes && data.barcodes.length > 0) {
+                // Connected-scanner roster (multi-scanner: who is feeding this cart)
+                renderConnectedScanners(data.scanners);
+
+                // Prefer attributed scans (who submitted each), fall back to bare barcodes
+                const scans = Array.isArray(data.scans) && data.scans.length
+                    ? data.scans
+                    : (data.barcodes || []).map(b => ({ barcode: b, by_name: null }));
+
+                if (scans.length > 0) {
                     setScanStatus('scanning', 'Scanning...');
-                    data.barcodes.forEach(barcode => handleBarcode(barcode));
+                    scans.forEach(s => {
+                        handleBarcode(s.barcode);
+                        if (s.by_name) {
+                            showToast('Added by ' + s.by_name + ': ' + s.barcode, 'success');
+                        }
+                    });
                     setTimeout(() => {
                         if (sessionActive && mobileConnected) {
                             setScanStatus('active', 'Connected');

@@ -13,6 +13,8 @@ class ScanEvent extends Model
         'scan_session_id',
         'barcode',
         'processed',
+        'posted_by_user_id',
+        'posted_by_token_id',
     ];
 
     protected $casts = [
@@ -23,5 +25,10 @@ class ScanEvent extends Model
     public function session(): BelongsTo
     {
         return $this->belongsTo(ScanSession::class, 'scan_session_id');
+    }
+
+    public function postedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'posted_by_user_id');
     }
 }

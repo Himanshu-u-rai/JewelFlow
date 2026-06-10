@@ -189,6 +189,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware(['throttle:api-pos-read', 'can:sales.pos']);
         Route::post('/scan/send', [ScanController::class, 'send'])
             ->middleware(['throttle:api-pos-sale', 'can:sales.pos']);
+        // Delivery confirmation — scanner polls whether its scans reached the cart.
+        Route::post('/scan/status', [ScanController::class, 'status'])
+            ->middleware(['throttle:api-pos-read', 'can:sales.pos']);
 
         // Daily Pricing — pricing.update permission.
         Route::get('/pricing/today', [PricingController::class, 'today'])
