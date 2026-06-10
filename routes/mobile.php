@@ -180,6 +180,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware(['throttle:api-pos-read', 'can:sales.pos']);
         Route::post('/pos/quote/persist', [PosController::class, 'persistQuote'])
             ->middleware(['throttle:api-pos-sale', 'can:sales.pos']);
+        // Stateless old-metal trade-in calculator (no writes).
+        Route::post('/pos/old-metal/value', [PosController::class, 'oldMetalValue'])
+            ->middleware(['throttle:api-pos-read', 'can:sales.pos']);
 
         // POS Scan Connection — sales.pos to participate in a scan session.
         Route::post('/scan/connect', [ScanController::class, 'connect'])

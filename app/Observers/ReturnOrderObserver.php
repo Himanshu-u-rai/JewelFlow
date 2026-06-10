@@ -3,21 +3,32 @@
 namespace App\Observers;
 
 use App\Models\ReturnOrder;
+use App\Models\User;
 use App\Services\EntityEventService;
+use App\Services\Mobile\PushNotificationService;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ReturnOrderObserver
 {
     public function __construct(
         private readonly EntityEventService $entityEventService,
+        private readonly PushNotificationService $push,
     ) {}
 
     /**
-     * Emit a `return_settled` event when a return order transitions to settled.
+     * Emit a `return_settled` event when a return order transitions to settled,
+     * and push approval requests to owners/managers when one enters
+     * pending_approval.
      */
     public function saved(ReturnOrder $returnOrder): void
     {
         if (! $returnOrder->wasChanged('status')) {
+            return;
+        }
+
+        if ($returnOrder->status === ReturnOrder::STATUS_PENDING_APPROVAL) {
+            $this->notifyApprovers($returnOrder);
             return;
         }
 
@@ -105,6 +116,38 @@ class ReturnOrderObserver
             );
         } catch (Throwable $e) {
             \Log::warning('EntityEventService: failed to record return_settled (customer): ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Push a targeted approval request to the shop's owners/managers — only
+     * users whose role grants `returns.approve`. The staff member who raised
+     * the return is naturally excluded (they lack the permission). Payload
+     * carries ids only; the app fetches detail over the authenticated API.
+     */
+    private function notifyApprovers(ReturnOrder $returnOrder): void
+    {
+        try {
+            $shopId = (int) $returnOrder->shop_id;
+
+            $approverIds = User::where('shop_id', $shopId)
+                ->whereHas('role.permissions', fn ($q) => $q->where('name', 'returns.approve'))
+                ->pluck('id')
+                ->all();
+
+            if (empty($approverIds)) {
+                return;
+            }
+
+            $this->push->queueToShop(
+                $shopId,
+                'Approval needed',
+                'A return is waiting for your approval.',
+                ['type' => 'return_approval', 'return_order_id' => (int) $returnOrder->id],
+                $approverIds,
+            );
+        } catch (Throwable $e) {
+            Log::warning('Return approval push failed: ' . $e->getMessage());
         }
     }
 }

@@ -297,6 +297,24 @@ class ShopPricingService
 
         RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
 
+        // Live-rate alert: broadcast the new rates to the shop's mobile devices.
+        // Service-layer hook so it fires for BOTH web and mobile rate entry.
+        // Queued + try/catch — a push miss must never fail the rate save.
+        try {
+            app(\App\Services\Mobile\PushNotificationService::class)->queueToShop(
+                (int) $shop->id,
+                "Today's rates updated",
+                'Gold ₹' . number_format((float) $dailyRate->gold_24k_rate_per_gram, 2) . '/g · Silver ₹'
+                    . number_format((float) $dailyRate->silver_999_rate_per_gram * 1000, 2) . '/kg',
+                [
+                    'type'          => 'daily_rate',
+                    'business_date' => $this->businessDateString($shop),
+                ],
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Rate-update push enqueue failed: ' . $e->getMessage());
+        }
+
         return $dailyRate->fresh();
     }
 

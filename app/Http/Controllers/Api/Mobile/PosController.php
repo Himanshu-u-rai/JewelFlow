@@ -798,6 +798,56 @@ class PosController extends Controller
     }
 
     /**
+     * Stateless old-metal valuation (counter calculator). No writes — same math
+     * the checkout old_gold/old_silver path uses, surfaced standalone so staff
+     * can quote a trade-in while standing with the customer and the scale.
+     *
+     *   net   = gross * (1 - test_loss/100)
+     *   fine  = net   * MetalRegistry::fineWeightMultiplier(metal, purity)
+     *   value = fine  * rate_per_gram
+     */
+    public function oldMetalValue(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'metal'         => 'required|in:gold,silver',
+            'gross_weight'  => 'required|numeric|min:0.0001|max:100000',
+            'purity'        => 'required|numeric|min:0.01|max:1000',
+            'test_loss'     => 'nullable|numeric|min:0|max:100',
+            'rate_per_gram' => 'required|numeric|min:0|max:9999999',
+        ]);
+
+        $metal    = $validated['metal'];
+        $gross    = (float) $validated['gross_weight'];
+        $purity   = (float) $validated['purity'];
+        $testLoss = (float) ($validated['test_loss'] ?? 0);
+        $rate     = (float) $validated['rate_per_gram'];
+
+        try {
+            $multiplier = \App\Services\MetalRegistry::fineWeightMultiplier($metal, $purity);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error'   => 'invalid_purity',
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        $netWeight  = $gross * (1 - ($testLoss / 100));
+        $fineWeight = $netWeight * $multiplier;
+        $value      = round($fineWeight * $rate, 2);
+
+        return response()->json([
+            'metal'         => $metal,
+            'gross_weight'  => round($gross, 3),
+            'test_loss'     => $testLoss,
+            'net_weight'    => round($netWeight, 3),
+            'purity'        => $purity,
+            'fine_weight'   => round($fineWeight, 3),
+            'rate_per_gram' => $rate,
+            'value'         => $value,
+        ]);
+    }
+
+    /**
      * Persist a signed quote (mobile). Accepts the idempotency key from either
      * the request body or the X-Idempotency-Key header (matches /pos/sell).
      */
