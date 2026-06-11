@@ -42,6 +42,11 @@ class QuickBill extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(QuickBillItem::class)->orderBy('sort_order');

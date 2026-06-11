@@ -32,6 +32,18 @@ class SaleNotificationService
         string $actorName,
         ?string $customerName,
     ): void {
+        // Dedupe — both created+updated observers can reach here and a sale may
+        // flip status more than once. (invoice_id, invoice_type) is globally
+        // unique, so one existence check makes the whole emit idempotent.
+        // withoutTenant() so the guard sees rows regardless of tenant context.
+        $already = ShopNotification::withoutTenant()
+            ->where('invoice_id', $invoiceId)
+            ->where('invoice_type', $invoiceType)
+            ->exists();
+        if ($already) {
+            return;
+        }
+
         // Owners of this shop, resolved explicitly by shop_id (works even with no
         // tenant context bound). whereRaw IS TRUE avoids the pgsql boolean-bind
         // pitfall the rest of the codebase guards against.

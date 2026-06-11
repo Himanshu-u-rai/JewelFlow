@@ -72,6 +72,12 @@ class AppServiceProvider extends ServiceProvider
         // consistently; registering it makes the invariant real going forward.
         \App\Models\User::observe(\App\Observers\UserObserver::class);
 
+        // Owner sale notifications: fire when an invoice finalizes / quick bill
+        // issues. Dedicated notification-only observers (the entity-event
+        // Invoice/QuickBill observers are intentionally left dormant).
+        \App\Models\Invoice::observe(\App\Observers\InvoiceNotificationObserver::class);
+        \App\Models\QuickBill::observe(\App\Observers\QuickBillNotificationObserver::class);
+
         // Dotted ability names (e.g. "dhiran.pay", "invoices.create") are treated
         // as permission keys and resolved via User::hasPermission(). Returning
         // null on miss lets Laravel fall through to policies/explicit gates.

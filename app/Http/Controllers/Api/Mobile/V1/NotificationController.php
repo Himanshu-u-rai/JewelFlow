@@ -14,39 +14,48 @@ use Illuminate\Http\Request;
  * owner never sees another owner's feed. BelongsToShop adds shop_id isolation,
  * and the route-level role:owner middleware blocks non-owners entirely.
  *
- * Returns raw data; the mobile.envelope middleware wraps it into
- * { data, meta, errors } and derives meta.pagination from the paginator.
+ * Responses are returned PRE-ENVELOPED ({ data, meta, errors }). The
+ * mobile.envelope middleware passes these through (re-stamping base meta), so
+ * the client receives meta.current_page / meta.last_page directly.
  */
 class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'counter_type' => 'nullable|in:pos,quick_bill',
+        $request->validate([
+            'counter_type' => 'sometimes|in:pos,quick_bill',
+            'page'         => 'sometimes|integer|min:1',
         ]);
 
-        $paginator = ShopNotification::query()
+        $page = ShopNotification::query()
             ->where('recipient_user_id', $request->user()->id)
             ->when(
-                ! empty($validated['counter_type']),
-                fn ($q) => $q->where('counter_type', $validated['counter_type'])
+                $request->filled('counter_type'),
+                fn ($q) => $q->where('counter_type', $request->counter_type)
             )
-            ->latest('id')
+            ->orderByDesc('id')
             ->paginate(20);
 
-        $paginator->getCollection()->transform(fn (ShopNotification $n) => [
-            'id'            => (int) $n->id,
-            'counter_type'  => $n->counter_type,
-            'actor_name'    => $n->actor_name,
-            'amount'        => (float) $n->amount,
-            'customer_name' => $n->customer_name,
-            'invoice_id'    => (int) $n->invoice_id,
-            'invoice_type'  => $n->invoice_type,
-            'read_at'       => optional($n->read_at)->toIso8601String(),
-            'created_at'    => optional($n->created_at)->toIso8601String(),
+        return response()->json([
+            'data' => collect($page->items())->map(fn (ShopNotification $n) => [
+                'id'            => (int) $n->id,
+                'counter_type'  => $n->counter_type,
+                'actor_name'    => $n->actor_name,
+                'amount'        => (float) $n->amount,
+                'customer_name' => $n->customer_name,
+                'invoice_id'    => (int) $n->invoice_id,
+                'invoice_type'  => $n->invoice_type,
+                'read_at'       => optional($n->read_at)->toIso8601String(),
+                'created_at'    => optional($n->created_at)->toIso8601String(),
+            ])->values(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page'    => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+            ],
+            'errors' => [],
         ]);
-
-        return response()->json($paginator);
     }
 
     public function unreadCount(Request $request): JsonResponse
@@ -56,38 +65,29 @@ class NotificationController extends Controller
             ->whereNull('read_at')
             ->count();
 
-        return response()->json(['count' => $count]);
+        return response()->json(['data' => ['count' => $count], 'meta' => [], 'errors' => []]);
     }
 
     public function markRead(Request $request, int $id): JsonResponse
     {
         $note = ShopNotification::query()
             ->where('recipient_user_id', $request->user()->id)
-            ->find($id);
+            ->findOrFail($id); // 404 if not owned by caller
 
-        if (! $note) {
-            return response()->json([
-                'errors' => [['code' => 'not_found', 'message' => 'Notification not found.']],
-            ], 404);
+        if (is_null($note->read_at)) {
+            $note->update(['read_at' => now()]); // idempotent
         }
 
-        if ($note->read_at === null) {
-            $note->update(['read_at' => now()]);
-        }
-
-        return response()->json([
-            'id'      => (int) $note->id,
-            'read_at' => optional($note->read_at)->toIso8601String(),
-        ]);
+        return response()->json(['data' => ['id' => (int) $note->id], 'meta' => [], 'errors' => []]);
     }
 
     public function markAllRead(Request $request): JsonResponse
     {
-        $marked = ShopNotification::query()
+        ShopNotification::query()
             ->where('recipient_user_id', $request->user()->id)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
-        return response()->json(['marked' => (int) $marked]);
+        return response()->json(['data' => ['ok' => true], 'meta' => [], 'errors' => []]);
     }
 }
