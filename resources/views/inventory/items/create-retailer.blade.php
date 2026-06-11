@@ -792,7 +792,21 @@
             const imageInput = document.getElementById('images');
             if (imageInput && imageInput.dataset.galleryPreviewBound !== '1') {
                 imageInput.addEventListener('change', function (event) {
-                    const files = Array.from(event.target.files || []).slice(0, 4);
+                    const MAX_FILES = 4;
+                    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB per image — matches the server limit
+                    const allFiles = Array.from(event.target.files || []);
+                    const tooBig = allFiles.filter(function (f) { return f.size > MAX_BYTES; });
+                    if (tooBig.length) {
+                        alert('Some images are larger than 5 MB and can\'t be uploaded:\n• '
+                            + tooBig.map(function (f) { return f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB)'; }).join('\n• ')
+                            + '\n\nPlease choose images under 5 MB each.');
+                        event.target.value = '';
+                        return;
+                    }
+                    if (allFiles.length > MAX_FILES) {
+                        alert('You can add up to ' + MAX_FILES + ' images. Only the first ' + MAX_FILES + ' will be used.');
+                    }
+                    const files = allFiles.slice(0, MAX_FILES);
                     const previewGrid = document.getElementById('imagePreviewGrid');
                     const placeholder = document.getElementById('imagePreviewPlaceholder');
 

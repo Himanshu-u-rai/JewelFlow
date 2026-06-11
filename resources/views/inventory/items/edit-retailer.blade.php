@@ -681,10 +681,24 @@
         }
 
         document.getElementById('imageFileInput')?.addEventListener('change', function (event) {
-            const files = Array.from(event.target.files || []).slice(0, 4);
-            if (!files.length) {
+            const MAX_FILES = 4;
+            const MAX_BYTES = 5 * 1024 * 1024; // 5 MB per image — matches the server limit
+            const allFiles = Array.from(event.target.files || []);
+            if (!allFiles.length) {
                 return;
             }
+            const tooBig = allFiles.filter(function (f) { return f.size > MAX_BYTES; });
+            if (tooBig.length) {
+                alert('Some images are larger than 5 MB and can\'t be uploaded:\n• '
+                    + tooBig.map(function (f) { return f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB)'; }).join('\n• ')
+                    + '\n\nPlease choose images under 5 MB each.');
+                event.target.value = '';
+                return;
+            }
+            if (allFiles.length > MAX_FILES) {
+                alert('You can add up to ' + MAX_FILES + ' images. Only the first ' + MAX_FILES + ' will be used.');
+            }
+            const files = allFiles.slice(0, MAX_FILES);
 
             const preview = document.getElementById('imagePreview');
             const placeholder = document.getElementById('imagePlaceholder');
