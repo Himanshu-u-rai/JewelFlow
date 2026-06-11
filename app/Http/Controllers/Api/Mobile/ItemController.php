@@ -341,6 +341,9 @@ class ItemController extends Controller
             'huid' => $item->huid,
             'hallmark_date' => $item->hallmark_date?->toDateString(),
             'image' => $this->catalog->resolveImageUrl($request, $item),
+            // Additive: full gallery as resolved absolute URLs (primary first,
+            // de-duped, [] when no image). `image` above is unchanged.
+            'images' => $this->catalog->resolveImageUrls($request, $item),
             'share_url' => $this->buildProductShareUrl($shop, $token),
             'vendor_id' => $item->vendor_id,
             'karigar_id' => $item->karigar_id,
