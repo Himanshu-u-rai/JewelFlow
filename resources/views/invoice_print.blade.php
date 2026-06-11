@@ -111,12 +111,7 @@
     };
 
     $termsRaw     = trim((string) ($billing?->terms_and_conditions ?? ''));
-    $defaultTerms = [
-        'Goods once sold will not be taken back or exchanged.',
-        'Please verify product details before leaving the counter.',
-        'All disputes are subject to local jurisdiction.',
-        'Invoice is valid only with authorized signature.',
-    ];
+    $defaultTerms = \App\Models\ShopBillingSettings::defaultTerms();
     $terms = $termsRaw !== ''
         ? array_slice(array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $termsRaw)))), 0, 6)
         : $defaultTerms;
@@ -189,6 +184,10 @@
             line-height: 1.3;
         }
         .footer-body > div { margin: 0 0 2px; }
+        /* Numbered T&C points with a hanging indent so wrapped lines align
+           under the text, not the number. */
+        .footer-term { display: flex; gap: 4px; align-items: baseline; }
+        .footer-term-num { flex: 0 0 auto; color: #555; font-weight: 600; }
         .footer-empty { color: #999; font-style: italic; }
         .footer-col--sign { text-align: right; }
         .footer-sign-second { margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
@@ -812,8 +811,8 @@
         <div class="footer-col footer-col--terms">
             <h4 class="footer-title">Terms &amp; Conditions</h4>
             <div class="footer-body">
-                @foreach($terms as $term)
-                    <div>{{ $term }}</div>
+                @foreach($terms as $i => $term)
+                    <div class="footer-term"><span class="footer-term-num">{{ $i + 1 }}.</span><span>{{ $term }}</span></div>
                 @endforeach
             </div>
         </div>

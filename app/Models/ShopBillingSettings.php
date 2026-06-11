@@ -76,4 +76,24 @@ class ShopBillingSettings extends Model
     {
         return $this->belongsTo(Shop::class);
     }
+
+    /**
+     * Default Terms & Conditions shown on invoices / quick bills when a shop
+     * hasn't set its own. Single source of truth — the print templates and the
+     * settings form all read this so they never drift. Kept to 6 concise,
+     * jewellery-specific points (within the 6-line / 600-char save limit).
+     *
+     * @return string[]
+     */
+    public static function defaultTerms(): array
+    {
+        return [
+            'Goods are taken back or exchanged only as per store policy, with the original invoice.',
+            'Making charges, GST, and hallmarking charges are non-refundable.',
+            'Ornaments are hallmarked as per BIS standards; purity & HUID are as printed.',
+            "Old gold/silver is valued at the day's rate after wastage & purity deductions.",
+            'Please verify weight, purity & item details at the counter before leaving.',
+            'All disputes are subject to local jurisdiction.',
+        ];
+    }
 }

@@ -1638,7 +1638,7 @@
                             <label class="field-label">{{ __('Terms & Conditions') }}
                                 <span class="settings-inline-hint"> (max 6 lines)</span>
                             </label>
-                            <textarea name="terms_and_conditions" class="field-input" rows="6" placeholder="{{ __('One point per line. Max 6 lines.') }}">{{ old('terms_and_conditions', $billing->terms_and_conditions) }}</textarea>
+                            <textarea name="terms_and_conditions" class="field-input" rows="6" placeholder="{{ __('One point per line. Max 6 lines.') }}">{{ old('terms_and_conditions', $billing->terms_and_conditions ?: implode("\n", \App\Models\ShopBillingSettings::defaultTerms())) }}</textarea>
                         </div>
                     </div>
 

@@ -72,12 +72,7 @@
 
     // ── Terms ────────────────────────────────────────────────────────────
     $termsRaw = trim((string) ($quickBill->terms ?? ($snapshot['terms_and_conditions'] ?? '')));
-    $defaultTerms = [
-        'Goods once sold will not be taken back or exchanged.',
-        'Please verify product details before leaving the counter.',
-        'All disputes are subject to local jurisdiction.',
-        'Invoice is valid only with authorized signature.',
-    ];
+    $defaultTerms = \App\Models\ShopBillingSettings::defaultTerms();
     $terms = $termsRaw !== ''
         ? array_slice(array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $termsRaw)))), 0, 6)
         : $defaultTerms;
@@ -147,6 +142,8 @@
             letter-spacing: 0.3px;
         }
         .footer-body { font-size: {{ $tier['terms'] }}; line-height: 1.3; }
+        .footer-term { display: flex; gap: 4px; align-items: baseline; margin: 0 0 2px; }
+        .footer-term-num { flex: 0 0 auto; color: #555; font-weight: 600; }
         .footer-body > div { margin: 0 0 2px; }
         .footer-empty { color: #999; font-style: italic; }
         .footer-col--sign { text-align: right; }
@@ -542,8 +539,8 @@
         <div class="footer-col footer-col--terms">
             <h4 class="footer-title">Terms &amp; Conditions</h4>
             <div class="footer-body">
-                @foreach($terms as $term)
-                    <div>{{ $term }}</div>
+                @foreach($terms as $i => $term)
+                    <div class="footer-term"><span class="footer-term-num">{{ $i + 1 }}.</span><span>{{ $term }}</span></div>
                 @endforeach
             </div>
         </div>
