@@ -73,10 +73,20 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\User::observe(\App\Observers\UserObserver::class);
 
         // Owner sale notifications: fire when an invoice finalizes / quick bill
-        // issues. Dedicated notification-only observers (the entity-event
-        // Invoice/QuickBill observers are intentionally left dormant).
+        // issues.
         \App\Models\Invoice::observe(\App\Observers\InvoiceNotificationObserver::class);
         \App\Models\QuickBill::observe(\App\Observers\QuickBillNotificationObserver::class);
+
+        // Entity-event observers. These were written but never registered, so
+        // their entity feeds — and the return-approval push added later — never
+        // fired. Each fires ONLY on a status transition (wasChanged('status')),
+        // is idempotent (alreadyRecorded), and wraps every side effect in
+        // try/catch (non-critical), so activating them cannot break the
+        // underlying sale/return/item/job operation.
+        \App\Models\Invoice::observe(\App\Observers\InvoiceObserver::class);
+        \App\Models\Item::observe(\App\Observers\ItemObserver::class);
+        \App\Models\JobOrder::observe(\App\Observers\JobOrderObserver::class);
+        \App\Models\ReturnOrder::observe(\App\Observers\ReturnOrderObserver::class);
 
         // Dotted ability names (e.g. "dhiran.pay", "invoices.create") are treated
         // as permission keys and resolved via User::hasPermission(). Returning
