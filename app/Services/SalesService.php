@@ -43,7 +43,7 @@ class SalesService
         string $makingType = 'fixed',
         ?float $makingValue = null
     ) {
-        return DB::transaction(function () use (
+        $invoice = DB::transaction(function () use (
             $customerId, $itemId, $goldRate, $making, $stone,
             $discount, $roundOff, $payments, $creditOffset, $rateContext,
             $makingType, $makingValue
@@ -288,5 +288,27 @@ class SalesService
 
             return $invoice;
         });
+
+        // Post-commit: notify shop owners (manufacturer POS sale). Never inside
+        // the transaction; always try/catch so a push miss can't break the sale.
+        try {
+            $customerName = $invoice->customer_id
+                ? optional(\App\Models\Customer::find($invoice->customer_id))->name
+                : null;
+
+            app(\App\Services\Mobile\SaleNotificationService::class)->dispatchForSale(
+                shopId:       (int) $invoice->shop_id,
+                counterType:  'pos',
+                invoiceType:  'invoice',
+                invoiceId:    (int) $invoice->id,
+                amount:       (float) $invoice->total,
+                actorName:    (string) (auth()->user()->name ?? 'Operator'),
+                customerName: $customerName,
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Sale notification (manufacturer) failed: ' . $e->getMessage());
+        }
+
+        return $invoice;
     }
 }

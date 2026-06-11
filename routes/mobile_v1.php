@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\Mobile\V1\ReferencePriceController;
 use App\Http\Controllers\Api\Mobile\V1\RegistryController;
 use App\Http\Controllers\Api\Mobile\V1\ReturnController;
 use App\Http\Controllers\Api\Mobile\V1\DevicePushTokenController;
+use App\Http\Controllers\Api\Mobile\V1\NotificationController;
 use App\Http\Controllers\Api\Mobile\V1\SessionController;
 use App\Http\Controllers\Api\Mobile\V1\UploadController;
 
@@ -81,6 +82,19 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             ->name('mobile.v1.device.push_token.store');
         Route::delete('/device/push-token', [DevicePushTokenController::class, 'destroy'])
             ->name('mobile.v1.device.push_token.destroy');
+
+        // ─── Owner sale-notification feed (owners only) ───────────────
+        Route::middleware('role:owner')->group(function () {
+            Route::get('/notifications', [NotificationController::class, 'index'])
+                ->name('mobile.v1.notifications.index');
+            Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])
+                ->name('mobile.v1.notifications.unread_count');
+            Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
+                ->name('mobile.v1.notifications.read_all');
+            Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])
+                ->whereNumber('id')
+                ->name('mobile.v1.notifications.read');
+        });
 
         // ─── M1: Material registry snapshot ───────────────────────────
         Route::get('/registry/materials', [RegistryController::class, 'materials'])

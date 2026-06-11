@@ -19,7 +19,7 @@ class QuickBillService
 {
     public function create(Shop $shop, User $user, array $payload): QuickBill
     {
-        return DB::transaction(function () use ($shop, $user, $payload): QuickBill {
+        $result = DB::transaction(function () use ($shop, $user, $payload): QuickBill {
             $identity = BusinessIdentifierService::nextQuickBillIdentifier((int) $shop->id);
             $quickBill = new QuickBill();
             $quickBill->forceFill([
@@ -47,11 +47,18 @@ class QuickBillService
 
             return $result;
         });
+
+        // Post-commit: a freshly-issued quick bill notifies owners (drafts do not).
+        $this->notifyIfIssued($result, $user, false);
+
+        return $result;
     }
 
     public function update(QuickBill $quickBill, Shop $shop, User $user, array $payload): QuickBill
     {
-        return DB::transaction(function () use ($quickBill, $shop, $user, $payload): QuickBill {
+        $wasIssued = $quickBill->status === QuickBill::STATUS_ISSUED;
+
+        $result = DB::transaction(function () use ($quickBill, $shop, $user, $payload): QuickBill {
             $result = $this->persist($quickBill, $shop, $user, $payload);
 
             AuditLog::create([
@@ -71,6 +78,41 @@ class QuickBillService
 
             return $result;
         });
+
+        // Notify only on the draft -> issued transition (not on edits of an
+        // already-issued bill — avoids duplicate notifications).
+        $this->notifyIfIssued($result, $user, $wasIssued);
+
+        return $result;
+    }
+
+    /**
+     * Notify shop owners when a quick bill becomes issued. No-op for drafts,
+     * for already-issued bills being edited, and on any failure.
+     */
+    private function notifyIfIssued(QuickBill $bill, User $user, bool $wasIssued): void
+    {
+        if ($bill->status !== QuickBill::STATUS_ISSUED || $wasIssued) {
+            return;
+        }
+
+        try {
+            $customerName = $bill->customer_id
+                ? optional(\App\Models\Customer::find($bill->customer_id))->name
+                : ($bill->customer_name ?? null);
+
+            app(\App\Services\Mobile\SaleNotificationService::class)->dispatchForSale(
+                shopId:       (int) $bill->shop_id,
+                counterType:  'quick_bill',
+                invoiceType:  'quick_bill',
+                invoiceId:    (int) $bill->id,
+                amount:       (float) $bill->total_amount,
+                actorName:    (string) ($user->name ?? 'Operator'),
+                customerName: $customerName,
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Sale notification (quick bill) failed: ' . $e->getMessage());
+        }
     }
 
     public function void(QuickBill $quickBill, User $user, ?string $reason = null): QuickBill

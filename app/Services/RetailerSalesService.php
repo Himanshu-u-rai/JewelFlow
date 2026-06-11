@@ -39,7 +39,7 @@ class RetailerSalesService
         ?array $schemeRedemption = null,
         bool $allowAutoOfferFallback = true,
     ) {
-        return DB::transaction(function () use (
+        $invoice = DB::transaction(function () use (
             $customerId, $itemIds, $discount, $roundOff, $payments, $offerSchemeId, $schemeRedemption, $allowAutoOfferFallback
         ) {
             $shop = auth()->user()->shop;
@@ -336,6 +336,38 @@ class RetailerSalesService
 
             return $invoice;
         });
+
+        // Post-commit: notify shop owners of the finalized sale. Never inside the
+        // transaction (a rolled-back sale must not notify), always try/catch (a
+        // push failure must never break the sale).
+        self::notifyOwnersOfSale($invoice, 'pos', 'invoice');
+
+        return $invoice;
+    }
+
+    /**
+     * Emit a sale notification to the shop's owners. Static helper shared by the
+     * retailer sale paths; safe no-op on any failure.
+     */
+    private static function notifyOwnersOfSale(\App\Models\Invoice $invoice, string $counterType, string $invoiceType): void
+    {
+        try {
+            $customerName = $invoice->customer_id
+                ? optional(\App\Models\Customer::find($invoice->customer_id))->name
+                : null;
+
+            app(\App\Services\Mobile\SaleNotificationService::class)->dispatchForSale(
+                shopId:       (int) $invoice->shop_id,
+                counterType:  $counterType,
+                invoiceType:  $invoiceType,
+                invoiceId:    (int) $invoice->id,
+                amount:       (float) $invoice->total,
+                actorName:    (string) (auth()->user()->name ?? 'Operator'),
+                customerName: $customerName,
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Sale notification (retailer) failed: ' . $e->getMessage());
+        }
     }
 
     /**
