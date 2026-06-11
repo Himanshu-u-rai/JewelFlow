@@ -31,7 +31,7 @@ class GstCategoryController extends Controller
 
         GstCategory::create($validated);
 
-        return redirect(route('settings.edit', ['tab' => 'shop']) . '#gst-categories')
+        return redirect(route('settings.edit', ['tab' => 'gst']) . '#gst-categories')
             ->with('success', 'GST category added.');
     }
 
@@ -59,7 +59,7 @@ class GstCategoryController extends Controller
 
         $gstCategory->update($validated);
 
-        return redirect(route('settings.edit', ['tab' => 'shop']) . '#gst-categories')
+        return redirect(route('settings.edit', ['tab' => 'gst']) . '#gst-categories')
             ->with('success', 'GST category updated.');
     }
 
@@ -72,7 +72,7 @@ class GstCategoryController extends Controller
         // fallback. Deleting the last one simply reverts that metal to default.
         $gstCategory->delete();
 
-        return redirect(route('settings.edit', ['tab' => 'shop']) . '#gst-categories')
+        return redirect(route('settings.edit', ['tab' => 'gst']) . '#gst-categories')
             ->with('success', 'GST category deleted.');
     }
 }

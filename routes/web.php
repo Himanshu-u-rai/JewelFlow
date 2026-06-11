@@ -507,6 +507,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/settings/preferences', [SettingsController::class, 'updatePreferences'])->middleware('can:settings.edit')->name('settings.update.preferences');
     Route::patch('/settings/return-policy', [SettingsController::class, 'updateReturnPolicy'])->middleware('can:settings.edit')->name('settings.update.return-policy');
     Route::patch('/settings/materials', [SettingsController::class, 'updateMaterials'])->middleware('can:settings.edit')->name('settings.update.materials');
+    Route::patch('/settings/gst', [SettingsController::class, 'updateGst'])->middleware('can:settings.edit')->name('settings.update.gst');
     // Per-metal GST categories (the per-metal GST rate setting).
     Route::post('/settings/gst-categories', [\App\Http\Controllers\GstCategoryController::class, 'store'])->middleware('can:settings.edit')->name('settings.gst-categories.store');
     Route::patch('/settings/gst-categories/{gstCategory}', [\App\Http\Controllers\GstCategoryController::class, 'update'])->middleware('can:settings.edit')->name('settings.gst-categories.update');

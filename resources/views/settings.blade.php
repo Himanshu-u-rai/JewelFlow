@@ -1199,6 +1199,9 @@
             <a href="{{ route('settings.edit', ['tab' => 'billing']) }}" class="nav-item {{ $activeTab === 'billing' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> {{ __('Invoice') }}
             </a>
+            <a href="{{ route('settings.edit', ['tab' => 'gst']) }}" class="nav-item {{ $activeTab === 'gst' ? 'active' : '' }}" data-turbo-frame="settings-content">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l6-6"/><circle cx="9.5" cy="8.5" r="1.5"/><circle cx="14.5" cy="13.5" r="1.5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span> {{ __('GST & Tax') }}
+            </a>
             <a href="{{ route('settings.edit', ['tab' => 'payment-methods']) }}" class="nav-item {{ $activeTab === 'payment-methods' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> {{ __('Payment Methods') }}
             </a>
@@ -1520,23 +1523,16 @@
                     });
                     </script>
                     
+                    {{-- GST Number, GST Rate, HSN & IGST moved to the dedicated "GST & Tax" tab. --}}
+                    @if(auth()->user()->shop?->isManufacturer())
                     <div class="form-row">
-                        <div class="field">
-                            <label class="field-label">{{ __('GST Number') }}</label>
-                            <input type="text" name="gst_number" value="{{ old('gst_number', $shop->gst_number) }}" class="field-input" placeholder="{{ __('Optional') }}">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('Default GST Rate (%)') }}</label>
-                            <input type="number" name="gst_rate" value="{{ old('gst_rate', $shop->gst_rate) }}" class="field-input" step="0.01" min="0" max="100" required>
-                        </div>
-                        @if(auth()->user()->shop?->isManufacturer())
                         <div class="field">
                             <label class="field-label">{{ __('Wastage Recovery (%)') }}</label>
                             <input type="number" name="wastage_recovery_percent" value="{{ old('wastage_recovery_percent', $shop->wastage_recovery_percent) }}" class="field-input" step="0.01" min="0" required>
                         </div>
-                        @endif
                     </div>
-                    
+                    @endif
+
                     <div class="section-divider"></div>
                     <div class="section-label">{{ __('Owner Details') }}</div>
                     
@@ -1565,6 +1561,59 @@
                     </div>
                     @endif
                 </form>
+            @endif
+
+            @if($activeTab === 'gst')
+                <div class="settings-header">
+                    <h2 class="settings-title">{{ __('GST & Tax') }}</h2>
+                    <p class="settings-desc">{{ __('Your GSTIN, default GST rate, per-metal rates, HSN codes and tax type — all in one place.') }}</p>
+                </div>
+
+                <form method="POST" action="{{ route('settings.update.gst') }}" data-turbo-frame="_top">
+                    @csrf
+                    @method('PATCH')
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">{{ __('GST Number (GSTIN)') }}</label>
+                            <input type="text" name="gst_number" value="{{ old('gst_number', $shop->gst_number) }}" class="field-input" placeholder="{{ __('Optional') }}">
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('Default GST Rate (%)') }}</label>
+                            <input type="number" name="gst_rate" value="{{ old('gst_rate', $shop->gst_rate) }}" class="field-input" step="0.01" min="0" max="100" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">{{ __('HSN — Gold') }}</label>
+                            <input type="text" name="hsn_gold" value="{{ old('hsn_gold', $billing->hsn_gold ?? '7113') }}" class="field-input" maxlength="20">
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('HSN — Silver') }}</label>
+                            <input type="text" name="hsn_silver" value="{{ old('hsn_silver', $billing->hsn_silver ?? '7113') }}" class="field-input" maxlength="20">
+                        </div>
+                        <div class="field">
+                            <label class="field-label">{{ __('HSN — Diamond') }}</label>
+                            <input type="text" name="hsn_diamond" value="{{ old('hsn_diamond', $billing->hsn_diamond ?? '7114') }}" class="field-input" maxlength="20">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <label class="field-label" style="display:flex; gap:8px; align-items:center;">
+                            <input type="hidden" name="igst_mode" value="0">
+                            <input type="checkbox" name="igst_mode" value="1" {{ old('igst_mode', $billing->igst_mode ?? false) ? 'checked' : '' }}>
+                            {{ __('Interstate (IGST) — show one IGST line instead of CGST + SGST on the invoice') }}
+                        </label>
+                    </div>
+
+                    @if($canEditSettings)
+                    <div class="form-footer">
+                        <button type="submit" class="btn-primary">{{ __('Save GST Settings') }}</button>
+                    </div>
+                    @endif
+                </form>
+
+                <div class="section-divider"></div>
 
                 {{-- Per-metal GST rates: optional overrides on top of the Default GST Rate above --}}
                 <div id="gst-categories" class="settings-header" style="margin-top:4px;">
@@ -1906,44 +1955,7 @@
                         @endforeach
                     </div>
 
-                    {{-- ── Tax Settings ─────────────────────────────────────────────── --}}
-                    <div class="section-divider"></div>
-                    <div class="section-label">{{ __('Tax Settings') }}</div>
-
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label">{{ __('GST Display Mode') }}</label>
-                            <label class="settings-toggle-label">
-                                <input type="hidden" name="igst_mode" value="0">
-                                <input type="checkbox" name="igst_mode" value="1"
-                                    {{ old('igst_mode', $billing->igst_mode) ? 'checked' : '' }}
-                                    class="settings-toggle-input-lg">
-                                <span class="settings-toggle-text">Use IGST instead of CGST + SGST</span>
-                            </label>
-                            <span class="field-hint">Enable for inter-state sales.</span>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="field">
-                            <label class="field-label">{{ __('HSN Code — Gold') }}</label>
-                            <input type="text" name="hsn_gold"
-                                   value="{{ old('hsn_gold', $billing->hsn_gold ?? '7113') }}"
-                                   class="field-input" maxlength="20" placeholder="7113">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('HSN Code — Silver') }}</label>
-                            <input type="text" name="hsn_silver"
-                                   value="{{ old('hsn_silver', $billing->hsn_silver ?? '7113') }}"
-                                   class="field-input" maxlength="20" placeholder="7113">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">{{ __('HSN Code — Diamond / Gemstone') }}</label>
-                            <input type="text" name="hsn_diamond"
-                                   value="{{ old('hsn_diamond', $billing->hsn_diamond ?? '7114') }}"
-                                   class="field-input" maxlength="20" placeholder="7114">
-                        </div>
-                    </div>
+                    {{-- Tax Settings (IGST display + HSN codes) moved to the dedicated GST & Tax tab. --}}
 
                     {{-- ── Signature & Footer ───────────────────────────────────────── --}}
                     <div class="section-divider"></div>

@@ -49,6 +49,7 @@ class SettingsController extends Controller
             'general'         => null, // any authenticated user
             'shop'            => 'settings.view',
             'billing'         => 'settings.view',
+            'gst'             => 'settings.view',
             'payment-methods' => 'settings.view',
             'preferences'     => 'settings.view',
             'return-policy'   => 'settings.view',
@@ -260,12 +261,11 @@ class SettingsController extends Controller
             'state'                     => 'required|string|max:100',
             'state_code'                => 'nullable|string|max:5',
             'pincode'                   => 'required|string|digits:6',
-            'gst_number'                => 'nullable|string|max:50',
             'owner_first_name'          => 'required|string|max:255',
             'owner_last_name'           => 'required|string|max:255',
             'owner_mobile'              => 'required|string|digits:10',
             'owner_email'               => 'nullable|email|max:255',
-            'gst_rate'                  => 'required|numeric|min:0|max:100',
+            // gst_number + gst_rate moved to the dedicated GST & Tax tab (updateGst).
         ];
 
         if ($shop->isManufacturer()) {
@@ -368,11 +368,7 @@ class SettingsController extends Controller
             'show_gstin'             => 'nullable|boolean',
             'show_customer_address'  => 'nullable|boolean',
             'show_customer_id_pan'   => 'nullable|boolean',
-            // Tax
-            'igst_mode'              => 'nullable|boolean',
-            'hsn_gold'               => 'nullable|string|max:20',
-            'hsn_silver'             => 'nullable|string|max:20',
-            'hsn_diamond'            => 'nullable|string|max:20',
+            // Tax (igst_mode + HSN codes) moved to the dedicated GST & Tax tab.
             // Footer / print
             'second_signature_label' => 'nullable|string|max:100',
             'paper_size'             => 'nullable|string|in:a4,a5,thermal',
@@ -404,7 +400,6 @@ class SettingsController extends Controller
         $validated['show_gstin']             = $request->boolean('show_gstin');
         $validated['show_customer_address']  = $request->boolean('show_customer_address');
         $validated['show_customer_id_pan']   = $request->boolean('show_customer_id_pan');
-        $validated['igst_mode']              = $request->boolean('igst_mode');
 
         // Defaults for optional fields
         $validated['theme_color']  = $validated['theme_color']  ?? '#111111';
@@ -412,9 +407,6 @@ class SettingsController extends Controller
         $validated['paper_size']   = $validated['paper_size']   ?? 'a4';
         $validated['copy_count']   = $validated['copy_count']   ?? 1;
         $validated['invoice_copy_label'] = $validated['invoice_copy_label'] ?? 'Original';
-        $validated['hsn_gold']     = $validated['hsn_gold']     ?: '7113';
-        $validated['hsn_silver']   = $validated['hsn_silver']   ?: '7113';
-        $validated['hsn_diamond']  = $validated['hsn_diamond']  ?: '7114';
 
         // Auto-compose bank_details from structured fields for invoice printing
         $bankParts = array_filter([
@@ -466,6 +458,46 @@ class SettingsController extends Controller
 
         return redirect()->route('settings.edit', ['tab' => 'billing'])
             ->with('success', 'Invoice settings updated successfully.');
+    }
+
+    /**
+     * Update GST & Tax settings (the dedicated GST tab): GSTIN + default rate on
+     * the shop, IGST mode + HSN codes on billing settings. Per-metal GST rates
+     * are managed separately via GstCategoryController. Consolidates the GST
+     * fields that previously lived across the Shop and Invoice tabs.
+     */
+    public function updateGst(Request $request)
+    {
+        $shop = Auth::user()->shop;
+
+        $validated = $request->validate([
+            'gst_number'  => 'nullable|string|max:50',
+            'gst_rate'    => 'required|numeric|min:0|max:100',
+            'igst_mode'   => 'nullable|boolean',
+            'hsn_gold'    => 'nullable|string|max:20',
+            'hsn_silver'  => 'nullable|string|max:20',
+            'hsn_diamond' => 'nullable|string|max:20',
+        ]);
+
+        // Shop-level: GST identity + the flat default rate (fallback for the
+        // per-metal resolver).
+        $shop->update([
+            'gst_number' => $validated['gst_number'] ?? null,
+            'gst_rate'   => $validated['gst_rate'],
+        ]);
+
+        // Billing-level: tax presentation on the printed invoice.
+        $billing = $shop->billingSettings ?? new ShopBillingSettings(['shop_id' => $shop->id]);
+        $billing->fill([
+            'igst_mode'   => $request->boolean('igst_mode'),
+            'hsn_gold'    => $validated['hsn_gold']    ?: '7113',
+            'hsn_silver'  => $validated['hsn_silver']  ?: '7113',
+            'hsn_diamond' => $validated['hsn_diamond'] ?: '7114',
+        ]);
+        $billing->save();
+
+        return redirect()->route('settings.edit', ['tab' => 'gst'])
+            ->with('success', 'GST settings updated.');
     }
 
     /**
