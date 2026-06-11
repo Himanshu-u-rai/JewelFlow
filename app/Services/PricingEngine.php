@@ -7,6 +7,7 @@ use App\Models\CustomerGoldTransaction;
 use App\Models\Item;
 use App\Models\PosQuote;
 use App\Models\ShopPreferences;
+use App\Services\GstRateResolver;
 use App\Services\PricingEngine\MakingChargeResolver;
 use App\Services\PricingEngine\MakingChargeType;
 use App\Services\PricingEngine\PricingBreakdown;
@@ -271,7 +272,7 @@ class PricingEngine
         $items = $this->loadItems($input->shopId, $input->itemIds);
         $prefs = $this->loadPreferences($input->shopId);
         $shop  = $this->loadShop($input->shopId);
-        $gstRate = (float) ($shop->gst_rate ?? config('business.gst_rate_default') ?? 0);
+        $gstRate = $this->resolveGstRate($shop, $items);
 
         $subtotal = round((float) $items->sum('selling_price'), 2);
 
@@ -359,7 +360,7 @@ class PricingEngine
         $items = $this->loadItems($input->shopId, $input->itemIds);
         $prefs = $this->loadPreferences($input->shopId);
         $shop  = $this->loadShop($input->shopId);
-        $gstRate = (float) ($shop->gst_rate ?? config('business.gst_rate_default') ?? 0);
+        $gstRate = $this->resolveGstRate($shop, $items);
 
         /** @var Item $item */
         $item = $items->first();
@@ -570,6 +571,31 @@ class PricingEngine
     private function loadShop(int $shopId): ?\App\Models\Shop
     {
         return \App\Models\Shop::find($shopId);
+    }
+
+    /**
+     * Resolve the GST rate for a priced cart through GstRateResolver (the
+     * Constitution §7 truth path). When all items share one metal, that metal's
+     * per-metal rate applies; a mixed-metal cart resolves with metal = null,
+     * which falls back to the shop's flat gst_rate (matches the single-rate
+     * engine — true per-line mixed rates are a separate change). Shops with no
+     * per-metal categories get their flat gst_rate, byte-identical to before.
+     *
+     * @param  \Illuminate\Support\Collection<int,Item>  $items
+     */
+    private function resolveGstRate(?\App\Models\Shop $shop, $items): float
+    {
+        $resolver = app(GstRateResolver::class);
+
+        $metals = collect($items)
+            ->map(fn ($i) => $resolver->normalizeMetalType($i->metal_type ?? null))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $cartMetal = $metals->count() === 1 ? $metals->first() : null;
+
+        return $resolver->resolveForShop($shop, $cartMetal, null);
     }
 
     private function withIdentity(PricingBreakdown $breakdown, string $quoteId, string $expiresAt): PricingBreakdown

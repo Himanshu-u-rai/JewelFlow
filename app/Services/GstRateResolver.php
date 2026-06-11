@@ -18,15 +18,22 @@ class GstRateResolver
             ? $shop
             : ($shop ? Shop::find((int) $shop) : null);
 
-        $default = (float) (config('business.gst_rate_default') ?? 3.0);
+        $configDefault = (float) (config('business.gst_rate_default') ?? 3.0);
         if (!$shopModel) {
-            return $default;
+            return $configDefault;
         }
+
+        // Fallback when no metal-specific / default GST category exists: the
+        // shop's flat gst_rate (legacy single field), then the config default.
+        // Keeps shops without per-metal categories byte-identical to before.
+        $fallback = $shopModel->gst_rate !== null
+            ? (float) $shopModel->gst_rate
+            : $configDefault;
 
         return GstCategory::resolveRate(
             (int) $shopModel->id,
             $this->normalizeMetalType($metalType),
-            $default
+            $fallback
         );
     }
 

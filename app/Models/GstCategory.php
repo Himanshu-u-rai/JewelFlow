@@ -54,8 +54,10 @@ class GstCategory extends Model
             return (float) $default->rate_pct;
         }
 
-        // 3. First available (edge case: no is_default set)
-        return (float) $categories->first()->rate_pct;
+        // 3. No metal-specific match and no default category → fall back to the
+        //    caller-supplied rate (the shop's flat GST rate). Never return an
+        //    unrelated metal's rate (e.g. don't tax silver at the gold category).
+        return $fallback;
     }
 
     private static function normalizeMetalType(?string $metalType): ?string

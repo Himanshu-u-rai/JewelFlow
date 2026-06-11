@@ -205,6 +205,13 @@ class SettingsController extends Controller
 
         $user = auth()->user();
 
+        // Per-metal GST rate overrides + the metals this shop can set them for.
+        $gstCategories = \App\Models\GstCategory::where('shop_id', $shop->id)
+            ->orderByDesc('is_default')
+            ->orderBy('metal_type')
+            ->get();
+        $gstEnabledMetals = \App\Services\MetalRegistry::enabledMetalsForShop((int) $shop->id);
+
         return view('settings', compact(
             'shop',
             'billing',
@@ -224,7 +231,9 @@ class SettingsController extends Controller
             'pricingData',
             'pricingTimezones',
             'methods',
-            'user'
+            'user',
+            'gstCategories',
+            'gstEnabledMetals'
         ));
     }
 

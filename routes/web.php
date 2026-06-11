@@ -507,6 +507,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/settings/preferences', [SettingsController::class, 'updatePreferences'])->middleware('can:settings.edit')->name('settings.update.preferences');
     Route::patch('/settings/return-policy', [SettingsController::class, 'updateReturnPolicy'])->middleware('can:settings.edit')->name('settings.update.return-policy');
     Route::patch('/settings/materials', [SettingsController::class, 'updateMaterials'])->middleware('can:settings.edit')->name('settings.update.materials');
+    // Per-metal GST categories (the per-metal GST rate setting).
+    Route::post('/settings/gst-categories', [\App\Http\Controllers\GstCategoryController::class, 'store'])->middleware('can:settings.edit')->name('settings.gst-categories.store');
+    Route::patch('/settings/gst-categories/{gstCategory}', [\App\Http\Controllers\GstCategoryController::class, 'update'])->middleware('can:settings.edit')->name('settings.gst-categories.update');
+    Route::delete('/settings/gst-categories/{gstCategory}', [\App\Http\Controllers\GstCategoryController::class, 'destroy'])->middleware('can:settings.edit')->name('settings.gst-categories.destroy');
     Route::patch('/settings/materials/reference', [SettingsController::class, 'updateMaterialReference'])->middleware('can:settings.edit')->name('settings.update.material-reference');
     Route::post('/settings/whatsapp-template', [SettingsController::class, 'saveWhatsappTemplate'])->middleware('can:settings.edit')->name('settings.whatsapp.template');
     // The role-permission editor itself stays `role:owner` — only the shop owner

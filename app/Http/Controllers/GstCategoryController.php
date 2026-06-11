@@ -67,12 +67,9 @@ class GstCategoryController extends Controller
     {
         abort_unless($gstCategory->shop_id === auth()->user()->shop_id, 403);
 
-        $count = GstCategory::where('shop_id', $gstCategory->shop_id)->count();
-
-        if ($count <= 1) {
-            abort(422, 'At least one GST category must exist.');
-        }
-
+        // No minimum-count rule: per-metal categories are optional overrides on
+        // top of the shop's flat "Default GST Rate", which is always the
+        // fallback. Deleting the last one simply reverts that metal to default.
         $gstCategory->delete();
 
         return redirect(route('settings.edit', ['tab' => 'shop']) . '#gst-categories')

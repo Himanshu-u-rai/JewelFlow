@@ -1526,7 +1526,7 @@
                             <input type="text" name="gst_number" value="{{ old('gst_number', $shop->gst_number) }}" class="field-input" placeholder="{{ __('Optional') }}">
                         </div>
                         <div class="field">
-                            <label class="field-label">{{ __('GST Rate (%)') }}</label>
+                            <label class="field-label">{{ __('Default GST Rate (%)') }}</label>
                             <input type="number" name="gst_rate" value="{{ old('gst_rate', $shop->gst_rate) }}" class="field-input" step="0.01" min="0" max="100" required>
                         </div>
                         @if(auth()->user()->shop?->isManufacturer())
@@ -1565,6 +1565,80 @@
                     </div>
                     @endif
                 </form>
+
+                {{-- Per-metal GST rates: optional overrides on top of the Default GST Rate above --}}
+                <div id="gst-categories" class="settings-header" style="margin-top:4px;">
+                    <h2 class="settings-title">{{ __('Per-Metal GST Rates') }}</h2>
+                    <p class="settings-desc">{{ __('Optional. Charge a different GST rate for specific metals. Any metal without an override uses the Default GST Rate above.') }}</p>
+                </div>
+
+                @forelse($gstCategories as $cat)
+                    <div class="form-row" style="align-items:flex-end; gap:8px;">
+                        <form method="POST" action="{{ route('settings.gst-categories.update', $cat) }}" data-turbo-frame="_top" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; flex:1;">
+                            @csrf
+                            @method('PATCH')
+                            <div class="field" style="min-width:140px;">
+                                <label class="field-label">{{ __('Label') }}</label>
+                                <input type="text" name="name" value="{{ $cat->name }}" class="field-input" maxlength="80" required>
+                            </div>
+                            <div class="field" style="min-width:120px;">
+                                <label class="field-label">{{ __('Metal') }}</label>
+                                <select name="metal_type" class="field-input">
+                                    <option value="">{{ __('All / Default') }}</option>
+                                    @foreach($gstEnabledMetals as $m)
+                                        <option value="{{ $m }}" @selected($cat->metal_type === $m)>{{ ucfirst($m) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="field" style="min-width:90px;">
+                                <label class="field-label">{{ __('GST %') }}</label>
+                                <input type="number" name="rate_pct" value="{{ rtrim(rtrim((string) $cat->rate_pct, '0'), '.') }}" class="field-input" step="0.01" min="0" max="99.99" required>
+                            </div>
+                            <label class="field-label" style="display:flex; gap:4px; align-items:center; white-space:nowrap; margin-bottom:8px;">
+                                <input type="checkbox" name="is_default" value="1" @checked($cat->is_default)> {{ __('Default') }}
+                            </label>
+                            @if($canEditSettings)
+                                <button type="submit" class="btn btn-primary btn-sm">{{ __('Save') }}</button>
+                            @endif
+                        </form>
+                        @if($canEditSettings)
+                            <form method="POST" action="{{ route('settings.gst-categories.destroy', $cat) }}" data-turbo-frame="_top" onsubmit="return confirm('{{ __('Delete this GST rate?') }}')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger btn-sm">{{ __('Delete') }}</button>
+                            </form>
+                        @endif
+                    </div>
+                @empty
+                    <p class="settings-desc">{{ __('No per-metal overrides yet. All metals use the Default GST Rate.') }}</p>
+                @endforelse
+
+                @if($canEditSettings)
+                    <div class="section-divider"></div>
+                    <form method="POST" action="{{ route('settings.gst-categories.store') }}" data-turbo-frame="_top">
+                        @csrf
+                        <div class="form-row" style="align-items:flex-end; gap:8px;">
+                            <div class="field" style="min-width:140px;">
+                                <label class="field-label">{{ __('Label') }}</label>
+                                <input type="text" name="name" class="field-input" maxlength="80" placeholder="{{ __('e.g. Gold GST') }}" required>
+                            </div>
+                            <div class="field" style="min-width:120px;">
+                                <label class="field-label">{{ __('Metal') }}</label>
+                                <select name="metal_type" class="field-input">
+                                    <option value="">{{ __('All / Default') }}</option>
+                                    @foreach($gstEnabledMetals as $m)
+                                        <option value="{{ $m }}">{{ ucfirst($m) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="field" style="min-width:90px;">
+                                <label class="field-label">{{ __('GST %') }}</label>
+                                <input type="number" name="rate_pct" class="field-input" step="0.01" min="0" max="99.99" placeholder="3.00" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">{{ __('Add GST Rate') }}</button>
+                        </div>
+                    </form>
+                @endif
             @endif
 
             @if($activeTab === 'billing')
