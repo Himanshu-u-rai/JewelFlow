@@ -855,12 +855,13 @@ class ValidateReportTotals extends Command
     {
         $shr = $karigar->shrinkage($shopId, $period);
 
-        // Independent recompute: unaccounted must equal issued − returned − leftover − wastage.
-        $recomputed = round($shr->totalIssued - $shr->totalReturned - $shr->totalLeftover - $shr->totalWastage, 4);
+        // Independent recompute: unaccounted == issued − returned − leftover − wastage − retained.
+        // Retained metal is held by the karigar (an asset), not shrinkage.
+        $recomputed = round($shr->totalIssued - $shr->totalReturned - $shr->totalLeftover - $shr->totalWastage - $shr->totalRetained, 4);
 
         return $this->assert(
             $shopId,
-            'SHR-1 unaccounted == issued − items − leftover − wastage (independent recompute)',
+            'SHR-1 unaccounted == issued − items − leftover − wastage − retained (independent recompute)',
             abs($recomputed - $shr->totalUnaccounted) <= self::TOLERANCE,
             'reported=' . $shr->totalUnaccounted . ' recomputed=' . $recomputed
         );

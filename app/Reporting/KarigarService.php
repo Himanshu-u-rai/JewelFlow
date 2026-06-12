@@ -112,7 +112,10 @@ class KarigarService
         $returnedExpr  = 'COALESCE(jo.returned_fine_weight, 0)';
         $leftoverExpr  = 'COALESCE(jo.leftover_returned_fine_weight, 0)';
         $wastageExpr   = 'COALESCE(jo.actual_wastage_fine, 0)';
-        $unaccExpr     = "($issuedExpr - $returnedExpr - $leftoverExpr - $wastageExpr)";
+        // Retained metal is held BY the karigar (a real asset), not shrinkage —
+        // subtract it so it never shows up as "unaccounted" loss.
+        $retainedExpr  = 'COALESCE(jo.retained_returned_fine_weight, 0)';
+        $unaccExpr     = "($issuedExpr - $returnedExpr - $leftoverExpr - $wastageExpr - $retainedExpr)";
 
         // Per-karigar aggregation.
         $perKarigar = (clone $base)
@@ -124,6 +127,7 @@ class KarigarService
                 DB::raw("SUM($returnedExpr) as returned_fine"),
                 DB::raw("SUM($leftoverExpr) as leftover_fine"),
                 DB::raw("SUM($wastageExpr) as wastage_fine"),
+                DB::raw("SUM($retainedExpr) as retained_fine"),
                 DB::raw("SUM($unaccExpr) as unaccounted_fine")
             )
             ->get();
@@ -142,6 +146,7 @@ class KarigarService
                 'returned_fine'    => round((float) $r->returned_fine, 4),
                 'leftover_fine'    => round((float) $r->leftover_fine, 4),
                 'wastage_fine'     => $wastage,
+                'retained_fine'    => round((float) $r->retained_fine, 4),
                 'wastage_pct'      => $issued > 0 ? round($wastage / $issued * 100, 2) : 0.0,
                 'unaccounted_fine' => round((float) $r->unaccounted_fine, 4),
             ];
@@ -173,6 +178,7 @@ class KarigarService
         $totalReturned  = round((float) $rows->sum('returned_fine'), 4);
         $totalLeftover  = round((float) $rows->sum('leftover_fine'), 4);
         $totalWastage   = round((float) $rows->sum('wastage_fine'), 4);
+        $totalRetained  = round((float) $rows->sum('retained_fine'), 4);
         $totalUnacc     = round((float) $rows->sum('unaccounted_fine'), 4);
 
         return new \App\Reporting\Data\ShrinkageData(
@@ -182,6 +188,7 @@ class KarigarService
             totalReturned: $totalReturned,
             totalLeftover: $totalLeftover,
             totalWastage: $totalWastage,
+            totalRetained: $totalRetained,
             totalUnaccounted: $totalUnacc,
             wastagePct: $totalIssued > 0 ? round($totalWastage / $totalIssued * 100, 2) : 0.0,
             jobCount: (int) $rows->sum('job_count'),

@@ -24,6 +24,7 @@ final class ShrinkageData
         public readonly float $totalReturned,
         public readonly float $totalLeftover,
         public readonly float $totalWastage,
+        public readonly float $totalRetained,    // metal held by karigars (not loss)
         public readonly float $totalUnaccounted,
         public readonly float $wastagePct,       // total wastage as % of total issued
         public readonly int $jobCount,

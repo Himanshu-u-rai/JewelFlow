@@ -12,6 +12,7 @@ use App\Models\JobOrderReceiptItem;
 use App\Models\KarigarPayment;
 use App\Models\MetalLot;
 use App\Models\MetalMovement;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 use App\Services\BusinessIdentifierService;
@@ -323,6 +324,80 @@ class JobOrderService
     }
 
     /**
+     * Credit a karigar's holding lot with retained metal — find-or-create the
+     * one-per-(shop,karigar,metal,purity) holding lot, emit a karigar_retained
+     * movement (to_lot=holding lot) so the lot reconciles via the ledger, and
+     * bump its balance. The partial unique index makes find-or-create race-safe.
+     */
+    private function creditHoldingLot(JobOrder $jobOrder, float $purity, float $fine, int $userId): MetalLot
+    {
+        $shopId    = (int) $jobOrder->shop_id;
+        $karigarId = (int) $jobOrder->karigar_id;
+        $metalType = $jobOrder->metal_type ?? 'gold';
+        $purity    = round($purity, 2);
+
+        $find = fn () => MetalLot::query()
+            ->where('shop_id', $shopId)
+            ->where('karigar_id', $karigarId)
+            ->where('source', MetalLot::SOURCE_KARIGAR_HELD)
+            ->where('metal_type', $metalType)
+            ->where('purity', $purity)
+            ->lockForUpdate()
+            ->first();
+
+        $lot = $find();
+        if (! $lot) {
+            try {
+                $lot = MetalLot::create([
+                    'shop_id'               => $shopId,
+                    'karigar_id'            => $karigarId,
+                    'source'                => MetalLot::SOURCE_KARIGAR_HELD,
+                    'metal_type'            => $metalType,
+                    'purity'                => $purity,
+                    'fine_weight_total'     => 0,
+                    'fine_weight_remaining' => 0,
+                    'cost_per_fine_gram'    => 0,
+                ]);
+            } catch (UniqueConstraintViolationException $e) {
+                $lot = $find(); // a concurrent receive created it first
+            }
+        }
+
+        MetalMovement::record([
+            'shop_id'        => $shopId,
+            'from_lot_id'    => null,
+            'to_lot_id'      => $lot->id,
+            'fine_weight'    => $fine,
+            'type'           => 'karigar_retained',
+            'reference_type' => 'job_order',
+            'reference_id'   => $jobOrder->id,
+            'user_id'        => $userId,
+        ]);
+
+        $lot->fine_weight_remaining = (float) $lot->fine_weight_remaining + $fine;
+        $lot->fine_weight_total     = (float) $lot->fine_weight_total + $fine;
+        $lot->save();
+
+        return $lot;
+    }
+
+    /**
+     * A unique barcode for a manufactured (job-work) item. Unique by
+     * construction (receipt id + per-receipt sequence); a numeric suffix is
+     * appended on the rare chance of a collision.
+     */
+    private function receiptItemBarcode(int $shopId, int $receiptId, int $seq): string
+    {
+        $barcode = 'JOB' . str_pad((string) $receiptId, 6, '0', STR_PAD_LEFT) . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+        $suffix = 1;
+        while (Item::query()->where('shop_id', $shopId)->where('barcode', $barcode)->exists()) {
+            $barcode .= '-' . $suffix++;
+        }
+
+        return $barcode;
+    }
+
+    /**
      * Receive finished jewellery from karigar. Supports partial / multi-receipt.
      */
     public function receive(JobOrder $jobOrder, array $receiptData, int $userId): JobOrderReceipt
@@ -398,7 +473,7 @@ class JobOrderService
 
             $sourceLotId = $jobOrder->issuances()->value('metal_lot_id');
 
-            foreach ($computed as $row) {
+            foreach ($computed as $idx => $row) {
                 $receiptItem = JobOrderReceiptItem::create([
                     'shop_id'              => $jobOrder->shop_id,
                     'job_order_receipt_id' => $receipt->id,
@@ -414,6 +489,7 @@ class JobOrderService
 
                 $item = Item::create([
                     'shop_id'         => $jobOrder->shop_id,
+                    'barcode'         => $this->receiptItemBarcode($jobOrder->shop_id, (int) $receipt->id, $idx + 1),
                     'metal_type'      => $metalType,
                     'category'        => $row['description'],
                     'gross_weight'    => $row['gross_weight'],
@@ -441,8 +517,30 @@ class JobOrderService
                 $receiptItem->save();
             }
 
+            $newReturnedFine = (float) $jobOrder->returned_fine_weight + $totalFine;
+
+            // Operator-declared retained metal (the karigar keeps it). Validated
+            // against the gram identity, then credited to the karigar's holding
+            // lot so it persists past completion and stays consumable.
+            $retained = (float) ($receiptData['retained_fine_weight'] ?? 0);
+            if ($retained < 0) {
+                throw new LogicException('Retained metal cannot be negative.');
+            }
+            if ($retained > 0) {
+                $accounted = $newReturnedFine
+                    + (float) $jobOrder->leftover_returned_fine_weight
+                    + (float) $jobOrder->retained_returned_fine_weight
+                    + $retained;
+                if ($accounted > (float) $jobOrder->issued_fine_weight + self::TOLERANCE_FINE_GRAMS) {
+                    throw new LogicException('Returned + leftover + retained exceeds the issued metal.');
+                }
+
+                $this->creditHoldingLot($jobOrder, (float) $jobOrder->purity, $retained, $userId);
+                $jobOrder->retained_returned_fine_weight = (float) $jobOrder->retained_returned_fine_weight + $retained;
+            }
+
             $jobOrder->returned_gross_weight = (float) $jobOrder->returned_gross_weight + $totalGross;
-            $jobOrder->returned_fine_weight  = (float) $jobOrder->returned_fine_weight  + $totalFine;
+            $jobOrder->returned_fine_weight  = $newReturnedFine;
             $this->refreshReconciliation($jobOrder);
             $jobOrder->save();
 
@@ -590,8 +688,10 @@ class JobOrderService
         $issued         = (float) $jobOrder->issued_fine_weight;
         $returned       = (float) $jobOrder->returned_fine_weight;
         $leftover       = (float) $jobOrder->leftover_returned_fine_weight;
+        // 4th sink: metal the karigar legitimately retained (held, not lost).
+        $retained       = (float) $jobOrder->retained_returned_fine_weight;
         $allowedWastage = $issued * (float) $jobOrder->allowed_wastage_percent / 100;
-        $actualWastage  = $issued - $returned - $leftover;
+        $actualWastage  = $issued - $returned - $leftover - $retained;
 
         $flags = [];
 
@@ -601,15 +701,17 @@ class JobOrderService
         if ($actualWastage > $allowedWastage + self::TOLERANCE_FINE_GRAMS) {
             $flags[] = JobOrder::FLAG_EXCESS_WASTAGE;
         }
-        if ($returned + $leftover + $allowedWastage + self::TOLERANCE_FINE_GRAMS < $issued && $returned > 0) {
+        if ($returned + $leftover + $retained + $allowedWastage + self::TOLERANCE_FINE_GRAMS < $issued && $returned > 0) {
             $flags[] = JobOrder::FLAG_SHORT_RETURN;
         }
 
         $jobOrder->actual_wastage_fine = max(0.0, $actualWastage);
         $jobOrder->discrepancy_flags   = $flags ?: null;
 
+        // Retained metal counts toward fulfilment — it is accounted (with the
+        // karigar), so a job that legitimately left metal out still completes.
         $expectedReturn  = (float) $jobOrder->expected_return_fine_weight;
-        $isFulfilled     = ($returned + $leftover + self::TOLERANCE_FINE_GRAMS) >= $expectedReturn;
+        $isFulfilled     = ($returned + $leftover + $retained + self::TOLERANCE_FINE_GRAMS) >= $expectedReturn;
         $hasCriticalFlags = in_array(JobOrder::FLAG_EXCESS_WASTAGE, $flags, true)
             || in_array(JobOrder::FLAG_SHORT_RETURN, $flags, true);
 
