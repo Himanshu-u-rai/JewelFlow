@@ -69,6 +69,22 @@ class Repair extends Model
     ];
 
     /**
+     * purity_label is a derived, metal-aware display string (karat suffix for
+     * gold, plain fineness otherwise). Appended so every serialized repair
+     * (index/show/store) carries it — mobile renders it verbatim and never has
+     * to reimplement the karat-vs-millesimal formatting.
+     */
+    protected $appends = ['purity_label'];
+
+    /** Display labels for each metal type. */
+    public const METAL_LABELS = [
+        'gold'     => 'Gold',
+        'silver'   => 'Silver',
+        'platinum' => 'Platinum',
+        'other'    => 'Other',
+    ];
+
+    /**
      * Upper bound for a valid purity value given a metal type. Gold is karat
      * based (≤24); silver/platinum are fineness based (≤999). Used by both the
      * web and mobile controllers so the rule lives in one place. Unknown/other
@@ -77,6 +93,44 @@ class Repair extends Model
     public static function maxPurityFor(?string $metalType): float
     {
         return $metalType === 'gold' ? 24 : 999;
+    }
+
+    /** The unit purity is expressed in for a metal: karat for gold, millesimal
+     *  fineness for silver/platinum, null for "other" (free entry / N-A). */
+    public static function purityUnitFor(string $metalType): ?string
+    {
+        return match ($metalType) {
+            'gold'              => 'karat',
+            'silver', 'platinum' => 'millesimal',
+            default            => null,
+        };
+    }
+
+    /**
+     * Consolidated, server-driven metal catalogue for the mobile picker. Each
+     * entry carries value, label, max_purity (== maxPurityFor(), numeric so the
+     * client cap matches the server cap exactly), purity_unit, and the string
+     * purity presets. Single source of truth for GET /repairs/options.
+     *
+     * @return array<int, array{value:string,label:string,max_purity:float,purity_unit:?string,purities:array}>
+     */
+    public static function metalsCatalog(): array
+    {
+        return array_map(static function (string $metal): array {
+            return [
+                'value'       => $metal,
+                'label'       => self::METAL_LABELS[$metal] ?? ucfirst($metal),
+                'max_purity'  => self::maxPurityFor($metal),
+                'purity_unit' => self::purityUnitFor($metal),
+                'purities'    => self::PURITY_OPTIONS[$metal] ?? [],
+            ];
+        }, self::METAL_TYPES);
+    }
+
+    /** Accessor backing the appended `purity_label` attribute. */
+    public function getPurityLabelAttribute(): ?string
+    {
+        return $this->purityLabel();
     }
 
     /**

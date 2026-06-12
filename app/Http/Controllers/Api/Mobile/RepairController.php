@@ -54,9 +54,8 @@ class RepairController extends Controller
     public function options(): JsonResponse
     {
         return response()->json([
-            'metal_types'    => Repair::METAL_TYPES,
-            'default_metal'  => Repair::DEFAULT_METAL_TYPE,
-            'purity_options' => Repair::PURITY_OPTIONS,
+            'default_metal' => Repair::DEFAULT_METAL_TYPE,
+            'metals'        => Repair::metalsCatalog(),
         ]);
     }
 
@@ -77,6 +76,13 @@ class RepairController extends Controller
         // (which send only purity on a gold karat scale) keep working unchanged.
         $metalType = $request->input('metal_type', Repair::DEFAULT_METAL_TYPE);
 
+        // Purity is required for gold/silver/platinum (with a metal-aware cap),
+        // but optional for "other" — imitation/mixed pieces where purity is
+        // meaningless. Forcing it there would be a 422 trap.
+        $purityRule = $metalType === 'other'
+            ? 'nullable|numeric|min:1|max:' . Repair::maxPurityFor($metalType)
+            : 'required|numeric|min:1|max:' . Repair::maxPurityFor($metalType);
+
         $validated = $request->validate([
             'customer_id' => [
                 'required',
@@ -87,7 +93,7 @@ class RepairController extends Controller
             'due_date' => 'nullable|date',
             'metal_type' => ['nullable', Rule::in(Repair::METAL_TYPES)],
             'gross_weight' => 'required|numeric|min:0.001',
-            'purity' => 'required|numeric|min:1|max:' . Repair::maxPurityFor($metalType),
+            'purity' => $purityRule,
             'estimated_cost' => 'required|numeric|min:0',
             'image_base64' => 'nullable|string',
         ]);
@@ -107,7 +113,7 @@ class RepairController extends Controller
             'due_date' => $validated['due_date'] ?? null,
             'metal_type' => $validated['metal_type'] ?? Repair::DEFAULT_METAL_TYPE,
             'gross_weight' => $validated['gross_weight'],
-            'purity' => $validated['purity'],
+            'purity' => $validated['purity'] ?? null,
             'estimated_cost' => $validated['estimated_cost'],
             'status' => 'received',
         ]);
@@ -129,6 +135,9 @@ class RepairController extends Controller
 
         $resolvedImagePath = $repair->resolveImagePath();
 
+        // Existing top-level fields are kept for back-compat; `repair` carries the
+        // full serialized payload (incl. metal_type + purity_label) so the 201 is
+        // consistent with index/show.
         return response()->json([
             'id' => $repair->id,
             'repair_number' => $repair->repair_number,
@@ -137,6 +146,7 @@ class RepairController extends Controller
             'image_path' => $resolvedImagePath,
             'image_url' => $this->repairImageUrl($resolvedImagePath),
             'message' => 'Repair created successfully.',
+            'repair' => $this->serializeRepair($repair),
         ], 201);
     }
 
