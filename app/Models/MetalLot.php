@@ -12,9 +12,12 @@ class MetalLot extends Model
 
     public const SOURCE_OLD_GOLD_WEEKLY   = 'old_gold_weekly';
     public const SOURCE_OLD_SILVER_WEEKLY = 'old_silver_weekly';
+    /** A per-karigar holding lot — metal physically with a karigar, not in the vault. */
+    public const SOURCE_KARIGAR_HELD      = 'karigar_held';
 
     protected $fillable = [
         'vendor_id',
+        'karigar_id',
         'metal_type',
         'source',
         'purity',
@@ -32,6 +35,23 @@ class MetalLot extends Model
     public function vendor()
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    public function karigar()
+    {
+        return $this->belongsTo(Karigar::class);
+    }
+
+    /** Holding lots only — metal physically retained by a karigar. */
+    public function scopeKarigarHeld($query)
+    {
+        return $query->where('source', self::SOURCE_KARIGAR_HELD);
+    }
+
+    /** Everything physically in the vault (excludes karigar-held metal). */
+    public function scopeInVault($query)
+    {
+        return $query->where('source', '<>', self::SOURCE_KARIGAR_HELD);
     }
 
     protected $casts = [

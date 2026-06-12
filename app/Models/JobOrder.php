@@ -27,11 +27,18 @@ class JobOrder extends Model
     public const FLAG_EXCESS_RETURN = 'EXCESS_RETURN';
     public const FLAG_INVOICE_MISMATCH = 'INVOICE_MISMATCH';
 
+    /** Metal-source leg types (rows in job_order_sources). */
+    public const SOURCE_VAULT            = 'vault';
+    public const SOURCE_KARIGAR_BALANCE  = 'karigar_held';
+    public const SOURCE_CUSTOMER_SUPPLIED = 'customer_advance';
+
     protected $fillable = [
         'shop_id',
         'karigar_id',
         'job_order_number',
         'challan_number',
+        'job_type',
+        'source_item_id',
         'metal_type',
         'purity',
         'issued_gross_weight',
@@ -46,6 +53,7 @@ class JobOrder extends Model
         'returned_fine_weight',
         'leftover_returned_fine_weight',
         'actual_wastage_fine',
+        'retained_returned_fine_weight',
         'discrepancy_flags',
         'discrepancy_acknowledged',
         'notes',
@@ -65,6 +73,7 @@ class JobOrder extends Model
         'returned_fine_weight' => 'decimal:6',
         'leftover_returned_fine_weight' => 'decimal:6',
         'actual_wastage_fine' => 'decimal:6',
+        'retained_returned_fine_weight' => 'decimal:6',
         'issue_date' => 'date',
         'expected_return_date' => 'date',
         'completed_at' => 'datetime',
@@ -89,6 +98,41 @@ class JobOrder extends Model
     public function issuances()
     {
         return $this->hasMany(JobOrderIssuance::class);
+    }
+
+    /** The authoritative set of metal sources this job draws from (0..N legs). */
+    public function sources()
+    {
+        return $this->hasMany(JobOrderSource::class);
+    }
+
+    /**
+     * Derived metal-source label — a PROJECTION of the source set, never stored
+     * (persisting it would be a denormalisation that can drift from the set).
+     *
+     *   ∅ legs                  → 'none'   (labor-only)
+     *   all legs same type      → that type
+     *   legs span ≥2 types      → 'mixed'
+     *
+     * Legacy fallback: jobs created before job_order_sources existed have no
+     * source legs but do have vault JobOrderIssuance rows — those are reported
+     * as 'vault' so the label is correct without backfilling historical jobs.
+     */
+    public function getMetalSourceAttribute(): string
+    {
+        $types = ($this->relationLoaded('sources') ? $this->sources : $this->sources()->get())
+            ->pluck('source_type')->unique();
+
+        if ($types->isNotEmpty()) {
+            return $types->count() === 1 ? (string) $types->first() : 'mixed';
+        }
+
+        // No source legs: legacy vault issuance, or genuinely labor-only.
+        $hasLegacyIssuance = $this->relationLoaded('issuances')
+            ? $this->issuances->isNotEmpty()
+            : $this->issuances()->exists();
+
+        return $hasLegacyIssuance ? self::SOURCE_VAULT : 'none';
     }
 
     public function receipts()
