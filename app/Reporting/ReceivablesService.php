@@ -282,8 +282,12 @@ class ReceivablesService
             ->where('type', 'old_metal_in')
             ->sum('fine_gold'), 4);
 
+        // Physical on-hand excludes karigar_held lots (with a karigar, not in the
+        // vault) so the liability-coverage check (liability <= on-hand) stays
+        // honest. (No-op until held lots exist.)
         $vaultOnHand = round((float) DB::table('metal_lots')
             ->where('shop_id', $shopId)
+            ->where('source', '<>', 'karigar_held')
             ->sum('fine_weight_remaining'), 4);
 
         return new MetalLiabilityData(

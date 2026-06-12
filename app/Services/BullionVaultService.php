@@ -84,7 +84,7 @@ class BullionVaultService
     {
         $lots = MetalLot::query()
             ->where('shop_id', $shopId)
-            ->get(['id', 'metal_type', 'purity', 'fine_weight_remaining']);
+            ->get(['id', 'metal_type', 'purity', 'fine_weight_remaining', 'source']);
 
         // Key by (metal_type, purity) so different metals at the same purity
         // are NEVER merged. Merging gold and silver that happen to share a
@@ -93,16 +93,20 @@ class BullionVaultService
         // group under an 'unknown' bucket rather than colliding with a real metal.
         $keyFor = fn ($metalType, $purity) => ($metalType ?? 'unknown') . '|' . (string) (float) $purity;
 
+        // karigar_held lots are physically WITH a karigar, not in the vault, so
+        // they feed with_karigar_fine — never in_vault_fine. Every other lot is
+        // physical vault stock. (No-op until held lots exist.)
         $byKey = $lots->groupBy(fn ($l) => $keyFor($l->metal_type, $l->purity))
             ->map(function ($group) {
-                $first = $group->first();
+                $first    = $group->first();
+                $vaultLots = $group->where('source', '<>', 'karigar_held');
                 return [
                     'metal_type'        => $first->metal_type,
                     'purity'            => (float) $first->purity,
-                    'in_vault_fine'     => (float) $group->sum('fine_weight_remaining'),
-                    'with_karigar_fine' => 0.0,
+                    'in_vault_fine'     => (float) $vaultLots->sum('fine_weight_remaining'),
+                    'with_karigar_fine' => (float) $group->where('source', 'karigar_held')->sum('fine_weight_remaining'),
                     'total_fine'        => 0.0,
-                    'lots_count'        => $group->count(),
+                    'lots_count'        => $vaultLots->count(),
                 ];
             });
 
@@ -162,7 +166,7 @@ class BullionVaultService
             $query->where('karigar_id', $karigarId);
         }
 
-        return (float) $query->get()->sum(function ($j) {
+        $openOutstanding = (float) $query->get()->sum(function ($j) {
             return max(
                 0.0,
                 (float) $j->issued_fine_weight
@@ -171,6 +175,19 @@ class BullionVaultService
                     - (float) $j->actual_wastage_fine
             );
         });
+
+        // Plus any metal physically retained by the karigar (karigar_held lots),
+        // which persists across job completion. Disjoint from open-job
+        // outstanding above. (No-op until held lots exist.)
+        $heldQuery = MetalLot::query()
+            ->where('shop_id', $shopId)
+            ->where('source', 'karigar_held');
+
+        if ($karigarId) {
+            $heldQuery->where('karigar_id', $karigarId);
+        }
+
+        return $openOutstanding + (float) $heldQuery->sum('fine_weight_remaining');
     }
 
     public function recentLedger(int $shopId, int $limit = 50)

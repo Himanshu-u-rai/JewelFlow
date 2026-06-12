@@ -113,6 +113,23 @@ class ReconcileKarigarBalances extends Command
             $metal = (string) $row->metal_type;
             $withKarigarByMetal[$metal] = ($withKarigarByMetal[$metal] ?? 0.0) + (float) $row->outstanding_fine;
         }
+
+        // Fold in metal physically retained by karigars (karigar_held lots), which
+        // persists past job completion and is NOT captured by open-job outstanding
+        // above. Keeps the Section D cross-check (vault + with-karigar = total)
+        // exact. (No-op until held lots exist.)
+        $heldByMetal = DB::select("
+            SELECT COALESCE(metal_type, 'unknown') AS metal_type,
+                   COALESCE(SUM(fine_weight_remaining), 0) AS held_fine
+            FROM metal_lots
+            WHERE shop_id = ? AND source = 'karigar_held'
+            GROUP BY metal_type
+        ", [$shopId]);
+        foreach ($heldByMetal as $row) {
+            $metal = (string) $row->metal_type;
+            $withKarigarByMetal[$metal] = ($withKarigarByMetal[$metal] ?? 0.0) + (float) $row->held_fine;
+        }
+
         $totalWithKarigar = array_sum($withKarigarByMetal);
 
         // ── Section B: Overdue jobs ──────────────────────────────────────────
@@ -196,7 +213,7 @@ class ReconcileKarigarBalances extends Command
             SELECT COALESCE(metal_type, 'unknown') AS metal_type,
                    COALESCE(SUM(fine_weight_remaining), 0) AS vault_fine
             FROM metal_lots
-            WHERE shop_id = ?
+            WHERE shop_id = ? AND source <> 'karigar_held'
             GROUP BY metal_type
             ORDER BY metal_type
         ", [$shopId]);
