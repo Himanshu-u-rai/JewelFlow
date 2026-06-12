@@ -208,6 +208,52 @@ class CatalogShareService
         )));
     }
 
+    /**
+     * Resolve a small (512px) thumbnail URL for an item's PRIMARY image, for
+     * list/grid contexts where the full 1600px image is wasteful.
+     *
+     * The mobile upload pipeline (UploadIntentService) stores originals at
+     * uploads/originals/{shopId}/{token}.{ext} and a sibling 512px thumbnail at
+     * uploads/thumbnails/{shopId}/{token}.webp. When the primary image is such an
+     * original AND its thumbnail exists on disk, we return the thumbnail URL.
+     * Otherwise we fall back to the full-size image URL so the field is never
+     * broken (legacy items, web uploads, items with only a raw path). Returns
+     * null only when the item has no image at all.
+     */
+    public function resolveThumbnailUrl(Request $request, Item $item): ?string
+    {
+        if (empty($item->image)) {
+            return null;
+        }
+
+        $thumbPath = $this->thumbnailPathFor((string) $item->image);
+
+        if ($thumbPath !== null && Storage::disk('public')->exists($thumbPath)) {
+            return $this->buildImageUrl($request, $thumbPath);
+        }
+
+        // No thumbnail — fall back to the full-size primary image.
+        return $this->buildImageUrl($request, (string) $item->image);
+    }
+
+    /**
+     * Derive the sibling thumbnail path for an uploaded original, or null when
+     * the raw image isn't an upload-pipeline original we can map.
+     */
+    private function thumbnailPathFor(string $rawImage): ?string
+    {
+        $rawImage = preg_replace('/^storage\//', '', ltrim(trim($rawImage), '/'));
+
+        if ($rawImage === null || ! Str::startsWith($rawImage, 'uploads/originals/')) {
+            return null;
+        }
+
+        $thumb = Str::replaceFirst('uploads/originals/', 'uploads/thumbnails/', $rawImage);
+
+        // Thumbnails are always stored as .webp regardless of the original's ext.
+        return preg_replace('/\.[A-Za-z0-9]+$/', '.webp', $thumb);
+    }
+
     private function buildImageUrl(Request $request, string $rawImage): ?string
     {
         $rawImage = trim($rawImage);

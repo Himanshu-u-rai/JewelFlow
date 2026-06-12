@@ -344,6 +344,10 @@ class ItemController extends Controller
             // Additive: full gallery as resolved absolute URLs (primary first,
             // de-duped, [] when no image). `image` above is unchanged.
             'images' => $this->catalog->resolveImageUrls($request, $item),
+            // Additive: 512px thumbnail of the PRIMARY image for list/grid tiles.
+            // Falls back to the full-size `image` URL when no thumbnail exists,
+            // null only when the item has no image. `image`/`images` unchanged.
+            'thumbnail_url' => $this->catalog->resolveThumbnailUrl($request, $item),
             'share_url' => $this->buildProductShareUrl($shop, $token),
             'vendor_id' => $item->vendor_id,
             'karigar_id' => $item->karigar_id,
