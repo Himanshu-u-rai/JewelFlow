@@ -121,7 +121,7 @@ class StockPurchaseController extends Controller
 
             $imagePath = null;
             if ($request->hasFile('invoice_image')) {
-                $imagePath = $request->file('invoice_image')->store('purchases', 'public');
+                $imagePath = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('invoice_image'), 'purchases', 'public');
             }
 
             $purchase = StockPurchase::create([
@@ -336,7 +336,7 @@ class StockPurchaseController extends Controller
                 if ($purchase->invoice_image) {
                     Storage::disk('public')->delete($purchase->invoice_image);
                 }
-                $purchase->invoice_image = $request->file('invoice_image')->store('purchases', 'public');
+                $purchase->invoice_image = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('invoice_image'), 'purchases', 'public');
             }
 
             $purchase->fill([

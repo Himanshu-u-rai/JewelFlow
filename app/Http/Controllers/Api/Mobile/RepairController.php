@@ -349,10 +349,14 @@ class RepairController extends Controller
             ]);
         }
 
-        $path = sprintf('repairs/%d/%s.%s', $shopId, (string) Str::ulid(), $allowedMimes[$mime]);
-        Storage::disk($this->repairImageDisk())->put($path, $imageData);
-
-        return $path;
+        // Optimise to WebP (resize + compress) before storing; falls back to the
+        // original bytes + extension if conversion isn't possible.
+        return app(\App\Services\ImageOptimizer::class)->optimizeAndStoreBinary(
+            $imageData,
+            "repairs/{$shopId}",
+            $this->repairImageDisk(),
+            $allowedMimes[$mime],
+        );
     }
 
     private function repairImageUrl(?string $imagePath): ?string

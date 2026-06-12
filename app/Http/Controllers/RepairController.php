@@ -341,7 +341,7 @@ class RepairController extends Controller
             return null;
         }
 
-        return $request->file('image')->store("repairs/{$shopId}", $this->repairImageDisk());
+        return app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('image'), "repairs/{$shopId}", $this->repairImageDisk());
     }
 
     private function storeRepairImageFromBase64(string $imageBase64, int $shopId): string

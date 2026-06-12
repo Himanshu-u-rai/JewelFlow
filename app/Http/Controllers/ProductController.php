@@ -87,7 +87,7 @@ class ProductController extends Controller
         
         // Handle image upload
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            $validated['image'] = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('image'), 'products', 'public');
         }
         
         $product = \App\Models\Product::create($validated);
@@ -160,7 +160,7 @@ class ProductController extends Controller
             if ($product->image && \Storage::disk('public')->exists($product->image)) {
                 \Storage::disk('public')->delete($product->image);
             }
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            $validated['image'] = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('image'), 'products', 'public');
         }
         
         // Handle image removal

@@ -303,7 +303,7 @@ class SettingsController extends Controller
         }
 
         if ($request->hasFile('logo')) {
-            $newLogoPath = $request->file('logo')->store('shop-logos', 'public');
+            $newLogoPath = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('logo'), 'shop-logos', 'public');
             $shop->update(['logo_path' => $newLogoPath]);
 
             if (!empty($oldLogoPath)) {
@@ -383,8 +383,8 @@ class SettingsController extends Controller
             if ($billing->digital_signature_path) {
                 Storage::disk('public')->delete($billing->digital_signature_path);
             }
-            $validated['digital_signature_path'] = $request->file('digital_signature')
-                ->store('signatures', 'public');
+            $validated['digital_signature_path'] = app(\App\Services\ImageOptimizer::class)
+                ->optimizeAndStore($request->file('digital_signature'), 'signatures', 'public');
         } elseif ($request->boolean('remove_digital_signature') && $billing->digital_signature_path) {
             Storage::disk('public')->delete($billing->digital_signature_path);
             $validated['digital_signature_path'] = null;

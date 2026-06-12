@@ -277,7 +277,7 @@ class ItemController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('items', 'public');
+            $imagePath = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('image'), 'items', 'public');
         }
 
         $payload = array_merge($validated, [
@@ -489,7 +489,7 @@ class ItemController extends Controller
             if ($item->image && Storage::disk('public')->exists($item->image)) {
                 Storage::disk('public')->delete($item->image);
             }
-            $imagePath = $request->file('image')->store('items', 'public');
+            $imagePath = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('image'), 'items', 'public');
         } elseif ($request->boolean('remove_image')) {
             if ($item->image && Storage::disk('public')->exists($item->image)) {
                 Storage::disk('public')->delete($item->image);
@@ -694,9 +694,11 @@ class ItemController extends Controller
 
     private function storeUploadedItemGallery(array $files): array
     {
+        $optimizer = app(\App\Services\ImageOptimizer::class);
+
         return collect($files)
             ->take(self::MAX_ITEM_GALLERY_IMAGES)
-            ->map(fn (\Illuminate\Http\UploadedFile $file) => $file->store('items', 'public'))
+            ->map(fn (\Illuminate\Http\UploadedFile $file) => $optimizer->optimizeAndStore($file, 'items', 'public'))
             ->values()
             ->all();
     }

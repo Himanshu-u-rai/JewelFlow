@@ -54,7 +54,7 @@ class CatalogWebsiteSettingsController extends Controller
             if ($settings->hero_image_path) {
                 Storage::disk('public')->delete($settings->hero_image_path);
             }
-            $validated['hero_image_path'] = $request->file('hero_image')->store('catalog-heroes', 'public');
+            $validated['hero_image_path'] = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('hero_image'), 'catalog-heroes', 'public');
         } elseif ($request->boolean('remove_hero_image') && $settings->hero_image_path) {
             Storage::disk('public')->delete($settings->hero_image_path);
             $validated['hero_image_path'] = null;
