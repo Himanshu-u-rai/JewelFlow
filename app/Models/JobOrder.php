@@ -27,10 +27,16 @@ class JobOrder extends Model
     public const FLAG_EXCESS_RETURN = 'EXCESS_RETURN';
     public const FLAG_INVOICE_MISMATCH = 'INVOICE_MISMATCH';
 
-    /** Metal-source leg types (rows in job_order_sources). */
-    public const SOURCE_VAULT            = 'vault';
-    public const SOURCE_KARIGAR_BALANCE  = 'karigar_held';
-    public const SOURCE_CUSTOMER_SUPPLIED = 'customer_advance';
+    /**
+     * Derived metal-source LABEL values (projection of the source set — see
+     * getMetalSourceAttribute). 'mixed' = legs span ≥2 leg types; 'none' =
+     * labor-only. The three single-source labels share the leg-type strings.
+     */
+    public const METAL_SOURCE_NONE              = 'none';
+    public const METAL_SOURCE_VAULT             = 'vault';
+    public const METAL_SOURCE_KARIGAR_BALANCE   = 'karigar_held';
+    public const METAL_SOURCE_CUSTOMER_SUPPLIED = 'customer_advance';
+    public const METAL_SOURCE_MIXED             = 'mixed';
 
     protected $fillable = [
         'shop_id',
@@ -132,7 +138,7 @@ class JobOrder extends Model
             ? $this->issuances->isNotEmpty()
             : $this->issuances()->exists();
 
-        return $hasLegacyIssuance ? self::SOURCE_VAULT : 'none';
+        return $hasLegacyIssuance ? self::METAL_SOURCE_VAULT : self::METAL_SOURCE_NONE;
     }
 
     public function receipts()

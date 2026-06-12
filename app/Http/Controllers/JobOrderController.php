@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\JobOrder;
+use App\Models\JobOrderSource;
 use App\Models\Karigar;
 use App\Models\MetalLot;
 use App\Models\Shop;
@@ -67,52 +68,80 @@ class JobOrderController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'karigar_id' => 'required|integer',
-            'metal_type' => 'required|in:gold,silver',
-            'purity' => [
-                'required', 'numeric', 'min:1',
-                function ($attribute, $value, $fail) use ($request) {
-                    $max = $request->input('metal_type') === 'silver' ? 1000 : 24;
-                    if ((float) $value > $max) {
-                        $fail($request->input('metal_type') === 'silver'
-                            ? 'Silver purity (fineness) cannot exceed 1000.'
-                            : 'Gold purity (karats) cannot exceed 24.');
-                    }
-                },
-            ],
-            'allowed_wastage_percent' => 'required|numeric|min:0|max:25',
-            'issue_date' => 'required|date',
-            'expected_return_date' => 'nullable|date|after_or_equal:issue_date',
-            'notes' => 'nullable|string',
-            'issuances' => 'required|array|min:1',
-            'issuances.*.metal_lot_id' => 'required|integer',
-            'issuances.*.gross_weight' => 'required|numeric|min:0',
-            'issuances.*.fine_weight' => 'required|numeric|min:0.0001',
-            'issuances.*.purity' => [
-                'required', 'numeric', 'min:1',
-                function ($attribute, $value, $fail) use ($request) {
-                    $max = $request->input('metal_type') === 'silver' ? 1000 : 24;
-                    if ((float) $value > $max) {
-                        $fail($request->input('metal_type') === 'silver'
-                            ? 'Silver purity (fineness) cannot exceed 1000.'
-                            : 'Gold purity (karats) cannot exceed 24.');
-                    }
-                },
-            ],
-            'advance_amount'               => 'nullable|numeric|min:0',
-            'advance_mode'                 => 'nullable|string|max:20',
-            'advance_payment_method_id'    => ['nullable', \Illuminate\Validation\Rule::exists('shop_payment_methods', 'id')->where('shop_id', auth()->user()->shop_id)],
-        ]);
+        $shopId      = auth()->user()->shop_id;
+        $metalSource = (string) $request->input('metal_source', JobOrder::METAL_SOURCE_VAULT);
+        $isLaborOnly = $metalSource === JobOrder::METAL_SOURCE_NONE;
+
+        // Karat (gold ≤24) / fineness (silver ≤1000) cap, shared by the job and
+        // each source leg.
+        $purityCap = function ($attribute, $value, $fail) use ($request) {
+            $max = $request->input('metal_type') === 'silver' ? 1000 : 24;
+            if ((float) $value > $max) {
+                $fail($request->input('metal_type') === 'silver'
+                    ? 'Silver purity (fineness) cannot exceed 1000.'
+                    : 'Gold purity (karats) cannot exceed 24.');
+            }
+        };
+
+        $rules = [
+            'karigar_id'                => 'required|integer',
+            'job_type'                  => ['nullable', \Illuminate\Validation\Rule::in(['manufacture', 'repair', 'rework'])],
+            'source_item_id'            => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('items', 'id')->where('shop_id', $shopId)],
+            'metal_type'                => 'required|in:gold,silver',
+            'purity'                    => ['required', 'numeric', 'min:1', $purityCap],
+            'metal_source'              => ['nullable', \Illuminate\Validation\Rule::in([
+                JobOrder::METAL_SOURCE_NONE, JobOrder::METAL_SOURCE_VAULT,
+                JobOrder::METAL_SOURCE_KARIGAR_BALANCE, JobOrder::METAL_SOURCE_CUSTOMER_SUPPLIED,
+                JobOrder::METAL_SOURCE_MIXED,
+            ])],
+            'allowed_wastage_percent'   => 'required|numeric|min:0|max:25',
+            'issue_date'                => 'required|date',
+            'expected_return_date'      => 'nullable|date|after_or_equal:issue_date',
+            'notes'                     => 'nullable|string',
+            'advance_amount'            => 'nullable|numeric|min:0',
+            'advance_mode'              => 'nullable|string|max:20',
+            'advance_payment_method_id' => ['nullable', \Illuminate\Validation\Rule::exists('shop_payment_methods', 'id')->where('shop_id', $shopId)],
+        ];
+
+        // Labor-only (none) needs no metal legs. Otherwise accept either the new
+        // source SET ('sources') or the legacy 'issuances' (vault-only) input.
+        $usesSourceSet = ! $isLaborOnly && $request->has('sources');
+        if ($usesSourceSet) {
+            $rules['sources']                = 'required|array|min:1';
+            $rules['sources.*.source_type']  = ['required', \Illuminate\Validation\Rule::in([
+                JobOrderSource::TYPE_VAULT, JobOrderSource::TYPE_KARIGAR_HELD, JobOrderSource::TYPE_CUSTOMER_ADVANCE,
+            ])];
+            $rules['sources.*.fine_weight']  = 'required|numeric|min:0.0001';
+            $rules['sources.*.gross_weight'] = 'nullable|numeric|min:0';
+            $rules['sources.*.purity']       = ['nullable', 'numeric', 'min:1', $purityCap];
+            $rules['sources.*.metal_lot_id'] = ['nullable', 'integer', \Illuminate\Validation\Rule::exists('metal_lots', 'id')->where('shop_id', $shopId)];
+            $rules['sources.*.customer_id']  = ['nullable', 'integer', \Illuminate\Validation\Rule::exists('customers', 'id')->where('shop_id', $shopId)];
+        } elseif (! $isLaborOnly) {
+            $rules['issuances']                = 'required|array|min:1';
+            $rules['issuances.*.metal_lot_id'] = ['required', 'integer', \Illuminate\Validation\Rule::exists('metal_lots', 'id')->where('shop_id', $shopId)];
+            $rules['issuances.*.gross_weight'] = 'required|numeric|min:0';
+            $rules['issuances.*.fine_weight']  = 'required|numeric|min:0.0001';
+            $rules['issuances.*.purity']       = ['required', 'numeric', 'min:1', $purityCap];
+        }
+
+        $validated = $request->validate($rules);
 
         $karigar = Karigar::query()->where('id', $validated['karigar_id'])->first();
-        abort_unless($karigar && $karigar->shop_id === auth()->user()->shop_id && $karigar->is_active, 422, 'Invalid karigar.');
+        abort_unless($karigar && $karigar->shop_id === $shopId && $karigar->is_active, 422, 'Invalid karigar.');
 
-        $jobOrder = $this->service->issue(
-            $validated,
-            auth()->user()->shop_id,
-            (int) auth()->id()
-        );
+        $data = $validated;
+        if ($isLaborOnly) {
+            $data['sources'] = []; // labor-only: no legs
+        } elseif ($usesSourceSet) {
+            $data['sources'] = $validated['sources'] ?? [];
+        }
+        // else: legacy — leave 'issuances'; the service maps them to vault legs.
+
+        try {
+            $jobOrder = $this->service->issue($data, $shopId, (int) auth()->id());
+        } catch (\LogicException $e) {
+            return back()->withInput()->withErrors(['metal_source' => $e->getMessage()]);
+        }
 
         return redirect()->route('job-orders.show', $jobOrder)
             ->with('success', "Job Order {$jobOrder->job_order_number} issued. Challan: {$jobOrder->challan_number}");
@@ -180,6 +209,8 @@ class JobOrderController extends Controller
         $validated = $request->validate([
             'receipt_date' => 'required|date',
             'notes' => 'nullable|string',
+            // Metal the karigar keeps from this job (credited to their holding lot).
+            'retained_fine_weight' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string|max:255',
             'items.*.hsn_code' => 'nullable|string|max:20',
@@ -190,10 +221,67 @@ class JobOrderController extends Controller
             'items.*.purity' => 'required|numeric|min:1|max:1000',
         ]);
 
-        $receipt = $this->service->receive($jobOrder, $validated, (int) auth()->id());
+        try {
+            $receipt = $this->service->receive($jobOrder, $validated, (int) auth()->id());
+        } catch (\LogicException $e) {
+            return back()->withInput()->withErrors(['retained_fine_weight' => $e->getMessage()]);
+        }
 
         return redirect()->route('job-orders.show', $jobOrder)
             ->with('success', "Receipt {$receipt->receipt_number} recorded. {$receipt->total_pieces} pieces, {$receipt->total_net_weight}g net.");
+    }
+
+    /**
+     * Reassign an open job to a different karigar (metal moves with the job).
+     */
+    public function reassign(Request $request, JobOrder $jobOrder)
+    {
+        $this->authorizeShop($jobOrder);
+
+        $validated = $request->validate([
+            'to_karigar_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('karigars', 'id')->where('shop_id', auth()->user()->shop_id)],
+        ]);
+
+        try {
+            $this->service->reassignOpenJob($jobOrder, (int) $validated['to_karigar_id'], (int) auth()->id());
+        } catch (\LogicException $e) {
+            return redirect()->route('job-orders.show', $jobOrder)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('job-orders.show', $jobOrder)
+            ->with('success', 'Job order reassigned to the new karigar.');
+    }
+
+    /**
+     * Move retained (held) metal from one karigar to another.
+     */
+    public function transferBalance(Request $request)
+    {
+        $shopId = auth()->user()->shop_id;
+
+        $validated = $request->validate([
+            'from_karigar_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+            'to_karigar_id'   => ['required', 'integer', 'different:from_karigar_id', \Illuminate\Validation\Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+            'metal_type'      => 'required|in:gold,silver',
+            'purity'          => 'required|numeric|min:1',
+            'fine_weight'     => 'required|numeric|min:0.0001',
+        ]);
+
+        try {
+            $this->service->transferHeldBalance(
+                $shopId,
+                (int) $validated['from_karigar_id'],
+                (int) $validated['to_karigar_id'],
+                $validated['metal_type'],
+                (float) $validated['purity'],
+                (float) $validated['fine_weight'],
+                (int) auth()->id(),
+            );
+        } catch (\LogicException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Held metal transferred between karigars.');
     }
 
     public function leftoverReturn(Request $request, JobOrder $jobOrder)

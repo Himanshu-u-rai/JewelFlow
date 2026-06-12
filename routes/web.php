@@ -402,6 +402,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         Route::post('/job-orders/{jobOrder}/receive', [\App\Http\Controllers\JobOrderController::class, 'storeReceipt'])->middleware('can:job_order.manage')->name('job-orders.receive.store');
         Route::post('/job-orders/{jobOrder}/leftover-return', [\App\Http\Controllers\JobOrderController::class, 'leftoverReturn'])->middleware('can:job_order.manage')->name('job-orders.leftover');
         Route::post('/job-orders/{jobOrder}/acknowledge', [\App\Http\Controllers\JobOrderController::class, 'acknowledge'])->middleware('can:job_order.manage')->name('job-orders.acknowledge');
+        Route::post('/job-orders/{jobOrder}/reassign', [\App\Http\Controllers\JobOrderController::class, 'reassign'])->middleware('can:job_order.manage')->name('job-orders.reassign');
+        Route::post('/karigar-balance/transfer', [\App\Http\Controllers\JobOrderController::class, 'transferBalance'])->middleware('can:job_order.manage')->name('karigar-balance.transfer');
 
         // Karigar Invoices — view to read; manage to mutate.
         Route::get('/karigar-invoices', [\App\Http\Controllers\KarigarInvoiceController::class, 'index'])->middleware('can:karigar_invoice.view')->name('karigar-invoices.index');
