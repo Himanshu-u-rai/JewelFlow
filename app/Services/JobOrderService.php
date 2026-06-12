@@ -329,12 +329,13 @@ class JobOrderService
      * movement (to_lot=holding lot) so the lot reconciles via the ledger, and
      * bump its balance. The partial unique index makes find-or-create race-safe.
      */
-    private function creditHoldingLot(JobOrder $jobOrder, float $purity, float $fine, int $userId): MetalLot
+    /**
+     * Find (locked) or create the one-per-(shop,karigar,metal,purity) holding
+     * lot — no balance change. The partial unique index makes this race-safe.
+     */
+    private function findOrCreateHoldingLot(int $shopId, int $karigarId, string $metalType, float $purity): MetalLot
     {
-        $shopId    = (int) $jobOrder->shop_id;
-        $karigarId = (int) $jobOrder->karigar_id;
-        $metalType = $jobOrder->metal_type ?? 'gold';
-        $purity    = round($purity, 2);
+        $purity = round($purity, 2);
 
         $find = fn () => MetalLot::query()
             ->where('shop_id', $shopId)
@@ -359,9 +360,17 @@ class JobOrderService
                     'cost_per_fine_gram'    => 0,
                 ]);
             } catch (UniqueConstraintViolationException $e) {
-                $lot = $find(); // a concurrent receive created it first
+                $lot = $find(); // a concurrent writer created it first
             }
         }
+
+        return $lot;
+    }
+
+    private function creditHoldingLot(JobOrder $jobOrder, float $purity, float $fine, int $userId): MetalLot
+    {
+        $shopId = (int) $jobOrder->shop_id;
+        $lot = $this->findOrCreateHoldingLot($shopId, (int) $jobOrder->karigar_id, $jobOrder->metal_type ?? 'gold', $purity);
 
         MetalMovement::record([
             'shop_id'        => $shopId,
@@ -379,6 +388,91 @@ class JobOrderService
         $lot->save();
 
         return $lot;
+    }
+
+    /**
+     * Move retained (held) metal from one karigar to another — a real lot→lot
+     * karigar_transfer movement (debit == credit, total conserved). The
+     * metal_lots non-negative CHECK rejects transferring more than is held.
+     * XFER-1.
+     */
+    public function transferHeldBalance(int $shopId, int $fromKarigarId, int $toKarigarId, string $metalType, float $purity, float $fine, int $userId): MetalMovement
+    {
+        if ($fromKarigarId === $toKarigarId) {
+            throw new LogicException('Source and destination karigar must differ.');
+        }
+        if ($fine <= 0) {
+            throw new LogicException('Transfer fine weight must be greater than zero.');
+        }
+
+        return DB::transaction(function () use ($shopId, $fromKarigarId, $toKarigarId, $metalType, $purity, $fine, $userId) {
+            $from = $this->resolveHoldingLot($shopId, $fromKarigarId, $metalType, $purity);
+            $this->assertLotSufficient($from, $fine);
+            $to = $this->findOrCreateHoldingLot($shopId, $toKarigarId, $metalType, $purity);
+
+            $movement = MetalMovement::record([
+                'shop_id'        => $shopId,
+                'from_lot_id'    => $from->id,
+                'to_lot_id'      => $to->id,
+                'fine_weight'    => $fine,
+                'type'           => 'karigar_transfer',
+                'reference_type' => 'metal_lot',
+                'reference_id'   => $from->id,
+                'user_id'        => $userId,
+            ]);
+
+            $from->fine_weight_remaining = (float) $from->fine_weight_remaining - $fine;
+            $from->save();
+            $to->fine_weight_remaining = (float) $to->fine_weight_remaining + $fine;
+            $to->fine_weight_total     = (float) $to->fine_weight_total + $fine;
+            $to->save();
+
+            return $movement;
+        });
+    }
+
+    /**
+     * Reassign an OPEN job from one karigar to another. The issued metal isn't in
+     * a lot (it left the vault on issue) — it's tracked by the job's karigar_id —
+     * so this re-attributes the outstanding balance and records the handoff with a
+     * null/null karigar_transfer movement (touches no lot; total metal conserved).
+     * XFER-1.
+     */
+    public function reassignOpenJob(JobOrder $jobOrder, int $toKarigarId, int $userId): JobOrder
+    {
+        return DB::transaction(function () use ($jobOrder, $toKarigarId, $userId) {
+            $jobOrder = JobOrder::query()->where('id', $jobOrder->id)->lockForUpdate()->firstOrFail();
+
+            if (! $jobOrder->isOpen()) {
+                throw new LogicException('Only open job orders can be reassigned.');
+            }
+            $fromKarigarId = (int) $jobOrder->karigar_id;
+            if ($fromKarigarId === $toKarigarId) {
+                throw new LogicException('Source and destination karigar must differ.');
+            }
+
+            $outstanding = (float) $jobOrder->outstanding_fine;
+            if ($outstanding > self::TOLERANCE_FINE_GRAMS) {
+                // Audit-only handoff: no lot is touched, so vault and total
+                // with-karigar are unchanged — only per-karigar attribution moves.
+                MetalMovement::record([
+                    'shop_id'        => $jobOrder->shop_id,
+                    'from_lot_id'    => null,
+                    'to_lot_id'      => null,
+                    'metal_type'     => $jobOrder->metal_type,
+                    'fine_weight'    => $outstanding,
+                    'type'           => 'karigar_transfer',
+                    'reference_type' => 'job_order',
+                    'reference_id'   => $jobOrder->id,
+                    'user_id'        => $userId,
+                ]);
+            }
+
+            $jobOrder->karigar_id = $toKarigarId;
+            $jobOrder->save();
+
+            return $jobOrder->fresh(['karigar']);
+        });
     }
 
     /**
