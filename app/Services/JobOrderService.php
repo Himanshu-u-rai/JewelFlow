@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\CustomerGoldTransaction;
 use App\Models\Item;
 use App\Models\JobOrder;
 use App\Models\JobOrderIssuance;
+use App\Models\JobOrderSource;
 use App\Models\JobOrderReceipt;
 use App\Models\JobOrderReceiptItem;
 use App\Models\KarigarPayment;
@@ -38,42 +40,20 @@ class JobOrderService
     public function issue(array $data, int $shopId, int $userId): JobOrder
     {
         return DB::transaction(function () use ($data, $shopId, $userId) {
-            $issuances = $data['issuances'] ?? [];
-            if (empty($issuances)) {
-                throw new LogicException('At least one issuance line is required.');
-            }
+            $purity    = (float) ($data['purity'] ?? 0);
+            $metalType = $data['metal_type'] ?? 'gold';
+            $karigarId = (int) $data['karigar_id'];
 
-            $totalGross = 0.0;
-            $totalFine  = 0.0;
-            $purity     = (float) ($data['purity'] ?? 0);
-            $metalType  = $data['metal_type'] ?? 'gold';
+            // Normalise the metal-source SET (empty = labor-only / 'none'), then
+            // lock + validate every leg BEFORE any write (sufficiency, ownership).
+            $legs     = $this->resolveSourceLegs($data);
+            $prepared = array_map(
+                fn ($leg) => $this->prepareSourceLeg($leg, $metalType, $purity, $shopId, $karigarId),
+                $legs
+            );
 
-            $lockedLots = [];
-            foreach ($issuances as $line) {
-                $lotId = (int) ($line['metal_lot_id'] ?? 0);
-                if (! $lotId) {
-                    throw new LogicException('Each issuance line must reference a metal lot.');
-                }
-                // FIX #5: always scope lot lookup to the current shop
-                $lot = MetalLot::query()
-                    ->where('id', $lotId)
-                    ->where('shop_id', $shopId)
-                    ->lockForUpdate()
-                    ->first();
-                if (! $lot) {
-                    throw new LogicException("Metal lot {$lotId} not found in this shop.");
-                }
-                $fine = (float) ($line['fine_weight'] ?? 0);
-                if ($fine <= 0) {
-                    throw new LogicException('Fine weight must be greater than zero.');
-                }
-                if ((float) $lot->fine_weight_remaining + self::TOLERANCE_FINE_GRAMS < $fine) {
-                    throw new LogicException("Lot #{$lot->lot_number} only has " . number_format((float) $lot->fine_weight_remaining, 3) . 'g fine available.');
-                }
-                $lockedLots[$lotId] = $lot;
-                $totalGross += (float) ($line['gross_weight'] ?? 0);
-                $totalFine  += $fine;
-            }
+            $totalGross = (float) array_sum(array_map(fn ($p) => $p['gross'], $prepared));
+            $totalFine  = (float) array_sum(array_map(fn ($p) => $p['fine'], $prepared));
 
             $allowedWastage     = (float) ($data['allowed_wastage_percent'] ?? 0);
             $expectedReturnFine = round($totalFine * (1 - $allowedWastage / 100), 6);
@@ -82,53 +62,27 @@ class JobOrderService
             $challanNumber  = BusinessIdentifierService::nextChallanIdentifier($shopId)['number'];
 
             $jobOrder = JobOrder::create([
-                'shop_id'                    => $shopId,
-                'karigar_id'                 => (int) $data['karigar_id'],
-                'job_order_number'           => $jobOrderNumber,
-                'challan_number'             => $challanNumber,
-                'metal_type'                 => $metalType,
-                'purity'                     => $purity,
-                'issued_gross_weight'        => $totalGross,
-                'issued_fine_weight'         => $totalFine,
-                'expected_return_fine_weight'=> $expectedReturnFine,
-                'allowed_wastage_percent'    => $allowedWastage,
-                'status'                     => JobOrder::STATUS_ISSUED,
-                'issue_date'                 => $data['issue_date'] ?? now()->toDateString(),
-                'expected_return_date'       => $data['expected_return_date'] ?? null,
-                'notes'                      => $data['notes'] ?? null,
-                'created_by_user_id'         => $userId,
+                'shop_id'                     => $shopId,
+                'karigar_id'                  => $karigarId,
+                'job_order_number'            => $jobOrderNumber,
+                'challan_number'              => $challanNumber,
+                'job_type'                    => $data['job_type'] ?? JobOrder::JOB_TYPE_MANUFACTURE,
+                'source_item_id'              => $data['source_item_id'] ?? null,
+                'metal_type'                  => $metalType,
+                'purity'                      => $purity,
+                'issued_gross_weight'         => $totalGross,
+                'issued_fine_weight'          => $totalFine,
+                'expected_return_fine_weight' => $expectedReturnFine,
+                'allowed_wastage_percent'     => $allowedWastage,
+                'status'                      => JobOrder::STATUS_ISSUED,
+                'issue_date'                  => $data['issue_date'] ?? now()->toDateString(),
+                'expected_return_date'        => $data['expected_return_date'] ?? null,
+                'notes'                       => $data['notes'] ?? null,
+                'created_by_user_id'          => $userId,
             ]);
 
-            foreach ($issuances as $line) {
-                $lot   = $lockedLots[(int) $line['metal_lot_id']];
-                $fine  = (float) ($line['fine_weight'] ?? 0);
-                $gross = (float) ($line['gross_weight'] ?? 0);
-                // FIX #7: operator precedence — wrap the whole expression in parens
-                $linePurity = (float) ($line['purity'] ?? $purity);
-
-                $movement = MetalMovement::record([
-                    'shop_id'        => $shopId,
-                    'from_lot_id'    => $lot->id,
-                    'to_lot_id'      => null,
-                    'fine_weight'    => $fine,
-                    'type'           => 'job_issue',
-                    'reference_type' => 'job_order',
-                    'reference_id'   => $jobOrder->id,
-                    'user_id'        => $userId,
-                ]);
-
-                JobOrderIssuance::create([
-                    'shop_id'           => $shopId,
-                    'job_order_id'      => $jobOrder->id,
-                    'metal_lot_id'      => $lot->id,
-                    'metal_movement_id' => $movement->id,
-                    'gross_weight'      => $gross,
-                    'fine_weight'       => $fine,
-                    'purity'            => $linePurity,
-                ]);
-
-                $lot->fine_weight_remaining = (float) $lot->fine_weight_remaining - $fine;
-                $lot->save();
+            foreach ($prepared as $p) {
+                $this->commitSourceLeg($p, $jobOrder, $shopId, $userId);
             }
 
             // Record any advance payment given at issuance time
@@ -154,8 +108,218 @@ class JobOrderService
                 $jobOrder->save();
             }
 
-            return $jobOrder->fresh(['issuances', 'karigar']);
+            return $jobOrder->fresh(['issuances', 'sources', 'karigar']);
         });
+    }
+
+    /**
+     * Normalise issuance input into a uniform set of metal-source legs.
+     *
+     * New model: an explicit 'sources' key (an array; EMPTY = labor-only/'none').
+     * Legacy: a non-empty 'issuances' array → vault legs (≥1 still required, so
+     * existing callers behave exactly as before).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveSourceLegs(array $data): array
+    {
+        if (array_key_exists('sources', $data)) {
+            return array_map(fn ($s) => [
+                'source_type'  => (string) ($s['source_type'] ?? ''),
+                'metal_lot_id' => isset($s['metal_lot_id']) ? (int) $s['metal_lot_id'] : null,
+                'customer_id'  => isset($s['customer_id']) ? (int) $s['customer_id'] : null,
+                'fine_weight'  => (float) ($s['fine_weight'] ?? 0),
+                'gross_weight' => (float) ($s['gross_weight'] ?? 0),
+                'purity'       => isset($s['purity']) ? (float) $s['purity'] : null,
+            ], array_values($data['sources']));
+        }
+
+        $issuances = $data['issuances'] ?? [];
+        if (empty($issuances)) {
+            throw new LogicException('At least one issuance line is required.');
+        }
+
+        return array_map(fn ($l) => [
+            'source_type'  => JobOrderSource::TYPE_VAULT,
+            'metal_lot_id' => (int) ($l['metal_lot_id'] ?? 0),
+            'customer_id'  => null,
+            'fine_weight'  => (float) ($l['fine_weight'] ?? 0),
+            'gross_weight' => (float) ($l['gross_weight'] ?? 0),
+            'purity'       => isset($l['purity']) ? (float) $l['purity'] : null,
+        ], array_values($issuances));
+    }
+
+    /**
+     * Validate + lock one source leg (no writes). Returns the resolved leg
+     * (with its lot / customer) ready to commit.
+     *
+     * @return array{type:string, fine:float, gross:float, purity:float, lot:?MetalLot, customer_id:?int}
+     */
+    private function prepareSourceLeg(array $leg, string $metalType, float $jobPurity, int $shopId, int $karigarId): array
+    {
+        $type = $leg['source_type'];
+        $fine = (float) $leg['fine_weight'];
+        if ($fine <= 0) {
+            throw new LogicException('Each metal source leg must have fine weight greater than zero.');
+        }
+        $gross  = (float) $leg['gross_weight'];
+        $purity = $leg['purity'] !== null ? (float) $leg['purity'] : $jobPurity;
+
+        switch ($type) {
+            case JobOrderSource::TYPE_VAULT:
+                $lot = $this->lockVaultLot((int) $leg['metal_lot_id'], $shopId);
+                $this->assertLotSufficient($lot, $fine);
+                return ['type' => $type, 'fine' => $fine, 'gross' => $gross, 'purity' => $purity, 'lot' => $lot, 'customer_id' => null];
+
+            case JobOrderSource::TYPE_KARIGAR_HELD:
+                $lot = $this->resolveHoldingLot($shopId, $karigarId, $metalType, $purity);
+                $this->assertLotSufficient($lot, $fine);
+                return ['type' => $type, 'fine' => $fine, 'gross' => $gross, 'purity' => $purity, 'lot' => $lot, 'customer_id' => null];
+
+            case JobOrderSource::TYPE_CUSTOMER_ADVANCE:
+                $customerId = (int) ($leg['customer_id'] ?? 0);
+                if (! $customerId) {
+                    throw new LogicException('Customer-supplied metal requires a customer.');
+                }
+                // Guard reads the CONSUMING customer's own ledger balance — never
+                // the pool, never another customer (CUST-2).
+                $this->assertCustomerHasGold($shopId, $customerId, $fine);
+                $lot = $this->lockCustomerAdvanceLot($shopId);
+                return ['type' => $type, 'fine' => $fine, 'gross' => $gross, 'purity' => $purity, 'lot' => $lot, 'customer_id' => $customerId];
+
+            default:
+                throw new LogicException("Unknown metal source type '{$type}'.");
+        }
+    }
+
+    /**
+     * Commit one prepared source leg: emit movement(s), debit balances, and
+     * write the JobOrderIssuance (receive() reads it) + JobOrderSource leg.
+     */
+    private function commitSourceLeg(array $p, JobOrder $jobOrder, int $shopId, int $userId): void
+    {
+        $lot        = $p['lot'];
+        $fine       = $p['fine'];
+        $movementId = null;
+
+        if ($p['type'] === JobOrderSource::TYPE_CUSTOMER_ADVANCE) {
+            // Draw down BOTH the pooled customer-advance lot AND the consuming
+            // customer's liability ledger together (CUST-1 keeps pool == Σ ledger).
+            // No MetalMovement — consistent with the movement-less customer-advance
+            // design (deposits and sale_offset emit none either).
+            $lot->fine_weight_remaining = (float) $lot->fine_weight_remaining - $fine;
+            $lot->save();
+
+            CustomerGoldTransaction::record([
+                'shop_id'        => $shopId,
+                'customer_id'    => $p['customer_id'],
+                'fine_gold'      => -$fine,
+                'type'           => 'job_consumed',
+                'reference_type' => 'job_order',
+                'reference_id'   => $jobOrder->id,
+            ]);
+        } else {
+            // vault / karigar_held: a real lot debit + job_issue movement.
+            $movement = MetalMovement::record([
+                'shop_id'        => $shopId,
+                'from_lot_id'    => $lot->id,
+                'to_lot_id'      => null,
+                'fine_weight'    => $fine,
+                'type'           => 'job_issue',
+                'reference_type' => 'job_order',
+                'reference_id'   => $jobOrder->id,
+                'user_id'        => $userId,
+            ]);
+            $movementId = $movement->id;
+
+            $lot->fine_weight_remaining = (float) $lot->fine_weight_remaining - $fine;
+            $lot->save();
+        }
+
+        JobOrderIssuance::create([
+            'shop_id'           => $shopId,
+            'job_order_id'      => $jobOrder->id,
+            'metal_lot_id'      => $lot->id,
+            'metal_movement_id' => $movementId,
+            'gross_weight'      => $p['gross'],
+            'fine_weight'       => $fine,
+            'purity'            => $p['purity'],
+        ]);
+
+        JobOrderSource::create([
+            'shop_id'           => $shopId,
+            'job_order_id'      => $jobOrder->id,
+            'source_type'       => $p['type'],
+            'metal_lot_id'      => $lot->id,
+            'customer_id'       => $p['customer_id'],
+            'gross_weight'      => $p['gross'],
+            'fine_weight'       => $fine,
+            'purity'            => $p['purity'],
+            'metal_movement_id' => $movementId,
+        ]);
+    }
+
+    private function lockVaultLot(int $lotId, int $shopId): MetalLot
+    {
+        if (! $lotId) {
+            throw new LogicException('Vault source leg must reference a metal lot.');
+        }
+        $lot = MetalLot::query()
+            ->where('id', $lotId)
+            ->where('shop_id', $shopId)
+            ->lockForUpdate()
+            ->first();
+        if (! $lot) {
+            throw new LogicException("Metal lot {$lotId} not found in this shop.");
+        }
+
+        return $lot;
+    }
+
+    private function resolveHoldingLot(int $shopId, int $karigarId, string $metalType, float $purity): MetalLot
+    {
+        $lot = MetalLot::query()
+            ->where('shop_id', $shopId)
+            ->where('karigar_id', $karigarId)
+            ->where('source', MetalLot::SOURCE_KARIGAR_HELD)
+            ->where('metal_type', $metalType)
+            ->where('purity', round($purity, 2))
+            ->lockForUpdate()
+            ->first();
+        if (! $lot) {
+            throw new LogicException("Karigar holds no {$metalType} at {$purity} to draw from.");
+        }
+
+        return $lot;
+    }
+
+    private function assertLotSufficient(MetalLot $lot, float $fine): void
+    {
+        if ((float) $lot->fine_weight_remaining + self::TOLERANCE_FINE_GRAMS < $fine) {
+            throw new LogicException("Lot #{$lot->lot_number} only has " . number_format((float) $lot->fine_weight_remaining, 3) . 'g fine available.');
+        }
+    }
+
+    private function assertCustomerHasGold(int $shopId, int $customerId, float $fine): void
+    {
+        $balance = (float) CustomerGoldTransaction::where('shop_id', $shopId)
+            ->where('customer_id', $customerId)
+            ->sum('fine_gold');
+        if ($balance + self::TOLERANCE_FINE_GRAMS < $fine) {
+            throw new LogicException('Customer has only ' . number_format($balance, 3) . 'g of deposited gold available.');
+        }
+    }
+
+    private function lockCustomerAdvanceLot(int $shopId): MetalLot
+    {
+        // The single pooled per-shop customer-advance lot (the same one deposits
+        // use). The balance guard runs first, so a positive balance guarantees the
+        // pool exists.
+        return MetalLot::query()
+            ->where('shop_id', $shopId)
+            ->where('source', 'customer_advance')
+            ->lockForUpdate()
+            ->firstOrFail();
     }
 
     /**
