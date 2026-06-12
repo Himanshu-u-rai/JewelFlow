@@ -200,6 +200,28 @@
                     @enderror
                 </div>
 
+                @php
+                    $currentMetal  = old('metal_type', $repair->metal_type ?? 'gold');
+                    $currentPurity = old('purity', $repair->purity);
+                @endphp
+                <div class="mb-4">
+                    <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>Metal</label>
+                    <input type="hidden" name="metal_type" id="metal_type" value="{{ $currentMetal }}">
+                    <div class="r-dd-wrap" id="metalDdWrap">
+                        <button type="button" class="r-dd-trigger" id="metalDdTrigger" onclick="toggleDd('metal')">
+                            <span style="font-weight:600;color:var(--r-ink)">{{ ucfirst($currentMetal) }}</span>
+                        </button>
+                        <div class="r-dd-panel" id="metalDdPanel">
+                            <div class="r-dd-list" id="metalDdList">
+                                <div class="r-dd-opt" data-value="gold" onclick="selectMetal(this)"><div class="r-dd-opt-name">Gold</div><div class="r-dd-opt-sub">Karat purity (24K–14K)</div></div>
+                                <div class="r-dd-opt" data-value="silver" onclick="selectMetal(this)"><div class="r-dd-opt-name">Silver</div><div class="r-dd-opt-sub">Fineness (999 / 925 / 900)</div></div>
+                                <div class="r-dd-opt" data-value="platinum" onclick="selectMetal(this)"><div class="r-dd-opt-name">Platinum</div><div class="r-dd-opt-sub">Fineness (999 / 950 / 900)</div></div>
+                                <div class="r-dd-opt" data-value="other" onclick="selectMetal(this)"><div class="r-dd-opt-name">Other</div><div class="r-dd-opt-sub">Imitation / mixed — purity optional</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label for="gross_weight" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>Gross Weight (g) *</label>
@@ -213,39 +235,22 @@
                     </div>
 
                     <div>
-                        <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Purity (Karat) <span style="color:var(--r-muted);font-weight:normal">(optional)</span></label>
-                        <input type="hidden" name="purity" id="purity" value="{{ old('purity', $repair->purity) }}">
-                        @php
-                            $currentPurity = old('purity', $repair->purity);
-                            $stdPurities = [24, 22, 21, 18, 14];
-                            $isCustom = !in_array($currentPurity, $stdPurities);
-                        @endphp
+                        <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg><span id="purityLabelText">Purity</span> <span style="color:var(--r-muted);font-weight:normal">(optional)</span></label>
+                        <input type="hidden" name="purity" id="purity" value="{{ $currentPurity }}">
                         <div class="r-dd-wrap" id="purityDdWrap">
                             <button type="button" class="r-dd-trigger" id="purityDdTrigger" onclick="toggleDd('purity')">
-                                @if($isCustom && $currentPurity)
-                                    <span style="font-weight:600;color:var(--r-ink)">Custom: {{ $currentPurity }}K</span>
-                                @elseif($currentPurity)
-                                    <span style="font-weight:600;color:var(--r-ink)">{{ $currentPurity }}K</span>
-                                @else
-                                    <span class="r-dd-placeholder">Select Purity</span>
-                                @endif
+                                <span class="r-dd-placeholder">Select Purity</span>
                             </button>
                             <div class="r-dd-panel" id="purityDdPanel">
                                 <div class="r-dd-list" id="purityDdList">
-                                    <div class="r-dd-opt" data-value="24" onclick="selectPurity(this)"><div class="r-dd-opt-name">24K</div><div class="r-dd-opt-sub">99.9% Pure Gold</div></div>
-                                    <div class="r-dd-opt" data-value="22" onclick="selectPurity(this)"><div class="r-dd-opt-name">22K</div><div class="r-dd-opt-sub">91.6% Pure Gold</div></div>
-                                    <div class="r-dd-opt" data-value="21" onclick="selectPurity(this)"><div class="r-dd-opt-name">21K</div><div class="r-dd-opt-sub">87.5% Pure Gold</div></div>
-                                    <div class="r-dd-opt" data-value="18" onclick="selectPurity(this)"><div class="r-dd-opt-name">18K</div><div class="r-dd-opt-sub">75.0% Pure Gold</div></div>
-                                    <div class="r-dd-opt" data-value="14" onclick="selectPurity(this)"><div class="r-dd-opt-name">14K</div><div class="r-dd-opt-sub">58.3% Pure Gold</div></div>
-                                    <div class="r-dd-opt" data-value="custom" onclick="selectPurity(this)"><div class="r-dd-opt-name">Custom Purity</div><div class="r-dd-opt-sub">Enter a custom karat value</div></div>
+                                    {{-- Options injected by JS based on the selected metal --}}
                                 </div>
                             </div>
                         </div>
 
                         <input type="number" step="0.01" id="custom_purity"
-                               value="{{ $isCustom ? $currentPurity : '' }}"
-                               placeholder="Enter custom purity (e.g., 19.5)"
-                               class="{{ $isCustom ? '' : 'hidden' }} r-input mt-2"
+                               placeholder="Enter a custom value"
+                               class="hidden r-input mt-2"
                                oninput="document.getElementById('purity').value = this.value">
 
                         @error('purity')
@@ -309,6 +314,73 @@
     </div>
 
     <script>
+        /* ─── Metal-aware purity (server-driven presets) ── */
+        window.REPAIR_PURITY_OPTIONS = @json(\App\Models\Repair::PURITY_OPTIONS);
+        const REPAIR_PURITY_SUBS = {
+            gold:     { '24':'99.9% pure', '22':'91.6% pure', '21':'87.5% pure', '18':'75.0% pure', '14':'58.3% pure' },
+            silver:   { '999':'99.9% pure', '925':'Sterling', '900':'Coin silver' },
+            platinum: { '999':'99.9% pure', '950':'95.0% pure', '900':'90.0% pure' },
+            other:    {}
+        };
+
+        function selectMetal(el) {
+            const val = el.dataset.value;
+            const label = el.querySelector('.r-dd-opt-name').textContent;
+            document.getElementById('metal_type').value = val;
+            document.getElementById('metalDdTrigger').innerHTML =
+                '<span style="font-weight:600;color:var(--r-ink)">' + escHtml(label) + '</span>';
+            closeAllDd();
+            rebuildPurityOptions(val, ''); // metal changed -> clear the old purity
+        }
+
+        // Build the purity list for a metal; optionally pre-select `current`.
+        function rebuildPurityOptions(metal, current) {
+            const list = document.getElementById('purityDdList');
+            const trigger = document.getElementById('purityDdTrigger');
+            const hiddenPurity = document.getElementById('purity');
+            const customInput = document.getElementById('custom_purity');
+            const labelText = document.getElementById('purityLabelText');
+            if (!list) return;
+
+            const opts = (window.REPAIR_PURITY_OPTIONS[metal] || []);
+            const subs = REPAIR_PURITY_SUBS[metal] || {};
+            const presetValues = opts.map((o) => o.value);
+            let html = '';
+            opts.forEach((o) => {
+                const sub = subs[o.value] ? escHtml(subs[o.value]) : '';
+                html += '<div class="r-dd-opt" data-value="' + escHtml(o.value) + '" onclick="selectPurity(this)">'
+                      + '<div class="r-dd-opt-name">' + escHtml(o.label) + '</div>'
+                      + (sub ? '<div class="r-dd-opt-sub">' + sub + '</div>' : '')
+                      + '</div>';
+            });
+            const customSub = metal === 'gold' ? 'Enter a custom karat value'
+                            : (metal === 'other' ? 'Enter a value if known' : 'Enter a custom fineness');
+            html += '<div class="r-dd-opt" data-value="custom" onclick="selectPurity(this)">'
+                  + '<div class="r-dd-opt-name">Custom</div>'
+                  + '<div class="r-dd-opt-sub">' + customSub + '</div></div>';
+            list.innerHTML = html;
+
+            if (labelText) labelText.textContent = (metal === 'gold') ? 'Purity (Karat)'
+                                                 : (metal === 'other' ? 'Purity' : 'Purity (Fineness)');
+
+            const cur = (current === undefined || current === null) ? '' : String(current);
+            if (cur === '') {
+                hiddenPurity.value = '';
+                customInput.classList.add('hidden'); customInput.required = false; customInput.value = '';
+                trigger.innerHTML = '<span class="r-dd-placeholder">Select Purity</span>';
+            } else if (presetValues.includes(cur)) {
+                const opt = opts.find((o) => o.value === cur);
+                hiddenPurity.value = cur;
+                customInput.classList.add('hidden'); customInput.required = false; customInput.value = '';
+                trigger.innerHTML = '<span style="font-weight:600;color:var(--r-ink)">' + escHtml(opt.label) + '</span>';
+            } else {
+                // Existing non-preset value -> custom.
+                hiddenPurity.value = cur;
+                customInput.classList.remove('hidden'); customInput.required = true; customInput.value = cur;
+                trigger.innerHTML = '<span style="font-weight:600;color:var(--r-ink)">Custom</span>';
+            }
+        }
+
         /* ─── Custom Dropdown Logic ──────── */
         function shouldAutoFocusInlineSearch() {
             const isMobileViewport = window.matchMedia('(max-width: 768px)').matches;
@@ -429,7 +501,7 @@
             const customInput = document.getElementById('custom_purity');
             const hiddenPurity = document.getElementById('purity');
             if (val === 'custom') {
-                trigger.innerHTML = '<span style="font-weight:600;color:var(--r-ink)">Custom Purity</span>';
+                trigger.innerHTML = '<span style="font-weight:600;color:var(--r-ink)">Custom</span>';
                 customInput.classList.remove('hidden');
                 customInput.required = true;
                 hiddenPurity.value = customInput.value || '';
@@ -450,6 +522,13 @@
         function escHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 
         document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeAllDd(); });
+
+        // Build the purity list for the repair's current metal, pre-selecting its
+        // existing purity value (preset or custom).
+        rebuildPurityOptions(
+            document.getElementById('metal_type')?.value || 'gold',
+            document.getElementById('purity')?.value || ''
+        );
 
         function previewRepairImage(e) {
             const file = e.target.files && e.target.files[0];

@@ -41,12 +41,16 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
+                            <p class="text-gray-500 text-sm">Metal</p>
+                            <p class="font-semibold text-gray-900">{{ ucfirst($repair->metal_type ?? 'gold') }}</p>
+                        </div>
+                        <div>
                             <p class="text-gray-500 text-sm">Gross Weight</p>
                             <p class="font-semibold text-gray-900">{{ number_format((float) $repair->gross_weight, 3) }} g</p>
                         </div>
                         <div>
                             <p class="text-gray-500 text-sm">Purity</p>
-                            <p class="font-semibold text-gray-900">{{ $repair->purity ? number_format((float) $repair->purity, 2).'K' : '—' }}</p>
+                            <p class="font-semibold text-gray-900">{{ $repair->purityLabel() ?? '—' }}</p>
                         </div>
                         <div>
                             <p class="text-gray-500 text-sm">Estimated Cost</p>

@@ -73,12 +73,15 @@ class RepairController extends Controller
     {
         $shopId = auth()->user()->shop_id;
 
+        $metalType = $request->input('metal_type', Repair::DEFAULT_METAL_TYPE);
+
         $validated = $request->validate([
             'customer_id'     => ['required', Rule::exists('customers', 'id')->where('shop_id', $shopId)],
             'item_description' => 'required|string|max:255',
             'description'     => 'nullable|string|max:1000',
+            'metal_type'      => ['nullable', Rule::in(Repair::METAL_TYPES)],
             'gross_weight'    => 'required|numeric|min:0',
-            'purity'          => 'nullable|numeric|min:0|max:24',
+            'purity'          => 'nullable|numeric|min:0|max:' . Repair::maxPurityFor($metalType),
             'estimated_cost'  => 'nullable|numeric|min:0',
             'image'           => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'image_base64'    => 'nullable|string',
@@ -98,6 +101,7 @@ class RepairController extends Controller
             'description'      => $validated['description'] ?? null,
             'image_path'       => $imagePath,
             'image'            => $imagePath,
+            'metal_type'       => $validated['metal_type'] ?? Repair::DEFAULT_METAL_TYPE,
             'gross_weight'     => $validated['gross_weight'],
             'purity'           => $validated['purity'] ?? null,
             'estimated_cost'   => $validated['estimated_cost'],
@@ -152,12 +156,15 @@ class RepairController extends Controller
 
         $shopId = auth()->user()->shop_id;
 
+        $metalType = $request->input('metal_type', $repair->metal_type ?? Repair::DEFAULT_METAL_TYPE);
+
         $validated = $request->validate([
             'customer_id'      => ['required', Rule::exists('customers', 'id')->where('shop_id', $shopId)],
             'item_description' => 'required|string|max:255',
             'description'      => 'nullable|string|max:1000',
+            'metal_type'       => ['nullable', Rule::in(Repair::METAL_TYPES)],
             'gross_weight'     => 'required|numeric|min:0',
-            'purity'           => 'nullable|numeric|min:0|max:24',
+            'purity'           => 'nullable|numeric|min:0|max:' . Repair::maxPurityFor($metalType),
             'estimated_cost'   => 'nullable|numeric|min:0',
             'status'           => ['required', Rule::in(['received', 'in_repair', 'ready'])],
             'image'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',

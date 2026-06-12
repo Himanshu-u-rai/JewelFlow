@@ -45,6 +45,21 @@ class RepairController extends Controller
         return response()->json($repairs);
     }
 
+    /**
+     * Server-driven repair metadata: the metal types a repair can be, and the
+     * metal-aware purity presets for each. Lets the mobile app render the right
+     * purity scale (gold karats vs silver/platinum fineness) without baking the
+     * values into the app binary.
+     */
+    public function options(): JsonResponse
+    {
+        return response()->json([
+            'metal_types'    => Repair::METAL_TYPES,
+            'default_metal'  => Repair::DEFAULT_METAL_TYPE,
+            'purity_options' => Repair::PURITY_OPTIONS,
+        ]);
+    }
+
     public function show(int $repair, Request $request): JsonResponse
     {
         $repairModel = Repair::with('customer:id,first_name,last_name,mobile')
@@ -58,6 +73,10 @@ class RepairController extends Controller
     {
         $shopId = (int) $request->user()->shop_id;
 
+        // metal_type is optional and defaults to gold so existing mobile builds
+        // (which send only purity on a gold karat scale) keep working unchanged.
+        $metalType = $request->input('metal_type', Repair::DEFAULT_METAL_TYPE);
+
         $validated = $request->validate([
             'customer_id' => [
                 'required',
@@ -66,8 +85,9 @@ class RepairController extends Controller
             'item_description' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'due_date' => 'nullable|date',
+            'metal_type' => ['nullable', Rule::in(Repair::METAL_TYPES)],
             'gross_weight' => 'required|numeric|min:0.001',
-            'purity' => 'required|numeric|min:1|max:24',
+            'purity' => 'required|numeric|min:1|max:' . Repair::maxPurityFor($metalType),
             'estimated_cost' => 'required|numeric|min:0',
             'image_base64' => 'nullable|string',
         ]);
@@ -85,6 +105,7 @@ class RepairController extends Controller
             'image_path' => $imagePath,
             'image' => $imagePath,
             'due_date' => $validated['due_date'] ?? null,
+            'metal_type' => $validated['metal_type'] ?? Repair::DEFAULT_METAL_TYPE,
             'gross_weight' => $validated['gross_weight'],
             'purity' => $validated['purity'],
             'estimated_cost' => $validated['estimated_cost'],

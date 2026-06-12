@@ -15,6 +15,6 @@ final class RepairSummaryData
 {
     public function __construct(
         public readonly LengthAwarePaginator $repairs,
-        public readonly object $totals,   // {total_issued, total_returned, total_cash}
+        public readonly object $totals,   // {total_cash}
     ) {}
 }

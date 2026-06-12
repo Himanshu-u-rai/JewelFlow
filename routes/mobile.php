@@ -120,6 +120,11 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware(['throttle:api-pos-sale', 'can:inventory.edit']);
 
         // Repairs
+        // Server-driven metal types + metal-aware purity presets, so the mobile
+        // app renders the right purity scale without hardcoding values. Declared
+        // before /repairs/{repair} (which is whereNumber-constrained anyway).
+        Route::get('/repairs/options', [RepairController::class, 'options'])
+            ->middleware(['throttle:api-pos-read', 'can:repairs.view']);
         Route::get('/repairs', [RepairController::class, 'index'])
             ->middleware(['throttle:api-pos-read', 'can:repairs.view']);
         Route::get('/repairs/{repair}', [RepairController::class, 'show'])

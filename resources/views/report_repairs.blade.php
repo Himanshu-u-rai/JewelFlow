@@ -1,9 +1,8 @@
 <x-app-layout>
-    @php $isManufacturer = (bool) auth()->user()?->shop?->isManufacturer(); @endphp
     <x-page-header class="repairs-report-header">
         <div>
             <h1 class="page-title">Repairs Report</h1>
-            <p class="text-sm text-gray-500 mt-1">{{ $isManufacturer ? 'All repair jobs with gold usage, wastage, status, and collected cash' : 'All repair jobs with status and collected cash' }}</p>
+            <p class="text-sm text-gray-500 mt-1">All repair jobs with status and collected cash</p>
         </div>
         <div class="page-actions">
             <span class="header-badge repairs-report-count">{{ $repairs->total() }} Repairs</span>
@@ -46,7 +45,7 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden repairs-report-table-card">
             <div class="p-4 border-b border-gray-200">
                 <h2 class="text-lg font-semibold text-gray-900">Repairs Summary</h2>
-                <p class="text-sm text-gray-500 mt-1">{{ $isManufacturer ? 'Wastage is calculated as issued minus returned gold. Pending jobs may show zero cash.' : 'Pending jobs may show zero cash.' }}</p>
+                <p class="text-sm text-gray-500 mt-1">Pending jobs may show zero cash.</p>
             </div>
 
             <div class="overflow-x-auto repairs-report-table-shell">
@@ -57,11 +56,6 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            @if($isManufacturer)
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gold Issued (g)</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gold Returned (g)</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Wastage (g)</th>
-                            @endif
                             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cash (₹)</th>
                             <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
                         </tr>
@@ -83,11 +77,6 @@
                                     @endphp
                                     <span class="badge {{ $badgeClass }}">{{ ucfirst(str_replace('_', ' ', $r->status)) }}</span>
                                 </td>
-                                @if($isManufacturer)
-                                <td class="px-4 py-3 text-sm text-gray-900 text-right">{{ number_format((float) ($r->gold_issued_fine ?? 0), 3) }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-900 text-right">{{ number_format((float) ($r->gold_returned_fine ?? 0), 3) }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-900 text-right">{{ number_format((float) ($r->gold_issued_fine ?? 0) - (float) ($r->gold_returned_fine ?? 0), 3) }}</td>
-                                @endif
                                 <td class="px-4 py-3 text-sm text-gray-900 text-right">
                                     @if($r->status === 'delivered')
                                         {{ number_format((float) ($r->final_cost ?? 0), 2) }}
@@ -107,7 +96,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $isManufacturer ? 9 : 6 }}" class="px-4 py-8 text-center text-sm text-gray-500">
+                                <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">
                                     No repair records found.
                                 </td>
                             </tr>
@@ -119,11 +108,6 @@
                                 <td colspan="4" class="px-4 py-3 text-sm font-semibold text-gray-700">
                                     Totals ({{ $repairs->total() }} {{ Str::plural('repair', $repairs->total()) }})
                                 </td>
-                                @if($isManufacturer)
-                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{{ number_format((float) $totals->total_issued, 3) }}</td>
-                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{{ number_format((float) $totals->total_returned, 3) }}</td>
-                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{{ number_format((float) $totals->total_issued - (float) $totals->total_returned, 3) }}</td>
-                                @endif
                                 <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{{ number_format((float) $totals->total_cash, 2) }}</td>
                                 <td></td>
                             </tr>

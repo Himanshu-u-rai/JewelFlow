@@ -24,8 +24,6 @@ class RepairService
         $this->applyFilters($totalsQuery, $fromDate, $toDate, $status);
 
         $totals = $totalsQuery->selectRaw("
-            COALESCE(SUM(gold_issued_fine), 0) as total_issued,
-            COALESCE(SUM(gold_returned_fine), 0) as total_returned,
             COALESCE(SUM(CASE WHEN status = 'delivered' THEN final_cost ELSE 0 END), 0) as total_cash
         ")->first();
 

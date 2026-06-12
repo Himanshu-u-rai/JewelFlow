@@ -100,16 +100,15 @@ class LegacyExtractionParityTest extends TestCase
         [, $shop] = $this->createRetailerTenant();
         $customer = $this->createCustomer($shop->id);
 
-        $this->repair($shop->id, $customer->id, 'delivered', 8.0, 7.5, 1200, '2026-03-05 10:00:00');
-        $this->repair($shop->id, $customer->id, 'in_progress', 4.0, 0, 800, '2026-03-06 10:00:00');
+        $this->repair($shop->id, $customer->id, 'delivered', 8.0, 1200, '2026-03-05 10:00:00');
+        $this->repair($shop->id, $customer->id, 'in_progress', 4.0, 800, '2026-03-06 10:00:00');
 
         $data = TenantContext::runFor($shop->id, fn () =>
             app(RepairService::class)->summary($shop->id, null, null, null)
         );
 
-        $this->assertEqualsWithDelta(12.0, (float) $data->totals->total_issued, 0.001);
-        $this->assertEqualsWithDelta(7.5, (float) $data->totals->total_returned, 0.001);
-        // Only delivered repairs contribute cash.
+        // Only delivered repairs contribute cash. (Repairs are a service ticket
+        // with no metal accounting — there is no issued/returned gold total.)
         $this->assertEqualsWithDelta(1200, (float) $data->totals->total_cash, 0.001);
         $this->assertSame(2, $data->repairs->total());
     }
@@ -142,13 +141,13 @@ class LegacyExtractionParityTest extends TestCase
         ]);
     }
 
-    private function repair(int $shopId, int $customerId, string $status, float $issued, float $returned, float $cost, string $at): void
+    private function repair(int $shopId, int $customerId, string $status, float $gross, float $cost, string $at): void
     {
         DB::table('repairs')->insert([
             'shop_id' => $shopId, 'customer_id' => $customerId,
-            'repair_number' => random_int(100000, 999999), 'gross_weight' => $issued,
+            'repair_number' => random_int(100000, 999999), 'gross_weight' => $gross,
             'item_description' => 'test item', 'status' => $status,
-            'gold_issued_fine' => $issued, 'gold_returned_fine' => $returned, 'final_cost' => $cost,
+            'metal_type' => 'gold', 'final_cost' => $cost,
             'created_at' => $at, 'updated_at' => $at,
         ]);
     }
