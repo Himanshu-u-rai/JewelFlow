@@ -169,23 +169,24 @@
 </style>
 
 <div class="kf-fields">
-    <p class="kf-group kf-group--first">Profile</p>
+    <p class="kf-group kf-group--first">Who is the karigar?</p>
 
     <label class="kf-field">
-        <span class="kf-label">Karigar Name *</span>
-        <input type="text" name="name" value="{{ old('name', $k?->name) }}" required class="kf-input">
-        <p class="kf-hint">The karigar's own name.</p>
+        <span class="kf-label">Owner Name *</span>
+        <input type="text" name="name" value="{{ old('name', $k?->name) }}" required class="kf-input" placeholder="e.g. Ramesh">
+        <p class="kf-hint">The karigar — the person who owns the workshop. This is the name used across the app.</p>
     </label>
 
     <label class="kf-field">
         <span class="kf-label">Workshop / Shop Name</span>
         <input type="text" name="shop_name" value="{{ old('shop_name', $k?->shop_name) }}" placeholder="e.g. Ramesh Jewellery Works" class="kf-input">
-        <p class="kf-hint">The karigar's workshop or shop. Leave blank if not known.</p>
+        <p class="kf-hint">The workshop or firm they run. Leave blank if it has no separate name.</p>
     </label>
 
     <label class="kf-field">
-        <span class="kf-label">Contact Person</span>
-        <input type="text" name="contact_person" value="{{ old('contact_person', $k?->contact_person) }}" class="kf-input">
+        <span class="kf-label">Day-to-day Contact</span>
+        <input type="text" name="contact_person" value="{{ old('contact_person', $k?->contact_person) }}" class="kf-input" placeholder="e.g. Suresh (manager)">
+        <p class="kf-hint">Who you usually deal with, if not the owner (e.g. a manager). Leave blank if it's the owner.</p>
     </label>
 
     <label class="kf-field">

@@ -12,8 +12,9 @@
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 lg:col-span-2">
                 <h3 class="text-sm font-semibold text-gray-800 mb-3">Profile</h3>
                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Owner</dt><dd class="text-gray-800">{{ $karigar->name }}</dd></div>
                     <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Workshop / Shop</dt><dd class="text-gray-800">{{ $karigar->shop_name ?? '—' }}</dd></div>
-                    <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Contact Person</dt><dd class="text-gray-800">{{ $karigar->contact_person ?? '—' }}</dd></div>
+                    <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Day-to-day Contact</dt><dd class="text-gray-800">{{ $karigar->contact_person ?? '—' }}</dd></div>
                     <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Mobile</dt><dd class="text-gray-800">{{ $karigar->mobile ?? '—' }}</dd></div>
                     <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Email</dt><dd class="text-gray-800">{{ $karigar->email ?? '—' }}</dd></div>
                     <div class="sm:col-span-2"><dt class="text-[10px] uppercase tracking-wide text-gray-500">Workshop address</dt><dd class="text-gray-800">{{ $karigar->address ?: '—' }}{{ $karigar->city ? ', ' . $karigar->city : '' }}{{ $karigar->state ? ', ' . $karigar->state : '' }} {{ $karigar->pincode }}</dd></div>

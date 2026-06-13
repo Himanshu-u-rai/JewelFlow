@@ -84,8 +84,8 @@
                                     <td>
                                         <div class="karigars-name-cell">
                                             <a href="{{ route('karigars.show', $k) }}" class="karigars-name-link">{{ $k->name }}</a>
-                                            @if($k->contact_person)
-                                                <span>{{ $k->contact_person }}</span>
+                                            @if($k->shop_name)
+                                                <span>{{ $k->shop_name }}</span>
                                             @endif
                                         </div>
                                     </td>
@@ -127,8 +127,8 @@
                             <div class="karigars-mobile-head">
                                 <div>
                                     <a href="{{ route('karigars.show', $k) }}" class="karigars-name-link">{{ $k->name }}</a>
-                                    @if($k->contact_person)
-                                        <p>{{ $k->contact_person }}</p>
+                                    @if($k->shop_name)
+                                        <p>{{ $k->shop_name }}</p>
                                     @endif
                                 </div>
                                 @if($k->is_active)
