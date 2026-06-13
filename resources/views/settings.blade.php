@@ -1683,9 +1683,10 @@
                     </div>
 
                     <div class="form-row">
-                        <label class="field-label" style="display:flex; gap:8px; align-items:center;">
+                        <label class="field-label" style="display:flex; gap:10px; align-items:center;">
                             <input type="hidden" name="igst_mode" value="0">
-                            <input type="checkbox" name="igst_mode" value="1" {{ old('igst_mode', $billing->igst_mode ?? false) ? 'checked' : '' }}>
+                            <input type="checkbox" name="igst_mode" value="1" {{ old('igst_mode', $billing->igst_mode ?? false) ? 'checked' : '' }}
+                                   class="settings-toggle-input-lg">
                             {{ __('Interstate (IGST) — show one IGST line instead of CGST + SGST on the invoice') }}
                         </label>
                     </div>
