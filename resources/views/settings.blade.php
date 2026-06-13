@@ -872,16 +872,81 @@
         align-items: flex-start;
     }
 
-    .settings-toggle-input-lg {
-        width: 18px;
-        height: 18px;
+    /* iOS-style toggle switches. The checkbox keeps its real semantics (name +
+       hidden value="0" companion) — only the appearance is replaced. */
+    .settings-toggle-input-lg,
+    .settings-toggle-input-md {
+        appearance: none;
+        -webkit-appearance: none;
+        position: relative;
+        flex-shrink: 0;
+        border-radius: 999px;
+        background: #cbd5e1;
         cursor: pointer;
+        transition: background-color 180ms cubic-bezier(0.23, 1, 0.32, 1);
+        outline: none;
+    }
+    .settings-toggle-input-lg::after,
+    .settings-toggle-input-md::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 2px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .25);
+        transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    .settings-toggle-input-lg:checked,
+    .settings-toggle-input-md:checked {
+        background: #0f766e;
+    }
+    .settings-toggle-input-lg:active::after,
+    .settings-toggle-input-md:active::after {
+        width: auto;
+        /* subtle squash on press for tactile feedback */
+        transform: translateY(-50%) scale(0.94);
+    }
+    .settings-toggle-input-lg:focus-visible,
+    .settings-toggle-input-md:focus-visible {
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, .25);
     }
 
+    /* Large switch (44×26, knob 22). */
+    .settings-toggle-input-lg {
+        width: 44px;
+        height: 26px;
+    }
+    .settings-toggle-input-lg::after {
+        width: 22px;
+        height: 22px;
+        transform: translateY(-50%);
+    }
+    .settings-toggle-input-lg:checked::after {
+        transform: translateY(-50%) translateX(18px);
+    }
+
+    /* Medium switch (38×22, knob 18). */
     .settings-toggle-input-md {
-        width: 16px;
-        height: 16px;
-        cursor: pointer;
+        width: 38px;
+        height: 22px;
+    }
+    .settings-toggle-input-md::after {
+        width: 18px;
+        height: 18px;
+        transform: translateY(-50%);
+    }
+    .settings-toggle-input-md:checked::after {
+        transform: translateY(-50%) translateX(16px);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .settings-toggle-input-lg,
+        .settings-toggle-input-md,
+        .settings-toggle-input-lg::after,
+        .settings-toggle-input-md::after {
+            transition: none;
+        }
     }
 
     .settings-toggle-text {
