@@ -872,8 +872,11 @@
         align-items: flex-start;
     }
 
-    /* iOS-style toggle switches. The checkbox keeps its real semantics (name +
-       hidden value="0" companion) — only the appearance is replaced. */
+    /* Pill toggle switch with a bouncy sliding knob that carries an eye icon:
+       eye = column/option shown (checked), eye-off = hidden (unchecked).
+       The checkbox keeps its real semantics (name + hidden value="0" companion);
+       only the appearance is replaced via the element + its ::before knob.
+       Icons are inline SVG data-URIs so they render without any icon library. */
     .settings-toggle-input-lg,
     .settings-toggle-input-md {
         appearance: none;
@@ -883,69 +886,74 @@
         border-radius: 999px;
         background: #cbd5e1;
         cursor: pointer;
-        transition: background-color 180ms cubic-bezier(0.23, 1, 0.32, 1);
+        transition: background-color 250ms ease;
         outline: none;
     }
-    .settings-toggle-input-lg::after,
-    .settings-toggle-input-md::after {
+    /* The sliding knob (::before) carries the eye-off icon by default. */
+    .settings-toggle-input-lg::before,
+    .settings-toggle-input-md::before {
         content: "";
         position: absolute;
         top: 50%;
-        left: 2px;
         border-radius: 50%;
-        background: #ffffff;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, .25);
-        transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+        background-color: #ffffff;
+        background-repeat: no-repeat;
+        background-position: center;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .3);
+        /* eye-off (slash) — unchecked = hidden */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/%3E%3Cline x1='1' y1='1' x2='23' y2='23'/%3E%3C/svg%3E");
+        /* bouncy slide, matching the requested feel */
+        transition: transform 500ms cubic-bezier(.26, 2, .46, .71),
+                    background-image 250ms ease;
     }
     .settings-toggle-input-lg:checked,
     .settings-toggle-input-md:checked {
         background: #0f766e;
     }
-    .settings-toggle-input-lg:active::after,
-    .settings-toggle-input-md:active::after {
-        width: auto;
-        /* subtle squash on press for tactile feedback */
-        transform: translateY(-50%) scale(0.94);
+    /* Checked = shown: knob slides right and shows the open-eye icon. */
+    .settings-toggle-input-lg:checked::before,
+    .settings-toggle-input-md:checked::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
     }
     .settings-toggle-input-lg:focus-visible,
     .settings-toggle-input-md:focus-visible {
         box-shadow: 0 0 0 3px rgba(15, 118, 110, .25);
     }
 
-    /* Large switch (44×26, knob 22). */
+    /* Large switch (52×28, knob 22). */
     .settings-toggle-input-lg {
-        width: 44px;
-        height: 26px;
+        width: 52px;
+        height: 28px;
     }
-    .settings-toggle-input-lg::after {
+    .settings-toggle-input-lg::before {
         width: 22px;
         height: 22px;
-        transform: translateY(-50%);
+        background-size: 13px 13px;
+        transform: translate(3px, -50%);
     }
-    .settings-toggle-input-lg:checked::after {
-        transform: translateY(-50%) translateX(18px);
+    .settings-toggle-input-lg:checked::before {
+        transform: translate(27px, -50%);
     }
 
-    /* Medium switch (38×22, knob 18). */
+    /* Medium switch (46×26, knob 20). */
     .settings-toggle-input-md {
-        width: 38px;
-        height: 22px;
+        width: 46px;
+        height: 26px;
     }
-    .settings-toggle-input-md::after {
-        width: 18px;
-        height: 18px;
-        transform: translateY(-50%);
+    .settings-toggle-input-md::before {
+        width: 20px;
+        height: 20px;
+        background-size: 12px 12px;
+        transform: translate(3px, -50%);
     }
-    .settings-toggle-input-md:checked::after {
-        transform: translateY(-50%) translateX(16px);
+    .settings-toggle-input-md:checked::before {
+        transform: translate(23px, -50%);
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .settings-toggle-input-lg,
-        .settings-toggle-input-md,
-        .settings-toggle-input-lg::after,
-        .settings-toggle-input-md::after {
-            transition: none;
+        .settings-toggle-input-lg::before,
+        .settings-toggle-input-md::before {
+            transition: background-image 250ms ease;
         }
     }
 
