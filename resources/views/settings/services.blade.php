@@ -1,8 +1,7 @@
-@extends('layouts.app')
-
-@section('title', __('Services & Editions'))
-
-@section('content')
+{{-- Uses the <x-app-layout> component (slot-based) like every other page.
+     The old @extends('layouts.app') + @section('content') rendered blank
+     because layouts/app.blade.php outputs {{ $slot }}, not @yield('content'). --}}
+<x-app-layout>
 <div class="p-6 max-w-5xl mx-auto">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900">{{ __('Services & Editions') }}</h1>
@@ -192,4 +191,4 @@
         </section>
     @endif
 </div>
-@endsection
+</x-app-layout>
