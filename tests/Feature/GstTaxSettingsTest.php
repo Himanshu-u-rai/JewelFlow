@@ -105,6 +105,93 @@ class GstTaxSettingsTest extends TestCase
         $this->assertSame('74199930', $b->hsn_copper);
     }
 
+    // ── hardening #3: GSTIN format ──────────────────────────────────────────
+
+    public function test_invalid_gstin_is_rejected(): void
+    {
+        $this->actingAs($this->user)->patch(route('settings.update.gst'), [
+            'gst_number' => 'NOT-A-GSTIN', 'gst_rate' => 3,
+        ])->assertSessionHasErrors('gst_number');
+    }
+
+    public function test_lowercase_gstin_is_normalised_and_accepted(): void
+    {
+        $this->actingAs($this->user)->patch(route('settings.update.gst'), [
+            'gst_number' => '08abcde1234f1z5', 'gst_rate' => 3,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $shop = \App\Models\Shop::withoutGlobalScopes()->find($this->shopId);
+        $this->assertSame('08ABCDE1234F1Z5', $shop->gst_number, 'normalised to uppercase');
+    }
+
+    public function test_blank_gstin_is_allowed(): void
+    {
+        $this->actingAs($this->user)->patch(route('settings.update.gst'), [
+            'gst_number' => '', 'gst_rate' => 3,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+    }
+
+    // ── hardening #5: HSN format ────────────────────────────────────────────
+
+    public function test_non_numeric_hsn_is_rejected(): void
+    {
+        $this->actingAs($this->user)->patch(route('settings.update.gst'), [
+            'gst_rate' => 3, 'hsn_gold' => 'ABCD',
+        ])->assertSessionHasErrors('hsn_gold');
+
+        $this->actingAs($this->user)->patch(route('settings.update.gst'), [
+            'gst_rate' => 3, 'hsn_gold' => '71',  // too short (needs 4/6/8)
+        ])->assertSessionHasErrors('hsn_gold');
+    }
+
+    public function test_valid_hsn_lengths_are_accepted(): void
+    {
+        foreach (['7113', '711319', '71131910'] as $hsn) {
+            $this->actingAs($this->user)->patch(route('settings.update.gst'), [
+                'gst_rate' => 3, 'hsn_gold' => $hsn,
+            ])->assertSessionHasNoErrors();
+        }
+    }
+
+    // ── hardening #1: one GST category per metal ────────────────────────────
+
+    public function test_duplicate_metal_category_is_rejected_with_friendly_error(): void
+    {
+        $this->cat(['name' => 'Gold rate', 'rate_pct' => 1.5, 'metal_type' => 'gold']);
+
+        $this->actingAs($this->user)->post(route('settings.gst-categories.store'), [
+            'name' => 'Gold again', 'rate_pct' => 3, 'metal_type' => 'gold',
+        ])->assertSessionHasErrors('metal_type');
+
+        // Still only one gold category.
+        $golds = GstCategory::withoutGlobalScopes()->where('shop_id', $this->shopId)->where('metal_type', 'gold')->count();
+        $this->assertSame(1, $golds);
+    }
+
+    public function test_db_unique_index_blocks_duplicate_metal_at_the_database(): void
+    {
+        // The DB partial-unique index is the hard backstop even if a write
+        // bypasses the controller guard.
+        $this->cat(['name' => 'Gold A', 'rate_pct' => 1.5, 'metal_type' => 'gold']);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        $dup = new GstCategory();
+        $dup->forceFill(['shop_id' => $this->shopId, 'name' => 'Gold B', 'rate_pct' => 3, 'metal_type' => 'gold', 'is_default' => false]);
+        $dup->save();
+    }
+
+    // ── hardening #2: disabled-metal categories are ignored by the resolver ──
+
+    public function test_resolver_ignores_category_for_a_disabled_metal(): void
+    {
+        // Manufacturer tenant: gold/silver are enabled; platinum is NOT.
+        $this->cat(['name' => 'All', 'rate_pct' => 3, 'is_default' => true]);
+        $this->cat(['name' => 'Platinum', 'rate_pct' => 9, 'metal_type' => 'platinum']);
+
+        // Platinum isn't enabled → its 9% override is ignored; falls to default 3%.
+        $this->assertEqualsWithDelta(3.0, $this->resolve('platinum'), 0.001, 'disabled-metal override ignored');
+    }
+
     public function test_blank_platinum_copper_hsn_default_to_7115_and_7403(): void
     {
         $this->actingAs($this->user)->patch(route('settings.update.gst'), [

@@ -25,6 +25,16 @@ class GstCategoryController extends Controller
         $validated['is_default'] = $request->boolean('is_default');
         $validated['metal_type'] = $validated['metal_type'] ?: null;
 
+        // #1 — one rate per metal. A second category for the same metal made the
+        // resolver non-deterministic; reject it with a friendly nudge to edit the
+        // existing one (the DB partial-unique index is the hard backstop).
+        if ($validated['metal_type'] !== null
+            && GstCategory::where('shop_id', $shopId)->where('metal_type', $validated['metal_type'])->exists()) {
+            return back()->withInput()->withErrors([
+                'metal_type' => 'You already have a GST rate for ' . ucfirst($validated['metal_type']) . '. Edit that one instead of adding another.',
+            ]);
+        }
+
         if ($validated['is_default']) {
             GstCategory::where('shop_id', $shopId)->update(['is_default' => DB::raw('false')]);
         }
@@ -50,6 +60,17 @@ class GstCategoryController extends Controller
 
         $validated['is_default'] = $request->boolean('is_default');
         $validated['metal_type'] = $validated['metal_type'] ?: null;
+
+        // #1 — block re-pointing this category at a metal that already has one.
+        if ($validated['metal_type'] !== null
+            && GstCategory::where('shop_id', $gstCategory->shop_id)
+                ->where('metal_type', $validated['metal_type'])
+                ->where('id', '!=', $gstCategory->id)
+                ->exists()) {
+            return back()->withInput()->withErrors([
+                'metal_type' => 'You already have a GST rate for ' . ucfirst($validated['metal_type']) . '. Edit that one instead.',
+            ]);
+        }
 
         if ($validated['is_default']) {
             GstCategory::where('shop_id', $gstCategory->shop_id)

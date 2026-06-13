@@ -482,15 +482,32 @@ class SettingsController extends Controller
     {
         $shop = Auth::user()->shop;
 
+        // Normalise GSTIN to canonical form (uppercase, trimmed) before validating,
+        // so a correctly-typed lowercase GSTIN isn't rejected by the format rule.
+        if ($request->filled('gst_number')) {
+            $request->merge(['gst_number' => strtoupper(trim((string) $request->input('gst_number')))]);
+        }
+
+        // #3 — validate GSTIN format when present (15 chars: 2 state + 10 PAN +
+        // 1 entity + 'Z' + 1 check). Still optional, but a typo can't silently
+        // reach invoices / GSTR-1 exports. #5 — HSN must be 4/6/8 digits.
+        $hsnRule = ['nullable', 'string', 'regex:/^\d{4}(\d{2})?(\d{2})?$/'];
         $validated = $request->validate([
-            'gst_number'   => 'nullable|string|max:50',
+            'gst_number'   => ['nullable', 'string', 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/'],
             'gst_rate'     => 'required|numeric|min:0|max:100',
             'igst_mode'    => 'nullable|boolean',
-            'hsn_gold'     => 'nullable|string|max:20',
-            'hsn_silver'   => 'nullable|string|max:20',
-            'hsn_diamond'  => 'nullable|string|max:20',
-            'hsn_platinum' => 'nullable|string|max:20',
-            'hsn_copper'   => 'nullable|string|max:20',
+            'hsn_gold'     => $hsnRule,
+            'hsn_silver'   => $hsnRule,
+            'hsn_diamond'  => $hsnRule,
+            'hsn_platinum' => $hsnRule,
+            'hsn_copper'   => $hsnRule,
+        ], [
+            'gst_number.regex' => 'Enter a valid 15-character GSTIN (e.g. 08ABCDE1234F1Z5), or leave it blank.',
+            'hsn_gold.regex'     => 'HSN must be 4, 6, or 8 digits.',
+            'hsn_silver.regex'   => 'HSN must be 4, 6, or 8 digits.',
+            'hsn_diamond.regex'  => 'HSN must be 4, 6, or 8 digits.',
+            'hsn_platinum.regex' => 'HSN must be 4, 6, or 8 digits.',
+            'hsn_copper.regex'   => 'HSN must be 4, 6, or 8 digits.',
         ]);
 
         // Shop-level: GST identity + the flat default rate (fallback for the
