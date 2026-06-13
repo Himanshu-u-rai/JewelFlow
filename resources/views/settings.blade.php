@@ -1682,6 +1682,25 @@
                         </div>
                     </div>
 
+                    {{-- Platinum / Copper HSN — only shown when the shop has enabled
+                         that metal in Materials (otherwise the field is irrelevant). --}}
+                    @if(in_array('platinum', $gstEnabledMetals ?? [], true) || in_array('copper', $gstEnabledMetals ?? [], true))
+                    <div class="form-row">
+                        @if(in_array('platinum', $gstEnabledMetals ?? [], true))
+                        <div class="field">
+                            <label class="field-label">{{ __('HSN — Platinum') }}</label>
+                            <input type="text" name="hsn_platinum" value="{{ old('hsn_platinum', $billing->hsn_platinum ?? '7115') }}" class="field-input" maxlength="20">
+                        </div>
+                        @endif
+                        @if(in_array('copper', $gstEnabledMetals ?? [], true))
+                        <div class="field">
+                            <label class="field-label">{{ __('HSN — Copper') }}</label>
+                            <input type="text" name="hsn_copper" value="{{ old('hsn_copper', $billing->hsn_copper ?? '7403') }}" class="field-input" maxlength="20">
+                        </div>
+                        @endif
+                    </div>
+                    @endif
+
                     <div class="form-row">
                         <label class="field-label" style="display:flex; gap:10px; align-items:center;">
                             <input type="hidden" name="igst_mode" value="0">

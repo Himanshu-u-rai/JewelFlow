@@ -483,12 +483,14 @@ class SettingsController extends Controller
         $shop = Auth::user()->shop;
 
         $validated = $request->validate([
-            'gst_number'  => 'nullable|string|max:50',
-            'gst_rate'    => 'required|numeric|min:0|max:100',
-            'igst_mode'   => 'nullable|boolean',
-            'hsn_gold'    => 'nullable|string|max:20',
-            'hsn_silver'  => 'nullable|string|max:20',
-            'hsn_diamond' => 'nullable|string|max:20',
+            'gst_number'   => 'nullable|string|max:50',
+            'gst_rate'     => 'required|numeric|min:0|max:100',
+            'igst_mode'    => 'nullable|boolean',
+            'hsn_gold'     => 'nullable|string|max:20',
+            'hsn_silver'   => 'nullable|string|max:20',
+            'hsn_diamond'  => 'nullable|string|max:20',
+            'hsn_platinum' => 'nullable|string|max:20',
+            'hsn_copper'   => 'nullable|string|max:20',
         ]);
 
         // Shop-level: GST identity + the flat default rate (fallback for the
@@ -498,16 +500,19 @@ class SettingsController extends Controller
             'gst_rate'   => $validated['gst_rate'],
         ]);
 
-        // Billing-level: tax presentation on the printed invoice.
+        // Billing-level: tax presentation on the printed invoice. HSN fields are
+        // nullable, so a key may be absent from $validated (not just empty) —
+        // null-coalesce before the default to avoid an undefined-array-key error.
+        // Defaults come from the single HSN_DEFAULTS source on the model.
+        $d = ShopBillingSettings::HSN_DEFAULTS;
         $billing = $shop->billingSettings ?? new ShopBillingSettings(['shop_id' => $shop->id]);
-        // HSN fields are nullable, so a key may be absent from $validated (not
-        // just empty) — null-coalesce before the `?:` default to avoid an
-        // undefined-array-key error.
         $billing->fill([
-            'igst_mode'   => $request->boolean('igst_mode'),
-            'hsn_gold'    => ($validated['hsn_gold']    ?? null) ?: '7113',
-            'hsn_silver'  => ($validated['hsn_silver']  ?? null) ?: '7113',
-            'hsn_diamond' => ($validated['hsn_diamond'] ?? null) ?: '7114',
+            'igst_mode'    => $request->boolean('igst_mode'),
+            'hsn_gold'     => ($validated['hsn_gold']     ?? null) ?: $d['gold'],
+            'hsn_silver'   => ($validated['hsn_silver']   ?? null) ?: $d['silver'],
+            'hsn_diamond'  => ($validated['hsn_diamond']  ?? null) ?: $d['diamond'],
+            'hsn_platinum' => ($validated['hsn_platinum'] ?? null) ?: $d['platinum'],
+            'hsn_copper'   => ($validated['hsn_copper']   ?? null) ?: $d['copper'],
         ]);
         $billing->save();
 

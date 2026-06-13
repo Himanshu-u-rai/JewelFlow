@@ -94,6 +94,48 @@ class GstTaxSettingsTest extends TestCase
         $this->assertSame('7114', $b->hsn_diamond);
     }
 
+    public function test_update_gst_saves_platinum_and_copper_hsn(): void
+    {
+        $this->actingAs($this->user)->patch(route('settings.update.gst'), [
+            'gst_rate' => 3, 'hsn_platinum' => '71131910', 'hsn_copper' => '74199930',
+        ])->assertRedirect();
+
+        $b = ShopBillingSettings::withoutGlobalScopes()->where('shop_id', $this->shopId)->first();
+        $this->assertSame('71131910', $b->hsn_platinum);
+        $this->assertSame('74199930', $b->hsn_copper);
+    }
+
+    public function test_blank_platinum_copper_hsn_default_to_7115_and_7403(): void
+    {
+        $this->actingAs($this->user)->patch(route('settings.update.gst'), [
+            'gst_rate' => 3, 'hsn_platinum' => '', 'hsn_copper' => '',
+        ])->assertRedirect();
+
+        $b = ShopBillingSettings::withoutGlobalScopes()->where('shop_id', $this->shopId)->first();
+        $this->assertSame('7115', $b->hsn_platinum);
+        $this->assertSame('7403', $b->hsn_copper);
+    }
+
+    public function test_hsn_for_metal_resolves_each_metal_to_its_own_code(): void
+    {
+        $b = new ShopBillingSettings();
+        $b->forceFill([
+            'hsn_gold' => '7113', 'hsn_silver' => '7113', 'hsn_diamond' => '7114',
+            'hsn_platinum' => '7115', 'hsn_copper' => '7403',
+        ]);
+
+        // metal_type-keyed (the reliable path)
+        $this->assertSame('7113', $b->hsnForMetal('gold'));
+        $this->assertSame('7113', $b->hsnForMetal('silver'));
+        $this->assertSame('7115', $b->hsnForMetal('platinum'), 'platinum is NOT gold');
+        $this->assertSame('7403', $b->hsnForMetal('copper'), 'copper is NOT gold');
+        // category fallback for stone/diamond + legacy metal-less lines
+        $this->assertSame('7114', $b->hsnForMetal(null, 'Diamond Ring'));
+        $this->assertSame('7115', $b->hsnForMetal(null, 'Platinum Band'), 'legacy platinum via category');
+        // unknown → gold default
+        $this->assertSame('7113', $b->hsnForMetal(null, null));
+    }
+
     public function test_gst_rate_is_required_and_bounded(): void
     {
         $this->actingAs($this->user)->patch(route('settings.update.gst'), [])
