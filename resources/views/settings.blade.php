@@ -1339,6 +1339,12 @@
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> {{ __('Services') }}
             </a>
             @endcan
+            {{-- Devices — settings.view (mobile phones signed in to this shop) --}}
+            @can('settings.view')
+            <a href="{{ route('settings.edit', ['tab' => 'devices']) }}" class="nav-item {{ $activeTab === 'devices' ? 'active' : '' }}" data-turbo-frame="settings-content">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span> {{ __('Devices') }}
+            </a>
+            @endcan
         </nav>
 
         <!-- Content Area -->
@@ -3136,6 +3142,93 @@
                         </section>
                     @endif
                 </div>
+            @endif
+
+            @if($activeTab === 'devices')
+                <div class="settings-header">
+                    <h2 class="settings-title">{{ __('Devices') }}</h2>
+                    <p class="settings-desc">{{ __('Phones that are signed in to your shop on the mobile app. Sign out any phone you do not recognise.') }}</p>
+                </div>
+
+                @if($deviceSessions->isEmpty())
+                    {{-- Empty state: teach what this screen is for. --}}
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center max-w-2xl">
+                        <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-700">{{ __('No phones are signed in right now') }}</p>
+                        <p class="mt-1 text-sm text-slate-500">{{ __('A phone shows up here when your staff sign in on the mobile app.') }}</p>
+                    </div>
+                @else
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+                        @foreach($deviceSessions as $session)
+                            @php
+                                $person     = $session->user;
+                                $personName = $person?->name ?? $person?->mobile_number ?? __('Unknown person');
+                                $deviceName = $session->device_name ?: __('Unknown device');
+                                $platform   = $session->platform ? ucfirst($session->platform) : null;
+                            @endphp
+                            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-start gap-3 min-w-0">
+                                        <div class="h-10 w-10 flex-shrink-0 rounded-full bg-teal-100 flex items-center justify-center text-teal-700">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="font-semibold text-gray-900 text-sm truncate">{{ $deviceName }}</p>
+                                            <p class="text-xs text-gray-500">
+                                                @if($platform){{ $platform }}@endif
+                                                @if($platform && $session->app_version) · @endif
+                                                @if($session->app_version){{ __('App') }} {{ $session->app_version }}@endif
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 pt-3 border-t border-gray-100 space-y-1.5 text-xs">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-gray-500">{{ __('Signed in by') }}</span>
+                                        <span class="font-medium text-gray-800 truncate">{{ $personName }}</span>
+                                    </div>
+                                    @if($person?->name && $person?->mobile_number)
+                                        <div class="flex items-center justify-between gap-3">
+                                            <span class="text-gray-500">{{ __('Mobile') }}</span>
+                                            <span class="text-gray-600">{{ $person->mobile_number }}</span>
+                                        </div>
+                                    @endif
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-gray-500">{{ __('Logged in') }}</span>
+                                        <span class="text-gray-600">{{ $session->logged_in_at ? $session->logged_in_at->diffForHumans() : '—' }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-gray-500">{{ __('Last active') }}</span>
+                                        <span class="text-gray-600">{{ $session->last_seen_at ? $session->last_seen_at->diffForHumans() : ($session->logged_in_at ? $session->logged_in_at->diffForHumans() : '—') }}</span>
+                                    </div>
+                                    @if($session->ip_address)
+                                        <div class="flex items-center justify-between gap-3">
+                                            <span class="text-gray-500">{{ __('From') }}</span>
+                                            <span class="text-gray-400">{{ $session->ip_address }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                @can('staff.manage')
+                                    <div class="mt-3 flex justify-end">
+                                        <form method="POST" action="{{ route('settings.devices.destroy', $session) }}" data-turbo-frame="_top"
+                                              onsubmit="return confirm('{{ __('Sign out :device? Whoever is using this phone will need to sign in again.', ['device' => $deviceName]) }}')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:scale-[0.97] transition">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                                {{ __('Sign out this device') }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endcan
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             @endif
         </div>
         </turbo-frame>

@@ -60,6 +60,7 @@ class SettingsController extends Controller
             'staff'           => 'staff.view',
             'audit'           => 'settings.view',
             'services'        => 'settings.view',
+            'devices'         => 'settings.view',
         ];
         $canSee = function (string $tab) use ($user, $tabRequirements): bool {
             $req = $tabRequirements[$tab] ?? null;
@@ -221,6 +222,25 @@ class SettingsController extends Controller
             ];
         }
 
+        // Devices tab — the mobile devices currently signed in for this shop.
+        // Mirrors the proven SessionController::index() listing query: active
+        // sessions only (logged_out_at IS NULL), newest first. Owners and anyone
+        // with returns.approve see every staff member's devices; everyone else
+        // sees only their own.
+        $deviceSessions = collect();
+        if ($activeTab === 'devices') {
+            $u = auth()->user();
+            $canViewAll = $u->isOwner() || $u->can('returns.approve');
+            $q = \App\Models\MobileDeviceSession::where('shop_id', $shop->id)
+                ->whereNull('logged_out_at')
+                ->with('user:id,name,mobile_number,role_id')
+                ->orderByDesc('logged_in_at');
+            if (! $canViewAll) {
+                $q->where('user_id', $u->id);
+            }
+            $deviceSessions = $q->get();
+        }
+
         $user = auth()->user();
 
         // Per-metal GST rate overrides + the metals this shop can set them for.
@@ -252,7 +272,8 @@ class SettingsController extends Controller
             'user',
             'gstCategories',
             'gstEnabledMetals',
-            'servicesData'
+            'servicesData',
+            'deviceSessions'
         ));
     }
 

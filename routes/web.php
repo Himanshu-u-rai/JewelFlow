@@ -515,6 +515,12 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/settings/gst-categories/{gstCategory}', [\App\Http\Controllers\GstCategoryController::class, 'update'])->middleware('can:settings.edit')->name('settings.gst-categories.update');
     Route::delete('/settings/gst-categories/{gstCategory}', [\App\Http\Controllers\GstCategoryController::class, 'destroy'])->middleware('can:settings.edit')->name('settings.gst-categories.destroy');
     Route::patch('/settings/materials/reference', [SettingsController::class, 'updateMaterialReference'])->middleware('can:settings.edit')->name('settings.update.material-reference');
+
+    // Connected mobile devices — disconnect one device, or all devices for one staff member.
+    // The controller does its own tenant scoping + owner/manager guards; `staff.manage` is
+    // the defense-in-depth gate matching sibling destructive routes.
+    Route::delete('/settings/devices/{deviceSession}', [\App\Http\Controllers\MobileDeviceSessionController::class, 'destroy'])->middleware('can:staff.manage')->name('settings.devices.destroy');
+    Route::delete('/settings/devices/user/{user}/all', [\App\Http\Controllers\MobileDeviceSessionController::class, 'destroyAllForUser'])->middleware('can:staff.manage')->name('settings.devices.destroy-all');
     Route::post('/settings/whatsapp-template', [SettingsController::class, 'saveWhatsappTemplate'])->middleware('can:settings.edit')->name('settings.whatsapp.template');
     // The role-permission editor itself stays `role:owner` — only the shop owner
     // controls who has which permissions. Permission-gating this would let a
