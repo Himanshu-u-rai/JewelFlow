@@ -1600,7 +1600,8 @@
 
                     <div class="section-divider"></div>
                     <div class="section-label">{{ __('Owner Details') }}</div>
-                    
+                    <p class="settings-section-subtitle">{{ __("The shop's registered owner. This is a business detail and may appear on documents — it is separate from your login name in the Profile tab.") }}</p>
+
                     <div class="form-row cols-4">
                         <div class="field">
                             <label class="field-label">{{ __('First Name') }}</label>

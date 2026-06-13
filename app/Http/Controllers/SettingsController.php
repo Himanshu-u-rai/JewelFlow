@@ -282,24 +282,36 @@ class SettingsController extends Controller
             unset($validated['wastage_recovery_percent']);
         }
 
-        // Build full address for backwards compatibility
+        // Build full address for backwards compatibility. address_line2 is
+        // nullable, so it may be absent from $validated — guard against it.
         $validated['address'] = trim(
             $validated['address_line1'] . ', ' .
-            ($validated['address_line2'] ? $validated['address_line2'] . ', ' : '') .
+            (($validated['address_line2'] ?? null) ? $validated['address_line2'] . ', ' : '') .
             $validated['city'] . ', ' .
             $validated['state'] . ' - ' .
             $validated['pincode']
         );
 
+        // Old owner-details name (before the update), to detect whether the
+        // owner user's login name was ever personalised on the Profile tab.
+        $previousOwnerName = trim((string) $shop->owner_first_name . ' ' . (string) $shop->owner_last_name);
+
         $shop->update($validated);
 
-        // Keep the owner user's display name in sync with shop owner details
+        // Seed the owner user's display name from the shop owner details, but
+        // ONLY when it hasn't been personalised on the Profile tab. If the owner
+        // deliberately set a different login name there, don't clobber it — the
+        // two are independent (login identity vs registered shop owner).
         $ownerUser = \App\Models\User::where('shop_id', $shop->id)
             ->whereHas('role', fn ($q) => $q->where('name', 'owner'))
             ->first();
         if ($ownerUser) {
-            $ownerUser->name = trim($validated['owner_first_name'] . ' ' . $validated['owner_last_name']);
-            $ownerUser->save();
+            $newOwnerName = trim($validated['owner_first_name'] . ' ' . $validated['owner_last_name']);
+            $currentName  = trim((string) $ownerUser->name);
+            if ($currentName === '' || $currentName === $previousOwnerName) {
+                $ownerUser->name = $newOwnerName;
+                $ownerUser->save();
+            }
         }
 
         if ($request->hasFile('logo')) {
