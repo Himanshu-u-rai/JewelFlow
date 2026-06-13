@@ -83,6 +83,7 @@ class ReconcileKarigarBalances extends Command
                    COALESCE(SUM(jo.issued_fine_weight
                        - COALESCE(jo.returned_fine_weight, 0)
                        - COALESCE(jo.leftover_returned_fine_weight, 0)
+                       - COALESCE(jo.retained_returned_fine_weight, 0)
                        - COALESCE(jo.actual_wastage_fine, 0)), 0) AS outstanding_fine
             FROM karigars k
             JOIN job_orders jo ON jo.karigar_id = k.id

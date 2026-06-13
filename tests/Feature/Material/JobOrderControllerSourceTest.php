@@ -114,11 +114,31 @@ class JobOrderControllerSourceTest extends TestCase
     public function test_customer_supplied_source_requires_a_customer(): void
     {
         // A customer_advance leg with no customer_id is rejected by the service
-        // (surfaced as a friendly validation error, not a 500).
+        // (surfaced as a friendly validation error, not a 500). The metal_source
+        // label uses the canonical 'customer_advance' value (= METAL_SOURCE_*).
         $this->actingAs($this->user)->post(route('job-orders.store'), $this->base([
-            'metal_source' => 'customer_supplied',
+            'metal_source' => 'customer_advance',
             'sources' => [['source_type' => 'customer_advance', 'fine_weight' => 5, 'gross_weight' => 5, 'purity' => 22]],
         ]))->assertSessionHasErrors('metal_source');
+
+        $this->assertSame(0, JobOrder::withoutGlobalScopes()->where('shop_id', $this->shopId)->count());
+    }
+
+    public function test_non_vault_label_without_sources_is_rejected_not_silently_vaulted(): void
+    {
+        // A forged POST claiming a karigar_held source but sending only the legacy
+        // issuances[] (no 'sources') must be rejected — never silently turned into
+        // a vault leg that contradicts the stated source. (The UI can't produce
+        // this; it guards a hand-crafted request.)
+        $lot = $this->vaultLot(100);
+
+        $this->actingAs($this->user)->post(route('job-orders.store'), $this->base([
+            'metal_source' => 'karigar_held',
+            'issuances' => [['metal_lot_id' => $lot->id, 'fine_weight' => 10, 'gross_weight' => 10, 'purity' => 22]],
+        ]))->assertSessionHasErrors('metal_source');
+
+        $this->assertSame(0, JobOrder::withoutGlobalScopes()->where('shop_id', $this->shopId)->count());
+        $this->assertEqualsWithDelta(100.0, (float) $lot->fresh()->fine_weight_remaining, 0.0001);
     }
 
     // NOTE: the reassign / retained-receipt HTTP paths use {jobOrder} route-model

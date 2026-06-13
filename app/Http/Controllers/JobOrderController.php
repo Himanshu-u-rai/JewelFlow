@@ -110,6 +110,21 @@ class JobOrderController extends Controller
             'advance_payment_method_id' => ['nullable', \Illuminate\Validation\Rule::exists('shop_payment_methods', 'id')->where('shop_id', $shopId)],
         ];
 
+        // A non-vault source label MUST arrive with a 'sources' set. Without it the
+        // legacy branch below would build a vault leg that contradicts the stated
+        // source (only reachable by a hand-crafted POST; the UI gates this). Reject
+        // the mismatch rather than silently mislabelling the job.
+        $nonVaultLabels = [
+            JobOrder::METAL_SOURCE_KARIGAR_BALANCE,
+            JobOrder::METAL_SOURCE_CUSTOMER_SUPPLIED,
+            JobOrder::METAL_SOURCE_MIXED,
+        ];
+        if (in_array($metalSource, $nonVaultLabels, true) && ! $request->has('sources')) {
+            return back()->withInput()->withErrors([
+                'metal_source' => 'This metal source requires source details. Please re-select where the metal comes from.',
+            ]);
+        }
+
         // Labor-only (none) needs no metal legs. Otherwise accept either the new
         // source SET ('sources') or the legacy 'issuances' (vault-only) input.
         $usesSourceSet = ! $isLaborOnly && $request->has('sources');

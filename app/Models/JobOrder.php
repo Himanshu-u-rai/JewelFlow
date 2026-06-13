@@ -189,11 +189,17 @@ class JobOrder extends Model
 
     public function getOutstandingFineAttribute(): float
     {
+        // Retained metal stays physically with the karigar in a karigar_held lot,
+        // so it is NOT "outstanding" against this job — it is attributed to that
+        // lot instead. Subtracting it here prevents double-counting in the
+        // "with karigar" totals (which add the held lot separately) while a
+        // retained-metal job is still open (e.g. flagged for excess wastage).
         return max(
             0.0,
             (float) $this->issued_fine_weight
                 - (float) $this->returned_fine_weight
                 - (float) $this->leftover_returned_fine_weight
+                - (float) $this->retained_returned_fine_weight
                 - (float) $this->actual_wastage_fine
         );
     }

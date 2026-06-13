@@ -53,6 +53,14 @@ class JobOrderService
                 $legs
             );
 
+            // Each leg validated sufficiency independently against the full balance.
+            // Two legs drawing the SAME target (same vault/held lot, or the same
+            // customer's gold) could each pass yet collectively over-draw, hitting
+            // the metal_lots non-negative CHECK at commit (an uncaught 500). Assert
+            // the per-target planned total up front so it surfaces as a friendly
+            // LogicException instead.
+            $this->assertCumulativeDrawsSufficient($prepared, $shopId);
+
             $totalGross = (float) array_sum(array_map(fn ($p) => $p['gross'], $prepared));
             $totalFine  = (float) array_sum(array_map(fn ($p) => $p['fine'], $prepared));
 
@@ -178,6 +186,12 @@ class JobOrderService
                 return ['type' => $type, 'fine' => $fine, 'gross' => $gross, 'purity' => $purity, 'lot' => $lot, 'customer_id' => null];
 
             case JobOrderSource::TYPE_CUSTOMER_ADVANCE:
+                // The customer-advance pool and the per-customer liability ledger
+                // are gold-only by design (deposits are gold). A silver leg would
+                // silently debit the gold pool — reject it.
+                if ($metalType !== 'gold') {
+                    throw new LogicException('Customer-supplied metal is only supported for gold jobs.');
+                }
                 $customerId = (int) ($leg['customer_id'] ?? 0);
                 if (! $customerId) {
                     throw new LogicException('Customer-supplied metal requires a customer.');
@@ -308,6 +322,43 @@ class JobOrderService
             ->sum('fine_gold');
         if ($balance + self::TOLERANCE_FINE_GRAMS < $fine) {
             throw new LogicException('Customer has only ' . number_format($balance, 3) . 'g of deposited gold available.');
+        }
+    }
+
+    /**
+     * Validate the SUMMED planned draw per target across all prepared legs.
+     * Per-leg guards only check against the full balance; this catches multiple
+     * legs that share a target (same lot, or same customer) and would otherwise
+     * over-draw at commit. Uses the already-locked lot balances; re-reads the
+     * customer ledger (same value the per-leg guard read).
+     *
+     * @param array<int, array{type:string, fine:float, lot:?MetalLot, customer_id:?int}> $prepared
+     */
+    private function assertCumulativeDrawsSufficient(array $prepared, int $shopId): void
+    {
+        $lotDraws      = [];   // lot_id  => [lot, planned fine]
+        $customerDraws = [];   // cust_id => planned fine
+
+        foreach ($prepared as $p) {
+            if ($p['type'] === JobOrderSource::TYPE_CUSTOMER_ADVANCE) {
+                $cid = (int) $p['customer_id'];
+                $customerDraws[$cid] = ($customerDraws[$cid] ?? 0.0) + (float) $p['fine'];
+                continue;
+            }
+            // vault / karigar_held both draw a real lot.
+            $lot = $p['lot'];
+            $id  = (int) $lot->id;
+            if (! isset($lotDraws[$id])) {
+                $lotDraws[$id] = ['lot' => $lot, 'fine' => 0.0];
+            }
+            $lotDraws[$id]['fine'] += (float) $p['fine'];
+        }
+
+        foreach ($lotDraws as $d) {
+            $this->assertLotSufficient($d['lot'], $d['fine']);
+        }
+        foreach ($customerDraws as $cid => $fine) {
+            $this->assertCustomerHasGold($shopId, $cid, $fine);
         }
     }
 

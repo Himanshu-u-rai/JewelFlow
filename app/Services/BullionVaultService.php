@@ -167,18 +167,23 @@ class BullionVaultService
         }
 
         $openOutstanding = (float) $query->get()->sum(function ($j) {
+            // Retained fine is excluded: it lives in the karigar_held lot added
+            // below, so counting it here too would double it while the job is
+            // still open. (See JobOrder::getOutstandingFineAttribute.)
             return max(
                 0.0,
                 (float) $j->issued_fine_weight
                     - (float) $j->returned_fine_weight
                     - (float) $j->leftover_returned_fine_weight
+                    - (float) $j->retained_returned_fine_weight
                     - (float) $j->actual_wastage_fine
             );
         });
 
         // Plus any metal physically retained by the karigar (karigar_held lots),
         // which persists across job completion. Disjoint from open-job
-        // outstanding above. (No-op until held lots exist.)
+        // outstanding above (retained is netted out there). (No-op until held
+        // lots exist.)
         $heldQuery = MetalLot::query()
             ->where('shop_id', $shopId)
             ->where('source', 'karigar_held');
