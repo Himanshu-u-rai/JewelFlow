@@ -315,6 +315,85 @@
             padding: 14px;
         }
 
+        .job-held-panel {
+            border: 1px solid #fde68a;
+            border-radius: 16px;
+            background: #fffbeb;
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+        .job-held-title {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #92400e;
+            margin-bottom: 8px;
+        }
+        .job-held-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .job-held-chip {
+            display: inline-flex;
+            align-items: center;
+            min-height: 36px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid #fcd34d;
+            background: #ffffff;
+            color: #78350f;
+            font-size: 13px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            cursor: pointer;
+            transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1),
+                        background-color 160ms ease, border-color 160ms ease;
+            /* subtle staggered entrance */
+            opacity: 0;
+            transform: translateY(6px);
+            animation: jobHeldChipIn 220ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+        .job-held-chip:nth-child(1) { animation-delay: 0ms; }
+        .job-held-chip:nth-child(2) { animation-delay: 45ms; }
+        .job-held-chip:nth-child(3) { animation-delay: 90ms; }
+        .job-held-chip:nth-child(4) { animation-delay: 135ms; }
+        .job-held-chip:nth-child(n+5) { animation-delay: 180ms; }
+        .job-held-chip:active { transform: scale(0.97); }
+        .job-held-chip--on {
+            border-color: #b45309;
+            background: #fef3c7;
+            color: #7c2d12;
+            box-shadow: 0 0 0 1px #b45309 inset;
+        }
+        @media (hover: hover) and (pointer: fine) {
+            .job-held-chip:hover { border-color: #f59e0b; background: #fffaf0; }
+        }
+        @keyframes jobHeldChipIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .job-held-remain {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #57534e;
+            transition: color 160ms ease;
+        }
+        .job-held-remain--over { color: #be123c; font-weight: 600; }
+        .job-held-empty {
+            font-size: 13px;
+            color: #78716c;
+            line-height: 1.5;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .job-held-chip {
+                opacity: 1;
+                transform: none;
+                animation: none;
+            }
+            .job-held-chip:active { transform: none; }
+        }
+
         .job-actions {
             display: flex;
             align-items: center;
@@ -735,9 +814,44 @@
                         <div class="job-section-head">
                             <div>
                                 <h2 class="job-title">Karigar's held gold</h2>
-                                <p class="job-copy">Enter how much fine gold from the karigar's own balance is used for this job. It is taken from what they already hold.</p>
+                                <p class="job-copy">Use gold the karigar already holds from earlier work. Tap a balance below, then enter how much of it to use.</p>
                             </div>
                         </div>
+
+                        {{-- Available held balances as tappable chips. --}}
+                        <div class="job-held-panel">
+                            <template x-if="heldBuckets.length > 0">
+                                <div>
+                                    <p class="job-held-title">Karigar's gold available</p>
+                                    <div class="job-held-chips">
+                                        <template x-for="(b, i) in heldBuckets" :key="i">
+                                            <button type="button" class="job-held-chip"
+                                                    :class="(parseFloat(purity) === b.purity) ? 'job-held-chip--on' : ''"
+                                                    @click="pickHeldBucket(b)"
+                                                    x-text="b.label"></button>
+                                        </template>
+                                    </div>
+                                    <p class="job-held-remain"
+                                       :class="heldRemaining < -0.0005 ? 'job-held-remain--over' : ''"
+                                       x-show="parseFloat(heldFine) > 0"
+                                       x-cloak>
+                                        <template x-if="heldRemaining >= -0.0005">
+                                            <span>Using <strong x-text="(parseFloat(heldFine) || 0).toFixed(3)"></strong>g — <strong x-text="heldRemaining.toFixed(3)"></strong>g will remain with the karigar.</span>
+                                        </template>
+                                        <template x-if="heldRemaining < -0.0005">
+                                            <span>⚠ That is more than the karigar holds at this purity (<strong x-text="heldAtPurity.toFixed(3)"></strong>g available).</span>
+                                        </template>
+                                    </p>
+                                </div>
+                            </template>
+                            <template x-if="karigarId && heldBuckets.length === 0">
+                                <p class="job-held-empty">This karigar isn't holding any of your gold right now. Choose <strong>Shop vault gold</strong> instead, or pick another karigar.</p>
+                            </template>
+                            <template x-if="!karigarId">
+                                <p class="job-held-empty">Select a karigar above to see the gold they are holding.</p>
+                            </template>
+                        </div>
+
                         <div class="job-field-grid">
                             <input type="hidden" name="sources[0][source_type]" value="karigar_held" :disabled="metalSource !== 'karigar_held'">
                             <label>
@@ -949,6 +1063,10 @@
                 customerName: '',
                 heldFine: '',
                 custFine: '',
+                // Per-karigar reusable held balances, from the server. Shape:
+                // { "<karigarId>": [{ metal_type, purity, fine }], ... }
+                heldMap: @js($karigarHeld),
+                heldBuckets: [],
                 lines: [{ metal_lot_id: '', lotName: '', lotOpen: false, gross_weight: '', fine_weight: '', purity: 22, lotAvailable: 0 }],
                 get totalGross() {
                     if (this.metalSource !== 'vault') { return 0; }
@@ -976,6 +1094,30 @@
                     this.karigarName = id ? label : '';
                     this.allowedWastage = parseFloat(wastage) || 2;
                     this.karigarOpen = false;
+                    this.loadHeldBuckets();
+                },
+                loadHeldBuckets() {
+                    const raw = (this.karigarId && this.heldMap[this.karigarId]) ? this.heldMap[this.karigarId] : [];
+                    this.heldBuckets = raw.map((b) => {
+                        const purity = parseFloat(b.purity);
+                        const fine = parseFloat(b.fine);
+                        const unit = b.metal_type === 'silver' ? '‰' : 'K';
+                        const p = (purity % 1 === 0) ? purity.toString() : purity.toString();
+                        return { purity, fine, metal_type: b.metal_type, label: p + unit + ' · ' + fine.toFixed(3) + 'g' };
+                    });
+                },
+                pickHeldBucket(b) {
+                    this.purity = b.purity;
+                    this.metalType = b.metal_type;
+                },
+                // How much the selected karigar holds at the purity currently typed.
+                get heldAtPurity() {
+                    const p = parseFloat(this.purity);
+                    const match = this.heldBuckets.find((b) => Math.abs(b.purity - p) < 0.005);
+                    return match ? match.fine : 0;
+                },
+                get heldRemaining() {
+                    return this.heldAtPurity - (parseFloat(this.heldFine) || 0);
                 },
                 setSource(source) {
                     this.metalSource = source;

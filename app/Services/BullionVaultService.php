@@ -195,6 +195,70 @@ class BullionVaultService
         return $openOutstanding + (float) $heldQuery->sum('fine_weight_remaining');
     }
 
+    /**
+     * Per-(metal, purity) breakdown of the gold a karigar is holding, split into:
+     *  - reusable: loose leftover in the karigar's karigar_held buckets, which can
+     *    be drawn for a new "karigar's own balance" job;
+     *  - in_jobs:  gold still out in their open/unfinished jobs (not yet returned);
+     *  - total:    reusable + in_jobs.
+     *
+     * Single source of truth for the "gold with karigar" figure shown on the
+     * karigar profile, the karigar list, and the job form. Mirrors withKarigarFine
+     * (retained is netted out of in_jobs so it is only counted once, in reusable).
+     *
+     * @return Collection<int, array{metal_type:string, purity:float, reusable:float, in_jobs:float, total:float}>
+     */
+    public function karigarHeldBreakdown(int $shopId, int $karigarId): Collection
+    {
+        // reusable — the karigar_held buckets, already grouped per (metal, purity).
+        $reusable = MetalLot::query()
+            ->where('shop_id', $shopId)
+            ->where('karigar_id', $karigarId)
+            ->where('source', MetalLot::SOURCE_KARIGAR_HELD)
+            ->where('fine_weight_remaining', '>', 0)
+            ->get(['metal_type', 'purity', 'fine_weight_remaining']);
+
+        // in_jobs — gold still out on open jobs, summed per (metal, purity). Uses
+        // the same outstanding formula as withKarigarFine (retained excluded).
+        $openJobs = JobOrder::query()
+            ->where('shop_id', $shopId)
+            ->where('karigar_id', $karigarId)
+            ->whereIn('status', [JobOrder::STATUS_ISSUED, JobOrder::STATUS_PARTIAL_RETURN])
+            ->get(['metal_type', 'purity', 'issued_fine_weight', 'returned_fine_weight',
+                'leftover_returned_fine_weight', 'retained_returned_fine_weight', 'actual_wastage_fine']);
+
+        $rows = [];
+        $key = fn ($metal, $purity) => $metal . '|' . number_format((float) $purity, 2, '.', '');
+
+        foreach ($reusable as $lot) {
+            $k = $key($lot->metal_type, $lot->purity);
+            $rows[$k] ??= ['metal_type' => $lot->metal_type, 'purity' => (float) $lot->purity, 'reusable' => 0.0, 'in_jobs' => 0.0];
+            $rows[$k]['reusable'] += (float) $lot->fine_weight_remaining;
+        }
+
+        foreach ($openJobs as $j) {
+            $out = max(0.0, (float) $j->issued_fine_weight
+                - (float) $j->returned_fine_weight
+                - (float) $j->leftover_returned_fine_weight
+                - (float) $j->retained_returned_fine_weight
+                - (float) $j->actual_wastage_fine);
+            if ($out <= 0) {
+                continue;
+            }
+            $k = $key($j->metal_type, $j->purity);
+            $rows[$k] ??= ['metal_type' => $j->metal_type, 'purity' => (float) $j->purity, 'reusable' => 0.0, 'in_jobs' => 0.0];
+            $rows[$k]['in_jobs'] += $out;
+        }
+
+        return collect($rows)
+            ->map(function ($r) {
+                $r['total'] = $r['reusable'] + $r['in_jobs'];
+                return $r;
+            })
+            ->sortBy([['metal_type', 'asc'], ['purity', 'desc']])
+            ->values();
+    }
+
     public function recentLedger(int $shopId, int $limit = 50)
     {
         return MetalMovement::query()

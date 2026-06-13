@@ -70,7 +70,22 @@ class JobOrderController extends Controller
             ->orderBy('first_name')->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name', 'mobile']);
 
-        return view('job-orders.create', compact('karigars', 'lots', 'paymentMethods', 'customers'));
+        // Per-karigar reusable held balance (the buckets a "karigar's own balance"
+        // job can draw from), keyed by karigar id → [{metal_type, purity, fine}].
+        // Surfaced as chips on the form so the owner picks from a real number.
+        $vault = app(\App\Services\BullionVaultService::class);
+        $karigarHeld = $karigars->mapWithKeys(fn ($k) => [
+            $k->id => $vault->karigarHeldBreakdown($shopId, (int) $k->id)
+                ->where('reusable', '>', 0)
+                ->map(fn ($r) => [
+                    'metal_type' => $r['metal_type'],
+                    'purity'     => round((float) $r['purity'], 2),
+                    'fine'       => round((float) $r['reusable'], 3),
+                ])
+                ->values(),
+        ]);
+
+        return view('job-orders.create', compact('karigars', 'lots', 'paymentMethods', 'customers', 'karigarHeld'));
     }
 
     public function store(Request $request)

@@ -172,8 +172,15 @@
     <p class="kf-group kf-group--first">Profile</p>
 
     <label class="kf-field">
-        <span class="kf-label">Name *</span>
+        <span class="kf-label">Karigar Name *</span>
         <input type="text" name="name" value="{{ old('name', $k?->name) }}" required class="kf-input">
+        <p class="kf-hint">The karigar's own name.</p>
+    </label>
+
+    <label class="kf-field">
+        <span class="kf-label">Workshop / Shop Name</span>
+        <input type="text" name="shop_name" value="{{ old('shop_name', $k?->shop_name) }}" placeholder="e.g. Ramesh Jewellery Works" class="kf-input">
+        <p class="kf-hint">The karigar's workshop or shop. Leave blank if not known.</p>
     </label>
 
     <label class="kf-field">
@@ -201,10 +208,10 @@
         <input type="text" name="pan_number" value="{{ old('pan_number', $k?->pan_number) }}" class="kf-input kf-mono">
     </label>
 
-    <p class="kf-group">Address</p>
+    <p class="kf-group">Workshop Address</p>
 
     <label class="kf-field kf-field--full">
-        <span class="kf-label">Address</span>
+        <span class="kf-label">Workshop Address</span>
         <input type="text" name="address" value="{{ old('address', $k?->address) }}" class="kf-input">
     </label>
 

@@ -13,6 +13,7 @@ class Karigar extends Model
     protected $fillable = [
         'shop_id',
         'name',
+        'shop_name',
         'contact_person',
         'mobile',
         'email',
