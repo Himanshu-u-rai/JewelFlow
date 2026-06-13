@@ -1335,7 +1335,7 @@
             @endcan
             {{-- Services — settings.view --}}
             @can('settings.view')
-            <a href="{{ route('settings.services') }}" class="nav-item {{ request()->routeIs('settings.services') ? 'active' : '' }}">
+            <a href="{{ route('settings.edit', ['tab' => 'services']) }}" class="nav-item {{ $activeTab === 'services' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> {{ __('Services') }}
             </a>
             @endcan
@@ -2913,6 +2913,229 @@
 
             @if($activeTab === 'website')
                 @include('partials.settings.website-tab')
+            @endif
+
+            @if($activeTab === 'services')
+                @php
+                    $active          = $servicesData['active'];
+                    $available       = $servicesData['available'];
+                    $pendingRequests = $servicesData['pendingRequests'];
+                    $history         = $servicesData['history'];
+                    $assignments     = $servicesData['assignments'];
+                    $pendingRemove   = $pendingRequests->where('action', 'remove');
+                @endphp
+
+                <div class="settings-header">
+                    <h2 class="settings-title">{{ __('Services') }}</h2>
+                    <p class="settings-desc">{{ __('See what your shop can do today. Add a new service or remove one you no longer need.') }}</p>
+                </div>
+
+                <div class="space-y-8 max-w-3xl">
+                    {{-- Active services --}}
+                    <section>
+                        <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('What you have now') }}</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            @foreach($active as $ed)
+                                @if($ed === 'dhiran') @continue @endif
+                                @php
+                                    $meta = [
+                                        'retailer'     => ['label' => 'Retailer',     'desc' => 'Buy and sell ready-made jewellery.'],
+                                        'manufacturer' => ['label' => 'Manufacturer', 'desc' => 'Make jewellery in your own workshop.'],
+                                    ][$ed] ?? ['label' => ucfirst($ed), 'desc' => ''];
+                                    $assignment = $assignments[$ed] ?? null;
+                                @endphp
+                                <div class="rounded-xl border border-slate-200 bg-white">
+                                    <div class="px-5 py-4">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div class="text-sm font-semibold text-slate-900">{{ __($meta['label']) }}</div>
+                                                <div class="text-xs text-slate-500 mt-0.5">{{ __($meta['desc']) }}</div>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1 text-xs font-semibold text-green-700 flex-shrink-0">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                {{ __('On') }}
+                                            </span>
+                                        </div>
+                                        @if($assignment?->activated_at)
+                                            <div class="text-xs text-slate-400 mt-2">
+                                                {{ __('On since') }} {{ $assignment->activated_at->format('d M Y') }}
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    @can('settings.edit')
+                                        @if(count($active) > 1)
+                                            <details class="border-t border-slate-100">
+                                                <summary class="cursor-pointer list-none px-5 py-3 text-xs font-medium text-rose-600 hover:text-rose-700">
+                                                    {{ __('Turn this off') }}
+                                                </summary>
+                                                <form method="POST" action="{{ route('settings.services.remove') }}" data-turbo-frame="_top" class="px-5 pb-4 space-y-3">
+                                                    @csrf
+                                                    <input type="hidden" name="edition" value="{{ $ed }}">
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('Why are you turning this off?') }}</label>
+                                                        <textarea name="reason" rows="2" required minlength="4" maxlength="500"
+                                                                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                                                                  placeholder="{{ __('e.g. We no longer make jewellery in-house.') }}"></textarea>
+                                                    </div>
+                                                    <label class="flex items-start gap-2 text-xs text-slate-600">
+                                                        <input type="checkbox" name="confirm" value="1" required class="mt-0.5">
+                                                        <span>{{ __('I understand this turns off this service for my shop.') }}</span>
+                                                    </label>
+                                                    <button type="submit" class="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 transition">
+                                                        {{ __('Turn off') }} {{ __($meta['label']) }}
+                                                    </button>
+                                                </form>
+                                            </details>
+                                        @else
+                                            <div class="border-t border-slate-100 px-5 py-3 text-xs text-slate-400">
+                                                {{ __('This is your only service. To stop using it, please contact support.') }}
+                                            </div>
+                                        @endif
+                                    @endcan
+                                </div>
+                            @endforeach
+                        </div>
+                    </section>
+
+                    {{-- Available to add --}}
+                    @if(count($available) > 0)
+                        <section>
+                            <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Add a new service') }}</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                @foreach($available as $ed)
+                                    @if($ed === 'dhiran') @continue @endif
+                                    @php
+                                        $meta = [
+                                            'retailer'     => ['label' => 'Retailer',     'desc' => 'Buy and sell ready-made jewellery.'],
+                                            'manufacturer' => ['label' => 'Manufacturer', 'desc' => 'Make jewellery in your own workshop.'],
+                                        ][$ed] ?? ['label' => ucfirst($ed), 'desc' => ''];
+                                        $pending = $pendingRequests->firstWhere(fn($r) => $r->edition === $ed && $r->action === 'add');
+                                    @endphp
+
+                                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50">
+                                        <div class="px-5 py-4">
+                                            <div class="text-sm font-semibold text-slate-900">{{ __($meta['label']) }}</div>
+                                            <div class="text-xs text-slate-500 mt-0.5">{{ __($meta['desc']) }}</div>
+                                        </div>
+
+                                        @if($pending)
+                                            <div class="border-t border-slate-200 px-5 py-3 space-y-2">
+                                                <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                                    {{ __('Asked for since') }} {{ $pending->created_at->format('d M Y') }}. {{ __('We will get back to you soon.') }}
+                                                </p>
+                                                @can('settings.edit')
+                                                    <form method="POST" action="{{ route('settings.services.request.cancel', $pending) }}" data-turbo-frame="_top">
+                                                        @csrf
+                                                        <button type="submit" class="text-xs font-medium text-slate-500 hover:text-slate-700 underline">{{ __('Cancel this request') }}</button>
+                                                    </form>
+                                                @endcan
+                                            </div>
+                                        @elsecan('settings.edit')
+                                            <details class="border-t border-slate-200">
+                                                <summary class="cursor-pointer list-none px-5 py-3 text-xs font-semibold text-teal-700 hover:text-teal-800">
+                                                    {{ __('Ask to turn this on') }}
+                                                </summary>
+                                                <form method="POST" action="{{ route('settings.services.request-add') }}" data-turbo-frame="_top" class="px-5 pb-4 space-y-3">
+                                                    @csrf
+                                                    <input type="hidden" name="edition" value="{{ $ed }}">
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('Why do you want this service?') }}</label>
+                                                        <textarea name="reason" rows="2" required minlength="10" maxlength="500"
+                                                                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                                                                  placeholder="{{ __('A short reason helps us set it up for you.') }}"></textarea>
+                                                    </div>
+                                                    <button type="submit" class="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 transition">
+                                                        {{ __('Send request') }}
+                                                    </button>
+                                                </form>
+                                            </details>
+                                        @endcan
+                                    </div>
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+
+                    {{-- Pending removal requests --}}
+                    @if($pendingRemove->isNotEmpty())
+                        <section>
+                            <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Waiting to be turned off') }}</h3>
+                            <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                                        <tr>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('Service') }}</th>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('Asked on') }}</th>
+                                            <th class="px-5 py-2.5 text-right"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @foreach($pendingRemove as $req)
+                                            <tr>
+                                                <td class="px-5 py-3 font-medium text-slate-800">{{ ucfirst($req->edition) }}</td>
+                                                <td class="px-5 py-3 text-slate-600">{{ $req->created_at->format('d M Y, H:i') }}</td>
+                                                <td class="px-5 py-3 text-right">
+                                                    @can('settings.edit')
+                                                        <form method="POST" action="{{ route('settings.services.request.cancel', $req) }}" data-turbo-frame="_top">
+                                                            @csrf
+                                                            <button type="submit" class="text-xs font-medium text-slate-500 hover:text-slate-700 underline">{{ __('Cancel') }}</button>
+                                                        </form>
+                                                    @endcan
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    @endif
+
+                    {{-- Recent activity --}}
+                    @if($history->isNotEmpty())
+                        <section>
+                            <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Recent activity') }}</h3>
+                            <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                                        <tr>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('What happened') }}</th>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('Result') }}</th>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('On') }}</th>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('Notes') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @foreach($history as $req)
+                                            <tr>
+                                                <td class="px-5 py-3 text-slate-800">{{ ucfirst($req->action) }} {{ ucfirst($req->edition) }}</td>
+                                                <td class="px-5 py-3">
+                                                    @php
+                                                        $cls = match($req->status) {
+                                                            'approved'  => 'text-green-700 bg-green-50',
+                                                            'denied'    => 'text-rose-700 bg-rose-50',
+                                                            'cancelled' => 'text-slate-600 bg-slate-100',
+                                                            default     => 'text-amber-700 bg-amber-50',
+                                                        };
+                                                        $statusLabel = match($req->status) {
+                                                            'approved'  => __('Done'),
+                                                            'denied'    => __('Not done'),
+                                                            'cancelled' => __('Cancelled'),
+                                                            default     => ucfirst($req->status),
+                                                        };
+                                                    @endphp
+                                                    <span class="text-xs font-medium px-2 py-0.5 rounded {{ $cls }}">{{ $statusLabel }}</span>
+                                                </td>
+                                                <td class="px-5 py-3 text-slate-600">{{ $req->reviewed_at?->format('d M Y') ?? '—' }}</td>
+                                                <td class="px-5 py-3 text-slate-600 text-xs">{{ $req->review_notes ?? '—' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    @endif
+                </div>
             @endif
         </div>
         </turbo-frame>

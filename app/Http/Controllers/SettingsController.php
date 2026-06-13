@@ -59,6 +59,7 @@ class SettingsController extends Controller
             'roles'           => '__owner_only__',
             'staff'           => 'staff.view',
             'audit'           => 'settings.view',
+            'services'        => 'settings.view',
         ];
         $canSee = function (string $tab) use ($user, $tabRequirements): bool {
             $req = $tabRequirements[$tab] ?? null;
@@ -204,6 +205,22 @@ class SettingsController extends Controller
             ];
         }
 
+        // Services tab — which editions (services) this shop has, can add, plus
+        // pending requests + recent activity. Mirrors ShopServicesController::index.
+        $servicesData = null;
+        if ($activeTab === 'services') {
+            $active = $shop->editionList();
+            $platformEnabled = \App\Models\Platform\PlatformSetting::enabledShopTypes();
+            $servicesData = [
+                'active'          => $active,
+                'all'             => \App\Support\ShopEdition::ALL,
+                'available'       => array_values(array_intersect(array_diff(\App\Support\ShopEdition::ALL, $active), $platformEnabled)),
+                'pendingRequests' => \App\Models\ShopEditionRequest::where('shop_id', $shop->id)->where('status', \App\Models\ShopEditionRequest::STATUS_PENDING)->latest()->get(),
+                'history'         => \App\Models\ShopEditionRequest::where('shop_id', $shop->id)->whereIn('status', [\App\Models\ShopEditionRequest::STATUS_APPROVED, \App\Models\ShopEditionRequest::STATUS_DENIED, \App\Models\ShopEditionRequest::STATUS_CANCELLED])->latest()->limit(10)->get(),
+                'assignments'     => \App\Models\ShopEditionAssignment::where('shop_id', $shop->id)->whereNull('deactivated_at')->get()->keyBy('edition'),
+            ];
+        }
+
         $user = auth()->user();
 
         // Per-metal GST rate overrides + the metals this shop can set them for.
@@ -234,7 +251,8 @@ class SettingsController extends Controller
             'methods',
             'user',
             'gstCategories',
-            'gstEnabledMetals'
+            'gstEnabledMetals',
+            'servicesData'
         ));
     }
 

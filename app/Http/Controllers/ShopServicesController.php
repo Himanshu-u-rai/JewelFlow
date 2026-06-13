@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Dhiran\DhiranSettings;
 use App\Models\Platform\PlatformSetting;
-use App\Models\ShopEditionAssignment;
 use App\Models\ShopEditionRequest;
 use App\Support\ShopEdition;
 use Illuminate\Http\RedirectResponse;
@@ -25,50 +24,14 @@ use Illuminate\Validation\Rule;
  */
 class ShopServicesController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Services now lives as a tab inside the unified Settings page. This
+     * standalone GET route is kept only so old bookmarks/links to
+     * /settings/services land on the new tab instead of 404-ing.
+     */
+    public function index(Request $request): RedirectResponse
     {
-        $user = Auth::user();
-        $shop = $user->shop;
-
-        abort_unless($shop, 403);
-
-        $active = $shop->editionList();
-        $all    = ShopEdition::ALL;
-        $platformEnabled = PlatformSetting::enabledShopTypes();
-
-        $available = array_values(array_intersect(
-            array_diff($all, $active),
-            $platformEnabled
-        ));
-
-        $pendingRequests = ShopEditionRequest::where('shop_id', $shop->id)
-            ->where('status', ShopEditionRequest::STATUS_PENDING)
-            ->latest()
-            ->get();
-
-        $history = ShopEditionRequest::where('shop_id', $shop->id)
-            ->whereIn('status', [
-                ShopEditionRequest::STATUS_APPROVED,
-                ShopEditionRequest::STATUS_DENIED,
-                ShopEditionRequest::STATUS_CANCELLED,
-            ])
-            ->latest()
-            ->limit(10)
-            ->get();
-
-        $assignments = ShopEditionAssignment::where('shop_id', $shop->id)
-            ->whereNull('deactivated_at')
-            ->get()
-            ->keyBy('edition');
-
-        return view('settings.services', [
-            'shop'            => $shop,
-            'active'          => $active,
-            'available'       => $available,
-            'pendingRequests' => $pendingRequests,
-            'history'         => $history,
-            'assignments'     => $assignments,
-        ]);
+        return redirect()->route('settings.edit', ['tab' => 'services']);
     }
 
     /**
