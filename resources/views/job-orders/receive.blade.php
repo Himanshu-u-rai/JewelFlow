@@ -29,6 +29,11 @@
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
                     <input type="text" name="notes" class="w-full rounded-md border-gray-300 text-sm">
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Metal kept by karigar (g)</label>
+                    <input type="number" step="0.001" min="0" name="retained_fine_weight" value="0" class="w-full rounded-md border-gray-300 text-sm">
+                    <p class="text-[11px] text-gray-500 mt-1">Fine gold the karigar is keeping from this job. It stays in their balance for future work (not wastage). Leave 0 if none.</p>
+                </div>
             </div>
 
             <div class="border-t border-gray-200 pt-4">

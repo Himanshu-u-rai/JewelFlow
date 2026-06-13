@@ -617,7 +617,45 @@
                         </div>
                     </section>
 
+                    <input type="hidden" name="metal_source" :value="metalSource">
+
                     <section class="job-section">
+                        <div class="job-section-head">
+                            <div>
+                                <h2 class="job-title">Where does the metal come from?</h2>
+                                <p class="job-copy">Choose how this job is supplied with gold. Pick "Only labour" if you are not giving any metal.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <button type="button" @click="setSource('vault')"
+                                    class="text-left rounded-xl border-2 p-4 transition"
+                                    :class="metalSource === 'vault' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-gray-300 bg-white'">
+                                <div class="text-sm font-semibold text-gray-800">Shop vault gold</div>
+                                <div class="text-xs text-gray-500 mt-0.5">Give gold from your own stock (a lot in the vault).</div>
+                            </button>
+                            <button type="button" @click="setSource('karigar_held')"
+                                    class="text-left rounded-xl border-2 p-4 transition"
+                                    :class="metalSource === 'karigar_held' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-gray-300 bg-white'">
+                                <div class="text-sm font-semibold text-gray-800">Karigar's own balance</div>
+                                <div class="text-xs text-gray-500 mt-0.5">Karigar uses gold they already hold from earlier work.</div>
+                            </button>
+                            <button type="button" @click="setSource('customer_advance')"
+                                    class="text-left rounded-xl border-2 p-4 transition"
+                                    :class="metalSource === 'customer_advance' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-gray-300 bg-white'">
+                                <div class="text-sm font-semibold text-gray-800">Customer's own gold</div>
+                                <div class="text-xs text-gray-500 mt-0.5">Customer gave gold for this job (uses their deposit).</div>
+                            </button>
+                            <button type="button" @click="setSource('none')"
+                                    class="text-left rounded-xl border-2 p-4 transition"
+                                    :class="metalSource === 'none' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-gray-300 bg-white'">
+                                <div class="text-sm font-semibold text-gray-800">Only labour (no metal)</div>
+                                <div class="text-xs text-gray-500 mt-0.5">No gold is given. Karigar is paid for work only.</div>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="job-section" x-show="metalSource === 'vault'" x-cloak>
                         <div class="job-section-head">
                             <div>
                                 <h2 class="job-title">Bullion Issued</h2>
@@ -635,7 +673,7 @@
                                     <div class="job-line-grid">
                                         <div class="job-combobox" x-data="{ get open() { return lines[idx].lotOpen; }, set open(v) { lines[idx].lotOpen = v; } }" @click.outside="open = false">
                                             <span class="job-label">Lot</span>
-                                            <input type="hidden" :name="'issuances[' + idx + '][metal_lot_id]'" x-model="line.metal_lot_id">
+                                            <input type="hidden" :name="'issuances[' + idx + '][metal_lot_id]'" :disabled="metalSource !== 'vault'" x-model="line.metal_lot_id">
                                             <button type="button" class="job-combobox-trigger" @click="open = !open" :aria-expanded="open.toString()">
                                                 <span :class="line.lotName ? '' : 'job-combobox-placeholder'" x-text="line.lotName || 'Select lot...'">Select lot...</span>
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -663,18 +701,18 @@
 
                                         <label>
                                             <span class="job-label">Fine Weight (g) *</span>
-                                            <input type="number" step="0.001" min="0.001" :name="'issuances[' + idx + '][fine_weight]'" required class="job-control font-semibold" x-model="line.fine_weight" @input="recomputeGross(idx)">
+                                            <input type="number" step="0.001" min="0.001" :name="'issuances[' + idx + '][fine_weight]'" :required="metalSource === 'vault'" :disabled="metalSource !== 'vault'" class="job-control font-semibold" x-model="line.fine_weight" @input="recomputeGross(idx)">
                                         </label>
 
                                         <div class="job-gross-display">
                                             <span class="job-label">Gross (g) <span style="font-weight:500;color:#94a3b8">challan</span></span>
-                                            <input type="hidden" :name="'issuances[' + idx + '][gross_weight]'" :value="line.gross_weight">
+                                            <input type="hidden" :name="'issuances[' + idx + '][gross_weight]'" :disabled="metalSource !== 'vault'" :value="line.gross_weight">
                                             <div class="job-gross-value" x-text="(parseFloat(line.gross_weight) || 0).toFixed(3) + ' g'">0.000 g</div>
                                         </div>
 
                                         <label>
                                             <span class="job-label">Purity</span>
-                                            <input type="number" step="0.01" min="1" :max="metalType === 'silver' ? 1000 : 24" :name="'issuances[' + idx + '][purity]'" required class="job-control" x-model="line.purity" @input="recomputeGross(idx)">
+                                            <input type="number" step="0.01" min="1" :max="metalType === 'silver' ? 1000 : 24" :name="'issuances[' + idx + '][purity]'" :required="metalSource === 'vault'" :disabled="metalSource !== 'vault'" class="job-control" x-model="line.purity" @input="recomputeGross(idx)">
                                         </label>
 
                                         <button type="button" @click="removeLine(idx)" x-show="lines.length > 1" class="job-remove-line" aria-label="Remove lot line">×</button>
@@ -690,6 +728,87 @@
                                     </div>
                                 </div>
                             </template>
+                        </div>
+                    </section>
+
+                    <section class="job-section" x-show="metalSource === 'karigar_held'" x-cloak>
+                        <div class="job-section-head">
+                            <div>
+                                <h2 class="job-title">Karigar's held gold</h2>
+                                <p class="job-copy">Enter how much fine gold from the karigar's own balance is used for this job. It is taken from what they already hold.</p>
+                            </div>
+                        </div>
+                        <div class="job-field-grid">
+                            <input type="hidden" name="sources[0][source_type]" value="karigar_held" :disabled="metalSource !== 'karigar_held'">
+                            <label>
+                                <span class="job-label">Fine Weight Used (g) *</span>
+                                <input type="number" step="0.001" min="0.001" name="sources[0][fine_weight]"
+                                       :required="metalSource === 'karigar_held'" :disabled="metalSource !== 'karigar_held'"
+                                       class="job-control font-semibold" x-model="heldFine">
+                            </label>
+                            <label>
+                                <span class="job-label">Purity *</span>
+                                <input type="number" step="0.01" min="1" :max="metalType === 'silver' ? 1000 : 24" name="sources[0][purity]"
+                                       :required="metalSource === 'karigar_held'" :disabled="metalSource !== 'karigar_held'"
+                                       class="job-control" x-model="purity">
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="job-section" x-show="metalSource === 'customer_advance'" x-cloak>
+                        <div class="job-section-head">
+                            <div>
+                                <h2 class="job-title">Customer's gold</h2>
+                                <p class="job-copy">Choose the customer and enter how much of their deposited fine gold is used for this job.</p>
+                            </div>
+                        </div>
+                        <div class="job-field-grid">
+                            <input type="hidden" name="sources[0][source_type]" value="customer_advance" :disabled="metalSource !== 'customer_advance'">
+                            <div class="job-combobox" @click.outside="customerOpen = false">
+                                <span class="job-label">Customer *</span>
+                                <input type="hidden" name="sources[0][customer_id]" x-model="customerId" :disabled="metalSource !== 'customer_advance'">
+                                <button type="button" class="job-combobox-trigger" @click="customerOpen = ! customerOpen" :aria-expanded="customerOpen.toString()">
+                                    <span :class="customerName ? '' : 'job-combobox-placeholder'" x-text="customerName || 'Select customer...'">Select customer...</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                </button>
+                                <div class="job-combobox-menu" x-show="customerOpen" x-transition.origin.top x-cloak>
+                                    <div class="job-combobox-list">
+                                        <button type="button" class="job-combobox-option" @click="onCustomerSelect('', 'Select customer...')">
+                                            Select customer...
+                                        </button>
+                                    @foreach($customers as $c)
+                                        @php
+                                            $custLabel = trim($c->first_name . ' ' . $c->last_name) . ($c->mobile ? ' · ' . $c->mobile : '');
+                                        @endphp
+                                        <button type="button"
+                                                class="job-combobox-option"
+                                                :class="customerId === '{{ $c->id }}' ? 'job-combobox-option-selected' : ''"
+                                                @click="onCustomerSelect('{{ $c->id }}', @js($custLabel))">
+                                            {{ trim($c->first_name . ' ' . $c->last_name) ?: 'Customer #' . $c->id }}
+                                            @if($c->mobile)<span class="job-combobox-meta">{{ $c->mobile }}</span>@endif
+                                        </button>
+                                    @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                            <label>
+                                <span class="job-label">Fine Weight Used (g) *</span>
+                                <input type="number" step="0.001" min="0.001" name="sources[0][fine_weight]"
+                                       :required="metalSource === 'customer_advance'" :disabled="metalSource !== 'customer_advance'"
+                                       class="job-control font-semibold" x-model="custFine">
+                            </label>
+                            <label>
+                                <span class="job-label">Purity *</span>
+                                <input type="number" step="0.01" min="1" :max="metalType === 'silver' ? 1000 : 24" name="sources[0][purity]"
+                                       :required="metalSource === 'customer_advance'" :disabled="metalSource !== 'customer_advance'"
+                                       class="job-control" x-model="purity">
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="job-section" x-show="metalSource === 'none'" x-cloak>
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                            This job has no metal. The karigar will be paid for labour only. No gold leaves the vault.
                         </div>
                     </section>
 
@@ -789,9 +908,18 @@
                             <span class="job-preview-label">Expected Return</span>
                             <span class="job-preview-value text-emerald-700" x-text="expectedReturn.toFixed(3) + 'g'">0.000g</span>
                         </div>
-                        <div class="job-preview-row">
+                        <div class="job-preview-row" x-show="metalSource === 'vault'" x-cloak>
                             <span class="job-preview-label">Issuance Lines</span>
                             <span class="job-preview-value" x-text="lines.length">1</span>
+                        </div>
+                        <div class="job-preview-row">
+                            <span class="job-preview-label">Metal Source</span>
+                            <span class="job-preview-value" x-text="{
+                                vault: 'Shop vault',
+                                karigar_held: \"Karigar's balance\",
+                                customer_advance: \"Customer's gold\",
+                                none: 'Labour only',
+                            }[metalSource]">Shop vault</span>
                         </div>
                     </div>
                 </aside>
@@ -815,9 +943,23 @@
                 paymentMethodId: '',
                 paymentMethodName: '',
                 allowedWastage: 2,
+                metalSource: 'vault',
+                customerOpen: false,
+                customerId: '',
+                customerName: '',
+                heldFine: '',
+                custFine: '',
                 lines: [{ metal_lot_id: '', lotName: '', lotOpen: false, gross_weight: '', fine_weight: '', purity: 22, lotAvailable: 0 }],
-                get totalGross() { return this.lines.reduce((s, l) => s + (parseFloat(l.gross_weight) || 0), 0); },
-                get totalFine() { return this.lines.reduce((s, l) => s + (parseFloat(l.fine_weight) || 0), 0); },
+                get totalGross() {
+                    if (this.metalSource !== 'vault') { return 0; }
+                    return this.lines.reduce((s, l) => s + (parseFloat(l.gross_weight) || 0), 0);
+                },
+                get totalFine() {
+                    if (this.metalSource === 'none') { return 0; }
+                    if (this.metalSource === 'karigar_held') { return parseFloat(this.heldFine) || 0; }
+                    if (this.metalSource === 'customer_advance') { return parseFloat(this.custFine) || 0; }
+                    return this.lines.reduce((s, l) => s + (parseFloat(l.fine_weight) || 0), 0);
+                },
                 get expectedReturn() { return this.totalFine * (1 - (parseFloat(this.allowedWastage) || 0) / 100); },
                 addLine() { this.lines.push({ metal_lot_id: '', lotName: '', lotOpen: false, gross_weight: '', fine_weight: '', purity: this.purity, lotAvailable: 0 }); },
                 removeLine(i) { this.lines.splice(i, 1); },
@@ -826,6 +968,7 @@
                     this.metalTypeOpen = false;
                     this.advanceModeOpen = false;
                     this.paymentMethodOpen = false;
+                    this.customerOpen = false;
                     this.lines.forEach((line) => line.lotOpen = false);
                 },
                 onKarigarSelect(id, label, wastage) {
@@ -833,6 +976,14 @@
                     this.karigarName = id ? label : '';
                     this.allowedWastage = parseFloat(wastage) || 2;
                     this.karigarOpen = false;
+                },
+                setSource(source) {
+                    this.metalSource = source;
+                },
+                onCustomerSelect(id, label) {
+                    this.customerId = id;
+                    this.customerName = id ? label : '';
+                    this.customerOpen = false;
                 },
                 onMetalTypeSelect(type) {
                     this.metalType = type;

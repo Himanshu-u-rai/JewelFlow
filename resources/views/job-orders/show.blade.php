@@ -177,6 +177,22 @@
                         </div>
                         <button type="submit" class="btn btn-secondary btn-sm">Credit Vault</button>
                     </form>
+                    @if(isset($otherKarigars) && $otherKarigars->isNotEmpty())
+                        <form method="POST" action="{{ route('job-orders.reassign', $jobOrder) }}" class="flex items-end gap-2"
+                              onsubmit="return confirm('Give this job (and its metal) to the chosen karigar?');">
+                            @csrf
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1">Give job to another karigar</label>
+                                <select name="to_karigar_id" required class="rounded-md border-gray-300 text-sm" style="width:200px;">
+                                    <option value="" disabled selected>— Select karigar —</option>
+                                    @foreach($otherKarigars as $k)
+                                        <option value="{{ $k->id }}">{{ $k->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-sm">Reassign</button>
+                        </form>
+                    @endif
                     @if($jobOrder->status === 'issued')
                         <form method="POST" action="{{ route('job-orders.cancel', $jobOrder) }}" onsubmit="return confirm('Cancel job order? This will return all bullion to the source lot.');">
                             @csrf

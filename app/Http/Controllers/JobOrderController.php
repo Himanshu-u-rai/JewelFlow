@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\JobOrder;
 use App\Models\JobOrderSource;
 use App\Models\Karigar;
@@ -63,7 +64,13 @@ class JobOrderController extends Controller
             ->orderBy('type')->orderBy('name')
             ->get(['id', 'name', 'type']);
 
-        return view('job-orders.create', compact('karigars', 'lots', 'paymentMethods'));
+        // Customers — for the "customer's own gold" metal-source mode.
+        $customers = Customer::query()
+            ->where('shop_id', $shopId)
+            ->orderBy('first_name')->orderBy('last_name')
+            ->get(['id', 'first_name', 'last_name', 'mobile']);
+
+        return view('job-orders.create', compact('karigars', 'lots', 'paymentMethods', 'customers'));
     }
 
     public function store(Request $request)
@@ -157,7 +164,17 @@ class JobOrderController extends Controller
             'invoices.lines',
         ]);
 
-        return view('job-orders.show', compact('jobOrder'));
+        // Active karigars (other than the current) — for the reassign action.
+        $otherKarigars = $jobOrder->isOpen()
+            ? Karigar::query()
+                ->where('shop_id', auth()->user()->shop_id)
+                ->whereRaw('is_active IS TRUE')
+                ->where('id', '<>', $jobOrder->karigar_id)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
+
+        return view('job-orders.show', compact('jobOrder', 'otherKarigars'));
     }
 
     public function cancel(JobOrder $jobOrder)
