@@ -36,14 +36,44 @@
         background: #ffffff;
         border: 2px solid #0f766e;
         border-radius: 16px;
-        padding: 10px;
+        /* Extra right padding keeps the scrollbar track clear of the rounded
+           border so its square top/bottom can't poke past the card corners. */
+        padding: 10px 6px 10px 10px;
         display: flex;
         flex-direction: column;
         gap: 4px;
         height: 100%;
         min-height: 0;
         overflow-y: auto;
+        /* Reserve gutter space so content doesn't shift when the bar appears. */
+        scrollbar-gutter: stable;
         box-shadow: 0 14px 24px rgba(15, 23, 42, 0.05);
+        /* Firefox: slim, subtle, themed. */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(15, 118, 110, 0.35) transparent;
+    }
+    /* WebKit (Chrome/Safari/Edge): a slim, rounded, teal-tinted scrollbar that
+       sits inside the card instead of the chunky default with square corners. */
+    .settings-nav::-webkit-scrollbar {
+        width: 8px;
+    }
+    .settings-nav::-webkit-scrollbar-track {
+        background: transparent;
+        /* Inset the track top/bottom so it never reaches the rounded corners. */
+        margin: 8px 0;
+    }
+    .settings-nav::-webkit-scrollbar-thumb {
+        background: rgba(15, 118, 110, 0.3);
+        border-radius: 9999px;
+        /* Transparent border + background-clip makes the thumb visually slimmer
+           and floats it off the edge. */
+        border: 2px solid transparent;
+        background-clip: padding-box;
+        transition: background-color 160ms ease;
+    }
+    .settings-nav:hover::-webkit-scrollbar-thumb {
+        background: rgba(15, 118, 110, 0.5);
+        background-clip: padding-box;
     }
 
     /* Apply only to screens 768px wide or smaller */
