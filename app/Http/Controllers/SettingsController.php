@@ -500,11 +500,14 @@ class SettingsController extends Controller
 
         // Billing-level: tax presentation on the printed invoice.
         $billing = $shop->billingSettings ?? new ShopBillingSettings(['shop_id' => $shop->id]);
+        // HSN fields are nullable, so a key may be absent from $validated (not
+        // just empty) — null-coalesce before the `?:` default to avoid an
+        // undefined-array-key error.
         $billing->fill([
             'igst_mode'   => $request->boolean('igst_mode'),
-            'hsn_gold'    => $validated['hsn_gold']    ?: '7113',
-            'hsn_silver'  => $validated['hsn_silver']  ?: '7113',
-            'hsn_diamond' => $validated['hsn_diamond'] ?: '7114',
+            'hsn_gold'    => ($validated['hsn_gold']    ?? null) ?: '7113',
+            'hsn_silver'  => ($validated['hsn_silver']  ?? null) ?: '7113',
+            'hsn_diamond' => ($validated['hsn_diamond'] ?? null) ?: '7114',
         ]);
         $billing->save();
 
