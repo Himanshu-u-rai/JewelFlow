@@ -877,13 +877,19 @@
        The checkbox keeps its real semantics (name + hidden value="0" companion);
        only the appearance is replaced via the element + its ::before knob.
        Icons are inline SVG data-URIs so they render without any icon library. */
+    /* Selector qualified with `.content-inner input...` so it OUT-specifies the
+       global `.content-inner input[type=checkbox] { border-radius: …sm !important }`
+       rule in app.css that otherwise forces a square radius on every checkbox.
+       (Equal !important → higher specificity wins, hence the input + class.) */
+    .content-inner input.settings-toggle-input-lg,
+    .content-inner input.settings-toggle-input-md,
     .settings-toggle-input-lg,
     .settings-toggle-input-md {
         appearance: none;
         -webkit-appearance: none;
         position: relative;
         flex-shrink: 0;
-        border-radius: 999px;
+        border-radius: 999px !important;
         background: #cbd5e1;
         cursor: pointer;
         transition: background-color 250ms ease;
@@ -906,6 +912,10 @@
         transition: transform 500ms cubic-bezier(.26, 2, .46, .71),
                     background-image 250ms ease;
     }
+    /* Match the qualified base-rule specificity so the teal "on" colour wins
+       over the high-specificity grey base set above. */
+    .content-inner input.settings-toggle-input-lg:checked,
+    .content-inner input.settings-toggle-input-md:checked,
     .settings-toggle-input-lg:checked,
     .settings-toggle-input-md:checked {
         background: #0f766e;
