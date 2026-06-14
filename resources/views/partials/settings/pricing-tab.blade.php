@@ -739,9 +739,9 @@
                     <input type="number" step="0.0001" min="0.0001" name="gold_24k_rate_per_gram" value="{{ $goldRateValue }}" class="field-input" required>
                 </div>
                 <div class="pricing-field">
-                    <label class="field-label">{{ __('Silver 999 Price / Kg') }}</label>
+                    <label class="field-label">{{ __('Pure Silver Price / Kg') }}</label>
                     <input type="number" step="0.0001" min="0.0001" name="silver_999_rate_per_kg" value="{{ $silverRatePerKgValue }}" class="field-input" required>
-                    <span class="field-hint">{{ __('Stored internally as per gram after conversion.') }}</span>
+                    <span class="field-hint">{{ __('Price of pure (fine) silver, like 24K is for gold. Each purity (999, 925, …) is worked out from this.') }}</span>
                 </div>
                 <div class="pricing-field">
                     <label class="field-label">{{ __('Current Snapshot') }}</label>

@@ -55,6 +55,39 @@ class RetailerPricingTest extends TestCase
         $this->assertSame(85.1, round((float) $silver925->rate_per_gram, 4));
     }
 
+    /**
+     * Documents the rate convention the UI label must match: the stored base is
+     * the PURE-metal price (24K for gold, 1000-fine for silver), and each purity
+     * is scaled from it. So the gold 24K profile is an exact pass-through of the
+     * base, while the silver 999 profile is base × 999/1000 (NOT a pass-through).
+     * The silver input is labelled "Pure Silver Price / Kg" so the number the
+     * owner enters is the pure-silver price, consistent with "24K" for gold.
+     */
+    public function test_base_rate_is_the_pure_metal_price_and_scales_per_purity(): void
+    {
+        // Harness owner role has no synced permissions → can:pricing.update would
+        // 403 (the standing RBAC-harness gap). Bypass authorization to exercise
+        // the pricing math; owners hold the permission in production.
+        $this->withoutMiddleware(\Illuminate\Auth\Middleware\Authorize::class);
+        [$user, $shop] = $this->createRetailerTenant();
+
+        $this->actingAs($user)->post(route('settings.pricing.save-rates'), [
+            'gold_24k_rate_per_gram' => 7200,
+            'silver_999_rate_per_kg' => 80000, // ₹80/g pure silver
+        ])->assertRedirect();
+
+        $businessDate = ShopDailyMetalRate::withoutTenant()->where('shop_id', $shop->id)
+            ->firstOrFail()->business_date->toDateString();
+
+        $gold24   = MetalRate::latestResolvedForDay($shop->id, $businessDate, 'gold', 24.0);
+        $silver999 = MetalRate::latestResolvedForDay($shop->id, $businessDate, 'silver', 999.0);
+
+        // Gold 24K = the pure base, exact pass-through.
+        $this->assertSame(7200.0, round((float) $gold24->rate_per_gram, 4), 'gold 24K is the pure base, unscaled');
+        // Silver 999 = pure base (₹80/g) × 999/1000 = ₹79.92/g (NOT ₹80).
+        $this->assertSame(79.92, round((float) $silver999->rate_per_gram, 4), 'silver 999 is base × 0.999, not a pass-through');
+    }
+
     public function test_web_retailer_item_store_computes_cost_price_from_daily_rates(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
