@@ -17,6 +17,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Support / Contact Email
+    |--------------------------------------------------------------------------
+    |
+    | The JewelFlow support address shown to shops (Contact Support buttons,
+    | landing page, etc.). Single source of truth — override via SUPPORT_EMAIL.
+    |
+    */
+
+    'support_email' => env('SUPPORT_EMAIL', 'jewelflows@gmail.com'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

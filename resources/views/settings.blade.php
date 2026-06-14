@@ -3978,7 +3978,7 @@
                                             <div class="sub-detail-item">
                                                 <div>
                                                     <p class="sub-detail-label">Support</p>
-                                                    <p class="sub-detail-value">support@jewelflow.io</p>
+                                                    <p class="sub-detail-value">{{ config('app.support_email') }}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -3989,7 +3989,7 @@
 
                                         <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap;">
                                             <a href="{{ route('subscription.plans') }}" data-turbo-frame="_top" class="sub-btn primary">Change Plan</a>
-                                            <a href="mailto:support@jewelflow.io" class="sub-btn secondary">Contact Support</a>
+                                            <a href="mailto:{{ config('app.support_email') }}" class="sub-btn secondary">Contact Support</a>
                                         </div>
                                     </div>
                                 </section>

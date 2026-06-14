@@ -1830,7 +1830,7 @@
 
                 <div class="nav-actions">
                     <a href="{{ route('login') }}" class="login-link">Log in</a>
-                    <a href="mailto:support@jewelflows.com?subject=JewelFlows%20Enquiry" class="btn btn-primary">Talk to us</a>
+                    <a href="mailto:{{ config('app.support_email') }}?subject=JewelFlows%20Enquiry" class="btn btn-primary">Talk to us</a>
                 </div>
             </div>
         </div>
@@ -1905,7 +1905,7 @@
                                     </li>
                                 </ul>
                                 <div class="hero-actions">
-                                    <a href="mailto:support@jewelflows.com?subject=JewelFlows%20Enquiry" class="btn btn-primary">Talk to us</a>
+                                    <a href="mailto:{{ config('app.support_email') }}?subject=JewelFlows%20Enquiry" class="btn btn-primary">Talk to us</a>
                                     <a href="{{ route('login') }}" class="btn btn-secondary">Log in</a>
                                 </div>
                             </div>
@@ -2066,7 +2066,7 @@
                         <p>Mail the team for a closer look, or use the existing login if you already run JewelFlows.</p>
                     </div>
                     <div class="cta-actions" data-reveal>
-                        <a href="mailto:support@jewelflows.com?subject=JewelFlows%20Enquiry" class="btn btn-primary">Talk to us</a>
+                        <a href="mailto:{{ config('app.support_email') }}?subject=JewelFlows%20Enquiry" class="btn btn-primary">Talk to us</a>
                         <a href="{{ route('login') }}" class="btn btn-secondary">Log in</a>
                     </div>
                 </div>
@@ -2087,7 +2087,7 @@
                 </div>
                 <ul class="footer-links">
                     <li><a href="{{ route('login') }}">Login</a></li>
-                    <li><a href="mailto:support@jewelflows.com">Support</a></li>
+                    <li><a href="mailto:{{ config('app.support_email') }}">Support</a></li>
                 </ul>
                 <div>&copy; {{ date('Y') }} JewelFlows. All rights reserved.</div>
             </div>
