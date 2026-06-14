@@ -699,32 +699,6 @@
     </div>
 </div>
 
-<div class="section-divider"></div>
-<div class="section-label">{{ __('Pricing Timezone') }}</div>
-<form method="POST" action="{{ route('settings.pricing.update-timezone') }}" class="pricing-panel">
-    @csrf
-    @method('PATCH')
-    <div class="pricing-timezone-row">
-        <div class="pricing-field pricing-timezone-field">
-            <label class="field-label">{{ __('Timezone') }}</label>
-            <div class="pricing-timezone-controls">
-                <select name="pricing_timezone" class="field-input pricing-timezone-select" required @cannot('pricing.update') disabled @endcannot>
-                    @foreach($pricingTimezones as $timezone)
-                        <option value="{{ $timezone }}" {{ old('pricing_timezone', $pricingData['timezone'] ?? config('app.timezone', 'UTC')) === $timezone ? 'selected' : '' }}>
-                            {{ $timezone }}
-                        </option>
-                    @endforeach
-                </select>
-                @can('pricing.update')
-                <div class="pricing-timezone-action">
-                    <button type="submit" class="btn-primary">{{ __('Save Timezone') }}</button>
-                </div>
-                @endcan
-            </div>
-            <span class="field-hint pricing-timezone-hint">{{ __('Retailer daily pricing resets at local midnight in this timezone.') }}</span>
-        </div>
-    </div>
-</form>
 
 <div class="pricing-desktop-row">
     <div class="pricing-desktop-card">

@@ -33,19 +33,14 @@ class ShopPricingService
 
     public function pricingTimezone(Shop|int $shop): string
     {
-        $shopId = $shop instanceof Shop ? (int) $shop->id : (int) $shop;
-
-        if (! $this->hasColumn('shop_preferences', 'pricing_timezone')) {
-            return (string) config('app.timezone', 'UTC');
-        }
-
-        $timezone = ShopPreferences::withoutTenant()
-            ->where('shop_id', $shopId)
-            ->value('pricing_timezone');
-
-        return is_string($timezone) && $timezone !== ''
-            ? $timezone
-            : (string) config('app.timezone', 'UTC');
+        // India-only product: the pricing business-day is always IST. The
+        // per-shop pricing_timezone column + picker were removed (a world
+        // timezone picker was a misconfiguration footgun and some shops had a
+        // stale 'UTC' value that shifted their price-day by 5.5h). The app
+        // default is Asia/Kolkata; we anchor to it directly so a stale stored
+        // value can't mis-bucket daily rates. Re-introduce a curated per-shop
+        // timezone here only if the product ever goes multi-country.
+        return (string) config('app.timezone', 'Asia/Kolkata');
     }
 
     public function businessDate(Shop|int $shop, ?CarbonInterface $now = null): CarbonImmutable
