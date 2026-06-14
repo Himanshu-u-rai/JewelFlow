@@ -60,6 +60,7 @@ class SettingsController extends Controller
             'staff'           => 'staff.view',
             'audit'           => 'settings.view',
             'services'        => 'settings.view',
+            'subscription'    => 'settings.view',
             'devices'         => 'settings.view',
         ];
         $canSee = function (string $tab) use ($user, $tabRequirements): bool {
@@ -222,6 +223,46 @@ class SettingsController extends Controller
             ];
         }
 
+        // Plan & Billing tab — current subscription status + billing history.
+        // Replicates SubscriptionController::status()'s data contract exactly so
+        // the ported status display renders identically. status() redirects to
+        // subscription.plans when there is no shop/subscription; inside a tab we
+        // can't redirect mid-render cleanly, so we flag needs_plan and render a
+        // small "choose a plan" panel instead.
+        $subscriptionData = null;
+        if ($activeTab === 'subscription') {
+            $sub = \App\Models\Platform\ShopSubscription::where('shop_id', $shop->id)
+                ->with('plan')
+                ->latest('id')
+                ->first();
+
+            if ($sub) {
+                $daysRemaining = $sub->ends_at
+                    ? \Carbon\Carbon::now()->diffInDays($sub->ends_at, false)
+                    : null;
+                $isExpired = $daysRemaining !== null && $daysRemaining < 0;
+                $isInGrace = $isExpired
+                    && $sub->grace_ends_at
+                    && \Carbon\Carbon::now()->lte($sub->grace_ends_at);
+
+                $subscriptionData = [
+                    'subscription'  => $sub,
+                    'plan'          => $sub->plan,
+                    'daysRemaining' => $daysRemaining,
+                    'isInGrace'     => $isInGrace,
+                    'isExpired'     => $isExpired,
+                    'featureLabels' => \App\Http\Controllers\SubscriptionController::featureLabels(),
+                    'invoices'      => \App\Models\Platform\PlatformInvoice::where('shop_id', $shop->id)
+                        ->with('plan')
+                        ->latest('issued_at')
+                        ->paginate(10)
+                        ->withQueryString(),
+                ];
+            } else {
+                $subscriptionData = ['needs_plan' => true];
+            }
+        }
+
         // Devices tab — the mobile devices currently signed in for this shop.
         // Mirrors the proven SessionController::index() listing query: active
         // sessions only (logged_out_at IS NULL), newest first. Owners and anyone
@@ -273,6 +314,7 @@ class SettingsController extends Controller
             'gstCategories',
             'gstEnabledMetals',
             'servicesData',
+            'subscriptionData',
             'deviceSessions'
         ));
     }

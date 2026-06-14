@@ -515,10 +515,6 @@
                     {{-- ─── ACCOUNT ─── --}}
                     <div class="nav-section">
                         <div class="nav-section-title">{{ __('Account') }}</div>
-                        <a href="{{ route('subscription.status') }}" class="nav-link {{ request()->routeIs('subscription.*') || request()->routeIs('billing.*') ? 'active' : '' }}">
-                            <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4Z"/><path d="M4 6v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="M12 12v4h4"/></svg></span>
-                            {{ __('Subscription & Billing') }}
-                        </a>
                         <a href="{{ route('export.index') }}" class="nav-link {{ request()->routeIs('export.*') ? 'active' : '' }}">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
                             {{ __('Export Data') }}
