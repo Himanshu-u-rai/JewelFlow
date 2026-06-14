@@ -2191,6 +2191,21 @@
                     </div>
 
                     <div class="section-divider"></div>
+                    <div class="section-label">{{ __('Language') }}</div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">{{ __('App Language') }}</label>
+                            @php $currentLang = old('language', $preferences->language ?? config('app.locale', 'en')); @endphp
+                            <select name="language" class="field-input">
+                                @foreach(config('app.supported_locales', ['en' => 'English']) as $code => $label)
+                                    <option value="{{ $code }}" {{ $currentLang === $code ? 'selected' : '' }}>{{ __($label) }}</option>
+                                @endforeach
+                            </select>
+                            <span class="field-hint">{{ __('Language for the app interface. Hindi coverage is still being expanded — some screens may stay in English for now.') }}</span>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
                     <div class="section-label">{{ __('Security & Operations') }}</div>
                     <div class="form-row">
                         <div class="field">

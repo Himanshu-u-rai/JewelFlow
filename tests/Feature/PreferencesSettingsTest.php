@@ -67,6 +67,37 @@ class PreferencesSettingsTest extends TestCase
         $this->assertEqualsWithDelta(15.0, (float) $p->max_manual_discount_percent, 0.001);
     }
 
+    // ── language ──────────────────────────────────────────────────────────────
+
+    public function test_language_can_be_set_to_hindi(): void
+    {
+        $this->actingAs($this->user)->patch(route('settings.update.preferences'), $this->base([
+            'language' => 'hi',
+        ]))->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('hi', $this->prefs()->language);
+    }
+
+    public function test_unsupported_language_is_rejected(): void
+    {
+        $this->actingAs($this->user)->patch(route('settings.update.preferences'), $this->base([
+            'language' => 'fr',  // not a configured locale
+        ]))->assertSessionHasErrors('language');
+    }
+
+    public function test_omitting_language_keeps_the_existing_value(): void
+    {
+        // Set Hindi first…
+        $p = ShopPreferences::withoutGlobalScopes()->firstOrNew(['shop_id' => $this->shopId]);
+        $p->forceFill(['shop_id' => $this->shopId, 'language' => 'hi'])->save();
+
+        // …then save Preferences WITHOUT a language field — it must not reset to en.
+        $this->actingAs($this->user)->patch(route('settings.update.preferences'), $this->base())
+            ->assertRedirect();
+
+        $this->assertSame('hi', $this->prefs()->language, 'existing language preserved when not submitted');
+    }
+
     public function test_compliance_flags_persist_as_booleans(): void
     {
         $this->actingAs($this->user)->patch(route('settings.update.preferences'), $this->base([

@@ -662,6 +662,8 @@ class SettingsController extends Controller
             'loyalty_expiry_months'      => 'required|integer|in:0,6,12,18,24',
             'auto_logout_minutes'        => 'nullable|integer|min:0|max:480',
             'stock_value_display'        => 'nullable|in:total,per_gram',
+            // App interface language — must be one of the configured locales.
+            'language'                   => ['nullable', \Illuminate\Validation\Rule::in(array_keys(config('app.supported_locales', ['en' => 'English'])))],
             'compliance_enabled'           => 'nullable|boolean',
             'compliance_threshold'         => 'nullable|numeric|min:10000|max:10000000',
             'compliance_pan_mandatory'     => 'nullable|boolean',
@@ -678,6 +680,10 @@ class SettingsController extends Controller
         // Defaults
         $validated['auto_logout_minutes']  = $validated['auto_logout_minutes']  ?? 0;
         $validated['stock_value_display']  = $validated['stock_value_display']  ?? 'total';
+        // Keep the existing language if the field wasn't submitted; else app default.
+        $validated['language'] = $validated['language']
+            ?? $shop->preferences?->language
+            ?? config('app.locale', 'en');
         $validated['compliance_enabled']           = (bool) ($validated['compliance_enabled'] ?? false);
         $validated['compliance_pan_mandatory']     = (bool) ($validated['compliance_pan_mandatory'] ?? true);
         $validated['compliance_mobile_mandatory']  = (bool) ($validated['compliance_mobile_mandatory'] ?? true);
