@@ -261,6 +261,10 @@ class ExchangeService
                 'rate'          => 0, // not used for finished-piece sale; line_total is the lock
                 'making_charges'=> (float) ($item->making_charges ?? 0),
                 'stone_amount'  => (float) ($item->stone_charges ?? 0),
+                // Hallmark is already inside selling_price (line_total); snapshot it
+                // separately so a return of this exchanged item can retain it (parity
+                // with making/stone and the regular sale paths).
+                'hallmark_charges' => (float) ($item->hallmark_charges ?? 0),
                 'line_total'    => $linePrice,
                 'gst_rate'      => $shopGstRate,
                 'gst_amount'    => $lineGst,

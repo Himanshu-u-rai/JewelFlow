@@ -163,4 +163,31 @@ class RefundPolicyMathTest extends TestCase
         $r = $this->refund($this->policy(false, true, false, 0, 0, hallmark: false), $line);
         $this->assertEqualsWithDelta(22700.0, $r['total'], 0.005);
     }
+
+    /**
+     * The item-exists path (GoldValuationService, the common production case)
+     * must deduct hallmark identically to the item-null inline fallback — else
+     * the same return gives different refunds depending on whether the item row
+     * still exists. (Guards the two paths against future divergence.)
+     */
+    public function test_item_exists_path_deducts_hallmark_identically_to_inline(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        // A real Item so $line->item resolves → resolver takes the
+        // GoldValuationService (item-exists) branch instead of the inline fallback.
+        $item = $this->createItem($shop->id, null, ['metal_type' => 'gold', 'purity' => 24.00]);
+
+        $line = $this->lineWithHallmark();         // line_total 25500 incl hallmark 800
+        $line->forceFill(['item_id' => $item->id]);
+        $line->setRelation('item', $item);         // ensure $line->item is the real item
+
+        $retain = $this->policy(true, true, true, 0, 0, hallmark: false);
+        $refund = \App\Support\TenantContext::runFor($shop->id, function () use ($line, $retain) {
+            $basis = $this->resolver->basisFromPolicy($retain);
+            return $this->resolver->resolve($line, new Invoice(['gst_rate' => 3]), $basis, $retain)->refundTotal;
+        });
+
+        // Same as the inline path: 25500 − 800 hallmark + 1200 GST = 25900.
+        $this->assertEqualsWithDelta(25900.0, $refund, 0.005, 'item-exists path retains hallmark too');
+    }
 }
