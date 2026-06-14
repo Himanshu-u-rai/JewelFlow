@@ -47,22 +47,35 @@ class RefundPolicyMathTest extends TestCase
         return $i;
     }
 
-    private function policy(bool $making, bool $stone, bool $gst, float $wear, float $restock): ShopPreferences
+    /** A line that also carries a hallmark charge: line_total 25500 includes hallmark 800. */
+    private function lineWithHallmark(): InvoiceItem
+    {
+        $i = new InvoiceItem();
+        $i->forceFill([
+            'making_charges' => 2000, 'stone_amount' => 1500, 'hallmark_charges' => 800,
+            'gst_amount' => 1200, 'line_total' => 25500,
+            'allocated_discount' => 0, 'allocated_round_off' => 0, 'allocated_loyalty_pts' => 0,
+            'weight' => 10, 'rate' => 2000, 'metal_type' => 'gold', 'purity' => 22,
+        ]);
+        return $i;
+    }
+
+    private function policy(bool $making, bool $stone, bool $gst, float $wear, float $restock, bool $hallmark = true): ShopPreferences
     {
         $p = new ShopPreferences();
         $p->refund_making_charges = $making;
         $p->refund_stone_charges  = $stone;
-        $p->refund_hallmark_charges = true;
+        $p->refund_hallmark_charges = $hallmark;
         $p->refund_gst = $gst;
         $p->wear_loss_pct = $wear;
         $p->restocking_fee_pct = $restock;
         return $p;
     }
 
-    private function refund(ShopPreferences $p): array
+    private function refund(ShopPreferences $p, ?InvoiceItem $line = null): array
     {
         $basis = $this->resolver->basisFromPolicy($p);
-        $b = $this->resolver->resolve($this->line(), new Invoice(['gst_rate' => 3]), $basis, $p);
+        $b = $this->resolver->resolve($line ?? $this->line(), new Invoice(['gst_rate' => 3]), $basis, $p);
         return ['total' => $b->refundTotal, 'breakdown' => $b->breakdown];
     }
 
@@ -109,22 +122,45 @@ class RefundPolicyMathTest extends TestCase
         $this->assertEqualsWithDelta(20140.0, $r['total'], 0.005);
     }
 
-    /**
-     * Documents the known limitation: toggling refund_hallmark_charges OFF does
-     * NOT change the refund, because hallmark is not itemised on invoice_items.
-     * Two refunds with the flag on vs off must be identical right now.
-     */
-    public function test_hallmark_flag_is_currently_inert_on_invoice_returns(): void
-    {
-        $on  = $this->policy(true, true, true, 0, 0);
-        $off = $this->policy(true, true, true, 0, 0);
-        $off->refund_hallmark_charges = false;
+    // ── hallmark itemisation (now wired) ──────────────────────────────────────
 
-        $this->assertEqualsWithDelta(
-            $this->refund($on)['total'],
-            $this->refund($off)['total'],
-            0.005,
-            'hallmark flag has no effect yet — if this fails, hallmark deduction was wired; update the settings hint + this test',
-        );
+    public function test_retaining_hallmark_charges_reduces_refund(): void
+    {
+        $line = $this->lineWithHallmark(); // line_total 25500 incl hallmark 800
+
+        // refund everything → full line + GST
+        $on = $this->refund($this->policy(true, true, true, 0, 0, hallmark: true), $line);
+        $this->assertEqualsWithDelta(26700.0, $on['total'], 0.005, '25500 + 1200 GST');
+
+        // retain hallmark → refund drops by exactly 800
+        $off = $this->refund($this->policy(true, true, true, 0, 0, hallmark: false), $line);
+        $this->assertEqualsWithDelta(25900.0, $off['total'], 0.005, 'minus 800 hallmark');
+        $this->assertEqualsWithDelta(800.0, $off['breakdown']['hallmark_retained'], 0.005);
+    }
+
+    public function test_retaining_hallmark_does_not_change_gst(): void
+    {
+        $line = $this->lineWithHallmark();
+        $on  = $this->refund($this->policy(true, true, true, 0, 0, hallmark: true), $line);
+        $off = $this->refund($this->policy(true, true, true, 0, 0, hallmark: false), $line);
+        // GST follows the refund_gst flag, NOT the principal split (CA-safe).
+        $this->assertEqualsWithDelta($on['breakdown']['gst_refunded'], $off['breakdown']['gst_refunded'], 0.005);
+        $this->assertEqualsWithDelta(1200.0, $off['breakdown']['gst_refunded'], 0.005);
+    }
+
+    public function test_legacy_line_without_hallmark_is_unaffected(): void
+    {
+        // An old invoice line (hallmark_charges = 0 / null) behaves exactly as before.
+        $on  = $this->refund($this->policy(true, true, true, 0, 0, hallmark: true));
+        $off = $this->refund($this->policy(true, true, true, 0, 0, hallmark: false));
+        $this->assertEqualsWithDelta($on['total'], $off['total'], 0.005, 'no hallmark on the line → nothing to retain');
+    }
+
+    public function test_combined_retain_hallmark_making_no_gst(): void
+    {
+        $line = $this->lineWithHallmark();
+        // retain making(2000)+hallmark(800), no GST: 25500-2000-800 = 22700
+        $r = $this->refund($this->policy(false, true, false, 0, 0, hallmark: false), $line);
+        $this->assertEqualsWithDelta(22700.0, $r['total'], 0.005);
     }
 }

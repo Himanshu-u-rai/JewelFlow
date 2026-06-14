@@ -2344,7 +2344,7 @@
                                 <option value="1" {{ (bool)($preferences->refund_hallmark_charges ?? true) ? 'selected' : '' }}>{{ __('Yes') }}</option>
                                 <option value="0" {{ !(bool)($preferences->refund_hallmark_charges ?? true) ? 'selected' : '' }}>{{ __('No (retain)') }}</option>
                             </select>
-                            <span class="field-hint">{{ __('Note: hallmark charges are not yet itemised separately on sale invoices, so on a return the hallmark amount is currently refunded with the item regardless of this setting. We are adding separate hallmark handling — this setting takes full effect then.') }}</span>
+                            <span class="field-hint">{{ __('Applies to items sold with a separate hallmark charge. Older bills where hallmark was not itemised are unaffected.') }}</span>
                         </div>
                     </div>
                     <div class="form-row cols-4">

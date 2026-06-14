@@ -66,6 +66,9 @@ class GoldValuationService
         if (!$basis->isDeducted('stone_charges_refundable')) {
             $linePaisa -= (int) round(((float) $originalLine->stone_amount) * 100);
         }
+        if (!$basis->isDeducted('hallmark_charges_refundable')) {
+            $linePaisa -= (int) round(((float) ($originalLine->hallmark_charges ?? 0)) * 100);
+        }
         if ($basis->wearLossPct > 0) {
             $linePaisa = (int) floor($linePaisa * (1 - ($basis->wearLossPct / 100)));
         }
