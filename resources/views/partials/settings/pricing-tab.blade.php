@@ -110,11 +110,6 @@
         font-weight: 600;
     }
 
-    .pricing-settings .pricing-profile-toggle input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-    }
-
     .pricing-settings .pricing-profile-card-footer {
         display: flex;
         justify-content: flex-end;
@@ -806,10 +801,11 @@
                                 </div>
                                 <div class="pricing-field">
                                     <label class="field-label">{{ __('Active') }}</label>
-                                    <input type="hidden" name="is_active" value="0">
-                                    <label class="pricing-profile-toggle">
-                                        <input type="checkbox" name="is_active" value="1" {{ $profile->is_active ? 'checked' : '' }}>
-                                        {{ __('Active') }}
+                                    <label class="pricing-profile-toggle" style="display:flex; gap:10px; align-items:center;">
+                                        <input type="hidden" name="is_active" value="0">
+                                        <input type="checkbox" name="is_active" value="1" {{ $profile->is_active ? 'checked' : '' }}
+                                               class="settings-toggle-input-md">
+                                        <span class="settings-toggle-text">{{ $profile->is_active ? __('On') : __('Off') }}</span>
                                     </label>
                                 </div>
                             </div>
