@@ -536,9 +536,12 @@
     }
 
     /* Roles */
+    /* Roles tab: full-width stacked cards. Owner is a slim locked banner;
+       Manager and Staff are wide cards whose permission groups flow in a
+       responsive multi-column grid — everything visible, no inner scroll. */
     .roles-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        display: flex;
+        flex-direction: column;
         gap: 16px;
     }
 
@@ -556,45 +559,49 @@
     }
 
     .role-head {
-        padding: 12px;
+        padding: 12px 16px;
         background: #f8fafc;
         border-bottom: 1px solid rgba(15, 23, 42, 0.08);
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
     }
 
     .role-card.locked .role-head {
         background: #fef3c7;
+        border-bottom: none;
     }
 
     .role-title {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 700;
         color: #0f172a;
         margin: 0;
     }
 
     .role-badge {
-        font-size: 10px;
-        padding: 2px 6px;
+        font-size: 11px;
+        padding: 2px 8px;
         background: #e2e8f0;
         border-radius: 9999px;
         color: #475569;
+        font-weight: 600;
     }
 
+    .role-badge-spacer { margin-left: auto; }
+
+    /* No max-height / no overflow: the body grows to fit its content. Groups
+       lay out in as many columns as the width allows. */
     .role-body {
-        padding: 12px;
-        max-height: 280px;
-        overflow-y: auto;
+        padding: 18px 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 18px 24px;
+        align-items: start;
     }
 
     .perm-group {
-        margin-bottom: 12px;
-    }
-
-    .perm-group:last-child {
-        margin-bottom: 0;
+        break-inside: avoid;
     }
 
     .perm-group-title {
@@ -602,37 +609,36 @@
         font-weight: 700;
         color: #0f766e;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-bottom: 6px;
+        letter-spacing: 0.4px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(15, 118, 110, 0.12);
     }
 
     .perm-item {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 3px 0;
-        font-size: 12px;
-        color: #475569;
+        gap: 10px;
+        padding: 5px 0;
+        font-size: 13px;
+        color: #334155;
         cursor: pointer;
     }
 
-    .perm-item input {
-        width: 14px;
-        height: 14px;
-        accent-color: #0f766e;
-    }
+    .perm-item .perm-item-label { flex: 1; }
 
     .locked-msg {
-        font-size: 12px;
+        font-size: 13px;
         color: #b45309;
-        padding: 16px 12px;
-        text-align: center;
+        font-weight: 500;
     }
 
     .role-foot {
-        padding: 10px 12px;
+        padding: 12px 16px;
         background: #f8fafc;
         border-top: 1px solid rgba(15, 23, 42, 0.08);
+        display: flex;
+        justify-content: flex-end;
     }
 
     .role-card.locked .role-foot {
@@ -650,6 +656,20 @@
         border-radius: 10px;
         cursor: pointer;
     }
+
+    /* Roles save: a normal-width button in the right-aligned footer. */
+    .role-save-btn {
+        padding: 8px 22px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        background: #0f766e;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .role-save-btn:hover { background: #0b5f5d; }
 
     .btn-sm:hover {
         background: #0b5f5d;
@@ -1213,7 +1233,7 @@
             padding-right: 0;
         }
 
-        .roles-container {
+        .role-body {
             grid-template-columns: 1fr;
         }
     }
@@ -3163,23 +3183,18 @@
                     @foreach($roles as $role)
                         <div class="role-card {{ $role->name === 'owner' ? 'locked' : '' }}">
                             <div class="role-head">
-                                <span>
-                                    @if($role->name === 'owner') 
-                                    @elseif($role->name === 'manager') 
-                                    @else 
-                                    @endif
-                                </span>
                                 <h4 class="role-title">{{ __($role->display_name) }}</h4>
-                                <span class="role-badge">{{ $role->permissions->count() }}</span>
+                                <span class="role-badge">{{ $role->permissions->count() }} {{ __('permissions') }}</span>
+                                @if($role->name === 'owner')
+                                    <span class="locked-msg role-badge-spacer">{{ __('All permissions — locked') }}</span>
+                                @endif
                             </div>
-                            
-                            @if($role->name === 'owner')
-                                <div class="locked-msg">{{ __('All permissions (locked)') }}</div>
-                            @else
+
+                            @if($role->name !== 'owner')
                                 <form method="POST" action="{{ route('settings.update.role', $role) }}" data-turbo-frame="_top">
                                     @csrf
                                     @method('PATCH')
-                                    
+
                                     <div class="role-body">
                                         @foreach($permissionGroups as $group => $groupPerms)
                                             {{-- Dhiran is a separate product (own subdomain); never surface its
@@ -3191,16 +3206,17 @@
                                                 @foreach($groupPerms as $perm)
                                                     <label class="perm-item">
                                                         <input type="checkbox" name="permissions[]" value="{{ $perm->id }}"
+                                                            class="settings-toggle-input-md"
                                                             {{ $role->permissions->contains($perm->id) ? 'checked' : '' }}>
-                                                        {{ __($perm->display_name) }}
+                                                        <span class="perm-item-label">{{ __($perm->display_name) }}</span>
                                                     </label>
                                                 @endforeach
                                             </div>
                                         @endforeach
                                     </div>
-                                    
+
                                     <div class="role-foot">
-                                        <button type="submit" class="btn-sm">{{ __('Save') }}</button>
+                                        <button type="submit" class="role-save-btn">{{ __('Save') }} {{ __($role->display_name) }}</button>
                                     </div>
                                 </form>
                             @endif
@@ -3237,6 +3253,7 @@
                             </span>
                         </div>
                     @endif
+                    @can('staff.manage')
                     <div class="ml-auto">
                         @if($atLimit)
                             <span class="btn btn-secondary btn-sm opacity-50 cursor-not-allowed">+ {{ __('Add Staff') }}</span>
@@ -3244,6 +3261,7 @@
                             <a href="{{ route('staff.create') }}" class="btn btn-primary btn-sm" data-turbo-frame="_top">+ {{ __('Add Staff') }}</a>
                         @endif
                     </div>
+                    @endcan
                 </div>
 
                 {{-- Staff cards --}}
@@ -3279,36 +3297,50 @@
                                 @else
                                     <span class="text-xs text-gray-400">{{ __('Joined') }} {{ $member->created_at->format('d M Y') }}</span>
                                 @endif
-                                @if($member->role?->name === 'owner')
+                                @php
+                                    $isOwnerRow = $member->role?->name === 'owner';
+                                    $isSelfRow  = $member->id === auth()->id();
+                                    $isTerminated = ($member->employment_status ?? 'active') === 'terminated';
+                                @endphp
+                                @if($isSelfRow)
                                     <span class="text-xs text-gray-400 italic">{{ __('You') }}</span>
-                                @elseif(($member->employment_status ?? 'active') === 'terminated')
-                                    {{-- Recovery: restore a previously-removed staff member. --}}
-                                    <form method="POST" action="{{ route('staff.reactivate', $member) }}" data-turbo-frame="_top"
-                                          data-confirm-message="{{ __('Recover :name?', ['name' => $member->name ?? $member->mobile_number]) }}">
-                                        @csrf @method('PATCH')
-                                        <button type="submit"
-                                                class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg>
-                                            {{ __('Recover') }}
-                                        </button>
-                                    </form>
+                                @elseif($isOwnerRow)
+                                    {{-- The owner account is managed only via Profile, never from staff management. --}}
+                                    <span class="text-xs text-gray-400 italic">{{ __('Owner') }}</span>
                                 @else
-                                    <div class="flex gap-2">
-                                        <a href="{{ route('staff.edit', $member) }}" data-turbo-frame="_top"
-                                           class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                            {{ __('Edit') }}
-                                        </a>
-                                        <form method="POST" action="{{ route('staff.destroy', $member) }}" data-turbo-frame="_top"
-                                              data-confirm-message="{{ __('Remove :name? They can be recovered later.', ['name' => $member->name ?? $member->mobile_number]) }}">
-                                            @csrf @method('DELETE')
-                                            <button type="submit"
-                                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                                {{ __('Remove') }}
-                                            </button>
-                                        </form>
-                                    </div>
+                                    {{-- Edit / Remove / Recover require staff.manage; the owner-only default
+                                         means a view-only manager sees no action buttons here. --}}
+                                    @can('staff.manage')
+                                        @if($isTerminated)
+                                            {{-- Recovery: restore a previously-removed staff member. --}}
+                                            <form method="POST" action="{{ route('staff.reactivate', $member) }}" data-turbo-frame="_top"
+                                                  data-confirm-message="{{ __('Recover :name?', ['name' => $member->name ?? $member->mobile_number]) }}">
+                                                @csrf @method('PATCH')
+                                                <button type="submit"
+                                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg>
+                                                    {{ __('Recover') }}
+                                                </button>
+                                            </form>
+                                        @else
+                                            <div class="flex gap-2">
+                                                <a href="{{ route('staff.edit', $member) }}" data-turbo-frame="_top"
+                                                   class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                    {{ __('Edit') }}
+                                                </a>
+                                                <form method="POST" action="{{ route('staff.destroy', $member) }}" data-turbo-frame="_top"
+                                                      data-confirm-message="{{ __('Remove :name? They can be recovered later.', ['name' => $member->name ?? $member->mobile_number]) }}">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit"
+                                                            class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                                        {{ __('Remove') }}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        @endif
+                                    @endcan
                                 @endif
                             </div>
                         </div>
@@ -3324,230 +3356,528 @@
             @endif
 
             @if($activeTab === 'audit')
+                <style>
+                    /* ── Audit activity timeline ─────────────────────────────────────
+                       A grouped feed, not a table. Day sections, a connecting rail,
+                       category glyphs, plain-English lead lines. */
+                    /* ── Fixed header/toolbar, scrolling feed ────────────────────────
+                       The audit tab fills the settings panel height; the title,
+                       summary and filter toolbar stay put while only the event feed
+                       scrolls. We neutralise the panel's own scroll for this tab so
+                       there is a single, predictable scroll region (the feed). */
+                    .content-inner.settings-shell .settings-content:has(.audit-shell) {
+                        overflow: hidden;            /* the feed owns scrolling, not the panel */
+                        display: flex; flex-direction: column;
+                    }
+                    .audit-shell {
+                        display: flex; flex-direction: column;
+                        flex: 1 1 auto; min-height: 0;   /* min-height:0 lets the inner scroller shrink */
+                    }
+                    .audit-shell-fixed { flex: 0 0 auto; }
+                    .audit-scroll {
+                        flex: 1 1 auto; min-height: 0;
+                        overflow-y: auto; overflow-x: hidden;
+                        /* a little room so the last row never kisses the panel edge */
+                        padding-bottom: 8px;
+                        scrollbar-gutter: stable;
+                    }
+                    /* Fixed pagination footer: stays put while the feed scrolls above it. */
+                    .audit-shell-foot {
+                        flex: 0 0 auto;
+                        padding-top: 12px; margin-top: 4px;
+                        border-top: 1px solid #eef1f5;
+                    }
+                    /* Fallback for engines without :has() — the feed still scrolls,
+                       the page just also scrolls a little; acceptable degradation. */
+                    @supports not (selector(:has(*))) {
+                        .audit-scroll { max-height: 62vh; }
+                    }
+
+                    /* ── Filter toolbar ──────────────────────────────────────────────
+                       A calm inline toolbar, not a bordered card. Inputs share one
+                       quiet style; the primary action carries the app's teal accent,
+                       secondary actions stay ghost. Wraps gracefully, stacks on mobile. */
+                    .audit-toolbar {
+                        display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 14px;
+                        padding-bottom: 16px; margin-bottom: 8px;
+                        border-bottom: 1px solid #eef1f5;
+                    }
+                    .audit-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+                    .audit-field > label { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: #94a3b8; text-transform: uppercase; }
+                    .audit-control {
+                        height: 38px; border: 1px solid #e2e8f0; border-radius: 10px;
+                        background: #fff; padding: 0 12px; font-size: 13.5px; color: #1e293b;
+                        transition: border-color 150ms ease, box-shadow 150ms ease;
+                    }
+                    .audit-control:hover { border-color: #cbd5e1; }
+                    .audit-control:focus { outline: none; border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,.12); }
+                    select.audit-control { padding-right: 30px; cursor: pointer; }
+                    .audit-field--action select.audit-control { min-width: 160px; }
+                    .audit-field--user select.audit-control { min-width: 150px; }
+                    .audit-control--date { min-width: 150px; }
+
+                    .audit-toolbar-actions { display: flex; align-items: center; gap: 8px; }
+                    .audit-toolbar-spacer { flex: 1 1 auto; }
+                    .audit-btn {
+                        height: 38px; display: inline-flex; align-items: center; gap: 6px;
+                        padding: 0 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+                        cursor: pointer; white-space: nowrap;
+                        transition: transform 150ms cubic-bezier(.23,1,.32,1), background-color 150ms ease, border-color 150ms ease;
+                    }
+                    .audit-btn:active { transform: scale(.97); }
+                    .audit-btn--primary { background: #0f766e; color: #fff; border: 1px solid #0f766e; }
+                    .audit-btn--primary:hover { background: #0b5f5d; }
+                    .audit-btn--ghost { background: #fff; color: #475569; border: 1px solid #e2e8f0; }
+                    .audit-btn--ghost:hover { background: #f8fafc; border-color: #cbd5e1; }
+                    .audit-btn--ghost svg { width: 16px; height: 16px; }
+                    @media (max-width: 640px) {
+                        .audit-field, .audit-field--action select.audit-control, .audit-field--user select.audit-control, .audit-control--date { width: 100%; min-width: 0; }
+                        .audit-field { flex: 1 1 100%; }
+                        .audit-toolbar { gap: 12px; }
+                        .audit-toolbar-actions { width: 100%; }
+                        .audit-toolbar-actions .audit-btn { flex: 1; justify-content: center; }
+                        .audit-toolbar-spacer { display: none; }
+                        /* Export: full-width on its own line, consistent with the stack. */
+                        .audit-toolbar > a.audit-btn { width: 100%; justify-content: center; }
+                    }
+
+                    .audit-day { margin-top: 26px; }
+                    .audit-day:first-of-type { margin-top: 4px; }
+                    /* Day header: a solid label sitting on a hairline that runs across
+                       the row. Not sticky — a nested scroll container makes sticky
+                       headers overlap their own rows, so days are separated by clear
+                       spacing + a divider instead. */
+                    .audit-day-head {
+                        display: flex; align-items: baseline; gap: 10px;
+                        padding: 0 2px 10px; margin-bottom: 6px;
+                        border-bottom: 1px solid #eef1f5;
+                    }
+                    .audit-day-title { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #334155; margin: 0; }
+                    .audit-day-count { font-size: 12px; color: #94a3b8; }
+
+                    .audit-feed { list-style: none; margin: 0; padding: 0; }
+
+                    .audit-item {
+                        position: relative;
+                        display: grid;
+                        grid-template-columns: 36px 1fr auto;
+                        align-items: start;
+                        gap: 14px;
+                        padding: 12px 12px 12px 4px;
+                        border-radius: 14px;
+                        transition: background-color 160ms ease;
+                    }
+                    .audit-item:hover { background: #f8fafc; }
+                    .audit-item.is-sensitive { background: rgba(255, 241, 242, .5); }
+                    .audit-item.is-sensitive:hover { background: rgba(255, 228, 230, .6); }
+
+                    /* Vertical rail joining the glyphs down a day. Drawn from each
+                       glyph centre to the next item; hidden on the last item. */
+                    .audit-rail {
+                        position: absolute;
+                        left: 21px; top: 38px; bottom: -12px; width: 2px;
+                        background: #e7ebf0;
+                    }
+                    .audit-item:last-child .audit-rail { display: none; }
+                    .audit-item.is-sensitive .audit-rail { background: #fecdd3; }
+
+                    .audit-glyph {
+                        position: relative; z-index: 1;
+                        width: 36px; height: 36px; border-radius: 11px;
+                        display: flex; align-items: center; justify-content: center;
+                        flex-shrink: 0;
+                    }
+                    .audit-glyph svg { width: 18px; height: 18px; }
+
+                    .audit-body { min-width: 0; padding-top: 1px; }
+                    .audit-summary {
+                        margin: 0; font-size: 14px; line-height: 1.4; color: #0f172a; font-weight: 500;
+                        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                    }
+                    .audit-item.is-sensitive .audit-summary { font-weight: 600; }
+                    .audit-flag {
+                        font-size: 10.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+                        color: #be123c; background: #ffe4e6; border-radius: 9999px; padding: 2px 8px; white-space: nowrap;
+                    }
+                    .audit-meta { margin: 3px 0 0; font-size: 12.5px; color: #64748b; }
+                    .audit-meta-cat { color: #475569; font-weight: 600; }
+                    .audit-meta-entity { color: #94a3b8; }
+                    .audit-meta-sep { color: #cbd5e1; margin: 0 6px; }
+
+                    .audit-detail-btn {
+                        align-self: center; flex-shrink: 0;
+                        font-size: 12px; font-weight: 600; color: #475569;
+                        background: #fff; border: 1px solid #e2e8f0; border-radius: 9px;
+                        padding: 5px 11px; cursor: pointer;
+                        transition: transform 150ms cubic-bezier(.23,1,.32,1), background-color 150ms ease, border-color 150ms ease;
+                    }
+                    .audit-detail-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+                    .audit-detail-btn:active { transform: scale(.97); }
+
+                    /* Details modal — receipt-style label/value rows. */
+                    .audit-detail-rows { margin: 0; }
+                    .audit-detail-row {
+                        display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+                        padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+                    }
+                    .audit-detail-row:last-child { border-bottom: 0; }
+                    .audit-detail-row dt { font-size: 13px; color: #64748b; flex-shrink: 0; }
+                    .audit-detail-row dd { font-size: 13.5px; color: #0f172a; font-weight: 600; margin: 0; text-align: right; word-break: break-word; }
+
+                    .audit-empty { text-align: center; padding: 56px 16px; }
+                    .audit-empty-glyph {
+                        width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 14px;
+                        display: flex; align-items: center; justify-content: center;
+                        background: #f1f5f9; color: #94a3b8;
+                    }
+                    .audit-empty-glyph svg { width: 26px; height: 26px; }
+                    .audit-empty-title { font-size: 15px; font-weight: 600; color: #334155; margin: 0; }
+                    .audit-empty-sub { font-size: 13px; color: #94a3b8; margin: 4px 0 0; }
+
+                    /* ── Motion (emil-design-eng): items rise + fade in, staggered
+                       top-down so the eye lands on the newest first. Items are
+                       visible by default; the keyframe carries its own from-state so
+                       nothing is ever stuck invisible if motion never runs. --- */
+                    @media (prefers-reduced-motion: no-preference) {
+                        .audit-item {
+                            animation: auditItemIn 300ms cubic-bezier(.23,1,.32,1) both;
+                            animation-delay: calc(var(--audit-i, 0) * 26ms);
+                        }
+                        @keyframes auditItemIn {
+                            from { opacity: 0; transform: translateY(7px); }
+                            to   { opacity: 1; transform: translateY(0); }
+                        }
+                    }
+
+                    /* Details modal: scale-in from near (never from nothing); modals
+                       stay centered (the one transform-origin exception). */
+                    #jsonModal .audit-modal-panel {
+                        transform: scale(.96); opacity: 0;
+                        transition: transform 180ms cubic-bezier(.23,1,.32,1), opacity 180ms ease-out;
+                    }
+                    #jsonModal.is-open .audit-modal-panel { transform: scale(1); opacity: 1; }
+                    @media (prefers-reduced-motion: reduce) {
+                        #jsonModal .audit-modal-panel { transition: opacity 120ms ease; transform: none; }
+                    }
+
+                    @media (max-width: 640px) {
+                        .audit-item { grid-template-columns: 32px 1fr; gap: 11px; }
+                        .audit-detail-btn { grid-column: 2; justify-self: start; margin-top: 6px; }
+                        .audit-rail { left: 19px; }
+                    }
+                </style>
+                <div class="audit-shell">
+                <div class="audit-shell-fixed">
                 <div class="settings-header">
                     <h2 class="settings-title">{{ __('Audit Log') }}</h2>
                     <p class="settings-desc">{{ __('Track all system activities and changes') }}</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-white shadow-sm border border-gray-200 p-4 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-amber-100 text-amber-700 p-2 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-xs uppercase tracking-wide text-gray-500">{{ __('Total Logs') }}</p>
-                                <p class="text-xl font-semibold text-gray-900">{{ number_format($stats['total'] ?? $logs->total()) }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white shadow-sm border border-gray-200 p-4 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-blue-100 text-blue-700 p-2 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-xs uppercase tracking-wide text-gray-500">{{ __('Active Users') }}</p>
-                                <p class="text-xl font-semibold text-gray-900">{{ $logs->pluck('user_id')->unique()->count() }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white shadow-sm border border-gray-200 p-4 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-amber-100 text-amber-700 p-2 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-xs uppercase tracking-wide text-gray-500">{{ __('Actions Today') }}</p>
-                                <p class="text-xl font-semibold text-gray-900">{{ number_format($stats['today'] ?? 0) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white shadow-sm border border-gray-200 overflow-hidden rounded-xl">
-                    <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-900">{{ __('Recent Activity') }}</h2>
-                        <p class="text-sm text-gray-500 mt-1">{{ __('Latest actions across the system') }}</p>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Time') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('User') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Action') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Entity') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Details') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                            @forelse($logs as $l)
-                                @php
-                                    $time = $l->created_at ? $l->created_at->format('d M Y H:i:s') : '-';
-                                    $userName = $l->user->name ?? __('System');
-                                    $actionPretty = \Illuminate\Support\Str::headline($l->action);
-                                    $entityType = $l->model_type ?? ($l->model ?? null);
-                                    $entityLabel = $entityType ? \Illuminate\Support\Str::headline($entityType) : '—';
-                                    $object = $entityLabel . ($l->model_id ? ' #' . $l->model_id : '');
-
-                                    $isStructured = is_array($l->data) || is_object($l->data);
-                                    $description = trim((string) $l->description);
-                                    if ($isStructured) {
-                                        $arr = (array) $l->data;
-                                        $parts = [];
-                                        if (isset($arr['customer_id'])) $parts[] = 'customer_id: ' . $arr['customer_id'];
-                                        if (isset($arr['gross'])) $parts[] = 'gross: ' . $arr['gross'];
-                                        if (isset($arr['purity'])) $parts[] = 'purity: ' . $arr['purity'] . 'K';
-                                        if (isset($arr['fine_gold'])) $parts[] = 'fine: ' . number_format($arr['fine_gold'], 3) . ' g';
-
-                                        $dataPreview = $parts ? implode(', ', $parts) : \Illuminate\Support\Str::limit(json_encode($arr, JSON_UNESCAPED_UNICODE), 80);
-                                        $dataFull = json_encode($arr, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
-                                    } else {
-                                        $dataPreview = \Illuminate\Support\Str::limit((string)$l->data, 80);
-                                        $dataFull = (string)$l->data;
-                                    }
-                                    if (empty($dataPreview)) {
-                                        $dataPreview = $description ?: '—';
-                                    }
-                                    if (empty($dataFull) && !empty($description)) {
-                                        $dataFull = $description;
-                                    }
-
-                                    $actionColors = [
-                                        'create' => 'bg-green-100 text-green-800',
-                                        'update' => 'bg-blue-100 text-blue-800',
-                                        'delete' => 'bg-red-100 text-red-800',
-                                        'login' => 'bg-purple-100 text-purple-800',
-                                        'logout' => 'bg-gray-100 text-gray-800',
-                                    ];
-                                    $actionColor = $actionColors[strtolower($l->action)] ?? 'bg-gray-100 text-gray-800';
-                                @endphp
-                                <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">{{ $time }}</div>
-                                        <div class="text-xs text-gray-500">{{ $l->created_at ? $l->created_at->diffForHumans() : '' }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-8 w-8 bg-gray-200 flex items-center justify-center">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                </svg>
-                                            </div>
-                                            <div class="ml-3">
-                                                <div class="text-sm font-medium text-gray-900">{{ $userName }}</div>
-                                                <div class="text-xs text-gray-500">{{ $l->user ? __('User') : __('System') }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium {{ $actionColor }}">
-                                            {{ $actionPretty }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900 font-medium">{{ $object }}</div>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="text-sm text-gray-700 max-w-xs truncate">{{ $dataPreview }}</div>
-                                        @if(!empty($dataFull))
-                                            <button class="view-json mt-2 inline-flex items-center px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors" data-json="{{ base64_encode($dataFull) }}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                {{ __('View Details') }}
-                                            </button>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No audit logs found.') }}</td>
-                                </tr>
-                            @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    @if($logs->hasPages())
-                        <div class="px-4 py-3 border-t border-gray-200">
-                            {{ $logs->links() }}
-                        </div>
+                @php $sensitiveToday = $stats['sensitive'] ?? 0; $activityToday = $stats['today'] ?? 0; @endphp
+                {{-- A calm one-line summary, not three boxes. The attention count is the
+                     only thing that ever raises its voice, and only when it is non-zero. --}}
+                <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-5 text-sm text-gray-600">
+                    <span class="text-gray-900 font-semibold">{{ number_format($activityToday) }}</span>
+                    <span>{{ trans_choice('{0,1}action today|[2,*]actions today', $activityToday) }}.</span>
+                    @if($sensitiveToday > 0)
+                        <span class="inline-flex items-center gap-1.5 text-rose-700 font-medium">
+                            <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                            {{ trans_choice('{1}:count needs your attention|[2,*]:count need your attention', $sensitiveToday, ['count' => $sensitiveToday]) }}
+                        </span>
+                    @else
+                        <span class="text-gray-400">·</span>
+                        <span class="text-gray-500">{{ __('nothing flagged') }}</span>
                     @endif
+                    <span class="text-gray-300 hidden sm:inline">·</span>
+                    <span class="text-gray-400 hidden sm:inline">{{ number_format($stats['total'] ?? $logs->total()) }} {{ __('total recorded') }}</span>
                 </div>
 
-                <div id="jsonModal" class="fixed inset-0 hidden items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-                    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
-                        <div class="flex items-center justify-between p-6 border-b border-gray-200">
-                            <div class="flex items-center gap-3">
-                                <div class="bg-amber-100 rounded-lg p-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                </div>
-                                <h3 class="text-lg font-semibold text-gray-900">{{ __('Audit Data Details') }}</h3>
-                            </div>
-                            <div class="flex gap-2">
-                                <button id="copyJson" class="inline-flex items-center px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                    </svg>
-                                    {{ __('Copy') }}
-                                </button>
-                                <button id="closeJson" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                    {{ __('Close') }}
-                                </button>
-                            </div>
+                {{-- Filters: action / user / date range. GET form targets the same
+                     tab via the settings-content turbo frame; withQueryString()
+                     on the paginator keeps filters across page changes. --}}
+                @php
+                    $hasAuditFilter = request()->hasAny(['audit_action', 'audit_user', 'audit_from', 'audit_to']);
+                    $auditExportParams = array_filter([
+                        'audit_action' => request('audit_action'),
+                        'audit_user'   => request('audit_user'),
+                        'audit_from'   => request('audit_from'),
+                        'audit_to'     => request('audit_to'),
+                    ]);
+                @endphp
+                <form method="GET" action="{{ route('settings.edit', ['tab' => 'audit']) }}"
+                      data-turbo-frame="settings-content" class="audit-toolbar">
+                    <input type="hidden" name="tab" value="audit">
+
+                    <div class="audit-field audit-field--action">
+                        <label for="audit_action">{{ __('Action') }}</label>
+                        <select id="audit_action" name="audit_action" class="audit-control">
+                            <option value="">{{ __('All actions') }}</option>
+                            @foreach($auditActions ?? [] as $a)
+                                <option value="{{ $a }}" @selected(request('audit_action') === $a)>{{ \Illuminate\Support\Str::headline($a) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="audit-field audit-field--user">
+                        <label for="audit_user">{{ __('Who') }}</label>
+                        <select id="audit_user" name="audit_user" class="audit-control">
+                            <option value="">{{ __('Everyone') }}</option>
+                            @foreach($auditUsers ?? [] as $u)
+                                <option value="{{ $u->id }}" @selected((string) request('audit_user') === (string) $u->id)>{{ $u->name ?? $u->mobile_number }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="audit-field">
+                        <label for="audit_from">{{ __('From') }}</label>
+                        <input id="audit_from" type="date" name="audit_from" value="{{ request('audit_from') }}" class="audit-control audit-control--date">
+                    </div>
+                    <div class="audit-field">
+                        <label for="audit_to">{{ __('To') }}</label>
+                        <input id="audit_to" type="date" name="audit_to" value="{{ request('audit_to') }}" class="audit-control audit-control--date">
+                    </div>
+
+                    <div class="audit-toolbar-actions">
+                        <button type="submit" class="audit-btn audit-btn--primary">{{ __('Apply') }}</button>
+                        @if($hasAuditFilter)
+                            <a href="{{ route('settings.edit', ['tab' => 'audit']) }}" data-turbo-frame="settings-content" class="audit-btn audit-btn--ghost">{{ __('Clear') }}</a>
+                        @endif
+                    </div>
+
+                    <span class="audit-toolbar-spacer"></span>
+
+                    {{-- Download leaves the turbo frame (streams a file). Carries active filters. --}}
+                    <a href="{{ route('settings.audit.export', $auditExportParams) }}" data-turbo-frame="_top" class="audit-btn audit-btn--ghost">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        {{ __('Export') }}
+                    </a>
+                </form>
+                </div>{{-- /.audit-shell-fixed --}}
+
+                @php
+                    // Group the page's events by calendar day for the timeline headers.
+                    $auditGroups = $logs->getCollection()->groupBy(fn ($l) => optional($l->created_at)->toDateString() ?? 'unknown');
+                    $dayLabel = function ($dateKey) {
+                        if ($dateKey === 'unknown') return __('Earlier');
+                        $d = \Carbon\Carbon::parse($dateKey);
+                        if ($d->isToday()) return __('Today');
+                        if ($d->isYesterday()) return __('Yesterday');
+                        return $d->isCurrentYear() ? $d->format('D, d M') : $d->format('d M Y');
+                    };
+                    $rowIndex = 0;
+                @endphp
+
+                <div class="audit-scroll">
+                @forelse($auditGroups as $dateKey => $dayLogs)
+                    <section class="audit-day">
+                        <div class="audit-day-head">
+                            <h3 class="audit-day-title">{{ $dayLabel($dateKey) }}</h3>
+                            <span class="audit-day-count">{{ trans_choice('{1}:count event|[2,*]:count events', $dayLogs->count(), ['count' => $dayLogs->count()]) }}</span>
                         </div>
-                        <div class="flex-1 overflow-auto p-6">
-                            <pre id="jsonContent" class="bg-gray-50 rounded-lg p-4 text-sm font-mono text-gray-800 whitespace-pre-wrap border border-gray-200"></pre>
+
+                        <ol class="audit-feed">
+                            @foreach($dayLogs as $l)
+                                @php
+                                    $summary   = $l->summaryLine();
+                                    $sensitive = $l->isSensitive();
+                                    $cat       = $l->category();
+                                    $who       = $l->user->name ?? $l->user->mobile_number ?? __('System');
+                                    $isSystem  = $l->user === null;
+                                    $entityType = $l->model_type ? \Illuminate\Support\Str::headline($l->model_type) : null;
+                                    $entityLabel = ($entityType && $l->model_id) ? ($entityType . ' #' . $l->model_id) : ($entityType ?: null);
+
+                                    // Plain-English rows for the owner; raw JSON kept only as a
+                                    // "technical" fallback for a CA / support. A row gets a Details
+                                    // button only when there is more to show than the summary line.
+                                    $readable = $l->readableDetails();
+                                    $rawJson = (is_array($l->data) && $l->data !== [])
+                                        ? json_encode((array) $l->data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                                        : null;
+                                    $hasDetails = ! empty($readable) || ($rawJson !== null);
+                                    $detailBundle = $hasDetails
+                                        ? base64_encode(json_encode([
+                                            'title'    => $summary,
+                                            'meta'     => trim(($cat['label'] ?? '') . ' · ' . ($isSystem ? __('System') : $who) . ' · ' . optional($l->created_at)->format('d M Y, h:i A')),
+                                            'readable' => $readable,
+                                            'raw'      => $rawJson,
+                                        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))
+                                        : null;
+                                    $i = $rowIndex < 24 ? $rowIndex : 24; $rowIndex++;
+                                @endphp
+                                <li class="audit-item {{ $sensitive ? 'is-sensitive' : '' }}" style="--audit-i: {{ $i }}">
+                                    <span class="audit-rail" aria-hidden="true"></span>
+                                    <span class="audit-glyph {{ $cat['bg'] }} {{ $cat['fg'] }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="{{ $cat['icon'] }}" />
+                                        </svg>
+                                    </span>
+                                    <div class="audit-body">
+                                        <p class="audit-summary">
+                                            {{ $summary }}
+                                            @if($sensitive)<span class="audit-flag">{{ __('Needs attention') }}</span>@endif
+                                        </p>
+                                        <p class="audit-meta">
+                                            <span class="audit-meta-cat">{{ $cat['label'] }}</span>
+                                            <span class="audit-meta-sep">·</span>
+                                            {{ $isSystem ? __('System') : $who }}
+                                            <span class="audit-meta-sep">·</span>
+                                            {{ optional($l->created_at)->format('h:i A') }}
+                                            @if($entityLabel)<span class="audit-meta-sep">·</span><span class="audit-meta-entity">{{ $entityLabel }}</span>@endif
+                                        </p>
+                                    </div>
+                                    @if($detailBundle)
+                                        <button type="button" class="view-detail audit-detail-btn" data-detail="{{ $detailBundle }}" aria-label="{{ __('View details') }}">
+                                            {{ __('Details') }}
+                                        </button>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ol>
+                    </section>
+                @empty
+                    <div class="audit-empty">
+                        <div class="audit-empty-glyph">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <p class="audit-empty-title">{{ __('Nothing recorded yet') }}</p>
+                        <p class="audit-empty-sub">{{ __('As you and your staff use the shop, every important action shows up here.') }}</p>
+                    </div>
+                @endforelse
+                </div>{{-- /.audit-scroll --}}
+
+                {{-- Pagination is a fixed footer of the shell, not part of the
+                     scrolling feed — you reach Next without scrolling to the bottom. --}}
+                @if($logs->hasPages())
+                    <div class="audit-shell-foot">{{ $logs->links() }}</div>
+                @endif
+                </div>{{-- /.audit-shell --}}
+
+                <div id="jsonModal" class="fixed inset-0 hidden items-center justify-center bg-black/50 z-50 p-4">
+                    <div class="audit-modal-panel bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[88vh] flex flex-col overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-gray-100">
+                            <div class="min-w-0">
+                                <h3 id="auditDetailTitle" class="text-base font-semibold text-gray-900 leading-snug"></h3>
+                                <p id="auditDetailMeta" class="text-xs text-gray-500 mt-1"></p>
+                            </div>
+                            <button id="closeJson" class="flex-shrink-0 -mr-1 -mt-1 p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" aria-label="{{ __('Close') }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-auto px-6 py-5">
+                            {{-- Plain-English rows: label on the left, value on the right, like a receipt. --}}
+                            <dl id="auditDetailRows" class="audit-detail-rows"></dl>
+                            <p id="auditDetailEmpty" class="text-sm text-gray-400 hidden">{{ __('No extra details for this action.') }}</p>
+
+                            {{-- Technical details tucked away for a CA / support, not shown by default. --}}
+                            <div id="auditDetailRawWrap" class="mt-5 hidden">
+                                <button id="auditRawToggle" type="button" class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700">
+                                    <svg id="auditRawChevron" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                    {{ __('Show technical details') }}
+                                </button>
+                                <div id="auditRawBody" class="hidden mt-3">
+                                    <div class="flex justify-end mb-2">
+                                        <button id="copyJson" class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                            {{ __('Copy') }}
+                                        </button>
+                                    </div>
+                                    <pre id="jsonContent" class="bg-gray-50 rounded-lg p-4 text-xs font-mono text-gray-700 whitespace-pre-wrap border border-gray-100 max-h-64 overflow-auto"></pre>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <script>
+                    // Decode the base64-wrapped UTF-8 detail bundle safely.
+                    function auditDecode(b64) {
+                        try {
+                            const bin = atob(b64);
+                            const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+                            return JSON.parse(new TextDecoder().decode(bytes));
+                        } catch (_) { return null; }
+                    }
+
+                    function auditCloseModal() {
+                        const modal = document.getElementById('jsonModal');
+                        modal.classList.remove('is-open');
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }
+
                     document.addEventListener('click', function(e){
-                        if (e.target.matches('.view-json') || e.target.closest('.view-json')) {
-                            const button = e.target.matches('.view-json') ? e.target : e.target.closest('.view-json');
-                            const encoded = button.getAttribute('data-json');
-                            const json = encoded ? atob(encoded) : '';
-                            document.getElementById('jsonContent').textContent = json;
-                            document.getElementById('jsonModal').classList.remove('hidden');
-                            document.getElementById('jsonModal').classList.add('flex');
+                        const trigger = e.target.closest('.view-detail');
+                        if (trigger) {
+                            const bundle = auditDecode(trigger.getAttribute('data-detail')) || {};
+                            document.getElementById('auditDetailTitle').textContent = bundle.title || 'Details';
+                            document.getElementById('auditDetailMeta').textContent = bundle.meta || '';
+
+                            // Build the plain-English rows as DOM nodes (textContent = no XSS).
+                            const rowsEl = document.getElementById('auditDetailRows');
+                            rowsEl.innerHTML = '';
+                            const rows = Array.isArray(bundle.readable) ? bundle.readable : [];
+                            rows.forEach(r => {
+                                const row = document.createElement('div');
+                                row.className = 'audit-detail-row';
+                                const dt = document.createElement('dt'); dt.textContent = r.label;
+                                const dd = document.createElement('dd'); dd.textContent = r.value;
+                                row.append(dt, dd); rowsEl.append(row);
+                            });
+                            document.getElementById('auditDetailEmpty').classList.toggle('hidden', rows.length > 0);
+
+                            // Technical (raw) section: only offer it when raw JSON exists.
+                            const rawWrap = document.getElementById('auditDetailRawWrap');
+                            const rawBody = document.getElementById('auditRawBody');
+                            const chevron = document.getElementById('auditRawChevron');
+                            rawBody.classList.add('hidden');
+                            chevron.style.transform = '';
+                            if (bundle.raw) {
+                                document.getElementById('jsonContent').textContent = bundle.raw;
+                                rawWrap.classList.remove('hidden');
+                            } else {
+                                rawWrap.classList.add('hidden');
+                            }
+
+                            const modal = document.getElementById('jsonModal');
+                            modal.classList.remove('hidden');
+                            modal.classList.add('flex');
+                            requestAnimationFrame(() => modal.classList.add('is-open'));
                         }
 
-                        if (e.target && e.target.id === 'closeJson') {
-                            document.getElementById('jsonModal').classList.add('hidden');
-                            document.getElementById('jsonModal').classList.remove('flex');
+                        if (e.target.closest('#auditRawToggle')) {
+                            const body = document.getElementById('auditRawBody');
+                            const chevron = document.getElementById('auditRawChevron');
+                            const open = body.classList.toggle('hidden') === false;
+                            chevron.style.transform = open ? 'rotate(90deg)' : '';
                         }
 
-                        if (e.target && e.target.id === 'copyJson') {
+                        if (e.target.closest('#closeJson')) {
+                            auditCloseModal();
+                        }
+
+                        const copyBtn = e.target.closest('#copyJson');
+                        if (copyBtn) {
                             const text = document.getElementById('jsonContent').textContent || '';
                             navigator.clipboard.writeText(text).then(() => {
-                                const btn = e.target;
-                                const original = btn.textContent;
-                                btn.textContent = '{{ __('Copied!') }}';
-                                setTimeout(() => { btn.textContent = original; }, 1500);
+                                const original = copyBtn.textContent;
+                                copyBtn.textContent = '{{ __('Copied!') }}';
+                                setTimeout(() => { copyBtn.textContent = original; }, 1500);
                             });
                         }
 
+                        // Backdrop click (outside the panel) closes.
                         if (e.target && e.target.id === 'jsonModal') {
-                            document.getElementById('jsonModal').classList.add('hidden');
-                            document.getElementById('jsonModal').classList.remove('flex');
+                            auditCloseModal();
+                        }
+                    });
+
+                    // Escape closes the details modal.
+                    document.addEventListener('keydown', function (e) {
+                        if (e.key === 'Escape') {
+                            const modal = document.getElementById('jsonModal');
+                            if (modal && !modal.classList.contains('hidden')) {
+                                auditCloseModal();
+                            }
                         }
                     });
                 </script>

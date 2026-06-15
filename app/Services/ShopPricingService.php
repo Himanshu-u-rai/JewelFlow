@@ -851,26 +851,68 @@ class ShopPricingService
         ];
         $sortColumn = $sortColumnMap[$filters['sort_by']] ?? 'rates.business_date';
 
-        $query
-            ->orderBy($sortColumn, $filters['sort_dir'])
-            ->orderBy('rates.fetched_at', 'desc')
-            ->orderByDesc('rates.id');
+        // One BUSINESS DAY per page: each page shows all of that day's purity
+        // rates, and pagination steps day-by-day (not 50 mixed-day rows).
+        // $perPage is interpreted as days-per-page (default 1).
+        $daysPerPage = max(1, (int) $perPage);
 
-        $paginator = $query->select([
-            'rates.id',
-            'rates.business_date',
-            'rates.metal_type',
-            'rates.purity',
-            'rates.purity_value',
-            'rates.rate_per_gram',
-            'rates.is_override',
-            'rates.source',
-            'rates.fetched_at',
-            'profiles.code as profile_code',
-            'profiles.label as profile_label',
-        ])->paginate($perPage, ['*'], 'pricing_history_page');
+        // Day ordering follows the business_date sort direction; when sorting by
+        // some other column we still order days newest-first (stable, intuitive).
+        $dayDir = ($filters['sort_by'] === 'business_date') ? $filters['sort_dir'] : 'desc';
 
-        return $paginator->withQueryString();
+        // Distinct days matching the filters → total day count drives pagination.
+        $distinctDays = (clone $query)
+            ->select('rates.business_date')
+            ->distinct()
+            ->orderBy('rates.business_date', $dayDir)
+            ->pluck('business_date');
+
+        $totalDays   = $distinctDays->count();
+        $currentPage = LengthAwarePaginator::resolveCurrentPage('pricing_history_page');
+        $lastPage    = max(1, (int) ceil($totalDays / $daysPerPage));
+        $currentPage = min(max(1, $currentPage), $lastPage);
+
+        // The day(s) shown on this page.
+        $pageDays = $distinctDays
+            ->slice(($currentPage - 1) * $daysPerPage, $daysPerPage)
+            ->values();
+
+        // Fetch all rate rows for those day(s), sorted by the user's chosen column
+        // within the day(s).
+        $rows = collect();
+        if ($pageDays->isNotEmpty()) {
+            $rows = (clone $query)
+                ->whereIn('rates.business_date', $pageDays->all())
+                ->orderBy('rates.business_date', $dayDir)
+                ->orderBy($sortColumn, $filters['sort_dir'])
+                ->orderBy('rates.fetched_at', 'desc')
+                ->orderByDesc('rates.id')
+                ->select([
+                    'rates.id',
+                    'rates.business_date',
+                    'rates.metal_type',
+                    'rates.purity',
+                    'rates.purity_value',
+                    'rates.rate_per_gram',
+                    'rates.is_override',
+                    'rates.source',
+                    'rates.fetched_at',
+                    'profiles.code as profile_code',
+                    'profiles.label as profile_label',
+                ])
+                ->get();
+        }
+
+        return (new LengthAwarePaginator(
+            $rows,
+            $totalDays,
+            $daysPerPage,
+            $currentPage,
+            [
+                'path'     => LengthAwarePaginator::resolveCurrentPath(),
+                'pageName' => 'pricing_history_page',
+            ]
+        ))->withQueryString();
     }
 
     public function guessLegacyMetalType(?string $category, ?string $subCategory, ?string $design, mixed $purity): ?string

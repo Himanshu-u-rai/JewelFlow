@@ -953,6 +953,7 @@
             </section>
 
             @if($invoice->amount_due > 0)
+                @can('karigar_invoice.manage')
                 <section class="ki-show-panel ki-show-settlement-panel">
                     <div class="ki-show-settlement-wrap"
                          x-data="{
@@ -1036,6 +1037,7 @@
                         </form>
                     </div>
                 </section>
+                @endcan
             @endif
         </div>
     </div>

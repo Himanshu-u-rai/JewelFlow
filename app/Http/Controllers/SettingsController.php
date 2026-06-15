@@ -117,17 +117,51 @@ class SettingsController extends Controller
 
         $logs = null;
         $stats = null;
+        $auditActions = collect();
+        $auditUsers = collect();
         if ($activeTab === 'audit') {
-            $logs = AuditLog::where('shop_id', $shop->id)
-                ->orderBy('created_at', 'desc')
-                ->paginate(50);
+            // Filters: action, user, date range. Each is applied to the listing
+            // AND mirrored in the count queries so the stats reflect the filter.
+            $fAction = $request->string('audit_action')->value() ?: null;
+            $fUser   = $request->filled('audit_user') ? (int) $request->input('audit_user') : null;
+            $fFrom   = $request->filled('audit_from') ? $request->date('audit_from') : null;
+            $fTo     = $request->filled('audit_to') ? $request->date('audit_to') : null;
+
+            $base = fn () => AuditLog::where('shop_id', $shop->id)
+                ->when($fAction, fn ($q) => $q->where('action', $fAction))
+                ->when($fUser, fn ($q) => $q->where('user_id', $fUser))
+                ->when($fFrom, fn ($q) => $q->whereDate('created_at', '>=', $fFrom))
+                ->when($fTo, fn ($q) => $q->whereDate('created_at', '<=', $fTo));
+
+            // Eager-load the actor to avoid an N+1 across the 50 rendered rows.
+            $logs = $base()->with('user:id,name')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->paginate(50)
+                ->withQueryString();
+
+            // Owner-meaningful stats (shop-wide, today) — not vanity log counts.
+            // "Sensitive today" = refunds, deletions, reversals, voids, overrides,
+            // staff removals, vault/gold adjustments, permission changes — the
+            // events an owner most wants to notice. Pull today's actions once and
+            // classify in PHP via AuditLog::isSensitive() so the rule lives in one
+            // place (the model), not duplicated in SQL.
+            $todayActions = AuditLog::where('shop_id', $shop->id)
+                ->whereDate('created_at', now()->toDateString())
+                ->get(['id', 'action']);
+
+            $sensitiveToday = $todayActions->filter->isSensitive()->count();
 
             $stats = [
-                'total' => AuditLog::where('shop_id', $shop->id)->count(),
-                'today' => AuditLog::where('shop_id', $shop->id)
-                    ->whereDate('created_at', now()->toDateString())
-                    ->count(),
+                'today'     => $todayActions->count(),
+                'sensitive' => $sensitiveToday,
+                'total'     => AuditLog::where('shop_id', $shop->id)->count(),
             ];
+
+            // Distinct actions + users for the filter dropdowns (shop-scoped).
+            $auditActions = AuditLog::where('shop_id', $shop->id)
+                ->whereNotNull('action')->distinct()->orderBy('action')->pluck('action');
+            $auditUsers = User::where('shop_id', $shop->id)->get(['id', 'name', 'mobile_number']);
         }
 
         $methods = collect();
@@ -163,7 +197,8 @@ class SettingsController extends Controller
                 'legacy_items' => $pricing->legacyItemsNeedingReview($shop),
                 'rates_ready' => $pricing->hasCurrentDailyRates($shop),
                 'history_filters' => $historyFilters,
-                'history_rows' => $pricing->resolvedRateHistory($shop, $historyFilters, 50),
+                // One business day per page — each page shows that day's purity rates.
+                'history_rows' => $pricing->resolvedRateHistory($shop, $historyFilters, 1),
                 'history_purity_options' => $allPurityProfiles
                     ->map(function ($profile) use ($pricing): array {
                         return [
@@ -305,6 +340,8 @@ class SettingsController extends Controller
             'activeTab',
             'logs',
             'stats',
+            'auditActions',
+            'auditUsers',
             'catalogWebsiteSettings',
             'catalogPages',
             'pricingData',
@@ -635,16 +672,50 @@ class SettingsController extends Controller
 
         $submitted = $validated['metals'] ?? [];
 
+        // Items that are melted / reversed / written off have physically left the
+        // shop's stock, so a metal can be turned off once only those remain. Any
+        // other status (in stock, sold, with karigar, returned, …) means the metal
+        // is still live: turning it off would lock the owner out of editing those
+        // existing items, because the item create/edit form only accepts enabled
+        // metals (ItemController validates metal_type against enabledMetalsForShop).
+        $disposedStatuses = ['melted', 'reversed', 'written_off'];
+
+        $currentlyEnabled = \App\Services\MetalRegistry::enabledMetalsForShop((int) $shop->id);
+
         foreach (\App\Services\MetalRegistry::tier2Metals() as $metal) {
             $enabled = (bool) ($submitted[$metal] ?? false);
+            $wasEnabled = in_array($metal, $currentlyEnabled, true);
+
+            // Guard: refuse to turn a metal off while it still has live stock.
+            if ($wasEnabled && ! $enabled) {
+                $liveCount = DB::table('items')
+                    ->where('shop_id', $shop->id)
+                    ->where('metal_type', $metal)
+                    ->whereNotIn('status', $disposedStatuses)
+                    ->count();
+
+                if ($liveCount > 0) {
+                    return redirect()->route('settings.edit', ['tab' => 'materials'])
+                        ->withErrors(['metals' => ucfirst($metal) . " can't be turned off — you still have "
+                            . $liveCount . " " . $metal . " item" . ($liveCount === 1 ? '' : 's')
+                            . " in stock. Sell, melt, or remove them first."]);
+                }
+            }
 
             // shop_enabled_metals has no Eloquent model; use the query builder.
             // PostgreSQL rejects integer 0/1 for boolean columns, so the flag is
-            // a raw boolean literal (see CLAUDE.md).
-            DB::table('shop_enabled_metals')->updateOrInsert(
-                ['shop_id' => $shop->id, 'metal_type' => $metal],
-                ['enabled' => DB::raw($enabled ? 'true' : 'false'), 'updated_at' => now(), 'created_at' => now()]
-            );
+            // a raw boolean literal (see CLAUDE.md). Set created_at only when the
+            // row is first inserted so re-saving the form never overwrites the
+            // original creation time.
+            $key = ['shop_id' => $shop->id, 'metal_type' => $metal];
+            $exists = DB::table('shop_enabled_metals')->where($key)->exists();
+
+            $values = ['enabled' => DB::raw($enabled ? 'true' : 'false'), 'updated_at' => now()];
+            if (! $exists) {
+                $values['created_at'] = now();
+            }
+
+            DB::table('shop_enabled_metals')->updateOrInsert($key, $values);
         }
 
         \App\Services\MetalRegistry::clearShopCache((int) $shop->id);
@@ -795,8 +866,9 @@ class SettingsController extends Controller
      */
     public function updateRolePermissions(Request $request, Role $role)
     {
-        // Owner role cannot be modified — Gate::before short-circuits anyway,
-        // but the UI lets the form be submitted; this is the server-side guard.
+        // Owner role cannot be modified. This `if` is the ONLY guard — there is
+        // no owner short-circuit in Gate::before, so the owner's all-access comes
+        // solely from its synced permission set. Never remove this check.
         if ($role->name === 'owner') {
             return redirect()->route('settings.edit', ['tab' => 'roles'])
                 ->with('error', 'Owner role permissions cannot be modified.');
@@ -809,11 +881,23 @@ class SettingsController extends Controller
 
         // Snapshot the current permission set so we can audit the diff.
         $beforeIds = $role->permissions()->pluck('permissions.id')->sort()->values()->all();
-        $afterIds = collect($validated['permissions'] ?? [])->map(fn ($id) => (int) $id);
 
-        // Dhiran permissions are hidden from the JewelFlow Roles UI (separate
-        // product). They are therefore never present in this form's payload —
-        // preserve any the role already has so saving here never strips them.
+        // Dhiran is a separate product whose permissions are intentionally NOT
+        // manageable from the JewelFlow Roles UI. The form never renders them,
+        // but `exists:permissions,id` alone would accept a crafted payload that
+        // injects a Dhiran id. Constrain the writable set to the non-Dhiran
+        // catalogue so a hand-built request can never attach a hidden permission.
+        $manageableIds = \App\Models\Permission::where('group', '!=', 'dhiran')
+            ->orWhereNull('group')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        $afterIds = collect($validated['permissions'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->intersect($manageableIds);
+
+        // Preserve any Dhiran permissions the role already has — saving here must
+        // neither strip nor add them; they are owned by the Dhiran product.
         $preserveIds = $role->permissions()
             ->where('permissions.group', 'dhiran')
             ->pluck('permissions.id');
@@ -847,6 +931,64 @@ class SettingsController extends Controller
 
         return redirect()->route('settings.edit', ['tab' => 'roles'])
             ->with('success', "Permissions for {$role->display_name} updated successfully.");
+    }
+
+    /**
+     * Export the audit log as CSV, honoring the same action/user/date filters
+     * as the Audit tab. Shop-scoped; gated by settings.view at the route. The
+     * row_hash is included so an exported file is independently verifiable
+     * against the tamper-evident chain.
+     */
+    public function exportAudit(Request $request)
+    {
+        $shop = Auth::user()->shop;
+
+        $fAction = $request->string('audit_action')->value() ?: null;
+        $fUser   = $request->filled('audit_user') ? (int) $request->input('audit_user') : null;
+        $fFrom   = $request->filled('audit_from') ? $request->date('audit_from') : null;
+        $fTo     = $request->filled('audit_to') ? $request->date('audit_to') : null;
+
+        $shopId = (int) $shop->id;
+        $filename = 'audit-log-' . $shopId . '-' . now()->format('Y-m-d') . '.csv';
+
+        // streamDownload's closure runs AFTER the request lifecycle, when the
+        // tenant middleware has already cleared TenantContext. So the closure
+        // builds the query with withoutGlobalScopes() and an explicit shop_id
+        // filter (which is the real tenant boundary) — otherwise BelongsToShop's
+        // scope resolves a null tenant and returns zero rows.
+        $build = fn () => AuditLog::withoutGlobalScopes()
+            ->where('shop_id', $shopId)
+            ->with('user:id,name,mobile_number')
+            ->when($fAction, fn ($q) => $q->where('action', $fAction))
+            ->when($fUser, fn ($q) => $q->where('user_id', $fUser))
+            ->when($fFrom, fn ($q) => $q->whereDate('created_at', '>=', $fFrom))
+            ->when($fTo, fn ($q) => $q->whereDate('created_at', '<=', $fTo))
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        return response()->streamDownload(function () use ($build): void {
+            $out = fopen('php://output', 'w');
+            // UTF-8 BOM so Excel renders ₹ and accented names correctly.
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Date & Time', 'User', 'Action', 'What happened', 'Sensitive', 'Entity', 'Verification hash']);
+
+            // chunk to keep memory flat on large logs
+            $build()->chunk(500, function ($rows) use ($out): void {
+                foreach ($rows as $log) {
+                    fputcsv($out, [
+                        optional($log->created_at)->format('Y-m-d H:i:s'),
+                        $log->user->name ?? $log->user->mobile_number ?? 'System',
+                        $log->action,
+                        $log->summaryLine(),
+                        $log->isSensitive() ? 'Yes' : '',
+                        trim(($log->model_type ? \Illuminate\Support\Str::headline($log->model_type) : '') . ($log->model_id ? ' #' . $log->model_id : '')),
+                        $log->row_hash,
+                    ]);
+                }
+            });
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**

@@ -753,6 +753,7 @@
                         <div x-show="expanded === {{ $lot->id }}" x-cloak style="border-top:1px solid #e2e8f0;">
                             {{-- Dispatch form (shown only if not yet dispatched) --}}
                             @if(!$lot->is_dispatched)
+                            @can('vault.manage')
                             <div x-data="{ showDispatch: false }" style="padding:12px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
                                 <div x-show="!showDispatch">
                                     <button @click="showDispatch = true"
@@ -777,6 +778,7 @@
                                     </form>
                                 </div>
                             </div>
+                            @endcan
                             @else
                             <div style="padding:10px 16px;background:#f0fdf4;border-bottom:1px solid #e2e8f0;">
                                 <p style="margin:0;font-size:12px;color:#166534;font-weight:700;">

@@ -294,10 +294,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // ======= STORE CREDIT (surface re-connection — PRODUCT_SURFACE_INTEGRITY_AUDIT.md §3.C) =======
     // Maps to the already-committed StoreCreditController. Manual adjustment is
-    // owner-only (enforced in the controller via ensureOwner()); redemption
+    // owner-only — enforced at BOTH the route (role:owner) and in the controller
+    // (ensureOwner()) for defense in depth on a financial-balance write. Redemption
     // (applyToInvoice) is gated by sales.create like recording any payment.
-    Route::get('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustCreate'])->name('store-credit.adjust.create');
-    Route::post('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustStore'])->name('store-credit.adjust.store');
+    Route::get('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustCreate'])->middleware('role:owner')->name('store-credit.adjust.create');
+    Route::post('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustStore'])->middleware('role:owner')->name('store-credit.adjust.store');
     Route::post('/invoices/{invoice}/store-credit/apply', [\App\Http\Controllers\StoreCreditController::class, 'applyToInvoice'])->middleware('can:sales.create')->name('store-credit.apply');
 
     // ======= PROFILE — owner only (settings.edit = Owner by default) =======
@@ -476,6 +477,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/audit', function () {
         return redirect()->route('settings.edit', ['tab' => 'audit']);
     })->middleware('can:settings.view');
+    Route::get('/settings/audit/export', [SettingsController::class, 'exportAudit'])
+        ->middleware('can:settings.view')->name('settings.audit.export');
 
     // ======= REPORTING-EXPORT SPINE (Phase 0; per-report gates enforced in ExportRequest) =======
     // Phase 1 pilot — Sales / Invoice Register screen.

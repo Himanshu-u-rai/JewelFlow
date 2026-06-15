@@ -102,6 +102,7 @@
             <a href="{{ route('inventory.purchases.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                 ← All Purchases
             </a>
+            @can('inventory.edit')
             @if($purchase->isDraft())
                 <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm hover:bg-amber-100">
                     Edit
@@ -134,6 +135,7 @@
                     </button>
                 </form>
             @endif
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
@@ -298,12 +300,14 @@
 
                 {{-- Delete (draft only) --}}
                 @if($purchase->isDraft())
+                @can('inventory.delete')
                 <form method="POST" action="{{ route('inventory.purchases.destroy', $purchase) }}" onsubmit="return confirm('Delete this draft? This cannot be undone.')">
                     @csrf @method('DELETE')
                     <button type="submit" class="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100 transition">
                         Delete Draft
                     </button>
                 </form>
+                @endcan
                 @endif
             </div>
         </div>

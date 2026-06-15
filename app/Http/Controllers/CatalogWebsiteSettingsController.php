@@ -29,6 +29,8 @@ class CatalogWebsiteSettingsController extends Controller
             'tagline'             => 'nullable|string|max:150',
             'hero_image'          => 'nullable|file|mimes:jpeg,png,webp|max:5120',
             'remove_hero_image'   => 'boolean',
+            'hero_style'          => 'nullable|string|in:image,color,plain',
+            'hero_bg_color'       => 'nullable|string|max:20',
             'show_prices'         => 'boolean',
             'show_weights'        => 'boolean',
             'show_huid'           => 'boolean',

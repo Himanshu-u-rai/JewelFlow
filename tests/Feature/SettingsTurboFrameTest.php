@@ -45,4 +45,33 @@ class SettingsTurboFrameTest extends TestCase
             'staff destroy'    => ['staff.destroy'],
         ];
     }
+
+    /**
+     * The Catalog Website tab is a partial rendered INSIDE the settings-content
+     * frame. Its banner-upload + CMS page forms all redirect to a full page, so
+     * each must carry data-turbo-frame="_top" — otherwise the hero-image upload
+     * and page create/update/delete yield Turbo "Content missing".
+     *
+     * @dataProvider websiteTabForms
+     */
+    public function test_website_tab_redirecting_form_has_turbo_top(string $action): void
+    {
+        $partial = file_get_contents(resource_path('views/partials/settings/website-tab.blade.php'));
+
+        $this->assertMatchesRegularExpression(
+            '/action="\{\{ route\(\'' . preg_quote($action, '/') . '\'.*?\) \}\}"[^>]*data-turbo-frame="_top"/s',
+            $partial,
+            "the {$action} form (website tab) must carry data-turbo-frame=\"_top\""
+        );
+    }
+
+    public static function websiteTabForms(): array
+    {
+        return [
+            'catalog-website settings' => ['settings.update.catalog-website'],
+            'page create'              => ['settings.catalog-pages.store'],
+            'page update'              => ['settings.catalog-pages.update'],
+            'page delete'              => ['settings.catalog-pages.destroy'],
+        ];
+    }
 }

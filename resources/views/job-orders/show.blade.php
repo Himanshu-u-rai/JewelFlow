@@ -49,10 +49,12 @@
                         @endforeach
                     </div>
                     @if(!$jobOrder->discrepancy_acknowledged && $jobOrder->isOpen())
+                        @can('job_order.manage')
                         <form method="POST" action="{{ route('job-orders.acknowledge', $jobOrder) }}" class="mt-3" onsubmit="return confirm('Acknowledge discrepancies and mark this job order completed?');">
                             @csrf
                             <button type="submit" class="text-xs px-3 py-1 rounded-lg bg-rose-700 text-white hover:bg-rose-800">Acknowledge & Complete</button>
                         </form>
+                        @endcan
                     @endif
                 </div>
             </div>
@@ -166,6 +168,7 @@
         </div>
 
         @if($jobOrder->isOpen())
+            @can('job_order.manage')
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                 <h3 class="text-sm font-semibold text-gray-800 mb-3">Other Actions</h3>
                 <div class="flex flex-wrap gap-3">
@@ -201,6 +204,7 @@
                     @endif
                 </div>
             </div>
+            @endcan
         @endif
     </div>
 </x-app-layout>

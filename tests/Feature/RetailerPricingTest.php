@@ -153,6 +153,67 @@ class RetailerPricingTest extends TestCase
         $response->assertSee('history_sort_by=rate_per_gram', false);
     }
 
+    /**
+     * The Price History table paginates by BUSINESS DAY: each page shows all of
+     * one day's purity rates, and stepping a page moves to the previous day —
+     * never a 50-row mix of several days. Seeds two days (each with multiple
+     * purity rows) and asserts every page holds exactly one distinct date.
+     */
+    public function test_price_history_shows_one_business_day_per_page(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
+
+        /** @var ShopPricingService $pricing */
+        $pricing = app(ShopPricingService::class);
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            // Today's rates already seeded (multiple purity rows for one date).
+            // Add a second, earlier business date with its own purity rows.
+            $earlier = now()->subDay()->toDateString();
+            $sample  = MetalRate::where('shop_id', $shop->id)->get();
+            $this->assertGreaterThan(1, $sample->count(), 'one day should produce several purity rows');
+
+            foreach ($sample as $row) {
+                MetalRate::record([
+                    'shop_id'                       => $shop->id,
+                    'metal_type'                    => $row->metal_type,
+                    'purity'                        => $row->purity,
+                    'purity_value'                  => $row->purity_value,
+                    'purity_basis'                  => $row->purity_basis,
+                    'shop_metal_purity_profile_id'  => $row->shop_metal_purity_profile_id,
+                    'rate_per_gram'                 => $row->rate_per_gram,
+                    'source'                        => $row->source,
+                    'is_override'                   => $row->is_override,
+                    'business_date'                 => $earlier,
+                    'fetched_at'                    => now()->subDay(),
+                ]);
+            }
+        });
+
+        // Page 1 (default) holds exactly one distinct business_date — the newest day.
+        $page1 = $pricing->resolvedRateHistory($shop, [], 1);
+
+        $datesOnPage1 = collect($page1->items())->pluck('business_date')->unique();
+        $this->assertCount(1, $datesOnPage1, 'page 1 must contain a single business day');
+        $this->assertGreaterThan(1, $page1->count(), 'that one day still lists all its purity rows');
+
+        // Two days seeded → two pages total, one day each.
+        $this->assertSame(2, $page1->lastPage(), 'two distinct days = two pages at 1 day/page');
+        $this->assertSame(2, $page1->total(), 'total reflects day count, not row count');
+
+        // Page 2 is the other day, and the two pages never share a date.
+        request()->merge(['pricing_history_page' => 2]);
+        $page2 = $pricing->resolvedRateHistory($shop, [], 1);
+        $datesOnPage2 = collect($page2->items())->pluck('business_date')->unique();
+        $this->assertCount(1, $datesOnPage2, 'page 2 must also contain a single business day');
+        $this->assertTrue(
+            $datesOnPage1->intersect($datesOnPage2)->isEmpty(),
+            'the two pages must show different days'
+        );
+        request()->merge(['pricing_history_page' => null]);
+    }
+
     public function test_mobile_retailer_item_store_computes_silver_cost_price_server_side(): void
     {
         [$user, $shop] = $this->createRetailerTenant();

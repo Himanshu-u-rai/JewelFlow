@@ -74,7 +74,8 @@ class StaffController extends Controller
         $user = User::create([
             'name' => $validated['name'],
             'mobile_number' => $validated['mobile_number'],
-            'email' => $validated['email'],
+            // email is nullable+optional, so it may be absent from $validated.
+            'email' => $validated['email'] ?? null,
             'password' => Hash::make($validated['password']),
             'shop_id' => $shopId,
             'role_id' => $validated['role_id'],
@@ -93,12 +94,34 @@ class StaffController extends Controller
             ->with('success', 'Staff member added successfully.');
     }
     
-    public function edit(User $staff)
+    /**
+     * Guard every per-staff action against two attacks that route-model binding
+     * cannot stop on its own (User has no BelongsToShop global scope):
+     *
+     *   1. Cross-shop access — the {staff} id could belong to another shop.
+     *   2. Owner targeting — the owner must never be editable/removable through
+     *      staff management, no matter who holds `staff.manage`. Today the
+     *      permission is owner-only, but it is grantable to managers from the
+     *      Roles UI; without this guard a manager could then demote, lock out,
+     *      or reset the password of the shop owner. The owner's account is
+     *      managed only via Profile (self) — never via staff management.
+     *
+     * Aborts 403/404 on violation; returns normally when the target is safe.
+     */
+    private function guardStaffTarget(User $staff): void
     {
-        // Ensure staff belongs to same shop
         if ($staff->shop_id !== auth()->user()->shop_id) {
             abort(403);
         }
+
+        if ($staff->role?->name === 'owner') {
+            abort(403, 'The shop owner account cannot be managed from staff management.');
+        }
+    }
+
+    public function edit(User $staff)
+    {
+        $this->guardStaffTarget($staff);
 
         // Scope roles to this shop only, exclude owner (can't promote to owner)
         $roles = Role::where('shop_id', auth()->user()->shop_id)
@@ -107,14 +130,11 @@ class StaffController extends Controller
 
         return view('staff.edit', compact('staff', 'roles'));
     }
-    
+
     public function update(Request $request, User $staff)
     {
-        // Ensure staff belongs to same shop
-        if ($staff->shop_id !== auth()->user()->shop_id) {
-            abort(403);
-        }
-        
+        $this->guardStaffTarget($staff);
+
         $shopId = auth()->user()->shop_id;
 
         $validated = $request->validate([
@@ -135,7 +155,10 @@ class StaffController extends Controller
         
         $staff->name = $validated['name'];
         $staff->mobile_number = $validated['mobile_number'];
-        $staff->email = $validated['email'];
+        // email is nullable+optional — absent from $validated when not supplied.
+        // Coalesce to null so saving a staff member without an email clears it
+        // rather than throwing an undefined-key error.
+        $staff->email = $validated['email'] ?? null;
         $staff->role_id = $validated['role_id'];
         
         if (!empty($validated['password'])) {
@@ -159,10 +182,7 @@ class StaffController extends Controller
     
     public function destroy(User $staff)
     {
-        // Ensure staff belongs to same shop
-        if ($staff->shop_id !== auth()->user()->shop_id) {
-            abort(403);
-        }
+        $this->guardStaffTarget($staff);
 
         // Cannot remove yourself
         if ($staff->id === auth()->id()) {
@@ -203,9 +223,7 @@ class StaffController extends Controller
      */
     public function reactivate(User $staff)
     {
-        if ($staff->shop_id !== auth()->user()->shop_id) {
-            abort(403);
-        }
+        $this->guardStaffTarget($staff);
 
         if ($staff->employment_status !== 'terminated') {
             return $this->dynamicRedirect('settings.edit', ['tab' => 'staff'], 'This staff member is already active.', 'error');

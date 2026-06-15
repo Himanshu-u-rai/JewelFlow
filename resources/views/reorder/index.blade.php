@@ -682,12 +682,16 @@
                                     </td>
                                     <td>
                                         <div class="reorder-actions">
+                                            @can('inventory.edit')
                                             <a href="{{ route('reorder.edit', $rule) }}" class="reorder-action-link">Edit</a>
                                             <form method="POST" action="{{ route('reorder.destroy', $rule) }}" data-confirm-message="Delete this reorder rule?" data-ajax-delete>
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="reorder-action-btn reorder-action-btn--danger">Delete</button>
                                             </form>
+                                            @else
+                                            <span class="text-gray-400 text-xs">View only</span>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

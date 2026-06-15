@@ -990,6 +990,15 @@
 
 @if($historyRows && $historyRows->count() > 0)
     <div class="bg-white border border-gray-200 overflow-hidden rounded-xl pricing-table-card">
+        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-3">
+            <p class="text-sm font-medium text-gray-900">
+                {{ __('Prices for') }}
+                <span class="font-semibold">{{ \Carbon\Carbon::parse($historyRows->first()->business_date)->format('d M Y') }}</span>
+            </p>
+            <p class="text-xs text-gray-500">
+                {{ __('One day per page — use the arrows below to see other days.') }}
+            </p>
+        </div>
         <div class="overflow-x-auto pricing-table-shell">
             <table class="w-full">
                 <thead class="bg-gray-50 border-b border-gray-200">
