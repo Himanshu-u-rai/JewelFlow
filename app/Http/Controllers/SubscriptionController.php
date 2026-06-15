@@ -88,11 +88,16 @@ class SubscriptionController extends Controller
         }
 
         $allPlans = Plan::whereRaw('is_active IS TRUE')
+            ->with('platformProduct')
             ->orderBy('price_monthly')
             ->get();
 
+        // Product-scoped selection: show the plans for the chosen edition's
+        // product. grantsEdition() resolves plan → edition string via the linked
+        // platform product (with a code-prefix fallback), so this is explicit
+        // and correct — and Dhiran is selectable without any retail shop_type.
         $plans = $allPlans->filter(
-            fn ($plan) => str_contains($plan->code, $shopType)
+            fn ($plan) => $plan->grantsEdition() === $shopType
         )->values();
 
         if ($plans->isEmpty()) {

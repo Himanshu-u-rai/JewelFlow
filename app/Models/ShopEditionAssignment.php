@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Platform\ShopSubscription;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,14 +16,28 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Active editions are rows where deactivated_at IS NULL. Revoked editions
  * keep their row with deactivated_at/deactivated_by/deactivation_reason
  * populated — useful for audit and for re-granting without losing history.
+ *
+ * `source` records WHY the edition is active:
+ *   - subscription : backed by a paid product subscription (product_subscription_id set)
+ *   - admin_grant  : granted by a platform admin (demo / pilot / internal / trial / support)
+ *   - seed         : seeded by migration / shop_type auto-seed
+ *
+ * An admin_grant (or seed) edition is NEVER auto-revoked by a subscription lapse.
  */
 class ShopEditionAssignment extends Model
 {
     protected $table = 'shop_editions';
 
+    /** Where an edition grant came from. */
+    public const SOURCE_SUBSCRIPTION = 'subscription';
+    public const SOURCE_ADMIN_GRANT  = 'admin_grant';
+    public const SOURCE_SEED         = 'seed';
+
     protected $fillable = [
         'shop_id',
         'edition',
+        'source',
+        'product_subscription_id',
         'activated_at',
         'activated_by',
         'deactivated_at',
@@ -38,6 +53,11 @@ class ShopEditionAssignment extends Model
     public function shop(): BelongsTo
     {
         return $this->belongsTo(Shop::class);
+    }
+
+    public function productSubscription(): BelongsTo
+    {
+        return $this->belongsTo(ShopSubscription::class, 'product_subscription_id');
     }
 
     public function activatedBy(): BelongsTo

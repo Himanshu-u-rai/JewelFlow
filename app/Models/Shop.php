@@ -241,23 +241,70 @@ class Shop extends Model
 
         static::created(function (Shop $shop): void {
             if (in_array($shop->shop_type, ['retailer', 'manufacturer', 'dhiran'], true)) {
+                // firstOrCreate keeps this idempotent against a subscription
+                // grant that may have already created the row (UNIQUE shop_id +
+                // edition). The 'seed' source means it is treated like an admin
+                // grant for lapse purposes — never auto-revoked.
                 ShopEditionAssignment::firstOrCreate(
                     ['shop_id' => $shop->id, 'edition' => $shop->shop_type],
-                    ['activated_at' => now()]
+                    [
+                        'source'       => ShopEditionAssignment::SOURCE_SEED,
+                        'activated_at' => now(),
+                    ]
                 );
             }
         });
     }
 
+    /**
+     * The most-recent subscription for a given platform product code that is
+     * still entitling (active / trial / grace / read_only).
+     *
+     * This is the multi-product-aware lookup new code should use instead of the
+     * legacy singular subscription() (which is just ->latest('id') and assumes
+     * one-subscription-per-shop). Returns null if the shop has no entitling
+     * subscription for that product.
+     */
+    public function activeSubscriptionForProduct(string $productCode): ?ShopSubscription
+    {
+        $edition = \App\Models\Platform\PlatformProduct::editionStringFor($productCode);
+        $entitling = ['active', 'trial', 'grace', 'read_only'];
+
+        return $this->subscriptions()
+            ->whereIn('status', $entitling)
+            ->with('plan.platformProduct')
+            ->orderByDesc('id')
+            ->get()
+            ->first(fn (ShopSubscription $sub) => $sub->plan && $sub->plan->grantsEdition() === $edition);
+    }
+
     /* ── Staff limit helpers ──────────────────────────────── */
 
     /**
-     * Maximum non-owner staff allowed by the active subscription plan.
-     * Returns -1 for unlimited.
+     * Maximum non-owner staff allowed, derived from the RETAIL/ERP product
+     * subscription. Returns -1 for unlimited.
+     *
+     * Multi-product decision: staff seats are a RETAIL-ERP concept (POS,
+     * inventory, multiple counter staff). A Dhiran-only shop, or the Dhiran
+     * subscription on a retail+dhiran shop, does not define the seat count —
+     * so we read staff_limit from the retail subscription's plan when present.
+     *
+     * Resolution order:
+     *   1. retail product subscription (if any) → its plan's staff_limit
+     *   2. else fall back to the latest subscription's plan (back-compat for
+     *      single-product shops such as a manufacturer-only or dhiran-only shop)
+     *   3. else -1 (unlimited / unconfigured)
      */
     public function staffLimit(): int
     {
-        $limit = $this->subscription?->plan?->features['staff_limit'] ?? null;
+        $retailSub = $this->activeSubscriptionForProduct(
+            \App\Models\Platform\PlatformProduct::CODE_RETAIL
+        );
+
+        $plan = $retailSub?->plan ?? $this->subscription?->plan;
+
+        $limit = $plan?->features['staff_limit'] ?? null;
+
         return $limit === null ? -1 : (int) $limit;
     }
 

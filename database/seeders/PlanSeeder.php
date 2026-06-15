@@ -174,7 +174,14 @@ class PlanSeeder extends Seeder
             ],
         ];
 
+        // Resolve the platform product each plan belongs to so plan selection
+        // can be product-scoped. Safe if products aren't seeded yet — the FK
+        // simply stays null and the create_platform_products migration backfills it.
+        $productIdByCode = DB::table('platform_products')->pluck('id', 'code');
+
         foreach ($plans as $plan) {
+            $plan['platform_product_id'] = $this->resolveProductId($plan['code'], $productIdByCode);
+
             // Clean out the raw DB expressions for the matching part of updateOrInsert
             $matchData = ['code' => $plan['code']];
             DB::table('plans')->updateOrInsert(
@@ -182,5 +189,17 @@ class PlanSeeder extends Seeder
                 $plan
             );
         }
+    }
+
+    private function resolveProductId(string $planCode, $productIdByCode): ?int
+    {
+        $productCode = match (true) {
+            str_starts_with($planCode, 'retailer_')      => 'retail',
+            str_starts_with($planCode, 'manufacturer_')   => 'manufacturing',
+            str_starts_with($planCode, 'dhiran_')         => 'dhiran',
+            default                                       => null,
+        };
+
+        return $productCode ? ($productIdByCode[$productCode] ?? null) : null;
     }
 }

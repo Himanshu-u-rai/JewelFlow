@@ -7,7 +7,9 @@ use App\Models\Platform\Plan;
 use App\Models\Platform\PlatformAdmin;
 use App\Models\Platform\ShopSubscription;
 use App\Models\Platform\SubscriptionEvent;
+use App\Models\Shop;
 use App\Services\PlatformInvoiceService;
+use App\Support\ShopEdition;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -198,6 +200,12 @@ class SubscriptionPaymentService
                     ])->save();
                 }
 
+                // Grant the edition this product's plan unlocks. Only possible
+                // once a shop exists — in the pay-before-shop onboarding flow
+                // the subscription is created with a null shop_id and the grant
+                // happens when the shop is later created.
+                $this->grantEditionForSubscription($subscription, $plan);
+
                 return $subscription;
             });
 
@@ -269,7 +277,7 @@ class SubscriptionPaymentService
         try {
             return DB::transaction(function () use (
                 $current, $startsAt, $endsAt, $newGraceEndsAt,
-                $billingCycle, $price, $paymentId, $orderId
+                $billingCycle, $price, $paymentId, $orderId, $plan
             ) {
                 $renewed = ShopSubscription::create([
                     'shop_id' => $current->shop_id,
@@ -297,6 +305,10 @@ class SubscriptionPaymentService
                     'reason' => 'Renewal via Razorpay: ' . $paymentId
                         . ' (previous subscription #' . $current->id . ')',
                 ]);
+
+                // A renewal re-affirms the edition and re-points it at the new
+                // backing subscription row (idempotent — keeps the edition live).
+                $this->grantEditionForSubscription($renewed, $plan ?? $renewed->plan);
 
                 return $renewed;
             });
@@ -328,6 +340,53 @@ class SubscriptionPaymentService
                 'user_id' => $user->id,
             ],
         ]);
+    }
+
+    /**
+     * Grant the edition a product subscription unlocks.
+     *
+     * Skipped (intentionally) when the subscription has no shop yet — that is
+     * the pay-before-shop onboarding flow, where the edition is granted once
+     * the shop is created. The grant is idempotent and source='subscription'
+     * so a later renewal / duplicate webhook never duplicates the row, and a
+     * lapse can revoke it only when nothing else backs it.
+     *
+     * Any failure here is logged but never bubbles up — a payment must not be
+     * lost because an edition grant hiccuped. Reconcilers / the next renewal
+     * re-affirm the grant.
+     */
+    public function grantEditionForSubscription(ShopSubscription $subscription, ?Plan $plan = null): void
+    {
+        if (! $subscription->shop_id) {
+            return;
+        }
+
+        $plan ??= $subscription->plan;
+        $edition = $plan?->grantsEdition();
+
+        if (! $edition) {
+            Log::warning('Subscription has no resolvable edition to grant', [
+                'subscription_id' => $subscription->id,
+                'plan_id' => $subscription->plan_id,
+                'plan_code' => $plan?->code,
+            ]);
+            return;
+        }
+
+        try {
+            $shop = $subscription->shop ?? Shop::find($subscription->shop_id);
+            if (! $shop) {
+                return;
+            }
+
+            ShopEdition::grantFromSubscription($shop, $edition, $subscription->id);
+        } catch (\Throwable $e) {
+            Log::error('Failed to grant edition for subscription', [
+                'subscription_id' => $subscription->id,
+                'edition' => $edition,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function systemAdmin(): ?PlatformAdmin

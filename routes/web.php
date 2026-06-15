@@ -505,6 +505,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // Settings — write access: requires `settings.edit` permission (default: Owner only).
     Route::post('/settings/services/request-add', [\App\Http\Controllers\ShopServicesController::class, 'requestAdd'])->middleware('can:settings.edit')->name('settings.services.request-add');
+    // Paid self-serve add (Phase 5b checkout): initiate Razorpay order for a
+    // product, then verify and create a NEW product subscription on success.
+    Route::post('/settings/services/initiate-add', [\App\Http\Controllers\ShopServicesController::class, 'initiateAdd'])->middleware('can:settings.edit')->name('settings.services.initiate-add');
+    Route::post('/settings/services/add-callback', [\App\Http\Controllers\ShopServicesController::class, 'addCallback'])->middleware('can:settings.edit')->name('settings.services.add-callback');
     Route::post('/settings/services/remove', [\App\Http\Controllers\ShopServicesController::class, 'remove'])->middleware('can:settings.edit')->name('settings.services.remove');
     Route::post('/settings/services/requests/{editionRequest}/cancel', [\App\Http\Controllers\ShopServicesController::class, 'cancelRequest'])->middleware('can:settings.edit')->name('settings.services.request.cancel');
     Route::patch('/settings/shop', [SettingsController::class, 'updateShop'])->middleware('can:settings.edit')->name('settings.update.shop');

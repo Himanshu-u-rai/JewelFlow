@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Platform\ShopSubscription;
 use App\Models\Platform\SubscriptionEvent;
+use App\Support\ShopEdition;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Razorpay\Api\Api;
@@ -191,6 +192,14 @@ class SubscriptionWebhookService
                     . ' (₹' . number_format($refundedRupees, 2) . ' of ₹' . number_format($pricePaid, 2) . ')',
             ]);
 
+            // A full refund fully lapses this subscription. Revoke the edition it
+            // was backing — but only if no other active source (another paid
+            // subscription, or an admin_grant / seed) still justifies it.
+            $this->revokeEditionForLapsedSubscription(
+                $subscription,
+                'Subscription fully refunded — service removed.'
+            );
+
             Log::info('Webhook: full refund processed, subscription cancelled', [
                 'payment_id' => $paymentId,
                 'subscription_id' => $subscription->id,
@@ -223,5 +232,43 @@ class SubscriptionWebhookService
             'refunded' => $refundedRupees,
             'price_paid' => $pricePaid,
         ]);
+    }
+
+    /**
+     * Revoke the edition a now-lapsed subscription was backing — but only when
+     * no other active source (another paid subscription, or an admin_grant /
+     * seed) still justifies it. Never lets an edition-revoke failure bubble up
+     * and break webhook handling.
+     */
+    private function revokeEditionForLapsedSubscription(ShopSubscription $subscription, string $reason): void
+    {
+        if (! $subscription->shop_id) {
+            return;
+        }
+
+        $edition = $subscription->plan?->grantsEdition();
+        if (! $edition) {
+            return;
+        }
+
+        try {
+            $shop = $subscription->shop;
+            if (! $shop) {
+                return;
+            }
+
+            ShopEdition::revokeFromLapsedSubscription(
+                $shop,
+                $edition,
+                $subscription->id,
+                $reason
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to revoke edition for lapsed subscription', [
+                'subscription_id' => $subscription->id,
+                'edition' => $edition,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

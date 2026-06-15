@@ -88,7 +88,13 @@ class RetailerPlanSeeder extends Seeder
             ],
         ];
 
+        // Link both retailer plans to the 'retail' platform product (null-safe
+        // if products aren't seeded yet; the migration backfills in that case).
+        $retailProductId = DB::table('platform_products')->where('code', 'retail')->value('id');
+
         foreach ($plans as $plan) {
+            $plan['platform_product_id'] = $retailProductId;
+
             DB::table('plans')->updateOrInsert(
                 ['code' => $plan['code']],
                 $plan

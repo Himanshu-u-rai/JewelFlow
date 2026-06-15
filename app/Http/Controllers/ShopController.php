@@ -233,14 +233,20 @@ class ShopController extends Controller
                 // duplicates so renewals — which invoice at payment time — aren't
                 // double-billed.
                 $subscription = ShopSubscription::find($subscriptionId);
-                if ($subscription
-                    && $subscription->shop_id
-                    && (float) $subscription->price_paid > 0
-                    && ! \App\Models\Platform\PlatformInvoice::where('shop_subscription_id', $subscription->id)->exists()
-                ) {
-                    $invoice = app(\App\Services\PlatformInvoiceService::class)
-                        ->issueForSubscription($subscription);
-                    dispatch(new \App\Jobs\SendPlatformInvoiceEmail($invoice->id));
+                if ($subscription && $subscription->shop_id) {
+                    // The edition couldn't be granted at payment time (no shop).
+                    // Grant it now so the new shop's edition is backed by the
+                    // paid subscription. Idempotent and source-preserving.
+                    app(\App\Services\SubscriptionPaymentService::class)
+                        ->grantEditionForSubscription($subscription);
+
+                    if ((float) $subscription->price_paid > 0
+                        && ! \App\Models\Platform\PlatformInvoice::where('shop_subscription_id', $subscription->id)->exists()
+                    ) {
+                        $invoice = app(\App\Services\PlatformInvoiceService::class)
+                            ->issueForSubscription($subscription);
+                        dispatch(new \App\Jobs\SendPlatformInvoiceEmail($invoice->id));
+                    }
                 }
             }
 
