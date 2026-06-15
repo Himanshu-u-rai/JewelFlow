@@ -196,6 +196,59 @@ class ShopServicesController extends Controller
             return back()->with('error', 'Could not verify payment. Contact support with ref: '.$paymentId);
         }
 
+        // L1 — bind the (server-issued) order to the initiating user. The flow is
+        // already tenant-safe (createSubscription self-binds shop_id to Auth); this
+        // is forensic clarity + replay resistance. Enforced only when the note is
+        // present, so legacy/onboarding orders are unaffected.
+        $orderUserId = $orderData['order']->notes['user_id'] ?? null;
+        if ($orderUserId !== null && (int) $orderUserId !== (int) $user->id) {
+            Log::warning('Service-add callback: order user mismatch', [
+                'payment_id'    => $paymentId,
+                'order_user_id' => $orderUserId,
+                'auth_user_id'  => $user->id,
+            ]);
+            return back()->with('error', 'This payment does not match your account. Contact support with ref: '.$paymentId);
+        }
+
+        // M1 — re-assert lifecycle eligibility at capture time. The product or its
+        // plan may have been disabled, or the edition acquired by another path,
+        // between initiateAdd and this callback. Payment integrity is already proven
+        // above; this is lifecycle consistency, not a security gate.
+        $product = $plan->platformProduct;
+        if (! $product || ! $product->is_active) {
+            Log::warning('Service-add callback: product no longer active', [
+                'payment_id' => $paymentId,
+                'plan_id'    => $plan->id,
+            ]);
+            return back()->with('error', 'This service is no longer available. No subscription was created — contact support with ref: '.$paymentId);
+        }
+
+        $edition = $product->editionString();
+        if ($shop->hasEdition($edition)) {
+            // Already owned (e.g. granted by another path after initiateAdd). Don't
+            // create a duplicate subscription; surface it as already-active.
+            session()->forget(['services_add_order_id', 'services_add_plan_id', 'services_add_billing_cycle']);
+            Log::info('Service-add callback: shop already owns edition, skipping create', [
+                'payment_id' => $paymentId,
+                'shop_id'    => $shop->id,
+                'edition'    => $edition,
+            ]);
+            return redirect()->route('settings.edit', ['tab' => 'services'])
+                ->with('success', 'Your shop already has this service. If you were charged, contact support with ref: '.$paymentId);
+        }
+
+        // Cross-check the completed plan against the one this session started with.
+        // The order's plan (from server-issued, amount-verified notes) is
+        // authoritative, so a mismatch is logged for audit rather than blocked.
+        $sessionPlanId = session('services_add_plan_id');
+        if ($sessionPlanId !== null && (int) $sessionPlanId !== (int) $plan->id) {
+            Log::warning('Service-add callback: plan mismatch vs session', [
+                'payment_id'      => $paymentId,
+                'session_plan_id' => $sessionPlanId,
+                'order_plan_id'   => $plan->id,
+            ]);
+        }
+
         // Idempotency: a duplicate callback returns the existing subscription.
         $existing = $this->paymentService->findExistingSubscription($paymentId);
         if ($existing) {
