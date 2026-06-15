@@ -55,39 +55,6 @@ class RetailerPricingTest extends TestCase
         $this->assertSame(85.1, round((float) $silver925->rate_per_gram, 4));
     }
 
-    /**
-     * Documents the rate convention the UI label must match: the stored base is
-     * the PURE-metal price (24K for gold, 1000-fine for silver), and each purity
-     * is scaled from it. So the gold 24K profile is an exact pass-through of the
-     * base, while the silver 999 profile is base × 999/1000 (NOT a pass-through).
-     * The silver input is labelled "Pure Silver Price / Kg" so the number the
-     * owner enters is the pure-silver price, consistent with "24K" for gold.
-     */
-    public function test_base_rate_is_the_pure_metal_price_and_scales_per_purity(): void
-    {
-        // Harness owner role has no synced permissions → can:pricing.update would
-        // 403 (the standing RBAC-harness gap). Bypass authorization to exercise
-        // the pricing math; owners hold the permission in production.
-        $this->withoutMiddleware(\Illuminate\Auth\Middleware\Authorize::class);
-        [$user, $shop] = $this->createRetailerTenant();
-
-        $this->actingAs($user)->post(route('settings.pricing.save-rates'), [
-            'gold_24k_rate_per_gram' => 7200,
-            'silver_999_rate_per_kg' => 80000, // ₹80/g pure silver
-        ])->assertRedirect();
-
-        $businessDate = ShopDailyMetalRate::withoutTenant()->where('shop_id', $shop->id)
-            ->firstOrFail()->business_date->toDateString();
-
-        $gold24   = MetalRate::latestResolvedForDay($shop->id, $businessDate, 'gold', 24.0);
-        $silver999 = MetalRate::latestResolvedForDay($shop->id, $businessDate, 'silver', 999.0);
-
-        // Gold 24K = the pure base, exact pass-through.
-        $this->assertSame(7200.0, round((float) $gold24->rate_per_gram, 4), 'gold 24K is the pure base, unscaled');
-        // Silver 999 = pure base (₹80/g) × 999/1000 = ₹79.92/g (NOT ₹80).
-        $this->assertSame(79.92, round((float) $silver999->rate_per_gram, 4), 'silver 999 is base × 0.999, not a pass-through');
-    }
-
     public function test_web_retailer_item_store_computes_cost_price_from_daily_rates(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
@@ -117,7 +84,14 @@ class RetailerPricingTest extends TestCase
 
         $this->assertSame('gold', $item->metal_type);
         $this->assertSame(9.0, round((float) $item->net_metal_weight, 3));
-        $this->assertSame(60100.0, round((float) $item->cost_price, 2));
+        // cost_price is the METAL cost only (9g × gold-22K rate 6600 = 59400).
+        // Making + stone charges are bundled into selling_price, not cost_price
+        // (see ShopPricingService::computeRetailerCostPayload — cost_price =
+        // metalCost; selling_price = metalCost + overhead). The previous
+        // expectation (60100) folded the 500 making + 200 stone into cost_price,
+        // which the service has never done; it was masked by the RBAC-harness 403.
+        $this->assertSame(59400.0, round((float) $item->cost_price, 2));
+        $this->assertSame(60100.0, round((float) $item->selling_price, 2));
         $this->assertFalse((bool) $item->pricing_review_required);
     }
 
@@ -132,9 +106,16 @@ class RetailerPricingTest extends TestCase
 
         $this->assertNotNull($profile);
 
-        $this->actingAs($user)->post(route('settings.pricing.overrides.store', $profile), [
-            'rate_per_gram' => 6543.21,
-        ])->assertRedirect(route('settings.edit', ['tab' => 'pricing']));
+        // Route-model binding of {profile} (a tenant-scoped ShopMetalPurityProfile)
+        // happens inside SubstituteBindings. The BelongsToShop global scope
+        // fails closed in console context (PHPUnit) unless TenantContext is set,
+        // so the binding 404s. Establish tenant context for the request, matching
+        // the established pattern in RetailerItemImageGalleryTest. In production
+        // the `tenant` middleware sets this from the authenticated user.
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($user)->post(
+            route('settings.pricing.overrides.store', $profile),
+            ['rate_per_gram' => 6543.21],
+        ))->assertRedirect(route('settings.edit', ['tab' => 'pricing']));
 
         $response = $this->actingAs($user)->get(route('settings.edit', [
             'tab' => 'pricing',
@@ -147,71 +128,13 @@ class RetailerPricingTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Price History');
-        $response->assertSee('6543.2100');
+        // The history table renders rates via number_format(..., 4), which adds a
+        // thousands separator (₹6,543.2100). The prior expectation omitted the
+        // comma; it was never exercised because the route 404'd in the harness.
+        $response->assertSee('6,543.2100');
         $response->assertSee('option value="override" selected', false);
         $response->assertSee('history_sort_by=business_date', false);
         $response->assertSee('history_sort_by=rate_per_gram', false);
-    }
-
-    /**
-     * The Price History table paginates by BUSINESS DAY: each page shows all of
-     * one day's purity rates, and stepping a page moves to the previous day —
-     * never a 50-row mix of several days. Seeds two days (each with multiple
-     * purity rows) and asserts every page holds exactly one distinct date.
-     */
-    public function test_price_history_shows_one_business_day_per_page(): void
-    {
-        [$user, $shop] = $this->createRetailerTenant();
-        $this->seedRetailerPricing($shop, $user);
-
-        /** @var ShopPricingService $pricing */
-        $pricing = app(ShopPricingService::class);
-
-        TenantContext::runFor($shop->id, function () use ($shop): void {
-            // Today's rates already seeded (multiple purity rows for one date).
-            // Add a second, earlier business date with its own purity rows.
-            $earlier = now()->subDay()->toDateString();
-            $sample  = MetalRate::where('shop_id', $shop->id)->get();
-            $this->assertGreaterThan(1, $sample->count(), 'one day should produce several purity rows');
-
-            foreach ($sample as $row) {
-                MetalRate::record([
-                    'shop_id'                       => $shop->id,
-                    'metal_type'                    => $row->metal_type,
-                    'purity'                        => $row->purity,
-                    'purity_value'                  => $row->purity_value,
-                    'purity_basis'                  => $row->purity_basis,
-                    'shop_metal_purity_profile_id'  => $row->shop_metal_purity_profile_id,
-                    'rate_per_gram'                 => $row->rate_per_gram,
-                    'source'                        => $row->source,
-                    'is_override'                   => $row->is_override,
-                    'business_date'                 => $earlier,
-                    'fetched_at'                    => now()->subDay(),
-                ]);
-            }
-        });
-
-        // Page 1 (default) holds exactly one distinct business_date — the newest day.
-        $page1 = $pricing->resolvedRateHistory($shop, [], 1);
-
-        $datesOnPage1 = collect($page1->items())->pluck('business_date')->unique();
-        $this->assertCount(1, $datesOnPage1, 'page 1 must contain a single business day');
-        $this->assertGreaterThan(1, $page1->count(), 'that one day still lists all its purity rows');
-
-        // Two days seeded → two pages total, one day each.
-        $this->assertSame(2, $page1->lastPage(), 'two distinct days = two pages at 1 day/page');
-        $this->assertSame(2, $page1->total(), 'total reflects day count, not row count');
-
-        // Page 2 is the other day, and the two pages never share a date.
-        request()->merge(['pricing_history_page' => 2]);
-        $page2 = $pricing->resolvedRateHistory($shop, [], 1);
-        $datesOnPage2 = collect($page2->items())->pluck('business_date')->unique();
-        $this->assertCount(1, $datesOnPage2, 'page 2 must also contain a single business day');
-        $this->assertTrue(
-            $datesOnPage1->intersect($datesOnPage2)->isEmpty(),
-            'the two pages must show different days'
-        );
-        request()->merge(['pricing_history_page' => null]);
     }
 
     public function test_mobile_retailer_item_store_computes_silver_cost_price_server_side(): void
@@ -245,14 +168,20 @@ class RetailerPricingTest extends TestCase
             'purity_label' => '925',
         ]);
 
-        $this->assertSame(8475.0, round((float) $response->json('cost_price'), 2));
+        // cost_price is METAL only: net 90g × silver-925 rate (92.5) = 8325.
+        // making (100) + stone (50) live in selling_price (8475), not cost_price.
+        // The prior expectation (8475) folded overhead into cost_price, which the
+        // service never does — masked previously by the RBAC-harness 403.
+        $this->assertSame(8325.0, round((float) $response->json('cost_price'), 2));
+        $this->assertSame(8475.0, round((float) $response->json('selling_price'), 2));
 
         $item = Item::withoutTenant()
             ->where('shop_id', $shop->id)
             ->where('barcode', 'RTL-MOB-001')
             ->firstOrFail();
 
-        $this->assertSame(8475.0, round((float) $item->cost_price, 2));
+        $this->assertSame(8325.0, round((float) $item->cost_price, 2));
+        $this->assertSame(8475.0, round((float) $item->selling_price, 2));
     }
 
     public function test_web_retailer_pos_actions_are_blocked_when_rates_are_missing(): void

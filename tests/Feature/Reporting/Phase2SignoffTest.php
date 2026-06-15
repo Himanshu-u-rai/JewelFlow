@@ -69,8 +69,14 @@ class Phase2SignoffTest extends TestCase
 
     public function test_permission_still_required(): void
     {
-        // A user WITHOUT reports.view cannot open the repointed route.
-        [$owner, $shop] = $this->createManufacturerTenant(); // owner role has no permissions in the test trait
+        // A user WITHOUT reports.view cannot open the repointed route. The shared
+        // tenant factory now gives the owner the full permission set (like a real
+        // owner), so revoke reports.view to exercise the denial path.
+        [$owner, $shop] = $this->createManufacturerTenant();
+        TenantContext::runFor((int) $shop->id, function () use ($owner) {
+            $owner->role->revokePermission('reports.view');
+        });
+        $owner->unsetRelation('role');
         $this->withoutMiddleware([
             \App\Http\Middleware\EnsureTenantUser::class,
             \App\Http\Middleware\EnsureSubscriptionIsActive::class,

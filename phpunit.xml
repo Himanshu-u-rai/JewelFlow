@@ -35,5 +35,14 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!--
+            The suite is written with subscription enforcement OFF by default;
+            the few tests that exercise the gate opt in via
+            config(['platform.enforce_subscriptions' => true]). A production .env
+            copied into the test box sets this to true, which would block every
+            tenant without an explicit subscription. Force it off here so the
+            test environment is deterministic regardless of the .env present.
+        -->
+        <env name="PLATFORM_ENFORCE_SUBSCRIPTIONS" value="false" force="true"/>
     </php>
 </phpunit>

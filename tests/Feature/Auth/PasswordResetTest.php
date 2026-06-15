@@ -12,6 +12,19 @@ class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Web POSTs through the real stack need CSRF disabled (else 419) and the
+        // forgot-password throttle disabled (the array cache accumulates hits
+        // across the suite → 429). Per-class pattern, like other web tests.
+        $this->withoutMiddleware([
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        ]);
+    }
+
     public function test_reset_password_link_screen_can_be_rendered(): void
     {
         $response = $this->get('/forgot-password');
@@ -23,7 +36,9 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->create();
+        // The mobile-first UserFactory leaves email null; email-based reset needs
+        // a real address so the password broker can locate the user.
+        $user = User::factory()->create(['email' => 'reset1@example.com']);
 
         $this->post('/forgot-password', ['email' => $user->email]);
 
@@ -34,7 +49,7 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->create();
+        $user = User::factory()->create(['email' => 'reset2@example.com']);
 
         $this->post('/forgot-password', ['email' => $user->email]);
 
@@ -51,7 +66,7 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->create();
+        $user = User::factory()->create(['email' => 'reset3@example.com']);
 
         $this->post('/forgot-password', ['email' => $user->email]);
 

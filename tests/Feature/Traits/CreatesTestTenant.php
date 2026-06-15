@@ -7,6 +7,7 @@ use App\Models\Item;
 use App\Models\MetalLot;
 use App\Models\Platform\Plan;
 use App\Models\Platform\PlatformAdmin;
+use App\Models\Permission;
 use App\Models\Platform\ShopSubscription;
 use App\Models\Role;
 use App\Models\Shop;
@@ -77,6 +78,16 @@ trait CreatesTestTenant
             'shop_id' => $shopId,
         ]);
         $role->save();
+
+        // A real shop owner is provisioned by TenantRoleService with the FULL
+        // permission set (Role::permissions()->sync(Permission::all())). The
+        // app's Gate::before resolves dotted abilities (e.g. inventory.create)
+        // via User::hasPermission() with NO owner short-circuit, so a test
+        // "owner" with no permission rows is denied every can:*-gated route.
+        // Mirror the real provisioning here so the test owner behaves like a
+        // real owner. Permissions are global (seeded by migrations), so this
+        // works regardless of tenant context.
+        $role->permissions()->sync(Permission::query()->pluck('id'));
 
         return $role;
     }

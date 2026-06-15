@@ -49,10 +49,14 @@ class MobileRetailerItemPricingParityTest extends TestCase
         $response->assertCreated();
         $response->assertJsonPath('metal_type', 'gold');
         $response->assertJsonPath('purity_label', '22K');
-        $response->assertJsonPath('hallmark_charges', 25.0);
-        $response->assertJsonPath('rhodium_charges', 15.0);
-        $response->assertJsonPath('other_charges', 10.0);
-        $response->assertJsonPath('resolved_rate_per_gram', 6600.0);
+        // JSON serializes whole-number floats without the trailing .0 (PHP renders
+        // (float) 25 as `25`), so assertJsonPath strict-compares against ints for
+        // whole values. Decimal values (85.1) stay float. Asserting the int form
+        // matches the wire payload while still pinning the numeric value.
+        $response->assertJsonPath('hallmark_charges', 25);
+        $response->assertJsonPath('rhodium_charges', 15);
+        $response->assertJsonPath('other_charges', 10);
+        $response->assertJsonPath('resolved_rate_per_gram', 6600);
         $this->assertSame(59400.0, round((float) $response->json('cost_price'), 2));
         $this->assertSame(60150.0, round((float) $response->json('selling_price'), 2));
 
@@ -72,10 +76,11 @@ class MobileRetailerItemPricingParityTest extends TestCase
         $barcodeResponse->assertOk();
         $barcodeResponse->assertJsonPath('metal_type', 'gold');
         $barcodeResponse->assertJsonPath('purity_label', '22K');
-        $barcodeResponse->assertJsonPath('hallmark_charges', 25.0);
-        $barcodeResponse->assertJsonPath('rhodium_charges', 15.0);
-        $barcodeResponse->assertJsonPath('other_charges', 10.0);
-        $barcodeResponse->assertJsonPath('resolved_rate_per_gram', 6600.0);
+        // Whole-number floats serialize as ints over JSON (see note above).
+        $barcodeResponse->assertJsonPath('hallmark_charges', 25);
+        $barcodeResponse->assertJsonPath('rhodium_charges', 15);
+        $barcodeResponse->assertJsonPath('other_charges', 10);
+        $barcodeResponse->assertJsonPath('resolved_rate_per_gram', 6600);
     }
 
     public function test_mobile_retailer_item_update_recomputes_selling_price_with_existing_charge_fallbacks(): void
@@ -195,7 +200,9 @@ class MobileRetailerItemPricingParityTest extends TestCase
         $response->assertJsonPath('purity_profiles.silver.1.value', '925');
         $response->assertJsonPath('purity_profiles.silver.1.label', '925');
         $response->assertJsonPath('resolved_rates.gold.22.label', '22K');
-        $response->assertJsonPath('resolved_rates.gold.22.rate_per_gram', 6600.0);
+        // Whole-number float (6600) serializes as int over JSON; 85.1 keeps its
+        // decimal so it stays a float on the wire.
+        $response->assertJsonPath('resolved_rates.gold.22.rate_per_gram', 6600);
         $response->assertJsonPath('resolved_rates.silver.925.label', '925');
         $response->assertJsonPath('resolved_rates.silver.925.rate_per_gram', 85.1);
     }
@@ -248,8 +255,14 @@ class MobileRetailerItemPricingParityTest extends TestCase
             'karigar_id' => $karigar->id,
         ]);
 
+        // The controller enforces vendor/karigar mutual exclusivity with an
+        // explicit 422 + plain message (not Laravel field-keyed validation
+        // errors). Assert the actual rejection shape the API returns.
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['vendor_id', 'karigar_id']);
+        $this->assertStringContainsString(
+            'Select either a vendor or a karigar, not both',
+            (string) $response->json('message')
+        );
 
         $this->assertDatabaseMissing('items', [
             'shop_id' => $shop->id,

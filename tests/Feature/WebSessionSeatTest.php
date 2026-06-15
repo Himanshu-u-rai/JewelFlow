@@ -18,6 +18,23 @@ class WebSessionSeatTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // These tests POST to /login through the real web stack. Without
+        // disabling CSRF the requests return 419 Page Expired (no token).
+        // Matches the pattern used by other web-POST tests (e.g.
+        // RetailerPricingTest) — disable CSRF per-class, not globally.
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+
+        // The login route is rate-limited (throttle:5,1, keyed by IP). The
+        // array cache store persists across tests in a single PHPUnit process,
+        // so logins accumulate and later tests get 429. This suite exercises
+        // SEAT enforcement, not rate limiting, so disable the throttle here.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+    }
+
     public function test_owner_always_allowed_regardless_of_seat_count(): void
     {
         $tenant = $this->createTenant(staffLimit: 1);

@@ -26,6 +26,12 @@ class PlatformBoundaryHardeningTest extends TestCase
             $this->markTestSkipped('Platform boundary hardening tests require PostgreSQL.');
         }
 
+        // This suite exercises the subscription/access-mode enforcement boundary
+        // (expired → suspended, read-only write blocks). The gate is opt-in in
+        // the test environment, so turn it on here (same pattern as
+        // SubscriptionServiceEnforcementTest).
+        config(['platform.enforce_subscriptions' => true]);
+
         Route::middleware(['api', 'auth', 'tenant', 'subscription.active', 'account.active', 'shop.exists'])->group(function () {
             Route::get('/api/_control/read', fn () => response()->json(['ok' => true]));
             Route::post('/api/_control/write', fn () => response()->json(['ok' => true]));
