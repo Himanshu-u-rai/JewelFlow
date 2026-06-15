@@ -61,7 +61,7 @@ class RetailerPlanSeeder extends Seeder
                 'description'                   => 'Yearly plan for retail jewellery shops — best value.',
                 'price_monthly'                 => 1666.00,
                 'price_yearly'                  => 19999.00,
-                'trial_days'                    => 7,
+                'trial_days'                    => 0,
                 'grace_days'                    => 14,
                 'downgrade_to_read_only_on_due' => DB::raw('true'),
                 'is_active'                     => DB::raw('true'),
@@ -88,7 +88,13 @@ class RetailerPlanSeeder extends Seeder
             ],
         ];
 
+        // Link both retailer plans to the 'retail' platform product (null-safe
+        // if products aren't seeded yet; the migration backfills in that case).
+        $retailProductId = DB::table('platform_products')->where('code', 'retail')->value('id');
+
         foreach ($plans as $plan) {
+            $plan['platform_product_id'] = $retailProductId;
+
             DB::table('plans')->updateOrInsert(
                 ['code' => $plan['code']],
                 $plan

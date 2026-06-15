@@ -18,6 +18,8 @@ class CatalogWebsiteSettings extends Model
         'accent_color',
         'tagline',
         'hero_image_path',
+        'hero_style',
+        'hero_bg_color',
         'show_prices',
         'show_weights',
         'show_huid',

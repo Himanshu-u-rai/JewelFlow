@@ -211,6 +211,14 @@ class DailyClosingReportTest extends TestCase
             \App\Http\Middleware\EnsureShopExists::class,
         ]);
 
+        // The shared tenant factory now provisions the owner with the full
+        // permission set (like a real owner). To prove the daily-closing gate
+        // denies without its permission, revoke just reports.daily_closing first.
+        TenantContext::runFor((int) $shop->id, function () use ($owner) {
+            $owner->role->revokePermission('reports.daily_closing');
+        });
+        $owner->unsetRelation('role');
+
         // Without the permission → 403.
         TenantContext::runFor((int) $shop->id, fn () => $this->actingAs($owner)->get('/report/closing?date=' . self::DATE))->assertForbidden();
 

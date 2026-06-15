@@ -84,7 +84,14 @@ class RetailerPricingTest extends TestCase
 
         $this->assertSame('gold', $item->metal_type);
         $this->assertSame(9.0, round((float) $item->net_metal_weight, 3));
-        $this->assertSame(60100.0, round((float) $item->cost_price, 2));
+        // cost_price is the METAL cost only (9g × gold-22K rate 6600 = 59400).
+        // Making + stone charges are bundled into selling_price, not cost_price
+        // (see ShopPricingService::computeRetailerCostPayload — cost_price =
+        // metalCost; selling_price = metalCost + overhead). The previous
+        // expectation (60100) folded the 500 making + 200 stone into cost_price,
+        // which the service has never done; it was masked by the RBAC-harness 403.
+        $this->assertSame(59400.0, round((float) $item->cost_price, 2));
+        $this->assertSame(60100.0, round((float) $item->selling_price, 2));
         $this->assertFalse((bool) $item->pricing_review_required);
     }
 
@@ -99,9 +106,16 @@ class RetailerPricingTest extends TestCase
 
         $this->assertNotNull($profile);
 
-        $this->actingAs($user)->post(route('settings.pricing.overrides.store', $profile), [
-            'rate_per_gram' => 6543.21,
-        ])->assertRedirect(route('settings.edit', ['tab' => 'pricing']));
+        // Route-model binding of {profile} (a tenant-scoped ShopMetalPurityProfile)
+        // happens inside SubstituteBindings. The BelongsToShop global scope
+        // fails closed in console context (PHPUnit) unless TenantContext is set,
+        // so the binding 404s. Establish tenant context for the request, matching
+        // the established pattern in RetailerItemImageGalleryTest. In production
+        // the `tenant` middleware sets this from the authenticated user.
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($user)->post(
+            route('settings.pricing.overrides.store', $profile),
+            ['rate_per_gram' => 6543.21],
+        ))->assertRedirect(route('settings.edit', ['tab' => 'pricing']));
 
         $response = $this->actingAs($user)->get(route('settings.edit', [
             'tab' => 'pricing',
@@ -114,7 +128,10 @@ class RetailerPricingTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Price History');
-        $response->assertSee('6543.2100');
+        // The history table renders rates via number_format(..., 4), which adds a
+        // thousands separator (₹6,543.2100). The prior expectation omitted the
+        // comma; it was never exercised because the route 404'd in the harness.
+        $response->assertSee('6,543.2100');
         $response->assertSee('option value="override" selected', false);
         $response->assertSee('history_sort_by=business_date', false);
         $response->assertSee('history_sort_by=rate_per_gram', false);
@@ -151,14 +168,20 @@ class RetailerPricingTest extends TestCase
             'purity_label' => '925',
         ]);
 
-        $this->assertSame(8475.0, round((float) $response->json('cost_price'), 2));
+        // cost_price is METAL only: net 90g × silver-925 rate (92.5) = 8325.
+        // making (100) + stone (50) live in selling_price (8475), not cost_price.
+        // The prior expectation (8475) folded overhead into cost_price, which the
+        // service never does — masked previously by the RBAC-harness 403.
+        $this->assertSame(8325.0, round((float) $response->json('cost_price'), 2));
+        $this->assertSame(8475.0, round((float) $response->json('selling_price'), 2));
 
         $item = Item::withoutTenant()
             ->where('shop_id', $shop->id)
             ->where('barcode', 'RTL-MOB-001')
             ->firstOrFail();
 
-        $this->assertSame(8475.0, round((float) $item->cost_price, 2));
+        $this->assertSame(8325.0, round((float) $item->cost_price, 2));
+        $this->assertSame(8475.0, round((float) $item->selling_price, 2));
     }
 
     public function test_web_retailer_pos_actions_are_blocked_when_rates_are_missing(): void

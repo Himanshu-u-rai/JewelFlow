@@ -11,6 +11,18 @@ class PasswordUpdateTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Web PUTs through the real stack need CSRF disabled (else 419).
+        // Per-class pattern, like other web tests.
+        $this->withoutMiddleware([
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        ]);
+    }
+
     public function test_password_can_be_updated(): void
     {
         $user = User::factory()->create();

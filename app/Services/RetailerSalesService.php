@@ -132,6 +132,9 @@ class RetailerSalesService
                     'making_charge_type'  => $item->making_charge_type ?? null,
                     'making_charge_value' => $item->making_charge_value ?? null,
                     'stone_amount'   => $item->stone_charges ?? 0,
+                    // Hallmark is already inside selling_price (line_total); snapshot it
+                    // separately so the return policy can retain it (parity with making/stone).
+                    'hallmark_charges' => $item->hallmark_charges ?? 0,
                     'line_total'     => $item->selling_price,
                     'gst_rate'       => $gstRate,
                     'gst_amount'     => $apportioned[$item->id] ?? 0,
@@ -434,6 +437,9 @@ class RetailerSalesService
                     'making_charge_type'  => $item->making_charge_type ?? null,
                     'making_charge_value' => $item->making_charge_value ?? null,
                     'stone_amount'   => $item->stone_charges ?? 0,
+                    // Hallmark is already inside selling_price (line_total); snapshot it
+                    // separately so the return policy can retain it (parity with making/stone).
+                    'hallmark_charges' => $item->hallmark_charges ?? 0,
                     'line_total'     => $item->selling_price,
                     'gst_rate'       => $gstRate,
                     'gst_amount'     => $apportionedEmi[$item->id] ?? 0,

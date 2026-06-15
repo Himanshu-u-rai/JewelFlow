@@ -39,6 +39,7 @@ class RefundPolicyResolver
         $lineTotalPaisa    = (int) round((float) $line->line_total    * 100);
         $makingChargesPaisa = (int) round((float) $line->making_charges * 100);
         $stoneAmountPaisa  = (int) round((float) $line->stone_amount  * 100);
+        $hallmarkChargesPaisa = (int) round((float) ($line->hallmark_charges ?? 0) * 100);
 
         // ── Step 1: subtotal after component deductions ──────────────────
         // When the item is available we delegate the computation to
@@ -61,6 +62,9 @@ class RefundPolicyResolver
             if (!$basis->isDeducted('stone_charges_refundable')) {
                 $subtotalPaisa -= $stoneAmountPaisa;
             }
+            if (!$basis->isDeducted('hallmark_charges_refundable')) {
+                $subtotalPaisa -= $hallmarkChargesPaisa;
+            }
             if ($basis->wearLossPct > 0) {
                 $subtotalPaisa = (int) floor($subtotalPaisa * (1 - ($basis->wearLossPct / 100)));
             }
@@ -74,7 +78,10 @@ class RefundPolicyResolver
         $stoneRetainedPaisa = (!$basis->isDeducted('stone_charges_refundable'))
             ? $stoneAmountPaisa
             : 0;
-        $wearLossAmountPaisa = $lineTotalPaisa - $makingRetainedPaisa - $stoneRetainedPaisa - $subtotalPaisa;
+        $hallmarkRetainedPaisa = (!$basis->isDeducted('hallmark_charges_refundable'))
+            ? $hallmarkChargesPaisa
+            : 0;
+        $wearLossAmountPaisa = $lineTotalPaisa - $makingRetainedPaisa - $stoneRetainedPaisa - $hallmarkRetainedPaisa - $subtotalPaisa;
         $wearLossAmountPaisa = max($wearLossAmountPaisa, 0);
 
         // ── Step 2: restocking fee ────────────────────────────────────────
@@ -108,6 +115,8 @@ class RefundPolicyResolver
             'making_retained'        => round($makingRetainedPaisa / 100, 2),
             'stone_amount'           => round($stoneAmountPaisa / 100, 2),
             'stone_retained'         => round($stoneRetainedPaisa / 100, 2),
+            'hallmark_charges'       => round($hallmarkChargesPaisa / 100, 2),
+            'hallmark_retained'      => round($hallmarkRetainedPaisa / 100, 2),
             'wear_loss_pct'          => $basis->wearLossPct,
             'wear_loss_amount'       => round($wearLossAmountPaisa / 100, 2),
             'restocking_fee_pct'     => $restockingFeePct,

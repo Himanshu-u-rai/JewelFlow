@@ -102,15 +102,15 @@ class SubscriptionFlowTest extends TestCase
 
     // ── Subscription Status ─────────────────────────────────────────
 
-    public function test_subscription_status_page_shows_active_subscription(): void
+    public function test_subscription_status_redirects_to_plan_and_billing_tab(): void
     {
+        // The standalone /subscription status page now lives inside Settings as
+        // the "Plan & Billing" tab. The old URL (and any bookmark) forwards there.
         [$user, $shop] = $this->createManufacturerTenant();
 
         $response = $this->actingAs($user)->get('/subscription');
 
-        $response->assertOk();
-        $response->assertViewHas('subscription');
-        $response->assertViewHas('plan');
+        $response->assertRedirect(route('settings.edit', ['tab' => 'subscription']));
     }
 
     public function test_subscription_status_redirects_if_no_shop(): void

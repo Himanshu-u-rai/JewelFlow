@@ -10,6 +10,19 @@ class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Web POSTs through the real stack need CSRF disabled (else 419) and the
+        // login throttle disabled (the array cache accumulates hits across the
+        // suite → 429). Matches the per-class pattern used by other web tests.
+        $this->withoutMiddleware([
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        ]);
+    }
+
     public function test_login_screen_can_be_rendered(): void
     {
         $response = $this->get('/login');

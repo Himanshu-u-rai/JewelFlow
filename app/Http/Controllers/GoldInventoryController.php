@@ -18,7 +18,11 @@ class GoldInventoryController extends Controller
     {
         $shopId = auth()->user()->shop_id;
 
+        // Vault inventory excludes karigar_held lots — those are physically with a
+        // karigar and surface in the karigar views, not the vault. (No-op until
+        // held lots exist.)
         $lots = MetalLot::where('shop_id', $shopId)
+            ->where('source', '<>', 'karigar_held')
             ->orderBy('created_at', 'desc')
             ->get();
 

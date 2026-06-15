@@ -136,7 +136,7 @@
             </section>
         @endif
 
-        @if($pendingMelts->isNotEmpty() || $pendingReworks->isNotEmpty())
+        @if(($pendingMelts->isNotEmpty() || $pendingReworks->isNotEmpty()) && auth()->user()?->can('returns.approve'))
         <section aria-label="Next steps" class="returns-show-next-steps">
             <div class="returns-show-section-head">
                 <div>

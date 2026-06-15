@@ -178,6 +178,7 @@
                 </div>
 
                 @if($quickBill->status !== \App\Models\QuickBill::STATUS_VOID)
+                    @can('sales.void')
                     <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5 shadow-sm quick-bills-panel">
                         <h2 class="text-lg font-semibold text-rose-900">Void This Bill</h2>
                         <p class="mt-1 text-sm text-rose-700">Voiding keeps the record but marks it unusable.</p>
@@ -189,6 +190,7 @@
                             </button>
                         </form>
                     </div>
+                    @endcan
                 @endif
             </div>
         </div>

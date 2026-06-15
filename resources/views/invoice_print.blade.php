@@ -132,12 +132,13 @@
         || !empty($billing?->bank_account_number)
         || !empty($billing?->bank_details);
 
-    // HSN helper: map item category to HSN code
-    $hsnFor = function (?string $category) use ($billing): string {
-        $cat = strtolower((string) $category);
-        if (str_contains($cat, 'silver'))                                          return $billing?->hsn_silver  ?? '7113';
-        if (str_contains($cat, 'diamond') || str_contains($cat, 'stone') || str_contains($cat, 'gem')) return $billing?->hsn_diamond ?? '7114';
-        return $billing?->hsn_gold ?? '7113';
+    // HSN helper: resolve per metal type (with a legacy category fallback) via the
+    // single source of truth on ShopBillingSettings, so platinum/copper get their
+    // own HSN instead of silently inheriting gold's.
+    $hsnFor = function (?string $metalType, ?string $category = null) use ($billing): string {
+        return $billing
+            ? $billing->hsnForMetal($metalType, $category)
+            : (\App\Models\ShopBillingSettings::HSN_DEFAULTS[strtolower((string) $metalType)] ?? '7113');
     };
 
 @endphp
@@ -575,7 +576,7 @@
                             $grossWt = (float) ($invItem->gross_weight    ?? $line->weight ?? 0);
                             $stoneWt = (float) ($invItem->stone_weight    ?? 0);
                             $netWt   = (float) ($invItem->net_metal_weight ?? $line->weight ?? 0);
-                            $hsn     = $hsnFor($invItem?->category);
+                            $hsn     = $hsnFor($invItem?->metal_type ?? $line->metal_type ?? null, $invItem?->category);
                         @endphp
                         <tr>
                             <td class="text-center">{{ $idx + 1 }}</td>

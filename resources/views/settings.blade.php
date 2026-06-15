@@ -36,14 +36,44 @@
         background: #ffffff;
         border: 2px solid #0f766e;
         border-radius: 16px;
-        padding: 10px;
+        /* Extra right padding keeps the scrollbar track clear of the rounded
+           border so its square top/bottom can't poke past the card corners. */
+        padding: 10px 6px 10px 10px;
         display: flex;
         flex-direction: column;
         gap: 4px;
         height: 100%;
         min-height: 0;
         overflow-y: auto;
+        /* Reserve gutter space so content doesn't shift when the bar appears. */
+        scrollbar-gutter: stable;
         box-shadow: 0 14px 24px rgba(15, 23, 42, 0.05);
+        /* Firefox: slim, subtle, themed. */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(15, 118, 110, 0.35) transparent;
+    }
+    /* WebKit (Chrome/Safari/Edge): a slim, rounded, teal-tinted scrollbar that
+       sits inside the card instead of the chunky default with square corners. */
+    .settings-nav::-webkit-scrollbar {
+        width: 8px;
+    }
+    .settings-nav::-webkit-scrollbar-track {
+        background: transparent;
+        /* Inset the track top/bottom so it never reaches the rounded corners. */
+        margin: 8px 0;
+    }
+    .settings-nav::-webkit-scrollbar-thumb {
+        background: rgba(15, 118, 110, 0.3);
+        border-radius: 9999px;
+        /* Transparent border + background-clip makes the thumb visually slimmer
+           and floats it off the edge. */
+        border: 2px solid transparent;
+        background-clip: padding-box;
+        transition: background-color 160ms ease;
+    }
+    .settings-nav:hover::-webkit-scrollbar-thumb {
+        background: rgba(15, 118, 110, 0.5);
+        background-clip: padding-box;
     }
 
     /* Apply only to screens 768px wide or smaller */
@@ -506,9 +536,12 @@
     }
 
     /* Roles */
+    /* Roles tab: full-width stacked cards. Owner is a slim locked banner;
+       Manager and Staff are wide cards whose permission groups flow in a
+       responsive multi-column grid — everything visible, no inner scroll. */
     .roles-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        display: flex;
+        flex-direction: column;
         gap: 16px;
     }
 
@@ -526,45 +559,49 @@
     }
 
     .role-head {
-        padding: 12px;
+        padding: 12px 16px;
         background: #f8fafc;
         border-bottom: 1px solid rgba(15, 23, 42, 0.08);
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
     }
 
     .role-card.locked .role-head {
         background: #fef3c7;
+        border-bottom: none;
     }
 
     .role-title {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 700;
         color: #0f172a;
         margin: 0;
     }
 
     .role-badge {
-        font-size: 10px;
-        padding: 2px 6px;
+        font-size: 11px;
+        padding: 2px 8px;
         background: #e2e8f0;
         border-radius: 9999px;
         color: #475569;
+        font-weight: 600;
     }
 
+    .role-badge-spacer { margin-left: auto; }
+
+    /* No max-height / no overflow: the body grows to fit its content. Groups
+       lay out in as many columns as the width allows. */
     .role-body {
-        padding: 12px;
-        max-height: 280px;
-        overflow-y: auto;
+        padding: 18px 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 18px 24px;
+        align-items: start;
     }
 
     .perm-group {
-        margin-bottom: 12px;
-    }
-
-    .perm-group:last-child {
-        margin-bottom: 0;
+        break-inside: avoid;
     }
 
     .perm-group-title {
@@ -572,37 +609,36 @@
         font-weight: 700;
         color: #0f766e;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-bottom: 6px;
+        letter-spacing: 0.4px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(15, 118, 110, 0.12);
     }
 
     .perm-item {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 3px 0;
-        font-size: 12px;
-        color: #475569;
+        gap: 10px;
+        padding: 5px 0;
+        font-size: 13px;
+        color: #334155;
         cursor: pointer;
     }
 
-    .perm-item input {
-        width: 14px;
-        height: 14px;
-        accent-color: #0f766e;
-    }
+    .perm-item .perm-item-label { flex: 1; }
 
     .locked-msg {
-        font-size: 12px;
+        font-size: 13px;
         color: #b45309;
-        padding: 16px 12px;
-        text-align: center;
+        font-weight: 500;
     }
 
     .role-foot {
-        padding: 10px 12px;
+        padding: 12px 16px;
         background: #f8fafc;
         border-top: 1px solid rgba(15, 23, 42, 0.08);
+        display: flex;
+        justify-content: flex-end;
     }
 
     .role-card.locked .role-foot {
@@ -620,6 +656,20 @@
         border-radius: 10px;
         cursor: pointer;
     }
+
+    /* Roles save: a normal-width button in the right-aligned footer. */
+    .role-save-btn {
+        padding: 8px 22px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        background: #0f766e;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .role-save-btn:hover { background: #0b5f5d; }
 
     .btn-sm:hover {
         background: #0b5f5d;
@@ -872,16 +922,99 @@
         align-items: flex-start;
     }
 
-    .settings-toggle-input-lg {
-        width: 18px;
-        height: 18px;
+    /* Pill toggle switch with a bouncy sliding knob that carries an eye icon:
+       eye = column/option shown (checked), eye-off = hidden (unchecked).
+       The checkbox keeps its real semantics (name + hidden value="0" companion);
+       only the appearance is replaced via the element + its ::before knob.
+       Icons are inline SVG data-URIs so they render without any icon library. */
+    /* Selector qualified with `.content-inner input...` so it OUT-specifies the
+       global `.content-inner input[type=checkbox] { border-radius: …sm !important }`
+       rule in app.css that otherwise forces a square radius on every checkbox.
+       (Equal !important → higher specificity wins, hence the input + class.) */
+    .content-inner input.settings-toggle-input-lg,
+    .content-inner input.settings-toggle-input-md,
+    .settings-toggle-input-lg,
+    .settings-toggle-input-md {
+        appearance: none;
+        -webkit-appearance: none;
+        position: relative;
+        flex-shrink: 0;
+        border-radius: 999px !important;
+        background: #cbd5e1;
         cursor: pointer;
+        transition: background-color 250ms ease;
+        outline: none;
+    }
+    /* The sliding knob (::before) carries the eye-off icon by default. */
+    .settings-toggle-input-lg::before,
+    .settings-toggle-input-md::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        border-radius: 50%;
+        background-color: #ffffff;
+        background-repeat: no-repeat;
+        background-position: center;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .3);
+        /* eye-off (slash) — unchecked = hidden */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/%3E%3Cline x1='1' y1='1' x2='23' y2='23'/%3E%3C/svg%3E");
+        /* bouncy slide, matching the requested feel */
+        transition: transform 500ms cubic-bezier(.26, 2, .46, .71),
+                    background-image 250ms ease;
+    }
+    /* Match the qualified base-rule specificity so the teal "on" colour wins
+       over the high-specificity grey base set above. */
+    .content-inner input.settings-toggle-input-lg:checked,
+    .content-inner input.settings-toggle-input-md:checked,
+    .settings-toggle-input-lg:checked,
+    .settings-toggle-input-md:checked {
+        background: #0f766e;
+    }
+    /* Checked = shown: knob slides right and shows the open-eye icon. */
+    .settings-toggle-input-lg:checked::before,
+    .settings-toggle-input-md:checked::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+    }
+    .settings-toggle-input-lg:focus-visible,
+    .settings-toggle-input-md:focus-visible {
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, .25);
     }
 
+    /* Large switch (52×28, knob 22). */
+    .settings-toggle-input-lg {
+        width: 52px;
+        height: 28px;
+    }
+    .settings-toggle-input-lg::before {
+        width: 22px;
+        height: 22px;
+        background-size: 13px 13px;
+        transform: translate(3px, -50%);
+    }
+    .settings-toggle-input-lg:checked::before {
+        transform: translate(27px, -50%);
+    }
+
+    /* Medium switch (46×26, knob 20). */
     .settings-toggle-input-md {
-        width: 16px;
-        height: 16px;
-        cursor: pointer;
+        width: 46px;
+        height: 26px;
+    }
+    .settings-toggle-input-md::before {
+        width: 20px;
+        height: 20px;
+        background-size: 12px 12px;
+        transform: translate(3px, -50%);
+    }
+    .settings-toggle-input-md:checked::before {
+        transform: translate(23px, -50%);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .settings-toggle-input-lg::before,
+        .settings-toggle-input-md::before {
+            transition: background-image 250ms ease;
+        }
     }
 
     .settings-toggle-text {
@@ -1100,7 +1233,7 @@
             padding-right: 0;
         }
 
-        .roles-container {
+        .role-body {
             grid-template-columns: 1fr;
         }
     }
@@ -1159,6 +1292,593 @@
             font-size: 11px;
         }
     }
+
+    /* ──────────────────────────────────────────────────────────────
+       Plan & Billing tab — ported verbatim from subscription/status.blade.php
+       so the `sub-*` styled cards render identically inside the Settings tab.
+       Scoped to .sub-status-page; does not touch any other settings surface.
+       ────────────────────────────────────────────────────────────── */
+    .sub-status-page {
+        --sub-border: #e7ebf1;
+        --sub-border-soft: #eef1f6;
+        --sub-border-strong: #d9dfe8;
+        --sub-surface: #ffffff;
+        --sub-ink: #0f172a;
+        --sub-ink-2: #3d4861;
+        --sub-muted: #6a7588;
+        --sub-accent: #0d9488;
+        --sub-accent-deep: #0f766e;
+        --sub-accent-soft: rgba(13, 148, 136, 0.08);
+        --sub-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px -20px rgba(16, 24, 40, 0.20);
+        --sub-ease: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .sub-status-page .sub-status-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .sub-status-page .sub-hero,
+        .sub-status-page .sub-grid > *,
+        .sub-status-page .sub-billing-section {
+            animation: subRise 0.5s var(--sub-ease) both;
+        }
+        .sub-status-page .sub-grid > *:nth-child(2) { animation-delay: 0.05s; }
+        .sub-status-page .sub-billing-section { animation-delay: 0.1s; }
+        @keyframes subRise {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    }
+
+    .sub-status-page .sub-hero,
+    .sub-status-page .sub-card {
+        border: 1px solid var(--sub-border);
+        border-radius: 16px;
+        background: var(--sub-surface);
+        box-shadow: var(--sub-shadow);
+    }
+
+    .sub-status-page .sub-hero {
+        padding: 28px 28px 26px;
+    }
+
+    .sub-status-page .sub-hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 26px;
+    }
+
+    .sub-status-page .sub-plan-name {
+        margin: 0;
+        color: var(--sub-ink);
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.12;
+        letter-spacing: -0.02em;
+        text-wrap: balance;
+    }
+
+    .sub-status-page .sub-plan-copy {
+        margin: 8px 0 0;
+        max-width: 58ch;
+        color: var(--sub-muted);
+        font-size: 14px;
+        line-height: 1.6;
+        text-wrap: pretty;
+    }
+
+    .sub-status-page .sub-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 30px;
+        padding: 0 13px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .sub-status-page .sub-status-pill::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: currentColor;
+        box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+    }
+
+    .sub-status-page .sub-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-bottom: 26px;
+        border: 1px solid var(--sub-border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .sub-status-page .sub-kpi {
+        padding: 16px 18px;
+        border-right: 1px solid var(--sub-border);
+    }
+
+    .sub-status-page .sub-kpi:last-child {
+        border-right: 0;
+    }
+
+    .sub-status-page .sub-kpi-label {
+        margin: 0 0 7px;
+        color: var(--sub-muted);
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0;
+        text-transform: none;
+    }
+
+    .sub-status-page .sub-kpi-value {
+        margin: 0;
+        color: var(--sub-ink);
+        font-size: 19px;
+        font-weight: 650;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .sub-status-page .sub-health {
+        border-top: 1px solid var(--sub-border-soft);
+        padding-top: 22px;
+    }
+
+    .sub-status-page .sub-health-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .sub-status-page .sub-health-title {
+        margin: 0;
+        color: var(--sub-ink);
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+
+    .sub-status-page .sub-health-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 26px;
+        padding: 0 11px;
+        border-radius: 999px;
+        border: 1px solid #cfe6e2;
+        background: var(--sub-accent-soft);
+        color: #0f766e;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .sub-status-page .sub-health-copy {
+        margin: 0;
+        color: var(--sub-muted);
+        font-size: 13.5px;
+        line-height: 1.6;
+    }
+
+    .sub-status-page .sub-progress-track {
+        width: 100%;
+        height: 6px;
+        margin-top: 14px;
+        border-radius: 999px;
+        background: #eceff4;
+        overflow: hidden;
+    }
+
+    .sub-status-page .sub-progress-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: var(--sub-accent);
+        transform-origin: left center;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .sub-status-page .sub-progress-fill {
+            animation: subFill 0.7s var(--sub-ease) 0.08s both;
+        }
+        @keyframes subFill {
+            from { transform: scaleX(0); }
+            to   { transform: scaleX(1); }
+        }
+    }
+
+    .sub-status-page .sub-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+        gap: 20px;
+    }
+
+    .sub-status-page .sub-card-head {
+        padding: 22px 24px 0;
+    }
+
+    .sub-status-page .sub-card-title {
+        margin: 0;
+        color: var(--sub-ink);
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1.25;
+        letter-spacing: -0.01em;
+    }
+
+    .sub-status-page .sub-card-copy {
+        margin: 5px 0 0;
+        color: var(--sub-muted);
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
+    .sub-status-page .sub-card-body {
+        padding: 16px 24px 22px;
+    }
+
+    .sub-status-page .sub-detail-list {
+        display: grid;
+    }
+
+    .sub-status-page .sub-detail-item {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 13px 0;
+        border-bottom: 1px solid var(--sub-border-soft);
+    }
+
+    .sub-status-page .sub-detail-item:first-child { padding-top: 4px; }
+
+    .sub-status-page .sub-detail-item:last-child {
+        border-bottom: 0;
+        padding-bottom: 4px;
+    }
+
+    .sub-status-page .sub-detail-label {
+        margin: 0;
+        color: var(--sub-muted);
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0;
+        text-transform: none;
+        flex-shrink: 0;
+    }
+
+    .sub-status-page .sub-detail-value {
+        margin: 0;
+        color: var(--sub-ink);
+        font-size: 13.5px;
+        font-weight: 600;
+        line-height: 1.45;
+        text-align: right;
+    }
+
+    .sub-status-page .sub-note {
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid var(--sub-border-soft);
+        color: var(--sub-muted);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .sub-status-page .sub-feature-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 28px;
+    }
+
+    .sub-status-page .sub-feature-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--sub-border-soft);
+        color: var(--sub-ink-2);
+        font-size: 13.5px;
+        font-weight: 500;
+        line-height: 1.45;
+    }
+
+    .sub-status-page .sub-feature-item:last-child,
+    .sub-status-page .sub-feature-item:nth-last-child(2):nth-child(odd) {
+        border-bottom: 0;
+    }
+
+    .sub-status-page .sub-dot {
+        width: 16px;
+        height: 16px;
+        color: var(--sub-accent);
+        flex-shrink: 0;
+    }
+
+    .sub-status-page .sub-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 17px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        text-decoration: none;
+        transition: transform 0.16s var(--sub-ease), background-color 0.16s var(--sub-ease), border-color 0.16s var(--sub-ease), box-shadow 0.16s var(--sub-ease);
+    }
+
+    .sub-status-page .sub-btn:focus-visible {
+        outline: 2px solid var(--sub-accent);
+        outline-offset: 2px;
+    }
+
+    .sub-status-page .sub-btn:active {
+        transform: scale(0.97);
+    }
+
+    .sub-status-page .sub-btn.primary {
+        background: var(--sub-accent, #0d9488);
+        color: #fff;
+        box-shadow: 0 1px 2px rgba(13, 148, 136, 0.22);
+    }
+
+    .sub-status-page .sub-btn.primary:hover {
+        background: var(--sub-accent-deep, #0f766e);
+    }
+
+    .sub-status-page .sub-btn.secondary {
+        background: #fff;
+        color: var(--sub-ink, #0f172a);
+        border-color: var(--sub-border-strong, #d9dfe8);
+    }
+
+    .sub-status-page .sub-btn.secondary:hover {
+        background: #f7f9fc;
+        border-color: #c5cedb;
+    }
+
+    @media (max-width: 1100px) {
+        .sub-status-page .sub-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .sub-status-page .sub-kpi {
+            border-bottom: 1px solid var(--sub-border);
+        }
+        .sub-status-page .sub-kpi:nth-child(2n) { border-right: 0; }
+        .sub-status-page .sub-kpi:nth-child(n+3) { border-bottom: 0; }
+
+        .sub-status-page .sub-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .sub-status-page .sub-hero {
+            padding: 20px;
+        }
+
+        .sub-status-page .sub-hero-top {
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .sub-status-page .sub-plan-name {
+            font-size: 23px;
+        }
+
+        .sub-status-page .sub-plan-copy {
+            font-size: 13px;
+        }
+
+        .sub-status-page .sub-kpi-grid {
+            grid-template-columns: 1fr;
+            margin-bottom: 22px;
+        }
+
+        .sub-status-page .sub-kpi {
+            border-right: 0;
+            border-bottom: 1px solid var(--sub-border);
+        }
+        .sub-status-page .sub-kpi:last-child { border-bottom: 0; }
+
+        .sub-status-page .sub-health-head {
+            align-items: flex-start;
+        }
+
+        .sub-status-page .sub-card-head {
+            padding: 20px 18px 0;
+        }
+
+        .sub-status-page .sub-card-body {
+            padding: 14px 18px 20px;
+        }
+
+        .sub-status-page .sub-feature-list {
+            grid-template-columns: 1fr;
+        }
+
+        .sub-status-page .sub-feature-item:nth-last-child(2):nth-child(odd) {
+            border-bottom: 1px solid var(--sub-border-soft);
+        }
+        .sub-status-page .sub-feature-item:last-child {
+            border-bottom: 0;
+        }
+    }
+
+    /* ─── Billing History section ─── */
+    .sub-status-page .sub-billing-head {
+        margin-bottom: 16px;
+    }
+    .sub-status-page .sub-billing-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--sub-ink);
+        margin: 0 0 5px;
+        letter-spacing: -0.01em;
+    }
+    .sub-status-page .sub-billing-copy {
+        font-size: 13px;
+        color: var(--sub-muted);
+        margin: 0;
+    }
+    .sub-status-page .sub-billing-card {
+        background: #ffffff;
+        border: 1px solid var(--sub-border);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: var(--sub-shadow);
+    }
+    .sub-status-page .sub-billing-table-wrap {
+        overflow-x: auto;
+    }
+    .sub-status-page .sub-billing-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .sub-status-page .sub-billing-table thead th {
+        padding: 13px 18px;
+        text-align: left;
+        font-weight: 500;
+        font-size: 12px;
+        color: var(--sub-muted);
+        background: #fafbfd;
+        border-bottom: 1px solid var(--sub-border);
+        text-transform: none;
+        letter-spacing: 0;
+        white-space: nowrap;
+    }
+    .sub-status-page .sub-billing-table thead th.text-right { text-align: right; }
+    .sub-status-page .sub-billing-table tbody td {
+        padding: 13px 18px;
+        border-bottom: 1px solid var(--sub-border-soft);
+        color: var(--sub-ink-2);
+        vertical-align: middle;
+    }
+    .sub-status-page .sub-billing-table tbody tr:last-child td { border-bottom: 0; }
+    .sub-status-page .sub-billing-table tbody tr:hover { background: #fafbfd; }
+    .sub-status-page .sub-billing-table td.text-right { text-align: right; }
+    .sub-status-page .sub-billing-num {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--sub-ink);
+    }
+    .sub-status-page .sub-billing-capitalize { text-transform: capitalize; color: var(--sub-ink-2); }
+    .sub-status-page .sub-billing-muted { color: var(--sub-muted); font-size: 12.5px; }
+    .sub-status-page .sub-billing-amount { font-weight: 600; color: var(--sub-ink); font-variant-numeric: tabular-nums; }
+    .sub-status-page .sub-billing-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.6;
+    }
+    .sub-status-page .sub-billing-pill-paid {
+        background: #ecfdf5; color: #065f46; box-shadow: inset 0 0 0 1px #a7f3d0;
+    }
+    .sub-status-page .sub-billing-pill-cancelled {
+        background: #fef2f2; color: #991b1b; box-shadow: inset 0 0 0 1px #fecaca;
+    }
+    .sub-status-page .sub-billing-view {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--sub-accent-deep);
+        text-decoration: none;
+    }
+    .sub-status-page .sub-billing-view:hover { color: var(--sub-accent); text-decoration: underline; }
+    .sub-status-page .sub-billing-empty {
+        text-align: center;
+        color: var(--sub-muted);
+        padding: 32px 16px !important;
+        font-size: 13px;
+    }
+    .sub-status-page .sub-billing-pagination {
+        padding: 14px 18px;
+        border-top: 1px solid var(--sub-border-soft);
+        background: #fafbfd;
+    }
+
+    @media (max-width: 767px) {
+        .sub-status-page .sub-billing-table-wrap { overflow-x: visible; }
+        .sub-status-page .sub-billing-table thead { display: none; }
+        .sub-status-page .sub-billing-table,
+        .sub-status-page .sub-billing-table tbody,
+        .sub-status-page .sub-billing-table tr,
+        .sub-status-page .sub-billing-table td {
+            display: block;
+            width: 100%;
+        }
+        .sub-status-page .sub-billing-table tr {
+            padding: 4px 16px 12px;
+            border-bottom: 8px solid #f1f5f9;
+        }
+        .sub-status-page .sub-billing-table tbody tr:last-child { border-bottom: 0; }
+        .sub-status-page .sub-billing-table td {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f4f7fb;
+            text-align: right;
+            white-space: normal;
+        }
+        .sub-status-page .sub-billing-table td:last-child { border-bottom: 0; }
+        .sub-status-page .sub-billing-table td[data-label]::before {
+            content: attr(data-label);
+            flex-shrink: 0;
+            text-align: left;
+            color: #7d8aa3;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .sub-status-page .sub-billing-table td.sub-billing-action { padding-top: 12px; }
+        .sub-status-page .sub-billing-table td.sub-billing-action::before { display: none; }
+        .sub-status-page .sub-billing-view {
+            display: block;
+            width: 100%;
+            text-align: center;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--sub-border-strong);
+            background: #f6f9fc;
+            color: var(--sub-accent-deep);
+        }
+        .sub-status-page .sub-billing-view:hover { background: #eef4fb; text-decoration: none; }
+        .sub-status-page .sub-billing-table td.sub-billing-empty {
+            display: block;
+            text-align: center;
+            padding: 28px 16px !important;
+        }
+    }
 </style>
 
 <x-page-header class="settings-page-header">
@@ -1201,6 +1921,9 @@
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'gst']) }}" class="nav-item {{ $activeTab === 'gst' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l6-6"/><circle cx="9.5" cy="8.5" r="1.5"/><circle cx="14.5" cy="13.5" r="1.5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span> {{ __('GST & Tax') }}
+            </a>
+            <a href="{{ route('settings.edit', ['tab' => 'subscription']) }}" class="nav-item {{ $activeTab === 'subscription' ? 'active' : '' }}" data-turbo-frame="settings-content">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4Z"/><path d="M4 6v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="M12 12v4h4"/></svg></span> {{ __('Plan & Billing') }}
             </a>
             <a href="{{ route('settings.edit', ['tab' => 'payment-methods']) }}" class="nav-item {{ $activeTab === 'payment-methods' ? 'active' : '' }}" data-turbo-frame="settings-content">
                 <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> {{ __('Payment Methods') }}
@@ -1252,8 +1975,14 @@
             @endcan
             {{-- Services — settings.view --}}
             @can('settings.view')
-            <a href="{{ route('settings.services') }}" class="nav-item {{ request()->routeIs('settings.services') ? 'active' : '' }}">
-                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> {{ __('Services') }}
+            <a href="{{ route('settings.edit', ['tab' => 'services']) }}" class="nav-item {{ $activeTab === 'services' ? 'active' : '' }}" data-turbo-frame="settings-content">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> {{ __('Business Editions') }}
+            </a>
+            @endcan
+            {{-- Devices — settings.view (mobile phones signed in to this shop) --}}
+            @can('settings.view')
+            <a href="{{ route('settings.edit', ['tab' => 'devices']) }}" class="nav-item {{ $activeTab === 'devices' ? 'active' : '' }}" data-turbo-frame="settings-content">
+                <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span> {{ __('Devices') }}
             </a>
             @endcan
         </nav>
@@ -1535,7 +2264,8 @@
 
                     <div class="section-divider"></div>
                     <div class="section-label">{{ __('Owner Details') }}</div>
-                    
+                    <p class="settings-section-subtitle">{{ __("The shop's registered owner. This is a business detail and may appear on documents — it is separate from your login name in the Profile tab.") }}</p>
+
                     <div class="form-row cols-4">
                         <div class="field">
                             <label class="field-label">{{ __('First Name') }}</label>
@@ -1598,10 +2328,30 @@
                         </div>
                     </div>
 
+                    {{-- Platinum / Copper HSN — only shown when the shop has enabled
+                         that metal in Materials (otherwise the field is irrelevant). --}}
+                    @if(in_array('platinum', $gstEnabledMetals ?? [], true) || in_array('copper', $gstEnabledMetals ?? [], true))
                     <div class="form-row">
-                        <label class="field-label" style="display:flex; gap:8px; align-items:center;">
+                        @if(in_array('platinum', $gstEnabledMetals ?? [], true))
+                        <div class="field">
+                            <label class="field-label">{{ __('HSN — Platinum') }}</label>
+                            <input type="text" name="hsn_platinum" value="{{ old('hsn_platinum', $billing->hsn_platinum ?? '7115') }}" class="field-input" maxlength="20">
+                        </div>
+                        @endif
+                        @if(in_array('copper', $gstEnabledMetals ?? [], true))
+                        <div class="field">
+                            <label class="field-label">{{ __('HSN — Copper') }}</label>
+                            <input type="text" name="hsn_copper" value="{{ old('hsn_copper', $billing->hsn_copper ?? '7403') }}" class="field-input" maxlength="20">
+                        </div>
+                        @endif
+                    </div>
+                    @endif
+
+                    <div class="form-row">
+                        <label class="field-label" style="display:flex; gap:10px; align-items:center;">
                             <input type="hidden" name="igst_mode" value="0">
-                            <input type="checkbox" name="igst_mode" value="1" {{ old('igst_mode', $billing->igst_mode ?? false) ? 'checked' : '' }}>
+                            <input type="checkbox" name="igst_mode" value="1" {{ old('igst_mode', $billing->igst_mode ?? false) ? 'checked' : '' }}
+                                   class="settings-toggle-input-lg">
                             {{ __('Interstate (IGST) — show one IGST line instead of CGST + SGST on the invoice') }}
                         </label>
                     </div>
@@ -2051,6 +2801,21 @@
                     </div>
 
                     <div class="section-divider"></div>
+                    <div class="section-label">{{ __('Language') }}</div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">{{ __('App Language') }}</label>
+                            @php $currentLang = old('language', $preferences->language ?? config('app.locale', 'en')); @endphp
+                            <select name="language" class="field-input">
+                                @foreach(config('app.supported_locales', ['en' => 'English']) as $code => $label)
+                                    <option value="{{ $code }}" {{ $currentLang === $code ? 'selected' : '' }}>{{ __($label) }}</option>
+                                @endforeach
+                            </select>
+                            <span class="field-hint">{{ __('Language for the app interface. Hindi coverage is still being expanded — some screens may stay in English for now.') }}</span>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
                     <div class="section-label">{{ __('Security & Operations') }}</div>
                     <div class="form-row">
                         <div class="field">
@@ -2189,6 +2954,7 @@
                                 <option value="1" {{ (bool)($preferences->refund_hallmark_charges ?? true) ? 'selected' : '' }}>{{ __('Yes') }}</option>
                                 <option value="0" {{ !(bool)($preferences->refund_hallmark_charges ?? true) ? 'selected' : '' }}>{{ __('No (retain)') }}</option>
                             </select>
+                            <span class="field-hint">{{ __('Applies to items sold with a separate hallmark charge. Older bills where hallmark was not itemised are unaffected.') }}</span>
                         </div>
                     </div>
                     <div class="form-row cols-4">
@@ -2417,23 +3183,18 @@
                     @foreach($roles as $role)
                         <div class="role-card {{ $role->name === 'owner' ? 'locked' : '' }}">
                             <div class="role-head">
-                                <span>
-                                    @if($role->name === 'owner') 
-                                    @elseif($role->name === 'manager') 
-                                    @else 
-                                    @endif
-                                </span>
                                 <h4 class="role-title">{{ __($role->display_name) }}</h4>
-                                <span class="role-badge">{{ $role->permissions->count() }}</span>
+                                <span class="role-badge">{{ $role->permissions->count() }} {{ __('permissions') }}</span>
+                                @if($role->name === 'owner')
+                                    <span class="locked-msg role-badge-spacer">{{ __('All permissions — locked') }}</span>
+                                @endif
                             </div>
-                            
-                            @if($role->name === 'owner')
-                                <div class="locked-msg">{{ __('All permissions (locked)') }}</div>
-                            @else
+
+                            @if($role->name !== 'owner')
                                 <form method="POST" action="{{ route('settings.update.role', $role) }}" data-turbo-frame="_top">
                                     @csrf
                                     @method('PATCH')
-                                    
+
                                     <div class="role-body">
                                         @foreach($permissionGroups as $group => $groupPerms)
                                             {{-- Dhiran is a separate product (own subdomain); never surface its
@@ -2445,16 +3206,17 @@
                                                 @foreach($groupPerms as $perm)
                                                     <label class="perm-item">
                                                         <input type="checkbox" name="permissions[]" value="{{ $perm->id }}"
+                                                            class="settings-toggle-input-md"
                                                             {{ $role->permissions->contains($perm->id) ? 'checked' : '' }}>
-                                                        {{ __($perm->display_name) }}
+                                                        <span class="perm-item-label">{{ __($perm->display_name) }}</span>
                                                     </label>
                                                 @endforeach
                                             </div>
                                         @endforeach
                                     </div>
-                                    
+
                                     <div class="role-foot">
-                                        <button type="submit" class="btn-sm">{{ __('Save') }}</button>
+                                        <button type="submit" class="role-save-btn">{{ __('Save') }} {{ __($role->display_name) }}</button>
                                     </div>
                                 </form>
                             @endif
@@ -2491,6 +3253,7 @@
                             </span>
                         </div>
                     @endif
+                    @can('staff.manage')
                     <div class="ml-auto">
                         @if($atLimit)
                             <span class="btn btn-secondary btn-sm opacity-50 cursor-not-allowed">+ {{ __('Add Staff') }}</span>
@@ -2498,6 +3261,7 @@
                             <a href="{{ route('staff.create') }}" class="btn btn-primary btn-sm" data-turbo-frame="_top">+ {{ __('Add Staff') }}</a>
                         @endif
                     </div>
+                    @endcan
                 </div>
 
                 {{-- Staff cards --}}
@@ -2533,36 +3297,50 @@
                                 @else
                                     <span class="text-xs text-gray-400">{{ __('Joined') }} {{ $member->created_at->format('d M Y') }}</span>
                                 @endif
-                                @if($member->role?->name === 'owner')
+                                @php
+                                    $isOwnerRow = $member->role?->name === 'owner';
+                                    $isSelfRow  = $member->id === auth()->id();
+                                    $isTerminated = ($member->employment_status ?? 'active') === 'terminated';
+                                @endphp
+                                @if($isSelfRow)
                                     <span class="text-xs text-gray-400 italic">{{ __('You') }}</span>
-                                @elseif(($member->employment_status ?? 'active') === 'terminated')
-                                    {{-- Recovery: restore a previously-removed staff member. --}}
-                                    <form method="POST" action="{{ route('staff.reactivate', $member) }}" data-turbo-frame="_top"
-                                          data-confirm-message="{{ __('Recover :name?', ['name' => $member->name ?? $member->mobile_number]) }}">
-                                        @csrf @method('PATCH')
-                                        <button type="submit"
-                                                class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg>
-                                            {{ __('Recover') }}
-                                        </button>
-                                    </form>
+                                @elseif($isOwnerRow)
+                                    {{-- The owner account is managed only via Profile, never from staff management. --}}
+                                    <span class="text-xs text-gray-400 italic">{{ __('Owner') }}</span>
                                 @else
-                                    <div class="flex gap-2">
-                                        <a href="{{ route('staff.edit', $member) }}" data-turbo-frame="_top"
-                                           class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                            {{ __('Edit') }}
-                                        </a>
-                                        <form method="POST" action="{{ route('staff.destroy', $member) }}" data-turbo-frame="_top"
-                                              data-confirm-message="{{ __('Remove :name? They can be recovered later.', ['name' => $member->name ?? $member->mobile_number]) }}">
-                                            @csrf @method('DELETE')
-                                            <button type="submit"
-                                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                                {{ __('Remove') }}
-                                            </button>
-                                        </form>
-                                    </div>
+                                    {{-- Edit / Remove / Recover require staff.manage; the owner-only default
+                                         means a view-only manager sees no action buttons here. --}}
+                                    @can('staff.manage')
+                                        @if($isTerminated)
+                                            {{-- Recovery: restore a previously-removed staff member. --}}
+                                            <form method="POST" action="{{ route('staff.reactivate', $member) }}" data-turbo-frame="_top"
+                                                  data-confirm-message="{{ __('Recover :name?', ['name' => $member->name ?? $member->mobile_number]) }}">
+                                                @csrf @method('PATCH')
+                                                <button type="submit"
+                                                        class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/></svg>
+                                                    {{ __('Recover') }}
+                                                </button>
+                                            </form>
+                                        @else
+                                            <div class="flex gap-2">
+                                                <a href="{{ route('staff.edit', $member) }}" data-turbo-frame="_top"
+                                                   class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                    {{ __('Edit') }}
+                                                </a>
+                                                <form method="POST" action="{{ route('staff.destroy', $member) }}" data-turbo-frame="_top"
+                                                      data-confirm-message="{{ __('Remove :name? They can be recovered later.', ['name' => $member->name ?? $member->mobile_number]) }}">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit"
+                                                            class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                                        {{ __('Remove') }}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        @endif
+                                    @endcan
                                 @endif
                             </div>
                         </div>
@@ -2578,230 +3356,528 @@
             @endif
 
             @if($activeTab === 'audit')
+                <style>
+                    /* ── Audit activity timeline ─────────────────────────────────────
+                       A grouped feed, not a table. Day sections, a connecting rail,
+                       category glyphs, plain-English lead lines. */
+                    /* ── Fixed header/toolbar, scrolling feed ────────────────────────
+                       The audit tab fills the settings panel height; the title,
+                       summary and filter toolbar stay put while only the event feed
+                       scrolls. We neutralise the panel's own scroll for this tab so
+                       there is a single, predictable scroll region (the feed). */
+                    .content-inner.settings-shell .settings-content:has(.audit-shell) {
+                        overflow: hidden;            /* the feed owns scrolling, not the panel */
+                        display: flex; flex-direction: column;
+                    }
+                    .audit-shell {
+                        display: flex; flex-direction: column;
+                        flex: 1 1 auto; min-height: 0;   /* min-height:0 lets the inner scroller shrink */
+                    }
+                    .audit-shell-fixed { flex: 0 0 auto; }
+                    .audit-scroll {
+                        flex: 1 1 auto; min-height: 0;
+                        overflow-y: auto; overflow-x: hidden;
+                        /* a little room so the last row never kisses the panel edge */
+                        padding-bottom: 8px;
+                        scrollbar-gutter: stable;
+                    }
+                    /* Fixed pagination footer: stays put while the feed scrolls above it. */
+                    .audit-shell-foot {
+                        flex: 0 0 auto;
+                        padding-top: 12px; margin-top: 4px;
+                        border-top: 1px solid #eef1f5;
+                    }
+                    /* Fallback for engines without :has() — the feed still scrolls,
+                       the page just also scrolls a little; acceptable degradation. */
+                    @supports not (selector(:has(*))) {
+                        .audit-scroll { max-height: 62vh; }
+                    }
+
+                    /* ── Filter toolbar ──────────────────────────────────────────────
+                       A calm inline toolbar, not a bordered card. Inputs share one
+                       quiet style; the primary action carries the app's teal accent,
+                       secondary actions stay ghost. Wraps gracefully, stacks on mobile. */
+                    .audit-toolbar {
+                        display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 14px;
+                        padding-bottom: 16px; margin-bottom: 8px;
+                        border-bottom: 1px solid #eef1f5;
+                    }
+                    .audit-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+                    .audit-field > label { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: #94a3b8; text-transform: uppercase; }
+                    .audit-control {
+                        height: 38px; border: 1px solid #e2e8f0; border-radius: 10px;
+                        background: #fff; padding: 0 12px; font-size: 13.5px; color: #1e293b;
+                        transition: border-color 150ms ease, box-shadow 150ms ease;
+                    }
+                    .audit-control:hover { border-color: #cbd5e1; }
+                    .audit-control:focus { outline: none; border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,.12); }
+                    select.audit-control { padding-right: 30px; cursor: pointer; }
+                    .audit-field--action select.audit-control { min-width: 160px; }
+                    .audit-field--user select.audit-control { min-width: 150px; }
+                    .audit-control--date { min-width: 150px; }
+
+                    .audit-toolbar-actions { display: flex; align-items: center; gap: 8px; }
+                    .audit-toolbar-spacer { flex: 1 1 auto; }
+                    .audit-btn {
+                        height: 38px; display: inline-flex; align-items: center; gap: 6px;
+                        padding: 0 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+                        cursor: pointer; white-space: nowrap;
+                        transition: transform 150ms cubic-bezier(.23,1,.32,1), background-color 150ms ease, border-color 150ms ease;
+                    }
+                    .audit-btn:active { transform: scale(.97); }
+                    .audit-btn--primary { background: #0f766e; color: #fff; border: 1px solid #0f766e; }
+                    .audit-btn--primary:hover { background: #0b5f5d; }
+                    .audit-btn--ghost { background: #fff; color: #475569; border: 1px solid #e2e8f0; }
+                    .audit-btn--ghost:hover { background: #f8fafc; border-color: #cbd5e1; }
+                    .audit-btn--ghost svg { width: 16px; height: 16px; }
+                    @media (max-width: 640px) {
+                        .audit-field, .audit-field--action select.audit-control, .audit-field--user select.audit-control, .audit-control--date { width: 100%; min-width: 0; }
+                        .audit-field { flex: 1 1 100%; }
+                        .audit-toolbar { gap: 12px; }
+                        .audit-toolbar-actions { width: 100%; }
+                        .audit-toolbar-actions .audit-btn { flex: 1; justify-content: center; }
+                        .audit-toolbar-spacer { display: none; }
+                        /* Export: full-width on its own line, consistent with the stack. */
+                        .audit-toolbar > a.audit-btn { width: 100%; justify-content: center; }
+                    }
+
+                    .audit-day { margin-top: 26px; }
+                    .audit-day:first-of-type { margin-top: 4px; }
+                    /* Day header: a solid label sitting on a hairline that runs across
+                       the row. Not sticky — a nested scroll container makes sticky
+                       headers overlap their own rows, so days are separated by clear
+                       spacing + a divider instead. */
+                    .audit-day-head {
+                        display: flex; align-items: baseline; gap: 10px;
+                        padding: 0 2px 10px; margin-bottom: 6px;
+                        border-bottom: 1px solid #eef1f5;
+                    }
+                    .audit-day-title { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #334155; margin: 0; }
+                    .audit-day-count { font-size: 12px; color: #94a3b8; }
+
+                    .audit-feed { list-style: none; margin: 0; padding: 0; }
+
+                    .audit-item {
+                        position: relative;
+                        display: grid;
+                        grid-template-columns: 36px 1fr auto;
+                        align-items: start;
+                        gap: 14px;
+                        padding: 12px 12px 12px 4px;
+                        border-radius: 14px;
+                        transition: background-color 160ms ease;
+                    }
+                    .audit-item:hover { background: #f8fafc; }
+                    .audit-item.is-sensitive { background: rgba(255, 241, 242, .5); }
+                    .audit-item.is-sensitive:hover { background: rgba(255, 228, 230, .6); }
+
+                    /* Vertical rail joining the glyphs down a day. Drawn from each
+                       glyph centre to the next item; hidden on the last item. */
+                    .audit-rail {
+                        position: absolute;
+                        left: 21px; top: 38px; bottom: -12px; width: 2px;
+                        background: #e7ebf0;
+                    }
+                    .audit-item:last-child .audit-rail { display: none; }
+                    .audit-item.is-sensitive .audit-rail { background: #fecdd3; }
+
+                    .audit-glyph {
+                        position: relative; z-index: 1;
+                        width: 36px; height: 36px; border-radius: 11px;
+                        display: flex; align-items: center; justify-content: center;
+                        flex-shrink: 0;
+                    }
+                    .audit-glyph svg { width: 18px; height: 18px; }
+
+                    .audit-body { min-width: 0; padding-top: 1px; }
+                    .audit-summary {
+                        margin: 0; font-size: 14px; line-height: 1.4; color: #0f172a; font-weight: 500;
+                        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                    }
+                    .audit-item.is-sensitive .audit-summary { font-weight: 600; }
+                    .audit-flag {
+                        font-size: 10.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+                        color: #be123c; background: #ffe4e6; border-radius: 9999px; padding: 2px 8px; white-space: nowrap;
+                    }
+                    .audit-meta { margin: 3px 0 0; font-size: 12.5px; color: #64748b; }
+                    .audit-meta-cat { color: #475569; font-weight: 600; }
+                    .audit-meta-entity { color: #94a3b8; }
+                    .audit-meta-sep { color: #cbd5e1; margin: 0 6px; }
+
+                    .audit-detail-btn {
+                        align-self: center; flex-shrink: 0;
+                        font-size: 12px; font-weight: 600; color: #475569;
+                        background: #fff; border: 1px solid #e2e8f0; border-radius: 9px;
+                        padding: 5px 11px; cursor: pointer;
+                        transition: transform 150ms cubic-bezier(.23,1,.32,1), background-color 150ms ease, border-color 150ms ease;
+                    }
+                    .audit-detail-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+                    .audit-detail-btn:active { transform: scale(.97); }
+
+                    /* Details modal — receipt-style label/value rows. */
+                    .audit-detail-rows { margin: 0; }
+                    .audit-detail-row {
+                        display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+                        padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+                    }
+                    .audit-detail-row:last-child { border-bottom: 0; }
+                    .audit-detail-row dt { font-size: 13px; color: #64748b; flex-shrink: 0; }
+                    .audit-detail-row dd { font-size: 13.5px; color: #0f172a; font-weight: 600; margin: 0; text-align: right; word-break: break-word; }
+
+                    .audit-empty { text-align: center; padding: 56px 16px; }
+                    .audit-empty-glyph {
+                        width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 14px;
+                        display: flex; align-items: center; justify-content: center;
+                        background: #f1f5f9; color: #94a3b8;
+                    }
+                    .audit-empty-glyph svg { width: 26px; height: 26px; }
+                    .audit-empty-title { font-size: 15px; font-weight: 600; color: #334155; margin: 0; }
+                    .audit-empty-sub { font-size: 13px; color: #94a3b8; margin: 4px 0 0; }
+
+                    /* ── Motion (emil-design-eng): items rise + fade in, staggered
+                       top-down so the eye lands on the newest first. Items are
+                       visible by default; the keyframe carries its own from-state so
+                       nothing is ever stuck invisible if motion never runs. --- */
+                    @media (prefers-reduced-motion: no-preference) {
+                        .audit-item {
+                            animation: auditItemIn 300ms cubic-bezier(.23,1,.32,1) both;
+                            animation-delay: calc(var(--audit-i, 0) * 26ms);
+                        }
+                        @keyframes auditItemIn {
+                            from { opacity: 0; transform: translateY(7px); }
+                            to   { opacity: 1; transform: translateY(0); }
+                        }
+                    }
+
+                    /* Details modal: scale-in from near (never from nothing); modals
+                       stay centered (the one transform-origin exception). */
+                    #jsonModal .audit-modal-panel {
+                        transform: scale(.96); opacity: 0;
+                        transition: transform 180ms cubic-bezier(.23,1,.32,1), opacity 180ms ease-out;
+                    }
+                    #jsonModal.is-open .audit-modal-panel { transform: scale(1); opacity: 1; }
+                    @media (prefers-reduced-motion: reduce) {
+                        #jsonModal .audit-modal-panel { transition: opacity 120ms ease; transform: none; }
+                    }
+
+                    @media (max-width: 640px) {
+                        .audit-item { grid-template-columns: 32px 1fr; gap: 11px; }
+                        .audit-detail-btn { grid-column: 2; justify-self: start; margin-top: 6px; }
+                        .audit-rail { left: 19px; }
+                    }
+                </style>
+                <div class="audit-shell">
+                <div class="audit-shell-fixed">
                 <div class="settings-header">
                     <h2 class="settings-title">{{ __('Audit Log') }}</h2>
                     <p class="settings-desc">{{ __('Track all system activities and changes') }}</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-white shadow-sm border border-gray-200 p-4 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-amber-100 text-amber-700 p-2 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-xs uppercase tracking-wide text-gray-500">{{ __('Total Logs') }}</p>
-                                <p class="text-xl font-semibold text-gray-900">{{ number_format($stats['total'] ?? $logs->total()) }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white shadow-sm border border-gray-200 p-4 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-blue-100 text-blue-700 p-2 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-xs uppercase tracking-wide text-gray-500">{{ __('Active Users') }}</p>
-                                <p class="text-xl font-semibold text-gray-900">{{ $logs->pluck('user_id')->unique()->count() }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white shadow-sm border border-gray-200 p-4 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-amber-100 text-amber-700 p-2 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-xs uppercase tracking-wide text-gray-500">{{ __('Actions Today') }}</p>
-                                <p class="text-xl font-semibold text-gray-900">{{ number_format($stats['today'] ?? 0) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white shadow-sm border border-gray-200 overflow-hidden rounded-xl">
-                    <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-900">{{ __('Recent Activity') }}</h2>
-                        <p class="text-sm text-gray-500 mt-1">{{ __('Latest actions across the system') }}</p>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Time') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('User') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Action') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Entity') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Details') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                            @forelse($logs as $l)
-                                @php
-                                    $time = $l->created_at ? $l->created_at->format('d M Y H:i:s') : '-';
-                                    $userName = $l->user->name ?? __('System');
-                                    $actionPretty = \Illuminate\Support\Str::headline($l->action);
-                                    $entityType = $l->model_type ?? ($l->model ?? null);
-                                    $entityLabel = $entityType ? \Illuminate\Support\Str::headline($entityType) : '—';
-                                    $object = $entityLabel . ($l->model_id ? ' #' . $l->model_id : '');
-
-                                    $isStructured = is_array($l->data) || is_object($l->data);
-                                    $description = trim((string) $l->description);
-                                    if ($isStructured) {
-                                        $arr = (array) $l->data;
-                                        $parts = [];
-                                        if (isset($arr['customer_id'])) $parts[] = 'customer_id: ' . $arr['customer_id'];
-                                        if (isset($arr['gross'])) $parts[] = 'gross: ' . $arr['gross'];
-                                        if (isset($arr['purity'])) $parts[] = 'purity: ' . $arr['purity'] . 'K';
-                                        if (isset($arr['fine_gold'])) $parts[] = 'fine: ' . number_format($arr['fine_gold'], 3) . ' g';
-
-                                        $dataPreview = $parts ? implode(', ', $parts) : \Illuminate\Support\Str::limit(json_encode($arr, JSON_UNESCAPED_UNICODE), 80);
-                                        $dataFull = json_encode($arr, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
-                                    } else {
-                                        $dataPreview = \Illuminate\Support\Str::limit((string)$l->data, 80);
-                                        $dataFull = (string)$l->data;
-                                    }
-                                    if (empty($dataPreview)) {
-                                        $dataPreview = $description ?: '—';
-                                    }
-                                    if (empty($dataFull) && !empty($description)) {
-                                        $dataFull = $description;
-                                    }
-
-                                    $actionColors = [
-                                        'create' => 'bg-green-100 text-green-800',
-                                        'update' => 'bg-blue-100 text-blue-800',
-                                        'delete' => 'bg-red-100 text-red-800',
-                                        'login' => 'bg-purple-100 text-purple-800',
-                                        'logout' => 'bg-gray-100 text-gray-800',
-                                    ];
-                                    $actionColor = $actionColors[strtolower($l->action)] ?? 'bg-gray-100 text-gray-800';
-                                @endphp
-                                <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900">{{ $time }}</div>
-                                        <div class="text-xs text-gray-500">{{ $l->created_at ? $l->created_at->diffForHumans() : '' }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-8 w-8 bg-gray-200 flex items-center justify-center">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                </svg>
-                                            </div>
-                                            <div class="ml-3">
-                                                <div class="text-sm font-medium text-gray-900">{{ $userName }}</div>
-                                                <div class="text-xs text-gray-500">{{ $l->user ? __('User') : __('System') }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium {{ $actionColor }}">
-                                            {{ $actionPretty }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900 font-medium">{{ $object }}</div>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="text-sm text-gray-700 max-w-xs truncate">{{ $dataPreview }}</div>
-                                        @if(!empty($dataFull))
-                                            <button class="view-json mt-2 inline-flex items-center px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors" data-json="{{ base64_encode($dataFull) }}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                {{ __('View Details') }}
-                                            </button>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No audit logs found.') }}</td>
-                                </tr>
-                            @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    @if($logs->hasPages())
-                        <div class="px-4 py-3 border-t border-gray-200">
-                            {{ $logs->links() }}
-                        </div>
+                @php $sensitiveToday = $stats['sensitive'] ?? 0; $activityToday = $stats['today'] ?? 0; @endphp
+                {{-- A calm one-line summary, not three boxes. The attention count is the
+                     only thing that ever raises its voice, and only when it is non-zero. --}}
+                <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-5 text-sm text-gray-600">
+                    <span class="text-gray-900 font-semibold">{{ number_format($activityToday) }}</span>
+                    <span>{{ trans_choice('{0,1}action today|[2,*]actions today', $activityToday) }}.</span>
+                    @if($sensitiveToday > 0)
+                        <span class="inline-flex items-center gap-1.5 text-rose-700 font-medium">
+                            <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                            {{ trans_choice('{1}:count needs your attention|[2,*]:count need your attention', $sensitiveToday, ['count' => $sensitiveToday]) }}
+                        </span>
+                    @else
+                        <span class="text-gray-400">·</span>
+                        <span class="text-gray-500">{{ __('nothing flagged') }}</span>
                     @endif
+                    <span class="text-gray-300 hidden sm:inline">·</span>
+                    <span class="text-gray-400 hidden sm:inline">{{ number_format($stats['total'] ?? $logs->total()) }} {{ __('total recorded') }}</span>
                 </div>
 
-                <div id="jsonModal" class="fixed inset-0 hidden items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-                    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
-                        <div class="flex items-center justify-between p-6 border-b border-gray-200">
-                            <div class="flex items-center gap-3">
-                                <div class="bg-amber-100 rounded-lg p-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                </div>
-                                <h3 class="text-lg font-semibold text-gray-900">{{ __('Audit Data Details') }}</h3>
-                            </div>
-                            <div class="flex gap-2">
-                                <button id="copyJson" class="inline-flex items-center px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                    </svg>
-                                    {{ __('Copy') }}
-                                </button>
-                                <button id="closeJson" class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                    {{ __('Close') }}
-                                </button>
-                            </div>
+                {{-- Filters: action / user / date range. GET form targets the same
+                     tab via the settings-content turbo frame; withQueryString()
+                     on the paginator keeps filters across page changes. --}}
+                @php
+                    $hasAuditFilter = request()->hasAny(['audit_action', 'audit_user', 'audit_from', 'audit_to']);
+                    $auditExportParams = array_filter([
+                        'audit_action' => request('audit_action'),
+                        'audit_user'   => request('audit_user'),
+                        'audit_from'   => request('audit_from'),
+                        'audit_to'     => request('audit_to'),
+                    ]);
+                @endphp
+                <form method="GET" action="{{ route('settings.edit', ['tab' => 'audit']) }}"
+                      data-turbo-frame="settings-content" class="audit-toolbar">
+                    <input type="hidden" name="tab" value="audit">
+
+                    <div class="audit-field audit-field--action">
+                        <label for="audit_action">{{ __('Action') }}</label>
+                        <select id="audit_action" name="audit_action" class="audit-control">
+                            <option value="">{{ __('All actions') }}</option>
+                            @foreach($auditActions ?? [] as $a)
+                                <option value="{{ $a }}" @selected(request('audit_action') === $a)>{{ \Illuminate\Support\Str::headline($a) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="audit-field audit-field--user">
+                        <label for="audit_user">{{ __('Who') }}</label>
+                        <select id="audit_user" name="audit_user" class="audit-control">
+                            <option value="">{{ __('Everyone') }}</option>
+                            @foreach($auditUsers ?? [] as $u)
+                                <option value="{{ $u->id }}" @selected((string) request('audit_user') === (string) $u->id)>{{ $u->name ?? $u->mobile_number }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="audit-field">
+                        <label for="audit_from">{{ __('From') }}</label>
+                        <input id="audit_from" type="date" name="audit_from" value="{{ request('audit_from') }}" class="audit-control audit-control--date">
+                    </div>
+                    <div class="audit-field">
+                        <label for="audit_to">{{ __('To') }}</label>
+                        <input id="audit_to" type="date" name="audit_to" value="{{ request('audit_to') }}" class="audit-control audit-control--date">
+                    </div>
+
+                    <div class="audit-toolbar-actions">
+                        <button type="submit" class="audit-btn audit-btn--primary">{{ __('Apply') }}</button>
+                        @if($hasAuditFilter)
+                            <a href="{{ route('settings.edit', ['tab' => 'audit']) }}" data-turbo-frame="settings-content" class="audit-btn audit-btn--ghost">{{ __('Clear') }}</a>
+                        @endif
+                    </div>
+
+                    <span class="audit-toolbar-spacer"></span>
+
+                    {{-- Download leaves the turbo frame (streams a file). Carries active filters. --}}
+                    <a href="{{ route('settings.audit.export', $auditExportParams) }}" data-turbo-frame="_top" class="audit-btn audit-btn--ghost">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        {{ __('Export') }}
+                    </a>
+                </form>
+                </div>{{-- /.audit-shell-fixed --}}
+
+                @php
+                    // Group the page's events by calendar day for the timeline headers.
+                    $auditGroups = $logs->getCollection()->groupBy(fn ($l) => optional($l->created_at)->toDateString() ?? 'unknown');
+                    $dayLabel = function ($dateKey) {
+                        if ($dateKey === 'unknown') return __('Earlier');
+                        $d = \Carbon\Carbon::parse($dateKey);
+                        if ($d->isToday()) return __('Today');
+                        if ($d->isYesterday()) return __('Yesterday');
+                        return $d->isCurrentYear() ? $d->format('D, d M') : $d->format('d M Y');
+                    };
+                    $rowIndex = 0;
+                @endphp
+
+                <div class="audit-scroll">
+                @forelse($auditGroups as $dateKey => $dayLogs)
+                    <section class="audit-day">
+                        <div class="audit-day-head">
+                            <h3 class="audit-day-title">{{ $dayLabel($dateKey) }}</h3>
+                            <span class="audit-day-count">{{ trans_choice('{1}:count event|[2,*]:count events', $dayLogs->count(), ['count' => $dayLogs->count()]) }}</span>
                         </div>
-                        <div class="flex-1 overflow-auto p-6">
-                            <pre id="jsonContent" class="bg-gray-50 rounded-lg p-4 text-sm font-mono text-gray-800 whitespace-pre-wrap border border-gray-200"></pre>
+
+                        <ol class="audit-feed">
+                            @foreach($dayLogs as $l)
+                                @php
+                                    $summary   = $l->summaryLine();
+                                    $sensitive = $l->isSensitive();
+                                    $cat       = $l->category();
+                                    $who       = $l->user->name ?? $l->user->mobile_number ?? __('System');
+                                    $isSystem  = $l->user === null;
+                                    $entityType = $l->model_type ? \Illuminate\Support\Str::headline($l->model_type) : null;
+                                    $entityLabel = ($entityType && $l->model_id) ? ($entityType . ' #' . $l->model_id) : ($entityType ?: null);
+
+                                    // Plain-English rows for the owner; raw JSON kept only as a
+                                    // "technical" fallback for a CA / support. A row gets a Details
+                                    // button only when there is more to show than the summary line.
+                                    $readable = $l->readableDetails();
+                                    $rawJson = (is_array($l->data) && $l->data !== [])
+                                        ? json_encode((array) $l->data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                                        : null;
+                                    $hasDetails = ! empty($readable) || ($rawJson !== null);
+                                    $detailBundle = $hasDetails
+                                        ? base64_encode(json_encode([
+                                            'title'    => $summary,
+                                            'meta'     => trim(($cat['label'] ?? '') . ' · ' . ($isSystem ? __('System') : $who) . ' · ' . optional($l->created_at)->format('d M Y, h:i A')),
+                                            'readable' => $readable,
+                                            'raw'      => $rawJson,
+                                        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))
+                                        : null;
+                                    $i = $rowIndex < 24 ? $rowIndex : 24; $rowIndex++;
+                                @endphp
+                                <li class="audit-item {{ $sensitive ? 'is-sensitive' : '' }}" style="--audit-i: {{ $i }}">
+                                    <span class="audit-rail" aria-hidden="true"></span>
+                                    <span class="audit-glyph {{ $cat['bg'] }} {{ $cat['fg'] }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="{{ $cat['icon'] }}" />
+                                        </svg>
+                                    </span>
+                                    <div class="audit-body">
+                                        <p class="audit-summary">
+                                            {{ $summary }}
+                                            @if($sensitive)<span class="audit-flag">{{ __('Needs attention') }}</span>@endif
+                                        </p>
+                                        <p class="audit-meta">
+                                            <span class="audit-meta-cat">{{ $cat['label'] }}</span>
+                                            <span class="audit-meta-sep">·</span>
+                                            {{ $isSystem ? __('System') : $who }}
+                                            <span class="audit-meta-sep">·</span>
+                                            {{ optional($l->created_at)->format('h:i A') }}
+                                            @if($entityLabel)<span class="audit-meta-sep">·</span><span class="audit-meta-entity">{{ $entityLabel }}</span>@endif
+                                        </p>
+                                    </div>
+                                    @if($detailBundle)
+                                        <button type="button" class="view-detail audit-detail-btn" data-detail="{{ $detailBundle }}" aria-label="{{ __('View details') }}">
+                                            {{ __('Details') }}
+                                        </button>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ol>
+                    </section>
+                @empty
+                    <div class="audit-empty">
+                        <div class="audit-empty-glyph">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <p class="audit-empty-title">{{ __('Nothing recorded yet') }}</p>
+                        <p class="audit-empty-sub">{{ __('As you and your staff use the shop, every important action shows up here.') }}</p>
+                    </div>
+                @endforelse
+                </div>{{-- /.audit-scroll --}}
+
+                {{-- Pagination is a fixed footer of the shell, not part of the
+                     scrolling feed — you reach Next without scrolling to the bottom. --}}
+                @if($logs->hasPages())
+                    <div class="audit-shell-foot">{{ $logs->links() }}</div>
+                @endif
+                </div>{{-- /.audit-shell --}}
+
+                <div id="jsonModal" class="fixed inset-0 hidden items-center justify-center bg-black/50 z-50 p-4">
+                    <div class="audit-modal-panel bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[88vh] flex flex-col overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-gray-100">
+                            <div class="min-w-0">
+                                <h3 id="auditDetailTitle" class="text-base font-semibold text-gray-900 leading-snug"></h3>
+                                <p id="auditDetailMeta" class="text-xs text-gray-500 mt-1"></p>
+                            </div>
+                            <button id="closeJson" class="flex-shrink-0 -mr-1 -mt-1 p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" aria-label="{{ __('Close') }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-auto px-6 py-5">
+                            {{-- Plain-English rows: label on the left, value on the right, like a receipt. --}}
+                            <dl id="auditDetailRows" class="audit-detail-rows"></dl>
+                            <p id="auditDetailEmpty" class="text-sm text-gray-400 hidden">{{ __('No extra details for this action.') }}</p>
+
+                            {{-- Technical details tucked away for a CA / support, not shown by default. --}}
+                            <div id="auditDetailRawWrap" class="mt-5 hidden">
+                                <button id="auditRawToggle" type="button" class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700">
+                                    <svg id="auditRawChevron" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                    {{ __('Show technical details') }}
+                                </button>
+                                <div id="auditRawBody" class="hidden mt-3">
+                                    <div class="flex justify-end mb-2">
+                                        <button id="copyJson" class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                            {{ __('Copy') }}
+                                        </button>
+                                    </div>
+                                    <pre id="jsonContent" class="bg-gray-50 rounded-lg p-4 text-xs font-mono text-gray-700 whitespace-pre-wrap border border-gray-100 max-h-64 overflow-auto"></pre>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <script>
+                    // Decode the base64-wrapped UTF-8 detail bundle safely.
+                    function auditDecode(b64) {
+                        try {
+                            const bin = atob(b64);
+                            const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+                            return JSON.parse(new TextDecoder().decode(bytes));
+                        } catch (_) { return null; }
+                    }
+
+                    function auditCloseModal() {
+                        const modal = document.getElementById('jsonModal');
+                        modal.classList.remove('is-open');
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }
+
                     document.addEventListener('click', function(e){
-                        if (e.target.matches('.view-json') || e.target.closest('.view-json')) {
-                            const button = e.target.matches('.view-json') ? e.target : e.target.closest('.view-json');
-                            const encoded = button.getAttribute('data-json');
-                            const json = encoded ? atob(encoded) : '';
-                            document.getElementById('jsonContent').textContent = json;
-                            document.getElementById('jsonModal').classList.remove('hidden');
-                            document.getElementById('jsonModal').classList.add('flex');
+                        const trigger = e.target.closest('.view-detail');
+                        if (trigger) {
+                            const bundle = auditDecode(trigger.getAttribute('data-detail')) || {};
+                            document.getElementById('auditDetailTitle').textContent = bundle.title || 'Details';
+                            document.getElementById('auditDetailMeta').textContent = bundle.meta || '';
+
+                            // Build the plain-English rows as DOM nodes (textContent = no XSS).
+                            const rowsEl = document.getElementById('auditDetailRows');
+                            rowsEl.innerHTML = '';
+                            const rows = Array.isArray(bundle.readable) ? bundle.readable : [];
+                            rows.forEach(r => {
+                                const row = document.createElement('div');
+                                row.className = 'audit-detail-row';
+                                const dt = document.createElement('dt'); dt.textContent = r.label;
+                                const dd = document.createElement('dd'); dd.textContent = r.value;
+                                row.append(dt, dd); rowsEl.append(row);
+                            });
+                            document.getElementById('auditDetailEmpty').classList.toggle('hidden', rows.length > 0);
+
+                            // Technical (raw) section: only offer it when raw JSON exists.
+                            const rawWrap = document.getElementById('auditDetailRawWrap');
+                            const rawBody = document.getElementById('auditRawBody');
+                            const chevron = document.getElementById('auditRawChevron');
+                            rawBody.classList.add('hidden');
+                            chevron.style.transform = '';
+                            if (bundle.raw) {
+                                document.getElementById('jsonContent').textContent = bundle.raw;
+                                rawWrap.classList.remove('hidden');
+                            } else {
+                                rawWrap.classList.add('hidden');
+                            }
+
+                            const modal = document.getElementById('jsonModal');
+                            modal.classList.remove('hidden');
+                            modal.classList.add('flex');
+                            requestAnimationFrame(() => modal.classList.add('is-open'));
                         }
 
-                        if (e.target && e.target.id === 'closeJson') {
-                            document.getElementById('jsonModal').classList.add('hidden');
-                            document.getElementById('jsonModal').classList.remove('flex');
+                        if (e.target.closest('#auditRawToggle')) {
+                            const body = document.getElementById('auditRawBody');
+                            const chevron = document.getElementById('auditRawChevron');
+                            const open = body.classList.toggle('hidden') === false;
+                            chevron.style.transform = open ? 'rotate(90deg)' : '';
                         }
 
-                        if (e.target && e.target.id === 'copyJson') {
+                        if (e.target.closest('#closeJson')) {
+                            auditCloseModal();
+                        }
+
+                        const copyBtn = e.target.closest('#copyJson');
+                        if (copyBtn) {
                             const text = document.getElementById('jsonContent').textContent || '';
                             navigator.clipboard.writeText(text).then(() => {
-                                const btn = e.target;
-                                const original = btn.textContent;
-                                btn.textContent = '{{ __('Copied!') }}';
-                                setTimeout(() => { btn.textContent = original; }, 1500);
+                                const original = copyBtn.textContent;
+                                copyBtn.textContent = '{{ __('Copied!') }}';
+                                setTimeout(() => { copyBtn.textContent = original; }, 1500);
                             });
                         }
 
+                        // Backdrop click (outside the panel) closes.
                         if (e.target && e.target.id === 'jsonModal') {
-                            document.getElementById('jsonModal').classList.add('hidden');
-                            document.getElementById('jsonModal').classList.remove('flex');
+                            auditCloseModal();
+                        }
+                    });
+
+                    // Escape closes the details modal.
+                    document.addEventListener('keydown', function (e) {
+                        if (e.key === 'Escape') {
+                            const modal = document.getElementById('jsonModal');
+                            if (modal && !modal.classList.contains('hidden')) {
+                                auditCloseModal();
+                            }
                         }
                     });
                 </script>
@@ -2809,6 +3885,639 @@
 
             @if($activeTab === 'website')
                 @include('partials.settings.website-tab')
+            @endif
+
+            @if($activeTab === 'services')
+                @php
+                    $active          = $servicesData['active'];
+                    $available       = $servicesData['available'];
+                    $pendingRequests = $servicesData['pendingRequests'];
+                    $history         = $servicesData['history'];
+                    $assignments     = $servicesData['assignments'];
+                    $pendingRemove   = $pendingRequests->where('action', 'remove');
+                @endphp
+
+                <div class="settings-header">
+                    <h2 class="settings-title">{{ __('Business Editions') }}</h2>
+                    <p class="settings-desc">{{ __('These are the kinds of business your shop is set up to run. Add a new one or remove one you no longer need.') }}</p>
+                </div>
+
+                <p class="text-xs text-slate-500 mb-6 max-w-3xl">
+                    {{ __('Adding an edition may change your plan.') }}
+                    <a href="{{ route('settings.edit', ['tab' => 'subscription']) }}" data-turbo-frame="settings-content" class="font-semibold text-teal-700 hover:text-teal-800 underline">{{ __('See Plan & Billing') }}</a>.
+                </p>
+
+                <div class="space-y-8 max-w-3xl">
+                    {{-- Active services --}}
+                    <section>
+                        <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('What you have now') }}</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            @foreach($active as $ed)
+                                @if($ed === 'dhiran') @continue @endif
+                                @php
+                                    $meta = [
+                                        'retailer'     => ['label' => 'Retailer',     'desc' => 'Buy and sell ready-made jewellery.'],
+                                        'manufacturer' => ['label' => 'Manufacturer', 'desc' => 'Make jewellery in your own workshop.'],
+                                    ][$ed] ?? ['label' => ucfirst($ed), 'desc' => ''];
+                                    $assignment = $assignments[$ed] ?? null;
+                                @endphp
+                                <div class="rounded-xl border border-slate-200 bg-white">
+                                    <div class="px-5 py-4">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div class="text-sm font-semibold text-slate-900">{{ __($meta['label']) }}</div>
+                                                <div class="text-xs text-slate-500 mt-0.5">{{ __($meta['desc']) }}</div>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1 text-xs font-semibold text-green-700 flex-shrink-0">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                {{ __('On') }}
+                                            </span>
+                                        </div>
+                                        @if($assignment?->activated_at)
+                                            <div class="text-xs text-slate-400 mt-2">
+                                                {{ __('On since') }} {{ $assignment->activated_at->format('d M Y') }}
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    @can('settings.edit')
+                                        @if(count($active) > 1)
+                                            <details class="border-t border-slate-100">
+                                                <summary class="cursor-pointer list-none px-5 py-3 text-xs font-medium text-rose-600 hover:text-rose-700">
+                                                    {{ __('Turn this off') }}
+                                                </summary>
+                                                <form method="POST" action="{{ route('settings.services.remove') }}" data-turbo-frame="_top" class="px-5 pb-4 space-y-3">
+                                                    @csrf
+                                                    <input type="hidden" name="edition" value="{{ $ed }}">
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('Why are you turning this off?') }}</label>
+                                                        <textarea name="reason" rows="2" required minlength="4" maxlength="500"
+                                                                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                                                                  placeholder="{{ __('e.g. We no longer make jewellery in-house.') }}"></textarea>
+                                                    </div>
+                                                    <label class="flex items-start gap-2 text-xs text-slate-600">
+                                                        <input type="checkbox" name="confirm" value="1" required class="mt-0.5">
+                                                        <span>{{ __('I understand this turns off this service for my shop.') }}</span>
+                                                    </label>
+                                                    <button type="submit" class="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 transition">
+                                                        {{ __('Turn off') }} {{ __($meta['label']) }}
+                                                    </button>
+                                                </form>
+                                            </details>
+                                        @else
+                                            <div class="border-t border-slate-100 px-5 py-3 text-xs text-slate-400">
+                                                {{ __('This is your only service. To stop using it, please contact support.') }}
+                                            </div>
+                                        @endif
+                                    @endcan
+                                </div>
+                            @endforeach
+                        </div>
+                    </section>
+
+                    {{-- Available to add --}}
+                    @if(count($available) > 0)
+                        <section>
+                            <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Add a new service') }}</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                @foreach($available as $ed)
+                                    @if($ed === 'dhiran') @continue @endif
+                                    @php
+                                        $meta = [
+                                            'retailer'     => ['label' => 'Retailer',     'desc' => 'Buy and sell ready-made jewellery.'],
+                                            'manufacturer' => ['label' => 'Manufacturer', 'desc' => 'Make jewellery in your own workshop.'],
+                                        ][$ed] ?? ['label' => ucfirst($ed), 'desc' => ''];
+                                        $pending = $pendingRequests->firstWhere(fn($r) => $r->edition === $ed && $r->action === 'add');
+                                    @endphp
+
+                                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50">
+                                        <div class="px-5 py-4">
+                                            <div class="text-sm font-semibold text-slate-900">{{ __($meta['label']) }}</div>
+                                            <div class="text-xs text-slate-500 mt-0.5">{{ __($meta['desc']) }}</div>
+                                        </div>
+
+                                        @if($pending)
+                                            <div class="border-t border-slate-200 px-5 py-3 space-y-2">
+                                                <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                                    {{ __('Asked for since') }} {{ $pending->created_at->format('d M Y') }}. {{ __('We will get back to you soon.') }}
+                                                </p>
+                                                @can('settings.edit')
+                                                    <form method="POST" action="{{ route('settings.services.request.cancel', $pending) }}" data-turbo-frame="_top">
+                                                        @csrf
+                                                        <button type="submit" class="text-xs font-medium text-slate-500 hover:text-slate-700 underline">{{ __('Cancel this request') }}</button>
+                                                    </form>
+                                                @endcan
+                                            </div>
+                                        @elsecan('settings.edit')
+                                            <details class="border-t border-slate-200">
+                                                <summary class="cursor-pointer list-none px-5 py-3 text-xs font-semibold text-teal-700 hover:text-teal-800">
+                                                    {{ __('Ask to turn this on') }}
+                                                </summary>
+                                                <form method="POST" action="{{ route('settings.services.request-add') }}" data-turbo-frame="_top" class="px-5 pb-4 space-y-3">
+                                                    @csrf
+                                                    <input type="hidden" name="edition" value="{{ $ed }}">
+                                                    <div>
+                                                        <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('Why do you want this service?') }}</label>
+                                                        <textarea name="reason" rows="2" required minlength="10" maxlength="500"
+                                                                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                                                                  placeholder="{{ __('A short reason helps us set it up for you.') }}"></textarea>
+                                                    </div>
+                                                    <button type="submit" class="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 transition">
+                                                        {{ __('Send request') }}
+                                                    </button>
+                                                </form>
+                                            </details>
+                                        @endcan
+                                    </div>
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+
+                    {{-- Pending removal requests --}}
+                    @if($pendingRemove->isNotEmpty())
+                        <section>
+                            <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Waiting to be turned off') }}</h3>
+                            <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                                        <tr>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('Service') }}</th>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('Asked on') }}</th>
+                                            <th class="px-5 py-2.5 text-right"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @foreach($pendingRemove as $req)
+                                            <tr>
+                                                <td class="px-5 py-3 font-medium text-slate-800">{{ ucfirst($req->edition) }}</td>
+                                                <td class="px-5 py-3 text-slate-600">{{ $req->created_at->format('d M Y, H:i') }}</td>
+                                                <td class="px-5 py-3 text-right">
+                                                    @can('settings.edit')
+                                                        <form method="POST" action="{{ route('settings.services.request.cancel', $req) }}" data-turbo-frame="_top">
+                                                            @csrf
+                                                            <button type="submit" class="text-xs font-medium text-slate-500 hover:text-slate-700 underline">{{ __('Cancel') }}</button>
+                                                        </form>
+                                                    @endcan
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    @endif
+
+                    {{-- Recent activity --}}
+                    @if($history->isNotEmpty())
+                        <section>
+                            <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Recent activity') }}</h3>
+                            <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                                        <tr>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('What happened') }}</th>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('Result') }}</th>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('On') }}</th>
+                                            <th class="px-5 py-2.5 text-left font-semibold">{{ __('Notes') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @foreach($history as $req)
+                                            <tr>
+                                                <td class="px-5 py-3 text-slate-800">{{ ucfirst($req->action) }} {{ ucfirst($req->edition) }}</td>
+                                                <td class="px-5 py-3">
+                                                    @php
+                                                        $cls = match($req->status) {
+                                                            'approved'  => 'text-green-700 bg-green-50',
+                                                            'denied'    => 'text-rose-700 bg-rose-50',
+                                                            'cancelled' => 'text-slate-600 bg-slate-100',
+                                                            default     => 'text-amber-700 bg-amber-50',
+                                                        };
+                                                        $statusLabel = match($req->status) {
+                                                            'approved'  => __('Done'),
+                                                            'denied'    => __('Not done'),
+                                                            'cancelled' => __('Cancelled'),
+                                                            default     => ucfirst($req->status),
+                                                        };
+                                                    @endphp
+                                                    <span class="text-xs font-medium px-2 py-0.5 rounded {{ $cls }}">{{ $statusLabel }}</span>
+                                                </td>
+                                                <td class="px-5 py-3 text-slate-600">{{ $req->reviewed_at?->format('d M Y') ?? '—' }}</td>
+                                                <td class="px-5 py-3 text-slate-600 text-xs">{{ $req->review_notes ?? '—' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    @endif
+                </div>
+            @endif
+
+            @if($activeTab === 'subscription')
+                @php $needsPlan = $subscriptionData['needs_plan'] ?? false; @endphp
+
+                <div class="settings-header">
+                    <h2 class="settings-title">{{ __('Plan & Billing') }}</h2>
+                    <p class="settings-desc">{{ __('Your current plan, renewal date, what is included, and your past bills.') }}</p>
+                </div>
+
+                <p class="text-xs text-slate-500 mb-6 max-w-3xl">
+                    {{ __('Choose which kinds of business your shop runs in') }}
+                    <a href="{{ route('settings.edit', ['tab' => 'services']) }}" data-turbo-frame="settings-content" class="font-semibold text-teal-700 hover:text-teal-800 underline">{{ __('Business Editions') }}</a>.
+                </p>
+
+                @if($needsPlan)
+                    {{-- No subscription on record — point the owner at the plan picker.
+                         We can't redirect mid-tab-render, so we render a calm panel. --}}
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center max-w-2xl">
+                        <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4Z"/><path d="M4 6v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="M12 12v4h4"/></svg>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-700">{{ __('No active plan yet') }}</p>
+                        <p class="mt-1 text-sm text-slate-500 max-w-md mx-auto">{{ __('Choose a plan to start using JewelFlow. Your bills will show up here after payment.') }}</p>
+                        <a href="{{ route('subscription.plans') }}" data-turbo-frame="_top" class="mt-5 inline-flex items-center rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 transition active:scale-[0.97]">
+                            {{ __('Choose a plan') }}
+                        </a>
+                    </div>
+                @else
+                    @php
+                        $subscription  = $subscriptionData['subscription'];
+                        $plan          = $subscriptionData['plan'];
+                        $daysRemaining = $subscriptionData['daysRemaining'];
+                        $isInGrace     = $subscriptionData['isInGrace'];
+                        $isExpired     = $subscriptionData['isExpired'];
+                        $featureLabels = $subscriptionData['featureLabels'];
+                        $invoices      = $subscriptionData['invoices'];
+
+                        $rawStatus = (string) ($subscription->status ?? 'inactive');
+                        $statusLabel = ucfirst($rawStatus);
+
+                        if ($isInGrace) {
+                            $statusLabel = 'Grace Period';
+                        } elseif ($isExpired) {
+                            $statusLabel = 'Expired';
+                        }
+
+                        $statusTone = [
+                            'trial' => ['bg' => '#dbeafe', 'text' => '#1d4ed8', 'border' => '#93c5fd'],
+                            'active' => ['bg' => '#dcfce7', 'text' => '#166534', 'border' => '#86efac'],
+                            'grace period' => ['bg' => '#fef3c7', 'text' => '#92400e', 'border' => '#fcd34d'],
+                            'expired' => ['bg' => '#fee2e2', 'text' => '#991b1b', 'border' => '#fca5a5'],
+                            'cancelled' => ['bg' => '#f1f5f9', 'text' => '#334155', 'border' => '#cbd5e1'],
+                            'suspended' => ['bg' => '#fee2e2', 'text' => '#991b1b', 'border' => '#fca5a5'],
+                            'read_only' => ['bg' => '#ffedd5', 'text' => '#9a3412', 'border' => '#fdba74'],
+                        ][strtolower($statusLabel)] ?? ['bg' => '#f1f5f9', 'text' => '#334155', 'border' => '#cbd5e1'];
+
+                        $startsAt = $subscription->starts_at;
+                        $endsAt = $subscription->ends_at;
+                        $graceEnd = $endsAt ? $endsAt->copy()->addDays((int) ($plan->grace_days ?? 7)) : null;
+
+                        $totalDays = ($startsAt && $endsAt) ? max(1, $startsAt->diffInDays($endsAt)) : 0;
+                        $usedPercent = 0;
+
+                        if ($daysRemaining !== null && $daysRemaining >= 0 && $totalDays > 0) {
+                            $usedPercent = max(0, min(100, (int) round(100 - (($daysRemaining / $totalDays) * 100))));
+                        } elseif ($isExpired) {
+                            $usedPercent = 100;
+                        }
+
+                        $planFeatures = is_array($plan->features)
+                            ? $plan->features
+                            : (json_decode((string) ($plan->features ?? '[]'), true) ?: []);
+
+                        $billingCycle = ucfirst((string) ($subscription->billing_cycle ?? 'monthly'));
+                        $pricePaid = $subscription->price_paid
+                            ?? ($subscription->billing_cycle === 'yearly' ? ($plan->price_yearly ?? null) : ($plan->price_monthly ?? null));
+                    @endphp
+
+                    <div class="content-inner sub-status-page">
+                        <div class="sub-status-wrap">
+                            <section class="sub-hero">
+                                <div class="sub-hero-top">
+                                    <div>
+                                        <h2 class="sub-plan-name">{{ $plan->name }}</h2>
+                                        <p class="sub-plan-copy">Billed {{ strtolower($billingCycle) }} with your current access, renewal timeline, and plan limits shown below.</p>
+                                    </div>
+                                    <span class="sub-status-pill" style="border:1px solid {{ $statusTone['border'] }}; background: {{ $statusTone['bg'] }}; color: {{ $statusTone['text'] }};">
+                                        {{ $statusLabel }}
+                                    </span>
+                                </div>
+
+                                <div class="sub-kpi-grid">
+                                    <div class="sub-kpi">
+                                        <p class="sub-kpi-label">Plan Amount</p>
+                                        <p class="sub-kpi-value">
+                                            @if($pricePaid !== null)
+                                                ₹{{ number_format((float) $pricePaid, 2) }}
+                                            @else
+                                                -
+                                            @endif
+                                        </p>
+                                    </div>
+                                    <div class="sub-kpi">
+                                        <p class="sub-kpi-label">Billing Cycle</p>
+                                        <p class="sub-kpi-value">{{ $billingCycle }}</p>
+                                    </div>
+                                    <div class="sub-kpi">
+                                        <p class="sub-kpi-label">Start Date</p>
+                                        <p class="sub-kpi-value">{{ $startsAt ? $startsAt->format('d M Y') : '-' }}</p>
+                                    </div>
+                                    <div class="sub-kpi">
+                                        <p class="sub-kpi-label">
+                                            @if($isInGrace)
+                                                Grace Ends
+                                            @elseif($isExpired)
+                                                Expired On
+                                            @else
+                                                Renews On
+                                            @endif
+                                        </p>
+                                        <p class="sub-kpi-value">
+                                            @if($isInGrace)
+                                                {{ $graceEnd ? $graceEnd->format('d M Y') : '-' }}
+                                            @else
+                                                {{ $endsAt ? $endsAt->format('d M Y') : '-' }}
+                                            @endif
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="sub-health">
+                                    <div class="sub-health-head">
+                                        <h3 class="sub-health-title">Plan health</h3>
+                                        @if($daysRemaining !== null && $daysRemaining >= 0)
+                                            <span class="sub-health-pill">{{ $daysRemaining }} day{{ $daysRemaining === 1 ? '' : 's' }} left</span>
+                                        @elseif($isInGrace)
+                                            <span class="sub-health-pill" style="border-color:#f3d7a3; background:#fff7ed; color:#9a3412;">Grace active</span>
+                                        @else
+                                            <span class="sub-health-pill" style="border-color:#fecaca; background:#fef2f2; color:#991b1b;">Renew required</span>
+                                        @endif
+                                    </div>
+
+                                    @if($daysRemaining !== null && $daysRemaining >= 0)
+                                        <p class="sub-health-copy">About <strong style="color:var(--sub-text);">{{ $daysRemaining }}</strong> days remain before your next renewal date.</p>
+                                        <div class="sub-progress-track">
+                                            <div class="sub-progress-fill" style="width: {{ $usedPercent }}%;"></div>
+                                        </div>
+                                    @elseif($isInGrace)
+                                        <p class="sub-health-copy" style="color:#92400e;">Subscription expired, but grace access stays available until {{ $graceEnd ? $graceEnd->format('d M, Y') : '-' }}.</p>
+                                        <div class="sub-progress-track">
+                                            <div class="sub-progress-fill" style="width:100%; background:#f59e0b;"></div>
+                                        </div>
+                                    @else
+                                        <p class="sub-health-copy" style="color:#991b1b;">Subscription access has expired. Renew the plan to restore uninterrupted usage.</p>
+                                        <div class="sub-progress-track">
+                                            <div class="sub-progress-fill" style="width:100%; background:#dc2626;"></div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </section>
+
+                            <div class="sub-grid">
+                                <section class="sub-card">
+                                    <div class="sub-card-head">
+                                        <h3 class="sub-card-title">Billing overview</h3>
+                                        <p class="sub-card-copy">A compact summary of your current access state, renewal timing, and support path.</p>
+                                    </div>
+                                    <div class="sub-card-body">
+                                        <div class="sub-detail-list">
+                                            <div class="sub-detail-item">
+                                                <div>
+                                                    <p class="sub-detail-label">Current Status</p>
+                                                    <p class="sub-detail-value">{{ $statusLabel }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="sub-detail-item">
+                                                <div>
+                                                    <p class="sub-detail-label">Active Window</p>
+                                                    <p class="sub-detail-value">
+                                                        {{ $startsAt ? $startsAt->format('d M Y') : '-' }}
+                                                        <span style="color:var(--sub-text-soft); font-weight:600;">to</span>
+                                                        {{ $endsAt ? $endsAt->format('d M Y') : '-' }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="sub-detail-item">
+                                                <div>
+                                                    <p class="sub-detail-label">Renewal Mode</p>
+                                                    <p class="sub-detail-value">{{ $billingCycle }} billing</p>
+                                                </div>
+                                            </div>
+                                            <div class="sub-detail-item">
+                                                <div>
+                                                    <p class="sub-detail-label">Support</p>
+                                                    <p class="sub-detail-value">{{ config('app.support_email') }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="sub-note">
+                                            Need a different plan structure, custom limits, or renewal help? Contact support and reference your current plan name for faster help.
+                                        </div>
+
+                                        <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap;">
+                                            <a href="{{ route('subscription.plans') }}" data-turbo-frame="_top" class="sub-btn primary">Change Plan</a>
+                                            <a href="mailto:{{ config('app.support_email') }}" class="sub-btn secondary">Contact Support</a>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <aside class="sub-card">
+                                    <div class="sub-card-head">
+                                        <h3 class="sub-card-title">Included features</h3>
+                                        <p class="sub-card-copy">The tools and limits enabled under your current subscription.</p>
+                                    </div>
+                                    <div class="sub-card-body">
+                                        <ul class="sub-feature-list">
+                                            @forelse($planFeatures as $feature => $value)
+                                                @if($value === false)
+                                                    @continue
+                                                @endif
+
+                                                <li class="sub-feature-item">
+                                                    <svg class="sub-dot" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                    </svg>
+                                                    <span>
+                                                        @if(is_bool($value) && $value)
+                                                            {{ $featureLabels[$feature] ?? ucfirst(str_replace('_', ' ', (string) $feature)) }}
+                                                        @elseif(!is_bool($value))
+                                                            @if($feature === 'max_items' && (int) $value === -1)
+                                                                Unlimited items
+                                                            @elseif($feature === 'staff_limit')
+                                                                Up to {{ $value }} staff accounts
+                                                            @else
+                                                                Up to {{ $value }} {{ $featureLabels[$feature] ?? \Illuminate\Support\Str::plural(str_replace('_', ' ', (string) $feature)) }}
+                                                            @endif
+                                                        @endif
+                                                    </span>
+                                                </li>
+                                            @empty
+                                                <li class="sub-feature-item" style="color:#64748b;">No features configured for this plan.</li>
+                                            @endforelse
+                                        </ul>
+                                    </div>
+                                </aside>
+                            </div>
+
+                            {{-- ─── Billing History ───────────────────────────────────────────── --}}
+                            <section class="sub-billing-section">
+                                <div class="sub-billing-head">
+                                    <div>
+                                        <h2 class="sub-billing-title">Billing History</h2>
+                                        <p class="sub-billing-copy">All bills made for your subscription. Open any row to view or print.</p>
+                                    </div>
+                                </div>
+
+                                <div class="sub-billing-card">
+                                    <div class="sub-billing-table-wrap">
+                                        <table class="sub-billing-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="text-left">Invoice #</th>
+                                                    <th class="text-left">Plan</th>
+                                                    <th class="text-left">Cycle</th>
+                                                    <th class="text-left">Period</th>
+                                                    <th class="text-right">Amount</th>
+                                                    <th class="text-left">Date</th>
+                                                    <th class="text-left">Status</th>
+                                                    <th class="text-right"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @forelse($invoices as $inv)
+                                                    <tr>
+                                                        <td class="sub-billing-num" data-label="Invoice #">{{ $inv->invoice_number }}</td>
+                                                        <td data-label="Plan">{{ $inv->plan?->name ?? '—' }}</td>
+                                                        <td class="sub-billing-capitalize" data-label="Cycle">{{ $inv->billing_cycle }}</td>
+                                                        <td class="sub-billing-muted" data-label="Period">
+                                                            {{ $inv->billing_period_start->format('d M Y') }}
+                                                            –
+                                                            {{ $inv->billing_period_end->format('d M Y') }}
+                                                        </td>
+                                                        <td class="text-right sub-billing-amount" data-label="Amount">₹{{ number_format($inv->total_amount, 2) }}</td>
+                                                        <td class="sub-billing-muted" data-label="Date">{{ $inv->issued_at->format('d M Y') }}</td>
+                                                        <td data-label="Status">
+                                                            @if($inv->status === 'issued')
+                                                                <span class="sub-billing-pill sub-billing-pill-paid">Paid</span>
+                                                            @else
+                                                                <span class="sub-billing-pill sub-billing-pill-cancelled">Cancelled</span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-right sub-billing-action">
+                                                            <a href="{{ route('billing.invoices.show', $inv) }}" data-turbo-frame="_top" class="sub-billing-view">View invoice</a>
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="8" class="sub-billing-empty">
+                                                            No bills yet. Bills appear here after each subscription payment.
+                                                        </td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    @if($invoices->hasPages())
+                                        <div class="sub-billing-pagination">
+                                            {{ $invoices->links() }}
+                                        </div>
+                                    @endif
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                @endif
+            @endif
+
+            @if($activeTab === 'devices')
+                <div class="settings-header">
+                    <h2 class="settings-title">{{ __('Devices') }}</h2>
+                    <p class="settings-desc">{{ __('Phones that are signed in to your shop on the mobile app. Sign out any phone you do not recognise.') }}</p>
+                </div>
+
+                @if($deviceSessions->isEmpty())
+                    {{-- Empty state: teach what this screen is for. --}}
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center max-w-2xl">
+                        <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-700">{{ __('No phones are signed in right now') }}</p>
+                        <p class="mt-1 text-sm text-slate-500">{{ __('A phone shows up here when your staff sign in on the mobile app.') }}</p>
+                    </div>
+                @else
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
+                        @foreach($deviceSessions as $session)
+                            @php
+                                $person     = $session->user;
+                                $personName = $person?->name ?? $person?->mobile_number ?? __('Unknown person');
+                                $deviceName = $session->device_name ?: __('Unknown device');
+                                $platform   = $session->platform ? ucfirst($session->platform) : null;
+                            @endphp
+                            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-start gap-3 min-w-0">
+                                        <div class="h-10 w-10 flex-shrink-0 rounded-full bg-teal-100 flex items-center justify-center text-teal-700">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="font-semibold text-gray-900 text-sm truncate">{{ $deviceName }}</p>
+                                            <p class="text-xs text-gray-500">
+                                                @if($platform){{ $platform }}@endif
+                                                @if($platform && $session->app_version) · @endif
+                                                @if($session->app_version){{ __('App') }} {{ $session->app_version }}@endif
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 pt-3 border-t border-gray-100 space-y-1.5 text-xs">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-gray-500">{{ __('Signed in by') }}</span>
+                                        <span class="font-medium text-gray-800 truncate">{{ $personName }}</span>
+                                    </div>
+                                    @if($person?->name && $person?->mobile_number)
+                                        <div class="flex items-center justify-between gap-3">
+                                            <span class="text-gray-500">{{ __('Mobile') }}</span>
+                                            <span class="text-gray-600">{{ $person->mobile_number }}</span>
+                                        </div>
+                                    @endif
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-gray-500">{{ __('Logged in') }}</span>
+                                        <span class="text-gray-600">{{ $session->logged_in_at ? $session->logged_in_at->diffForHumans() : '—' }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-gray-500">{{ __('Last active') }}</span>
+                                        <span class="text-gray-600">{{ $session->last_seen_at ? $session->last_seen_at->diffForHumans() : ($session->logged_in_at ? $session->logged_in_at->diffForHumans() : '—') }}</span>
+                                    </div>
+                                    @if($session->ip_address)
+                                        <div class="flex items-center justify-between gap-3">
+                                            <span class="text-gray-500">{{ __('From') }}</span>
+                                            <span class="text-gray-400">{{ $session->ip_address }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                @can('staff.manage')
+                                    <div class="mt-3 flex justify-end">
+                                        <form method="POST" action="{{ route('settings.devices.destroy', $session) }}" data-turbo-frame="_top"
+                                              onsubmit="return confirm('{{ __('Sign out :device? Whoever is using this phone will need to sign in again.', ['device' => $deviceName]) }}')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:scale-[0.97] transition">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                                {{ __('Sign out this device') }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endcan
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             @endif
         </div>
         </turbo-frame>

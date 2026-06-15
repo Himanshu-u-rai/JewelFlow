@@ -125,6 +125,12 @@ class ScanSessionParallelTest extends TestCase
         $role->forceFill($roleAttributes);
         $role->save();
 
+        // A real owner holds every permission (TenantRoleService syncs all). The
+        // scan-session routes are gated by can:sales.pos; without a permission
+        // sync this owner is denied (403). Permissions are global (seeded by
+        // migrations under RefreshDatabase).
+        $role->permissions()->sync(\App\Models\Permission::query()->pluck('id'));
+
         $user = User::factory()->create([
             'shop_id' => $shop->id,
             'role_id' => $role->id,

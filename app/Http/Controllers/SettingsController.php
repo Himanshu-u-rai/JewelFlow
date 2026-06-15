@@ -59,6 +59,9 @@ class SettingsController extends Controller
             'roles'           => '__owner_only__',
             'staff'           => 'staff.view',
             'audit'           => 'settings.view',
+            'services'        => 'settings.view',
+            'subscription'    => 'settings.view',
+            'devices'         => 'settings.view',
         ];
         $canSee = function (string $tab) use ($user, $tabRequirements): bool {
             $req = $tabRequirements[$tab] ?? null;
@@ -114,17 +117,51 @@ class SettingsController extends Controller
 
         $logs = null;
         $stats = null;
+        $auditActions = collect();
+        $auditUsers = collect();
         if ($activeTab === 'audit') {
-            $logs = AuditLog::where('shop_id', $shop->id)
-                ->orderBy('created_at', 'desc')
-                ->paginate(50);
+            // Filters: action, user, date range. Each is applied to the listing
+            // AND mirrored in the count queries so the stats reflect the filter.
+            $fAction = $request->string('audit_action')->value() ?: null;
+            $fUser   = $request->filled('audit_user') ? (int) $request->input('audit_user') : null;
+            $fFrom   = $request->filled('audit_from') ? $request->date('audit_from') : null;
+            $fTo     = $request->filled('audit_to') ? $request->date('audit_to') : null;
+
+            $base = fn () => AuditLog::where('shop_id', $shop->id)
+                ->when($fAction, fn ($q) => $q->where('action', $fAction))
+                ->when($fUser, fn ($q) => $q->where('user_id', $fUser))
+                ->when($fFrom, fn ($q) => $q->whereDate('created_at', '>=', $fFrom))
+                ->when($fTo, fn ($q) => $q->whereDate('created_at', '<=', $fTo));
+
+            // Eager-load the actor to avoid an N+1 across the 50 rendered rows.
+            $logs = $base()->with('user:id,name')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->paginate(50)
+                ->withQueryString();
+
+            // Owner-meaningful stats (shop-wide, today) — not vanity log counts.
+            // "Sensitive today" = refunds, deletions, reversals, voids, overrides,
+            // staff removals, vault/gold adjustments, permission changes — the
+            // events an owner most wants to notice. Pull today's actions once and
+            // classify in PHP via AuditLog::isSensitive() so the rule lives in one
+            // place (the model), not duplicated in SQL.
+            $todayActions = AuditLog::where('shop_id', $shop->id)
+                ->whereDate('created_at', now()->toDateString())
+                ->get(['id', 'action']);
+
+            $sensitiveToday = $todayActions->filter->isSensitive()->count();
 
             $stats = [
-                'total' => AuditLog::where('shop_id', $shop->id)->count(),
-                'today' => AuditLog::where('shop_id', $shop->id)
-                    ->whereDate('created_at', now()->toDateString())
-                    ->count(),
+                'today'     => $todayActions->count(),
+                'sensitive' => $sensitiveToday,
+                'total'     => AuditLog::where('shop_id', $shop->id)->count(),
             ];
+
+            // Distinct actions + users for the filter dropdowns (shop-scoped).
+            $auditActions = AuditLog::where('shop_id', $shop->id)
+                ->whereNotNull('action')->distinct()->orderBy('action')->pluck('action');
+            $auditUsers = User::where('shop_id', $shop->id)->get(['id', 'name', 'mobile_number']);
         }
 
         $methods = collect();
@@ -160,7 +197,8 @@ class SettingsController extends Controller
                 'legacy_items' => $pricing->legacyItemsNeedingReview($shop),
                 'rates_ready' => $pricing->hasCurrentDailyRates($shop),
                 'history_filters' => $historyFilters,
-                'history_rows' => $pricing->resolvedRateHistory($shop, $historyFilters, 50),
+                // One business day per page — each page shows that day's purity rates.
+                'history_rows' => $pricing->resolvedRateHistory($shop, $historyFilters, 1),
                 'history_purity_options' => $allPurityProfiles
                     ->map(function ($profile) use ($pricing): array {
                         return [
@@ -204,6 +242,81 @@ class SettingsController extends Controller
             ];
         }
 
+        // Services tab — which editions (services) this shop has, can add, plus
+        // pending requests + recent activity. Mirrors ShopServicesController::index.
+        $servicesData = null;
+        if ($activeTab === 'services') {
+            $active = $shop->editionList();
+            $platformEnabled = \App\Models\Platform\PlatformSetting::enabledShopTypes();
+            $servicesData = [
+                'active'          => $active,
+                'all'             => \App\Support\ShopEdition::ALL,
+                'available'       => array_values(array_intersect(array_diff(\App\Support\ShopEdition::ALL, $active), $platformEnabled)),
+                'pendingRequests' => \App\Models\ShopEditionRequest::where('shop_id', $shop->id)->where('status', \App\Models\ShopEditionRequest::STATUS_PENDING)->latest()->get(),
+                'history'         => \App\Models\ShopEditionRequest::where('shop_id', $shop->id)->whereIn('status', [\App\Models\ShopEditionRequest::STATUS_APPROVED, \App\Models\ShopEditionRequest::STATUS_DENIED, \App\Models\ShopEditionRequest::STATUS_CANCELLED])->latest()->limit(10)->get(),
+                'assignments'     => \App\Models\ShopEditionAssignment::where('shop_id', $shop->id)->whereNull('deactivated_at')->get()->keyBy('edition'),
+            ];
+        }
+
+        // Plan & Billing tab — current subscription status + billing history.
+        // Replicates SubscriptionController::status()'s data contract exactly so
+        // the ported status display renders identically. status() redirects to
+        // subscription.plans when there is no shop/subscription; inside a tab we
+        // can't redirect mid-render cleanly, so we flag needs_plan and render a
+        // small "choose a plan" panel instead.
+        $subscriptionData = null;
+        if ($activeTab === 'subscription') {
+            $sub = \App\Models\Platform\ShopSubscription::where('shop_id', $shop->id)
+                ->with('plan')
+                ->latest('id')
+                ->first();
+
+            if ($sub) {
+                $daysRemaining = $sub->ends_at
+                    ? \Carbon\Carbon::now()->diffInDays($sub->ends_at, false)
+                    : null;
+                $isExpired = $daysRemaining !== null && $daysRemaining < 0;
+                $isInGrace = $isExpired
+                    && $sub->grace_ends_at
+                    && \Carbon\Carbon::now()->lte($sub->grace_ends_at);
+
+                $subscriptionData = [
+                    'subscription'  => $sub,
+                    'plan'          => $sub->plan,
+                    'daysRemaining' => $daysRemaining,
+                    'isInGrace'     => $isInGrace,
+                    'isExpired'     => $isExpired,
+                    'featureLabels' => \App\Http\Controllers\SubscriptionController::featureLabels(),
+                    'invoices'      => \App\Models\Platform\PlatformInvoice::where('shop_id', $shop->id)
+                        ->with('plan')
+                        ->latest('issued_at')
+                        ->paginate(10)
+                        ->withQueryString(),
+                ];
+            } else {
+                $subscriptionData = ['needs_plan' => true];
+            }
+        }
+
+        // Devices tab — the mobile devices currently signed in for this shop.
+        // Mirrors the proven SessionController::index() listing query: active
+        // sessions only (logged_out_at IS NULL), newest first. Owners and anyone
+        // with returns.approve see every staff member's devices; everyone else
+        // sees only their own.
+        $deviceSessions = collect();
+        if ($activeTab === 'devices') {
+            $u = auth()->user();
+            $canViewAll = $u->isOwner() || $u->can('returns.approve');
+            $q = \App\Models\MobileDeviceSession::where('shop_id', $shop->id)
+                ->whereNull('logged_out_at')
+                ->with('user:id,name,mobile_number,role_id')
+                ->orderByDesc('logged_in_at');
+            if (! $canViewAll) {
+                $q->where('user_id', $u->id);
+            }
+            $deviceSessions = $q->get();
+        }
+
         $user = auth()->user();
 
         // Per-metal GST rate overrides + the metals this shop can set them for.
@@ -227,6 +340,8 @@ class SettingsController extends Controller
             'activeTab',
             'logs',
             'stats',
+            'auditActions',
+            'auditUsers',
             'catalogWebsiteSettings',
             'catalogPages',
             'pricingData',
@@ -234,7 +349,10 @@ class SettingsController extends Controller
             'methods',
             'user',
             'gstCategories',
-            'gstEnabledMetals'
+            'gstEnabledMetals',
+            'servicesData',
+            'subscriptionData',
+            'deviceSessions'
         ));
     }
 
@@ -282,24 +400,36 @@ class SettingsController extends Controller
             unset($validated['wastage_recovery_percent']);
         }
 
-        // Build full address for backwards compatibility
+        // Build full address for backwards compatibility. address_line2 is
+        // nullable, so it may be absent from $validated — guard against it.
         $validated['address'] = trim(
             $validated['address_line1'] . ', ' .
-            ($validated['address_line2'] ? $validated['address_line2'] . ', ' : '') .
+            (($validated['address_line2'] ?? null) ? $validated['address_line2'] . ', ' : '') .
             $validated['city'] . ', ' .
             $validated['state'] . ' - ' .
             $validated['pincode']
         );
 
+        // Old owner-details name (before the update), to detect whether the
+        // owner user's login name was ever personalised on the Profile tab.
+        $previousOwnerName = trim((string) $shop->owner_first_name . ' ' . (string) $shop->owner_last_name);
+
         $shop->update($validated);
 
-        // Keep the owner user's display name in sync with shop owner details
+        // Seed the owner user's display name from the shop owner details, but
+        // ONLY when it hasn't been personalised on the Profile tab. If the owner
+        // deliberately set a different login name there, don't clobber it — the
+        // two are independent (login identity vs registered shop owner).
         $ownerUser = \App\Models\User::where('shop_id', $shop->id)
             ->whereHas('role', fn ($q) => $q->where('name', 'owner'))
             ->first();
         if ($ownerUser) {
-            $ownerUser->name = trim($validated['owner_first_name'] . ' ' . $validated['owner_last_name']);
-            $ownerUser->save();
+            $newOwnerName = trim($validated['owner_first_name'] . ' ' . $validated['owner_last_name']);
+            $currentName  = trim((string) $ownerUser->name);
+            if ($currentName === '' || $currentName === $previousOwnerName) {
+                $ownerUser->name = $newOwnerName;
+                $ownerUser->save();
+            }
         }
 
         if ($request->hasFile('logo')) {
@@ -470,13 +600,32 @@ class SettingsController extends Controller
     {
         $shop = Auth::user()->shop;
 
+        // Normalise GSTIN to canonical form (uppercase, trimmed) before validating,
+        // so a correctly-typed lowercase GSTIN isn't rejected by the format rule.
+        if ($request->filled('gst_number')) {
+            $request->merge(['gst_number' => strtoupper(trim((string) $request->input('gst_number')))]);
+        }
+
+        // #3 — validate GSTIN format when present (15 chars: 2 state + 10 PAN +
+        // 1 entity + 'Z' + 1 check). Still optional, but a typo can't silently
+        // reach invoices / GSTR-1 exports. #5 — HSN must be 4/6/8 digits.
+        $hsnRule = ['nullable', 'string', 'regex:/^\d{4}(\d{2})?(\d{2})?$/'];
         $validated = $request->validate([
-            'gst_number'  => 'nullable|string|max:50',
-            'gst_rate'    => 'required|numeric|min:0|max:100',
-            'igst_mode'   => 'nullable|boolean',
-            'hsn_gold'    => 'nullable|string|max:20',
-            'hsn_silver'  => 'nullable|string|max:20',
-            'hsn_diamond' => 'nullable|string|max:20',
+            'gst_number'   => ['nullable', 'string', 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/'],
+            'gst_rate'     => 'required|numeric|min:0|max:100',
+            'igst_mode'    => 'nullable|boolean',
+            'hsn_gold'     => $hsnRule,
+            'hsn_silver'   => $hsnRule,
+            'hsn_diamond'  => $hsnRule,
+            'hsn_platinum' => $hsnRule,
+            'hsn_copper'   => $hsnRule,
+        ], [
+            'gst_number.regex' => 'Enter a valid 15-character GSTIN (e.g. 08ABCDE1234F1Z5), or leave it blank.',
+            'hsn_gold.regex'     => 'HSN must be 4, 6, or 8 digits.',
+            'hsn_silver.regex'   => 'HSN must be 4, 6, or 8 digits.',
+            'hsn_diamond.regex'  => 'HSN must be 4, 6, or 8 digits.',
+            'hsn_platinum.regex' => 'HSN must be 4, 6, or 8 digits.',
+            'hsn_copper.regex'   => 'HSN must be 4, 6, or 8 digits.',
         ]);
 
         // Shop-level: GST identity + the flat default rate (fallback for the
@@ -486,13 +635,19 @@ class SettingsController extends Controller
             'gst_rate'   => $validated['gst_rate'],
         ]);
 
-        // Billing-level: tax presentation on the printed invoice.
+        // Billing-level: tax presentation on the printed invoice. HSN fields are
+        // nullable, so a key may be absent from $validated (not just empty) —
+        // null-coalesce before the default to avoid an undefined-array-key error.
+        // Defaults come from the single HSN_DEFAULTS source on the model.
+        $d = ShopBillingSettings::HSN_DEFAULTS;
         $billing = $shop->billingSettings ?? new ShopBillingSettings(['shop_id' => $shop->id]);
         $billing->fill([
-            'igst_mode'   => $request->boolean('igst_mode'),
-            'hsn_gold'    => $validated['hsn_gold']    ?: '7113',
-            'hsn_silver'  => $validated['hsn_silver']  ?: '7113',
-            'hsn_diamond' => $validated['hsn_diamond'] ?: '7114',
+            'igst_mode'    => $request->boolean('igst_mode'),
+            'hsn_gold'     => ($validated['hsn_gold']     ?? null) ?: $d['gold'],
+            'hsn_silver'   => ($validated['hsn_silver']   ?? null) ?: $d['silver'],
+            'hsn_diamond'  => ($validated['hsn_diamond']  ?? null) ?: $d['diamond'],
+            'hsn_platinum' => ($validated['hsn_platinum'] ?? null) ?: $d['platinum'],
+            'hsn_copper'   => ($validated['hsn_copper']   ?? null) ?: $d['copper'],
         ]);
         $billing->save();
 
@@ -517,16 +672,50 @@ class SettingsController extends Controller
 
         $submitted = $validated['metals'] ?? [];
 
+        // Items that are melted / reversed / written off have physically left the
+        // shop's stock, so a metal can be turned off once only those remain. Any
+        // other status (in stock, sold, with karigar, returned, …) means the metal
+        // is still live: turning it off would lock the owner out of editing those
+        // existing items, because the item create/edit form only accepts enabled
+        // metals (ItemController validates metal_type against enabledMetalsForShop).
+        $disposedStatuses = ['melted', 'reversed', 'written_off'];
+
+        $currentlyEnabled = \App\Services\MetalRegistry::enabledMetalsForShop((int) $shop->id);
+
         foreach (\App\Services\MetalRegistry::tier2Metals() as $metal) {
             $enabled = (bool) ($submitted[$metal] ?? false);
+            $wasEnabled = in_array($metal, $currentlyEnabled, true);
+
+            // Guard: refuse to turn a metal off while it still has live stock.
+            if ($wasEnabled && ! $enabled) {
+                $liveCount = DB::table('items')
+                    ->where('shop_id', $shop->id)
+                    ->where('metal_type', $metal)
+                    ->whereNotIn('status', $disposedStatuses)
+                    ->count();
+
+                if ($liveCount > 0) {
+                    return redirect()->route('settings.edit', ['tab' => 'materials'])
+                        ->withErrors(['metals' => ucfirst($metal) . " can't be turned off — you still have "
+                            . $liveCount . " " . $metal . " item" . ($liveCount === 1 ? '' : 's')
+                            . " in stock. Sell, melt, or remove them first."]);
+                }
+            }
 
             // shop_enabled_metals has no Eloquent model; use the query builder.
             // PostgreSQL rejects integer 0/1 for boolean columns, so the flag is
-            // a raw boolean literal (see CLAUDE.md).
-            DB::table('shop_enabled_metals')->updateOrInsert(
-                ['shop_id' => $shop->id, 'metal_type' => $metal],
-                ['enabled' => DB::raw($enabled ? 'true' : 'false'), 'updated_at' => now(), 'created_at' => now()]
-            );
+            // a raw boolean literal (see CLAUDE.md). Set created_at only when the
+            // row is first inserted so re-saving the form never overwrites the
+            // original creation time.
+            $key = ['shop_id' => $shop->id, 'metal_type' => $metal];
+            $exists = DB::table('shop_enabled_metals')->where($key)->exists();
+
+            $values = ['enabled' => DB::raw($enabled ? 'true' : 'false'), 'updated_at' => now()];
+            if (! $exists) {
+                $values['created_at'] = now();
+            }
+
+            DB::table('shop_enabled_metals')->updateOrInsert($key, $values);
         }
 
         \App\Services\MetalRegistry::clearShopCache((int) $shop->id);
@@ -586,6 +775,8 @@ class SettingsController extends Controller
             'loyalty_expiry_months'      => 'required|integer|in:0,6,12,18,24',
             'auto_logout_minutes'        => 'nullable|integer|min:0|max:480',
             'stock_value_display'        => 'nullable|in:total,per_gram',
+            // App interface language — must be one of the configured locales.
+            'language'                   => ['nullable', \Illuminate\Validation\Rule::in(array_keys(config('app.supported_locales', ['en' => 'English'])))],
             'compliance_enabled'           => 'nullable|boolean',
             'compliance_threshold'         => 'nullable|numeric|min:10000|max:10000000',
             'compliance_pan_mandatory'     => 'nullable|boolean',
@@ -602,6 +793,10 @@ class SettingsController extends Controller
         // Defaults
         $validated['auto_logout_minutes']  = $validated['auto_logout_minutes']  ?? 0;
         $validated['stock_value_display']  = $validated['stock_value_display']  ?? 'total';
+        // Keep the existing language if the field wasn't submitted; else app default.
+        $validated['language'] = $validated['language']
+            ?? $shop->preferences?->language
+            ?? config('app.locale', 'en');
         $validated['compliance_enabled']           = (bool) ($validated['compliance_enabled'] ?? false);
         $validated['compliance_pan_mandatory']     = (bool) ($validated['compliance_pan_mandatory'] ?? true);
         $validated['compliance_mobile_mandatory']  = (bool) ($validated['compliance_mobile_mandatory'] ?? true);
@@ -671,8 +866,9 @@ class SettingsController extends Controller
      */
     public function updateRolePermissions(Request $request, Role $role)
     {
-        // Owner role cannot be modified — Gate::before short-circuits anyway,
-        // but the UI lets the form be submitted; this is the server-side guard.
+        // Owner role cannot be modified. This `if` is the ONLY guard — there is
+        // no owner short-circuit in Gate::before, so the owner's all-access comes
+        // solely from its synced permission set. Never remove this check.
         if ($role->name === 'owner') {
             return redirect()->route('settings.edit', ['tab' => 'roles'])
                 ->with('error', 'Owner role permissions cannot be modified.');
@@ -685,11 +881,23 @@ class SettingsController extends Controller
 
         // Snapshot the current permission set so we can audit the diff.
         $beforeIds = $role->permissions()->pluck('permissions.id')->sort()->values()->all();
-        $afterIds = collect($validated['permissions'] ?? [])->map(fn ($id) => (int) $id);
 
-        // Dhiran permissions are hidden from the JewelFlow Roles UI (separate
-        // product). They are therefore never present in this form's payload —
-        // preserve any the role already has so saving here never strips them.
+        // Dhiran is a separate product whose permissions are intentionally NOT
+        // manageable from the JewelFlow Roles UI. The form never renders them,
+        // but `exists:permissions,id` alone would accept a crafted payload that
+        // injects a Dhiran id. Constrain the writable set to the non-Dhiran
+        // catalogue so a hand-built request can never attach a hidden permission.
+        $manageableIds = \App\Models\Permission::where('group', '!=', 'dhiran')
+            ->orWhereNull('group')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        $afterIds = collect($validated['permissions'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->intersect($manageableIds);
+
+        // Preserve any Dhiran permissions the role already has — saving here must
+        // neither strip nor add them; they are owned by the Dhiran product.
         $preserveIds = $role->permissions()
             ->where('permissions.group', 'dhiran')
             ->pluck('permissions.id');
@@ -723,6 +931,64 @@ class SettingsController extends Controller
 
         return redirect()->route('settings.edit', ['tab' => 'roles'])
             ->with('success', "Permissions for {$role->display_name} updated successfully.");
+    }
+
+    /**
+     * Export the audit log as CSV, honoring the same action/user/date filters
+     * as the Audit tab. Shop-scoped; gated by settings.view at the route. The
+     * row_hash is included so an exported file is independently verifiable
+     * against the tamper-evident chain.
+     */
+    public function exportAudit(Request $request)
+    {
+        $shop = Auth::user()->shop;
+
+        $fAction = $request->string('audit_action')->value() ?: null;
+        $fUser   = $request->filled('audit_user') ? (int) $request->input('audit_user') : null;
+        $fFrom   = $request->filled('audit_from') ? $request->date('audit_from') : null;
+        $fTo     = $request->filled('audit_to') ? $request->date('audit_to') : null;
+
+        $shopId = (int) $shop->id;
+        $filename = 'audit-log-' . $shopId . '-' . now()->format('Y-m-d') . '.csv';
+
+        // streamDownload's closure runs AFTER the request lifecycle, when the
+        // tenant middleware has already cleared TenantContext. So the closure
+        // builds the query with withoutGlobalScopes() and an explicit shop_id
+        // filter (which is the real tenant boundary) — otherwise BelongsToShop's
+        // scope resolves a null tenant and returns zero rows.
+        $build = fn () => AuditLog::withoutGlobalScopes()
+            ->where('shop_id', $shopId)
+            ->with('user:id,name,mobile_number')
+            ->when($fAction, fn ($q) => $q->where('action', $fAction))
+            ->when($fUser, fn ($q) => $q->where('user_id', $fUser))
+            ->when($fFrom, fn ($q) => $q->whereDate('created_at', '>=', $fFrom))
+            ->when($fTo, fn ($q) => $q->whereDate('created_at', '<=', $fTo))
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        return response()->streamDownload(function () use ($build): void {
+            $out = fopen('php://output', 'w');
+            // UTF-8 BOM so Excel renders ₹ and accented names correctly.
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Date & Time', 'User', 'Action', 'What happened', 'Sensitive', 'Entity', 'Verification hash']);
+
+            // chunk to keep memory flat on large logs
+            $build()->chunk(500, function ($rows) use ($out): void {
+                foreach ($rows as $log) {
+                    fputcsv($out, [
+                        optional($log->created_at)->format('Y-m-d H:i:s'),
+                        $log->user->name ?? $log->user->mobile_number ?? 'System',
+                        $log->action,
+                        $log->summaryLine(),
+                        $log->isSensitive() ? 'Yes' : '',
+                        trim(($log->model_type ? \Illuminate\Support\Str::headline($log->model_type) : '') . ($log->model_id ? ' #' . $log->model_id : '')),
+                        $log->row_hash,
+                    ]);
+                }
+            });
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**

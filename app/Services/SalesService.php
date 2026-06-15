@@ -140,6 +140,9 @@ class SalesService
                 'making_charge_type'  => $line['making_type'] ?? null,
                 'making_charge_value' => $line['making_value'] ?? null,
                 'stone_amount'        => $stone,
+                // Hallmark is already inside line_total; snapshot it separately so the
+                // return policy can retain it (parity with making/stone).
+                'hallmark_charges'    => round((float) ($item->hallmark_charges ?? 0), 2),
                 'line_total'          => $line['line_total'],
                 'gst_rate'            => $gstRate,
                 'gst_amount'          => $line['gst_amount'],

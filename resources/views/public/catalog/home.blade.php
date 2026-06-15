@@ -13,6 +13,34 @@
         text-align: center;
     }
 
+    /* When the shop has uploaded a banner, the hero becomes a full-bleed
+       image with a dark scrim so the heading and tagline stay readable on
+       top of photographic banners. */
+    .hero--image {
+        position: relative;
+        background-size: cover;
+        background-position: center;
+        padding: 120px 0;
+        color: #fff;
+    }
+    .hero--image::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.55) 100%);
+    }
+    .hero--image .cat-container { position: relative; z-index: 1; }
+    .hero--image h1 { color: #fff; }
+    .hero--image .hero-sub { color: rgba(255,255,255,0.92); }
+    .hero--image .hero-tagline { color: #fff; }
+
+    /* Solid-colour hero — a flat branded fill, light text on top. The fill
+       colour is set inline from hero_bg_color (falls back to the accent). */
+    .hero--color { padding: 100px 0; }
+    .hero--color h1 { color: #fff; }
+    .hero--color .hero-sub { color: rgba(255,255,255,0.90); }
+    .hero--color .hero-tagline { color: rgba(255,255,255,0.85); }
+
     .hero-tagline {
         font-size: 14px;
         font-weight: 500;
@@ -289,8 +317,26 @@
 @endsection
 
 @section('content')
-    {{-- Hero --}}
-    <section class="hero">
+    {{-- Hero — style chosen by the shop: image / color / plain. --}}
+    @php
+        $heroStyle    = $catalogSettings->hero_style ?? 'image';
+        $heroImageUrl = $catalogSettings->hero_image_path ? asset('storage/' . $catalogSettings->hero_image_path) : null;
+
+        // Resolve to one of three concrete renders. 'image' with no uploaded
+        // banner gracefully degrades to the plain hero.
+        $useImage = $heroStyle === 'image' && $heroImageUrl;
+        $useColor = $heroStyle === 'color';
+        $heroBg   = $catalogSettings->hero_bg_color ?: ($catalogSettings->accent_color ?: '#8f6a2d');
+
+        $heroClass = $useImage ? 'hero--image' : ($useColor ? 'hero--color' : '');
+        // No quotes inside url(): {{ }} escaping would turn ' into &#039;, which
+        // CSS does not decode, breaking the background. Unquoted is safe for the
+        // app's own stored asset paths.
+        $heroInline = $useImage
+            ? 'background-image: url(' . $heroImageUrl . ');'
+            : ($useColor ? 'background: ' . $heroBg . ';' : '');
+    @endphp
+    <section class="hero {{ $heroClass }}" @if($heroInline) style="{{ $heroInline }}" @endif>
         <div class="cat-container">
             <p class="hero-tagline">Welcome to</p>
             <h1>{{ $shop->name }}</h1>

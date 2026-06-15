@@ -56,6 +56,19 @@ class AuditAuthRoutes extends Command
         'password.update',
         // Mobile auth + bootstrap — self-service for the authenticated user.
         'mobile.bootstrap',
+        // Reporting export — gated in-controller / in ExportRequest::authorize()
+        // against the report's own view + export + sensitive permission gates.
+        'reporting.export.panel',
+        'reporting.export',
+        'reporting.exports.download',
+        // Mobile v1 session + device management — self-service, scoped to the
+        // authenticated user / shop inside SessionController & DevicePushTokenController
+        // (own sessions; privileged actions re-check isOwner()/returns.approve).
+        'mobile.v1.sessions.*',
+        'mobile.v1.device.*',
+        // Mobile registry snapshot — read-only material catalogue for the shop,
+        // scoped to the authed user's shop in RegistryController.
+        'mobile.v1.registry.*',
     ];
 
     /**

@@ -53,7 +53,7 @@ class PlanSeeder extends Seeder
                 'name' => 'Retailer Yearly',
                 'price_monthly' => 1666.00,
                 'price_yearly' => 19999.00,
-                'trial_days' => 7,
+                'trial_days' => 0,
                 'grace_days' => 14,
                 'downgrade_to_read_only_on_due' => \DB::raw('true'),
                 'is_active' => \DB::raw('true'),
@@ -111,7 +111,7 @@ class PlanSeeder extends Seeder
                 'name' => 'Manufacturer Yearly',
                 'price_monthly' => 2499.00,
                 'price_yearly' => 29999.00,
-                'trial_days' => 7,
+                'trial_days' => 0,
                 'grace_days' => 14,
                 'downgrade_to_read_only_on_due' => \DB::raw('true'),
                 'is_active' => \DB::raw('true'),
@@ -158,7 +158,7 @@ class PlanSeeder extends Seeder
                 'name' => 'Dhiran Yearly',
                 'price_monthly' => 1249.00,
                 'price_yearly' => 14999.00,
-                'trial_days' => 7,
+                'trial_days' => 0,
                 'grace_days' => 14,
                 'downgrade_to_read_only_on_due' => \DB::raw('true'),
                 'is_active' => \DB::raw('true'),
@@ -174,7 +174,14 @@ class PlanSeeder extends Seeder
             ],
         ];
 
+        // Resolve the platform product each plan belongs to so plan selection
+        // can be product-scoped. Safe if products aren't seeded yet — the FK
+        // simply stays null and the create_platform_products migration backfills it.
+        $productIdByCode = DB::table('platform_products')->pluck('id', 'code');
+
         foreach ($plans as $plan) {
+            $plan['platform_product_id'] = $this->resolveProductId($plan['code'], $productIdByCode);
+
             // Clean out the raw DB expressions for the matching part of updateOrInsert
             $matchData = ['code' => $plan['code']];
             DB::table('plans')->updateOrInsert(
@@ -182,5 +189,17 @@ class PlanSeeder extends Seeder
                 $plan
             );
         }
+    }
+
+    private function resolveProductId(string $planCode, $productIdByCode): ?int
+    {
+        $productCode = match (true) {
+            str_starts_with($planCode, 'retailer_')      => 'retail',
+            str_starts_with($planCode, 'manufacturer_')   => 'manufacturing',
+            str_starts_with($planCode, 'dhiran_')         => 'dhiran',
+            default                                       => null,
+        };
+
+        return $productCode ? ($productIdByCode[$productCode] ?? null) : null;
     }
 }

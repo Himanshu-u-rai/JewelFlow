@@ -52,6 +52,8 @@ class ShopBillingSettings extends Model
         'hsn_gold',
         'hsn_silver',
         'hsn_diamond',
+        'hsn_platinum',
+        'hsn_copper',
         // Footer / print
         'second_signature_label',
         'paper_size',
@@ -95,5 +97,48 @@ class ShopBillingSettings extends Model
             'Please verify weight, purity & item details at the counter before leaving.',
             'All disputes are subject to local jurisdiction.',
         ];
+    }
+
+    /** System default HSN per metal — the fallback when a shop hasn't set one. */
+    public const HSN_DEFAULTS = [
+        'gold'     => '7113',
+        'silver'   => '7113',
+        'platinum' => '7115',
+        'copper'   => '7403',
+        'diamond'  => '7114',
+    ];
+
+    /**
+     * The HSN code for a line, resolved from its metal type (preferred) with a
+     * legacy category-substring fallback. Single source of truth used by the
+     * print templates so HSN never drifts per metal. Returns the shop's
+     * configured code for that metal, else the system default.
+     *
+     * Diamond/stone/gem lines have no metal_type, so they resolve via category.
+     */
+    public function hsnForMetal(?string $metalType, ?string $category = null): string
+    {
+        $metal = strtolower(trim((string) $metalType));
+        $cat   = strtolower((string) $category);
+
+        // Stone/diamond lines carry no metal type — key off the category.
+        if ($metal === '' && ($cat !== '' && (str_contains($cat, 'diamond') || str_contains($cat, 'stone') || str_contains($cat, 'gem')))) {
+            return $this->hsn_diamond ?: self::HSN_DEFAULTS['diamond'];
+        }
+
+        // Legacy lines with no metal_type: infer from the category string.
+        if ($metal === '' && $cat !== '') {
+            if (str_contains($cat, 'silver'))   $metal = 'silver';
+            elseif (str_contains($cat, 'platinum')) $metal = 'platinum';
+            elseif (str_contains($cat, 'copper'))   $metal = 'copper';
+        }
+
+        return match ($metal) {
+            'silver'   => $this->hsn_silver   ?: self::HSN_DEFAULTS['silver'],
+            'platinum' => $this->hsn_platinum ?: self::HSN_DEFAULTS['platinum'],
+            'copper'   => $this->hsn_copper   ?: self::HSN_DEFAULTS['copper'],
+            'diamond'  => $this->hsn_diamond  ?: self::HSN_DEFAULTS['diamond'],
+            default    => $this->hsn_gold     ?: self::HSN_DEFAULTS['gold'],
+        };
     }
 }

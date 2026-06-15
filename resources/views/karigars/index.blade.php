@@ -73,6 +73,7 @@
                                 <th>City</th>
                                 <th class="text-right">Job Orders</th>
                                 <th class="text-right">Invoices</th>
+                                <th class="text-right">Gold Held</th>
                                 <th class="text-center">Status</th>
                                 <th></th>
                             </tr>
@@ -83,8 +84,8 @@
                                     <td>
                                         <div class="karigars-name-cell">
                                             <a href="{{ route('karigars.show', $k) }}" class="karigars-name-link">{{ $k->name }}</a>
-                                            @if($k->contact_person)
-                                                <span>{{ $k->contact_person }}</span>
+                                            @if($k->shop_name)
+                                                <span>{{ $k->shop_name }}</span>
                                             @endif
                                         </div>
                                     </td>
@@ -93,6 +94,8 @@
                                     <td>{{ $k->city ?? '—' }}</td>
                                     <td class="text-right karigars-mono">{{ $k->job_orders_count }}</td>
                                     <td class="text-right karigars-mono">{{ $k->invoices_count }}</td>
+                                    @php $heldFine = (float) ($goldHeldByKarigar[$k->id] ?? 0); @endphp
+                                    <td class="text-right karigars-mono">{{ $heldFine > 0 ? number_format($heldFine, 3) . 'g' : '—' }}</td>
                                     <td class="text-center">
                                         @if($k->is_active)
                                             <span class="karigars-status-pill karigars-status-pill--active">Active</span>
@@ -124,8 +127,8 @@
                             <div class="karigars-mobile-head">
                                 <div>
                                     <a href="{{ route('karigars.show', $k) }}" class="karigars-name-link">{{ $k->name }}</a>
-                                    @if($k->contact_person)
-                                        <p>{{ $k->contact_person }}</p>
+                                    @if($k->shop_name)
+                                        <p>{{ $k->shop_name }}</p>
                                     @endif
                                 </div>
                                 @if($k->is_active)
@@ -155,6 +158,11 @@
                                 <div>
                                     <dt>Invoices</dt>
                                     <dd class="karigars-mono">{{ $k->invoices_count }}</dd>
+                                </div>
+                                @php $heldFine = (float) ($goldHeldByKarigar[$k->id] ?? 0); @endphp
+                                <div>
+                                    <dt>Gold Held</dt>
+                                    <dd class="karigars-mono">{{ $heldFine > 0 ? number_format($heldFine, 3) . 'g' : '—' }}</dd>
                                 </div>
                             </dl>
 

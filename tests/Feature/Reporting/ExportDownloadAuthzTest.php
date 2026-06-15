@@ -43,9 +43,26 @@ class ExportDownloadAuthzTest extends TestCase
 
     private function grant(User $user, array $names): void
     {
+        // Additive: add these permissions to the role (tests grant in steps,
+        // e.g. first view+export, then export_sensitive).
         $ids = Permission::whereIn('name', $names)->pluck('id');
         TenantContext::runFor((int) $user->shop_id, function () use ($user, $ids) {
             $user->role->permissions()->syncWithoutDetaching($ids);
+        });
+        $user->unsetRelation('role');
+    }
+
+    /**
+     * Set the role to EXACTLY these permissions. The shared tenant factory now
+     * provisions the owner with the full permission set (like a real owner), so
+     * a negative test that depends on a permission being ABSENT must first sync
+     * the role down to a restricted baseline.
+     */
+    private function restrictTo(User $user, array $names): void
+    {
+        $ids = Permission::whereIn('name', $names)->pluck('id');
+        TenantContext::runFor((int) $user->shop_id, function () use ($user, $ids) {
+            $user->role->permissions()->sync($ids);
         });
         $user->unsetRelation('role');
     }
@@ -115,7 +132,9 @@ class ExportDownloadAuthzTest extends TestCase
     public function test_sensitive_file_requires_sensitive_permission(): void
     {
         [$owner, $shop] = $this->createManufacturerTenant();
-        $this->grant($owner, ['reports.view', 'reports.export']); // NOT export_sensitive
+        // Restrict to view+export only (NOT export_sensitive) — the owner starts
+        // fully permissioned now, so we must sync the role down for this denial.
+        $this->restrictTo($owner, ['reports.view', 'reports.export']);
         $export = $this->makeExport($shop->id, ['sensitive_included' => true]);
 
         $this->hit($owner, $shop->id, $this->signed($export))->assertForbidden();

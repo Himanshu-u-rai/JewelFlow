@@ -49,10 +49,12 @@
                         @endforeach
                     </div>
                     @if(!$jobOrder->discrepancy_acknowledged && $jobOrder->isOpen())
+                        @can('job_order.manage')
                         <form method="POST" action="{{ route('job-orders.acknowledge', $jobOrder) }}" class="mt-3" onsubmit="return confirm('Acknowledge discrepancies and mark this job order completed?');">
                             @csrf
                             <button type="submit" class="text-xs px-3 py-1 rounded-lg bg-rose-700 text-white hover:bg-rose-800">Acknowledge & Complete</button>
                         </form>
+                        @endcan
                     @endif
                 </div>
             </div>
@@ -166,6 +168,7 @@
         </div>
 
         @if($jobOrder->isOpen())
+            @can('job_order.manage')
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                 <h3 class="text-sm font-semibold text-gray-800 mb-3">Other Actions</h3>
                 <div class="flex flex-wrap gap-3">
@@ -177,6 +180,22 @@
                         </div>
                         <button type="submit" class="btn btn-secondary btn-sm">Credit Vault</button>
                     </form>
+                    @if(isset($otherKarigars) && $otherKarigars->isNotEmpty())
+                        <form method="POST" action="{{ route('job-orders.reassign', $jobOrder) }}" class="flex items-end gap-2"
+                              onsubmit="return confirm('Give this job (and its metal) to the chosen karigar?');">
+                            @csrf
+                            <div>
+                                <label class="block text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1">Give job to another karigar</label>
+                                <select name="to_karigar_id" required class="rounded-md border-gray-300 text-sm" style="width:200px;">
+                                    <option value="" disabled selected>— Select karigar —</option>
+                                    @foreach($otherKarigars as $k)
+                                        <option value="{{ $k->id }}">{{ $k->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-sm">Reassign</button>
+                        </form>
+                    @endif
                     @if($jobOrder->status === 'issued')
                         <form method="POST" action="{{ route('job-orders.cancel', $jobOrder) }}" onsubmit="return confirm('Cancel job order? This will return all bullion to the source lot.');">
                             @csrf
@@ -185,6 +204,7 @@
                     @endif
                 </div>
             </div>
+            @endcan
         @endif
     </div>
 </x-app-layout>

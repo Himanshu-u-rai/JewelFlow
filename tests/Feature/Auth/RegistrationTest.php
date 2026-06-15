@@ -9,6 +9,19 @@ class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Web POSTs through the real stack need CSRF disabled (else 419) and the
+        // register throttle disabled (array cache accumulates → 429). Per-class
+        // pattern, like other web tests.
+        $this->withoutMiddleware([
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        ]);
+    }
+
     public function test_registration_screen_can_be_rendered(): void
     {
         $response = $this->get('/register');
@@ -30,6 +43,9 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('shops.create', absolute: false));
+        // Post-registration the user is sent to choose a shop type first
+        // (RegisteredUserController redirects to shops.choose-type); the old
+        // shops.create destination predates that two-step onboarding flow.
+        $response->assertRedirect(route('shops.choose-type', absolute: false));
     }
 }

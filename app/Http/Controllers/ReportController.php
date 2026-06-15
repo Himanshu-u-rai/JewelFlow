@@ -13,6 +13,7 @@ class ReportController extends Controller
         // are never merged into one balance line — same invariant the vault
         // balances enforce (CONSTITUTION.md Article XIII/XIV).
         $balances = MetalLot::where('shop_id', auth()->user()->shop_id)
+            ->where('source', '<>', 'karigar_held')
             ->select(
                 'metal_type',
                 'purity',

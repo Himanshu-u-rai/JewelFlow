@@ -14,12 +14,14 @@
             @if($scheme->isGoldSavings())
                 <a href="{{ route('schemes.enroll.form', $scheme) }}" class="btn btn-dark btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>Enroll Customer</a>
             @endif
+            @can('catalog.manage')
             <button type="button"
                     onclick="document.getElementById('delete-scheme-modal').classList.remove('hidden')"
                     class="btn btn-sm scheme-delete-action" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                 Delete
             </button>
+            @endcan
             <a href="{{ route('schemes.index') }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Back</a>
         </div>
     </x-page-header>
@@ -31,6 +33,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                     <span>Edit Scheme</span>
                 </a>
+                @can('catalog.manage')
                 <button
                     type="button"
                     class="invoice-emi-mobile-fab-link scheme-mobile-fab-delete"
@@ -39,6 +42,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                     <span>Delete Scheme</span>
                 </button>
+                @endcan
             </nav>
             <button type="button" class="invoice-emi-mobile-fab-toggle" x-on:click="schemeQuickFabOpen = !schemeQuickFabOpen" x-bind:aria-expanded="schemeQuickFabOpen.toString()" aria-label="Toggle scheme actions">
                 <span class="invoice-emi-mobile-fab-bars" aria-hidden="true">

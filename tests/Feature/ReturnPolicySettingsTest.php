@@ -24,12 +24,17 @@ class ReturnPolicySettingsTest extends TestCase
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
     }
 
+    /**
+     * Set the user's role to EXACTLY these permissions. The shared tenant
+     * factory now provisions the owner with the full permission set (matching a
+     * real owner), so a negative-permission test must sync the role down to the
+     * granted subset rather than rely on the role starting empty.
+     */
     private function grant(\App\Models\User $user, string ...$permissions): void
     {
         $role = \App\Models\Role::withoutTenant()->findOrFail($user->role_id);
-        foreach ($permissions as $p) {
-            $role->givePermission($p);
-        }
+        $ids = \App\Models\Permission::query()->whereIn('name', $permissions)->pluck('id');
+        $role->permissions()->sync($ids);
     }
 
     public function test_return_policy_tab_renders(): void

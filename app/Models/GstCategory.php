@@ -30,7 +30,22 @@ class GstCategory extends Model
      */
     public static function resolveRate(int $shopId, ?string $metalType, float $fallback = 3.0): float
     {
-        $categories = static::where('shop_id', $shopId)->get();
+        // Deterministic order (oldest id first) so the result is stable even if a
+        // duplicate ever slips past the unique index (#1 defense-in-depth).
+        $categories = static::where('shop_id', $shopId)->orderBy('id')->get();
+
+        if ($categories->isEmpty()) {
+            return $fallback;
+        }
+
+        // #2 — ignore categories whose metal the shop has since DISABLED in
+        // Materials, so a stale override can't keep applying. Catch-all
+        // categories (metal_type NULL) are always kept.
+        $enabled = \App\Services\MetalRegistry::enabledMetalsForShop($shopId);
+        $categories = $categories->filter(function ($c) use ($enabled) {
+            $normalized = self::normalizeMetalType($c->metal_type);
+            return $normalized === null || in_array($normalized, $enabled, true);
+        })->values();
 
         if ($categories->isEmpty()) {
             return $fallback;

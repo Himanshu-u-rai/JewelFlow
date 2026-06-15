@@ -10,19 +10,6 @@
     .cw-toggle-text h4 { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
     .cw-toggle-text p { font-size: 13px; color: #64748b; margin: 0; }
 
-    .cw-switch { position: relative; display: inline-block; width: 46px; height: 24px; flex-shrink: 0; }
-    .cw-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-    .cw-switch .cw-slider {
-        position: absolute; inset: 0; background: #d1d5db; border-radius: 24px; cursor: pointer;
-        transition: background 0.25s;
-    }
-    .cw-switch .cw-slider::after {
-        content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px;
-        background: #fff; border-radius: 50%; transition: transform 0.25s; box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-    }
-    .cw-switch input:checked + .cw-slider { background: #0f766e; }
-    .cw-switch input:checked + .cw-slider::after { transform: translateX(22px); }
-
     .cw-url-banner {
         margin-top: 16px; padding: 14px 16px;
         background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px;
@@ -106,6 +93,25 @@
         cursor: pointer; padding: 2px; background: #fff;
     }
 
+    /* Hero-style chooser */
+    .cw-hero-style-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .cw-hero-style-opt {
+        display: flex; flex-direction: column; gap: 2px; padding: 12px 14px;
+        border: 1px solid rgba(15, 23, 42, 0.12); border-radius: 12px; cursor: pointer;
+        transition: border-color 0.15s, background 0.15s; background: #fff;
+    }
+    .cw-hero-style-opt:hover { border-color: #cbd5e1; }
+    .cw-hero-style-opt.selected { border-color: #0f766e; background: #f0fdf4; }
+    .cw-hero-style-opt input { display: none; }
+    .cw-hero-style-title { font-size: 13px; font-weight: 700; color: #0f172a; }
+    .cw-hero-style-desc { font-size: 12px; color: #64748b; }
+    .cw-hero-block { margin-top: 4px; }
+    @media (max-width: 640px) {
+        .cw-hero-style-grid { grid-template-columns: 1fr; }
+    }
+
     .cw-add-btn {
         display: flex; align-items: center; justify-content: center; gap: 6px;
         width: 100%; padding: 14px; font-size: 13px; font-weight: 600; color: #64748b;
@@ -138,7 +144,7 @@
         ->pluck('category');
 @endphp
 
-<form method="POST" action="{{ route('settings.update.catalog-website') }}" enctype="multipart/form-data">
+<form method="POST" action="{{ route('settings.update.catalog-website') }}" enctype="multipart/form-data" data-turbo-frame="_top">
     @csrf
     @method('PATCH')
 
@@ -150,10 +156,9 @@
                 <h4>{{ __('Enable Catalog Website') }}</h4>
                 <p>{{ __('When enabled, your shop inventory becomes a browsable website for customers.') }}</p>
             </div>
-            <label class="cw-switch">
+            <label class="settings-toggle-label settings-toggle-label-no-margin">
                 <input type="hidden" name="is_enabled" value="0">
-                <input type="checkbox" name="is_enabled" value="1" {{ old('is_enabled', $ws?->is_enabled) ? 'checked' : '' }}>
-                <span class="cw-slider"></span>
+                <input type="checkbox" name="is_enabled" value="1" class="settings-toggle-input-lg" {{ old('is_enabled', $ws?->is_enabled) ? 'checked' : '' }}>
             </label>
         </div>
 
@@ -211,25 +216,58 @@
         </div>
     </div>
 
-    {{-- ─── Hero Image ─── --}}
+    {{-- ─── Homepage Banner ─── --}}
+    @php $heroStyle = old('hero_style', $ws?->hero_style ?? 'image'); @endphp
     <div class="cw-section">
-        <div class="section-label">{{ __('Hero Image') }}</div>
+        <div class="section-label">{{ __('Homepage Banner') }}</div>
         <div class="cw-card">
-            <span class="field-hint" style="margin-bottom:12px;display:block;">{{ __('Optional banner for the homepage. Recommended: 1200 x 600px, JPEG/PNG/WebP, max 5 MB.') }}</span>
+            <span class="field-hint" style="margin-bottom:14px;display:block;">{{ __('Choose how the top of your website looks.') }}</span>
 
-            @if($ws?->hero_image_path)
-                <div class="cw-hero-preview">
-                    <img src="{{ asset('storage/' . $ws->hero_image_path) }}" alt="Hero">
-                    <div>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#64748b;cursor:pointer;">
-                            <input type="checkbox" name="remove_hero_image" value="1"> {{ __('Remove current image') }}
-                        </label>
-                    </div>
-                </div>
+            {{-- Style chooser --}}
+            <div class="cw-hero-style-grid">
+                @foreach([
+                    ['image', __('Banner image'),  __('Upload a photo')],
+                    ['color', __('Solid colour'),  __('A single brand colour')],
+                    ['plain', __('Plain'),         __('Simple light background')],
+                ] as [$val, $label, $desc])
+                    <label class="cw-hero-style-opt {{ $heroStyle === $val ? 'selected' : '' }}">
+                        <input type="radio" name="hero_style" value="{{ $val }}" {{ $heroStyle === $val ? 'checked' : '' }}
+                            onchange="cwSyncHeroStyle('{{ $val }}')">
+                        <span class="cw-hero-style-title">{{ $label }}</span>
+                        <span class="cw-hero-style-desc">{{ $desc }}</span>
+                    </label>
+                @endforeach
+            </div>
+
+            {{-- Image controls --}}
+            <div id="cwHeroImageBlock" class="cw-hero-block" style="{{ $heroStyle === 'image' ? '' : 'display:none;' }}">
                 <div class="section-divider"></div>
-            @endif
+                <span class="field-hint" style="margin-bottom:12px;display:block;">{{ __('Recommended: 1200 x 600px, JPEG/PNG/WebP, max 5 MB.') }}</span>
+                @if($ws?->hero_image_path)
+                    <div class="cw-hero-preview">
+                        <img src="{{ asset('storage/' . $ws->hero_image_path) }}" alt="Hero">
+                        <div>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#64748b;cursor:pointer;">
+                                <input type="checkbox" name="remove_hero_image" value="1"> {{ __('Remove current image') }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="section-divider"></div>
+                @endif
+                <input type="file" name="hero_image" accept="image/jpeg,image/png,image/webp" class="field-input" style="padding:8px 10px;">
+            </div>
 
-            <input type="file" name="hero_image" accept="image/jpeg,image/png,image/webp" class="field-input" style="padding:8px 10px;">
+            {{-- Colour controls --}}
+            <div id="cwHeroColorBlock" class="cw-hero-block" style="{{ $heroStyle === 'color' ? '' : 'display:none;' }}">
+                <div class="section-divider"></div>
+                <label class="field-label">{{ __('Banner colour') }}</label>
+                <div class="cw-color-row">
+                    @php $heroBg = old('hero_bg_color', $ws?->hero_bg_color ?: ($ws?->accent_color ?? '#8f6a2d')); @endphp
+                    <input type="color" name="hero_bg_color" value="{{ $heroBg }}" class="cw-color-input" id="cwHeroColorPicker">
+                    <input type="text" value="{{ $heroBg }}" class="field-input" style="flex:1" id="cwHeroColorText" readonly onclick="document.getElementById('cwHeroColorPicker').click()">
+                </div>
+                <span class="field-hint" style="margin-top:8px;display:block;">{{ __('Your shop name and tagline appear in white over this colour. Pick a deeper shade so the text stays readable.') }}</span>
+            </div>
         </div>
     </div>
 
@@ -248,10 +286,9 @@
                             <div class="cw-vis-label">{{ $label }}</div>
                             <div class="cw-vis-desc">{{ $desc }}</div>
                         </div>
-                        <label class="cw-switch">
+                        <label class="settings-toggle-label settings-toggle-label-no-margin">
                             <input type="hidden" name="{{ $field }}" value="0">
-                            <input type="checkbox" name="{{ $field }}" value="1" {{ old($field, $ws?->$field ?? ($field === 'show_huid' ? false : true)) ? 'checked' : '' }}>
-                            <span class="cw-slider"></span>
+                            <input type="checkbox" name="{{ $field }}" value="1" class="settings-toggle-input-lg" {{ old($field, $ws?->$field ?? ($field === 'show_huid' ? false : true)) ? 'checked' : '' }}>
                         </label>
                     </div>
                 @endforeach
@@ -333,7 +370,7 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             {{ __('Edit') }}
                         </button>
-                        <form method="POST" action="{{ route('settings.catalog-pages.destroy', $cmsPage) }}" onsubmit="return confirm('{{ __('Delete this page?') }}')">
+                        <form method="POST" action="{{ route('settings.catalog-pages.destroy', $cmsPage) }}" data-turbo-frame="_top" onsubmit="return confirm('{{ __('Delete this page?') }}')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="cw-btn-sm danger">
@@ -347,7 +384,7 @@
 
                 {{-- Edit form (hidden) --}}
                 <div id="edit-page-{{ $cmsPage->id }}" style="display:none;" class="cw-edit-panel">
-                    <form method="POST" action="{{ route('settings.catalog-pages.update', $cmsPage) }}">
+                    <form method="POST" action="{{ route('settings.catalog-pages.update', $cmsPage) }}" data-turbo-frame="_top">
                         @csrf
                         @method('PUT')
                         <div class="form-row" style="grid-template-columns:1fr;">
@@ -363,10 +400,10 @@
                             </div>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;">
-                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#475569;cursor:pointer;">
+                            <label class="settings-toggle-label settings-toggle-label-no-margin">
                                 <input type="hidden" name="is_published" value="0">
-                                <input type="checkbox" name="is_published" value="1" {{ $cmsPage->is_published ? 'checked' : '' }}>
-                                {{ __('Published') }}
+                                <input type="checkbox" name="is_published" value="1" class="settings-toggle-input-md" {{ $cmsPage->is_published ? 'checked' : '' }}>
+                                <span class="settings-toggle-text">{{ __('Published') }}</span>
                             </label>
                             <button type="submit" class="btn-primary" style="padding:7px 16px;font-size:12px;">{{ __('Update Page') }}</button>
                         </div>
@@ -384,7 +421,7 @@
             {{ __('Add New Page') }}
         </button>
         <div id="cwNewPageForm" style="display:none;" class="cw-edit-panel">
-            <form method="POST" action="{{ route('settings.catalog-pages.store') }}">
+            <form method="POST" action="{{ route('settings.catalog-pages.store') }}" data-turbo-frame="_top">
                 @csrf
                 <div class="form-row cols-2">
                     <div class="field">
@@ -427,5 +464,24 @@
     const cwText   = document.getElementById('cwColorText');
     if (cwPicker && cwText) {
         cwPicker.addEventListener('input', () => { cwText.value = cwPicker.value; });
+    }
+
+    // Hero banner: show the controls for the chosen style, highlight the option.
+    function cwSyncHeroStyle(style) {
+        const imgBlock = document.getElementById('cwHeroImageBlock');
+        const colBlock = document.getElementById('cwHeroColorBlock');
+        if (imgBlock) imgBlock.style.display = style === 'image' ? 'block' : 'none';
+        if (colBlock) colBlock.style.display = style === 'color' ? 'block' : 'none';
+        document.querySelectorAll('.cw-hero-style-opt').forEach((el) => {
+            const input = el.querySelector('input');
+            el.classList.toggle('selected', input && input.value === style);
+        });
+    }
+
+    // Sync the hero colour picker with its text field.
+    const cwHeroPicker = document.getElementById('cwHeroColorPicker');
+    const cwHeroText   = document.getElementById('cwHeroColorText');
+    if (cwHeroPicker && cwHeroText) {
+        cwHeroPicker.addEventListener('input', () => { cwHeroText.value = cwHeroPicker.value; });
     }
 </script>

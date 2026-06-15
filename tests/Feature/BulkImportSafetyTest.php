@@ -111,7 +111,10 @@ class BulkImportSafetyTest extends TestCase
             );
         });
 
-        $row = $import->rows()->firstOrFail();
+        // ImportRow is tenant-scoped (BelongsToShop); the global scope fails
+        // closed in console context, so the relation query must run inside
+        // tenant context or it returns nothing (ModelNotFoundException).
+        $row = TenantContext::runFor($shop->id, fn () => $import->rows()->firstOrFail());
         $this->assertTrue((bool) data_get($row->computed, 'will_create_category'));
         $this->assertTrue((bool) data_get($row->computed, 'will_create_sub_category'));
         $this->assertSame(0, Category::withoutTenant()->where('shop_id', $shop->id)->count());
@@ -214,9 +217,14 @@ class BulkImportSafetyTest extends TestCase
 
         $this->assertSame(1, $import->valid_rows);
         $this->assertSame(1, $import->invalid_rows);
+        // ImportRow is tenant-scoped; read the row inside tenant context.
+        $invalidMessage = TenantContext::runFor(
+            $shop->id,
+            fn () => (string) $import->rows()->where('status', 'invalid')->first()?->error_message
+        );
         $this->assertStringContainsString(
             'Same design code appears more than once in this file',
-            (string) $import->rows()->where('status', 'invalid')->first()?->error_message
+            $invalidMessage
         );
     }
 

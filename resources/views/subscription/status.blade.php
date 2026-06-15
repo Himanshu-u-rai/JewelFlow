@@ -708,7 +708,7 @@
         </div>
         <div class="page-actions" style="display:flex; gap:10px; flex-wrap:wrap;">
             <a href="{{ route('subscription.plans') }}" class="sub-btn primary">Change Plan</a>
-            <a href="mailto:support@jewelflow.io" class="sub-btn secondary">Contact Support</a>
+            <a href="mailto:{{ config('app.support_email') }}" class="sub-btn secondary">Contact Support</a>
         </div>
     </x-page-header>
 
@@ -828,7 +828,7 @@
                             <div class="sub-detail-item">
                                 <div>
                                     <p class="sub-detail-label">Support</p>
-                                    <p class="sub-detail-value">support@jewelflow.io</p>
+                                    <p class="sub-detail-value">{{ config('app.support_email') }}</p>
                                 </div>
                             </div>
                         </div>

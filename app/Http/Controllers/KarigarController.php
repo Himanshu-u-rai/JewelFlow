@@ -15,7 +15,16 @@ class KarigarController extends Controller
             ->withCount(['jobOrders', 'invoices'])
             ->get();
 
-        return view('karigars.index', compact('karigars'));
+        // Gold-held total per karigar (reusable leftover + gold out in open jobs).
+        // Computed in one pass via the shared breakdown service so the list, the
+        // profile, and the job form always agree. Read-only.
+        $vault = app(\App\Services\BullionVaultService::class);
+        $shopId = auth()->user()->shop_id;
+        $goldHeldByKarigar = $karigars->mapWithKeys(fn ($k) => [
+            $k->id => (float) $vault->karigarHeldBreakdown($shopId, (int) $k->id)->sum('total'),
+        ]);
+
+        return view('karigars.index', compact('karigars', 'goldHeldByKarigar'));
     }
 
     public function create()
@@ -45,7 +54,12 @@ class KarigarController extends Controller
             'payments' => fn ($q) => $q->latest()->limit(20),
         ]);
 
-        return view('karigars.show', compact('karigar'));
+        // Gold this karigar is holding (reusable leftover + gold out in open jobs),
+        // per purity. Read-only — no ledger writes.
+        $goldHeld = app(\App\Services\BullionVaultService::class)
+            ->karigarHeldBreakdown(auth()->user()->shop_id, (int) $karigar->id);
+
+        return view('karigars.show', compact('karigar', 'goldHeld'));
     }
 
     public function edit(Karigar $karigar)
@@ -96,6 +110,7 @@ class KarigarController extends Controller
     {
         return $request->validate([
             'name' => 'required|string|max:150',
+            'shop_name' => 'nullable|string|max:150',
             'contact_person' => 'nullable|string|max:150',
             'mobile' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:150',

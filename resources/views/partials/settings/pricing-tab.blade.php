@@ -110,11 +110,6 @@
         font-weight: 600;
     }
 
-    .pricing-settings .pricing-profile-toggle input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-    }
-
     .pricing-settings .pricing-profile-card-footer {
         display: flex;
         justify-content: flex-end;
@@ -699,32 +694,6 @@
     </div>
 </div>
 
-<div class="section-divider"></div>
-<div class="section-label">{{ __('Pricing Timezone') }}</div>
-<form method="POST" action="{{ route('settings.pricing.update-timezone') }}" class="pricing-panel">
-    @csrf
-    @method('PATCH')
-    <div class="pricing-timezone-row">
-        <div class="pricing-field pricing-timezone-field">
-            <label class="field-label">{{ __('Timezone') }}</label>
-            <div class="pricing-timezone-controls">
-                <select name="pricing_timezone" class="field-input pricing-timezone-select" required @cannot('pricing.update') disabled @endcannot>
-                    @foreach($pricingTimezones as $timezone)
-                        <option value="{{ $timezone }}" {{ old('pricing_timezone', $pricingData['timezone'] ?? config('app.timezone', 'UTC')) === $timezone ? 'selected' : '' }}>
-                            {{ $timezone }}
-                        </option>
-                    @endforeach
-                </select>
-                @can('pricing.update')
-                <div class="pricing-timezone-action">
-                    <button type="submit" class="btn-primary">{{ __('Save Timezone') }}</button>
-                </div>
-                @endcan
-            </div>
-            <span class="field-hint pricing-timezone-hint">{{ __('Retailer daily pricing resets at local midnight in this timezone.') }}</span>
-        </div>
-    </div>
-</form>
 
 <div class="pricing-desktop-row">
     <div class="pricing-desktop-card">
@@ -739,9 +708,9 @@
                     <input type="number" step="0.0001" min="0.0001" name="gold_24k_rate_per_gram" value="{{ $goldRateValue }}" class="field-input" required>
                 </div>
                 <div class="pricing-field">
-                    <label class="field-label">{{ __('Silver 999 Price / Kg') }}</label>
+                    <label class="field-label">{{ __('Pure Silver Price / Kg') }}</label>
                     <input type="number" step="0.0001" min="0.0001" name="silver_999_rate_per_kg" value="{{ $silverRatePerKgValue }}" class="field-input" required>
-                    <span class="field-hint">{{ __('Stored internally as per gram after conversion.') }}</span>
+                    <span class="field-hint">{{ __('Price of pure (fine) silver, like 24K is for gold. Each purity (999, 925, …) is worked out from this.') }}</span>
                 </div>
                 <div class="pricing-field">
                     <label class="field-label">{{ __('Current Snapshot') }}</label>
@@ -832,10 +801,11 @@
                                 </div>
                                 <div class="pricing-field">
                                     <label class="field-label">{{ __('Active') }}</label>
-                                    <input type="hidden" name="is_active" value="0">
-                                    <label class="pricing-profile-toggle">
-                                        <input type="checkbox" name="is_active" value="1" {{ $profile->is_active ? 'checked' : '' }}>
-                                        {{ __('Active') }}
+                                    <label class="pricing-profile-toggle" style="display:flex; gap:10px; align-items:center;">
+                                        <input type="hidden" name="is_active" value="0">
+                                        <input type="checkbox" name="is_active" value="1" {{ $profile->is_active ? 'checked' : '' }}
+                                               class="settings-toggle-input-md">
+                                        <span class="settings-toggle-text">{{ $profile->is_active ? __('On') : __('Off') }}</span>
                                     </label>
                                 </div>
                             </div>
@@ -1020,6 +990,15 @@
 
 @if($historyRows && $historyRows->count() > 0)
     <div class="bg-white border border-gray-200 overflow-hidden rounded-xl pricing-table-card">
+        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-3">
+            <p class="text-sm font-medium text-gray-900">
+                {{ __('Prices for') }}
+                <span class="font-semibold">{{ \Carbon\Carbon::parse($historyRows->first()->business_date)->format('d M Y') }}</span>
+            </p>
+            <p class="text-xs text-gray-500">
+                {{ __('One day per page — use the arrows below to see other days.') }}
+            </p>
+        </div>
         <div class="overflow-x-auto pricing-table-shell">
             <table class="w-full">
                 <thead class="bg-gray-50 border-b border-gray-200">

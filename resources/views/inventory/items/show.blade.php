@@ -40,6 +40,7 @@
                 </button>
             @endif
             @if($item->status === 'in_stock')
+                @can('inventory.edit')
                 <a href="{{ route('inventory.items.edit', $item) }}"
                    class="inline-flex items-center px-3 sm:px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium">
                     <svg class="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,6 +48,8 @@
                     </svg>
                     <span class="hidden sm:inline">Edit</span>
                 </a>
+                @endcan
+                @can('inventory.delete')
                 <form method="POST" action="{{ route('inventory.items.destroy', $item) }}"
                       data-confirm-message="Are you sure you want to delete this item?{{ $isRetailer ? '' : ' The gold will be returned to the source lot.' }}"
                       data-ajax-delete
@@ -61,6 +64,7 @@
                         <span class="hidden sm:inline">Delete</span>
                     </button>
                 </form>
+                @endcan
             @endif
             <a href="{{ route('inventory.items.index') }}"
                class="inline-flex items-center px-3 sm:px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
@@ -707,11 +711,13 @@
                 </div>
 
                 <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    @can('inventory.edit')
                     <a href="{{ route('inventory.items.edit', $item) }}"
                        class="inline-flex items-center justify-center px-3 py-2.5 rounded-lg font-medium transition-colors text-sm
                               {{ $item->status === 'in_stock' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>Edit
                     </a>
+                    @endcan
                     <a href="{{ route('inventory.items.index') }}"
                        class="inline-flex items-center justify-center px-3 py-2.5 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium text-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>All Items

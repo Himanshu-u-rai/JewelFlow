@@ -157,6 +157,7 @@
                     </div>
                 </div>
 
+                @can('dhiran.settings')
                 <form method="POST" action="{{ route('dhiran.activate') }}">
                     @csrf
                     <button type="submit" class="da-activate-btn">
@@ -164,6 +165,9 @@
                         Activate Dhiran Module
                     </button>
                 </form>
+                @else
+                <p class="da-feature-card-desc">Only an owner/admin can activate the Dhiran module.</p>
+                @endcan
             </div>
         </div>
     </div>

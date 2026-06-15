@@ -1,11 +1,14 @@
 <x-app-layout>
     <x-page-header class="customers-show-header" :title="$customer->first_name . ' ' . $customer->last_name" subtitle="Customer Profile">
         <x-slot:actions>
+            @can('customers.edit')
             <a href="{{ route('customers.edit', $customer) }}" class="btn btn-dark btn-sm customers-show-edit-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                 <span class="customers-show-edit-label-full">Edit Customer</span>
                 <span class="customers-show-edit-label-short">Edit</span>
             </a>
+            @endcan
+            @can('customers.delete')
             @if($invoices->count() === 0 && $transactions->count() === 0 && !$hasRepairs)
                 <form method="POST" action="{{ route('customers.destroy', $customer) }}" data-confirm-message="Are you sure you want to delete this customer?" data-ajax-delete data-delete-redirect="{{ route('customers.index') }}">
                     @csrf
@@ -17,6 +20,7 @@
                     </button>
                 </form>
             @endif
+            @endcan
             @if(auth()->user()?->isOwner())
             <a href="{{ route('store-credit.adjust.create', $customer) }}" class="btn btn-secondary btn-sm" data-turbo-frame="_top">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>

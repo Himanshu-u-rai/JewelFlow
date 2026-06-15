@@ -3,27 +3,40 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Models\Shop;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesTestTenant;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Web PATCH/DELETE through the real stack need CSRF disabled (else 419).
+        // Per-class pattern, like other web tests.
+        $this->withoutMiddleware([
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        ]);
+    }
+
+    /**
+     * The /profile routes live behind the auth+tenant+subscription.active+
+     * account.active+shop.exists group and require the settings.edit ability.
+     * The old bespoke setup created a shop with no subscription and a user with
+     * no role, so every request redirected (302) at the subscription gate. Use
+     * the shared tenant factory, which provisions an active subscription and a
+     * fully-permissioned owner — the real shape of a logged-in owner.
+     */
     private function createUserWithShop(): User
     {
-        $shop = Shop::create([
-            'name' => 'Test Shop',
-            'phone' => '9000000000',
-            'owner_first_name' => 'Owner',
-            'owner_last_name' => 'Test',
-            'owner_mobile' => '9000000001',
-        ]);
+        [$user] = $this->createManufacturerTenant();
 
-        return User::factory()->create([
-            'shop_id' => $shop->id,
-        ]);
+        return $user;
     }
 
     public function test_profile_page_is_displayed(): void
@@ -41,8 +54,12 @@ class ProfileTest extends TestCase
     {
         $user = $this->createUserWithShop();
 
+        // ProfileController::update redirects back(), so set the referer so the
+        // assertion resolves to /profile (in the browser the form posts from
+        // /profile).
         $response = $this
             ->actingAs($user)
+            ->from('/profile')
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
@@ -62,9 +79,17 @@ class ProfileTest extends TestCase
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
     {
         $user = $this->createUserWithShop();
+        // The factory leaves email/email_verified_at null. This test asserts the
+        // verification timestamp survives a profile update that keeps the same
+        // email, so the user must start with a verified email address.
+        $user->forceFill([
+            'email' => 'verified@example.com',
+            'email_verified_at' => now(),
+        ])->save();
 
         $response = $this
             ->actingAs($user)
+            ->from('/profile')
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => $user->email,

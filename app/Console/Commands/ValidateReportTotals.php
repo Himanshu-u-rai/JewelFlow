@@ -410,7 +410,9 @@ class ValidateReportTotals extends Command
         // METAL-3 — on-hand == vault:reconcile source (Σ metal_lots fine remaining),
         // and the liability is covered by gold on hand.
         $rawOnHand = round((float) DB::table('metal_lots')
-            ->where('shop_id', $shopId)->sum('fine_weight_remaining'), 4);
+            ->where('shop_id', $shopId)
+            ->where('source', '<>', 'karigar_held')
+            ->sum('fine_weight_remaining'), 4);
         $failures += $this->assert(
             $shopId,
             'METAL-3 on-hand == vault:reconcile source & liability <= on-hand',
@@ -742,8 +744,13 @@ class ValidateReportTotals extends Command
         $reportTotal = round((float) $balances->sum('in_vault_fine'), 4);
 
         // GOLD-1 — report total == SUM(metal_lots.fine_weight_remaining) (raw column).
+        // "In vault" excludes karigar_held lots (physically with a karigar, not in
+        // the vault); the report's in_vault_fine excludes them too, so the two stay
+        // consistent. (No-op until held lots exist.)
         $rawSum = round((float) DB::table('metal_lots')
-            ->where('shop_id', $shopId)->sum('fine_weight_remaining'), 4);
+            ->where('shop_id', $shopId)
+            ->where('source', '<>', 'karigar_held')
+            ->sum('fine_weight_remaining'), 4);
         $failures += $this->assert(
             $shopId,
             'GOLD-1 report total == SUM(metal_lots.fine_weight_remaining)',
@@ -756,7 +763,7 @@ class ValidateReportTotals extends Command
         $vaultReconcile = round((float) collect(DB::select(
             "SELECT COALESCE(SUM(total_fine), 0) AS t FROM (
                  SELECT SUM(fine_weight_remaining) AS total_fine
-                 FROM metal_lots WHERE shop_id = ? GROUP BY metal_type
+                 FROM metal_lots WHERE shop_id = ? AND source <> 'karigar_held' GROUP BY metal_type
              ) g",
             [$shopId]
         ))[0]->t, 4);
@@ -848,12 +855,13 @@ class ValidateReportTotals extends Command
     {
         $shr = $karigar->shrinkage($shopId, $period);
 
-        // Independent recompute: unaccounted must equal issued − returned − leftover − wastage.
-        $recomputed = round($shr->totalIssued - $shr->totalReturned - $shr->totalLeftover - $shr->totalWastage, 4);
+        // Independent recompute: unaccounted == issued − returned − leftover − wastage − retained.
+        // Retained metal is held by the karigar (an asset), not shrinkage.
+        $recomputed = round($shr->totalIssued - $shr->totalReturned - $shr->totalLeftover - $shr->totalWastage - $shr->totalRetained, 4);
 
         return $this->assert(
             $shopId,
-            'SHR-1 unaccounted == issued − items − leftover − wastage (independent recompute)',
+            'SHR-1 unaccounted == issued − items − leftover − wastage − retained (independent recompute)',
             abs($recomputed - $shr->totalUnaccounted) <= self::TOLERANCE,
             'reported=' . $shr->totalUnaccounted . ' recomputed=' . $recomputed
         );

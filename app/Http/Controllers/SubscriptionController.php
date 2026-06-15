@@ -3,14 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Platform\Plan;
-use App\Models\Platform\PlatformInvoice;
 use App\Models\Platform\PlatformSetting;
 use App\Models\Platform\ShopSubscription;
 use App\Services\OnboardingResumeService;
 use App\Services\SubscriptionPaymentService;
 use App\Services\SubscriptionWebhookService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -90,11 +88,16 @@ class SubscriptionController extends Controller
         }
 
         $allPlans = Plan::whereRaw('is_active IS TRUE')
+            ->with('platformProduct')
             ->orderBy('price_monthly')
             ->get();
 
+        // Product-scoped selection: show the plans for the chosen edition's
+        // product. grantsEdition() resolves plan → edition string via the linked
+        // platform product (with a code-prefix fallback), so this is explicit
+        // and correct — and Dhiran is selectable without any retail shop_type.
         $plans = $allPlans->filter(
-            fn ($plan) => str_contains($plan->code, $shopType)
+            fn ($plan) => $plan->grantsEdition() === $shopType
         )->values();
 
         if ($plans->isEmpty()) {
@@ -433,47 +436,12 @@ class SubscriptionController extends Controller
 
     public function status()
     {
-        $shop = Auth::user()->shop;
-        if (!$shop) {
-            return redirect()->route('subscription.plans');
-        }
-
-        $subscription = ShopSubscription::where('shop_id', $shop->id)
-            ->with('plan')
-            ->latest('id')
-            ->first();
-
-        if (!$subscription) {
-            return redirect()->route('subscription.plans')
-                ->with('error', 'No active subscription found.');
-        }
-
-        $plan = $subscription->plan;
-        $daysRemaining = $subscription->ends_at
-            ? Carbon::now()->diffInDays($subscription->ends_at, false)
-            : null;
-        $isExpired = $daysRemaining !== null && $daysRemaining < 0;
-        $isInGrace = $isExpired
-            && $subscription->grace_ends_at
-            && Carbon::now()->lte($subscription->grace_ends_at);
-        $featureLabels = self::featureLabels();
-
-        // Billing history — merged into the same page so users get plan status
-        // + past invoices in one view (replaces the standalone /billing page).
-        $invoices = PlatformInvoice::where('shop_id', $shop->id)
-            ->with('plan')
-            ->latest('issued_at')
-            ->paginate(10)
-            ->withQueryString();
-
-        return view('subscription.status', compact(
-            'subscription',
-            'plan',
-            'daysRemaining',
-            'isInGrace',
-            'isExpired',
-            'featureLabels',
-            'invoices'
-        ));
+        // The subscription status display now lives inside the Settings tab
+        // system as the "Plan & Billing" tab. The data is loaded by
+        // SettingsController::edit(); this method only forwards the old
+        // /subscription URL (and any bookmark) to the new tab. Payment flows
+        // (showPlans/choosePlan/payment/initiatePayment/paymentCallback/webhook)
+        // are unchanged.
+        return redirect()->route('settings.edit', ['tab' => 'subscription']);
     }
 }

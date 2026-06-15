@@ -27,11 +27,24 @@ class JobOrder extends Model
     public const FLAG_EXCESS_RETURN = 'EXCESS_RETURN';
     public const FLAG_INVOICE_MISMATCH = 'INVOICE_MISMATCH';
 
+    /**
+     * Derived metal-source LABEL values (projection of the source set — see
+     * getMetalSourceAttribute). 'mixed' = legs span ≥2 leg types; 'none' =
+     * labor-only. The three single-source labels share the leg-type strings.
+     */
+    public const METAL_SOURCE_NONE              = 'none';
+    public const METAL_SOURCE_VAULT             = 'vault';
+    public const METAL_SOURCE_KARIGAR_BALANCE   = 'karigar_held';
+    public const METAL_SOURCE_CUSTOMER_SUPPLIED = 'customer_advance';
+    public const METAL_SOURCE_MIXED             = 'mixed';
+
     protected $fillable = [
         'shop_id',
         'karigar_id',
         'job_order_number',
         'challan_number',
+        'job_type',
+        'source_item_id',
         'metal_type',
         'purity',
         'issued_gross_weight',
@@ -46,6 +59,7 @@ class JobOrder extends Model
         'returned_fine_weight',
         'leftover_returned_fine_weight',
         'actual_wastage_fine',
+        'retained_returned_fine_weight',
         'discrepancy_flags',
         'discrepancy_acknowledged',
         'notes',
@@ -65,6 +79,7 @@ class JobOrder extends Model
         'returned_fine_weight' => 'decimal:6',
         'leftover_returned_fine_weight' => 'decimal:6',
         'actual_wastage_fine' => 'decimal:6',
+        'retained_returned_fine_weight' => 'decimal:6',
         'issue_date' => 'date',
         'expected_return_date' => 'date',
         'completed_at' => 'datetime',
@@ -89,6 +104,41 @@ class JobOrder extends Model
     public function issuances()
     {
         return $this->hasMany(JobOrderIssuance::class);
+    }
+
+    /** The authoritative set of metal sources this job draws from (0..N legs). */
+    public function sources()
+    {
+        return $this->hasMany(JobOrderSource::class);
+    }
+
+    /**
+     * Derived metal-source label — a PROJECTION of the source set, never stored
+     * (persisting it would be a denormalisation that can drift from the set).
+     *
+     *   ∅ legs                  → 'none'   (labor-only)
+     *   all legs same type      → that type
+     *   legs span ≥2 types      → 'mixed'
+     *
+     * Legacy fallback: jobs created before job_order_sources existed have no
+     * source legs but do have vault JobOrderIssuance rows — those are reported
+     * as 'vault' so the label is correct without backfilling historical jobs.
+     */
+    public function getMetalSourceAttribute(): string
+    {
+        $types = ($this->relationLoaded('sources') ? $this->sources : $this->sources()->get())
+            ->pluck('source_type')->unique();
+
+        if ($types->isNotEmpty()) {
+            return $types->count() === 1 ? (string) $types->first() : 'mixed';
+        }
+
+        // No source legs: legacy vault issuance, or genuinely labor-only.
+        $hasLegacyIssuance = $this->relationLoaded('issuances')
+            ? $this->issuances->isNotEmpty()
+            : $this->issuances()->exists();
+
+        return $hasLegacyIssuance ? self::METAL_SOURCE_VAULT : self::METAL_SOURCE_NONE;
     }
 
     public function receipts()
@@ -139,11 +189,17 @@ class JobOrder extends Model
 
     public function getOutstandingFineAttribute(): float
     {
+        // Retained metal stays physically with the karigar in a karigar_held lot,
+        // so it is NOT "outstanding" against this job — it is attributed to that
+        // lot instead. Subtracting it here prevents double-counting in the
+        // "with karigar" totals (which add the held lot separately) while a
+        // retained-metal job is still open (e.g. flagged for excess wastage).
         return max(
             0.0,
             (float) $this->issued_fine_weight
                 - (float) $this->returned_fine_weight
                 - (float) $this->leftover_returned_fine_weight
+                - (float) $this->retained_returned_fine_weight
                 - (float) $this->actual_wastage_fine
         );
     }

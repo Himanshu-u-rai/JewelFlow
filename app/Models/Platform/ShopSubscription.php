@@ -23,6 +23,7 @@ class ShopSubscription extends Model
         'razorpay_payment_id',
         'razorpay_order_id',
         'updated_by_admin_id',
+        'actor_type',
         'notes',
     ];
 

@@ -294,10 +294,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // ======= STORE CREDIT (surface re-connection — PRODUCT_SURFACE_INTEGRITY_AUDIT.md §3.C) =======
     // Maps to the already-committed StoreCreditController. Manual adjustment is
-    // owner-only (enforced in the controller via ensureOwner()); redemption
+    // owner-only — enforced at BOTH the route (role:owner) and in the controller
+    // (ensureOwner()) for defense in depth on a financial-balance write. Redemption
     // (applyToInvoice) is gated by sales.create like recording any payment.
-    Route::get('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustCreate'])->name('store-credit.adjust.create');
-    Route::post('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustStore'])->name('store-credit.adjust.store');
+    Route::get('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustCreate'])->middleware('role:owner')->name('store-credit.adjust.create');
+    Route::post('/customers/{customer}/store-credit/adjust', [\App\Http\Controllers\StoreCreditController::class, 'adjustStore'])->middleware('role:owner')->name('store-credit.adjust.store');
     Route::post('/invoices/{invoice}/store-credit/apply', [\App\Http\Controllers\StoreCreditController::class, 'applyToInvoice'])->middleware('can:sales.create')->name('store-credit.apply');
 
     // ======= PROFILE — owner only (settings.edit = Owner by default) =======
@@ -402,6 +403,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         Route::post('/job-orders/{jobOrder}/receive', [\App\Http\Controllers\JobOrderController::class, 'storeReceipt'])->middleware('can:job_order.manage')->name('job-orders.receive.store');
         Route::post('/job-orders/{jobOrder}/leftover-return', [\App\Http\Controllers\JobOrderController::class, 'leftoverReturn'])->middleware('can:job_order.manage')->name('job-orders.leftover');
         Route::post('/job-orders/{jobOrder}/acknowledge', [\App\Http\Controllers\JobOrderController::class, 'acknowledge'])->middleware('can:job_order.manage')->name('job-orders.acknowledge');
+        Route::post('/job-orders/{jobOrder}/reassign', [\App\Http\Controllers\JobOrderController::class, 'reassign'])->middleware('can:job_order.manage')->name('job-orders.reassign');
+        Route::post('/karigar-balance/transfer', [\App\Http\Controllers\JobOrderController::class, 'transferBalance'])->middleware('can:job_order.manage')->name('karigar-balance.transfer');
 
         // Karigar Invoices — view to read; manage to mutate.
         Route::get('/karigar-invoices', [\App\Http\Controllers\KarigarInvoiceController::class, 'index'])->middleware('can:karigar_invoice.view')->name('karigar-invoices.index');
@@ -474,6 +477,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/report/audit', function () {
         return redirect()->route('settings.edit', ['tab' => 'audit']);
     })->middleware('can:settings.view');
+    Route::get('/settings/audit/export', [SettingsController::class, 'exportAudit'])
+        ->middleware('can:settings.view')->name('settings.audit.export');
 
     // ======= REPORTING-EXPORT SPINE (Phase 0; per-report gates enforced in ExportRequest) =======
     // Phase 1 pilot — Sales / Invoice Register screen.
@@ -500,6 +505,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // Settings — write access: requires `settings.edit` permission (default: Owner only).
     Route::post('/settings/services/request-add', [\App\Http\Controllers\ShopServicesController::class, 'requestAdd'])->middleware('can:settings.edit')->name('settings.services.request-add');
+    // Paid self-serve add (Phase 5b checkout): initiate Razorpay order for a
+    // product, then verify and create a NEW product subscription on success.
+    Route::post('/settings/services/initiate-add', [\App\Http\Controllers\ShopServicesController::class, 'initiateAdd'])->middleware('can:settings.edit')->name('settings.services.initiate-add');
+    Route::post('/settings/services/add-callback', [\App\Http\Controllers\ShopServicesController::class, 'addCallback'])->middleware('can:settings.edit')->name('settings.services.add-callback');
     Route::post('/settings/services/remove', [\App\Http\Controllers\ShopServicesController::class, 'remove'])->middleware('can:settings.edit')->name('settings.services.remove');
     Route::post('/settings/services/requests/{editionRequest}/cancel', [\App\Http\Controllers\ShopServicesController::class, 'cancelRequest'])->middleware('can:settings.edit')->name('settings.services.request.cancel');
     Route::patch('/settings/shop', [SettingsController::class, 'updateShop'])->middleware('can:settings.edit')->name('settings.update.shop');
@@ -513,6 +522,12 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/settings/gst-categories/{gstCategory}', [\App\Http\Controllers\GstCategoryController::class, 'update'])->middleware('can:settings.edit')->name('settings.gst-categories.update');
     Route::delete('/settings/gst-categories/{gstCategory}', [\App\Http\Controllers\GstCategoryController::class, 'destroy'])->middleware('can:settings.edit')->name('settings.gst-categories.destroy');
     Route::patch('/settings/materials/reference', [SettingsController::class, 'updateMaterialReference'])->middleware('can:settings.edit')->name('settings.update.material-reference');
+
+    // Connected mobile devices — disconnect one device, or all devices for one staff member.
+    // The controller does its own tenant scoping + owner/manager guards; `staff.manage` is
+    // the defense-in-depth gate matching sibling destructive routes.
+    Route::delete('/settings/devices/{deviceSession}', [\App\Http\Controllers\MobileDeviceSessionController::class, 'destroy'])->middleware('can:staff.manage')->name('settings.devices.destroy');
+    Route::delete('/settings/devices/user/{user}/all', [\App\Http\Controllers\MobileDeviceSessionController::class, 'destroyAllForUser'])->middleware('can:staff.manage')->name('settings.devices.destroy-all');
     Route::post('/settings/whatsapp-template', [SettingsController::class, 'saveWhatsappTemplate'])->middleware('can:settings.edit')->name('settings.whatsapp.template');
     // The role-permission editor itself stays `role:owner` — only the shop owner
     // controls who has which permissions. Permission-gating this would let a
