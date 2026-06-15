@@ -61,7 +61,7 @@ class RetailerPlanSeeder extends Seeder
                 'description'                   => 'Yearly plan for retail jewellery shops — best value.',
                 'price_monthly'                 => 1666.00,
                 'price_yearly'                  => 19999.00,
-                'trial_days'                    => 7,
+                'trial_days'                    => 0,
                 'grace_days'                    => 14,
                 'downgrade_to_read_only_on_due' => DB::raw('true'),
                 'is_active'                     => DB::raw('true'),

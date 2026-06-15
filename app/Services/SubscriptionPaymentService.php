@@ -135,17 +135,15 @@ class SubscriptionPaymentService
             throw new \Exception('Platform configuration incomplete.');
         }
 
+        // A paid purchase is ALWAYS active. The term is a pure function of the
+        // billing cycle — trial_days is NEVER read here, otherwise a paid yearly
+        // purchase would silently collapse into a 7-day trial window (the bug this
+        // method previously had).
         $startsAt = Carbon::now();
         $status = 'active';
-
-        if (($plan->trial_days ?? 0) > 0) {
-            $status = 'trial';
-            $endsAt = $startsAt->copy()->addDays($plan->trial_days);
-        } else {
-            $endsAt = $billingCycle === 'yearly'
-                ? $startsAt->copy()->addYear()
-                : $startsAt->copy()->addMonth();
-        }
+        $endsAt = $billingCycle === 'yearly'
+            ? $startsAt->copy()->addYear()
+            : $startsAt->copy()->addMonth();
 
         $graceEndsAt = $endsAt->copy()->addDays($plan->grace_days ?? config('business.subscription_grace_days'));
 
@@ -170,6 +168,7 @@ class SubscriptionPaymentService
                     'razorpay_payment_id' => $paymentId,
                     'razorpay_order_id' => $orderId,
                     'updated_by_admin_id' => $admin->id,
+                    'actor_type' => 'self_service',
                 ]);
 
                 SubscriptionEvent::create([
@@ -210,6 +209,99 @@ class SubscriptionPaymentService
             return $subscription;
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
             Log::info('Concurrent payment callback caught by unique constraint', [
+                'payment_id' => $paymentId,
+            ]);
+            return ShopSubscription::where('razorpay_payment_id', $paymentId)->firstOrFail();
+        }
+    }
+
+    /**
+     * Renew a subscription by creating a NEW row for the next term.
+     *
+     * The current row is never mutated — each paid term lives in its own
+     * shop_subscriptions row so billing history stays append-only.
+     *
+     * Term anchoring:
+     *  - Renewing BEFORE expiry or DURING grace: the new term starts at the old
+     *    row's ends_at, so the customer keeps every paid day they have left.
+     *  - Renewing AFTER the grace window has fully lapsed: the new term starts now.
+     */
+    public function renewSubscription(
+        ShopSubscription $current,
+        string $billingCycle,
+        float $price,
+        string $paymentId,
+        string $orderId,
+    ): ShopSubscription {
+        // Idempotency: if this payment already produced a row, return it.
+        $existing = ShopSubscription::where('razorpay_payment_id', $paymentId)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $now = Carbon::now();
+
+        // grace_ends_at is the true end of the customer's paid+grace entitlement.
+        // Fall back to ends_at when grace was never set.
+        $graceEndsAt = $current->grace_ends_at
+            ? Carbon::parse($current->grace_ends_at)
+            : ($current->ends_at ? Carbon::parse($current->ends_at) : $now);
+
+        $renewingAfterExpiry = $now->gt($graceEndsAt);
+
+        if ($renewingAfterExpiry || !$current->ends_at) {
+            // Customer let it fully lapse — fresh term from today.
+            $startsAt = $now->copy();
+        } else {
+            // Still inside the paid term or grace — extend from the original ends_at
+            // so no paid days are lost.
+            $startsAt = Carbon::parse($current->ends_at);
+        }
+
+        $endsAt = $billingCycle === 'yearly'
+            ? $startsAt->copy()->addYear()
+            : $startsAt->copy()->addMonth();
+
+        $plan = $current->plan;
+        $graceDays = $plan?->grace_days ?? config('business.subscription_grace_days');
+        $newGraceEndsAt = $endsAt->copy()->addDays($graceDays);
+
+        try {
+            return DB::transaction(function () use (
+                $current, $startsAt, $endsAt, $newGraceEndsAt,
+                $billingCycle, $price, $paymentId, $orderId
+            ) {
+                $renewed = ShopSubscription::create([
+                    'shop_id' => $current->shop_id,
+                    'user_id' => $current->user_id,
+                    'plan_id' => $current->plan_id,
+                    'status' => 'active',
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
+                    'grace_ends_at' => $newGraceEndsAt,
+                    'billing_cycle' => $billingCycle,
+                    'price_paid' => $price,
+                    'razorpay_payment_id' => $paymentId,
+                    'razorpay_order_id' => $orderId,
+                    'updated_by_admin_id' => $current->updated_by_admin_id,
+                    'actor_type' => 'self_service',
+                ]);
+
+                SubscriptionEvent::create([
+                    'shop_subscription_id' => $renewed->id,
+                    'shop_id' => $renewed->shop_id,
+                    'admin_id' => null,
+                    'event_type' => 'subscription.renewed',
+                    'before' => $current->toArray(),
+                    'after' => $renewed->toArray(),
+                    'reason' => 'Renewal via Razorpay: ' . $paymentId
+                        . ' (previous subscription #' . $current->id . ')',
+                ]);
+
+                return $renewed;
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            Log::info('Concurrent renewal callback caught by unique constraint', [
                 'payment_id' => $paymentId,
             ]);
             return ShopSubscription::where('razorpay_payment_id', $paymentId)->firstOrFail();

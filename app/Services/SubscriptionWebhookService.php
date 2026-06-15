@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Platform\ShopSubscription;
 use App\Models\Platform\SubscriptionEvent;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Razorpay\Api\Api;
 
@@ -44,20 +45,71 @@ class SubscriptionWebhookService
             return;
         }
 
-        // Idempotent: only update if still in trial state
-        $sub = ShopSubscription::where('razorpay_payment_id', $paymentId)
-            ->where('status', 'trial')
-            ->first();
+        $sub = ShopSubscription::where('razorpay_payment_id', $paymentId)->first();
 
-        if ($sub) {
-            $sub->update(['status' => 'active']);
-            Log::info('Webhook: payment.captured — trial upgraded to active', [
+        if (!$sub) {
+            Log::info('Webhook: payment.captured — no subscription found for payment', [
+                'payment_id' => $paymentId,
+            ]);
+            return;
+        }
+
+        $updates = [];
+
+        // Backward-compat: any leftover trial subscription is promoted to active.
+        if ($sub->status === 'trial') {
+            $updates['status'] = 'active';
+        }
+
+        // Defensive belt-and-suspenders: a sub created before the trial-term bug
+        // fix (or via a delayed/duplicate webhook) may carry a shrunken trial-length
+        // window instead of the full paid term. If ends_at is clearly shorter than
+        // the term implied by billing_cycle, recompute ends_at/grace_ends_at to the
+        // full paid term. Post-fix subscriptions already have correct dates, so this
+        // is a no-op for them.
+        if ($sub->starts_at && $sub->ends_at) {
+            $startsAt = Carbon::parse($sub->starts_at);
+            $endsAt = Carbon::parse($sub->ends_at);
+            $cycle = $sub->billing_cycle ?? 'monthly';
+
+            // A genuine full term is ~1 month or ~1 year. A trial window is ~7 days.
+            // Threshold: yearly must extend well past a month; monthly past a week.
+            $trialWindowEnd = $cycle === 'yearly'
+                ? $startsAt->copy()->addDays(31)
+                : $startsAt->copy()->addDays(8);
+
+            if ($endsAt->lte($trialWindowEnd)) {
+                $correctEndsAt = $cycle === 'yearly'
+                    ? $startsAt->copy()->addYear()
+                    : $startsAt->copy()->addMonth();
+
+                $graceDays = $sub->plan?->grace_days ?? config('business.subscription_grace_days');
+                $correctGraceEndsAt = $correctEndsAt->copy()->addDays($graceDays);
+
+                $updates['ends_at'] = $correctEndsAt;
+                $updates['grace_ends_at'] = $correctGraceEndsAt;
+
+                Log::warning('Webhook: payment.captured — recomputed shrunken term to full paid term', [
+                    'payment_id' => $paymentId,
+                    'subscription_id' => $sub->id,
+                    'billing_cycle' => $cycle,
+                    'old_ends_at' => $endsAt->toDateString(),
+                    'new_ends_at' => $correctEndsAt->toDateString(),
+                ]);
+            }
+        }
+
+        if ($updates) {
+            $sub->update($updates);
+            Log::info('Webhook: payment.captured — subscription updated', [
                 'payment_id' => $paymentId,
                 'subscription_id' => $sub->id,
+                'changes' => array_keys($updates),
             ]);
         } else {
-            Log::info('Webhook: payment.captured — no trial subscription to upgrade (already processed or not found)', [
+            Log::info('Webhook: payment.captured — nothing to change (already active with full term)', [
                 'payment_id' => $paymentId,
+                'subscription_id' => $sub->id,
             ]);
         }
     }
@@ -101,14 +153,32 @@ class SubscriptionWebhookService
             return;
         }
 
-        // Idempotent: only cancel if not already cancelled
+        // Idempotent: only act if not already cancelled.
         $subscription = ShopSubscription::where('razorpay_payment_id', $paymentId)
             ->where('status', '!=', 'cancelled')
             ->first();
 
-        if ($subscription) {
+        if (!$subscription) {
+            Log::info('Webhook: refund.created — subscription already cancelled or not found', [
+                'payment_id' => $paymentId,
+            ]);
+            return;
+        }
+
+        // Razorpay sends the refunded amount in paise.
+        $refundedRupees = ((int) ($refundEntity['amount'] ?? 0)) / 100;
+        $pricePaid = (float) ($subscription->price_paid ?? 0);
+        $refundId = $refundEntity['id'] ?? '';
+
+        // Full refund: refunded >= price paid (within a tiny rounding epsilon).
+        $isFullRefund = $refundedRupees >= ($pricePaid - 0.01);
+
+        if ($isFullRefund) {
             $before = $subscription->toArray();
-            $subscription->update(['status' => 'cancelled']);
+            $subscription->update([
+                'status' => 'cancelled',
+                'cancelled_at' => Carbon::now(),
+            ]);
 
             SubscriptionEvent::create([
                 'shop_subscription_id' => $subscription->id,
@@ -117,17 +187,41 @@ class SubscriptionWebhookService
                 'event_type' => 'subscription.refunded',
                 'before' => $before,
                 'after' => $subscription->fresh()->toArray(),
-                'reason' => 'Razorpay refund: ' . ($refundEntity['id'] ?? ''),
+                'reason' => 'Razorpay full refund: ' . $refundId
+                    . ' (₹' . number_format($refundedRupees, 2) . ' of ₹' . number_format($pricePaid, 2) . ')',
             ]);
 
-            Log::info('Webhook: refund processed, subscription cancelled', [
+            Log::info('Webhook: full refund processed, subscription cancelled', [
                 'payment_id' => $paymentId,
                 'subscription_id' => $subscription->id,
+                'refunded' => $refundedRupees,
+                'price_paid' => $pricePaid,
             ]);
-        } else {
-            Log::info('Webhook: refund.created — subscription already cancelled or not found', [
-                'payment_id' => $paymentId,
-            ]);
+
+            return;
         }
+
+        // Partial refund: the subscription stays active — only log it. before and
+        // after status are identical because nothing on the subscription changes.
+        $snapshot = $subscription->toArray();
+
+        SubscriptionEvent::create([
+            'shop_subscription_id' => $subscription->id,
+            'shop_id' => $subscription->shop_id,
+            'admin_id' => null,
+            'event_type' => 'subscription.partial_refund',
+            'before' => $snapshot,
+            'after' => $snapshot,
+            'reason' => 'Razorpay partial refund: ' . $refundId
+                . ' (₹' . number_format($refundedRupees, 2) . ' of ₹' . number_format($pricePaid, 2)
+                . ' — subscription remains active)',
+        ]);
+
+        Log::info('Webhook: partial refund logged, subscription remains active', [
+            'payment_id' => $paymentId,
+            'subscription_id' => $subscription->id,
+            'refunded' => $refundedRupees,
+            'price_paid' => $pricePaid,
+        ]);
     }
 }
