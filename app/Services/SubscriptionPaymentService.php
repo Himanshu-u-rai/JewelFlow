@@ -355,6 +355,133 @@ class SubscriptionPaymentService
      * lost because an edition grant hiccuped. Reconcilers / the next renewal
      * re-affirm the grant.
      */
+    /**
+     * The "trial family" an edition belongs to. A shop gets one free trial per
+     * family, NOT per individual edition:
+     *   - retailer + manufacturer share the 'erp' family (the core JewelFlow ERP)
+     *   - dhiran is its own family
+     * So a shop that trialed retailer cannot also trial manufacturer for free,
+     * but it can separately trial Dhiran.
+     */
+    public function trialFamilyFor(string $edition): string
+    {
+        return match ($edition) {
+            ShopEdition::RETAILER, ShopEdition::MANUFACTURER => 'erp',
+            default => $edition,
+        };
+    }
+
+    /**
+     * Whether this shop has already used its free trial for the family the given
+     * edition belongs to. Looks at every subscription the shop has ever held
+     * (any status) that was a trial (price_paid = 0 AND no razorpay_payment_id)
+     * and maps each to its family.
+     */
+    public function hasUsedTrialForFamily(int $shopId, string $edition): bool
+    {
+        $family = $this->trialFamilyFor($edition);
+
+        $priorTrials = ShopSubscription::query()
+            ->where('shop_id', $shopId)
+            ->whereNull('razorpay_payment_id')
+            ->where('price_paid', 0)
+            ->with('plan.platformProduct')
+            ->get();
+
+        foreach ($priorTrials as $sub) {
+            $grantEdition = $sub->plan?->grantsEdition();
+            if ($grantEdition && $this->trialFamilyFor($grantEdition) === $family) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Start a free trial of a product for the current shop — no payment, no card.
+     *
+     * Creates a 'trial'-status subscription that grants the product's edition and
+     * is fully writable for config('business.subscription_trial_days') days. There
+     * is NO extra grace window on top of the trial (grace_ends_at = ends_at), so
+     * when the trial ends the scheduler drops the shop straight to READ-ONLY
+     * (data preserved, writes blocked) — the owner sees their data and buys a plan
+     * to continue. A shop may trial each family (erp / dhiran) only once.
+     *
+     * @throws \LogicException if the shop already trialed this family.
+     */
+    public function startTrial(Plan $plan): ShopSubscription
+    {
+        $authUser = Auth::user();
+        if (! $authUser) {
+            throw new \LogicException('You must be signed in to start a trial.');
+        }
+        $shopId = $authUser->shop_id;
+        $userId = $authUser->id;
+
+        $edition = $plan->grantsEdition();
+        if (! $edition) {
+            throw new \LogicException('This plan is not linked to a product, so a trial cannot be started.');
+        }
+
+        if ($shopId && $this->hasUsedTrialForFamily($shopId, $edition)) {
+            throw new \LogicException('Your shop has already used its free trial for this product.');
+        }
+
+        $admin = $this->systemAdmin();
+        if (! $admin) {
+            Log::error('Trial start failed: no platform super admin found.', ['user_id' => $userId]);
+            throw new \Exception('Platform configuration incomplete.');
+        }
+
+        $trialDays = (int) config('business.subscription_trial_days', 30);
+        $startsAt  = Carbon::now();
+        $endsAt    = $startsAt->copy()->addDays($trialDays);
+
+        return DB::transaction(function () use ($plan, $shopId, $userId, $admin, $startsAt, $endsAt, $trialDays) {
+            $subscription = ShopSubscription::create([
+                'shop_id'             => $shopId,
+                'user_id'             => $userId,
+                'plan_id'             => $plan->id,
+                'status'              => 'trial',
+                'starts_at'           => $startsAt,
+                'ends_at'             => $endsAt,
+                // No bonus grace on a trial: trial end → read-only immediately.
+                'grace_ends_at'       => $endsAt,
+                'billing_cycle'       => null,
+                'price_paid'          => 0,
+                'razorpay_payment_id' => null,
+                'razorpay_order_id'   => null,
+                'updated_by_admin_id' => $admin->id,
+                'actor_type'          => 'self_service',
+            ]);
+
+            SubscriptionEvent::create([
+                'shop_subscription_id' => $subscription->id,
+                'shop_id'              => $subscription->shop_id,
+                'admin_id'             => $admin->id,
+                'event_type'           => 'subscription.trial_started',
+                'before'               => null,
+                'after'                => $subscription->toArray(),
+                'reason'               => 'Free ' . $trialDays . '-day trial of ' . ($plan->grantsEdition() ?? 'product'),
+            ]);
+
+            // Grant the edition + make sure the shop is active/writable for the trial.
+            if ($shopId) {
+                $this->grantEditionForSubscription($subscription, $plan);
+
+                if (Auth::user()->shop) {
+                    Auth::user()->shop->forceFill([
+                        'access_mode' => 'active',
+                        'is_active'   => true,
+                    ])->save();
+                }
+            }
+
+            return $subscription;
+        });
+    }
+
     public function grantEditionForSubscription(ShopSubscription $subscription, ?Plan $plan = null): void
     {
         if (! $subscription->shop_id) {

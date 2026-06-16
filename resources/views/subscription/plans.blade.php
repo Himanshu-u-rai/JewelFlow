@@ -127,6 +127,37 @@
         </div>
       @endif
 
+      {{-- Free trial option — no payment, no card. Uses the yearly plan id when
+           present (else monthly) only to identify the PRODUCT; a trial is never
+           billed, so the cycle is irrelevant. --}}
+      @php $trialPlan = $yearlyPlan ?? $monthlyPlan; @endphp
+      @if($trialPlan)
+        <div class="trial-band" style="margin:22px auto 0;max-width:640px;background:#fffbeb;border:1px solid #fcd34d;border-radius:16px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;">
+          <div style="flex:1 1 280px;min-width:240px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="#b45309"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.5 2.5a1 1 0 001.414-1.414L11 9.586V6z" clip-rule="evenodd"/></svg>
+              <span style="font-weight:700;color:#92400e;font-size:1.02rem;">Not ready to pay yet?</span>
+            </div>
+            <p style="margin:0;color:#a16207;font-size:0.92rem;line-height:1.45;">
+              Start a <strong>1-month free trial</strong>. No card needed. Set up your shop and try everything.
+              When the trial ends, your data stays safe — just pick a plan to keep going.
+            </p>
+          </div>
+          <form action="{{ route('subscription.trial.start') }}" method="POST" style="margin:0;flex:0 0 auto;">
+            @csrf
+            <input type="hidden" name="plan_id" value="{{ $trialPlan->id }}">
+            <button type="submit"
+                    style="background:#b45309;color:#fff;border:0;border-radius:10px;padding:12px 22px;font-weight:700;font-size:0.95rem;cursor:pointer;white-space:nowrap;transition:transform .12s ease-out,background .12s ease-out;"
+                    onmouseover="this.style.background='#92400e'"
+                    onmouseout="this.style.background='#b45309'"
+                    onmousedown="this.style.transform='scale(0.98)'"
+                    onmouseup="this.style.transform='scale(1)'">
+              Start 1-month free trial
+            </button>
+          </form>
+        </div>
+      @endif
+
       {{-- Trust Badges --}}
       <div class="footer-info">
         <div class="trust-badges">
