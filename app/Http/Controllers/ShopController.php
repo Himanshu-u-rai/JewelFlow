@@ -53,22 +53,21 @@ class ShopController extends Controller
         }
 
         if ($request->isMethod('post')) {
+            // A shop picks ONE type at onboarding. Adding or switching the other
+            // is done later from shop settings, so this is single-select.
             $validated = $request->validate([
-                'editions'   => 'required|array|min:1',
-                'editions.*' => 'required|string|in:retailer,manufacturer,dhiran',
+                'edition' => 'required|string|in:retailer,manufacturer,dhiran',
             ]);
 
-            $chosen = array_values(array_unique($validated['editions']));
+            $edition = $validated['edition'];
 
-            foreach ($chosen as $edition) {
-                if (! in_array($edition, $enabledSet, true)) {
-                    return back()
-                        ->with('error', ucfirst($edition) . ' registration is currently unavailable.')
-                        ->withInput();
-                }
+            if (! in_array($edition, $enabledSet, true)) {
+                return back()
+                    ->with('error', ucfirst($edition) . ' registration is currently unavailable.')
+                    ->withInput();
             }
 
-            $this->persistEditionChoice($user, $chosen);
+            $this->persistEditionChoice($user, [$edition]);
             return redirect()->route('subscription.plans');
         }
 

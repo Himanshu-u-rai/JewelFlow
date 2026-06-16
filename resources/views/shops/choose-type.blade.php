@@ -130,6 +130,7 @@
             box-shadow: 0 1px 2px rgba(31,36,48,0.04), 0 10px 26px -12px rgba(31,36,48,0.10);
         }
 
+        .type-card input[type="radio"],
         .type-card input[type="checkbox"] {
             position: absolute; opacity: 0; pointer-events: none;
         }
@@ -300,15 +301,14 @@
         @csrf
 
         <div class="heading">
-            <h2>{{ __('Which services do you need?') }}</h2>
-            <p>{{ __('Pick one or more. Your choices shape onboarding, billing, and the app you see after login.') }}</p>
-            <div class="hint">{{ __('You can select more than one, for example Retailer and Manufacturer.') }}</div>
+            <h2>{{ __('What kind of shop do you run?') }}</h2>
+            <p>{{ __('This sets up the right tools and billing for your shop. You can change or add the other later from settings.') }}</p>
         </div>
 
 <div class="cards" data-count="{{ $cardCount }}">
             @if($enabled['retailer'])
                 <label class="type-card card-retailer {{ $selected->contains('retailer') ? 'selected' : '' }}">
-                    <input type="checkbox" name="editions[]" value="retailer" {{ $selected->contains('retailer') ? 'checked' : '' }}>
+                    <input type="radio" name="edition" value="retailer" {{ $selected->contains('retailer') ? 'checked' : '' }}>
                     <div class="check-dot">
                         <svg viewBox="0 0 20 20" fill="none"><path d="M5 10l3 3 7-7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
@@ -328,7 +328,7 @@
 
             @if($enabled['manufacturer'])
                 <label class="type-card card-manufacturer {{ $selected->contains('manufacturer') ? 'selected' : '' }}">
-                    <input type="checkbox" name="editions[]" value="manufacturer" {{ $selected->contains('manufacturer') ? 'checked' : '' }}>
+                    <input type="radio" name="edition" value="manufacturer" {{ $selected->contains('manufacturer') ? 'checked' : '' }}>
                     <div class="check-dot">
                         <svg viewBox="0 0 20 20" fill="none"><path d="M5 10l3 3 7-7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
@@ -353,12 +353,12 @@
             <button type="submit" class="continue-btn" id="continueBtn" disabled>
                 {{ __('Continue →') }}
             </button>
-            <div class="selection-count" id="selectionCount">{{ __('Select at least one service') }}</div>
+            <div class="selection-count" id="selectionCount">{{ __('Choose your shop type to continue.') }}</div>
         </div>
     </form>
 
     <div class="footer-note">
-        {{ __('Services can be added or removed later from your settings, or by contacting support.') }}
+        {{ __('You can switch your shop type or add another later from your settings, or by contacting support.') }}
     </div>
 </div>
 
@@ -370,31 +370,27 @@
     const count = document.getElementById('selectionCount');
 
     function sync() {
-        const picks = [];
+        let picked = false;
         cards.forEach(card => {
-            const cb = card.querySelector('input[type="checkbox"]');
-            if (cb.checked) {
+            const radio = card.querySelector('input[type="radio"]');
+            if (radio.checked) {
                 card.classList.add('selected');
-                picks.push(cb.value);
+                picked = true;
             } else {
                 card.classList.remove('selected');
             }
         });
-        btn.disabled = picks.length === 0;
-        if (picks.length === 0) {
-            count.textContent = @json(__('Select at least one service'));
-        } else if (picks.length === 1) {
-            count.textContent = @json(__('1 service selected'));
-        } else {
-            count.textContent = picks.length + ' ' + @json(__('services selected'));
-        }
+        btn.disabled = !picked;
+        count.textContent = picked
+            ? @json(__('You can change this later from settings.'))
+            : @json(__('Choose your shop type to continue.'));
     }
 
     cards.forEach(card => {
-        const cb = card.querySelector('input[type="checkbox"]');
-        // Card is a <label>, so browser toggles checkbox by default.
-        // Listen to checkbox changes only to avoid double-toggle.
-        cb.addEventListener('change', sync);
+        const radio = card.querySelector('input[type="radio"]');
+        // Card is a <label>, so the browser selects the radio on click.
+        // Radios are mutually exclusive, so picking one clears the others.
+        radio.addEventListener('change', sync);
     });
 
     sync();
