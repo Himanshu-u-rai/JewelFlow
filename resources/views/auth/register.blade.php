@@ -1,5 +1,8 @@
 <x-guest-layout>
-    <h2 class="text-2xl font-bold text-center text-gray-900 mb-6">Create Your Jewellery Shop</h2>
+    <h2 class="text-xl font-bold text-center text-slate-900 mb-1">Create your shop</h2>
+    <p class="text-center text-sm text-slate-500 mb-6">Set up your Jewelflow account in a minute.</p>
+
+    <x-auth-session-status class="mb-4" :status="session('status')" />
 
     <form method="POST" action="{{ route('register') }}" class="space-y-4">
         @csrf
@@ -28,7 +31,8 @@
                 type="password"
                 name="password"
                 required
-                autocomplete="new-password" />
+                autocomplete="new-password"
+                placeholder="At least 8 characters" />
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
@@ -39,19 +43,22 @@
                 type="password"
                 name="password_confirmation"
                 required
-                autocomplete="new-password" />
+                autocomplete="new-password"
+                placeholder="Re-enter your password" />
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-between gap-3 mt-6">
-            <a class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition"
-               href="{{ route('login') }}">
-                {{ __('Already Have a Shop?') }}
-            </a>
-
+        <div class="mt-6">
             <x-primary-button>
-                {{ __('Register') }}
+                {{ __('Create my shop') }}
             </x-primary-button>
         </div>
+
+        <p class="text-center text-sm text-slate-500 mt-6">
+            {{ __('Already have a shop?') }}
+            <a class="font-semibold text-amber-700 hover:text-amber-800 transition" href="{{ route('login') }}">
+                {{ __('Sign in') }}
+            </a>
+        </p>
     </form>
 </x-guest-layout>

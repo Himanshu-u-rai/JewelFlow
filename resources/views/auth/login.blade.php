@@ -1,5 +1,6 @@
 <x-guest-layout>
-    <h2 class="text-2xl font-bold text-center text-gray-900 mb-6">Login to Your Shop</h2>
+    <h2 class="text-xl font-bold text-center text-slate-900 mb-1">Welcome back</h2>
+    <p class="text-center text-sm text-slate-500 mb-6">Sign in to manage your shop.</p>
 
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
@@ -222,36 +223,34 @@
             })();
         </script>
 
-        <div class="flex items-center">
-            <input id="remember_me" type="checkbox"
-                class="rounded border-gray-300 text-amber-600 shadow-sm focus:ring-amber-500"
-                name="remember"
-                @checked(old('remember'))>
-            <label for="remember_me" class="ml-2 text-sm text-gray-600">
-                {{ __('Remember me') }}
+        <div class="flex items-center justify-between">
+            <label for="remember_me" class="flex items-center cursor-pointer select-none">
+                <input id="remember_me" type="checkbox"
+                    class="rounded border-gray-300 text-amber-600 shadow-sm focus:ring-amber-500"
+                    name="remember"
+                    @checked(old('remember'))>
+                <span class="ml-2 text-sm text-slate-600">{{ __('Remember me') }}</span>
             </label>
+
+            @if (Route::has('password.request'))
+                <a class="text-sm font-medium text-amber-700 hover:text-amber-800 transition"
+                    href="{{ route('password.request') }}">
+                    {{ __('Forgot password?') }}
+                </a>
+            @endif
         </div>
 
-        <div class="flex items-center justify-between gap-3 mt-6">
-            @if (Route::has('password.request'))
-                <a class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition"
-                    href="{{ route('password.request') }}">
-                    {{ __('Forgot Password') }}
-                </a>
-            @else
-                <span></span>
-            @endif
-
+        <div class="mt-6">
             <x-primary-button>
                 {{ __('Log in') }}
             </x-primary-button>
         </div>
 
-        <div class="text-center pt-2">
-            <a class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition"
-                href="{{ route('register') }}">
-                {{ __('New User? Register') }}
+        <p class="text-center text-sm text-slate-500 mt-6">
+            {{ __('New to Jewelflow?') }}
+            <a class="font-semibold text-amber-700 hover:text-amber-800 transition" href="{{ route('register') }}">
+                {{ __('Create your shop') }}
             </a>
-        </div>
+        </p>
     </form>
 </x-guest-layout>
