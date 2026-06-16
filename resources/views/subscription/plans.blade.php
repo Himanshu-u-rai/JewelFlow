@@ -11,7 +11,23 @@
   <style>
     /* Master / detail plan picker: a slim stacked option rail on the left, the
        selected plan's full detail on the right. Compact, no vertical stretch. */
-    :root { --md-gold:#d97706; --md-gold-deep:#b45309; --md-ink:#1f2430; --md-muted:#6b7280; --md-line:#ece7dc; }
+    :root {
+      --md-gold:#d97706; --md-gold-deep:#b45309; --md-ink:#26221b;
+      --md-muted:#766c5d;          /* warm taupe, not cool gray; dark enough to stay readable on cream */
+      --md-line:#ece3d2;           /* warm hairline */
+      --md-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    /* Warm cream page with a soft gold glow up top, so the white cards lift off
+       it instead of blending into a flat near-white. Scoped override of the
+       built-in flat wash. */
+    .subscription-plans-page.ops-treatment-page {
+      background:
+        radial-gradient(120% 70% at 50% -8%, rgba(245,158,11,0.16) 0%, rgba(245,158,11,0.05) 32%, transparent 60%),
+        radial-gradient(90% 60% at 88% 6%, rgba(251,191,36,0.10) 0%, transparent 50%),
+        linear-gradient(180deg, #fdf9f0 0%, #faf4e9 46%, #f7efe1 100%);
+      background-attachment: fixed;
+    }
 
     /* Log out as a subtle button, not a bare link. */
     .md-logout {
@@ -41,17 +57,17 @@
       flex: 1 1 0;            /* distribute evenly to fill the column height */
       display: flex; align-items: center; justify-content: space-between; gap: 14px;
       width: 100%; text-align: left; cursor: pointer;
-      background: #fff; border: 1.5px solid var(--md-line); border-radius: 16px;
+      background: #fffefb; border: 1.5px solid var(--md-line); border-radius: 16px;
       padding: 16px 18px; font: inherit; color: var(--md-ink);
-      box-shadow: 0 1px 2px rgba(31,36,48,0.04);
-      transition: border-color .16s ease, box-shadow .16s ease, transform .12s ease;
+      box-shadow: 0 1px 2px rgba(120,80,20,0.05), 0 8px 20px -16px rgba(120,80,20,0.22);
+      transition: border-color .16s ease, box-shadow .16s ease, transform .16s var(--md-ease-out), background .16s ease;
     }
-    .md-opt:hover { border-color: var(--md-gold); }
+    .md-opt:hover { border-color: var(--md-gold); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(120,80,20,0.06), 0 12px 26px -16px rgba(120,80,20,0.30); }
     .md-opt:active { transform: scale(0.99); }
     .md-opt.active {
       border-color: var(--md-gold);
-      background: #fffdf7;
-      box-shadow: 0 0 0 3px rgba(245,158,11,0.16), 0 10px 26px -14px rgba(180,83,9,0.30);
+      background: linear-gradient(180deg, #fffdf6 0%, #fff8ea 100%);
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.18), 0 14px 30px -14px rgba(180,83,9,0.34);
     }
     .md-opt-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
     .md-opt-badge {
@@ -70,11 +86,19 @@
     .md-detail { position: relative; display: flex; }
     .md-pane {
       flex: 1 1 auto; width: 100%;
-      background: #fff; border: 1px solid var(--md-line); border-radius: 20px;
+      position: relative; overflow: hidden;
+      background: #fffefb; border: 1px solid var(--md-line); border-radius: 20px;
       padding: 28px 28px 24px;
-      box-shadow: 0 1px 2px rgba(31,36,48,0.04), 0 16px 40px -20px rgba(31,36,48,0.16);
+      box-shadow: 0 1px 2px rgba(120,80,20,0.05), 0 22px 50px -26px rgba(120,80,20,0.28);
       display: none;
       animation: md-fade .18s ease-out;
+    }
+    /* Hairline gold accent along the detail pane's top edge: ties the brand
+       color through the page without a heavy header. */
+    .md-pane::before {
+      content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
+      background: linear-gradient(90deg, #fcd34d 0%, #f59e0b 48%, #d97706 100%);
+      opacity: 0.9;
     }
     .md-pane.active { display: flex; flex-direction: column; }
     @keyframes md-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -99,7 +123,7 @@
       color: var(--md-muted); margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--md-line);
     }
     .md-pane-features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 0; }
-    .md-pane-features li { display: flex; align-items: center; gap: 9px; padding: 6px 0; font-size: 12.5px; color: #4b5260; }
+    .md-pane-features li { display: flex; align-items: center; gap: 9px; padding: 6px 0; font-size: 12.5px; color: #5c5345; }
     .md-pane-features svg { flex-shrink: 0; width: 15px; height: 15px; color: var(--md-gold); }
 
     /* Trial highlight points (above its feature list). */
@@ -109,6 +133,36 @@
     .md-trial-point strong { display: block; font-size: 13.5px; font-weight: 700; color: var(--md-ink); }
     .md-trial-point span { display: block; font-size: 12.5px; color: var(--md-muted); margin-top: 1px; }
 
+    /* Warm the hero + badge so the type sits in the cream, not on cold white. */
+    .subscription-plans-page .hero h1 { color: var(--md-ink); }
+    .subscription-plans-page .hero p { color: var(--md-muted); }
+    .subscription-plans-page .shop-badge {
+      background: linear-gradient(180deg, #fffaf0 0%, #fff4e0 100%);
+      border-color: #f4dcae; color: var(--md-gold-deep);
+      box-shadow: 0 1px 2px rgba(120,80,20,0.06);
+    }
+
+    /* Entrance: the page elements fade up in sequence on first view. Occasional
+       (seen once per onboarding), so a gentle staged reveal is appropriate.
+       Strong ease-out so motion is felt immediately, then settles. */
+    @keyframes md-rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .subscription-plans-page .hero,
+    .plans-md .plans-back-link-wrap,
+    .md-rail .md-opt,
+    .md-detail {
+      opacity: 0;
+      animation: md-rise 0.55s var(--md-ease-out) forwards;
+    }
+    .subscription-plans-page .hero        { animation-delay: 0.02s; }
+    .plans-md .plans-back-link-wrap       { animation-delay: 0.10s; }
+    .md-rail .md-opt:nth-child(1)         { animation-delay: 0.16s; }
+    .md-rail .md-opt:nth-child(2)         { animation-delay: 0.22s; }
+    .md-rail .md-opt:nth-child(3)         { animation-delay: 0.28s; }
+    .md-detail                            { animation-delay: 0.24s; }
+
     @media (max-width: 760px) {
       .md-shell { grid-template-columns: 1fr; gap: 16px; }
       .md-pane-features { grid-template-columns: 1fr; }
@@ -117,6 +171,11 @@
     @media (prefers-reduced-motion: reduce) {
       .md-pane { animation: none; }
       .md-opt, .md-cta { transition: none; }
+      /* No movement on reduced motion: show everything in place, no fade-up. */
+      .subscription-plans-page .hero,
+      .plans-md .plans-back-link-wrap,
+      .md-rail .md-opt,
+      .md-detail { opacity: 1; animation: none; }
     }
   </style>
 </head>
