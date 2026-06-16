@@ -151,6 +151,70 @@ class SubscriptionController extends Controller
         return redirect()->route('subscription.payment');
     }
 
+    /**
+     * Start a free trial — no payment. Creates a trial subscription that grants
+     * the product's edition and routes the owner straight to shop creation
+     * (onboarding) or the dashboard. At trial end the scheduler drops the shop
+     * to read-only; the owner buys a plan to continue.
+     */
+    public function startTrial(Request $request)
+    {
+        $user = Auth::user();
+
+        // Already has a live subscription? Don't start a trial on top of it.
+        if ($user?->shop_id) {
+            $current = ShopSubscription::query()
+                ->where('shop_id', $user->shop_id)
+                ->latest('id')
+                ->first();
+            if ($current && in_array($current->status, ['active', 'trial', 'grace', 'read_only'], true)) {
+                return redirect()->route('subscription.status')
+                    ->with('error', 'Your shop already has an active subscription.');
+            }
+        }
+
+        $validated = $request->validate([
+            'plan_id' => [
+                'required',
+                Rule::exists('plans', 'id')->where(fn ($q) => $q->whereRaw('is_active IS TRUE')),
+            ],
+        ]);
+
+        $plan = Plan::whereRaw('is_active IS TRUE')->find($validated['plan_id']);
+        if (! $plan) {
+            return redirect()->route('subscription.plans')
+                ->with('error', 'That plan is no longer available.');
+        }
+
+        try {
+            $subscription = $this->paymentService->startTrial($plan);
+        } catch (\LogicException $e) {
+            // Already-trialed-this-product, or unlinked plan.
+            return redirect()->route('subscription.plans')->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Trial start failed', ['user_id' => $user?->id, 'plan_id' => $plan->id, 'error' => $e->getMessage()]);
+            return redirect()->route('subscription.plans')
+                ->with('error', 'Could not start your free trial. Please try again or contact support.');
+        }
+
+        session([
+            'pending_subscription_id' => $subscription->id,
+            'subscription_completed'  => true,
+        ]);
+        session()->forget(['pending_plan_id', 'pending_billing_cycle', 'razorpay_order_id']);
+
+        OnboardingResumeService::setStep($user, OnboardingResumeService::STEP_CREATE_SHOP);
+
+        if (! $user->shop_id) {
+            $shopType = session('onboarding_shop_type') ?? $user->onboarding_shop_type ?? 'retailer';
+            return redirect()->route('shops.create', ['type' => $shopType])
+                ->with('success', 'Your free trial has started! Now set up your shop details.');
+        }
+
+        return redirect()->route('dashboard')
+            ->with('success', 'Your free trial has started.');
+    }
+
     public function payment()
     {
         if (Auth::user()?->shop_id) {

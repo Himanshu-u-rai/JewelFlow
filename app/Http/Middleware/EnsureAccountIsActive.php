@@ -11,7 +11,15 @@ class EnsureAccountIsActive
 {
     public function handle(Request $request, Closure $next)
     {
-        // Bypass routes that should always be accessible
+        // Bypass routes that should always be accessible.
+        //
+        // SECURITY: 'subscription.trial.start' is DELIBERATELY NOT in this list.
+        // A free trial force-activates the shop, so if a suspended shop could
+        // reach it, an admin suspension could be lifted for free. Keeping the
+        // trial route out of the bypass means a suspended shop is blocked (and
+        // logged out) by this middleware before it can start a trial. The paid
+        // routes below are bypassed because restoring access via real payment is
+        // intended. Do NOT add the trial route here.
         $bypassRouteNames = [
             'subscription.plans', 'subscription.choose', 'subscription.payment',
             'subscription.payment.initiate', 'subscription.payment.callback',

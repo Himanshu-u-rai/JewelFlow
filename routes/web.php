@@ -104,6 +104,8 @@ Route::middleware(['auth', 'tenant', 'account.active'])->group(function () {
         ->name('subscription.plans');
     Route::post('/subscription/choose', [\App\Http\Controllers\SubscriptionController::class, 'choosePlan'])
         ->name('subscription.choose');
+    Route::post('/subscription/trial/start', [\App\Http\Controllers\SubscriptionController::class, 'startTrial'])
+        ->name('subscription.trial.start');
     Route::get('/subscription/payment', [\App\Http\Controllers\SubscriptionController::class, 'payment'])
         ->name('subscription.payment');
     Route::post('/subscription/payment/initiate', [\App\Http\Controllers\SubscriptionController::class, 'initiatePayment'])

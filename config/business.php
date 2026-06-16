@@ -25,6 +25,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Free Trial
+    |--------------------------------------------------------------------------
+    | Length of a self-serve free trial, in days. A trial needs no payment and
+    | no card; the shop is fully writable during it and drops to read-only when
+    | it ends (data preserved). Default is one month so a shop has time to set
+    | up before deciding to pay.
+    */
+    'subscription_trial_days' => (int) env('BUSINESS_TRIAL_DAYS', 30),
+
+    /*
+    |--------------------------------------------------------------------------
     | Platform Billing Invoice Settings
     |--------------------------------------------------------------------------
     */
