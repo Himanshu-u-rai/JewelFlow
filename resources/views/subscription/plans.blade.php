@@ -9,31 +9,92 @@
   <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap" rel="stylesheet">
   @vite(['resources/css/app.css', 'resources/js/app.js'])
   <style>
-    /* Keep the plan picker close to one screen instead of stretching tall:
-       the long "What's included" list is laid out in two columns, and the
-       page rhythm is tightened. */
-    .subscription-plans-page .hero { padding: 28px 24px 8px; }
-    .subscription-plans-page .plans-container { max-width: 1040px; padding: 20px 24px 36px; }
-    .subscription-plans-page .plans-back-link-wrap { margin-bottom: 16px; }
-    .subscription-plans-page .plans-grid { gap: 20px; }
-    .subscription-plans-page .plan-card { padding: 26px 26px 22px; }
+    /* Master / detail plan picker: a slim stacked option rail on the left, the
+       selected plan's full detail on the right. Compact, no vertical stretch. */
+    :root { --md-gold:#d97706; --md-gold-deep:#b45309; --md-ink:#1f2430; --md-muted:#6b7280; --md-line:#ece7dc; }
 
-    .subscription-plans-page .feature-header { margin-bottom: 12px; padding-bottom: 8px; }
-    .subscription-plans-page .feature-list {
+    .subscription-plans-page .hero { padding: 26px 24px 6px; }
+    .plans-md { max-width: 940px; margin: 0 auto; padding: 16px 24px 40px; }
+    .plans-md .plans-back-link-wrap { margin-bottom: 16px; }
+
+    .md-shell {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      column-gap: 18px;
-      row-gap: 0;
+      grid-template-columns: 0.82fr 1fr;
+      gap: 22px;
+      align-items: start;
     }
-    .subscription-plans-page .feature-item {
-      padding: 6px 0;
-      font-size: 12.5px;
-      gap: 9px;
-    }
-    .subscription-plans-page .feature-item .check-icon { width: 17px; height: 17px; }
 
-    @media (max-width: 560px) {
-      .subscription-plans-page .feature-list { grid-template-columns: 1fr; }
+    /* Left rail */
+    .md-rail { display: flex; flex-direction: column; gap: 12px; }
+    .md-opt {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      width: 100%; text-align: left; cursor: pointer;
+      background: #fff; border: 1.5px solid var(--md-line); border-radius: 16px;
+      padding: 16px 18px; font: inherit; color: var(--md-ink);
+      box-shadow: 0 1px 2px rgba(31,36,48,0.04);
+      transition: border-color .16s ease, box-shadow .16s ease, transform .12s ease;
+    }
+    .md-opt:hover { border-color: var(--md-gold); }
+    .md-opt:active { transform: scale(0.99); }
+    .md-opt.active {
+      border-color: var(--md-gold);
+      background: #fffdf7;
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.16), 0 10px 26px -14px rgba(180,83,9,0.30);
+    }
+    .md-opt-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .md-opt-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: .02em;
+      color: var(--md-gold-deep); background: rgba(245,158,11,0.14);
+      padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
+    }
+    .md-opt-sub { font-size: 12px; color: var(--md-muted); margin-top: 3px; }
+    .md-opt-price { font-size: 18px; font-weight: 800; color: var(--md-ink); white-space: nowrap; }
+    .md-opt-price span { font-size: 12px; font-weight: 600; color: var(--md-muted); }
+    .md-opt-trial .md-opt-price { color: var(--md-gold-deep); }
+
+    /* Right detail */
+    .md-detail { position: relative; }
+    .md-pane {
+      background: #fff; border: 1px solid var(--md-line); border-radius: 20px;
+      padding: 28px 28px 24px;
+      box-shadow: 0 1px 2px rgba(31,36,48,0.04), 0 16px 40px -20px rgba(31,36,48,0.16);
+      display: none;
+      animation: md-fade .18s ease-out;
+    }
+    .md-pane.active { display: block; }
+    @keyframes md-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .md-pane-name { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--md-muted); }
+    .md-pane-price { font-size: 40px; font-weight: 800; color: var(--md-ink); letter-spacing: -1px; margin-top: 4px; }
+    .md-pane-per { font-size: 15px; font-weight: 600; color: var(--md-muted); letter-spacing: 0; margin-left: 4px; }
+    .md-pane-sub { font-size: 13px; color: var(--md-muted); margin-top: 2px; }
+
+    .md-cta {
+      display: block; width: 100%; margin: 18px 0 4px;
+      background: var(--md-gold-deep); color: #fff; border: 0; border-radius: 12px;
+      padding: 13px 22px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 6px 16px -4px rgba(217,119,6,0.45);
+      transition: background .16s ease, transform .12s ease, box-shadow .16s ease;
+    }
+    .md-cta:hover { background: #92400e; box-shadow: 0 10px 26px -6px rgba(217,119,6,0.5); }
+    .md-cta:active { transform: scale(0.98); }
+
+    .md-pane-features-head {
+      font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--md-muted); margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--md-line);
+    }
+    .md-pane-features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 0; }
+    .md-pane-features li { display: flex; align-items: center; gap: 9px; padding: 6px 0; font-size: 12.5px; color: #4b5260; }
+    .md-pane-features svg { flex-shrink: 0; width: 15px; height: 15px; color: var(--md-gold); }
+
+    @media (max-width: 760px) {
+      .md-shell { grid-template-columns: 1fr; gap: 16px; }
+      .md-pane-features { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .md-pane { animation: none; }
+      .md-opt, .md-cta { transition: none; }
     }
   </style>
 </head>
@@ -82,109 +143,138 @@
   @php
     $hasYearly = !is_null($yearlyPlan);
     $hasMonthly = !is_null($monthlyPlan);
-    $hasBoth = $hasYearly && $hasMonthly;
-    $savingsPercent = 0;
+    $savingsPercent = ($hasYearly && $hasMonthly && $monthlyPlan->price_monthly > 0)
+      ? (int) round(100 - ($yearlyPlan->price_yearly / ($monthlyPlan->price_monthly * 12)) * 100)
+      : 0;
 
-    if ($hasBoth && $monthlyPlan->price_monthly > 0) {
-      $savingsPercent = round(100 - ($yearlyPlan->price_yearly / ($monthlyPlan->price_monthly * 12)) * 100);
+    // Build the option list (left rail). Each option: a plan to bill, the cycle,
+    // the displayed monthly-equivalent price, a sublabel, and an optional badge.
+    $options = [];
+    if ($hasYearly) {
+      $options[] = [
+        'key' => 'yearly', 'plan' => $yearlyPlan, 'cycle' => 'yearly',
+        'title' => 'Yearly', 'price' => (int) round($yearlyPlan->price_yearly / 12),
+        'sub' => '₹' . number_format($yearlyPlan->price_yearly, 0) . ' billed yearly',
+        'badge' => $savingsPercent > 0 ? 'Save ' . $savingsPercent . '%' : 'Best value',
+      ];
     }
+    if ($hasMonthly) {
+      $options[] = [
+        'key' => 'monthly', 'plan' => $monthlyPlan, 'cycle' => 'monthly',
+        'title' => 'Monthly', 'price' => (int) round($monthlyPlan->price_monthly),
+        'sub' => 'Billed every month', 'badge' => null,
+      ];
+    }
+    $trialPlan = $yearlyPlan ?? $monthlyPlan;
+
+    // Feature list for a plan, decoded + label-mapped (used in the detail pane).
+    $featuresOf = function ($plan) use ($featureLabels) {
+      $f = $plan->features ?? [];
+      if (is_string($f)) { $f = json_decode($f, true) ?? []; }
+      if (! is_array($f)) { $f = []; }
+      $out = [];
+      foreach ($f as $key => $val) {
+        if (is_bool($val) && ! $val) { continue; }
+        if (! is_bool($val)) {
+          if ($key === 'max_items' && (int) $val === -1) { $out[] = 'Unlimited items'; }
+          else { $out[] = 'Up to ' . $val . ' ' . ($featureLabels[$key] ?? $key); }
+        } else {
+          $out[] = $featureLabels[$key] ?? $key;
+        }
+      }
+      return $out;
+    };
+    $defaultKey = $options[0]['key'] ?? '';
   @endphp
 
   <div>
-    <div class="plans-container">
+    <div class="plans-container plans-md">
       <div class="plans-back-link-wrap">
         <a href="{{ route('shops.choose-type') }}" class="back-btn">← Change business type</a>
       </div>
-      {{-- Plans Grid --}}
-      @if($hasBoth)
-        {{-- BOTH PLANS: side by side, yearly highlighted --}}
-        <div class="plans-grid dual">
-          {{-- Monthly Card --}}
-          @include('subscription._plan-card', [
-            'plan' => $monthlyPlan,
-            'isYearly' => false,
-            'isHighlighted' => false,
-            'highlightExpr' => null,
-            'showBestBadge' => false,
-            'btnStyle' => 'secondary',
-            'btnStyleExpr' => null,
-            'savingsPercent' => 0,
-          ])
 
-          {{-- Yearly Card --}}
-          @include('subscription._plan-card', [
-            'plan' => $yearlyPlan,
-            'isYearly' => true,
-            'isHighlighted' => true,
-            'highlightExpr' => null,
-            'showBestBadge' => true,
-            'btnStyle' => 'primary',
-            'btnStyleExpr' => null,
-            'savingsPercent' => $savingsPercent,
-          ])
-        </div>
-
-      @elseif($hasMonthly)
-        {{-- MONTHLY ONLY: single centered card --}}
-        <div class="plans-grid single">
-          @include('subscription._plan-card', [
-            'plan' => $monthlyPlan,
-            'isYearly' => false,
-            'isHighlighted' => true,
-            'highlightExpr' => null,
-            'showBestBadge' => false,
-            'btnStyle' => 'primary',
-            'btnStyleExpr' => null,
-            'savingsPercent' => 0,
-          ])
-        </div>
-
-      @elseif($hasYearly)
-        {{-- YEARLY ONLY: single centered card --}}
-        <div class="plans-grid single">
-          @include('subscription._plan-card', [
-            'plan' => $yearlyPlan,
-            'isYearly' => true,
-            'isHighlighted' => true,
-            'highlightExpr' => null,
-            'showBestBadge' => false,
-            'btnStyle' => 'primary',
-            'btnStyleExpr' => null,
-            'savingsPercent' => 0,
-          ])
-        </div>
-      @endif
-
-      {{-- Free trial option (no payment, no card). Uses the yearly plan id when
-           present (else monthly) only to identify the PRODUCT; a trial is never
-           billed, so the cycle is irrelevant. --}}
-      @php $trialPlan = $yearlyPlan ?? $monthlyPlan; @endphp
-      @if($trialPlan)
-        <div class="trial-band" style="margin:22px auto 0;max-width:640px;background:#fffbeb;border:1px solid #fcd34d;border-radius:16px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;">
-          <div style="flex:1 1 280px;min-width:240px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="#b45309"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.5 2.5a1 1 0 001.414-1.414L11 9.586V6z" clip-rule="evenodd"/></svg>
-              <span style="font-weight:700;color:#92400e;font-size:1.02rem;">Not ready to pay yet?</span>
-            </div>
-            <p style="margin:0;color:#a16207;font-size:0.92rem;line-height:1.45;">
-              Start a <strong>1-month free trial</strong>. No card needed. Set up your shop and try everything.
-              When the trial ends, your data stays safe. Just pick a plan to keep going.
-            </p>
-          </div>
-          <form action="{{ route('subscription.trial.start') }}" method="POST" style="margin:0;flex:0 0 auto;">
-            @csrf
-            <input type="hidden" name="plan_id" value="{{ $trialPlan->id }}">
-            <button type="submit"
-                    style="background:#b45309;color:#fff;border:0;border-radius:10px;padding:12px 22px;font-weight:700;font-size:0.95rem;cursor:pointer;white-space:nowrap;transition:transform .12s ease-out,background .12s ease-out;"
-                    onmouseover="this.style.background='#92400e'"
-                    onmouseout="this.style.background='#b45309'"
-                    onmousedown="this.style.transform='scale(0.98)'"
-                    onmouseup="this.style.transform='scale(1)'">
-              Start 1-month free trial
+      {{-- Master / detail: stacked options on the left, full detail on the right. --}}
+      <div class="md-shell" id="planMaster">
+        {{-- LEFT: option rail --}}
+        <div class="md-rail" role="tablist" aria-label="Plans">
+          @foreach($options as $i => $opt)
+            <button type="button" class="md-opt {{ $i === 0 ? 'active' : '' }}"
+                    role="tab" aria-selected="{{ $i === 0 ? 'true' : 'false' }}"
+                    data-plan="{{ $opt['key'] }}">
+              <div class="md-opt-main">
+                <div class="md-opt-title">
+                  {{ $opt['title'] }}
+                  @if($opt['badge'])<span class="md-opt-badge">{{ $opt['badge'] }}</span>@endif
+                </div>
+                <div class="md-opt-sub">{{ $opt['sub'] }}</div>
+              </div>
+              <div class="md-opt-price">₹{{ number_format($opt['price'], 0) }}<span>/mo</span></div>
             </button>
-          </form>
+          @endforeach
+
+          @if($trialPlan)
+            <button type="button" class="md-opt md-opt-trial" role="tab" aria-selected="false" data-plan="trial">
+              <div class="md-opt-main">
+                <div class="md-opt-title">Free trial</div>
+                <div class="md-opt-sub">1 month, no card</div>
+              </div>
+              <div class="md-opt-price">₹0</div>
+            </button>
+          @endif
         </div>
-      @endif
+
+        {{-- RIGHT: detail panes (one per option; one visible at a time) --}}
+        <div class="md-detail">
+          @foreach($options as $i => $opt)
+            <div class="md-pane {{ $i === 0 ? 'active' : '' }}" data-pane="{{ $opt['key'] }}">
+              <div class="md-pane-name">{{ $shopType ? ucfirst($shopType) : '' }} {{ $opt['title'] }}</div>
+              <div class="md-pane-price">
+                ₹{{ number_format($opt['price'], 0) }}<span class="md-pane-per">/month</span>
+              </div>
+              <div class="md-pane-sub">{{ $opt['sub'] }}</div>
+
+              <form action="{{ route('subscription.choose') }}" method="POST" class="md-pane-form">
+                @csrf
+                <input type="hidden" name="plan_id" value="{{ $opt['plan']->id }}">
+                <input type="hidden" name="billing_cycle" value="{{ $opt['cycle'] }}">
+                <button type="submit" class="md-cta">Get Started →</button>
+              </form>
+
+              <div class="md-pane-features-head">What's included</div>
+              <ul class="md-pane-features">
+                @foreach($featuresOf($opt['plan']) as $feat)
+                  <li>
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    <span>{{ $feat }}</span>
+                  </li>
+                @endforeach
+              </ul>
+            </div>
+          @endforeach
+
+          @if($trialPlan)
+            <div class="md-pane md-pane-trial" data-pane="trial">
+              <div class="md-pane-name">1-month free trial</div>
+              <div class="md-pane-price">₹0<span class="md-pane-per">/first month</span></div>
+              <div class="md-pane-sub">No card needed. Set up your shop and try everything.</div>
+
+              <form action="{{ route('subscription.trial.start') }}" method="POST" class="md-pane-form">
+                @csrf
+                <input type="hidden" name="plan_id" value="{{ $trialPlan->id }}">
+                <button type="submit" class="md-cta">Start free trial →</button>
+              </form>
+
+              <div class="md-pane-features-head">How it works</div>
+              <ul class="md-pane-features">
+                <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span>Full access for one month</span></li>
+                <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span>No card, no charge upfront</span></li>
+                <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span>Your data stays safe when it ends</span></li>
+                <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span>Pick a plan anytime to keep going</span></li>
+              </ul>
+            </div>
+          @endif
+        </div>
+      </div>
 
       {{-- Trust Badges --}}
       <div class="footer-info">
@@ -207,5 +297,28 @@
   </div>
 
 </div>
+<script>
+(function () {
+  var master = document.getElementById('planMaster');
+  if (!master) return;
+  var opts  = master.querySelectorAll('.md-opt');
+  var panes = master.querySelectorAll('.md-pane');
+
+  function select(key) {
+    opts.forEach(function (o) {
+      var on = o.getAttribute('data-plan') === key;
+      o.classList.toggle('active', on);
+      o.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    panes.forEach(function (p) {
+      p.classList.toggle('active', p.getAttribute('data-pane') === key);
+    });
+  }
+
+  opts.forEach(function (o) {
+    o.addEventListener('click', function () { select(o.getAttribute('data-plan')); });
+  });
+})();
+</script>
 </body>
 </html>
