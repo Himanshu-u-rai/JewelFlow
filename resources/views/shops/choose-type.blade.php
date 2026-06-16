@@ -22,12 +22,13 @@
             margin: 0;
             font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
             min-height: 100vh;
-            /* Warm charcoal, matching the login brand panel (no purple/blue). */
+            /* Bright, welcoming light theme for the first-run onboarding moment.
+               Warm gold glow at the top over a soft off-white. */
             background:
-                radial-gradient(110% 80% at 50% -10%, rgba(251,191,36,0.07) 0%, transparent 50%),
-                linear-gradient(160deg, #211b15 0%, #161210 55%, #1d1712 100%);
+                radial-gradient(120% 80% at 50% -10%, rgba(245,158,11,0.10) 0%, transparent 55%),
+                #fbf9f5;
             background-attachment: fixed;
-            color: #fff;
+            color: #1f2430;
         }
 
         .page { display: flex; flex-direction: column; min-height: 100vh; }
@@ -41,8 +42,25 @@
 
         .brand { display: flex; align-items: center; gap: 10px; }
         .brand svg { width: 28px; height: 28px; }
-        .brand-name { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
-        .brand-name span { color: var(--gold-400); }
+        .brand-name { font-size: 20px; font-weight: 800; color: #1f2430; letter-spacing: -0.3px; }
+        .brand-name span { color: var(--gold-600); }
+
+        /* Log out as a proper subtle button, not a bare link. */
+        .logout-btn {
+            background: #fff;
+            border: 1px solid #e7e2d8;
+            color: #6b5d44;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font: inherit;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(31, 36, 48, 0.04);
+            transition: background 0.16s ease, border-color 0.16s ease, transform 0.12s ease;
+        }
+        .logout-btn:hover { background: #fbf6ec; border-color: var(--gold-300); color: var(--gold-700); }
+        .logout-btn:active { transform: scale(0.97); }
 
         .main {
             flex: 1;
@@ -57,17 +75,17 @@
         .main::before {
             content: '';
             position: absolute;
-            top: 50%; left: 50%;
+            top: 42%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 800px; height: 500px;
-            background: radial-gradient(circle, rgba(251,191,36,0.06) 0%, transparent 70%);
+            width: 900px; height: 520px;
+            background: radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 70%);
             pointer-events: none;
         }
 
         .heading { text-align: center; margin-bottom: 32px; position: relative; z-index: 1; }
-        .heading h2 { font-size: 26px; font-weight: 800; margin: 0 0 8px; }
-        .heading p { font-size: 15px; color: rgba(255,255,255,0.5); margin: 0; max-width: 520px; }
-        .heading .hint { margin-top: 10px; font-size: 13px; color: rgba(251,191,36,0.85); }
+        .heading h2 { font-size: 27px; font-weight: 800; margin: 0 0 8px; color: #1f2430; letter-spacing: -0.4px; }
+        .heading p { font-size: 15px; color: #6b7280; margin: 0 auto; max-width: 520px; line-height: 1.5; }
+        .heading .hint { margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--gold-700); }
 
         .error-banner {
             background: rgba(239,68,68,0.1);
@@ -99,16 +117,17 @@
         .cards[data-count="3"] { grid-template-columns: repeat(3, minmax(0, 340px)); max-width: 1080px; }
 
         .type-card {
-            background: rgba(255,255,255,0.04);
-            border: 1.5px solid rgba(255,255,255,0.08);
+            background: #ffffff;
+            border: 1.5px solid #ece7dc;
             padding: 24px 22px 22px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
             display: flex;
             flex-direction: column;
             position: relative;
             overflow: hidden;
-            border-radius: 14px;
+            border-radius: 16px;
+            box-shadow: 0 1px 2px rgba(31,36,48,0.04), 0 10px 26px -12px rgba(31,36,48,0.10);
         }
 
         .type-card input[type="checkbox"] {
@@ -116,15 +135,15 @@
         }
 
         .type-card:hover {
-            border-color: rgba(251,191,36,0.45);
-            background: rgba(255,255,255,0.06);
-            transform: translateY(-2px);
+            border-color: var(--gold-300);
+            transform: translateY(-3px);
+            box-shadow: 0 1px 2px rgba(31,36,48,0.04), 0 16px 34px -14px rgba(180,83,9,0.22);
         }
 
         .type-card.selected {
             border-color: var(--gold-500);
-            background: rgba(251,191,36,0.08);
-            box-shadow: 0 12px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(251,191,36,0.35);
+            background: #fffdf7;
+            box-shadow: 0 0 0 3px rgba(245,158,11,0.18), 0 16px 34px -14px rgba(180,83,9,0.28);
         }
 
         .check-dot {
@@ -132,7 +151,7 @@
             top: 14px; right: 14px;
             width: 22px; height: 22px;
             border-radius: 9999px;
-            border: 1.5px solid rgba(255,255,255,0.2);
+            border: 1.5px solid #d9d3c6;
             display: flex; align-items: center; justify-content: center;
             transition: all 0.15s;
         }
@@ -152,14 +171,14 @@
             margin-bottom: 14px;
         }
 
-        .card-retailer .type-icon     { background: rgba(251,191,36,0.12); }
+        .card-retailer .type-icon     { background: rgba(245,158,11,0.14); }
         .card-manufacturer .type-icon { background: rgba(217,119,6,0.16); }
-        .card-dhiran .type-icon       { background: rgba(45,212,191,0.12); }
+        .card-dhiran .type-icon       { background: rgba(13,148,136,0.14); }
 
-        .type-card h3 { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 4px; }
+        .type-card h3 { font-size: 17px; font-weight: 700; color: #1f2430; margin: 0 0 4px; }
         .type-subtitle {
             font-size: 13px;
-            color: rgba(255,255,255,0.48);
+            color: #6b7280;
             margin-bottom: 14px;
             line-height: 1.5;
         }
@@ -170,13 +189,13 @@
             align-items: flex-start;
             gap: 8px;
             font-size: 12.5px;
-            color: rgba(255,255,255,0.62);
+            color: #4b5260;
             line-height: 1.45;
         }
         .feature-dot { width: 5px; height: 5px; border-radius: 9999px; flex-shrink: 0; margin-top: 7px; }
-        .card-retailer .feature-dot     { background: var(--gold-400); }
+        .card-retailer .feature-dot     { background: var(--gold-500); }
         .card-manufacturer .feature-dot { background: var(--gold-600); }
-        .card-dhiran .feature-dot       { background: #5eead4; }
+        .card-dhiran .feature-dot       { background: #0d9488; }
 
         .actions {
             margin-top: 28px;
@@ -195,33 +214,38 @@
             border: none;
             border-radius: 12px;
             cursor: pointer;
-            background: linear-gradient(135deg, var(--gold-500), var(--gold-600));
+            background: var(--gold-600);
             color: #fff;
             letter-spacing: 0.01em;
-            transition: all 0.15s;
+            box-shadow: 0 6px 16px -4px rgba(217,119,6,0.45);
+            transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease;
             min-width: 260px;
         }
 
         .continue-btn:hover:not(:disabled) {
-            box-shadow: 0 10px 32px rgba(217,119,6,0.4);
+            background: var(--gold-700);
+            box-shadow: 0 10px 26px -6px rgba(217,119,6,0.5);
             transform: translateY(-1px);
         }
+        .continue-btn:active:not(:disabled) { transform: scale(0.98); }
 
         .continue-btn:disabled {
-            opacity: 0.4;
+            background: #e2dccf;
+            color: #fff;
+            box-shadow: none;
             cursor: not-allowed;
         }
 
         .selection-count {
             font-size: 12.5px;
-            color: rgba(255,255,255,0.45);
+            color: #8b8170;
         }
 
         .footer-note {
             text-align: center;
             padding: 20px 32px 28px;
             font-size: 12px;
-            color: rgba(255,255,255,0.28);
+            color: #a39884;
             line-height: 1.6;
         }
 
@@ -268,7 +292,7 @@
         {{-- Always allow an escape back to login during onboarding. --}}
         <form method="POST" action="{{ route('logout') }}" style="margin:0;">
             @csrf
-            <button type="submit" style="background:none;border:0;padding:0;font:inherit;font-weight:600;color:#d97706;cursor:pointer;text-decoration:underline;">{{ __('Log out') }}</button>
+            <button type="submit" class="logout-btn">{{ __('Log out') }}</button>
         </form>
     </div>
 
