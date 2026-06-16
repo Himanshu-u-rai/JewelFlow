@@ -110,6 +110,40 @@
             filter: drop-shadow(0 0 44px rgba(251,191,36,0.18));
         }
 
+        /* Living emblem: gentle float + slow rotating halo + faint shine breathe.
+           Login is seen often, so the motion is slow and ambient, never grabby. */
+        .hero-illustration {
+            animation: emblem-float 7s ease-in-out infinite;
+        }
+
+        /* Sparkles + stars slowly orbit the ring (the visible "living halo").
+           Rotating the concentric ring circles would be invisible, so the
+           off-center decorative marks carry the motion instead. Origin is the
+           emblem centre in the 220x220 viewBox. */
+        .emblem-orbit {
+            transform-box: view-box;
+            transform-origin: 110px 110px;
+            animation: orbit-spin 48s linear infinite;
+        }
+
+        .emblem-shine {
+            animation: shine-breathe 6s ease-in-out infinite;
+        }
+
+        @keyframes emblem-float {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-7px); }
+        }
+
+        @keyframes orbit-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes shine-breathe {
+            0%, 100% { opacity: 0.25; }
+            50%      { opacity: 0.7; }
+        }
+
         .left-brand {
             font-size: 34px;
             font-weight: 800;
@@ -356,6 +390,10 @@
         @media (prefers-reduced-motion: reduce) {
             .particle { display: none; }
             .hero-illustration svg animate { display: none; }
+            .hero-illustration,
+            .emblem-orbit,
+            .emblem-shine { animation: none !important; transform: none !important; }
+            .emblem-shine { opacity: 0.5; }
             * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
         }
 
@@ -400,10 +438,12 @@
         <div class="left-content">
             <div class="hero-illustration">
                 <svg viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="110" cy="110" r="95" stroke="url(#goldGrad)" stroke-width="1" opacity="0.2"/>
-                    <circle cx="110" cy="110" r="80" stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.3"/>
+                    <g class="emblem-halo">
+                        <circle cx="110" cy="110" r="95" stroke="url(#goldGrad)" stroke-width="1" opacity="0.2"/>
+                        <circle cx="110" cy="110" r="80" stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.3"/>
+                    </g>
                     <ellipse cx="110" cy="120" rx="52" ry="48" stroke="url(#goldGrad)" stroke-width="6" fill="none"/>
-                    <ellipse cx="110" cy="120" rx="52" ry="48" stroke="url(#goldShine)" stroke-width="2" fill="none" opacity="0.5"/>
+                    <ellipse class="emblem-shine" cx="110" cy="120" rx="52" ry="48" stroke="url(#goldShine)" stroke-width="2" fill="none" opacity="0.5"/>
                     <ellipse cx="110" cy="120" rx="42" ry="38" stroke="rgba(251,191,36,0.15)" stroke-width="1" fill="none"/>
                     <path d="M92 82 L110 56 L128 82 L110 110 Z" fill="url(#diamondGrad)" opacity="0.9"/>
                     <path d="M92 82 L110 56 L128 82" fill="none" stroke="url(#goldGrad)" stroke-width="1.5" stroke-linejoin="round"/>
@@ -412,27 +452,29 @@
                     <line x1="92" y1="82" x2="128" y2="82" stroke="rgba(251,191,36,0.4)" stroke-width="0.8"/>
                     <path d="M100 82 L110 110" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>
                     <path d="M120 82 L110 110" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>
-                    <circle cx="75" cy="68" r="2" fill="#fcd34d" opacity="0.6">
-                        <animate attributeName="opacity" values="0.6;0.1;0.6" dur="3s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="148" cy="72" r="1.5" fill="#fde68a" opacity="0.5">
-                        <animate attributeName="opacity" values="0.5;0.15;0.5" dur="2.5s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="60" cy="105" r="1.5" fill="#fcd34d" opacity="0.4">
-                        <animate attributeName="opacity" values="0.4;0.1;0.4" dur="4s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="158" cy="110" r="2" fill="#fde68a" opacity="0.4">
-                        <animate attributeName="opacity" values="0.4;0.05;0.4" dur="3.5s" repeatCount="indefinite"/>
-                    </circle>
-                    <g transform="translate(135, 58)" opacity="0.5">
-                        <line x1="0" y1="-4" x2="0" y2="4" stroke="#fcd34d" stroke-width="1" stroke-linecap="round"/>
-                        <line x1="-4" y1="0" x2="4" y2="0" stroke="#fcd34d" stroke-width="1" stroke-linecap="round"/>
-                        <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2s" repeatCount="indefinite"/>
-                    </g>
-                    <g transform="translate(82, 50)" opacity="0.35">
-                        <line x1="0" y1="-3" x2="0" y2="3" stroke="#fde68a" stroke-width="0.8" stroke-linecap="round"/>
-                        <line x1="-3" y1="0" x2="3" y2="0" stroke="#fde68a" stroke-width="0.8" stroke-linecap="round"/>
-                        <animate attributeName="opacity" values="0.35;0.08;0.35" dur="3s" repeatCount="indefinite"/>
+                    <g class="emblem-orbit">
+                        <circle cx="75" cy="68" r="2" fill="#fcd34d" opacity="0.6">
+                            <animate attributeName="opacity" values="0.6;0.1;0.6" dur="3s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="148" cy="72" r="1.5" fill="#fde68a" opacity="0.5">
+                            <animate attributeName="opacity" values="0.5;0.15;0.5" dur="2.5s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="60" cy="105" r="1.5" fill="#fcd34d" opacity="0.4">
+                            <animate attributeName="opacity" values="0.4;0.1;0.4" dur="4s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="158" cy="110" r="2" fill="#fde68a" opacity="0.4">
+                            <animate attributeName="opacity" values="0.4;0.05;0.4" dur="3.5s" repeatCount="indefinite"/>
+                        </circle>
+                        <g transform="translate(135, 58)" opacity="0.5">
+                            <line x1="0" y1="-4" x2="0" y2="4" stroke="#fcd34d" stroke-width="1" stroke-linecap="round"/>
+                            <line x1="-4" y1="0" x2="4" y2="0" stroke="#fcd34d" stroke-width="1" stroke-linecap="round"/>
+                            <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2s" repeatCount="indefinite"/>
+                        </g>
+                        <g transform="translate(82, 50)" opacity="0.35">
+                            <line x1="0" y1="-3" x2="0" y2="3" stroke="#fde68a" stroke-width="0.8" stroke-linecap="round"/>
+                            <line x1="-3" y1="0" x2="3" y2="0" stroke="#fde68a" stroke-width="0.8" stroke-linecap="round"/>
+                            <animate attributeName="opacity" values="0.35;0.08;0.35" dur="3s" repeatCount="indefinite"/>
+                        </g>
                     </g>
                     <path d="M30 160 Q110 200 190 160" stroke="rgba(251,191,36,0.08)" stroke-width="1" fill="none"/>
                     <path d="M40 175 Q110 210 180 175" stroke="rgba(251,191,36,0.05)" stroke-width="1" fill="none"/>
