@@ -67,17 +67,27 @@ class SubscriptionGateService
      *
      * A shop is writable when it holds AT LEAST ONE entitled edition. An edition
      * is entitled when EITHER:
-     *   - it was granted by an admin (source='admin_grant') or is the shop's seed
-     *     edition (source='seed') — neither lapses with a subscription, OR
-     *   - it is subscription-backed and at least one subscription for that
-     *     product is in a writable state (active / trial / grace).
+     *   - it was granted by an admin (source='admin_grant') — a DELIBERATE
+     *     platform comp (demo / pilot / internal / sales-trial / support) that is
+     *     ALWAYS writable without any subscription, OR
+     *   - it is backed (source='subscription' OR source='seed') by at least one
+     *     subscription for that product in a writable state (active / trial /
+     *     grace). A 'seed' edition is just the default onboarding row — NOT a
+     *     payment and NOT a comp — so it grants writes ONLY while a writable
+     *     subscription backs it, exactly like a subscription-sourced edition.
+     *
+     * Row-level lapse-immunity is SEPARATE from this write gate: a seed (and
+     * admin_grant) edition ROW is never auto-deleted on a lapse
+     * (CheckSubscriptionExpiry / ShopEdition::revokeFromLapsedSubscription), so a
+     * shop is never orphaned with zero editions. But a surviving seed row still
+     * needs a live subscription to WRITE — only admin_grant writes for free.
      *
      * This removes the old one-shop-one-subscription assumption: a Dhiran-only
      * shop is writable on its Dhiran edition without any retail subscription,
      * and a retail+dhiran shop is writable while EITHER product is entitled.
      *
      * Fails closed: no active editions, or every active edition's only backing
-     * is a lapsed subscription → blocked.
+     * is a lapsed subscription (or an unbacked seed) → blocked.
      */
     private static function resolveWriteState(Shop $shop): array
     {
@@ -118,23 +128,23 @@ class SubscriptionGateService
         }
 
         foreach ($activeEditions as $edition) {
-            // Admin grants and seed editions are always writable — access the
-            // shop holds independently of any payment.
-            if (in_array($edition->source, [
-                ShopEditionAssignment::SOURCE_ADMIN_GRANT,
-                ShopEditionAssignment::SOURCE_SEED,
-            ], true)) {
+            // ONLY admin grants are always writable — a deliberate platform comp
+            // is access the shop holds independently of any payment.
+            if ($edition->source === ShopEditionAssignment::SOURCE_ADMIN_GRANT) {
                 return [true, 'admin_grant', ''];
             }
 
-            // Subscription-backed edition: writable if any writable subscription
-            // grants this edition.
+            // Subscription-backed AND seed editions are writable only if a
+            // writable subscription (active / trial / grace) grants this edition.
+            // A seed edition is NOT a free pass — it must be backed by a live
+            // subscription just like a subscription-sourced edition.
             if (isset($writableEditions[$edition->edition])) {
                 return [true, 'active', ''];
             }
         }
 
-        // Every active edition's only backing is a lapsed subscription.
+        // Every active edition is either an unbacked seed or a lapsed
+        // subscription. Fail closed.
         return [false, 'expired', 'Subscription expired and grace period ended. Write operations are blocked.'];
     }
 
