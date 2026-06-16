@@ -53,9 +53,11 @@
         /* ─── Left Panel: Brand / Illustration ───────── */
         .auth-left {
             position: relative;
+            /* Warm near-black charcoal (no purple, no blue) — a jewellery
+               display-case backdrop that makes the gold read richest. */
             background:
-                radial-gradient(120% 90% at 80% -10%, rgba(251,191,36,0.10) 0%, transparent 45%),
-                linear-gradient(155deg, #1c1626 0%, #0f172a 48%, #161327 100%);
+                radial-gradient(120% 90% at 78% -8%, rgba(251,191,36,0.12) 0%, transparent 46%),
+                linear-gradient(160deg, #211b15 0%, #161210 50%, #1d1712 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
