@@ -21,12 +21,14 @@
       display: grid;
       grid-template-columns: 0.82fr 1fr;
       gap: 22px;
-      align-items: start;
+      align-items: stretch;   /* both columns share the same height */
     }
 
-    /* Left rail */
-    .md-rail { display: flex; flex-direction: column; gap: 12px; }
+    /* Left rail: options stretch to fill the column so its height matches the
+       detail pane on the right (equal-height columns, like the reference). */
+    .md-rail { display: flex; flex-direction: column; gap: 12px; height: 100%; }
     .md-opt {
+      flex: 1 1 0;            /* distribute evenly to fill the column height */
       display: flex; align-items: center; justify-content: space-between; gap: 14px;
       width: 100%; text-align: left; cursor: pointer;
       background: #fff; border: 1.5px solid var(--md-line); border-radius: 16px;
