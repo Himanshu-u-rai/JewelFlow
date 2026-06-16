@@ -4,10 +4,38 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>Choose Plan — JewelFlow</title>
+  <title>Choose Plan | JewelFlow</title>
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap" rel="stylesheet">
   @vite(['resources/css/app.css', 'resources/js/app.js'])
+  <style>
+    /* Keep the plan picker close to one screen instead of stretching tall:
+       the long "What's included" list is laid out in two columns, and the
+       page rhythm is tightened. */
+    .subscription-plans-page .hero { padding: 28px 24px 8px; }
+    .subscription-plans-page .plans-container { max-width: 1040px; padding: 20px 24px 36px; }
+    .subscription-plans-page .plans-back-link-wrap { margin-bottom: 16px; }
+    .subscription-plans-page .plans-grid { gap: 20px; }
+    .subscription-plans-page .plan-card { padding: 26px 26px 22px; }
+
+    .subscription-plans-page .feature-header { margin-bottom: 12px; padding-bottom: 8px; }
+    .subscription-plans-page .feature-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 18px;
+      row-gap: 0;
+    }
+    .subscription-plans-page .feature-item {
+      padding: 6px 0;
+      font-size: 12.5px;
+      gap: 9px;
+    }
+    .subscription-plans-page .feature-item .check-icon { width: 17px; height: 17px; }
+
+    @media (max-width: 560px) {
+      .subscription-plans-page .feature-list { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
 <div class="page-wrapper subscription-plans-page ops-treatment-page">
@@ -29,7 +57,7 @@
       <div class="header-brand-text">Jewel<span>Flow</span></div>
     </div>
     <div class="header-step" style="display:flex;align-items:center;gap:18px;">
-      <span>Step 2 of 3 — Choose Plan</span>
+      <span>Step 2 of 3 · Choose Plan</span>
       {{-- Always allow an escape: a user without a plan must still be able to
            log out and sign into an account that does have one. --}}
       <form method="POST" action="{{ route('logout') }}" style="margin:0;">
@@ -127,7 +155,7 @@
         </div>
       @endif
 
-      {{-- Free trial option — no payment, no card. Uses the yearly plan id when
+      {{-- Free trial option (no payment, no card). Uses the yearly plan id when
            present (else monthly) only to identify the PRODUCT; a trial is never
            billed, so the cycle is irrelevant. --}}
       @php $trialPlan = $yearlyPlan ?? $monthlyPlan; @endphp
@@ -140,7 +168,7 @@
             </div>
             <p style="margin:0;color:#a16207;font-size:0.92rem;line-height:1.45;">
               Start a <strong>1-month free trial</strong>. No card needed. Set up your shop and try everything.
-              When the trial ends, your data stays safe — just pick a plan to keep going.
+              When the trial ends, your data stays safe. Just pick a plan to keep going.
             </p>
           </div>
           <form action="{{ route('subscription.trial.start') }}" method="POST" style="margin:0;flex:0 0 auto;">
