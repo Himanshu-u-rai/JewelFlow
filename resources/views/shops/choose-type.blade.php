@@ -247,7 +247,7 @@
         'dhiran'       => false,
     ];
     // The grid must size to the cards ACTUALLY rendered, not the platform's
-    // enabled count — otherwise an enabled-but-hidden type (Dhiran) leaves an
+    // enabled count: otherwise an enabled-but-hidden type (Dhiran) leaves an
     // empty column and the cards pin to the side.
     $visibleTypes = array_keys(array_filter($enabled));
     $cardCount = max(1, count($visibleTypes));
