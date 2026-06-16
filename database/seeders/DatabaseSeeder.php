@@ -15,16 +15,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'mobile_number' => '9876543210',
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
-            'is_active' => true,
-        ]);
-
+        // Foundation data the app needs to function. No demo users/shops — real
+        // shops are created through onboarding. (A leftover scaffolding "Test User"
+        // insert lived here and broke production seeding on PostgreSQL.)
         $this->call(PermissionSeeder::class);
         $this->call(PlatformProductSeeder::class);
         $this->call(PlanSeeder::class);
