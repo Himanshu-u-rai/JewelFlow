@@ -32,7 +32,8 @@
                 name="password"
                 required
                 autocomplete="new-password"
-                placeholder="At least 8 characters" />
+                placeholder="Create a strong password" />
+            <p class="mt-1 text-xs text-slate-500">{{ __('At least 10 characters, with a capital letter, a small letter, a number, and a symbol.') }}</p>
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 

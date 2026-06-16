@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\Repair;
@@ -63,6 +64,16 @@ class AppServiceProvider extends ServiceProvider
         if (app()->environment('production')) {
             URL::forceScheme('https');
         }
+
+        // Single source of truth for password strength. Every path that uses
+        // Rules\Password::defaults() (registration, password reset, change
+        // password) inherits this: at least 10 characters with upper- and
+        // lower-case letters, a number, and a symbol. Fixing it here is the root
+        // fix, not a per-controller patch.
+        Password::defaults(fn () => Password::min(10)
+            ->mixedCase()
+            ->numbers()
+            ->symbols());
 
         $this->applySmtpFromDatabase();
 
