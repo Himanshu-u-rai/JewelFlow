@@ -372,23 +372,47 @@ class SubscriptionPaymentService
     }
 
     /**
-     * Whether this shop has already used its free trial for the family the given
-     * edition belongs to. Looks at every subscription the shop has ever held
-     * (any status) that was a trial (price_paid = 0 AND no razorpay_payment_id)
-     * and maps each to its family.
+     * Whether this shop OR user has already used its free trial for the family
+     * the given edition belongs to.
+     *
+     * Eligibility is keyed on BOTH the shop and the user, not just the shop. The
+     * user dimension matters because in the pre-shop onboarding flow a trial is
+     * created with shop_id = NULL — so a shop-only check would never see it and
+     * a fresh user could mint trials before their shop exists. Keying on the user
+     * (which is 1:1 with a unique mobile number) makes the "one trial per family"
+     * cap robust by DESIGN, not as an accident of the user↔shop data model.
+     *
+     * A trial is any subscription this identity has ever held with price_paid = 0
+     * AND no razorpay_payment_id. We map each to its family and compare.
+     *
+     * @param int|null $shopId  the shop (null in pre-shop onboarding)
+     * @param int|null $userId  the user (always known when starting a trial)
      */
-    public function hasUsedTrialForFamily(int $shopId, string $edition): bool
+    public function hasUsedTrialForFamily(?int $shopId, string $edition, ?int $userId = null): bool
     {
         $family = $this->trialFamilyFor($edition);
 
-        $priorTrials = ShopSubscription::query()
-            ->where('shop_id', $shopId)
+        $query = ShopSubscription::query()
             ->whereNull('razorpay_payment_id')
             ->where('price_paid', 0)
-            ->with('plan.platformProduct')
-            ->get();
+            ->where(function ($q) use ($shopId, $userId) {
+                $matched = false;
+                if ($shopId !== null) {
+                    $q->orWhere('shop_id', $shopId);
+                    $matched = true;
+                }
+                if ($userId !== null) {
+                    $q->orWhere('user_id', $userId);
+                    $matched = true;
+                }
+                // Nothing to scope by → match nothing (fail safe, never match all).
+                if (! $matched) {
+                    $q->whereRaw('1 = 0');
+                }
+            })
+            ->with('plan.platformProduct');
 
-        foreach ($priorTrials as $sub) {
+        foreach ($query->get() as $sub) {
             $grantEdition = $sub->plan?->grantsEdition();
             if ($grantEdition && $this->trialFamilyFor($grantEdition) === $family) {
                 return true;
@@ -424,8 +448,19 @@ class SubscriptionPaymentService
             throw new \LogicException('This plan is not linked to a product, so a trial cannot be started.');
         }
 
-        if ($shopId && $this->hasUsedTrialForFamily($shopId, $edition)) {
-            throw new \LogicException('Your shop has already used its free trial for this product.');
+        // Keyed on user AND shop — so the cap holds even pre-shop (shop_id null).
+        if ($this->hasUsedTrialForFamily($shopId, $edition, $userId)) {
+            throw new \LogicException('You have already used your free trial for this product.');
+        }
+
+        // A shop a platform admin deliberately SUSPENDED must not be able to lift
+        // its own suspension by starting a free trial. Only paying (or an admin)
+        // restores a suspended shop — never a self-service trial.
+        if ($shopId) {
+            $shopRow = $authUser->shop ?? Shop::find($shopId);
+            if ($shopRow && $shopRow->access_mode === 'suspended') {
+                throw new \LogicException('Your shop is suspended. Please contact support.');
+            }
         }
 
         $admin = $this->systemAdmin();
@@ -438,7 +473,8 @@ class SubscriptionPaymentService
         $startsAt  = Carbon::now();
         $endsAt    = $startsAt->copy()->addDays($trialDays);
 
-        return DB::transaction(function () use ($plan, $shopId, $userId, $admin, $startsAt, $endsAt, $trialDays) {
+        try {
+            return DB::transaction(function () use ($plan, $shopId, $userId, $admin, $startsAt, $endsAt, $trialDays) {
             $subscription = ShopSubscription::create([
                 'shop_id'             => $shopId,
                 'user_id'             => $userId,
@@ -466,12 +502,15 @@ class SubscriptionPaymentService
                 'reason'               => 'Free ' . $trialDays . '-day trial of ' . ($plan->grantsEdition() ?? 'product'),
             ]);
 
-            // Grant the edition + make sure the shop is active/writable for the trial.
+            // Grant the edition + make the shop writable for the trial. We never
+            // flip a SUSPENDED shop active here (the suspended guard above already
+            // refuses), so a self-service trial can never lift an admin suspension.
             if ($shopId) {
                 $this->grantEditionForSubscription($subscription, $plan);
 
-                if (Auth::user()->shop) {
-                    Auth::user()->shop->forceFill([
+                $shop = Auth::user()->shop;
+                if ($shop && $shop->access_mode !== 'suspended') {
+                    $shop->forceFill([
                         'access_mode' => 'active',
                         'is_active'   => true,
                     ])->save();
@@ -479,7 +518,24 @@ class SubscriptionPaymentService
             }
 
             return $subscription;
-        });
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Lost a concurrent trial-start race (the partial unique index caught
+            // the duplicate). Return the trial that won, so the caller still gets
+            // a usable trial instead of an error.
+            Log::info('Concurrent trial-start caught by unique index', ['user_id' => $userId, 'plan_id' => $plan->id]);
+            $existing = ShopSubscription::query()
+                ->where('user_id', $userId)
+                ->where('plan_id', $plan->id)
+                ->whereNull('razorpay_payment_id')
+                ->where('price_paid', 0)
+                ->latest('id')
+                ->first();
+            if ($existing) {
+                return $existing;
+            }
+            throw $e;
+        }
     }
 
     public function grantEditionForSubscription(ShopSubscription $subscription, ?Plan $plan = null): void

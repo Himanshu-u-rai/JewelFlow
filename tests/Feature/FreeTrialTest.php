@@ -132,7 +132,7 @@ class FreeTrialTest extends TestCase
 
         // Manufacturer is the SAME family (erp) → second free trial refused.
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('already used its free trial');
+        $this->expectExceptionMessage('already used your free trial');
         $svc->startTrial(Plan::where('code', 'manufacturer_yearly')->firstOrFail());
     }
 
@@ -184,5 +184,88 @@ class FreeTrialTest extends TestCase
             'shop_id' => $shop->id, 'status' => 'trial', 'price_paid' => 0,
         ]);
         $this->assertTrue($shop->fresh()->hasEdition('retailer'));
+    }
+
+    // ── Hardening (security-review findings) ────────────────────────
+
+    public function test_pre_shop_user_cannot_mint_a_second_trial_of_same_family(): void
+    {
+        // A user with NO shop yet (onboarding) — the family guard must still fire,
+        // keyed on user_id, even though shop_id is null.
+        $user = User::create([
+            'name' => 'PreShop', 'mobile_number' => fake()->unique()->numerify('9########'),
+            'shop_id' => null, 'password' => bcrypt('x'), 'is_active' => true,
+        ]);
+        $this->actingAs($user);
+        $svc = app(SubscriptionPaymentService::class);
+
+        $first = $svc->startTrial(Plan::where('code', 'retailer_yearly')->firstOrFail());
+        $this->assertNull($first->shop_id, 'pre-shop trial has null shop_id');
+        $this->assertSame($user->id, $first->user_id);
+
+        // Same family (manufacturer = erp), still pre-shop → must be refused.
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('already used your free trial');
+        $svc->startTrial(Plan::where('code', 'manufacturer_yearly')->firstOrFail());
+    }
+
+    public function test_pre_shop_user_can_still_trial_a_different_family(): void
+    {
+        $user = User::create([
+            'name' => 'PreShop2', 'mobile_number' => fake()->unique()->numerify('9########'),
+            'shop_id' => null, 'password' => bcrypt('x'), 'is_active' => true,
+        ]);
+        $this->actingAs($user);
+        $svc = app(SubscriptionPaymentService::class);
+
+        $svc->startTrial(Plan::where('code', 'retailer_yearly')->firstOrFail());
+        // Dhiran is a different family → allowed even pre-shop.
+        $dhiran = $svc->startTrial(Plan::where('code', 'dhiran_yearly')->firstOrFail());
+        $this->assertSame('trial', $dhiran->status);
+        $this->assertSame($user->id, $dhiran->user_id);
+    }
+
+    public function test_trial_cannot_un_suspend_an_admin_suspended_shop(): void
+    {
+        [$shop, $user] = $this->shopAndUser('retailer');
+        // Admin suspended the shop; its latest sub is expired (so the controller's
+        // live-sub guard would pass) — the trial must NOT lift the suspension.
+        $shop->forceFill(['access_mode' => 'suspended', 'is_active' => false])->save();
+        $this->actingAs($user);
+
+        $blocked = false;
+        try {
+            app(SubscriptionPaymentService::class)->startTrial(Plan::where('code', 'retailer_yearly')->firstOrFail());
+        } catch (LogicException $e) {
+            $blocked = true;
+            $this->assertStringContainsString('suspended', strtolower($e->getMessage()));
+        }
+        $this->assertTrue($blocked, 'a suspended shop must not be able to start a trial');
+        $this->assertSame('suspended', $shop->fresh()->access_mode, 'suspension not lifted');
+        $this->assertDatabaseMissing('shop_subscriptions', [
+            'shop_id' => $shop->id, 'status' => 'trial',
+        ]);
+    }
+
+    public function test_db_index_blocks_a_duplicate_trial_row_for_same_user_plan(): void
+    {
+        // Defence-in-depth: the partial unique index rejects a second trial row
+        // for the same (user, plan). Simulate the race by inserting directly.
+        $user = User::create([
+            'name' => 'Dup', 'mobile_number' => fake()->unique()->numerify('9########'),
+            'shop_id' => null, 'password' => bcrypt('x'), 'is_active' => true,
+        ]);
+        $this->actingAs($user);
+        $plan = Plan::where('code', 'retailer_yearly')->firstOrFail();
+        app(SubscriptionPaymentService::class)->startTrial($plan);
+
+        $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
+        \App\Models\Platform\ShopSubscription::create([
+            'shop_id' => null, 'user_id' => $user->id, 'plan_id' => $plan->id,
+            'status' => 'trial', 'starts_at' => now(), 'ends_at' => now()->addDays(30),
+            'grace_ends_at' => now()->addDays(30), 'price_paid' => 0,
+            'razorpay_payment_id' => null, 'updated_by_admin_id' => $this->createPlatformAdmin()->id,
+            'actor_type' => 'self_service',
+        ]);
     }
 }
