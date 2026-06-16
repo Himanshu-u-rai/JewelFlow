@@ -22,7 +22,11 @@
             margin: 0;
             font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
             min-height: 100vh;
-            background: #0f172a;
+            /* Warm charcoal, matching the login brand panel (no purple/blue). */
+            background:
+                radial-gradient(110% 80% at 50% -10%, rgba(251,191,36,0.07) 0%, transparent 50%),
+                linear-gradient(160deg, #211b15 0%, #161210 55%, #1d1712 100%);
+            background-attachment: fixed;
             color: #fff;
         }
 
@@ -38,12 +42,7 @@
         .brand { display: flex; align-items: center; gap: 10px; }
         .brand svg { width: 28px; height: 28px; }
         .brand-name { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
-        .brand-name span {
-            background: linear-gradient(135deg, var(--gold-300), var(--gold-500));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+        .brand-name span { color: var(--gold-400); }
 
         .main {
             flex: 1;
@@ -83,15 +82,21 @@
             text-align: center;
         }
 
+        /* Grid sizes to the number of cards actually rendered, and stays
+           centered. Each card has a sensible width so 1 card does not stretch
+           across the page and N cards do not pin to one side. */
         .cards {
             display: grid;
-            grid-template-columns: repeat(var(--col-count, 3), 1fr);
             gap: 20px;
-            max-width: 1100px;
             width: 100%;
+            justify-content: center;
             position: relative;
             z-index: 1;
+            margin: 0 auto;
         }
+        .cards[data-count="1"] { grid-template-columns: minmax(0, 380px); max-width: 380px; }
+        .cards[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 360px)); max-width: 760px; }
+        .cards[data-count="3"] { grid-template-columns: repeat(3, minmax(0, 340px)); max-width: 1080px; }
 
         .type-card {
             background: rgba(255,255,255,0.04);
@@ -147,8 +152,8 @@
             margin-bottom: 14px;
         }
 
-        .card-retailer .type-icon     { background: rgba(251,191,36,0.10); }
-        .card-manufacturer .type-icon { background: rgba(99,102,241,0.12); }
+        .card-retailer .type-icon     { background: rgba(251,191,36,0.12); }
+        .card-manufacturer .type-icon { background: rgba(217,119,6,0.16); }
         .card-dhiran .type-icon       { background: rgba(45,212,191,0.12); }
 
         .type-card h3 { font-size: 17px; font-weight: 700; color: #fff; margin: 0 0 4px; }
@@ -170,7 +175,7 @@
         }
         .feature-dot { width: 5px; height: 5px; border-radius: 9999px; flex-shrink: 0; margin-top: 7px; }
         .card-retailer .feature-dot     { background: var(--gold-400); }
-        .card-manufacturer .feature-dot { background: #818cf8; }
+        .card-manufacturer .feature-dot { background: var(--gold-600); }
         .card-dhiran .feature-dot       { background: #5eead4; }
 
         .actions {
@@ -220,8 +225,15 @@
             line-height: 1.6;
         }
 
-        @media (max-width: 900px) {
-            .cards { --col-count: 1; max-width: 440px; }
+        @media (max-width: 820px) {
+            .cards,
+            .cards[data-count="1"],
+            .cards[data-count="2"],
+            .cards[data-count="3"] {
+                grid-template-columns: minmax(0, 420px);
+                max-width: 420px;
+            }
+            .main { justify-content: flex-start; padding-top: 36px; }
         }
     </style>
 </head>
@@ -231,9 +243,14 @@
     $enabled = [
         'retailer'     => $retailerEnabled ?? true,
         'manufacturer' => $manufacturerEnabled ?? true,
-        'dhiran'       => $dhiranEnabled ?? true,
+        // Dhiran is a separate product served on its own subdomain; not shown here.
+        'dhiran'       => false,
     ];
-    $enabledCount = count(array_filter($enabled));
+    // The grid must size to the cards ACTUALLY rendered, not the platform's
+    // enabled count — otherwise an enabled-but-hidden type (Dhiran) leaves an
+    // empty column and the cards pin to the side.
+    $visibleTypes = array_keys(array_filter($enabled));
+    $cardCount = max(1, count($visibleTypes));
     $selected = collect($selected ?? []);
 @endphp
 
@@ -261,10 +278,10 @@
         <div class="heading">
             <h2>{{ __('Which services do you need?') }}</h2>
             <p>{{ __('Pick one or more. Your choices shape onboarding, billing, and the app you see after login.') }}</p>
-            <div class="hint">{{ __('You can select multiple — for example Retailer + Manufacturer.') }}</div>
+            <div class="hint">{{ __('You can select more than one, for example Retailer and Manufacturer.') }}</div>
         </div>
 
-<div class="cards" style="--col-count: {{ max(1, $enabledCount) }};">
+<div class="cards" data-count="{{ $cardCount }}">
             @if($enabled['retailer'])
                 <label class="type-card card-retailer {{ $selected->contains('retailer') ? 'selected' : '' }}">
                     <input type="checkbox" name="editions[]" value="retailer" {{ $selected->contains('retailer') ? 'checked' : '' }}>
@@ -292,7 +309,7 @@
                         <svg viewBox="0 0 20 20" fill="none"><path d="M5 10l3 3 7-7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
                     <div class="type-icon">
-                        <svg width="22" height="22" fill="none" stroke="#818cf8" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg width="22" height="22" fill="none" stroke="#d97706" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
                     <h3>{{ __('Manufacturer') }}</h3>
                     <p class="type-subtitle">{{ __('Make jewellery in-house, track lots, wastage, karigars.') }}</p>
