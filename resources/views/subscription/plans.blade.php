@@ -292,23 +292,17 @@
                 </div>
                 <div class="md-trial-point">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2m-2 4h.01M5 12a7 7 0 1114 0 7 7 0 01-14 0z"/></svg>
-                  <div><strong>Everything unlocked</strong><span>The same tools as the paid plan, below.</span></div>
+                  <div><strong>Everything unlocked</strong><span>The same tools as the full plan, nothing held back.</span></div>
                 </div>
                 <div class="md-trial-point">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                   <div><strong>Your data stays safe</strong><span>When the trial ends it turns read-only, never deleted.</span></div>
                 </div>
+                <div class="md-trial-point">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 12h14M5 16h10"/></svg>
+                  <div><strong>Pick a plan anytime</strong><span>Switch to Yearly or Monthly whenever you are ready.</span></div>
+                </div>
               </div>
-
-              <div class="md-pane-features-head">What you can use during the trial</div>
-              <ul class="md-pane-features">
-                @foreach($featuresOf($trialPlan) as $feat)
-                  <li>
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                    <span>{{ $feat }}</span>
-                  </li>
-                @endforeach
-              </ul>
             </div>
           @endif
         </div>
