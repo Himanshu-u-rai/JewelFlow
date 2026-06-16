@@ -13,6 +13,16 @@
        selected plan's full detail on the right. Compact, no vertical stretch. */
     :root { --md-gold:#d97706; --md-gold-deep:#b45309; --md-ink:#1f2430; --md-muted:#6b7280; --md-line:#ece7dc; }
 
+    /* Log out as a subtle button, not a bare link. */
+    .md-logout {
+      background: #fff; border: 1px solid var(--md-line); color: #6b5d44;
+      padding: 8px 16px; border-radius: 10px; font: inherit; font-size: 13.5px; font-weight: 600;
+      cursor: pointer; box-shadow: 0 1px 2px rgba(31,36,48,0.04);
+      transition: background .16s ease, border-color .16s ease, transform .12s ease;
+    }
+    .md-logout:hover { background: #fbf6ec; border-color: #fcd34d; color: var(--md-gold-deep); }
+    .md-logout:active { transform: scale(0.97); }
+
     .subscription-plans-page .hero { padding: 26px 24px 6px; }
     .plans-md { max-width: 940px; margin: 0 auto; padding: 16px 24px 40px; }
     .plans-md .plans-back-link-wrap { margin-bottom: 16px; }
@@ -54,16 +64,19 @@
     .md-opt-price span { font-size: 12px; font-weight: 600; color: var(--md-muted); }
     .md-opt-trial .md-opt-price { color: var(--md-gold-deep); }
 
-    /* Right detail */
-    .md-detail { position: relative; }
+    /* Right detail. The detail column stretches to the rail height; the active
+       pane fills it so selecting any plan keeps the two columns level and the
+       pane never collapses when a shorter plan is chosen. */
+    .md-detail { position: relative; display: flex; }
     .md-pane {
+      flex: 1 1 auto; width: 100%;
       background: #fff; border: 1px solid var(--md-line); border-radius: 20px;
       padding: 28px 28px 24px;
       box-shadow: 0 1px 2px rgba(31,36,48,0.04), 0 16px 40px -20px rgba(31,36,48,0.16);
       display: none;
       animation: md-fade .18s ease-out;
     }
-    .md-pane.active { display: block; }
+    .md-pane.active { display: flex; flex-direction: column; }
     @keyframes md-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
     .md-pane-name { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--md-muted); }
@@ -88,6 +101,13 @@
     .md-pane-features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 0; }
     .md-pane-features li { display: flex; align-items: center; gap: 9px; padding: 6px 0; font-size: 12.5px; color: #4b5260; }
     .md-pane-features svg { flex-shrink: 0; width: 15px; height: 15px; color: var(--md-gold); }
+
+    /* Trial highlight points (above its feature list). */
+    .md-trial-points { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+    .md-trial-point { display: flex; gap: 11px; align-items: flex-start; }
+    .md-trial-point svg { flex-shrink: 0; width: 19px; height: 19px; color: var(--md-gold-deep); margin-top: 1px; }
+    .md-trial-point strong { display: block; font-size: 13.5px; font-weight: 700; color: var(--md-ink); }
+    .md-trial-point span { display: block; font-size: 12.5px; color: var(--md-muted); margin-top: 1px; }
 
     @media (max-width: 760px) {
       .md-shell { grid-template-columns: 1fr; gap: 16px; }
@@ -119,13 +139,12 @@
       </svg>
       <div class="header-brand-text">Jewel<span>Flow</span></div>
     </div>
-    <div class="header-step" style="display:flex;align-items:center;gap:18px;">
-      <span>Step 2 of 3 · Choose Plan</span>
+    <div class="header-step" style="display:flex;align-items:center;">
       {{-- Always allow an escape: a user without a plan must still be able to
            log out and sign into an account that does have one. --}}
       <form method="POST" action="{{ route('logout') }}" style="margin:0;">
         @csrf
-        <button type="submit" style="background:none;border:0;padding:0;font:inherit;font-weight:600;color:#b45309;cursor:pointer;text-decoration:underline;">{{ __('Log out') }}</button>
+        <button type="submit" class="md-logout">{{ __('Log out') }}</button>
       </form>
     </div>
   </div>
@@ -257,8 +276,8 @@
           @if($trialPlan)
             <div class="md-pane md-pane-trial" data-pane="trial">
               <div class="md-pane-name">1-month free trial</div>
-              <div class="md-pane-price">₹0<span class="md-pane-per">/first month</span></div>
-              <div class="md-pane-sub">No card needed. Set up your shop and try everything.</div>
+              <div class="md-pane-price">₹0<span class="md-pane-per">for the first month</span></div>
+              <div class="md-pane-sub">No card needed. Set up your shop and try everything, then pick a plan to keep going.</div>
 
               <form action="{{ route('subscription.trial.start') }}" method="POST" class="md-pane-form">
                 @csrf
@@ -266,12 +285,29 @@
                 <button type="submit" class="md-cta">Start free trial →</button>
               </form>
 
-              <div class="md-pane-features-head">How it works</div>
+              <div class="md-trial-points">
+                <div class="md-trial-point">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  <div><strong>Full 1 month, free</strong><span>No card, no charge upfront.</span></div>
+                </div>
+                <div class="md-trial-point">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2m-2 4h.01M5 12a7 7 0 1114 0 7 7 0 01-14 0z"/></svg>
+                  <div><strong>Everything unlocked</strong><span>The same tools as the paid plan, below.</span></div>
+                </div>
+                <div class="md-trial-point">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <div><strong>Your data stays safe</strong><span>When the trial ends it turns read-only, never deleted.</span></div>
+                </div>
+              </div>
+
+              <div class="md-pane-features-head">What you can use during the trial</div>
               <ul class="md-pane-features">
-                <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span>Full access for one month</span></li>
-                <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span>No card, no charge upfront</span></li>
-                <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span>Your data stays safe when it ends</span></li>
-                <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span>Pick a plan anytime to keep going</span></li>
+                @foreach($featuresOf($trialPlan) as $feat)
+                  <li>
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    <span>{{ $feat }}</span>
+                  </li>
+                @endforeach
               </ul>
             </div>
           @endif
