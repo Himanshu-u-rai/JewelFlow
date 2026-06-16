@@ -3902,6 +3902,32 @@
                     <p class="settings-desc">{{ __('These are the kinds of business your shop is set up to run. Add a new one or remove one you no longer need.') }}</p>
                 </div>
 
+                {{-- Buy-now card polish: press feedback + hover, matched to the teal
+                     accent used on the subscription payment page. Kept scoped so it
+                     touches nothing outside the services tab. --}}
+                <style>
+                    .buy-service-btn {
+                        transition: background-color .16s ease-out, transform .16s ease-out, box-shadow .16s ease-out;
+                    }
+                    @media (hover: hover) and (pointer: fine) {
+                        .buy-service-btn:hover:not(:disabled) {
+                            background-color: #0d665f;
+                            box-shadow: 0 6px 16px rgba(15, 118, 110, 0.22);
+                        }
+                    }
+                    .buy-service-btn:active:not(:disabled) { transform: scale(0.98); }
+                    .buy-service-btn:disabled { opacity: .65; cursor: not-allowed; }
+                    .buy-service-btn:focus-visible {
+                        outline: 2px solid #0f766e;
+                        outline-offset: 2px;
+                    }
+                    .buy-cycle-tab { transition: color .16s ease-out, background-color .16s ease-out; }
+                    @media (prefers-reduced-motion: reduce) {
+                        .buy-service-btn, .buy-cycle-tab { transition: none; }
+                        .buy-service-btn:active:not(:disabled) { transform: none; }
+                    }
+                </style>
+
                 <p class="text-xs text-slate-500 mb-6 max-w-3xl">
                     {{ __('Adding an edition may change your plan.') }}
                     <a href="{{ route('settings.edit', ['tab' => 'subscription']) }}" data-turbo-frame="settings-content" class="font-semibold text-teal-700 hover:text-teal-800 underline">{{ __('See Plan & Billing') }}</a>.
@@ -3977,58 +4003,170 @@
 
                     {{-- Available to add --}}
                     @if(count($available) > 0)
+                        @php $purchaseOptions = $servicesData['purchase'] ?? []; @endphp
                         <section>
                             <h3 class="text-sm font-semibold text-slate-900 mb-3">{{ __('Add a new service') }}</h3>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 @foreach($available as $ed)
-                                    @if($ed === 'dhiran') @continue @endif
                                     @php
                                         $meta = [
                                             'retailer'     => ['label' => 'Retailer',     'desc' => 'Buy and sell ready-made jewellery.'],
                                             'manufacturer' => ['label' => 'Manufacturer', 'desc' => 'Make jewellery in your own workshop.'],
+                                            'dhiran'       => ['label' => 'Dhiran (Gold Loan)', 'desc' => 'Give gold loans and manage pledged items.'],
                                         ][$ed] ?? ['label' => ucfirst($ed), 'desc' => ''];
                                         $pending = $pendingRequests->firstWhere(fn($r) => $r->edition === $ed && $r->action === 'add');
+                                        $buy     = $purchaseOptions[$ed] ?? null;
+                                        $canBuy  = $buy && ($buy['purchasable'] ?? false);
                                     @endphp
 
-                                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50">
-                                        <div class="px-5 py-4">
-                                            <div class="text-sm font-semibold text-slate-900">{{ __($meta['label']) }}</div>
-                                            <div class="text-xs text-slate-500 mt-0.5">{{ __($meta['desc']) }}</div>
-                                        </div>
-
-                                        @if($pending)
-                                            <div class="border-t border-slate-200 px-5 py-3 space-y-2">
-                                                <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                                                    {{ __('Asked for since') }} {{ $pending->created_at->format('d M Y') }}. {{ __('We will get back to you soon.') }}
-                                                </p>
-                                                @can('settings.edit')
-                                                    <form method="POST" action="{{ route('settings.services.request.cancel', $pending) }}" data-turbo-frame="_top">
-                                                        @csrf
-                                                        <button type="submit" class="text-xs font-medium text-slate-500 hover:text-slate-700 underline">{{ __('Cancel this request') }}</button>
-                                                    </form>
-                                                @endcan
-                                            </div>
-                                        @elsecan('settings.edit')
-                                            <details class="border-t border-slate-200">
-                                                <summary class="cursor-pointer list-none px-5 py-3 text-xs font-semibold text-teal-700 hover:text-teal-800">
-                                                    {{ __('Ask to turn this on') }}
-                                                </summary>
-                                                <form method="POST" action="{{ route('settings.services.request-add') }}" data-turbo-frame="_top" class="px-5 pb-4 space-y-3">
-                                                    @csrf
-                                                    <input type="hidden" name="edition" value="{{ $ed }}">
+                                    @if($canBuy)
+                                        {{-- Self-serve: owner can buy and switch this on right away. --}}
+                                        @php
+                                            $hasMonthly  = $buy['monthly_price'] !== null;
+                                            $hasYearly   = $buy['yearly_price'] !== null;
+                                            $defaultCycle = $hasMonthly ? 'monthly' : 'yearly';
+                                            // Plain-English yearly saving vs paying monthly for a year.
+                                            $yearlySaving = null;
+                                            if ($hasMonthly && $hasYearly) {
+                                                $twelveMonths = $buy['monthly_price'] * 12;
+                                                if ($twelveMonths > $buy['yearly_price']) {
+                                                    $yearlySaving = (int) round((1 - ($buy['yearly_price'] / $twelveMonths)) * 100);
+                                                }
+                                            }
+                                        @endphp
+                                        <div class="buy-service-card rounded-xl border border-slate-200 bg-white shadow-sm"
+                                             x-data="{ cycle: '{{ $defaultCycle }}' }"
+                                             data-product="{{ $buy['product_code'] }}"
+                                             data-label="{{ $meta['label'] }}">
+                                            <div class="px-5 py-4 border-b border-slate-100">
+                                                <div class="flex items-start justify-between gap-3">
                                                     <div>
-                                                        <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('Why do you want this service?') }}</label>
-                                                        <textarea name="reason" rows="2" required minlength="10" maxlength="500"
-                                                                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
-                                                                  placeholder="{{ __('A short reason helps us set it up for you.') }}"></textarea>
+                                                        <div class="text-sm font-semibold text-slate-900">{{ __($meta['label']) }}</div>
+                                                        <div class="text-xs text-slate-500 mt-0.5">{{ __($meta['desc']) }}</div>
                                                     </div>
-                                                    <button type="submit" class="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 transition">
-                                                        {{ __('Send request') }}
+                                                    <span class="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-700 flex-shrink-0">
+                                                        {{ __('Add now') }}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            @can('settings.edit')
+                                                <div class="px-5 py-4 space-y-4">
+                                                    {{-- Monthly / Yearly choice. Only shown when both exist. --}}
+                                                    @if($hasMonthly && $hasYearly)
+                                                        <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs font-semibold" role="tablist" aria-label="{{ __('How often you pay') }}">
+                                                            <button type="button" @click="cycle = 'monthly'"
+                                                                    :class="cycle === 'monthly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'"
+                                                                    class="buy-cycle-tab rounded-md px-3 py-1.5">{{ __('Monthly') }}</button>
+                                                            <button type="button" @click="cycle = 'yearly'"
+                                                                    :class="cycle === 'yearly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'"
+                                                                    class="buy-cycle-tab rounded-md px-3 py-1.5">{{ __('Yearly') }}</button>
+                                                        </div>
+                                                    @endif
+
+                                                    {{-- Price. Switches with the chosen cycle. --}}
+                                                    <div>
+                                                        @if($hasMonthly)
+                                                            <div x-show="cycle === 'monthly'">
+                                                                <span class="text-2xl font-bold text-slate-900">₹{{ number_format($buy['monthly_price'], 0) }}</span>
+                                                                <span class="text-xs text-slate-500">{{ __('per month') }}</span>
+                                                            </div>
+                                                        @endif
+                                                        @if($hasYearly)
+                                                            <div x-show="cycle === 'yearly'" @if($hasMonthly) x-cloak @endif>
+                                                                <span class="text-2xl font-bold text-slate-900">₹{{ number_format($buy['yearly_price'], 0) }}</span>
+                                                                <span class="text-xs text-slate-500">{{ __('per year') }}</span>
+                                                                @if($yearlySaving)
+                                                                    <div class="mt-1 text-[11px] font-semibold text-teal-700">{{ __('Save :pct% vs paying monthly', ['pct' => $yearlySaving]) }}</div>
+                                                                @endif
+                                                            </div>
+                                                        @endif
+                                                    </div>
+
+                                                    <button type="button"
+                                                            class="buy-service-btn group relative w-full inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white"
+                                                            :data-cycle="cycle"
+                                                            data-default-label="{{ __('Buy & activate now') }}">
+                                                        <span class="buy-service-btn-label">{{ __('Buy & activate now') }}</span>
+                                                        <svg class="buy-service-btn-spinner hidden h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                        </svg>
                                                     </button>
-                                                </form>
-                                            </details>
-                                        @endcan
-                                    </div>
+
+                                                    <p class="buy-service-error hidden text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2" role="alert" aria-live="polite"></p>
+
+                                                    <p class="text-[11px] text-slate-400 leading-relaxed">{{ __('Secure payment by Razorpay. Switches on right after you pay.') }}</p>
+
+                                                    {{-- Hidden form: filled in by Razorpay on success, then submitted to
+                                                         the callback which redirects to a full page → needs _top. --}}
+                                                    <form class="buy-service-form" method="POST" action="{{ route('settings.services.add-callback') }}" data-turbo-frame="_top" style="display:none;">
+                                                        @csrf
+                                                        <input type="hidden" name="razorpay_payment_id">
+                                                        <input type="hidden" name="razorpay_order_id">
+                                                        <input type="hidden" name="razorpay_signature">
+                                                    </form>
+                                                </div>
+
+                                                @if($pending)
+                                                    <div class="border-t border-slate-100 px-5 py-3">
+                                                        <p class="text-[11px] text-slate-500">
+                                                            {{ __('You also asked us to set this up on') }} {{ $pending->created_at->format('d M Y') }}.
+                                                            <form method="POST" action="{{ route('settings.services.request.cancel', $pending) }}" data-turbo-frame="_top" class="inline">
+                                                                @csrf
+                                                                <button type="submit" class="font-medium text-slate-500 hover:text-slate-700 underline">{{ __('Cancel that request') }}</button>
+                                                            </form>
+                                                        </p>
+                                                    </div>
+                                                @endif
+                                            @else
+                                                <div class="px-5 py-4 text-xs text-slate-400">
+                                                    {{ __('Ask the shop owner to add this service.') }}
+                                                </div>
+                                            @endcan
+                                        </div>
+                                    @else
+                                        {{-- Not self-serve: keep the admin-review request form. --}}
+                                        <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50">
+                                            <div class="px-5 py-4">
+                                                <div class="text-sm font-semibold text-slate-900">{{ __($meta['label']) }}</div>
+                                                <div class="text-xs text-slate-500 mt-0.5">{{ __($meta['desc']) }}</div>
+                                            </div>
+
+                                            @if($pending)
+                                                <div class="border-t border-slate-200 px-5 py-3 space-y-2">
+                                                    <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                                        {{ __('Asked for since') }} {{ $pending->created_at->format('d M Y') }}. {{ __('We will get back to you soon.') }}
+                                                    </p>
+                                                    @can('settings.edit')
+                                                        <form method="POST" action="{{ route('settings.services.request.cancel', $pending) }}" data-turbo-frame="_top">
+                                                            @csrf
+                                                            <button type="submit" class="text-xs font-medium text-slate-500 hover:text-slate-700 underline">{{ __('Cancel this request') }}</button>
+                                                        </form>
+                                                    @endcan
+                                                </div>
+                                            @elsecan('settings.edit')
+                                                <details class="border-t border-slate-200">
+                                                    <summary class="cursor-pointer list-none px-5 py-3 text-xs font-semibold text-teal-700 hover:text-teal-800">
+                                                        {{ __('Ask to turn this on') }}
+                                                    </summary>
+                                                    <form method="POST" action="{{ route('settings.services.request-add') }}" data-turbo-frame="_top" class="px-5 pb-4 space-y-3">
+                                                        @csrf
+                                                        <input type="hidden" name="edition" value="{{ $ed }}">
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-slate-600 mb-1">{{ __('Why do you want this service?') }}</label>
+                                                            <textarea name="reason" rows="2" required minlength="10" maxlength="500"
+                                                                      class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                                                                      placeholder="{{ __('A short reason helps us set it up for you.') }}"></textarea>
+                                                        </div>
+                                                        <button type="submit" class="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 transition">
+                                                            {{ __('Send request') }}
+                                                        </button>
+                                                    </form>
+                                                </details>
+                                            @endcan
+                                        </div>
+                                    @endif
                                 @endforeach
                             </div>
                         </section>
@@ -4726,6 +4864,109 @@ document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(l
     if (initialDeletePending) {
         showPlaceholder('Will be deleted after save');
     }
+})();
+</script>
+
+{{-- Self-serve "Buy & activate now" checkout. Mirrors subscription/payment.blade.php:
+     fetch the initiate endpoint → open Razorpay → on success fill that card's
+     hidden form and submit it to the callback (which redirects with a flash).
+     One delegated handler drives every buy-now card on the page. --}}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+(() => {
+    // Guard against re-binding if this script is evaluated more than once.
+    if (window.__buyServiceWired) return;
+    window.__buyServiceWired = true;
+
+    const initiateUrl = @json(route('settings.services.initiate-add'));
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    const setBusy = (btn, busy) => {
+        const label = btn.querySelector('.buy-service-btn-label');
+        const spinner = btn.querySelector('.buy-service-btn-spinner');
+        btn.disabled = busy;
+        if (spinner) spinner.classList.toggle('hidden', !busy);
+        if (label) label.textContent = busy ? @json(__('Starting secure payment...')) : (btn.dataset.defaultLabel || label.textContent);
+    };
+
+    const showError = (card, message) => {
+        const box = card.querySelector('.buy-service-error');
+        if (!box) return;
+        box.textContent = message;
+        box.classList.remove('hidden');
+    };
+
+    const clearError = (card) => {
+        const box = card.querySelector('.buy-service-error');
+        if (box) box.classList.add('hidden');
+    };
+
+    document.addEventListener('click', async (event) => {
+        const btn = event.target.closest('.buy-service-btn');
+        if (!btn) return;
+
+        const card = btn.closest('.buy-service-card');
+        if (!card || btn.disabled) return;
+
+        const product = card.dataset.product;
+        // Alpine binds the live cycle onto the button via :data-cycle. Fall back to
+        // monthly if the toggle was never rendered (single-cycle products).
+        const cycle = btn.dataset.cycle || 'monthly';
+
+        clearError(card);
+        setBusy(btn, true);
+
+        try {
+            const res = await fetch(initiateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({ product: product, billing_cycle: cycle }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || data.error) {
+                throw new Error(data.error || @json(__('Could not start payment. Please try again.')));
+            }
+
+            const options = {
+                key: data.key_id,
+                amount: data.amount,
+                currency: data.currency,
+                order_id: data.order_id,
+                name: 'JewelFlow',
+                description: data.plan_name,
+                prefill: {
+                    name: data.user_name,
+                    email: data.user_email,
+                    contact: data.user_contact,
+                },
+                theme: { color: '#0f766e' },
+                handler: function (response) {
+                    const form = card.querySelector('.buy-service-form');
+                    form.querySelector('input[name="razorpay_payment_id"]').value = response.razorpay_payment_id;
+                    form.querySelector('input[name="razorpay_order_id"]').value = response.razorpay_order_id;
+                    form.querySelector('input[name="razorpay_signature"]').value = response.razorpay_signature;
+                    form.submit();
+                },
+                modal: {
+                    ondismiss: function () {
+                        setBusy(btn, false);
+                    }
+                }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
+        } catch (err) {
+            showError(card, err.message);
+            setBusy(btn, false);
+        }
+    });
 })();
 </script>
 @endpush

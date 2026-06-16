@@ -248,10 +248,18 @@ class SettingsController extends Controller
         if ($activeTab === 'services') {
             $active = $shop->editionList();
             $platformEnabled = \App\Models\Platform\PlatformSetting::enabledShopTypes();
+            $available = array_values(array_intersect(array_diff(\App\Support\ShopEdition::ALL, $active), $platformEnabled));
+
             $servicesData = [
                 'active'          => $active,
                 'all'             => \App\Support\ShopEdition::ALL,
-                'available'       => array_values(array_intersect(array_diff(\App\Support\ShopEdition::ALL, $active), $platformEnabled)),
+                'available'       => $available,
+                // For each available service, work out whether the owner can buy
+                // it themselves right now (active product + an active plan that
+                // carries a real price). This drives the buy-now card vs the
+                // request-add fallback. Keyed by edition string so the Blade loop
+                // can look its option up cheaply.
+                'purchase'        => $this->buildServicePurchaseOptions($available),
                 'pendingRequests' => \App\Models\ShopEditionRequest::where('shop_id', $shop->id)->where('status', \App\Models\ShopEditionRequest::STATUS_PENDING)->latest()->get(),
                 'history'         => \App\Models\ShopEditionRequest::where('shop_id', $shop->id)->whereIn('status', [\App\Models\ShopEditionRequest::STATUS_APPROVED, \App\Models\ShopEditionRequest::STATUS_DENIED, \App\Models\ShopEditionRequest::STATUS_CANCELLED])->latest()->limit(10)->get(),
                 'assignments'     => \App\Models\ShopEditionAssignment::where('shop_id', $shop->id)->whereNull('deactivated_at')->get()->keyBy('edition'),
@@ -1009,5 +1017,71 @@ class SettingsController extends Controller
         $preferences->save();
 
         return redirect()->back()->with('success', 'WhatsApp template saved.');
+    }
+
+    /**
+     * For each available service (edition string), describe whether the owner
+     * can buy it themselves now, plus the product code + monthly/yearly prices
+     * the buy-now card shows. The view posts only `product` + `billing_cycle`
+     * to settings.services.initiate-add, so the card only needs the product
+     * code and the two prices.
+     *
+     * A service is `purchasable` only when its platform product is active AND it
+     * has an active plan carrying a real (> 0) price for that billing cycle. The
+     * monthly/yearly plan resolution mirrors ShopServicesController::planForProduct()
+     * exactly (monthly = a plan with price_yearly NULL; yearly = a plan that
+     * carries a price_yearly), so the card never offers a cycle the backend would
+     * then reject. Anything not purchasable falls back to the request-add form.
+     *
+     * @param  array<int, string>  $available  edition strings (e.g. ['retailer','dhiran'])
+     * @return array<string, array<string, mixed>>  keyed by edition string
+     */
+    private function buildServicePurchaseOptions(array $available): array
+    {
+        $options = [];
+
+        foreach ($available as $edition) {
+            $productCode = \App\Models\Platform\PlatformProduct::codeForEdition($edition);
+            $product     = \App\Models\Platform\PlatformProduct::where('code', $productCode)->first();
+
+            $option = [
+                'edition'       => $edition,
+                'product_code'  => $productCode,
+                'product_name'  => $product?->name,
+                'description'   => $product?->description,
+                'purchasable'   => false,
+                'monthly_price' => null,
+                'yearly_price'  => null,
+            ];
+
+            // No product row, or an inactive ("coming soon") product → request-add only.
+            if ($product && $product->is_active) {
+                $plans = \App\Models\Platform\Plan::whereRaw('is_active IS TRUE')
+                    ->where('platform_product_id', $product->id)
+                    ->orderBy('price_monthly')
+                    ->get();
+
+                // Monthly plan: prefer a pure-monthly plan (no yearly price), else any.
+                $monthlyPlan = $plans->first(fn ($p) => is_null($p->price_yearly)) ?? $plans->first();
+                // Yearly plan: the first plan that actually carries a yearly price.
+                $yearlyPlan  = $plans->first(fn ($p) => ! is_null($p->price_yearly));
+
+                $monthlyPrice = $monthlyPlan && (float) $monthlyPlan->price_monthly > 0
+                    ? (float) $monthlyPlan->price_monthly
+                    : null;
+                $yearlyPrice = $yearlyPlan && (float) $yearlyPlan->price_yearly > 0
+                    ? (float) $yearlyPlan->price_yearly
+                    : null;
+
+                $option['monthly_price'] = $monthlyPrice;
+                $option['yearly_price']  = $yearlyPrice;
+                // Purchasable when at least one cycle has a real price to charge.
+                $option['purchasable']   = $monthlyPrice !== null || $yearlyPrice !== null;
+            }
+
+            $options[$edition] = $option;
+        }
+
+        return $options;
     }
 }
