@@ -33,17 +33,19 @@
         .qb-new-btn:hover { background: #92400e; box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 12px 22px -10px rgba(180,83,9,0.55); }
         .qb-new-btn:active { transform: scale(0.97); }
 
-        /* ---------- Stat strip: ONE card, responsive ---------- */
+        /* ---------- Stat cards: separate cards, responsive grid ---------- */
         .qb-stats {
-            display: grid; grid-template-columns: repeat(5, 1fr);
-            background: #fff; border: 1px solid var(--qb-line); border-radius: 16px;
-            overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.04);
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;
         }
         .qb-stat {
-            display: flex; align-items: flex-start; gap: 11px; padding: 16px 18px;
-            border-right: 1px solid var(--qb-line); min-width: 0;
+            display: flex; align-items: flex-start; gap: 11px; padding: 16px 18px; min-width: 0;
+            background: #fff; border: 1px solid var(--qb-line); border-radius: 14px;
+            box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.04);
+            transition: box-shadow .2s var(--qb-ease), border-color .2s ease;
         }
-        .qb-stat:last-child { border-right: 0; }
+        @media (hover: hover) and (pointer: fine) {
+            .qb-stat:hover { border-color: #dadde2; box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -16px rgba(16,24,40,0.2); }
+        }
         .qb-stat__icon {
             width: 34px; height: 34px; flex: 0 0 auto; border-radius: 9px;
             display: grid; place-items: center;
@@ -156,9 +158,6 @@
         /* ---------- Responsive ---------- */
         @media (max-width: 1100px) {
             .qb-stats { grid-template-columns: repeat(3, 1fr); }
-            .qb-stat:nth-child(3) { border-right: 0; }
-            .qb-stat:nth-child(n+4) { border-top: 1px solid var(--qb-line); }
-            .qb-stat:nth-child(4) { border-right: 1px solid var(--qb-line); }
         }
         @media (max-width: 760px) {
             /* swap table for cards */
@@ -168,16 +167,12 @@
             .qb-field:not(.is-search) { flex: 1 1 calc(50% - 5px); }
         }
         @media (max-width: 560px) {
-            .qb-stats { grid-template-columns: repeat(2, 1fr); }
+            .qb-stats { grid-template-columns: repeat(2, 1fr); gap: 12px; }
             .qb-stat { padding: 13px 13px; gap: 9px; }
             .qb-stat__value { font-size: 19px; }
             .qb-stat__value.is-money { font-size: 16px; }
-            /* hairline rules for a 2-col grid */
-            .qb-stat { border-right: 1px solid var(--qb-line); border-top: 1px solid var(--qb-line); }
-            .qb-stat:nth-child(odd) { border-left: 0; }
-            .qb-stat:nth-child(even) { border-right: 0; }
-            .qb-stat:nth-child(1), .qb-stat:nth-child(2) { border-top: 0; }
-            .qb-stat:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; }
+            /* odd count: the last card stretches across both columns */
+            .qb-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
         }
 
         @media (prefers-reduced-motion: reduce) {
