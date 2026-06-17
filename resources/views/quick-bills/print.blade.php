@@ -4,6 +4,10 @@
     <meta charset="utf-8">
     <title>{{ $quickBill->bill_number }}</title>
 @php
+    // Edit-tracking flags (default safe when the view is rendered directly).
+    $isEdited   = $isEdited ?? false;
+    $isOriginal = $isOriginal ?? false;
+
     $snapshot = $quickBill->shop_snapshot ?? [];
     $shop     = auth()->user()->shop;
     $shopName = $snapshot['name'] ?? $shop?->name ?? 'Jewellery Store';
@@ -40,7 +44,7 @@
     $copyCount  = (int) ($billing?->copy_count    ?? 1);
     $copyCount  = max(1, min(2, $copyCount));
 
-    // Items table column widths — redistribute hidden cols to Description.
+    // Items table column widths - redistribute hidden cols to Description.
     $descW = 26;
     if (!$showStone)  $descW += 9;
     if (!$showPurity) $descW += 8;
@@ -214,7 +218,7 @@
         }
         .amount-words-body { font-size: {{ $fontSize }}; line-height: 1.35; }
 
-        /* Total Receipt / Payment Note — reserves space for all POS payment
+        /* Total Receipt / Payment Note - reserves space for all POS payment
            modes (9) so the bottom-wrap height is the same on every bill. */
         .payment-note { min-height: 135px; margin-bottom: 6px; }
         .payment-note-title {
@@ -232,8 +236,10 @@
         .totals-box td { border: 1px solid #111; padding: 5px 6px; font-size: {{ $fontSize }}; }
 
         .header-center { flex: 1; text-align: center; }
-        /* Heading-kind class removed — quick bills carry no document-type title. */
+        /* Heading-kind class removed - quick bills carry no document-type title. */
         .badge { display: inline-block; border: 2px solid #111; padding: 1px 6px; font-size: 10px; font-weight: 700; margin-left: 4px; }
+        .badge-edited { border-color: #4338ca; color: #4338ca; }
+        .badge-original { border-color: #047857; color: #047857; }
 
         /* Mobile screen: relax fixed heights so the preview is scrollable. */
         @media screen and (max-width: 768px) {
@@ -316,14 +322,14 @@
             <div class="bill-col">
                 <div class="kv"><div class="k">To</div><div class="v">: {{ $quickBill->customer_name ?: ($quickBill->customer?->name ?: 'Walk-in Customer') }}</div></div>
                 @if($showAddr)
-                <div class="kv"><div class="k">Address</div><div class="v">: {{ $quickBill->customer_address ?: ($quickBill->customer?->address ?: '—') }}</div></div>
+                <div class="kv"><div class="k">Address</div><div class="v">: {{ $quickBill->customer_address ?: ($quickBill->customer?->address ?: '-') }}</div></div>
                 @endif
-                <div class="kv"><div class="k">Mobile</div><div class="v">: {{ $quickBill->customer_mobile ?: ($quickBill->customer?->mobile ?: '—') }}</div></div>
+                <div class="kv"><div class="k">Mobile</div><div class="v">: {{ $quickBill->customer_mobile ?: ($quickBill->customer?->mobile ?: '-') }}</div></div>
             </div>
             <div class="bill-col right">
                 <div class="kv"><div class="k">Bill No.</div><div class="v">: {{ $quickBill->bill_number }}</div></div>
                 <div class="kv"><div class="k">Date</div><div class="v">: {{ $billDate }}</div></div>
-                <div class="kv"><div class="k">Mode</div><div class="v">: {{ ucwords(str_replace('_', ' ', $quickBill->pricing_mode)) }}@if($quickBill->status === \App\Models\QuickBill::STATUS_VOID) <span class="badge">VOID</span>@endif</div></div>
+                <div class="kv"><div class="k">Mode</div><div class="v">: {{ ucwords(str_replace('_', ' ', $quickBill->pricing_mode)) }}@if($quickBill->status === \App\Models\QuickBill::STATUS_VOID) <span class="badge">VOID</span>@elseif($isOriginal) <span class="badge badge-original">ORIGINAL</span>@elseif($isEdited) <span class="badge badge-edited">EDITED</span>@endif</div></div>
             </div>
         </div>
 
@@ -370,7 +376,7 @@
                                 <div style="font-size: 9px; color: #555;">{{ implode(' | ', $chargeParts) }}</div>
                             @endif
                         </td>
-                        <td class="text-center">{{ $item->hsn_code ?: '—' }}</td>
+                        <td class="text-center">{{ $item->hsn_code ?: '-' }}</td>
                         <td class="text-center">{{ $item->pcs }}</td>
                         <td class="text-right">{{ number_format((float) $item->gross_weight, 3) }}</td>
                         @if($showStone)
@@ -378,7 +384,7 @@
                         <td class="text-right">{{ number_format((float) ($item->stone_charge ?? 0), 2) }}</td>
                         @endif
                         <td class="text-right">{{ number_format((float) $item->net_weight, 3) }}</td>
-                        @if($showPurity)<td class="text-center">{{ $item->purity ?: '—' }}</td>@endif
+                        @if($showPurity)<td class="text-center">{{ $item->purity ?: '-' }}</td>@endif
                         <td class="text-right">{{ number_format((float) $item->rate, 2) }}</td>
                         <td class="text-right strong">{{ number_format((float) $item->line_total, 2) }}</td>
                     </tr>
@@ -441,7 +447,7 @@
                             <span class="strong">{{ $modeLabels[$payment->payment_mode] ?? ucwords(str_replace('_', ' ', (string) $payment->payment_mode)) }}:</span>
                             ₹ {{ number_format((float) $payment->amount, 2) }}
                             @if(!empty($payment->reference_no))
-                                <span style="font-size: 11px; color: #444;">— {{ $payment->reference_no }}</span>
+                                <span style="font-size: 11px; color: #444;">- {{ $payment->reference_no }}</span>
                             @endif
                         </div>
                     @endforeach
@@ -531,7 +537,7 @@
                     <div style="white-space: pre-line;"><span class="strong">Bank:</span> {{ $snapshot['bank_details'] }}</div>
                 @endif
                 @if(empty($snapshot['upi_id']) && empty($snapshot['bank_name']) && empty($snapshot['bank_account_number']) && empty($snapshot['bank_details']))
-                    <div class="footer-empty">—</div>
+                    <div class="footer-empty">-</div>
                 @endif
             </div>
         </div>

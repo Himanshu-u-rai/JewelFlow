@@ -200,13 +200,20 @@ class QuickBillService
 
         $halfTax = round($gst / 2, 2);
         $saveAction = ($payload['save_action'] ?? 'draft') === 'issue' ? QuickBill::STATUS_ISSUED : QuickBill::STATUS_DRAFT;
-        $status = $quickBill->exists && $quickBill->status === QuickBill::STATUS_ISSUED
-            ? QuickBill::STATUS_ISSUED
-            : $saveAction;
+        $wasIssuedBefore = $quickBill->exists && $quickBill->status === QuickBill::STATUS_ISSUED;
+        $status = $wasIssuedBefore ? QuickBill::STATUS_ISSUED : $saveAction;
 
         $issuedAt = $quickBill->issued_at;
-        if ($status === QuickBill::STATUS_ISSUED && !$issuedAt) {
+        $firstIssueNow = $status === QuickBill::STATUS_ISSUED && ! $issuedAt;
+        if ($firstIssueNow) {
             $issuedAt = now();
+        }
+
+        // Editing an already-issued bill: flag it as edited (status stays issued)
+        // so the list, print and downloads can show it. Keep the first edit time.
+        $editedAt = $quickBill->edited_at;
+        if ($wasIssuedBefore && ! $editedAt) {
+            $editedAt = now();
         }
 
         $quickBill->forceFill([
@@ -236,6 +243,7 @@ class QuickBillService
             'shop_snapshot' => $this->shopSnapshot($shop),
             'updated_by' => $user->id,
             'issued_at' => $issuedAt,
+            'edited_at' => $editedAt,
             'void_reason' => null,
             'voided_at' => null,
         ]);
@@ -270,7 +278,73 @@ class QuickBillService
             $entry->save();
         }
 
+        // Freeze the as-issued original the first time the bill is issued, so an
+        // edited bill can still print/download exactly what was originally given
+        // to the customer. Captured after items + payments exist; never rewritten.
+        if ($firstIssueNow && empty($quickBill->original_snapshot)) {
+            $fresh = $quickBill->fresh(['items', 'payments']);
+            $quickBill->forceFill(['original_snapshot' => $this->buildBillSnapshot($fresh)])->save();
+        }
+
         return $quickBill->fresh(['customer', 'items', 'payments.paymentMethod']);
+    }
+
+    /**
+     * Full JSON snapshot of a bill (header + items + payments + totals) used to
+     * preserve the as-issued original. Mirrors the fields the print view reads.
+     */
+    private function buildBillSnapshot(QuickBill $bill): array
+    {
+        return [
+            'captured_at'      => now()->toIso8601String(),
+            'bill_number'      => $bill->bill_number,
+            'bill_date'        => optional($bill->bill_date)->toDateString(),
+            'status'           => $bill->status,
+            'customer_name'    => $bill->customer_name,
+            'customer_mobile'  => $bill->customer_mobile,
+            'customer_address' => $bill->customer_address,
+            'pricing_mode'     => $bill->pricing_mode,
+            'gst_rate'         => (float) $bill->gst_rate,
+            'subtotal'         => (float) $bill->subtotal,
+            'discount_type'    => $bill->discount_type,
+            'discount_value'   => (float) $bill->discount_value,
+            'discount_amount'  => (float) $bill->discount_amount,
+            'round_off'        => (float) $bill->round_off,
+            'taxable_amount'   => (float) $bill->taxable_amount,
+            'cgst_amount'      => (float) $bill->cgst_amount,
+            'sgst_amount'      => (float) $bill->sgst_amount,
+            'igst_amount'      => (float) $bill->igst_amount,
+            'total_amount'     => (float) $bill->total_amount,
+            'paid_amount'      => (float) $bill->paid_amount,
+            'due_amount'       => (float) $bill->due_amount,
+            'notes'            => $bill->notes,
+            'terms'            => $bill->terms,
+            'shop_snapshot'    => $bill->shop_snapshot,
+            'items'            => $bill->items->map(fn ($i) => [
+                'description'    => $i->description,
+                'hsn_code'       => $i->hsn_code,
+                'metal_type'     => $i->metal_type,
+                'purity'         => $i->purity,
+                'pcs'            => (int) $i->pcs,
+                'gross_weight'   => (float) $i->gross_weight,
+                'stone_weight'   => (float) $i->stone_weight,
+                'net_weight'     => (float) $i->net_weight,
+                'rate'           => (float) $i->rate,
+                'making_charge'  => (float) $i->making_charge,
+                'stone_charge'   => (float) $i->stone_charge,
+                'hallmark_charge'=> (float) ($i->hallmark_charge ?? 0),
+                'rhodium_charge' => (float) ($i->rhodium_charge ?? 0),
+                'other_charge'   => (float) ($i->other_charge ?? 0),
+                'wastage_percent'=> (float) $i->wastage_percent,
+                'line_discount'  => (float) $i->line_discount,
+                'line_total'     => (float) $i->line_total,
+            ])->values()->all(),
+            'payments'         => $bill->payments->map(fn ($p) => [
+                'payment_mode' => $p->payment_mode,
+                'reference_no' => $p->reference_no,
+                'amount'       => (float) $p->amount,
+            ])->values()->all(),
+        ];
     }
 
     private function normalizeItems(array $rawItems): array

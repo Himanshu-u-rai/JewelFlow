@@ -33,9 +33,21 @@ class QuickBill extends Model
         'paid_amount' => 'decimal:2',
         'due_amount' => 'decimal:2',
         'shop_snapshot' => 'array',
+        'original_snapshot' => 'array',
         'issued_at' => 'datetime',
+        'edited_at' => 'datetime',
         'voided_at' => 'datetime',
     ];
+
+    /**
+     * An issued bill that was changed after issue. "Edited" is a flag, not a
+     * status: the bill is still STATUS_ISSUED underneath, so reports/filters
+     * that look for issued bills keep working.
+     */
+    public function isEdited(): bool
+    {
+        return $this->edited_at !== null;
+    }
 
     public function customer(): BelongsTo
     {

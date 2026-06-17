@@ -582,6 +582,14 @@
             color: #b42318;
         }
 
+        /* Edited = issued bill changed after issue. Distinct blue/indigo so it
+           is clearly its own state, not confused with issued/draft/void. */
+        .qb-badge.is-edited {
+            border-color: #c7d2fe;
+            background: #eef2ff;
+            color: #4338ca;
+        }
+
         .qb-actions {
             display: inline-flex;
             align-items: center;
@@ -1014,6 +1022,14 @@
             'draft'  => ['cls' => 'is-draft',  'label' => 'Draft'],
             'void'   => ['cls' => 'is-void',   'label' => 'Void'],
         ];
+        // An issued bill that was changed after issue shows as "Edited" (its own
+        // colour). It is still issued underneath; this is just the chip.
+        $billChip = function ($bill) use ($statusMeta) {
+            if ($bill->status === 'issued' && $bill->edited_at !== null) {
+                return ['cls' => 'is-edited', 'label' => 'Edited'];
+            }
+            return $statusMeta[$bill->status] ?? $statusMeta['draft'];
+        };
         $hasFilters = request()->hasAny(['search', 'status', 'from_date', 'to_date']);
         $activeFilterCount = collect(['search', 'status', 'from_date', 'to_date'])->filter(fn ($key) => filled(request($key)))->count();
         $activeStatus = request('status') ? ($statusMeta[request('status')]['label'] ?? ucfirst((string) request('status'))) : null;
@@ -1217,7 +1233,7 @@
                             </thead>
                             <tbody>
                                 @foreach($quickBills as $quickBill)
-                                    @php $meta = $statusMeta[$quickBill->status] ?? $statusMeta['draft']; @endphp
+                                    @php $meta = $billChip($quickBill); @endphp
                                     <tr>
                                         <td>
                                             <div class="qb-billno">{{ $quickBill->bill_number }}</div>
@@ -1262,7 +1278,7 @@
 
                     <div class="qb-cards">
                         @foreach($quickBills as $quickBill)
-                            @php $meta = $statusMeta[$quickBill->status] ?? $statusMeta['draft']; @endphp
+                            @php $meta = $billChip($quickBill); @endphp
                             <article class="qb-card">
                                 <div class="qb-card__main">
                                     <div class="qb-card__top">

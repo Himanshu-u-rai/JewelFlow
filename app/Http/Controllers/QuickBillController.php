@@ -8,7 +8,6 @@ use App\Services\QuickBillService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class QuickBillController extends Controller
@@ -83,11 +82,7 @@ class QuickBillController extends Controller
     {
         $payload = $this->validatedPayload($request);
 
-        try {
-            $quickBill = $this->quickBillService->create(auth()->user()->shop, auth()->user(), $payload);
-        } catch (ValidationException $e) {
-            throw $e;
-        }
+        $quickBill = $this->quickBillService->create(auth()->user()->shop, auth()->user(), $payload);
 
         return redirect()->route('quick-bills.show', $quickBill)
             ->with('success', 'Quick bill saved successfully.');
@@ -133,7 +128,87 @@ class QuickBillController extends Controller
     {
         $quickBill->load('customer', 'items', 'payments');
 
-        return view('quick-bills.print', compact('quickBill'));
+        // The live bill is the (possibly edited) current version.
+        $isEdited = $quickBill->isEdited();
+
+        return view('quick-bills.print', [
+            'quickBill'  => $quickBill,
+            'isEdited'   => $isEdited,
+            'isOriginal' => false,
+        ]);
+    }
+
+    /**
+     * Print the frozen as-issued original of an edited bill, hydrated from the
+     * stored original_snapshot. Renders the same print view from a non-persisted
+     * QuickBill so the template stays single-source.
+     */
+    public function printOriginal(QuickBill $quickBill): View
+    {
+        abort_unless($quickBill->isEdited() && ! empty($quickBill->original_snapshot), 404);
+
+        $original = $this->hydrateFromSnapshot($quickBill, $quickBill->original_snapshot);
+
+        return view('quick-bills.print', [
+            'quickBill'  => $original,
+            'isEdited'   => false,
+            'isOriginal' => true,
+        ]);
+    }
+
+    /**
+     * Rebuild a read-only QuickBill (+ items + payments) from an original
+     * snapshot array. Not persisted; used only for rendering the original print.
+     */
+    private function hydrateFromSnapshot(QuickBill $quickBill, array $snap): QuickBill
+    {
+        $bill = new QuickBill();
+        $bill->forceFill([
+            'id'               => $quickBill->id,
+            'shop_id'          => $quickBill->shop_id,
+            'bill_number'      => $snap['bill_number'] ?? $quickBill->bill_number,
+            'bill_date'        => $snap['bill_date'] ?? null,
+            'status'           => $snap['status'] ?? QuickBill::STATUS_ISSUED,
+            'customer_name'    => $snap['customer_name'] ?? null,
+            'customer_mobile'  => $snap['customer_mobile'] ?? null,
+            'customer_address' => $snap['customer_address'] ?? null,
+            'pricing_mode'     => $snap['pricing_mode'] ?? 'gst_exclusive',
+            'gst_rate'         => $snap['gst_rate'] ?? 0,
+            'subtotal'         => $snap['subtotal'] ?? 0,
+            'discount_type'    => $snap['discount_type'] ?? null,
+            'discount_value'   => $snap['discount_value'] ?? 0,
+            'discount_amount'  => $snap['discount_amount'] ?? 0,
+            'round_off'        => $snap['round_off'] ?? 0,
+            'taxable_amount'   => $snap['taxable_amount'] ?? 0,
+            'cgst_amount'      => $snap['cgst_amount'] ?? 0,
+            'sgst_amount'      => $snap['sgst_amount'] ?? 0,
+            'igst_amount'      => $snap['igst_amount'] ?? 0,
+            'total_amount'     => $snap['total_amount'] ?? 0,
+            'paid_amount'      => $snap['paid_amount'] ?? 0,
+            'due_amount'       => $snap['due_amount'] ?? 0,
+            'notes'            => $snap['notes'] ?? null,
+            'terms'            => $snap['terms'] ?? null,
+            'shop_snapshot'    => $snap['shop_snapshot'] ?? $quickBill->shop_snapshot,
+        ]);
+        $bill->exists = true;
+
+        $items = collect($snap['items'] ?? [])->map(function ($i) use ($quickBill) {
+            $line = new \App\Models\QuickBillItem();
+            $line->forceFill(array_merge(['shop_id' => $quickBill->shop_id, 'quick_bill_id' => $quickBill->id], $i));
+            return $line;
+        })->values();
+
+        $payments = collect($snap['payments'] ?? [])->map(function ($p) use ($quickBill) {
+            $pay = new \App\Models\QuickBillPayment();
+            $pay->forceFill(array_merge(['shop_id' => $quickBill->shop_id, 'quick_bill_id' => $quickBill->id], $p));
+            return $pay;
+        })->values();
+
+        $bill->setRelation('items', $items);
+        $bill->setRelation('payments', $payments);
+        $bill->setRelation('customer', null);
+
+        return $bill;
     }
 
     private function validatedPayload(Request $request): array
@@ -251,8 +326,8 @@ class QuickBillController extends Controller
             ])->values()->all();
 
         // Metals the owner has enabled (gold/silver always; platinum/copper when
-        // opted in). Platinum/copper are piece-priced — purity never multiplies
-        // their price — so they appear in the metal dropdown but use an optional
+        // opted in). Platinum/copper are piece-priced - purity never multiplies
+        // their price - so they appear in the metal dropdown but use an optional
         // purity field (no profiles), and the purity factor stays 1 for them.
         $enabledMetals = \App\Services\MetalRegistry::enabledMetalsForShop($shopId);
 

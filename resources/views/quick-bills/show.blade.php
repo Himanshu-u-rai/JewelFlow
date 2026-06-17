@@ -1,9 +1,12 @@
 @php
-    $statusMeta = match ($quickBill->status) {
-        \App\Models\QuickBill::STATUS_ISSUED => ['class' => 'is-issued', 'label' => 'Issued'],
-        \App\Models\QuickBill::STATUS_VOID => ['class' => 'is-void', 'label' => 'Void'],
-        default => ['class' => 'is-draft', 'label' => 'Draft'],
-    };
+    $isEditedBill = $quickBill->status === \App\Models\QuickBill::STATUS_ISSUED && $quickBill->edited_at !== null;
+    $statusMeta = $isEditedBill
+        ? ['class' => 'is-edited', 'label' => 'Edited']
+        : match ($quickBill->status) {
+            \App\Models\QuickBill::STATUS_ISSUED => ['class' => 'is-issued', 'label' => 'Issued'],
+            \App\Models\QuickBill::STATUS_VOID => ['class' => 'is-void', 'label' => 'Void'],
+            default => ['class' => 'is-draft', 'label' => 'Draft'],
+        };
     $customerName = $quickBill->customer_name ?: ($quickBill->customer?->name ?: 'Walk-in customer');
     $customerMobile = $quickBill->customer_mobile ?: ($quickBill->customer?->mobile ?: 'No mobile');
     $customerAddress = $quickBill->customer_address ?: ($quickBill->customer?->address ?: 'No address');
@@ -32,6 +35,14 @@
                 </svg>
                 <span>Print</span>
             </a>
+            @if($isEditedBill)
+                <a href="{{ route('quick-bills.print-original', $quickBill) }}" target="_blank" class="qb-header-action qb-header-action-secondary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/>
+                    </svg>
+                    <span>Original</span>
+                </a>
+            @endif
             @if($canEditQuickBill)
                 <a href="{{ route('quick-bills.edit', $quickBill) }}" class="qb-header-action qb-header-action-edit qb-edit-action">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -287,6 +298,12 @@
             border-color: #bbf7d0;
             background: #f0fdf4;
             color: var(--qb-green);
+        }
+
+        .qb-status.is-edited {
+            border-color: #c7d2fe;
+            background: #eef2ff;
+            color: #4338ca;
         }
 
         .qb-status.is-draft {
