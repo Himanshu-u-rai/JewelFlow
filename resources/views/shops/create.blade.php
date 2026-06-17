@@ -35,19 +35,38 @@
             color: var(--ink);
         }
 
-        /* ---------- Header ---------- */
+        /* ---------- Header (sticky) ---------- */
         .header {
+            position: sticky; top: 0; z-index: 50;
             display: flex; align-items: center; justify-content: space-between;
             gap: 16px;
-            padding: 18px 32px;
+            padding: 14px 32px;
             border-bottom: 1px solid var(--line);
-            background: rgba(255,254,251,0.7);
-            backdrop-filter: blur(8px);
+            background: rgba(253,249,240,0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
+        .header-left { display: flex; align-items: center; gap: 18px; min-width: 0; }
         .header-brand { display: flex; align-items: center; gap: 10px; }
         .header-brand-mark { width: 30px; height: 30px; }
         .header-brand-text { font-size: 19px; font-weight: 800; color: var(--ink); letter-spacing: -0.3px; }
         .header-brand-text span { color: var(--gold); }
+
+        /* Change-business-type as a real button, set apart from the form so it
+           cannot be mistaken for the submit action. */
+        .header-back {
+            display: inline-flex; align-items: center; gap: 7px;
+            font: inherit; font-size: 13px; font-weight: 600; color: #6b5d44;
+            text-decoration: none; cursor: pointer;
+            background: #ffffff; border: 1px solid var(--line); border-radius: 10px;
+            padding: 8px 14px;
+            box-shadow: 0 1px 2px rgba(120,80,20,0.05);
+            transition: background .16s ease, border-color .16s ease, color .16s ease, transform .12s ease;
+        }
+        .header-back svg { width: 14px; height: 14px; }
+        .header-back:hover { background: #fbf6ec; border-color: #fcd34d; color: var(--gold-deep); }
+        .header-back:active { transform: scale(0.97); }
+
         .shop-chip {
             display: inline-flex; align-items: center; gap: 6px;
             font-size: 12px; font-weight: 700; letter-spacing: .02em;
@@ -157,14 +176,9 @@
 
         /* ---------- Actions ---------- */
         .form-actions {
-            display: flex; justify-content: flex-end; align-items: center; gap: 16px;
+            display: flex; justify-content: flex-end; align-items: center;
             margin-top: 18px; padding: 4px 4px 0;
         }
-        .form-actions .back-link {
-            font-size: 13.5px; font-weight: 600; color: var(--muted); text-decoration: none;
-            transition: color .16s ease;
-        }
-        .form-actions .back-link:hover { color: var(--gold-deep); }
         .btn-primary {
             padding: 13px 30px; background: var(--gold-deep); color: #fff;
             border: none; border-radius: 13px; font: inherit; font-size: 14.5px; font-weight: 700;
@@ -178,14 +192,15 @@
         /* Below ~620px the 4-track grid collapses to a single column so fields
            stack cleanly on phones. */
         @media (max-width: 620px) {
-            .header { padding: 16px 16px; }
-            .container { padding: 22px 14px 36px; }
+            .header { padding: 12px 14px; flex-wrap: wrap; row-gap: 10px; }
+            .header-left { gap: 12px; flex-wrap: wrap; }
+            .header-back { font-size: 12.5px; padding: 7px 11px; }
+            .container { padding: 20px 14px 36px; }
             .fcard { padding: 18px 16px; }
             .frow { grid-template-columns: 1fr; }
             .col-2, .col-3, .col-4 { grid-column: span 1; }
-            .form-actions { flex-direction: column-reverse; align-items: stretch; gap: 10px; }
+            .form-actions { align-items: stretch; }
             .btn-primary { width: 100%; text-align: center; }
-            .form-actions .back-link { text-align: center; }
         }
 
         /* ---------- Entrance motion (occasional screen: a gentle staged reveal) ---------- */
@@ -211,19 +226,25 @@
 <body>
 
 <header class="header">
-    <div class="header-brand">
-        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" class="header-brand-mark">
-            <path d="M8 13L16 4L24 13L16 28Z" fill="url(#dg)"/>
-            <path d="M8 13L16 4L24 13" stroke="#d97706" stroke-width="1.2" stroke-linejoin="round"/>
-            <line x1="8" y1="13" x2="24" y2="13" stroke="#f59e0b" stroke-width="0.8" opacity="0.6"/>
-            <defs>
-                <linearGradient id="dg" x1="16" y1="4" x2="16" y2="28" gradientUnits="userSpaceOnUse">
-                    <stop stop-color="#fcd34d"/>
-                    <stop offset="1" stop-color="#f59e0b"/>
-                </linearGradient>
-            </defs>
-        </svg>
-        <div class="header-brand-text">Jewel<span>Flow</span></div>
+    <div class="header-left">
+        <div class="header-brand">
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" class="header-brand-mark">
+                <path d="M8 13L16 4L24 13L16 28Z" fill="url(#dg)"/>
+                <path d="M8 13L16 4L24 13" stroke="#d97706" stroke-width="1.2" stroke-linejoin="round"/>
+                <line x1="8" y1="13" x2="24" y2="13" stroke="#f59e0b" stroke-width="0.8" opacity="0.6"/>
+                <defs>
+                    <linearGradient id="dg" x1="16" y1="4" x2="16" y2="28" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#fcd34d"/>
+                        <stop offset="1" stop-color="#f59e0b"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <div class="header-brand-text">Jewel<span>Flow</span></div>
+        </div>
+        <a href="{{ route('shops.choose-type') }}" class="header-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Change business type
+        </a>
     </div>
     <div class="shop-chip">
         <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
@@ -409,7 +430,6 @@
         </div>
 
         <div class="form-actions">
-            <a href="{{ route('shops.choose-type') }}" class="back-link">← Change business type</a>
             <button type="submit" class="btn-primary">Create my shop →</button>
         </div>
     </form>
