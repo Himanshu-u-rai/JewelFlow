@@ -19,16 +19,16 @@
         }
     @endphp
 
-    <x-page-header class="ops-treatment-header">
+    <x-page-header class="ops-treatment-header qb-form-header">
         <div>
             <h1 class="page-title">{{ $editing ? 'Edit Quick Bill' : 'New Quick Bill' }}</h1>
         </div>
         <div class="page-actions flex flex-wrap items-center gap-2">
             @if($editing)
-                <span class="inline-flex items-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">{{ $quickBill->bill_number }}</span>
-                <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">{{ ucfirst($quickBill->status) }}</span>
+                <span class="qb-form-header-pill">{{ $quickBill->bill_number }}</span>
+                <span class="qb-form-header-pill is-status">{{ ucfirst($quickBill->status) }}</span>
             @endif
-            <a href="{{ route('quick-bills.index') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+            <a href="{{ route('quick-bills.index') }}" class="qb-form-back-action inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
                 Back to Register
             </a>
         </div>
@@ -123,59 +123,422 @@
             }
         }
 
-        /* ---- Brand retune ----
-           The form's markup uses cold slate-900 utility classes as the accent
-           (dark buttons, focus rings, headings). Re-skin those to the JewelFlow
-           gold here, scoped to .qb-edit-page, WITHOUT touching any markup, Alpine
-           bindings or name= attributes (the payment + item logic is untouched).
-           Rose stays for destructive (remove) actions; green/amber/slate keep
-           their semantic roles. */
-        .qb-edit-page {
-            --qb-gold: #b45309;
-            --qb-gold-hover: #92400e;
-            --qb-gold-soft: #f59e0b;
-            --qb-focus: rgba(245, 158, 11, .2);
+        /* ---- Quick bill form visual system ----
+           Keep the payment rail/drawer and all Alpine/name bindings intact.
+           This block only normalizes the form surface to the flat SaaS system
+           used on the quick-bill register/detail pages. */
+        .qb-form-header {
+            --qb-bg: #f6f7f9;
+            --qb-surface: #ffffff;
+            --qb-soft: #f3f5f8;
+            --qb-line: #cbd5e1;
+            --qb-line-soft: #e2e8f0;
+            --qb-ink: #1f2430;
+            --qb-text: #4a4334;
+            --qb-muted: #64748b;
+            --qb-dark: #b45309;
         }
 
-        /* Solid dark buttons -> gold (New item, Add payment, Save, Issue, etc.) */
-        .qb-edit-page .bg-slate-900 { background-color: var(--qb-gold) !important; }
-        .qb-edit-page .hover\:bg-slate-800:hover,
-        .qb-edit-page .bg-slate-900.hover\:bg-slate-800:hover { background-color: var(--qb-gold-hover) !important; }
+        .content-header.ops-treatment-header.qb-form-header {
+            background: #fff !important;
+            border-bottom-color: #e2e8f0 !important;
+            box-shadow: none !important;
+        }
 
-        /* Fields sit inside white cards, so a plain white input is invisible
-           (reads like a nested card). Give every field a subtle grey fill with
-           a clear hairline; it lifts to white on focus. Excludes the readonly
-           hidden inputs. */
+        .qb-form-header .page-actions {
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .qb-form-header .page-actions > .qb-form-back-action:not([class*="btn-"]) {
+            min-height: 40px;
+            border-color: var(--qb-line) !important;
+            border-radius: 10px !important;
+            background: #fff !important;
+            color: var(--qb-ink) !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .qb-form-header .page-actions > .qb-form-back-action:not([class*="btn-"]):hover {
+            background: var(--qb-soft) !important;
+            border-color: var(--qb-line) !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .qb-form-header-pill {
+            display: inline-flex;
+            min-height: 32px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--qb-line-soft);
+            border-radius: 999px;
+            background: #fff;
+            padding: 0 .75rem;
+            color: var(--qb-text);
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+            box-shadow: none;
+        }
+
+        .qb-form-header-pill.is-status {
+            background: var(--qb-soft);
+            color: var(--qb-ink);
+        }
+
+        .qb-edit-page {
+            --qb-bg: #f6f7f9;
+            --qb-surface: #ffffff;
+            --qb-soft: #f3f5f8;
+            --qb-soft-strong: #eef2f7;
+            --qb-line: #cbd5e1;
+            --qb-line-soft: #e2e8f0;
+            --qb-ink: #1f2430;
+            --qb-text: #4a4334;
+            --qb-muted: #64748b;
+            /* Accent is JewelFlow gold (matches the index + detail pages). */
+            --qb-dark: #b45309;
+            --qb-dark-hover: #92400e;
+            --qb-focus: rgba(245, 158, 11, .2);
+            --app-card-radius: 14px;
+            --app-card-shadow: none;
+            --app-card-shadow-hover: none;
+            --app-control-bg: #ffffff;
+            --app-control-border: #cbd5e1;
+            --app-control-border-focus: #f59e0b;
+            --jf-shadow-xs: none;
+            --jf-shadow-sm: none;
+            --jf-shadow-md: none;
+            --jf-shadow-lg: none;
+            --jf-shadow-xl: none;
+            color: var(--qb-ink);
+        }
+
+        .qb-edit-page *,
+        .qb-edit-page *::before,
+        .qb-edit-page *::after {
+            box-sizing: border-box;
+        }
+
+        .qb-edit-page :is(.shadow-sm, .shadow-lg, .shadow-inner),
+        .qb-edit-page [class*="shadow-"] {
+            box-shadow: none !important;
+        }
+
+        .content-inner.qb-edit-page :is(
+            [class*="bg-white"][class*="border"],
+            [class*="bg-white"][class*="shadow"],
+            .rounded-2xl.border.bg-white,
+            .rounded-xl.border.bg-white,
+            .rounded-lg.shadow-sm,
+            .bg-white.shadow-sm.border
+        ) {
+            border-color: var(--qb-line-soft) !important;
+            box-shadow: none !important;
+        }
+
+        .content-inner.qb-edit-page :is(button, a.inline-flex, .btn) {
+            box-shadow: none !important;
+        }
+
+        .qb-edit-page :is(.rounded-2xl, .rounded-xl, .rounded-lg) {
+            border-radius: 12px !important;
+        }
+
+        .qb-edit-page :is(.border-slate-100, .border-slate-200, .border-slate-300) {
+            border-color: var(--qb-line-soft) !important;
+        }
+
+        .qb-edit-page .bg-slate-50,
+        .qb-edit-page .bg-slate-50\/50 {
+            background-color: var(--qb-soft) !important;
+        }
+
+        .qb-edit-page .bg-white\/40,
+        .qb-edit-page .border-white\/60 {
+            background-color: #fff !important;
+            border-color: var(--qb-line-soft) !important;
+            backdrop-filter: none !important;
+        }
+
+        .qb-edit-page .bg-amber-50 {
+            background-color: #fff7ed !important;
+        }
+
+        .qb-edit-page .border-amber-200 {
+            border-color: #fed7aa !important;
+        }
+
+        .qb-edit-page .text-amber-700 {
+            color: #9a3412 !important;
+        }
+
+        .qb-edit-page .bg-slate-900 { background-color: var(--qb-dark) !important; }
+        .qb-edit-page .hover\:bg-slate-800:hover,
+        .qb-edit-page .bg-slate-900.hover\:bg-slate-800:hover { background-color: var(--qb-dark-hover) !important; }
+
         .qb-edit-page input:not([type="hidden"]),
         .qb-edit-page select,
         .qb-edit-page textarea {
-            background-color: #f6f7f9 !important;
-            border-color: #d7dce3 !important;
+            border: 1px solid var(--qb-line) !important;
+            border-radius: 10px !important;
+            background: #fff !important;
+            color: var(--qb-ink) !important;
+            box-shadow: none !important;
         }
+
+        .content-inner.qb-edit-page :where(
+            input[type='text'],
+            input[type='email'],
+            input[type='number'],
+            input[type='date'],
+            input[type='tel'],
+            input[type='password'],
+            select,
+            textarea
+        ) {
+            border: 1px solid var(--qb-line) !important;
+            border-radius: 10px !important;
+            background: #fff !important;
+            color: var(--qb-ink) !important;
+            box-shadow: none !important;
+        }
+
+        .content-inner.qb-edit-page :is(
+            input:not([type='hidden']),
+            select,
+            textarea
+        )[class*="bg-white"],
+        .content-inner.qb-edit-page :is(
+            input:not([type='hidden']),
+            select,
+            textarea
+        )[class*="border"],
+        .content-inner.qb-edit-page :is(
+            input:not([type='hidden']),
+            select,
+            textarea
+        )[class*="shadow"] {
+            border: 1px solid var(--qb-line) !important;
+            border-radius: 10px !important;
+            background: #fff !important;
+            color: var(--qb-ink) !important;
+            box-shadow: none !important;
+        }
+
         .qb-edit-page input:not([type="hidden"]):hover,
         .qb-edit-page select:hover,
         .qb-edit-page textarea:hover {
-            border-color: #c4cbd5 !important;
+            border-color: #94a3b8 !important;
         }
-        /* Active field lifts to white + gold ring/border instead of slate. */
+
         .qb-edit-page input:focus,
         .qb-edit-page select:focus,
         .qb-edit-page textarea:focus {
-            background-color: #fff !important;
-            border-color: var(--qb-gold-soft) !important;
+            background: #fff !important;
+            border-color: var(--qb-dark) !important;
             outline: none;
             box-shadow: 0 0 0 3px var(--qb-focus) !important;
         }
 
-        /* Headings/labels that used slate-900 read warmer ink. */
-        .qb-edit-page .text-slate-900 { color: #1f2430; }
+        .content-inner.qb-edit-page :where(
+            input[type='text'],
+            input[type='email'],
+            input[type='number'],
+            input[type='date'],
+            input[type='tel'],
+            input[type='password'],
+            select,
+            textarea
+        ):focus {
+            background: #fff !important;
+            border-color: var(--qb-dark) !important;
+            outline: none !important;
+            box-shadow: 0 0 0 3px var(--qb-focus) !important;
+        }
 
-        /* Section heading weight to match the brand display weight on other pages. */
+        .qb-edit-page input[readonly],
+        .qb-edit-page input:disabled,
+        .qb-edit-page select:disabled,
+        .qb-edit-page textarea:disabled {
+            background: var(--qb-soft-strong) !important;
+            color: var(--qb-muted) !important;
+        }
+
+        .qb-edit-page input::placeholder,
+        .qb-edit-page textarea::placeholder {
+            color: #64748b !important;
+        }
+
+        .qb-edit-page .text-slate-900,
+        .qb-edit-page .text-slate-800 {
+            color: var(--qb-ink) !important;
+        }
+
+        .qb-edit-page .text-slate-700 {
+            color: var(--qb-text) !important;
+        }
+
+        .qb-edit-page .text-slate-600,
+        .qb-edit-page .text-slate-500 {
+            color: var(--qb-muted) !important;
+        }
+
         .qb-edit-page .text-sm.font-semibold.text-slate-900,
-        .qb-edit-page .text-base.font-semibold.text-slate-900 { font-weight: 800; letter-spacing: -0.2px; }
+        .qb-edit-page .text-base.font-semibold.text-slate-900 {
+            font-weight: 600 !important;
+            letter-spacing: 0 !important;
+        }
+
+        .qb-edit-page .font-bold,
+        .qb-edit-page .font-black {
+            font-weight: 600 !important;
+        }
+
+        .qb-review-rail > div:not(.qb-review-backdrop),
+        .qb-edit-page form > .qb-entry-layout > div > .space-y-6 > div,
+        .qb-edit-page .qb-top-grid > div,
+        .qb-edit-page .qb-item-edit-grid > div > .rounded-2xl,
+        .qb-edit-page .qb-item-edit-grid > div > .space-y-4 > .rounded-2xl {
+            border-color: var(--qb-line-soft) !important;
+            background-color: #fff !important;
+            box-shadow: none !important;
+        }
+
+        .qb-edit-page .qb-top-grid > div,
+        .qb-review-rail > div:not(.qb-review-backdrop),
+        .qb-edit-page form > .qb-entry-layout > div > .space-y-6 > .overflow-hidden {
+            border-radius: 14px !important;
+        }
+
+        .qb-edit-page .qb-top-grid > div:first-child,
+        .qb-edit-page .qb-item-edit-grid,
+        .qb-edit-page .qb-review-rail {
+            min-width: 0;
+        }
+
+        .qb-edit-page template + div,
+        .qb-edit-page [class*="bg-slate-50"].rounded-2xl {
+            background-color: var(--qb-soft) !important;
+        }
+
+        .qb-edit-page .qb-tax-mode {
+            background: var(--qb-soft) !important;
+        }
+
+        .qb-edit-page .qb-tax-mode button {
+            box-shadow: none !important;
+        }
+
+        .qb-review-backdrop {
+            background: rgb(15 23 42 / .18) !important;
+        }
+
+        .qb-review-drawer {
+            border-left-color: var(--qb-line);
+            box-shadow: none !important;
+        }
+
+        .qb-review-drawer :is(.shadow-sm, .shadow-lg, .shadow-inner),
+        .qb-review-drawer [class*="shadow-"] {
+            box-shadow: none !important;
+        }
+
+        .qb-making-select-icon {
+            display: none;
+        }
 
         @media (prefers-reduced-motion: reduce) {
             .qb-edit-page * { transition: none !important; }
+        }
+
+        @media (max-width: 767px) {
+            .qb-form-header .page-actions {
+                gap: .375rem;
+            }
+
+            .qb-form-header-pill {
+                min-height: 30px;
+                padding-inline: .625rem;
+                font-size: 11px;
+            }
+
+            .qb-form-header .page-actions > .qb-form-back-action {
+                display: none !important;
+            }
+
+            .qb-edit-page {
+                margin-left: -4px;
+                margin-right: -4px;
+            }
+
+            .qb-mobile-metric-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: .5rem !important;
+            }
+
+            .qb-mobile-metric-grid > div {
+                min-height: 58px;
+                padding: .6rem .65rem !important;
+            }
+
+            .qb-mobile-metric-grid > div > div:first-child {
+                font-size: 10px !important;
+                letter-spacing: .1em !important;
+            }
+
+            .qb-mobile-product-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: .65rem !important;
+            }
+
+            .qb-mobile-product-grid label,
+            .qb-mobile-weight-grid label {
+                margin-bottom: .35rem !important;
+                font-size: 12px !important;
+                line-height: 1.15 !important;
+            }
+
+            .qb-mobile-weight-grid {
+                grid-template-columns: minmax(0, 1fr) minmax(76px, .78fr) minmax(0, 1fr) !important;
+                gap: .5rem !important;
+            }
+
+            .qb-mobile-net-field {
+                grid-column: auto !important;
+            }
+
+            .qb-mobile-weight-grid input,
+            .qb-mobile-product-grid :is(input, select) {
+                min-height: 40px !important;
+                padding: .55rem .6rem !important;
+                font-size: 13px !important;
+            }
+
+            .qb-making-select-wrap {
+                position: relative;
+            }
+
+            .qb-making-select-icon {
+                position: absolute;
+                top: 50%;
+                right: .65rem;
+                display: flex;
+                height: 16px;
+                width: 16px;
+                transform: translateY(-50%);
+                align-items: center;
+                justify-content: center;
+                color: #475569;
+                pointer-events: none;
+            }
+
+            .content-inner.qb-edit-page select.qb-making-type-select {
+                appearance: none;
+                padding-right: 2rem !important;
+            }
         }
     </style>
 
@@ -297,7 +660,7 @@
                                                 <span class="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200" x-text="item.purity || 'Purity'"></span>
                                             </div>
 
-                                            <div class="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                                            <div class="qb-mobile-metric-grid mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
                                                 <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
                                                     <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Gross</div>
                                                     <div class="mt-1 text-sm font-semibold text-slate-900" x-text="Number(item.gross_weight || 0).toFixed(3)"></div>
@@ -334,7 +697,7 @@
                                                 <input :name="'items['+index+'][description]'" x-model="item.description" type="text" placeholder="Gold ring / pendant / chain" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
                                             </div>
 
-                                            <div class="grid gap-3 grid-cols-2 xl:grid-cols-4">
+                                            <div class="qb-mobile-product-grid grid gap-3 grid-cols-2 xl:grid-cols-4">
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">Metal</label>
                                                     <template x-if="metalChoices().length">
@@ -375,7 +738,7 @@
 
                                             <div class="grid gap-4 lg:grid-cols-2">
                                                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                                    <div class="grid gap-3 grid-cols-2">
+                                                    <div class="qb-mobile-weight-grid grid gap-3 grid-cols-2">
                                                         <div>
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Gross</label>
                                                             <input :name="'items['+index+'][gross_weight]'" x-model.number="item.gross_weight" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
@@ -384,7 +747,7 @@
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Stone wt</label>
                                                             <input :name="'items['+index+'][stone_weight]'" x-model.number="item.stone_weight" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
-                                                        <div class="col-span-2">
+                                                        <div class="qb-mobile-net-field col-span-2">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Net wt</label>
                                                             <input :name="'items['+index+'][net_weight]'" x-model.number="item.net_weight" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
@@ -399,11 +762,18 @@
                                                         </div>
                                                         <div>
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Making</label>
-                                                            <select :name="'items['+index+'][making_charge_type]'" x-model="item.making_charge_type" class="mb-2 w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
-                                                                <option value="fixed">Fixed ₹</option>
-                                                                <option value="percentage">% of metal</option>
-                                                                <option value="per_gram">₹ / gram</option>
-                                                            </select>
+                                                            <div class="qb-making-select-wrap mb-2">
+                                                                <select :name="'items['+index+'][making_charge_type]'" x-model="item.making_charge_type" class="qb-making-type-select w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                                    <option value="fixed">Fixed ₹</option>
+                                                                    <option value="percentage">% of metal</option>
+                                                                    <option value="per_gram">₹ / gram</option>
+                                                                </select>
+                                                                <span class="qb-making-select-icon" aria-hidden="true">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                                                                        <path d="m6 9 6 6 6-6" />
+                                                                    </svg>
+                                                                </span>
+                                                            </div>
                                                             <input :name="'items['+index+'][making_charge]'" x-model.number="item.making_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                             <input type="hidden" :name="'items['+index+'][making_charge_value]'" :value="item.making_charge">
                                                             <p class="mt-1 text-xs text-slate-400" x-show="item.making_charge_type !== 'fixed'" x-text="item.making_charge_type === 'percentage' ? ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (' + (item.making_charge||0) + '% of metal)') : ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (₹' + (item.making_charge||0) + '/g)')"></p>
