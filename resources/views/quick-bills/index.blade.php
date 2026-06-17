@@ -58,45 +58,61 @@
         /* ---- One panel: toolbar + table + pagination ---- */
         .qb-panel { background: #fff; border: 1px solid var(--qb-line); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,0.04); }
 
-        /* Toolbar (top strip inside the panel) */
+        /* Toolbar (top strip inside the panel).
+           Reference look: clean flat controls, white fill, one thin hairline
+           border, NO shadows on inputs, all controls the same 40px height.
+           Selectors are scoped under .qb-page and reset appearance/border/bg so
+           they beat the app's global input[type=date] / select base styles. */
         .qb-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--qb-line); }
-        .qb-search { position: relative; display: flex; align-items: center; flex: 0 1 340px; min-width: 200px;
-            height: 42px; border: 1px solid var(--qb-line); border-radius: 11px; background: var(--qb-fill);
-            transition: border-color .16s ease, box-shadow .18s var(--qb-ease), background .16s ease; }
-        .qb-search > svg { position: absolute; left: 13px; width: 17px; height: 17px; color: var(--qb-muted); pointer-events: none; }
-        .qb-search input { width: 100%; height: 100%; border: 0; background: transparent; padding: 0 12px 0 38px; font: inherit; font-size: 14px; color: var(--qb-ink); }
-        .qb-search input::placeholder { color: #98a2b3; }
-        .qb-search input:focus { outline: none; }
+
+        .qb-page .qb-search { position: relative; display: flex; align-items: center; flex: 0 1 320px; min-width: 200px;
+            height: 40px; border: 1px solid var(--qb-line); border-radius: 9px; background: #fff;
+            transition: border-color .16s ease, box-shadow .18s var(--qb-ease); }
+        .qb-page .qb-search > svg { position: absolute; left: 12px; width: 16px; height: 16px; color: var(--qb-muted); pointer-events: none; }
+        .qb-page .qb-search input {
+            width: 100%; height: 100%; border: 0; background: transparent; box-shadow: none;
+            padding: 0 12px 0 36px; font: inherit; font-size: 14px; color: var(--qb-ink); min-height: 0;
+        }
+        .qb-page .qb-search input::placeholder { color: #98a2b3; }
+        .qb-page .qb-search input:focus { outline: none; box-shadow: none; }
 
         .qb-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
 
-        .qb-select {
-            height: 42px; padding: 0 34px 0 13px; cursor: pointer; appearance: none; -webkit-appearance: none;
-            border: 1px solid var(--qb-line); border-radius: 11px; background-color: var(--qb-fill);
-            font: inherit; font-size: 14px; color: var(--qb-ink);
+        /* Status select: reset the global select chevron + border, draw our own. */
+        .qb-page select.qb-select {
+            height: 40px; min-height: 0; padding: 0 34px 0 13px; cursor: pointer;
+            appearance: none; -webkit-appearance: none; -moz-appearance: none;
+            border: 1px solid var(--qb-line); border-radius: 9px; background-color: #fff; box-shadow: none;
+            font: inherit; font-size: 14px; color: var(--qb-ink); line-height: 1;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 12px center;
-            transition: border-color .16s ease, box-shadow .18s var(--qb-ease), background-color .16s ease;
+            background-repeat: no-repeat; background-position: right 12px center; background-size: 14px;
+            transition: border-color .16s ease, box-shadow .18s var(--qb-ease);
         }
-        .qb-daterange { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 13px;
-            border: 1px solid var(--qb-line); border-radius: 11px; background: var(--qb-fill);
-            transition: border-color .16s ease, box-shadow .18s var(--qb-ease), background .16s ease; }
-        .qb-daterange > svg { width: 16px; height: 16px; color: var(--qb-muted); flex: 0 0 auto; }
-        .qb-daterange input { border: 0; background: transparent; font: inherit; font-size: 13.5px; color: var(--qb-ink); width: 124px; }
-        .qb-daterange input:focus { outline: none; }
-        .qb-daterange input::-webkit-calendar-picker-indicator { opacity: 0; cursor: pointer; }
-        .qb-daterange .sep { color: var(--qb-muted); font-size: 13px; }
+
+        .qb-page .qb-daterange { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 13px;
+            border: 1px solid var(--qb-line); border-radius: 9px; background: #fff;
+            transition: border-color .16s ease, box-shadow .18s var(--qb-ease); }
+        .qb-page .qb-daterange > svg { width: 16px; height: 16px; color: var(--qb-muted); flex: 0 0 auto; }
+        /* Beat the global input[type=date] rule: no own border/bg, hide native glyph. */
+        .qb-page .qb-daterange input[type="date"] {
+            border: 0; background: transparent; box-shadow: none; border-radius: 0;
+            padding: 0; min-height: 0; height: auto; font: inherit; font-size: 13.5px; color: var(--qb-ink);
+            width: 116px; cursor: pointer;
+        }
+        .qb-page .qb-daterange input[type="date"]:focus { outline: none; box-shadow: none; }
+        .qb-page .qb-daterange input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; width: 0; padding: 0; margin: 0; }
+        .qb-page .qb-daterange .sep { color: var(--qb-muted); font-size: 13px; }
 
         @media (hover: hover) and (pointer: fine) {
-            .qb-search:hover, .qb-select:hover, .qb-daterange:hover { border-color: #cdd3dc; background-color: #f2f3f6; }
+            .qb-page .qb-search:hover, .qb-page select.qb-select:hover, .qb-page .qb-daterange:hover { border-color: #cdd3dc; }
         }
-        .qb-search:focus-within, .qb-select:focus, .qb-daterange:focus-within {
-            outline: none; border-color: var(--qb-gold-soft); background-color: #fff;
+        .qb-page .qb-search:focus-within, .qb-page select.qb-select:focus, .qb-page .qb-daterange:focus-within {
+            outline: none; border-color: var(--qb-gold-soft);
             box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
         }
 
-        .qb-clear { display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 14px;
-            border: 1px solid var(--qb-line); border-radius: 11px; background: #fff; color: var(--qb-ink-soft);
+        .qb-clear { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px;
+            border: 1px solid var(--qb-line); border-radius: 9px; background: #fff; color: var(--qb-ink-soft);
             font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
             transition: background .16s ease, border-color .16s ease, color .16s ease, transform .12s var(--qb-ease); }
         .qb-clear svg { width: 15px; height: 15px; }
