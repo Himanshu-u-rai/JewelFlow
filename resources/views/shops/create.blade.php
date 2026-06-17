@@ -68,30 +68,33 @@
         }
         .page-head p { font-size: 14px; color: var(--muted); margin-top: 5px; }
 
-        /* ---------- Main card (full-width, no side rail) ---------- */
-        .main {
-            position: relative; overflow: hidden;
-            background: #fffefb; border: 1px solid var(--line); border-radius: 20px;
-            box-shadow: 0 1px 2px rgba(120,80,20,0.05), 0 22px 50px -26px rgba(120,80,20,0.28);
-        }
-        .main::before {
-            content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
-            background: linear-gradient(90deg, #fcd34d 0%, #f59e0b 48%, #d97706 100%);
-            opacity: 0.9;
-        }
-        .main-body { padding: 22px 26px 24px; }
+        /* ---------- Section cards ---------- */
+        /* Each section (Shop details / Address / Owner) is its own white card,
+           sitting on the cream page so they read as distinct, crisp panels
+           rather than one muddy cream-on-cream block. */
+        .form-stack { display: grid; gap: 16px; }
 
-        /* ---------- Form sections ---------- */
-        .fsection { margin-bottom: 22px; }
-        .fsection:last-of-type { margin-bottom: 0; }
-        .fsection-title {
-            display: flex; align-items: center; gap: 9px;
-            font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
-            color: var(--gold-deep);
-            padding-bottom: 9px; margin-bottom: 14px;
+        .fcard {
+            background: #ffffff; border: 1px solid var(--line); border-radius: 18px;
+            padding: 20px 22px;
+            box-shadow: 0 1px 2px rgba(120,80,20,0.05), 0 16px 38px -26px rgba(120,80,20,0.26);
+        }
+
+        .fcard-head {
+            display: flex; align-items: center; gap: 11px;
+            padding-bottom: 14px; margin-bottom: 16px;
             border-bottom: 1px solid var(--line);
         }
-        .fsection-title svg { width: 16px; height: 16px; flex: 0 0 auto; }
+        .fcard-icon {
+            width: 36px; height: 36px; flex: 0 0 auto; border-radius: 10px;
+            display: grid; place-items: center;
+            color: var(--gold-deep);
+            background: linear-gradient(180deg, #fff7e8 0%, #fdeccb 100%);
+            border: 1px solid #f4dcae;
+        }
+        .fcard-icon svg { width: 18px; height: 18px; }
+        .fcard-titles b { display: block; font-size: 15px; font-weight: 800; color: var(--ink); letter-spacing: -0.2px; }
+        .fcard-titles span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
 
         /* Fields flow in a responsive multi-column grid so the form fills the
            width instead of stacking into one tall column. Each field can span
@@ -114,11 +117,10 @@
 
         input, select, textarea {
             width: 100%; padding: 11px 13px;
-            border: 1px solid var(--field-line); border-radius: 12px;
+            border: 1px solid var(--field-line); border-radius: 11px;
             font: inherit; font-size: 15px; color: var(--ink);
-            background: #fffdfa;
-            box-shadow: inset 0 1px 2px rgba(120,80,20,0.04);
-            transition: border-color .16s ease, box-shadow .16s ease;
+            background: #fdfbf7;
+            transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
         }
         input::placeholder, textarea::placeholder { color: #b3a892; }
         input:focus, select:focus, textarea:focus {
@@ -155,8 +157,8 @@
 
         /* ---------- Actions ---------- */
         .form-actions {
-            display: flex; justify-content: flex-end; align-items: center; gap: 14px;
-            margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line);
+            display: flex; justify-content: flex-end; align-items: center; gap: 16px;
+            margin-top: 18px; padding: 4px 4px 0;
         }
         .form-actions .back-link {
             font-size: 13.5px; font-weight: 600; color: var(--muted); text-decoration: none;
@@ -178,7 +180,7 @@
         @media (max-width: 620px) {
             .header { padding: 16px 16px; }
             .container { padding: 22px 14px 36px; }
-            .main-body { padding: 20px 16px 20px; }
+            .fcard { padding: 18px 16px; }
             .frow { grid-template-columns: 1fr; }
             .col-2, .col-3, .col-4 { grid-column: span 1; }
             .form-actions { flex-direction: column-reverse; align-items: stretch; gap: 10px; }
@@ -191,14 +193,17 @@
             from { opacity: 0; transform: translateY(14px); }
             to   { opacity: 1; transform: translateY(0); }
         }
-        .page-head, .main {
+        .page-head, .fcard, .form-actions {
             opacity: 0; animation: sc-rise 0.5s var(--ease-out) forwards;
         }
-        .page-head { animation-delay: 0.02s; }
-        .main      { animation-delay: 0.12s; }
+        .page-head            { animation-delay: 0.02s; }
+        .fcard:nth-of-type(1) { animation-delay: 0.10s; }
+        .fcard:nth-of-type(2) { animation-delay: 0.16s; }
+        .fcard:nth-of-type(3) { animation-delay: 0.22s; }
+        .form-actions         { animation-delay: 0.28s; }
 
         @media (prefers-reduced-motion: reduce) {
-            .page-head, .main { opacity: 1; animation: none; }
+            .page-head, .fcard, .form-actions { opacity: 1; animation: none; }
             .btn-primary { transition: none; }
         }
     </style>
@@ -240,159 +245,174 @@
         </p>
     </div>
 
-    <main class="main">
-        <div class="main-body">
-            @if ($errors->any())
-                <div class="errors">
-                    <ul>
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <form action="{{ route('shops.store') }}" method="POST">
-                @csrf
-                <input type="hidden" name="shop_type" value="{{ $shopType }}">
-
-                {{-- Shop Details --}}
-                <section class="fsection">
-                    <div class="fsection-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
-                        Shop details
-                    </div>
-
-                    <div class="frow">
-                        <div class="field col-2">
-                            <label>Shop name <span class="req">*</span></label>
-                            <input type="text" name="name" value="{{ old('name') }}" placeholder="e.g. Golden Jewellers" required>
-                        </div>
-                        <div class="field col-1" style="grid-column: span 1;">
-                            <label>Shop phone <span class="req">*</span></label>
-                            <input type="tel" name="phone" value="{{ old('phone') }}" required
-                                   inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10"
-                                   placeholder="10-digit number">
-                        </div>
-                        <div class="field" style="grid-column: span 1;">
-                            <label>GST number <span class="opt">(optional)</span></label>
-                            <input type="text" name="gst_number" id="gst_number" value="{{ old('gst_number') }}"
-                                   maxlength="15" autocapitalize="characters" spellcheck="false"
-                                   placeholder="e.g. 24AAACC1206D1ZM">
-                            <div class="field-hint">15 characters. Leave blank if none.</div>
-                        </div>
-
-                        @if($shopType === 'manufacturer')
-                        <div class="field col-2">
-                            <label>GST rate (%) <span class="req">*</span></label>
-                            <input type="number" name="gst_rate" value="{{ old('gst_rate', '3') }}"
-                                   inputmode="decimal" step="0.01" min="0" max="100" placeholder="3" required>
-                        </div>
-                        <div class="field col-2">
-                            <label>Wastage recovery (%) <span class="req">*</span></label>
-                            <input type="number" name="wastage_recovery_percent" value="{{ old('wastage_recovery_percent', '100') }}"
-                                   inputmode="decimal" step="0.01" min="0" max="100" placeholder="100" required>
-                        </div>
-                        @endif
-                    </div>
-                </section>
-
-                {{-- Address --}}
-                <section class="fsection">
-                    <div class="fsection-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21s-7-5.686-7-11a7 7 0 1114 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-                        Shop address
-                    </div>
-
-                    <div class="frow">
-                        <div class="field col-2">
-                            <label>Address line 1 <span class="req">*</span></label>
-                            <input type="text" name="address_line1" value="{{ old('address_line1') }}"
-                                   placeholder="Shop No. 12, Main Road" required>
-                        </div>
-                        <div class="field col-2">
-                            <label>Address line 2 <span class="opt">(optional)</span></label>
-                            <input type="text" name="address_line2" value="{{ old('address_line2') }}"
-                                   placeholder="Near City Mall, Sarkhej Area">
-                        </div>
-
-                        <div class="field" style="grid-column: span 1;">
-                            <label>Pincode <span class="req">*</span></label>
-                            <input type="text" name="pincode" id="pincode" value="{{ old('pincode') }}" required
-                                   inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6"
-                                   placeholder="6-digit">
-                            <div class="field-hint" id="pincode_hint">Fills your city &amp; state for you.</div>
-                        </div>
-                        <div class="field" style="grid-column: span 1;">
-                            <label>City <span class="req">*</span></label>
-                            <input type="text" name="city" id="city" value="{{ old('city') }}" placeholder="e.g. Ahmedabad" required>
-                        </div>
-                        <div class="field" style="grid-column: span 1;">
-                            <label>State <span class="req">*</span></label>
-                            <select name="state" id="state" required>
-                                <option value="" disabled {{ old('state') ? '' : 'selected' }}>Select state</option>
-                                @php
-                                    $indianStates = [
-                                        'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
-                                        'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
-                                        'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
-                                        'Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
-                                        'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu',
-                                        'Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry',
-                                    ];
-                                @endphp
-                                @foreach($indianStates as $st)
-                                    <option value="{{ $st }}" {{ old('state') === $st ? 'selected' : '' }}>{{ $st }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="field" style="grid-column: span 1;">
-                            <label>Country</label>
-                            <div class="locked-field">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.5 9h17M3.5 15h17M12 3c2.5 2.5 3.5 6 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-6-3.5-9S9.5 5.5 12 3z"/></svg>
-                                India
-                            </div>
-                            <input type="hidden" name="country" value="India">
-                        </div>
-                    </div>
-                </section>
-
-                {{-- Owner --}}
-                <section class="fsection">
-                    <div class="fsection-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg>
-                        Owner details
-                    </div>
-
-                    <div class="frow">
-                        <div class="field col-2">
-                            <label>First name <span class="req">*</span></label>
-                            <input type="text" name="owner_first_name" value="{{ old('owner_first_name') }}" placeholder="First name" required>
-                        </div>
-                        <div class="field col-2">
-                            <label>Last name <span class="req">*</span></label>
-                            <input type="text" name="owner_last_name" value="{{ old('owner_last_name') }}" placeholder="Last name" required>
-                        </div>
-                        <div class="field col-2">
-                            <label>Mobile number <span class="req">*</span></label>
-                            <input type="tel" name="owner_mobile" value="{{ old('owner_mobile') }}" required
-                                   inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10"
-                                   placeholder="10-digit mobile">
-                        </div>
-                        <div class="field col-2">
-                            <label>Email address <span class="opt">(optional)</span></label>
-                            <input type="email" name="owner_email" value="{{ old('owner_email') }}" placeholder="owner@example.com">
-                        </div>
-                    </div>
-                </section>
-
-                <div class="form-actions">
-                    <a href="{{ route('shops.choose-type') }}" class="back-link">← Change business type</a>
-                    <button type="submit" class="btn-primary">Create my shop →</button>
-                </div>
-            </form>
+    @if ($errors->any())
+        <div class="errors">
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
         </div>
-    </main>
+    @endif
+
+    <form action="{{ route('shops.store') }}" method="POST">
+        @csrf
+        <input type="hidden" name="shop_type" value="{{ $shopType }}">
+
+        <div class="form-stack">
+
+            {{-- Shop Details --}}
+            <section class="fcard">
+                <div class="fcard-head">
+                    <div class="fcard-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
+                    </div>
+                    <div class="fcard-titles">
+                        <b>Shop details</b>
+                        <span>Name, phone and GST (if you have one).</span>
+                    </div>
+                </div>
+
+                <div class="frow">
+                    <div class="field col-2">
+                        <label>Shop name <span class="req">*</span></label>
+                        <input type="text" name="name" value="{{ old('name') }}" placeholder="e.g. Golden Jewellers" required>
+                    </div>
+                    <div class="field" style="grid-column: span 1;">
+                        <label>Shop phone <span class="req">*</span></label>
+                        <input type="tel" name="phone" value="{{ old('phone') }}" required
+                               inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10"
+                               placeholder="10-digit number">
+                    </div>
+                    <div class="field" style="grid-column: span 1;">
+                        <label>GST number <span class="opt">(optional)</span></label>
+                        <input type="text" name="gst_number" id="gst_number" value="{{ old('gst_number') }}"
+                               maxlength="15" autocapitalize="characters" spellcheck="false"
+                               placeholder="e.g. 24AAACC1206D1ZM">
+                        <div class="field-hint">15 characters. Leave blank if none.</div>
+                    </div>
+
+                    @if($shopType === 'manufacturer')
+                    <div class="field col-2">
+                        <label>GST rate (%) <span class="req">*</span></label>
+                        <input type="number" name="gst_rate" value="{{ old('gst_rate', '3') }}"
+                               inputmode="decimal" step="0.01" min="0" max="100" placeholder="3" required>
+                    </div>
+                    <div class="field col-2">
+                        <label>Wastage recovery (%) <span class="req">*</span></label>
+                        <input type="number" name="wastage_recovery_percent" value="{{ old('wastage_recovery_percent', '100') }}"
+                               inputmode="decimal" step="0.01" min="0" max="100" placeholder="100" required>
+                    </div>
+                    @endif
+                </div>
+            </section>
+
+            {{-- Address --}}
+            <section class="fcard">
+                <div class="fcard-head">
+                    <div class="fcard-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21s-7-5.686-7-11a7 7 0 1114 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                    </div>
+                    <div class="fcard-titles">
+                        <b>Shop address</b>
+                        <span>Shown on your invoices and receipts.</span>
+                    </div>
+                </div>
+
+                <div class="frow">
+                    <div class="field col-2">
+                        <label>Address line 1 <span class="req">*</span></label>
+                        <input type="text" name="address_line1" value="{{ old('address_line1') }}"
+                               placeholder="Shop No. 12, Main Road" required>
+                    </div>
+                    <div class="field col-2">
+                        <label>Address line 2 <span class="opt">(optional)</span></label>
+                        <input type="text" name="address_line2" value="{{ old('address_line2') }}"
+                               placeholder="Near City Mall, Sarkhej Area">
+                    </div>
+
+                    <div class="field" style="grid-column: span 1;">
+                        <label>Pincode <span class="req">*</span></label>
+                        <input type="text" name="pincode" id="pincode" value="{{ old('pincode') }}" required
+                               inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6"
+                               placeholder="6-digit">
+                        <div class="field-hint" id="pincode_hint">Fills your city &amp; state for you.</div>
+                    </div>
+                    <div class="field" style="grid-column: span 1;">
+                        <label>City <span class="req">*</span></label>
+                        <input type="text" name="city" id="city" value="{{ old('city') }}" placeholder="e.g. Ahmedabad" required>
+                    </div>
+                    <div class="field" style="grid-column: span 1;">
+                        <label>State <span class="req">*</span></label>
+                        <select name="state" id="state" required>
+                            <option value="" disabled {{ old('state') ? '' : 'selected' }}>Select state</option>
+                            @php
+                                $indianStates = [
+                                    'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
+                                    'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
+                                    'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
+                                    'Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
+                                    'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu',
+                                    'Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry',
+                                ];
+                            @endphp
+                            @foreach($indianStates as $st)
+                                <option value="{{ $st }}" {{ old('state') === $st ? 'selected' : '' }}>{{ $st }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="field" style="grid-column: span 1;">
+                        <label>Country</label>
+                        <div class="locked-field">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.5 9h17M3.5 15h17M12 3c2.5 2.5 3.5 6 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-6-3.5-9S9.5 5.5 12 3z"/></svg>
+                            India
+                        </div>
+                        <input type="hidden" name="country" value="India">
+                    </div>
+                </div>
+            </section>
+
+            {{-- Owner --}}
+            <section class="fcard">
+                <div class="fcard-head">
+                    <div class="fcard-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg>
+                    </div>
+                    <div class="fcard-titles">
+                        <b>Owner details</b>
+                        <span>The main person in charge of the shop.</span>
+                    </div>
+                </div>
+
+                <div class="frow">
+                    <div class="field col-2">
+                        <label>First name <span class="req">*</span></label>
+                        <input type="text" name="owner_first_name" value="{{ old('owner_first_name') }}" placeholder="First name" required>
+                    </div>
+                    <div class="field col-2">
+                        <label>Last name <span class="req">*</span></label>
+                        <input type="text" name="owner_last_name" value="{{ old('owner_last_name') }}" placeholder="Last name" required>
+                    </div>
+                    <div class="field col-2">
+                        <label>Mobile number <span class="req">*</span></label>
+                        <input type="tel" name="owner_mobile" value="{{ old('owner_mobile') }}" required
+                               inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10"
+                               placeholder="10-digit mobile">
+                    </div>
+                    <div class="field col-2">
+                        <label>Email address <span class="opt">(optional)</span></label>
+                        <input type="email" name="owner_email" value="{{ old('owner_email') }}" placeholder="owner@example.com">
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ route('shops.choose-type') }}" class="back-link">← Change business type</a>
+            <button type="submit" class="btn-primary">Create my shop →</button>
+        </div>
+    </form>
 </div>
 
 <script>
