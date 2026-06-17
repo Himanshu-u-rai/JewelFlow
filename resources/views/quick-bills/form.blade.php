@@ -142,10 +142,26 @@
         .qb-edit-page .hover\:bg-slate-800:hover,
         .qb-edit-page .bg-slate-900.hover\:bg-slate-800:hover { background-color: var(--qb-gold-hover) !important; }
 
-        /* Inputs / selects / textareas: gold focus border + ring instead of slate. */
+        /* Fields sit inside white cards, so a plain white input is invisible
+           (reads like a nested card). Give every field a subtle grey fill with
+           a clear hairline; it lifts to white on focus. Excludes the readonly
+           hidden inputs. */
+        .qb-edit-page input:not([type="hidden"]),
+        .qb-edit-page select,
+        .qb-edit-page textarea {
+            background-color: #f6f7f9 !important;
+            border-color: #d7dce3 !important;
+        }
+        .qb-edit-page input:not([type="hidden"]):hover,
+        .qb-edit-page select:hover,
+        .qb-edit-page textarea:hover {
+            border-color: #c4cbd5 !important;
+        }
+        /* Active field lifts to white + gold ring/border instead of slate. */
         .qb-edit-page input:focus,
         .qb-edit-page select:focus,
         .qb-edit-page textarea:focus {
+            background-color: #fff !important;
             border-color: var(--qb-gold-soft) !important;
             outline: none;
             box-shadow: 0 0 0 3px var(--qb-focus) !important;
