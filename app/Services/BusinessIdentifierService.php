@@ -171,7 +171,7 @@ class BusinessIdentifierService
 
     public static function formatImportReference(int $sequence): string
     {
-        return 'IMP-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT);
+        return 'IMP-' . $sequence;
     }
 
     /**
@@ -183,7 +183,7 @@ class BusinessIdentifierService
 
         return [
             'sequence' => $sequence,
-            'number'   => 'QB-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+            'number'   => 'QB-' . $sequence,
         ];
     }
 
@@ -196,7 +196,7 @@ class BusinessIdentifierService
 
         return [
             'sequence' => $sequence,
-            'number'   => 'PUR-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+            'number'   => 'PUR-' . $sequence,
         ];
     }
 
@@ -209,7 +209,7 @@ class BusinessIdentifierService
 
         return [
             'sequence' => $sequence,
-            'number'   => 'JO-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+            'number'   => 'JO-' . $sequence,
         ];
     }
 
@@ -222,7 +222,7 @@ class BusinessIdentifierService
 
         return [
             'sequence' => $sequence,
-            'number'   => 'DC-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+            'number'   => 'DC-' . $sequence,
         ];
     }
 
@@ -235,7 +235,7 @@ class BusinessIdentifierService
 
         return [
             'sequence' => $sequence,
-            'number'   => 'JR-' . str_pad((string) $sequence, 6, '0', STR_PAD_LEFT),
+            'number'   => 'JR-' . $sequence,
         ];
     }
 
@@ -276,7 +276,7 @@ class BusinessIdentifierService
             ->where('counter_key', self::KEY_SHOP_CODE)
             ->update(['current_value' => $next, 'updated_at' => now()]);
 
-        return 'JF-' . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return 'JF-' . $next;
     }
 
     /**
@@ -327,7 +327,7 @@ class BusinessIdentifierService
 
         return [
             'sequence' => $next,
-            'number'   => $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT),
+            'number'   => $prefix . $next,
         ];
     }
 }
