@@ -239,6 +239,15 @@ class QuickBillService
             ]);
         }
 
+        // Issuing requires at least some payment recorded. Partial payment is
+        // fine (a due balance is allowed for credit sales), but a fully unpaid
+        // bill cannot be issued by accident. Drafts may stay unpaid.
+        if ($willBeIssued && $paidAmount <= 0) {
+            throw ValidationException::withMessages([
+                'payments' => 'Record at least one payment before issuing the bill. Partial payment is fine; the balance shows as due.',
+            ]);
+        }
+
         $halfTax = round($gst / 2, 2);
         $saveAction = ($payload['save_action'] ?? 'draft') === 'issue' ? QuickBill::STATUS_ISSUED : QuickBill::STATUS_DRAFT;
         $wasIssuedBefore = $quickBill->exists && $quickBill->status === QuickBill::STATUS_ISSUED;
