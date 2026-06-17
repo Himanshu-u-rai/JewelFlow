@@ -220,9 +220,17 @@
 
         /* ---------- Responsive ---------- */
         @media (max-width: 600px) {
-            .header { padding: 11px 16px; flex-wrap: wrap; row-gap: 9px; }
-            .header-left { gap: 10px; flex-wrap: wrap; }
-            .header-back { font-size: 12.5px; padding: 7px 11px; }
+            /* One tidy row, no wrapping. The back button collapses to an
+               icon-only control so the logo and edition chip still fit. */
+            .header { padding: 10px 14px; gap: 10px; flex-wrap: nowrap; }
+            .header-left { gap: 10px; flex: 0 1 auto; min-width: 0; }
+            .header-brand-text { font-size: 16px; }
+            .header-brand-mark { width: 26px; height: 26px; }
+            .header-back { padding: 8px; gap: 0; }
+            .header-back svg { width: 16px; height: 16px; }
+            .header-back-label { display: none; }   /* icon-only on mobile (aria-label keeps it accessible) */
+            .shop-chip { font-size: 10.5px; padding: 5px 9px; gap: 5px; }
+
             .container { padding: 20px 16px 40px; }
             .fcard { padding: 18px 16px; border-radius: 13px; }
             .fcard-head { gap: 10px; }
@@ -230,6 +238,14 @@
             .frow { grid-template-columns: 1fr; gap: 14px; }
             .form-actions { margin-top: 16px; }
             .btn-primary { width: 100%; text-align: center; }
+        }
+
+        /* Very small phones: the edition chip drops its label-heavy padding;
+           if it still cannot fit beside the logo + back button, hide it (the
+           edition is also stated in the page sub-heading below). */
+        @media (max-width: 360px) {
+            .header-brand-text { font-size: 15px; }
+            .shop-chip { display: none; }
         }
 
         /* ---------- Entrance motion ----------
@@ -275,9 +291,9 @@
             </svg>
             <div class="header-brand-text">Jewel<span>Flow</span></div>
         </div>
-        <a href="{{ route('shops.choose-type') }}" class="header-back">
+        <a href="{{ route('shops.choose-type') }}" class="header-back" aria-label="Change business type">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            Change business type
+            <span class="header-back-label">Change business type</span>
         </a>
     </div>
     <div class="shop-chip">
