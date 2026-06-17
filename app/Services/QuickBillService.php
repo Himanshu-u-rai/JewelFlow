@@ -149,6 +149,18 @@ class QuickBillService
             $customerAddress = $customerAddress !== '' ? $customerAddress : (string) $customer->address;
         }
 
+        // No customer was picked but the bill carries a mobile number: build
+        // customer history automatically (reuse by mobile, or create), matching
+        // how POS always ties a sale to a real customer record. A walk-in with
+        // no mobile stays a text-only name on the bill (no directory clutter).
+        if (! $customer && $customerMobile !== '') {
+            $customer = Customer::findOrCreateByMobile($customerName, $customerMobile, $customerAddress);
+            if ($customer) {
+                $customerName = $customerName !== '' ? $customerName : $customer->name;
+                $customerAddress = $customerAddress !== '' ? $customerAddress : (string) $customer->address;
+            }
+        }
+
         $pricingMode = in_array(($payload['pricing_mode'] ?? ''), ['no_gst', 'gst_exclusive', 'gst_inclusive'], true)
             ? $payload['pricing_mode']
             : 'gst_exclusive';

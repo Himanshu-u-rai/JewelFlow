@@ -46,12 +46,63 @@ class Customer extends Model
                 $customer->customer_code = BusinessIdentifierService::nextCounter((int) $customer->shop_id, BusinessIdentifierService::KEY_CUSTOMER);
             }
         });
+
+        // Any new customer (form, POS quick-add, or quick-bill auto-add) must
+        // invalidate the POS customer-search cache so it shows up immediately.
+        static::created(function (self $customer): void {
+            if (! empty($customer->shop_id)) {
+                \Illuminate\Support\Facades\Cache::forget(
+                    \App\Services\PosSearchCacheService::customersCacheKey((int) $customer->shop_id, null)
+                );
+            }
+        });
     }
     public function goldBalance()
     {
         return \App\Models\CustomerGoldTransaction::where('shop_id', $this->shop_id)
             ->where('customer_id', $this->id)
             ->sum('fine_gold');
+    }
+
+    /**
+     * Find an existing customer by mobile within the current shop, or create one
+     * from a typed walk-in name. Returns null when no mobile is supplied (we do
+     * not create directory records for nameless/numberless one-off walk-ins).
+     *
+     * Used by the Quick Bill flow so billed walk-ins with a phone number build
+     * customer history, matching how POS already requires a customer record.
+     * Mobile is the match key, so repeat buyers are reused, not duplicated.
+     */
+    public static function findOrCreateByMobile(?string $name, ?string $mobile, ?string $address = null): ?self
+    {
+        $mobile = trim((string) $mobile);
+        if ($mobile === '') {
+            return null;
+        }
+
+        $existing = static::query()->where('mobile', $mobile)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $name = trim((string) $name);
+        $parts = $name !== '' ? preg_split('/\s+/', $name, 2) : [];
+        $first = $parts[0] ?? null;
+        $last = $parts[1] ?? null;
+
+        // Name is optional; fall back to a neutral label so the record is valid.
+        if (($first ?? '') === '') {
+            $first = 'Walk-in';
+        }
+
+        $address = trim((string) $address);
+
+        return static::create([
+            'first_name' => $first,
+            'last_name'  => $last,
+            'mobile'     => $mobile,
+            'address'    => $address !== '' ? $address : null,
+        ]);
     }
 
     // Add this accessor so you can use $customer->name
