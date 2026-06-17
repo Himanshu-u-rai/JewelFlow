@@ -65,8 +65,12 @@
             padding: 8px 13px;
             transition: background .16s ease, border-color .16s ease, color .16s ease, transform .12s var(--ease-out);
         }
-        .header-back svg { width: 14px; height: 14px; flex: 0 0 auto; }
-        .header-back:hover { background: #f9fafb; border-color: #c4cad3; color: var(--ink); }
+        .header-back svg { width: 14px; height: 14px; flex: 0 0 auto; transition: transform .18s var(--ease-out); }
+        @media (hover: hover) and (pointer: fine) {
+            .header-back:hover { background: #f9fafb; border-color: #c4cad3; color: var(--ink); transform: translateY(-1px); }
+            /* The chevron nudges back, hinting the direction this takes you. */
+            .header-back:hover svg { transform: translateX(-2px); }
+        }
         .header-back:active { transform: scale(0.97); }
 
         .shop-chip {
@@ -95,6 +99,15 @@
             background: var(--card); border: 1px solid var(--line); border-radius: 14px;
             padding: 20px 22px;
             box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.04);
+            transition: box-shadow .2s var(--ease-out), border-color .2s ease;
+        }
+        /* Barely-there lift when the pointer is over a card, so each section
+           reads as a real surface you can work on (emil: unseen details). */
+        @media (hover: hover) and (pointer: fine) {
+            .fcard:hover {
+                border-color: #dadde2;
+                box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -16px rgba(16,24,40,0.2);
+            }
         }
 
         .fcard-head {
@@ -134,22 +147,45 @@
             border: 1px solid var(--field-line); border-radius: 9px;
             font: inherit; font-size: 14.5px; color: var(--ink);
             background: var(--field-bg);
-            transition: border-color .16s ease, box-shadow .16s ease;
+            /* Exact properties, eased: the ring/border should arrive, not snap. */
+            transition: border-color .16s ease, box-shadow .18s var(--ease-out);
         }
         input::placeholder, textarea::placeholder { color: #98a2b3; }
+        /* Pointer feedback: the border darkens on hover so a field reads as
+           interactive before you click into it (emil: respond to the pointer). */
+        @media (hover: hover) and (pointer: fine) {
+            input:hover, select:hover, textarea:hover { border-color: #b8c0cc; }
+        }
         input:focus, select:focus, textarea:focus {
             outline: none; border-color: var(--gold-soft);
-            box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+            box-shadow: 0 0 0 3px rgba(245,158,11,0.18);
         }
         select {
             appearance: none; -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 12px center;
+            /* The chevron is a real element (.field-select-wrap svg) so it can
+               rotate on focus; the native control draws no arrow. */
             padding-right: 34px; cursor: pointer;
         }
-        .field-hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+        .field-select-wrap { position: relative; }
+        .field-select-wrap > svg {
+            position: absolute; right: 12px; top: 50%; width: 15px; height: 15px;
+            margin-top: -7.5px; color: var(--muted); pointer-events: none;
+            transition: transform .18s var(--ease-out), color .16s ease;
+        }
+        .field-select-wrap:focus-within > svg { transform: rotate(180deg); color: var(--gold-deep); }
+
+        .field-hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; display: flex; align-items: center; gap: 6px; }
         .field-hint[data-state="ok"] { color: #047857; }
         .field-hint[data-state="loading"] { color: var(--gold-deep); }
+        /* Tiny spinner shown only while a pincode lookup is in flight, so the
+           wait reads as active work (emil: feedback + perceived performance). */
+        .hint-spinner {
+            width: 12px; height: 12px; flex: 0 0 auto; border-radius: 50%;
+            border: 1.8px solid rgba(180,83,9,0.25); border-top-color: var(--gold-deep);
+            animation: hint-spin .6s linear infinite; display: none;
+        }
+        .field-hint[data-state="loading"] .hint-spinner { display: inline-block; }
+        @keyframes hint-spin { to { transform: rotate(360deg); } }
 
         /* Locked, non-editable country display. */
         .locked-field {
@@ -214,7 +250,10 @@
 
         @media (prefers-reduced-motion: reduce) {
             .page-head, .fcard, .form-actions { opacity: 1; animation: none; }
-            .btn-primary, .header-back { transition: none; }
+            .btn-primary, .header-back, .header-back svg,
+            .fcard, .field-select-wrap > svg, input, select, textarea { transition: none; }
+            /* No spinning loader under reduced motion: keep it as a static dot. */
+            .hint-spinner { animation: none; border-top-color: rgba(180,83,9,0.25); }
         }
     </style>
 </head>
@@ -352,7 +391,7 @@
                         <input type="text" name="pincode" id="pincode" value="{{ old('pincode') }}" required
                                inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6"
                                placeholder="6-digit">
-                        <div class="field-hint" id="pincode_hint">Fills your city &amp; state for you.</div>
+                        <div class="field-hint" id="pincode_hint"><span class="hint-spinner" aria-hidden="true"></span><span id="pincode_hint_text">Fills your city &amp; state for you.</span></div>
                     </div>
                     <div class="field">
                         <label>City <span class="req">*</span></label>
@@ -360,22 +399,25 @@
                     </div>
                     <div class="field">
                         <label>State <span class="req">*</span></label>
-                        <select name="state" id="state" required>
-                            <option value="" disabled {{ old('state') ? '' : 'selected' }}>Select state</option>
-                            @php
-                                $indianStates = [
-                                    'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
-                                    'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
-                                    'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
-                                    'Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
-                                    'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu',
-                                    'Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry',
-                                ];
-                            @endphp
-                            @foreach($indianStates as $st)
-                                <option value="{{ $st }}" {{ old('state') === $st ? 'selected' : '' }}>{{ $st }}</option>
-                            @endforeach
-                        </select>
+                        <div class="field-select-wrap">
+                            <select name="state" id="state" required>
+                                <option value="" disabled {{ old('state') ? '' : 'selected' }}>Select state</option>
+                                @php
+                                    $indianStates = [
+                                        'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
+                                        'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
+                                        'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
+                                        'Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
+                                        'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu',
+                                        'Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry',
+                                    ];
+                                @endphp
+                                @foreach($indianStates as $st)
+                                    <option value="{{ $st }}" {{ old('state') === $st ? 'selected' : '' }}>{{ $st }}</option>
+                                @endforeach
+                            </select>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                        </div>
                     </div>
                     <div class="field">
                         <label>Country</label>
@@ -455,12 +497,15 @@
         var hint = document.getElementById('pincode_hint');
         if (!pin) return;
 
+        var hintText = document.getElementById('pincode_hint_text');
         var lookupBase = @json(url('/shops/pincode'));
-        var defaultHint = hint ? hint.textContent : '';
+        var defaultHint = hintText ? hintText.textContent : '';
 
+        // Write to the text span only, so the spinner element is preserved; the
+        // data-state on the parent drives the spinner + colour.
         function setHint(msg, kind) {
+            if (hintText) hintText.textContent = msg;
             if (!hint) return;
-            hint.textContent = msg;
             if (kind) { hint.setAttribute('data-state', kind); } else { hint.removeAttribute('data-state'); }
         }
 
