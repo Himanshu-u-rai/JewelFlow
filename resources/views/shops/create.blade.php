@@ -428,8 +428,11 @@
         }
     })();
 
-    // Pincode -> auto-fill city + state. Best-effort via the free India PIN API;
-    // if it fails or returns nothing, the owner just types city/state by hand.
+    // Pincode -> auto-fill city + state. The lookup goes through our own server
+    // (route shops.pincode-lookup), which proxies the India PIN API. Calling it
+    // same-origin keeps it within the page's Content-Security-Policy; a direct
+    // browser call to the external API would be blocked by connect-src 'self'.
+    // Best-effort: any failure just leaves the fields for manual entry.
     (function () {
         var pin = document.getElementById('pincode');
         var city = document.getElementById('city');
@@ -437,6 +440,7 @@
         var hint = document.getElementById('pincode_hint');
         if (!pin) return;
 
+        var lookupBase = @json(url('/shops/pincode'));
         var defaultHint = hint ? hint.textContent : '';
 
         function setHint(msg, kind) {
@@ -466,21 +470,19 @@
             lastLookup = code;
 
             setHint('Looking up your area...', 'loading');
-            fetch('https://api.postalpincode.in/pincode/' + code)
+            fetch(lookupBase + '/' + code, { headers: { 'Accept': 'application/json' } })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    var rec = Array.isArray(data) ? data[0] : null;
-                    if (!rec || rec.Status !== 'Success' || !rec.PostOffice || !rec.PostOffice.length) {
+                    if (!data || !data.found) {
                         setHint('Could not find that pincode. Please type your city and state.', null);
                         return;
                     }
-                    var po = rec.PostOffice[0];
-                    var stateOk = selectState(po.State);
+                    var stateOk = selectState(data.state);
                     if (city && !city.value) {
-                        city.value = po.District || po.Division || '';
+                        city.value = data.city || '';
                     }
                     if (stateOk) {
-                        setHint('Found: ' + (po.District || po.State) + ', ' + po.State + '. Edit if needed.', 'ok');
+                        setHint('Found: ' + (data.city || data.state) + ', ' + data.state + '. Edit if needed.', 'ok');
                     } else {
                         setHint('Found your area. Please confirm the state below.', null);
                     }

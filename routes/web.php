@@ -117,6 +117,9 @@ Route::middleware(['auth', 'tenant', 'account.active'])->group(function () {
         ->name('shops.create');
     Route::post('/shops', [ShopController::class, 'store'])
         ->name('shops.store');
+    Route::get('/shops/pincode/{pincode}', [ShopController::class, 'lookupPincode'])
+        ->whereNumber('pincode')
+        ->name('shops.pincode-lookup');
 });
 
 /*

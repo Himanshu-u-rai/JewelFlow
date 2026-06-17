@@ -11,6 +11,7 @@ use App\Support\ShopEdition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class ShopController extends Controller
 {
@@ -77,6 +78,95 @@ class ShopController extends Controller
             'dhiranEnabled'       => $dhiranEnabled,
             'selected'            => session('onboarding_editions', []),
         ]);
+    }
+
+    /**
+     * Server-side proxy for the India PIN-code lookup used by the shop-create
+     * form to auto-fill city + state. The browser cannot call the public PIN
+     * API directly because the Content-Security-Policy only allows same-origin
+     * connect-src, so the request is made here instead. Best-effort: any upstream
+     * failure returns 200 with found=false so the form just falls back to manual
+     * entry. Results are cached (pincodes are effectively immutable).
+     */
+    public function lookupPincode(string $pincode)
+    {
+        if (! preg_match('/^[0-9]{6}$/', $pincode)) {
+            return response()->json(['found' => false], 422);
+        }
+
+        $result = \Illuminate\Support\Facades\Cache::remember(
+            "pincode:{$pincode}",
+            now()->addDays(30),
+            function () use ($pincode) {
+                try {
+                    // The PIN API resets the connection for some clients, so send a
+                    // browser-like User-Agent and retry on connection errors too
+                    // (retry() retries ConnectionException as well as failed responses).
+                    $resp = Http::timeout(5)
+                        ->retry(2, 300, throw: false)
+                        ->withHeaders([
+                            'User-Agent' => 'Mozilla/5.0 (compatible; JewelFlow/1.0; +https://jewelflows.com)',
+                            'Accept'     => 'application/json',
+                        ])
+                        ->get("https://api.postalpincode.in/pincode/{$pincode}");
+
+                    if (! $resp->successful()) {
+                        return null;   // transient HTTP failure: do not cache
+                    }
+
+                    $body = $resp->json();
+                    $record = is_array($body) ? ($body[0] ?? null) : null;
+                    $offices = $record['PostOffice'] ?? null;
+
+                    if (($record['Status'] ?? null) !== 'Success' || empty($offices)) {
+                        // A genuine "not found" is a real answer worth caching.
+                        return ['found' => false];
+                    }
+
+                    $po = $offices[0];
+
+                    return [
+                        'found' => true,
+                        'city'  => $po['District'] ?? ($po['Division'] ?? ''),
+                        'state' => $this->canonicalStateName($po['State'] ?? ''),
+                    ];
+                } catch (\Throwable $e) {
+                    // Connection reset / timeout: transient, never cache.
+                    return null;
+                }
+            }
+        );
+
+        // A null (transient error) is not cached; normalise it for the response.
+        if ($result === null) {
+            \Illuminate\Support\Facades\Cache::forget("pincode:{$pincode}");
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json($result);
+    }
+
+    /**
+     * Map the PIN API's state spelling to the exact label used in the shop-create
+     * state dropdown, so the value auto-selects. Anything not listed is returned
+     * as-is (the front end then just asks the user to confirm the state).
+     */
+    private function canonicalStateName(string $state): string
+    {
+        $map = [
+            'pondicherry'                => 'Puducherry',
+            'jammu & kashmir'            => 'Jammu and Kashmir',
+            'jammu and kashmir'          => 'Jammu and Kashmir',
+            'andaman & nicobar'          => 'Andaman and Nicobar Islands',
+            'andaman & nicobar islands'  => 'Andaman and Nicobar Islands',
+            'dadra & nagar haveli'       => 'Dadra and Nagar Haveli and Daman and Diu',
+            'daman & diu'                => 'Dadra and Nagar Haveli and Daman and Diu',
+            'orissa'                     => 'Odisha',
+        ];
+
+        $key = strtolower(trim($state));
+
+        return $map[$key] ?? $state;
     }
 
     public function create(Request $request)
