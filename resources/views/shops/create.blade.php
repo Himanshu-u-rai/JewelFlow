@@ -14,212 +14,207 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
+            /* Gold stays the brand accent, but the surfaces are clean neutral
+               so the setup form reads as professional software, not a card. */
             --gold:#d97706; --gold-deep:#b45309; --gold-soft:#f59e0b;
-            --ink:#26221b;
-            --muted:#766c5d;            /* warm taupe, readable on cream */
-            --line:#ece3d2;             /* warm hairline */
-            --field-line:#e2d8c5;
+
+            --page:#f4f5f7;             /* cool light gray page */
+            --card:#ffffff;
+            --ink:#1e2530;             /* slate ink */
+            --ink-soft:#475467;        /* secondary slate */
+            --muted:#667085;           /* tertiary / hints */
+            --line:#e6e8ec;            /* neutral hairline */
+            --field-line:#d3d8e0;
+            --field-bg:#ffffff;
+
             --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
         }
 
         body {
             font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-            /* Warm cream page with a soft gold glow up top, matching the rest of
-               the onboarding flow (login, choose-type, plans). */
-            background:
-                radial-gradient(120% 70% at 50% -8%, rgba(245,158,11,0.16) 0%, rgba(245,158,11,0.05) 32%, transparent 60%),
-                radial-gradient(90% 60% at 88% 6%, rgba(251,191,36,0.10) 0%, transparent 50%),
-                linear-gradient(180deg, #fdf9f0 0%, #faf4e9 46%, #f7efe1 100%);
-            background-attachment: fixed;
+            background: var(--page);
             min-height: 100vh;
             color: var(--ink);
+            -webkit-font-smoothing: antialiased;
         }
 
         /* ---------- Header (sticky) ---------- */
         .header {
             position: sticky; top: 0; z-index: 50;
             display: flex; align-items: center; justify-content: space-between;
-            gap: 16px;
-            padding: 14px 32px;
+            gap: 14px;
+            padding: 13px 28px;
             border-bottom: 1px solid var(--line);
-            background: rgba(253,249,240,0.85);
+            background: rgba(255,255,255,0.9);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
-        .header-left { display: flex; align-items: center; gap: 18px; min-width: 0; }
-        .header-brand { display: flex; align-items: center; gap: 10px; }
-        .header-brand-mark { width: 30px; height: 30px; }
-        .header-brand-text { font-size: 19px; font-weight: 800; color: var(--ink); letter-spacing: -0.3px; }
+        .header-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
+        .header-brand { display: flex; align-items: center; gap: 9px; }
+        .header-brand-mark { width: 28px; height: 28px; flex: 0 0 auto; }
+        .header-brand-text { font-size: 18px; font-weight: 800; color: var(--ink); letter-spacing: -0.3px; }
         .header-brand-text span { color: var(--gold); }
 
         /* Change-business-type as a real button, set apart from the form so it
            cannot be mistaken for the submit action. */
         .header-back {
-            display: inline-flex; align-items: center; gap: 7px;
-            font: inherit; font-size: 13px; font-weight: 600; color: #6b5d44;
-            text-decoration: none; cursor: pointer;
-            background: #ffffff; border: 1px solid var(--line); border-radius: 10px;
-            padding: 8px 14px;
-            box-shadow: 0 1px 2px rgba(120,80,20,0.05);
-            transition: background .16s ease, border-color .16s ease, color .16s ease, transform .12s ease;
+            display: inline-flex; align-items: center; gap: 6px;
+            font: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft);
+            text-decoration: none; cursor: pointer; white-space: nowrap;
+            background: #fff; border: 1px solid var(--field-line); border-radius: 9px;
+            padding: 8px 13px;
+            transition: background .16s ease, border-color .16s ease, color .16s ease, transform .12s var(--ease-out);
         }
-        .header-back svg { width: 14px; height: 14px; }
-        .header-back:hover { background: #fbf6ec; border-color: #fcd34d; color: var(--gold-deep); }
+        .header-back svg { width: 14px; height: 14px; flex: 0 0 auto; }
+        .header-back:hover { background: #f9fafb; border-color: #c4cad3; color: var(--ink); }
         .header-back:active { transform: scale(0.97); }
 
         .shop-chip {
-            display: inline-flex; align-items: center; gap: 6px;
-            font-size: 12px; font-weight: 700; letter-spacing: .02em;
+            display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+            font-size: 11.5px; font-weight: 700; letter-spacing: .03em;
             color: var(--gold-deep);
-            background: linear-gradient(180deg, #fffaf0 0%, #fff4e0 100%);
-            border: 1px solid #f4dcae; border-radius: 999px;
-            padding: 6px 12px; text-transform: uppercase;
-            box-shadow: 0 1px 2px rgba(120,80,20,0.06);
+            background: #fdf6ec; border: 1px solid #f3dcb6; border-radius: 8px;
+            padding: 6px 11px; text-transform: uppercase;
         }
+        .shop-chip svg { flex: 0 0 auto; }
 
         /* ---------- Layout ---------- */
-        .container { max-width: 880px; margin: 0 auto; padding: 26px 20px 40px; }
+        .container { max-width: 880px; margin: 0 auto; padding: 28px 20px 48px; }
 
-        .page-head { text-align: center; margin-bottom: 20px; }
+        .page-head { margin-bottom: 22px; }
         .page-head h2 {
-            font-size: clamp(24px, 3.4vw, 30px); font-weight: 800; color: var(--ink);
-            letter-spacing: -0.6px; text-wrap: balance;
+            font-size: clamp(22px, 3vw, 28px); font-weight: 800; color: var(--ink);
+            letter-spacing: -0.5px; text-wrap: balance;
         }
         .page-head p { font-size: 14px; color: var(--muted); margin-top: 5px; }
 
         /* ---------- Section cards ---------- */
-        /* Each section (Shop details / Address / Owner) is its own white card,
-           sitting on the cream page so they read as distinct, crisp panels
-           rather than one muddy cream-on-cream block. */
         .form-stack { display: grid; gap: 16px; }
 
         .fcard {
-            background: #ffffff; border: 1px solid var(--line); border-radius: 18px;
+            background: var(--card); border: 1px solid var(--line); border-radius: 14px;
             padding: 20px 22px;
-            box-shadow: 0 1px 2px rgba(120,80,20,0.05), 0 16px 38px -26px rgba(120,80,20,0.26);
+            box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.04);
         }
 
         .fcard-head {
-            display: flex; align-items: center; gap: 11px;
+            display: flex; align-items: center; gap: 12px;
             padding-bottom: 14px; margin-bottom: 16px;
             border-bottom: 1px solid var(--line);
         }
         .fcard-icon {
-            width: 36px; height: 36px; flex: 0 0 auto; border-radius: 10px;
+            width: 36px; height: 36px; flex: 0 0 auto; border-radius: 9px;
             display: grid; place-items: center;
-            color: var(--gold-deep);
-            background: linear-gradient(180deg, #fff7e8 0%, #fdeccb 100%);
-            border: 1px solid #f4dcae;
+            color: var(--gold-deep); background: #fdf6ec; border: 1px solid #f3dcb6;
         }
         .fcard-icon svg { width: 18px; height: 18px; }
-        .fcard-titles b { display: block; font-size: 15px; font-weight: 800; color: var(--ink); letter-spacing: -0.2px; }
+        .fcard-titles b { display: block; font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.2px; }
         .fcard-titles span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
 
-        /* Fields flow in a responsive multi-column grid so the form fills the
-           width instead of stacking into one tall column. Each field can span
-           1 or 2 of the 4 tracks via the span helpers below. */
+        /* Responsive field grid: fields reflow automatically with no manual
+           column spans, so it collapses cleanly at any width (including phones)
+           without inline overrides fighting the media query. */
         .frow {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 14px 16px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
         }
+        /* A field that should always take the full row (e.g. address line). */
+        .frow .span-all { grid-column: 1 / -1; }
         .field { min-width: 0; }
-        .col-2 { grid-column: span 2; }
-        .col-3 { grid-column: span 3; }
-        .col-4 { grid-column: span 4; }
 
         label {
-            display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #4a4334;
+            display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--ink-soft);
         }
         label .req { color: var(--gold); margin-left: 2px; }
         label .opt { color: var(--muted); font-weight: 500; font-size: 11.5px; }
 
         input, select, textarea {
-            width: 100%; padding: 11px 13px;
-            border: 1px solid var(--field-line); border-radius: 11px;
-            font: inherit; font-size: 15px; color: var(--ink);
-            background: #fdfbf7;
-            transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+            width: 100%; padding: 10px 12px;
+            border: 1px solid var(--field-line); border-radius: 9px;
+            font: inherit; font-size: 14.5px; color: var(--ink);
+            background: var(--field-bg);
+            transition: border-color .16s ease, box-shadow .16s ease;
         }
-        input::placeholder, textarea::placeholder { color: #b3a892; }
+        input::placeholder, textarea::placeholder { color: #98a2b3; }
         input:focus, select:focus, textarea:focus {
             outline: none; border-color: var(--gold-soft);
-            box-shadow: 0 0 0 3px rgba(245,158,11,0.16);
-            background: #fff;
+            box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
         }
         select {
             appearance: none; -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23766c5d' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 13px center;
-            padding-right: 36px; cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+            padding-right: 34px; cursor: pointer;
         }
         .field-hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
-        .field-hint[data-state="ok"] { color: #15803d; }
+        .field-hint[data-state="ok"] { color: #047857; }
         .field-hint[data-state="loading"] { color: var(--gold-deep); }
 
         /* Locked, non-editable country display. */
         .locked-field {
             display: flex; align-items: center; gap: 8px;
-            padding: 11px 13px; border: 1px solid var(--field-line); border-radius: 12px;
-            background: #faf4e9; color: var(--muted); font-size: 15px;
+            padding: 10px 12px; border: 1px solid var(--field-line); border-radius: 9px;
+            background: #f4f5f7; color: var(--ink-soft); font-size: 14.5px;
         }
-        .locked-field svg { width: 15px; height: 15px; color: var(--gold); flex: 0 0 auto; }
+        .locked-field svg { width: 15px; height: 15px; color: var(--muted); flex: 0 0 auto; }
 
         /* ---------- Errors ---------- */
         .errors {
-            background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
-            padding: 14px 16px; border-radius: 14px; margin-bottom: 20px; font-size: 13px;
+            background: #fef3f2; border: 1px solid #fecdca; color: #b42318;
+            padding: 14px 16px; border-radius: 12px; margin-bottom: 18px; font-size: 13px;
         }
         .errors ul { list-style: none; margin: 0; padding: 0; }
         .errors li { padding: 3px 0; }
-        .errors li:before { content: "• "; color: #dc2626; font-weight: bold; margin-right: 4px; }
+        .errors li:before { content: "• "; color: #d92d20; font-weight: bold; margin-right: 4px; }
 
         /* ---------- Actions ---------- */
         .form-actions {
             display: flex; justify-content: flex-end; align-items: center;
-            margin-top: 18px; padding: 4px 4px 0;
+            margin-top: 18px; padding: 2px;
         }
         .btn-primary {
-            padding: 13px 30px; background: var(--gold-deep); color: #fff;
-            border: none; border-radius: 13px; font: inherit; font-size: 14.5px; font-weight: 700;
-            cursor: pointer; box-shadow: 0 10px 26px -10px rgba(180,83,9,0.55);
+            padding: 12px 28px; background: var(--gold-deep); color: #fff;
+            border: none; border-radius: 10px; font: inherit; font-size: 14.5px; font-weight: 700;
+            cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 8px 20px -10px rgba(180,83,9,0.5);
             transition: background .16s ease, transform .12s var(--ease-out), box-shadow .16s ease;
         }
-        .btn-primary:hover { background: #92400e; box-shadow: 0 14px 30px -10px rgba(180,83,9,0.6); }
+        .btn-primary:hover { background: #92400e; box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 12px 24px -10px rgba(180,83,9,0.55); }
         .btn-primary:active { transform: scale(0.98); }
 
         /* ---------- Responsive ---------- */
-        /* Below ~620px the 4-track grid collapses to a single column so fields
-           stack cleanly on phones. */
-        @media (max-width: 620px) {
-            .header { padding: 12px 14px; flex-wrap: wrap; row-gap: 10px; }
-            .header-left { gap: 12px; flex-wrap: wrap; }
+        @media (max-width: 600px) {
+            .header { padding: 11px 16px; flex-wrap: wrap; row-gap: 9px; }
+            .header-left { gap: 10px; flex-wrap: wrap; }
             .header-back { font-size: 12.5px; padding: 7px 11px; }
-            .container { padding: 20px 14px 36px; }
-            .fcard { padding: 18px 16px; }
-            .frow { grid-template-columns: 1fr; }
-            .col-2, .col-3, .col-4 { grid-column: span 1; }
-            .form-actions { align-items: stretch; }
+            .container { padding: 20px 16px 40px; }
+            .fcard { padding: 18px 16px; border-radius: 13px; }
+            .fcard-head { gap: 10px; }
+            /* Single column on phones; one rule, nothing to override. */
+            .frow { grid-template-columns: 1fr; gap: 14px; }
+            .form-actions { margin-top: 16px; }
             .btn-primary { width: 100%; text-align: center; }
         }
 
-        /* ---------- Entrance motion (occasional screen: a gentle staged reveal) ---------- */
+        /* ---------- Entrance motion ----------
+           Occasional screen, so a gentle staged reveal. Strong ease-out, short,
+           and fully disabled under reduced-motion (emil-design-eng). */
         @keyframes sc-rise {
-            from { opacity: 0; transform: translateY(14px); }
+            from { opacity: 0; transform: translateY(12px); }
             to   { opacity: 1; transform: translateY(0); }
         }
         .page-head, .fcard, .form-actions {
             opacity: 0; animation: sc-rise 0.5s var(--ease-out) forwards;
         }
         .page-head            { animation-delay: 0.02s; }
-        .fcard:nth-of-type(1) { animation-delay: 0.10s; }
-        .fcard:nth-of-type(2) { animation-delay: 0.16s; }
-        .fcard:nth-of-type(3) { animation-delay: 0.22s; }
-        .form-actions         { animation-delay: 0.28s; }
+        .fcard:nth-of-type(1) { animation-delay: 0.09s; }
+        .fcard:nth-of-type(2) { animation-delay: 0.15s; }
+        .fcard:nth-of-type(3) { animation-delay: 0.21s; }
+        .form-actions         { animation-delay: 0.27s; }
 
         @media (prefers-reduced-motion: reduce) {
             .page-head, .fcard, .form-actions { opacity: 1; animation: none; }
-            .btn-primary { transition: none; }
+            .btn-primary, .header-back { transition: none; }
         }
     </style>
 </head>
@@ -259,9 +254,9 @@
         <h2>Set up your shop</h2>
         <p>
             @if($shopType === 'retailer')
-                A couple of details and your retail shop is ready to go.
+                A few details and your retail shop is ready to go.
             @else
-                A couple of details and your manufacturing shop is ready to go.
+                A few details and your manufacturing shop is ready to go.
             @endif
         </p>
     </div>
@@ -295,17 +290,17 @@
                 </div>
 
                 <div class="frow">
-                    <div class="field col-2">
+                    <div class="field span-all">
                         <label>Shop name <span class="req">*</span></label>
                         <input type="text" name="name" value="{{ old('name') }}" placeholder="e.g. Golden Jewellers" required>
                     </div>
-                    <div class="field" style="grid-column: span 1;">
+                    <div class="field">
                         <label>Shop phone <span class="req">*</span></label>
                         <input type="tel" name="phone" value="{{ old('phone') }}" required
                                inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10"
                                placeholder="10-digit number">
                     </div>
-                    <div class="field" style="grid-column: span 1;">
+                    <div class="field">
                         <label>GST number <span class="opt">(optional)</span></label>
                         <input type="text" name="gst_number" id="gst_number" value="{{ old('gst_number') }}"
                                maxlength="15" autocapitalize="characters" spellcheck="false"
@@ -314,12 +309,12 @@
                     </div>
 
                     @if($shopType === 'manufacturer')
-                    <div class="field col-2">
+                    <div class="field">
                         <label>GST rate (%) <span class="req">*</span></label>
                         <input type="number" name="gst_rate" value="{{ old('gst_rate', '3') }}"
                                inputmode="decimal" step="0.01" min="0" max="100" placeholder="3" required>
                     </div>
-                    <div class="field col-2">
+                    <div class="field">
                         <label>Wastage recovery (%) <span class="req">*</span></label>
                         <input type="number" name="wastage_recovery_percent" value="{{ old('wastage_recovery_percent', '100') }}"
                                inputmode="decimal" step="0.01" min="0" max="100" placeholder="100" required>
@@ -341,29 +336,29 @@
                 </div>
 
                 <div class="frow">
-                    <div class="field col-2">
+                    <div class="field span-all">
                         <label>Address line 1 <span class="req">*</span></label>
                         <input type="text" name="address_line1" value="{{ old('address_line1') }}"
                                placeholder="Shop No. 12, Main Road" required>
                     </div>
-                    <div class="field col-2">
+                    <div class="field span-all">
                         <label>Address line 2 <span class="opt">(optional)</span></label>
                         <input type="text" name="address_line2" value="{{ old('address_line2') }}"
                                placeholder="Near City Mall, Sarkhej Area">
                     </div>
 
-                    <div class="field" style="grid-column: span 1;">
+                    <div class="field">
                         <label>Pincode <span class="req">*</span></label>
                         <input type="text" name="pincode" id="pincode" value="{{ old('pincode') }}" required
                                inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6"
                                placeholder="6-digit">
                         <div class="field-hint" id="pincode_hint">Fills your city &amp; state for you.</div>
                     </div>
-                    <div class="field" style="grid-column: span 1;">
+                    <div class="field">
                         <label>City <span class="req">*</span></label>
                         <input type="text" name="city" id="city" value="{{ old('city') }}" placeholder="e.g. Ahmedabad" required>
                     </div>
-                    <div class="field" style="grid-column: span 1;">
+                    <div class="field">
                         <label>State <span class="req">*</span></label>
                         <select name="state" id="state" required>
                             <option value="" disabled {{ old('state') ? '' : 'selected' }}>Select state</option>
@@ -382,7 +377,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="field" style="grid-column: span 1;">
+                    <div class="field">
                         <label>Country</label>
                         <div class="locked-field">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.5 9h17M3.5 15h17M12 3c2.5 2.5 3.5 6 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-6-3.5-9S9.5 5.5 12 3z"/></svg>
@@ -406,21 +401,21 @@
                 </div>
 
                 <div class="frow">
-                    <div class="field col-2">
+                    <div class="field">
                         <label>First name <span class="req">*</span></label>
                         <input type="text" name="owner_first_name" value="{{ old('owner_first_name') }}" placeholder="First name" required>
                     </div>
-                    <div class="field col-2">
+                    <div class="field">
                         <label>Last name <span class="req">*</span></label>
                         <input type="text" name="owner_last_name" value="{{ old('owner_last_name') }}" placeholder="Last name" required>
                     </div>
-                    <div class="field col-2">
+                    <div class="field">
                         <label>Mobile number <span class="req">*</span></label>
                         <input type="tel" name="owner_mobile" value="{{ old('owner_mobile') }}" required
                                inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10"
                                placeholder="10-digit mobile">
                     </div>
-                    <div class="field col-2">
+                    <div class="field">
                         <label>Email address <span class="opt">(optional)</span></label>
                         <input type="email" name="owner_email" value="{{ old('owner_email') }}" placeholder="owner@example.com">
                     </div>
