@@ -122,9 +122,48 @@
                 border-left: 0;
             }
         }
+
+        /* ---- Brand retune ----
+           The form's markup uses cold slate-900 utility classes as the accent
+           (dark buttons, focus rings, headings). Re-skin those to the JewelFlow
+           gold here, scoped to .qb-edit-page, WITHOUT touching any markup, Alpine
+           bindings or name= attributes (the payment + item logic is untouched).
+           Rose stays for destructive (remove) actions; green/amber/slate keep
+           their semantic roles. */
+        .qb-edit-page {
+            --qb-gold: #b45309;
+            --qb-gold-hover: #92400e;
+            --qb-gold-soft: #f59e0b;
+            --qb-focus: rgba(245, 158, 11, .2);
+        }
+
+        /* Solid dark buttons -> gold (New item, Add payment, Save, Issue, etc.) */
+        .qb-edit-page .bg-slate-900 { background-color: var(--qb-gold) !important; }
+        .qb-edit-page .hover\:bg-slate-800:hover,
+        .qb-edit-page .bg-slate-900.hover\:bg-slate-800:hover { background-color: var(--qb-gold-hover) !important; }
+
+        /* Inputs / selects / textareas: gold focus border + ring instead of slate. */
+        .qb-edit-page input:focus,
+        .qb-edit-page select:focus,
+        .qb-edit-page textarea:focus {
+            border-color: var(--qb-gold-soft) !important;
+            outline: none;
+            box-shadow: 0 0 0 3px var(--qb-focus) !important;
+        }
+
+        /* Headings/labels that used slate-900 read warmer ink. */
+        .qb-edit-page .text-slate-900 { color: #1f2430; }
+
+        /* Section heading weight to match the brand display weight on other pages. */
+        .qb-edit-page .text-sm.font-semibold.text-slate-900,
+        .qb-edit-page .text-base.font-semibold.text-slate-900 { font-weight: 800; letter-spacing: -0.2px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .qb-edit-page * { transition: none !important; }
+        }
     </style>
 
-    <div class="content-inner max-w-[1380px] mx-auto" x-data="quickBillForm({
+    <div class="content-inner max-w-[1380px] mx-auto qb-edit-page" x-data="quickBillForm({
         customers: @js($customerDirectory),
         items: @js($initialItems),
         payments: @js($initialPayments),
@@ -294,8 +333,8 @@
                                                 <div>
                                                     <label class="mb-2 block text-sm font-medium text-slate-600">Purity</label>
                                                     {{-- Gold/silver: standards dropdown (drives the purity factor).
-                                                         Platinum/copper (no profiles): optional grade text — price is
-                                                         net × rate, purity never multiplies. --}}
+                                                         Platinum/copper (no profiles): optional grade text - price is
+                                                         net x rate, purity never multiplies. --}}
                                                     <template x-if="purityChoicesFor(item.metal_type).length">
                                                         <select :name="'items['+index+'][purity]'" x-model="item.purity" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                             <template x-for="p in purityChoicesFor(item.metal_type)" :key="p.label"><option :value="p.label" x-text="p.label"></option></template>
@@ -542,7 +581,7 @@
                                                 <option value="">Select account…</option>
                                                 <template x-for="m in methodsForType(payment.payment_mode)" :key="m.id"><option :value="m.id" x-text="m.label"></option></template>
                                             </select>
-                                            <p x-show="methodsForType(payment.payment_mode).length === 0" class="mt-1 text-[11px] text-amber-600">No <span x-text="payment.payment_mode"></span> account in Settings — add one to record this.</p>
+                                            <p x-show="methodsForType(payment.payment_mode).length === 0" class="mt-1 text-[11px] text-amber-600">No <span x-text="payment.payment_mode"></span> account in Settings - add one to record this.</p>
                                         </div>
                                     </template>
                                     <input :name="'payments['+index+'][reference_no]'" x-model="payment.reference_no" type="text" placeholder="Ref / note (e.g. Transaction ID)" class="w-full rounded-lg border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-600">
@@ -772,7 +811,7 @@
                     }
                     return net * rate * factor;
                 },
-                // Resolve making per mode (preview only — server re-resolves on save).
+                // Resolve making per mode (preview only - server re-resolves on save).
                 // percentage = of metal value; per_gram = of net weight.
                 lineMaking(item) {
                     const metalValue = this.metalValueOf(item);
