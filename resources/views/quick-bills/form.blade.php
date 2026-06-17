@@ -454,6 +454,45 @@
             .qb-edit-page * { transition: none !important; }
         }
 
+        /* ---- Desktop-only price-grid layout (>=768px) ----
+           Put Wastage directly under Rate (left column) and Making over Stone
+           (right column), using the extra desktop width. Column fill order:
+           col1 = Rate -> Wastage, col2 = Making -> Stone. Mobile is untouched
+           (it keeps the natural row order from the markup). */
+        @media (min-width: 768px) {
+            .qb-price-grid {
+                grid-auto-flow: column;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-rows: auto auto;
+                align-items: start;
+            }
+            .qb-price-grid .qb-rate-field    { order: 1; }
+            .qb-price-grid .qb-wastage-field { order: 2; }
+            .qb-price-grid .qb-making-field  { order: 3; }
+            .qb-price-grid .qb-stone-field   { order: 4; }
+
+            /* Show the custom chevron on the making-type select on desktop too. */
+            .qb-making-select-wrap { position: relative; }
+            .qb-making-select-icon {
+                position: absolute;
+                top: 1.30rem;
+                right: .7rem;
+                display: flex;
+                height: 16px;
+                width: 16px;
+                align-items: center;
+                justify-content: center;
+                color: #475569;
+                pointer-events: none;
+            }
+            .content-inner.qb-edit-page select.qb-making-type-select {
+                appearance: none;
+                -webkit-appearance: none;
+                background-image: none !important;
+                padding-right: 2rem !important;
+            }
+        }
+
         @media (max-width: 767px) {
             .qb-form-header .page-actions {
                 gap: .375rem;
@@ -741,26 +780,26 @@
                                                     <div class="qb-mobile-weight-grid grid gap-3 grid-cols-2">
                                                         <div>
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Gross</label>
-                                                            <input :name="'items['+index+'][gross_weight]'" x-model.number="item.gross_weight" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <input :name="'items['+index+'][gross_weight]'" x-model.number="item.gross_weight" @input="recalcNet(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
                                                         <div>
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Stone wt</label>
-                                                            <input :name="'items['+index+'][stone_weight]'" x-model.number="item.stone_weight" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <input :name="'items['+index+'][stone_weight]'" x-model.number="item.stone_weight" @input="recalcNet(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
                                                         <div class="qb-mobile-net-field col-span-2">
-                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Net wt</label>
-                                                            <input :name="'items['+index+'][net_weight]'" x-model.number="item.net_weight" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <label class="mb-2 block text-sm font-medium text-slate-600">Net wt <span class="text-slate-400 font-normal">(auto)</span></label>
+                                                            <input :name="'items['+index+'][net_weight]'" x-model.number="item.net_weight" @input="onNetInput(item)" type="number" step="0.001" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                                    <div class="grid gap-3 grid-cols-2">
-                                                        <div>
+                                                    <div class="qb-price-grid grid gap-3 grid-cols-2">
+                                                        <div class="qb-rate-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Rate (pure 24K/999)</label>
                                                             <input :name="'items['+index+'][rate]'" x-model.number="item.rate" type="number" step="0.01" min="0" placeholder="Pure metal rate / g" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
-                                                        <div>
+                                                        <div class="qb-making-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Making</label>
                                                             <div class="qb-making-select-wrap mb-2">
                                                                 <select :name="'items['+index+'][making_charge_type]'" x-model="item.making_charge_type" class="qb-making-type-select w-full rounded-xl border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
@@ -778,13 +817,14 @@
                                                             <input type="hidden" :name="'items['+index+'][making_charge_value]'" :value="item.making_charge">
                                                             <p class="mt-1 text-xs text-slate-400" x-show="item.making_charge_type !== 'fixed'" x-text="item.making_charge_type === 'percentage' ? ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (' + (item.making_charge||0) + '% of metal)') : ('= ₹' + currency(lineMaking(item)).replace('₹','') + ' (₹' + (item.making_charge||0) + '/g)')"></p>
                                                         </div>
-                                                        <div>
+                                                        <div class="qb-stone-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Stone amount</label>
                                                             <input :name="'items['+index+'][stone_charge]'" x-model.number="item.stone_charge" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
                                                         </div>
-                                                        <div>
+                                                        <div class="qb-wastage-field">
                                                             <label class="mb-2 block text-sm font-medium text-slate-600">Wastage %</label>
                                                             <input :name="'items['+index+'][wastage_percent]'" x-model.number="item.wastage_percent" type="number" step="0.01" min="0" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900/10">
+                                                            <p class="mt-1 text-xs text-slate-400" x-show="safeNumber(item.wastage_percent) > 0" x-text="'= ' + currency(lineWastage(item)) + ' (' + (item.wastage_percent || 0) + '% of metal)'"></p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1061,6 +1101,10 @@
                 wastage_percent: Number(item.wastage_percent || 0),
                 line_discount: Number(item.line_discount || 0),
                 _chargesOpen: chargesOpen,
+                // Treat a saved net that doesn't equal gross-stone as a manual
+                // override, so editing an existing bill won't silently rewrite it.
+                _netManual: Number(item.net_weight || 0) > 0
+                    && Math.abs(Number(item.net_weight || 0) - Math.max(0, Number(item.gross_weight || 0) - Number(item.stone_weight || 0))) > 0.0005,
             });
             const blankItem = () => initItem({
                 description: '', hsn_code: '', metal_type: 'Gold', purity: '22K',
@@ -1206,6 +1250,30 @@
                     if (type === 'percentage') return metalValue * (v / 100);
                     if (type === 'per_gram') return this.netWeightOf(item) * v;
                     return v;
+                },
+                // Wastage preview amount = wastage% of metal value (mirrors
+                // lineTotal + QuickBillService). Preview only; server re-resolves.
+                lineWastage(item) {
+                    return this.metalValueOf(item) * (this.safeNumber(item.wastage_percent) / 100);
+                },
+                // Net weight auto-fills from gross - stone as the owner types, to
+                // save time. It stays editable: once the user types directly in
+                // the Net field (_netManual), auto-fill stops overriding them.
+                recalcNet(item) {
+                    if (item._netManual) return;
+                    // $nextTick so x-model has committed the new gross/stone before
+                    // we read them (the @input handler and x-model share the event).
+                    this.$nextTick(() => {
+                        if (item._netManual) return;
+                        const auto = Math.max(0, this.safeNumber(item.gross_weight) - this.safeNumber(item.stone_weight));
+                        item.net_weight = auto > 0 ? Number(auto.toFixed(3)) : 0;
+                    });
+                },
+                onNetInput(item) {
+                    // A manual entry pins the field; clearing it re-enables auto.
+                    this.$nextTick(() => {
+                        item._netManual = this.safeNumber(item.net_weight) > 0;
+                    });
                 },
                 lineTotal(item) {
                     const making = this.lineMaking(item);
