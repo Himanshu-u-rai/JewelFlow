@@ -60,42 +60,65 @@
         .qb-stat__value { margin-top: 3px; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--qb-ink); line-height: 1.1; }
         .qb-stat__value.is-money { font-size: 19px; }
 
-        /* ---------- Filter bar ---------- */
+        /* ---------- Filter toolbar (single row, no Filter button) ---------- */
         .qb-filters {
             background: #fff; border: 1px solid var(--qb-line); border-radius: 16px;
-            padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+            padding: 12px 14px; box-shadow: 0 1px 2px rgba(16,24,40,0.04);
         }
-        .qb-filters form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-        .qb-field { display: flex; flex-direction: column; gap: 6px; }
-        .qb-field label { font-size: 12px; font-weight: 600; color: var(--qb-ink-soft); }
-        .qb-field.is-search { flex: 1 1 240px; min-width: 200px; }
-        .qb-search-wrap { position: relative; }
-        .qb-search-wrap > svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--qb-muted); pointer-events: none; }
-        .qb-filters input[type="text"], .qb-filters input[type="date"], .qb-filters select {
-            width: 100%; padding: 10px 12px; border: 1px solid #d3d8e0; border-radius: 10px;
-            font: inherit; font-size: 14px; color: var(--qb-ink); background: #fff;
-            transition: border-color .16s ease, box-shadow .18s var(--qb-ease);
+        .qb-filters form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+        /* All controls share one filled-field look so they read as inputs inside
+           the white card (not the same colour as the page). Subtle grey fill +
+           hairline, gold focus ring. */
+        .qb-control {
+            height: 42px; border: 1px solid var(--qb-line); border-radius: 11px;
+            background: #f6f7f9; color: var(--qb-ink); font: inherit; font-size: 14px;
+            transition: border-color .16s ease, box-shadow .18s var(--qb-ease), background .16s ease;
         }
-        .qb-filters input[type="text"] { padding-left: 36px; }
         @media (hover: hover) and (pointer: fine) {
-            .qb-filters input:hover, .qb-filters select:hover { border-color: #b8c0cc; }
+            .qb-control:hover { border-color: #cdd3dc; background: #f2f3f6; }
         }
-        .qb-filters input:focus, .qb-filters select:focus {
-            outline: none; border-color: var(--qb-gold-soft); box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+        .qb-control:focus, .qb-control:focus-within {
+            outline: none; border-color: var(--qb-gold-soft); background: #fff;
+            box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
         }
-        .qb-filters select { appearance: none; -webkit-appearance: none; padding-right: 32px; cursor: pointer;
+
+        /* Search: flexible, leading icon */
+        .qb-search { position: relative; flex: 1 1 260px; min-width: 200px; display: flex; align-items: center; }
+        .qb-search > svg { position: absolute; left: 13px; width: 17px; height: 17px; color: var(--qb-muted); pointer-events: none; }
+        .qb-search input { width: 100%; height: 42px; border: 0; background: transparent; padding: 0 12px 0 38px; font: inherit; font-size: 14px; color: var(--qb-ink); }
+        .qb-search input:focus { outline: none; }
+        .qb-search input::placeholder { color: #98a2b3; }
+
+        /* Select + date pills */
+        .qb-select { padding: 0 34px 0 13px; cursor: pointer; appearance: none; -webkit-appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 11px center; }
-        .qb-btn {
-            display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 10px;
-            font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none;
-            transition: background .16s ease, border-color .16s ease, transform .12s var(--qb-ease);
+            background-repeat: no-repeat; background-position: right 12px center; }
+        .qb-date {
+            display: inline-flex; align-items: center; gap: 8px; height: 42px;
+            border: 1px solid var(--qb-line); border-radius: 11px; background: #f6f7f9; padding: 0 13px;
+            transition: border-color .16s ease, background .16s ease;
         }
-        .qb-btn--primary { background: var(--qb-ink); color: #fff; border: 1px solid var(--qb-ink); }
-        .qb-btn--primary:hover { background: #0f1722; }
-        .qb-btn--ghost { background: #fff; color: var(--qb-ink-soft); border: 1px solid var(--qb-line); }
-        .qb-btn--ghost:hover { background: #f7f8fa; border-color: #c4cad3; }
-        .qb-btn:active { transform: scale(0.97); }
+        @media (hover: hover) and (pointer: fine) { .qb-date:hover { border-color: #cdd3dc; background: #f2f3f6; } }
+        .qb-date:focus-within { border-color: var(--qb-gold-soft); background: #fff; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+        .qb-date > svg { width: 16px; height: 16px; color: var(--qb-muted); flex: 0 0 auto; }
+        .qb-date input { border: 0; background: transparent; font: inherit; font-size: 13.5px; color: var(--qb-ink); width: 132px; }
+        .qb-date input:focus { outline: none; }
+        /* Hide the native date picker glyph; the leading calendar icon stands in. */
+        .qb-date input::-webkit-calendar-picker-indicator { opacity: 0; cursor: pointer; }
+        .qb-date .sep { color: var(--qb-muted); font-size: 13px; }
+
+        /* Clear (only shows when filters are active) */
+        .qb-clear {
+            display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 14px;
+            border: 1px solid var(--qb-line); border-radius: 11px; background: #fff;
+            color: var(--qb-ink-soft); font: inherit; font-size: 14px; font-weight: 600;
+            text-decoration: none; cursor: pointer;
+            transition: background .16s ease, border-color .16s ease, color .16s ease, transform .12s var(--qb-ease);
+        }
+        .qb-clear svg { width: 15px; height: 15px; }
+        .qb-clear:hover { background: #f7f8fa; border-color: #c4cad3; color: var(--qb-ink); }
+        .qb-clear:active { transform: scale(0.97); }
 
         /* ---------- Table (desktop) ---------- */
         .qb-table-card { background: #fff; border: 1px solid var(--qb-line); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,0.04); }
@@ -163,8 +186,11 @@
             /* swap table for cards */
             .qb-table-card { display: none; }
             .qb-cards { display: block; }
-            .qb-filters form { gap: 10px; }
-            .qb-field:not(.is-search) { flex: 1 1 calc(50% - 5px); }
+            /* toolbar wraps: search full-width on top, status + dates below */
+            .qb-search { flex: 1 1 100%; }
+            .qb-select { flex: 1 1 auto; }
+            .qb-date { flex: 1 1 100%; justify-content: space-between; }
+            .qb-date input { width: auto; flex: 1 1 0; }
         }
         @media (max-width: 560px) {
             .qb-stats { grid-template-columns: repeat(2, 1fr); gap: 12px; }
@@ -244,44 +270,62 @@
             </div>
         </div>
 
-        {{-- Filters --}}
+        {{-- Filter toolbar: controls apply on change, so there is no separate
+             "Filter" button. A "Clear" appears only when a filter is active. --}}
         <div class="qb-filters mb-5 ui-filter-enhanced-wrap">
-            <form method="GET" action="{{ route('quick-bills.index') }}" data-enhance-selects="true" data-enhance-selects-variant="standard">
-                <div class="qb-field is-search">
-                    <label>Search</label>
-                    <div class="qb-search-wrap">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
-                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Bill number, customer or mobile" data-suggest="quick-bills" autocomplete="off">
-                    </div>
-                </div>
-                <div class="qb-field">
-                    <label>Status</label>
-                    <select name="status">
-                        <option value="">All statuses</option>
-                        <option value="draft" @selected(request('status') === 'draft')>Draft</option>
-                        <option value="issued" @selected(request('status') === 'issued')>Issued</option>
-                        <option value="void" @selected(request('status') === 'void')>Void</option>
-                    </select>
-                </div>
-                <div class="qb-field">
-                    <label>From</label>
-                    <input type="date" name="from_date" value="{{ request('from_date') }}">
-                </div>
-                <div class="qb-field">
-                    <label>To</label>
-                    <input type="date" name="to_date" value="{{ request('to_date') }}">
-                </div>
-                <div style="display:flex; gap:8px;">
-                    @if(request()->hasAny(['search', 'status', 'from_date', 'to_date']))
-                        <a href="{{ route('quick-bills.index') }}" class="qb-btn qb-btn--ghost">Clear</a>
-                    @endif
-                    <button type="submit" class="qb-btn qb-btn--primary">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4"/></svg>
-                        Filter
-                    </button>
-                </div>
+            <form method="GET" action="{{ route('quick-bills.index') }}" data-qb-filter-form>
+                <label class="qb-control qb-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search bill number, customer or mobile" data-suggest="quick-bills" autocomplete="off">
+                </label>
+
+                <select name="status" class="qb-control qb-select" data-qb-autosubmit>
+                    <option value="">All statuses</option>
+                    <option value="draft" @selected(request('status') === 'draft')>Draft</option>
+                    <option value="issued" @selected(request('status') === 'issued')>Issued</option>
+                    <option value="void" @selected(request('status') === 'void')>Void</option>
+                </select>
+
+                <span class="qb-date">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
+                    <input type="date" name="from_date" value="{{ request('from_date') }}" aria-label="From date" data-qb-autosubmit>
+                    <span class="sep">to</span>
+                    <input type="date" name="to_date" value="{{ request('to_date') }}" aria-label="To date" data-qb-autosubmit>
+                </span>
+
+                @if(request()->hasAny(['search', 'status', 'from_date', 'to_date']))
+                    <a href="{{ route('quick-bills.index') }}" class="qb-clear">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/></svg>
+                        Clear
+                    </a>
+                @endif
             </form>
         </div>
+
+        <script>
+            // Filter toolbar: status + date changes submit immediately; search
+            // submits on Enter (native) or when the field loses focus, so there
+            // is no separate Filter button. Re-bound on each Turbo load.
+            (function () {
+                const bind = () => {
+                    const form = document.querySelector('[data-qb-filter-form]');
+                    if (!form || form.dataset.qbBound === '1') return;
+                    form.dataset.qbBound = '1';
+                    form.querySelectorAll('[data-qb-autosubmit]').forEach((el) => {
+                        el.addEventListener('change', () => form.requestSubmit());
+                    });
+                    const search = form.querySelector('input[name="search"]');
+                    if (search) {
+                        search.addEventListener('blur', () => {
+                            if (search.value !== (search.defaultValue || '')) form.requestSubmit();
+                        });
+                    }
+                };
+                document.addEventListener('turbo:load', bind);
+                document.addEventListener('DOMContentLoaded', bind);
+                bind();
+            })();
+        </script>
 
         {{-- Desktop table --}}
         <div class="qb-table-card">
