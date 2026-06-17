@@ -41,6 +41,119 @@
                 @page { margin: 14mm; }
             }
         </style>
+
+        {{-- Daily metal-rates modal: scoped, mobile-first redesign. Kept in the
+             blade (not app.css) so it ships without a Vite rebuild. --}}
+        <style>
+            .rate-modal { --rm-gold:#d97706; --rm-gold-deep:#b45309; --rm-ink:#1e2530; --rm-muted:#667085; --rm-line:#e6e8ec; --rm-ease:cubic-bezier(0.23,1,0.32,1); }
+            .rate-modal__backdrop {
+                position: absolute; inset: 0; background: rgba(15,20,30,0.55);
+                backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+                animation: rm-fade .2s ease forwards;
+            }
+            .rate-modal__panel {
+                position: relative; z-index: 1; width: 100%; max-width: 520px;
+                background: #fff; border: 1px solid var(--rm-line); border-radius: 20px;
+                box-shadow: 0 1px 2px rgba(16,24,40,0.06), 0 30px 60px -24px rgba(16,24,40,0.4);
+                max-height: calc(100svh - 1.5rem); overflow-y: auto; overflow-x: hidden;
+                animation: rm-rise .34s var(--rm-ease) forwards;
+            }
+            .rate-modal__panel::before {
+                content: ''; position: sticky; top: 0; display: block; height: 3px;
+                background: linear-gradient(90deg, #fcd34d 0%, #f59e0b 48%, #d97706 100%);
+            }
+            .rate-modal__head { padding: 22px 24px 18px; border-bottom: 1px solid var(--rm-line); }
+            .rate-modal__badge {
+                display: inline-flex; align-items: center; gap: 7px;
+                font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+                color: var(--rm-gold-deep); background: #fdf6ec; border: 1px solid #f3dcb6;
+                border-radius: 999px; padding: 5px 11px;
+            }
+            .rate-modal__badge svg { width: 13px; height: 13px; }
+            .rate-modal__title { margin-top: 12px; font-size: 21px; font-weight: 800; color: var(--rm-ink); letter-spacing: -0.4px; }
+            .rate-modal__desc { margin-top: 7px; font-size: 13.5px; line-height: 1.5; color: var(--rm-muted); }
+            .rate-modal__date {
+                margin-top: 14px; display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;
+                font-size: 12.5px; font-weight: 600; color: #4a4334;
+                background: #f7f8fa; border: 1px solid var(--rm-line); border-radius: 9px; padding: 7px 11px;
+            }
+            .rate-modal__date svg { width: 14px; height: 14px; color: var(--rm-gold); flex: 0 0 auto; }
+            .rate-modal__date .tz { color: var(--rm-muted); font-weight: 500; }
+
+            .rate-modal__body { padding: 20px 24px 24px; }
+            .rate-modal__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+            .rate-field label { display: block; font-size: 13px; font-weight: 600; color: #4a4334; margin-bottom: 7px; }
+            .rate-input-wrap { position: relative; }
+            .rate-input-wrap .cur {
+                position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+                font-size: 15px; font-weight: 600; color: var(--rm-muted); pointer-events: none;
+            }
+            .rate-modal input[type="number"] {
+                width: 100%; padding: 11px 13px 11px 28px;
+                border: 1px solid #d3d8e0; border-radius: 11px; background: #fdfbf7;
+                font: inherit; font-size: 16px; font-weight: 600; color: var(--rm-ink);
+                transition: border-color .16s ease, box-shadow .18s var(--rm-ease), background .16s ease;
+            }
+            .rate-modal input[type="number"]::placeholder { color: #b3a892; font-weight: 400; }
+            @media (hover: hover) and (pointer: fine) {
+                .rate-modal input[type="number"]:hover { border-color: #b8c0cc; }
+            }
+            .rate-modal input[type="number"]:focus {
+                outline: none; border-color: #f59e0b; background: #fff;
+                box-shadow: 0 0 0 3px rgba(245,158,11,0.18);
+            }
+            .rate-field .hint { margin-top: 7px; font-size: 11.5px; line-height: 1.4; color: var(--rm-muted); }
+
+            .rate-modal__note {
+                margin-top: 18px; display: flex; gap: 9px; align-items: flex-start;
+                font-size: 12px; line-height: 1.5; color: #6b5d44;
+                background: #fffaf0; border: 1px solid #f4dcae; border-radius: 11px; padding: 11px 13px;
+            }
+            .rate-modal__note svg { width: 15px; height: 15px; color: var(--rm-gold); flex: 0 0 auto; margin-top: 1px; }
+
+            .rate-modal__cta {
+                margin-top: 18px; width: 100%;
+                display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+                padding: 13px 22px; border: none; border-radius: 12px; cursor: pointer;
+                background: var(--rm-gold-deep); color: #fff; font: inherit; font-size: 15px; font-weight: 700;
+                box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 10px 24px -10px rgba(180,83,9,0.55);
+                transition: background .16s ease, transform .12s var(--rm-ease), box-shadow .16s ease;
+            }
+            .rate-modal__cta:hover { background: #92400e; box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 14px 28px -10px rgba(180,83,9,0.6); }
+            .rate-modal__cta:active { transform: scale(0.985); }
+            .rate-modal__cta svg { width: 16px; height: 16px; }
+
+            .rate-modal__errors {
+                margin-bottom: 16px; border: 1px solid #fecdca; background: #fef3f2; color: #b42318;
+                border-radius: 11px; padding: 12px 14px; font-size: 13px;
+            }
+            .rate-modal__errors ul { list-style: none; margin: 0; padding: 0; }
+            .rate-modal__errors li { padding: 2px 0; }
+            .rate-modal__errors li::before { content: "• "; color: #d92d20; font-weight: 700; }
+
+            @keyframes rm-fade { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes rm-rise { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+            /* Mobile: full-width sheet, single column, comfortable tap targets. */
+            @media (max-width: 560px) {
+                .rate-modal { padding: 0; align-items: flex-end; }
+                .rate-modal__panel {
+                    max-width: 100%; border-radius: 20px 20px 0 0; border-bottom: 0;
+                    max-height: 92svh;
+                    animation: rm-sheet .34s var(--rm-ease) forwards;
+                }
+                .rate-modal__head { padding: 20px 18px 16px; }
+                .rate-modal__title { font-size: 19px; }
+                .rate-modal__body { padding: 18px 18px 22px; }
+                .rate-modal__grid { grid-template-columns: 1fr; gap: 16px; }
+            }
+            @keyframes rm-sheet { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+            @media (prefers-reduced-motion: reduce) {
+                .rate-modal__backdrop, .rate-modal__panel { animation: none; opacity: 1; transform: none; }
+                .rate-modal__cta, .rate-modal input[type="number"] { transition: none; }
+            }
+        </style>
     </head>
     <body class="app-shell">
 
@@ -75,28 +188,31 @@
             $pricingTodayRate = $pricingShellState['today_rate'] ?? null;
         @endphp
         @if(($pricingShellState['show_owner_modal'] ?? false) === true)
-            <div class="pricing-shell-modal">
-                <div class="pricing-shell-modal__backdrop"></div>
-                <div class="pricing-shell-modal__panel relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
-                    <div class="px-8 py-7 border-b border-slate-200">
-                        <div class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">{{ __('Retailer Pricing Required') }}</div>
-                        <h2 class="mt-2 text-2xl font-bold text-slate-900">{{ __('Enter Today\'s Metal Rates') }}</h2>
-                        <p class="mt-2 text-sm text-slate-600">
-                            {{ __('The owner must save today\'s retailer pricing before the rest of the team can continue with pricing-sensitive stock and POS actions.') }}
+            <div class="pricing-shell-modal rate-modal" role="dialog" aria-modal="true" aria-labelledby="rate-modal-title">
+                <div class="rate-modal__backdrop"></div>
+                <div class="pricing-shell-modal__panel rate-modal__panel">
+                    <div class="rate-modal__head">
+                        <span class="rate-modal__badge">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                            {{ __('Retailer Pricing Required') }}
+                        </span>
+                        <h2 id="rate-modal-title" class="rate-modal__title">{{ __('Enter Today\'s Metal Rates') }}</h2>
+                        <p class="rate-modal__desc">
+                            {{ __('Save today\'s rates so the team can price stock and bill at the counter.') }}
                         </p>
-                        <p class="mt-3 text-sm font-medium text-slate-800">
-                            {{ __('Business date:') }} {{ $pricingShellState['business_date'] ?? '—' }}
-                            <span class="text-slate-500">({{ $pricingShellState['timezone'] ?? config('app.timezone', 'UTC') }})</span>
-                        </p>
+                        <span class="rate-modal__date">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
+                            {{ $pricingShellState['business_date'] ?? '-' }}
+                            <span class="tz">{{ $pricingShellState['timezone'] ?? config('app.timezone', 'UTC') }}</span>
+                        </span>
                     </div>
-                    <form method="POST" action="{{ route('settings.pricing.save-rates') }}" class="px-8 py-7">
+                    <form method="POST" action="{{ route('settings.pricing.save-rates') }}" class="rate-modal__body">
                         @csrf
                         <input type="hidden" name="context" value="modal">
-                        <input type="hidden" name="redirect_to" value="{{ url()->full() }}">
 
                         @if($pricingModalErrors->any())
-                            <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                <ul class="list-disc list-inside space-y-1">
+                            <div class="rate-modal__errors">
+                                <ul>
                                     @foreach($pricingModalErrors->all() as $error)
                                         <li>{{ $error }}</li>
                                     @endforeach
@@ -104,42 +220,55 @@
                             </div>
                         @endif
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-2">{{ __('24K Gold Price / Gram') }}</label>
-                                <input
-                                    type="number"
-                                    step="0.0001"
-                                    min="0.0001"
-                                    name="gold_24k_rate_per_gram"
-                                    value="{{ old('gold_24k_rate_per_gram', $pricingTodayRate ? (float) $pricingTodayRate->gold_24k_rate_per_gram : null) }}"
-                                    class="w-full rounded-2xl border-slate-300 focus:border-amber-500 focus:ring-amber-500"
-                                    required
-                                >
+                        <div class="rate-modal__grid">
+                            <div class="rate-field">
+                                <label for="rm-gold">{{ __('24K Gold Price / Gram') }}</label>
+                                <div class="rate-input-wrap">
+                                    <span class="cur">₹</span>
+                                    <input
+                                        id="rm-gold"
+                                        type="number"
+                                        step="0.0001"
+                                        min="0.0001"
+                                        inputmode="decimal"
+                                        autocomplete="off"
+                                        placeholder="0.00"
+                                        name="gold_24k_rate_per_gram"
+                                        value="{{ old('gold_24k_rate_per_gram', $pricingTodayRate ? (float) $pricingTodayRate->gold_24k_rate_per_gram : null) }}"
+                                        required
+                                    >
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-2">{{ __('Silver 999 Price / Kg') }}</label>
-                                <input
-                                    type="number"
-                                    step="0.0001"
-                                    min="0.0001"
-                                    name="silver_999_rate_per_kg"
-                                    value="{{ old('silver_999_rate_per_kg', $pricingTodayRate ? round((float) $pricingTodayRate->silver_999_rate_per_gram * 1000, 4) : null) }}"
-                                    class="w-full rounded-2xl border-slate-300 focus:border-amber-500 focus:ring-amber-500"
-                                    required
-                                >
-                                <p class="mt-2 text-xs text-slate-500">{{ __('We convert silver to a per-gram internal rate automatically.') }}</p>
+                            <div class="rate-field">
+                                <label for="rm-silver">{{ __('Silver 999 Price / Kg') }}</label>
+                                <div class="rate-input-wrap">
+                                    <span class="cur">₹</span>
+                                    <input
+                                        id="rm-silver"
+                                        type="number"
+                                        step="0.0001"
+                                        min="0.0001"
+                                        inputmode="decimal"
+                                        autocomplete="off"
+                                        placeholder="0.00"
+                                        name="silver_999_rate_per_kg"
+                                        value="{{ old('silver_999_rate_per_kg', $pricingTodayRate ? round((float) $pricingTodayRate->silver_999_rate_per_gram * 1000, 4) : null) }}"
+                                        required
+                                    >
+                                </div>
+                                <p class="hint">{{ __('We convert silver to a per-gram rate for you.') }}</p>
                             </div>
                         </div>
 
-                        <div class="mt-6 flex items-center justify-between gap-4">
-                            <div class="text-xs text-slate-500">
-                                {{ __('Saving today\'s rates will refresh current per-purity pricing and queue an in-stock retailer repricing job.') }}
-                            </div>
-                            <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white hover:bg-amber-700">
-                                {{ __('Save Today\'s Rates') }}
-                            </button>
+                        <div class="rate-modal__note">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4M12 8h.01M12 22a10 10 0 100-20 10 10 0 000 20z"/></svg>
+                            <span>{{ __('Saving updates your stock prices and gets the counter ready for billing.') }}</span>
                         </div>
+
+                        <button type="submit" class="rate-modal__cta">
+                            {{ __('Save Today\'s Rates') }}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
+                        </button>
                     </form>
                 </div>
             </div>
