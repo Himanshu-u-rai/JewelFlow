@@ -87,7 +87,7 @@ class QuickBillService
             $previousStatus = $quickBill->status;
             $previousPaid = (float) $quickBill->paid_amount;
 
-            // Delete payments — they are no longer valid for a voided bill
+            // Delete payments - they are no longer valid for a voided bill
             $quickBill->payments()->delete();
 
             $quickBill->forceFill([
@@ -298,7 +298,7 @@ class QuickBillService
 
             // Purity factor: the rate entered is the PURE (24K / 999) rate; scale
             // it by purity. Gold = purity/24 (karats), silver = purity/1000
-            // (fineness) — matches MetalRegistry::fineWeightMultiplier. Unknown
+            // (fineness) - matches MetalRegistry::fineWeightMultiplier. Unknown
             // metal or no purity ⇒ factor 1 (net × rate), so nothing regresses.
             $purityNum = (float) preg_replace('/[^0-9.]/', '', (string) Arr::get($item, 'purity', ''));
             $metalRaw  = strtolower(trim((string) Arr::get($item, 'metal_type', '')));
@@ -315,7 +315,7 @@ class QuickBillService
             // MC-3: resolve making via the one canonical helper. Default FIXED
             // (value = the raw making_charge) → resolved == $making, byte-identical.
             // Percentage = of metalValue; per-gram = of net weight.
-            // MC-4: flag-gated — flag OFF forces fixed so behaviour is
+            // MC-4: flag-gated - flag OFF forces fixed so behaviour is
             // byte-identical regardless of any submitted mode.
             $makingType = config('features.making_charge_modes', false)
                 ? MakingChargeType::normalize(Arr::get($item, 'making_charge_type'))
