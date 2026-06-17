@@ -134,6 +134,32 @@ class QuickBillService
             ]);
         }
 
+        // Will this save issue/finalize the bill? Issuing enforces the required
+        // fields below; a draft can still be saved half-filled (work in progress).
+        $willBeIssued = ($quickBill->exists && $quickBill->status === QuickBill::STATUS_ISSUED)
+            || (($payload['save_action'] ?? 'draft') === 'issue');
+
+        // Every item line must be meaningful before issue: it needs some weight
+        // OR a rate OR a charge, so a "₹0 nothing" line can't be issued. Each
+        // already has a non-blank description (normalizeItems drops blanks).
+        if ($willBeIssued) {
+            foreach ($items as $i => $line) {
+                $hasValue = ($line['net_weight'] ?? 0) > 0
+                    || ($line['gross_weight'] ?? 0) > 0
+                    || ($line['rate'] ?? 0) > 0
+                    || ($line['making_charge'] ?? 0) > 0
+                    || ($line['stone_charge'] ?? 0) > 0
+                    || ($line['hallmark_charge'] ?? 0) > 0
+                    || ($line['rhodium_charge'] ?? 0) > 0
+                    || ($line['other_charge'] ?? 0) > 0;
+                if (! $hasValue) {
+                    throw ValidationException::withMessages([
+                        'items' => 'Each item needs a weight, a rate, or a charge before the bill can be issued ("' . $line['description'] . '" has none).',
+                    ]);
+                }
+            }
+        }
+
         $customer = null;
         if (!empty($payload['customer_id'])) {
             $customer = Customer::query()->find((int) $payload['customer_id']);
@@ -159,6 +185,14 @@ class QuickBillService
                 $customerName = $customerName !== '' ? $customerName : $customer->name;
                 $customerAddress = $customerAddress !== '' ? $customerAddress : (string) $customer->address;
             }
+        }
+
+        // A bill being issued must name who it is for: a selected customer or a
+        // typed name (even "Walk-in"). Drafts can stay blank for now.
+        if ($willBeIssued && ! $customer && $customerName === '') {
+            throw ValidationException::withMessages([
+                'customer_name' => 'Add a customer name (or pick a customer) before issuing the bill.',
+            ]);
         }
 
         $pricingMode = in_array(($payload['pricing_mode'] ?? ''), ['no_gst', 'gst_exclusive', 'gst_inclusive'], true)
@@ -188,6 +222,13 @@ class QuickBillService
             $taxable = $afterDiscount;
             $gst = round($taxable * ($gstRate / 100), 2);
             $total = round($taxable + $gst + $roundOff, 2);
+        }
+
+        // An issued bill must have a real value; a ₹0 bill cannot be finalized.
+        if ($willBeIssued && $total <= 0) {
+            throw ValidationException::withMessages([
+                'items' => 'The bill total is zero. Add an amount before issuing.',
+            ]);
         }
 
         $payments = $this->normalizePayments($payload['payments'] ?? [], (int) $shop->id);
