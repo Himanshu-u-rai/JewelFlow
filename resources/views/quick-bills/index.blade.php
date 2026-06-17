@@ -1,172 +1,404 @@
 <x-app-layout>
     <x-page-header
-        class="ops-treatment-header"
-        title="Quick Bill Generator"
-        subtitle="Flexible jewellery bills with a separate mini register for this shop."
+        class="quick-bills-index-header"
+        title="Quick Bills"
+        subtitle="A flexible mini bill register, separate from your main invoices."
     >
         <x-slot:actions>
             @can('sales.create')
-            <a href="{{ route('quick-bills.create') }}"
-               class="btn btn-success btn-sm">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"/>
-                </svg>
+            <a href="{{ route('quick-bills.create') }}" class="qb-new-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
                 New Quick Bill
             </a>
             @endcan
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner max-w-[1380px] mx-auto ops-treatment-page jf-skeleton-host is-loading">
+    <style>
+        .quick-bills-page {
+            --qb-gold:#d97706; --qb-gold-deep:#b45309; --qb-gold-soft:#f59e0b;
+            --qb-ink:#1e2530; --qb-ink-soft:#475467; --qb-muted:#667085;
+            --qb-line:#e6e8ec; --qb-ease:cubic-bezier(0.23,1,0.32,1);
+        }
+
+        /* New-bill CTA (gold, matches the onboarding flow). */
+        .qb-new-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: var(--qb-gold-deep); color: #fff; text-decoration: none;
+            font-size: 14px; font-weight: 700; padding: 9px 16px; border-radius: 10px;
+            box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 8px 18px -10px rgba(180,83,9,0.5);
+            transition: background .16s ease, transform .12s var(--qb-ease), box-shadow .16s ease;
+        }
+        .qb-new-btn svg { width: 16px; height: 16px; }
+        .qb-new-btn:hover { background: #92400e; box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 12px 22px -10px rgba(180,83,9,0.55); }
+        .qb-new-btn:active { transform: scale(0.97); }
+
+        /* ---------- Stat strip: ONE card, responsive ---------- */
+        .qb-stats {
+            display: grid; grid-template-columns: repeat(5, 1fr);
+            background: #fff; border: 1px solid var(--qb-line); border-radius: 16px;
+            overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.04);
+        }
+        .qb-stat {
+            display: flex; align-items: flex-start; gap: 11px; padding: 16px 18px;
+            border-right: 1px solid var(--qb-line); min-width: 0;
+        }
+        .qb-stat:last-child { border-right: 0; }
+        .qb-stat__icon {
+            width: 34px; height: 34px; flex: 0 0 auto; border-radius: 9px;
+            display: grid; place-items: center;
+        }
+        .qb-stat__icon svg { width: 17px; height: 17px; }
+        .qb-stat__icon.is-gold   { color: var(--qb-gold-deep); background: #fdf6ec; }
+        .qb-stat__icon.is-green  { color: #047857; background: #ecfdf5; }
+        .qb-stat__icon.is-slate  { color: #475467; background: #f1f3f7; }
+        .qb-stat__icon.is-amber  { color: #b45309; background: #fff7ed; }
+        .qb-stat__body { min-width: 0; }
+        .qb-stat__label { font-size: 12px; font-weight: 600; color: var(--qb-muted); }
+        .qb-stat__value { margin-top: 3px; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--qb-ink); line-height: 1.1; }
+        .qb-stat__value.is-money { font-size: 19px; }
+
+        /* ---------- Filter bar ---------- */
+        .qb-filters {
+            background: #fff; border: 1px solid var(--qb-line); border-radius: 16px;
+            padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+        }
+        .qb-filters form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+        .qb-field { display: flex; flex-direction: column; gap: 6px; }
+        .qb-field label { font-size: 12px; font-weight: 600; color: var(--qb-ink-soft); }
+        .qb-field.is-search { flex: 1 1 240px; min-width: 200px; }
+        .qb-search-wrap { position: relative; }
+        .qb-search-wrap > svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--qb-muted); pointer-events: none; }
+        .qb-filters input[type="text"], .qb-filters input[type="date"], .qb-filters select {
+            width: 100%; padding: 10px 12px; border: 1px solid #d3d8e0; border-radius: 10px;
+            font: inherit; font-size: 14px; color: var(--qb-ink); background: #fff;
+            transition: border-color .16s ease, box-shadow .18s var(--qb-ease);
+        }
+        .qb-filters input[type="text"] { padding-left: 36px; }
+        @media (hover: hover) and (pointer: fine) {
+            .qb-filters input:hover, .qb-filters select:hover { border-color: #b8c0cc; }
+        }
+        .qb-filters input:focus, .qb-filters select:focus {
+            outline: none; border-color: var(--qb-gold-soft); box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+        }
+        .qb-filters select { appearance: none; -webkit-appearance: none; padding-right: 32px; cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 11px center; }
+        .qb-btn {
+            display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 10px;
+            font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none;
+            transition: background .16s ease, border-color .16s ease, transform .12s var(--qb-ease);
+        }
+        .qb-btn--primary { background: var(--qb-ink); color: #fff; border: 1px solid var(--qb-ink); }
+        .qb-btn--primary:hover { background: #0f1722; }
+        .qb-btn--ghost { background: #fff; color: var(--qb-ink-soft); border: 1px solid var(--qb-line); }
+        .qb-btn--ghost:hover { background: #f7f8fa; border-color: #c4cad3; }
+        .qb-btn:active { transform: scale(0.97); }
+
+        /* ---------- Table (desktop) ---------- */
+        .qb-table-card { background: #fff; border: 1px solid var(--qb-line); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,0.04); }
+        .qb-table { width: 100%; border-collapse: collapse; }
+        .qb-table thead th {
+            text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+            color: var(--qb-muted); padding: 13px 20px; background: #fafbfc; border-bottom: 1px solid var(--qb-line);
+        }
+        .qb-table thead th.ar { text-align: right; }
+        .qb-table tbody td { padding: 15px 20px; border-bottom: 1px solid #f1f3f7; vertical-align: middle; }
+        .qb-table tbody tr:last-child td { border-bottom: 0; }
+        .qb-table tbody tr { transition: background .14s ease; }
+        @media (hover: hover) and (pointer: fine) { .qb-table tbody tr:hover { background: #fcfcfd; } }
+        .qb-billno { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; font-weight: 600; color: var(--qb-ink); }
+        .qb-sub { font-size: 12px; color: var(--qb-muted); margin-top: 2px; }
+        .qb-name { font-size: 14px; font-weight: 600; color: var(--qb-ink); }
+        .qb-cell { font-size: 14px; color: var(--qb-ink-soft); }
+        .qb-amount { font-size: 14px; font-weight: 700; color: var(--qb-ink); }
+        .qb-due-0 { color: #047857; font-weight: 600; }
+        .qb-due-pos { color: var(--qb-gold-deep); font-weight: 700; }
+
+        .qb-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+        .qb-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+        .qb-badge.is-issued { background: #ecfdf5; color: #047857; } .qb-badge.is-issued::before { background: #10b981; }
+        .qb-badge.is-draft  { background: #fff7ed; color: #b45309; } .qb-badge.is-draft::before  { background: #f59e0b; }
+        .qb-badge.is-void   { background: #fef2f2; color: #b42318; } .qb-badge.is-void::before   { background: #f04438; }
+
+        .qb-actions { display: inline-flex; gap: 8px; justify-content: flex-end; }
+        .qb-action {
+            display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 9px;
+            border: 1px solid var(--qb-line); background: #fff; color: var(--qb-ink-soft);
+            font-size: 13px; font-weight: 600; text-decoration: none;
+            transition: background .14s ease, border-color .14s ease, color .14s ease, transform .12s var(--qb-ease);
+        }
+        .qb-action svg { width: 14px; height: 14px; }
+        .qb-action:hover { background: #f7f8fa; border-color: #c4cad3; color: var(--qb-ink); }
+        .qb-action:active { transform: scale(0.96); }
+
+        /* ---------- Mobile card list (replaces the wide table) ---------- */
+        .qb-cards { display: none; }
+        .qb-card {
+            background: #fff; border: 1px solid var(--qb-line); border-radius: 14px; padding: 15px 16px;
+            box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+        }
+        .qb-card + .qb-card { margin-top: 12px; }
+        .qb-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .qb-card__amounts { display: flex; gap: 18px; margin-top: 14px; padding-top: 13px; border-top: 1px solid #f1f3f7; }
+        .qb-card__amt-label { font-size: 11px; font-weight: 600; color: var(--qb-muted); }
+        .qb-card__amt-value { font-size: 15px; font-weight: 700; color: var(--qb-ink); margin-top: 2px; }
+        .qb-card__foot { display: flex; gap: 8px; margin-top: 14px; }
+        .qb-card__foot .qb-action { flex: 1; justify-content: center; }
+
+        /* entrance */
+        @keyframes qb-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .qb-stats, .qb-filters, .qb-table-card, .qb-cards { opacity: 0; animation: qb-rise .45s var(--qb-ease) forwards; }
+        .qb-stats { animation-delay: .02s; }
+        .qb-filters { animation-delay: .08s; }
+        .qb-table-card, .qb-cards { animation-delay: .14s; }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 1100px) {
+            .qb-stats { grid-template-columns: repeat(3, 1fr); }
+            .qb-stat:nth-child(3) { border-right: 0; }
+            .qb-stat:nth-child(n+4) { border-top: 1px solid var(--qb-line); }
+            .qb-stat:nth-child(4) { border-right: 1px solid var(--qb-line); }
+        }
+        @media (max-width: 760px) {
+            /* swap table for cards */
+            .qb-table-card { display: none; }
+            .qb-cards { display: block; }
+            .qb-filters form { gap: 10px; }
+            .qb-field:not(.is-search) { flex: 1 1 calc(50% - 5px); }
+        }
+        @media (max-width: 560px) {
+            .qb-stats { grid-template-columns: repeat(2, 1fr); }
+            .qb-stat { padding: 13px 13px; gap: 9px; }
+            .qb-stat__value { font-size: 19px; }
+            .qb-stat__value.is-money { font-size: 16px; }
+            /* hairline rules for a 2-col grid */
+            .qb-stat { border-right: 1px solid var(--qb-line); border-top: 1px solid var(--qb-line); }
+            .qb-stat:nth-child(odd) { border-left: 0; }
+            .qb-stat:nth-child(even) { border-right: 0; }
+            .qb-stat:nth-child(1), .qb-stat:nth-child(2) { border-top: 0; }
+            .qb-stat:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .qb-stats, .qb-filters, .qb-table-card, .qb-cards { opacity: 1; animation: none; }
+            .qb-new-btn, .qb-action, .qb-btn, .qb-table tbody tr, .qb-filters input, .qb-filters select { transition: none; }
+        }
+    </style>
+
+    @php
+        $statusMeta = [
+            'issued' => ['cls' => 'is-issued', 'label' => 'Issued'],
+            'draft'  => ['cls' => 'is-draft',  'label' => 'Draft'],
+            'void'   => ['cls' => 'is-void',   'label' => 'Void'],
+        ];
+    @endphp
+
+    <div class="content-inner max-w-[1380px] mx-auto quick-bills-page">
 
         @unless(auth()->user()->can('sales.create'))
             @include('partials.view-only-banner', ['permission' => 'sales.create', 'message' => 'creating quick bills'])
         @endunless
 
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-1 ops-kpi-card">
-                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Bills</p>
-                <p class="mt-2 text-3xl font-semibold text-slate-900 jf-skel jf-skel-value">{{ number_format($stats['total_count']) }}</p>
-                <p class="mt-1 text-xs text-slate-500">Quick bill register entries</p>
+        {{-- Stat strip --}}
+        <div class="qb-stats mb-5">
+            <div class="qb-stat">
+                <span class="qb-stat__icon is-slate">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6M9 11h6M9 15h4M6 3h12a1 1 0 011 1v17l-3-2-2 2-2-2-2 2-2-2-3 2V4a1 1 0 011-1z"/></svg>
+                </span>
+                <div class="qb-stat__body">
+                    <div class="qb-stat__label">Total bills</div>
+                    <div class="qb-stat__value">{{ number_format($stats['total_count']) }}</div>
+                </div>
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-1 ops-kpi-card">
-                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Issued</p>
-                <p class="mt-2 text-3xl font-semibold text-slate-900 jf-skel jf-skel-value">{{ number_format($stats['issued_count']) }}</p>
-                <p class="mt-1 text-xs text-slate-500">Live quick bills</p>
+            <div class="qb-stat">
+                <span class="qb-stat__icon is-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>
+                </span>
+                <div class="qb-stat__body">
+                    <div class="qb-stat__label">Issued</div>
+                    <div class="qb-stat__value">{{ number_format($stats['issued_count']) }}</div>
+                </div>
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-1 ops-kpi-card">
-                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Drafts</p>
-                <p class="mt-2 text-3xl font-semibold text-slate-900 jf-skel jf-skel-value">{{ number_format($stats['draft_count']) }}</p>
-                <p class="mt-1 text-xs text-slate-500">Editable working bills</p>
+            <div class="qb-stat">
+                <span class="qb-stat__icon is-amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </span>
+                <div class="qb-stat__body">
+                    <div class="qb-stat__label">Drafts</div>
+                    <div class="qb-stat__value">{{ number_format($stats['draft_count']) }}</div>
+                </div>
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-1 ops-kpi-card">
-                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Today Value</p>
-                <p class="mt-2 text-3xl font-semibold text-slate-900 jf-skel jf-skel-value">₹{{ number_format((float) $stats['today_total'], 2) }}</p>
-                <p class="mt-1 text-xs text-slate-500">Non-void bills dated today</p>
+            <div class="qb-stat">
+                <span class="qb-stat__icon is-gold">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                </span>
+                <div class="qb-stat__body">
+                    <div class="qb-stat__label">Today's value</div>
+                    <div class="qb-stat__value is-money">₹{{ number_format((float) $stats['today_total'], 2) }}</div>
+                </div>
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-1 ops-kpi-card">
-                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Outstanding</p>
-                <p class="mt-2 text-3xl font-semibold text-slate-900 jf-skel jf-skel-value">₹{{ number_format((float) $stats['outstanding_total'], 2) }}</p>
-                <p class="mt-1 text-xs text-slate-500">Due inside quick bills only</p>
+            <div class="qb-stat">
+                <span class="qb-stat__icon is-amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+                </span>
+                <div class="qb-stat__body">
+                    <div class="qb-stat__label">Outstanding</div>
+                    <div class="qb-stat__value is-money">₹{{ number_format((float) $stats['outstanding_total'], 2) }}</div>
+                </div>
             </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-6 ui-filter-enhanced-wrap">
-            <form method="GET" action="{{ route('quick-bills.index') }}" class="flex flex-wrap gap-3 items-end" data-enhance-selects="true" data-enhance-selects-variant="standard">
-                <div class="flex-1 min-w-[220px]">
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Search</label>
-                    <div class="relative">
-                        <span class="pointer-events-none absolute inset-y-0 left-3 inline-flex items-center text-amber-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        </span>
-                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Bill number, customer, mobile..." class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none" data-suggest="quick-bills" autocomplete="off">
+        {{-- Filters --}}
+        <div class="qb-filters mb-5 ui-filter-enhanced-wrap">
+            <form method="GET" action="{{ route('quick-bills.index') }}" data-enhance-selects="true" data-enhance-selects-variant="standard">
+                <div class="qb-field is-search">
+                    <label>Search</label>
+                    <div class="qb-search-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Bill number, customer or mobile" data-suggest="quick-bills" autocomplete="off">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Status</label>
-                    <select name="status" class="rounded-xl border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-amber-500">
-                        <option value="">All</option>
+                <div class="qb-field">
+                    <label>Status</label>
+                    <select name="status">
+                        <option value="">All statuses</option>
                         <option value="draft" @selected(request('status') === 'draft')>Draft</option>
                         <option value="issued" @selected(request('status') === 'issued')>Issued</option>
                         <option value="void" @selected(request('status') === 'void')>Void</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">From</label>
-                    <input type="date" name="from_date" value="{{ request('from_date') }}" class="rounded-xl border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                <div class="qb-field">
+                    <label>From</label>
+                    <input type="date" name="from_date" value="{{ request('from_date') }}">
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">To</label>
-                    <input type="date" name="to_date" value="{{ request('to_date') }}" class="rounded-xl border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                <div class="qb-field">
+                    <label>To</label>
+                    <input type="date" name="to_date" value="{{ request('to_date') }}">
                 </div>
-                <div class="flex gap-2">
+                <div style="display:flex; gap:8px;">
                     @if(request()->hasAny(['search', 'status', 'from_date', 'to_date']))
-                        <a href="{{ route('quick-bills.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                            Clear
-                        </a>
-                    @else
-                        <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
-                            Filter
-                        </button>
+                        <a href="{{ route('quick-bills.index') }}" class="qb-btn qb-btn--ghost">Clear</a>
                     @endif
+                    <button type="submit" class="qb-btn qb-btn--primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4"/></svg>
+                        Filter
+                    </button>
                 </div>
             </form>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-[1040px] w-full">
-                    <thead class="bg-slate-50 border-b border-slate-200">
+        {{-- Desktop table --}}
+        <div class="qb-table-card">
+            @if($quickBills->count())
+                <table class="qb-table">
+                    <thead>
                         <tr>
-                            <th class="px-7 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Bill</th>
-                            <th class="px-7 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer</th>
-                            <th class="px-7 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Bill Date</th>
-                            <th class="px-7 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Total</th>
-                            <th class="px-7 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Due</th>
-                            <th class="px-7 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Status</th>
-                            <th class="px-7 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Actions</th>
+                            <th>Bill</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th class="ar">Total</th>
+                            <th class="ar">Due</th>
+                            <th>Status</th>
+                            <th class="ar">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100 bg-white">
-                        @forelse($quickBills as $quickBill)
-                            <tr class="transition hover:bg-slate-50/60">
-                                <td class="pl-8 pr-6 py-5">
-                                    <div class="font-mono text-sm font-medium text-slate-700">{{ $quickBill->bill_number }}</div>
-                                    <div class="mt-1 text-xs text-slate-500">{{ $quickBill->creator?->mobile_number ?? 'Quick bill register' }}</div>
+                    <tbody>
+                        @foreach($quickBills as $quickBill)
+                            @php $meta = $statusMeta[$quickBill->status] ?? $statusMeta['draft']; @endphp
+                            <tr>
+                                <td>
+                                    <div class="qb-billno">{{ $quickBill->bill_number }}</div>
+                                    <div class="qb-sub">Quick bill</div>
                                 </td>
-                                <td class="px-7 py-5">
-                                    <div class="text-sm font-medium text-slate-700">{{ $quickBill->customer_name ?: ($quickBill->customer?->name ?: 'Walk-in Customer') }}</div>
-                                    <div class="mt-1 text-xs text-slate-500">{{ $quickBill->customer_mobile ?: ($quickBill->customer?->mobile ?: 'No mobile') }}</div>
+                                <td>
+                                    <div class="qb-name">{{ $quickBill->customer_name ?: ($quickBill->customer?->name ?: 'Walk-in customer') }}</div>
+                                    <div class="qb-sub">{{ $quickBill->customer_mobile ?: ($quickBill->customer?->mobile ?: 'No mobile') }}</div>
                                 </td>
-                                <td class="px-7 py-5 text-sm text-slate-700">
-                                    {{ $quickBill->bill_date?->format('d M Y') }}
+                                <td class="qb-cell">{{ $quickBill->bill_date?->format('d M Y') }}</td>
+                                <td class="qb-amount ar" style="text-align:right;">₹{{ number_format((float) $quickBill->total_amount, 2) }}</td>
+                                <td class="ar" style="text-align:right;">
+                                    <span class="{{ (float) $quickBill->due_amount > 0 ? 'qb-due-pos' : 'qb-due-0' }}">₹{{ number_format((float) $quickBill->due_amount, 2) }}</span>
                                 </td>
-                                <td class="px-7 py-5 text-sm font-medium text-slate-800">
-                                    ₹{{ number_format((float) $quickBill->total_amount, 2) }}
-                                </td>
-                                <td class="px-7 py-5 text-sm {{ (float) $quickBill->due_amount > 0 ? 'text-amber-700 font-medium' : 'text-emerald-700 font-medium' }}">
-                                    ₹{{ number_format((float) $quickBill->due_amount, 2) }}
-                                </td>
-                                <td class="px-7 py-5">
-                                    @php
-                                        $badge = match($quickBill->status) {
-                                            'issued' => 'bg-emerald-100 text-emerald-800',
-                                            'void' => 'bg-rose-100 text-rose-800',
-                                            default => 'bg-amber-100 text-amber-800',
-                                        };
-                                    @endphp
-                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $badge }}">
-                                        {{ ucfirst($quickBill->status) }}
-                                    </span>
-                                </td>
-                                <td class="px-7 py-5 text-right">
-                                    <div class="inline-flex items-center gap-2">
-                                        <a href="{{ route('quick-bills.show', $quickBill) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                                <td><span class="qb-badge {{ $meta['cls'] }}">{{ $meta['label'] }}</span></td>
+                                <td style="text-align:right;">
+                                    <div class="qb-actions">
+                                        <a href="{{ route('quick-bills.show', $quickBill) }}" class="qb-action">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
                                             View
                                         </a>
-                                        <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+                                        <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="qb-action">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
                                             Print
                                         </a>
                                     </div>
                                 </td>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="px-6 py-14 text-center">
-                                    <x-empty-state
-                                        title="No quick bills yet"
-                                        description="Create a small flexible jewellery bill without affecting the main invoice system."
-                                    />
-                                </td>
-                            </tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
-            </div>
+            @else
+                <div style="padding: 56px 24px; text-align:center;">
+                    <x-empty-state
+                        title="No quick bills yet"
+                        description="Create a small flexible jewellery bill without affecting the main invoice system."
+                    />
+                </div>
+            @endif
 
             @if($quickBills->hasPages())
-                <div class="border-t border-slate-200 px-6 py-4">
+                <div style="border-top: 1px solid var(--qb-line); padding: 14px 20px;">
                     {{ $quickBills->links() }}
+                </div>
+            @endif
+        </div>
+
+        {{-- Mobile card list --}}
+        <div class="qb-cards">
+            @if($quickBills->count())
+                @foreach($quickBills as $quickBill)
+                    @php $meta = $statusMeta[$quickBill->status] ?? $statusMeta['draft']; @endphp
+                    <div class="qb-card">
+                        <div class="qb-card__top">
+                            <div style="min-width:0;">
+                                <div class="qb-billno">{{ $quickBill->bill_number }}</div>
+                                <div class="qb-name" style="margin-top:4px;">{{ $quickBill->customer_name ?: ($quickBill->customer?->name ?: 'Walk-in customer') }}</div>
+                                <div class="qb-sub">{{ $quickBill->customer_mobile ?: ($quickBill->customer?->mobile ?: 'No mobile') }} · {{ $quickBill->bill_date?->format('d M Y') }}</div>
+                            </div>
+                            <span class="qb-badge {{ $meta['cls'] }}">{{ $meta['label'] }}</span>
+                        </div>
+                        <div class="qb-card__amounts">
+                            <div>
+                                <div class="qb-card__amt-label">Total</div>
+                                <div class="qb-card__amt-value">₹{{ number_format((float) $quickBill->total_amount, 2) }}</div>
+                            </div>
+                            <div>
+                                <div class="qb-card__amt-label">Due</div>
+                                <div class="qb-card__amt-value {{ (float) $quickBill->due_amount > 0 ? 'qb-due-pos' : 'qb-due-0' }}">₹{{ number_format((float) $quickBill->due_amount, 2) }}</div>
+                            </div>
+                        </div>
+                        <div class="qb-card__foot">
+                            <a href="{{ route('quick-bills.show', $quickBill) }}" class="qb-action">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                                View
+                            </a>
+                            <a href="{{ route('quick-bills.print', $quickBill) }}" target="_blank" class="qb-action">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
+                                Print
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+
+                @if($quickBills->hasPages())
+                    <div style="margin-top: 16px;">{{ $quickBills->links() }}</div>
+                @endif
+            @else
+                <div class="qb-card" style="padding: 40px 20px; text-align:center;">
+                    <x-empty-state
+                        title="No quick bills yet"
+                        description="Create a small flexible jewellery bill without affecting the main invoice system."
+                    />
                 </div>
             @endif
         </div>
