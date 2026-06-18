@@ -333,6 +333,50 @@ class InstallmentService
         });
     }
 
+    /**
+     * Discard a POS-EMI draft the cashier backed out of. POS creates a DRAFT
+     * invoice up front and sends the cashier to the EMI form; if they cancel,
+     * that draft would otherwise be orphaned. We mark it CANCELLED (invoices are
+     * immutable and can never be hard-deleted — Article I — and a draft → cancelled
+     * update is permitted). A POS-EMI draft carries no payments / cash / metal /
+     * ledger rows, so there is nothing to reverse. Items were never reserved
+     * (they stay in_stock), so they need no change and remain sellable.
+     *
+     * Refuses anything that is not an unplanned draft for the caller's shop.
+     */
+    public function discardDraftPosEmiInvoice(Invoice $invoice): Invoice
+    {
+        return DB::transaction(function () use ($invoice) {
+            $locked = Invoice::whereKey($invoice->id)
+                ->where('shop_id', $invoice->shop_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->status !== Invoice::STATUS_DRAFT) {
+                throw new LogicException('Only a draft EMI invoice can be discarded.');
+            }
+
+            if (InstallmentPlan::where('shop_id', $locked->shop_id)->where('invoice_id', $locked->id)->exists()) {
+                throw new LogicException('This invoice already has an EMI plan and cannot be discarded.');
+            }
+
+            // draft → cancelled (permitted by the Invoice updating guard). Items
+            // stay in_stock; no financial rows exist on a draft to reverse.
+            $locked->update(['status' => Invoice::STATUS_CANCELLED]);
+
+            \App\Models\AuditLog::create([
+                'shop_id'    => $locked->shop_id,
+                'user_id'    => auth()->id(),
+                'action'     => 'emi_sale_draft_discarded',
+                'model_type' => 'invoice',
+                'model_id'   => $locked->id,
+                'data'       => ['invoice_number' => $locked->invoice_number],
+            ]);
+
+            return $locked;
+        });
+    }
+
     private function recordInvoiceCollection(
         Invoice $invoice,
         float $amount,

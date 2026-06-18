@@ -206,10 +206,27 @@
                         </svg>
                         Create EMI Plan
                     </button>
-                    <a href="{{ route('installments.index') }}" class="emi-create-secondary">Cancel</a>
+                    @if(!empty($fromPosEmi) && !empty($selectedInvoiceId))
+                        {{-- POS-EMI: cancelling discards the draft invoice POS created. --}}
+                        <button type="submit"
+                                form="emi-discard-draft"
+                                class="emi-create-secondary"
+                                onclick="return confirm('Cancel this EMI checkout? The draft will be discarded. The items stay available.')">
+                            Cancel
+                        </button>
+                    @else
+                        <a href="{{ route('installments.index') }}" class="emi-create-secondary">Cancel</a>
+                    @endif
                 </div>
             </aside>
         </form>
+
+        @if(!empty($fromPosEmi) && !empty($selectedInvoiceId))
+            <form id="emi-discard-draft" method="POST" action="{{ route('installments.discard-draft') }}" data-turbo-frame="_top" class="hidden">
+                @csrf
+                <input type="hidden" name="invoice_id" value="{{ $selectedInvoiceId }}">
+            </form>
+        @endif
     </div>
 
     @php

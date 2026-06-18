@@ -214,6 +214,34 @@ class InstallmentController extends Controller
             ->with('success', 'EMI plan created successfully.');
     }
 
+    /**
+     * Cancelling the POS-EMI form discards the draft invoice POS created up
+     * front (so it isn't left orphaned). Marks it cancelled; items stay in_stock.
+     */
+    public function discardDraft(Request $request)
+    {
+        $shopId = auth()->user()->shop_id;
+
+        $data = $request->validate([
+            'invoice_id' => [
+                'required',
+                'integer',
+                Rule::exists('invoices', 'id')->where('shop_id', $shopId),
+            ],
+        ]);
+
+        $invoice = Invoice::where('shop_id', $shopId)->findOrFail((int) $data['invoice_id']);
+
+        try {
+            $this->installmentService->discardDraftPosEmiInvoice($invoice);
+        } catch (\LogicException $e) {
+            return redirect()->route('installments.index')->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('installments.index')
+            ->with('success', 'EMI checkout cancelled. The draft was discarded and the items are still available.');
+    }
+
     public function show(InstallmentPlan $plan)
     {
         abort_if($plan->shop_id !== auth()->user()->shop_id, 403);

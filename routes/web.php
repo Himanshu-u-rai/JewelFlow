@@ -663,6 +663,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/installments', [InstallmentController::class, 'index'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.index');
     Route::get('/installments/create', [InstallmentController::class, 'create'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.create');
     Route::post('/installments', [InstallmentController::class, 'store'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.store');
+    // Discard the POS-EMI draft when the cashier cancels the EMI form (declared
+    // before the {plan} wildcard so it isn't captured as a plan id).
+    Route::post('/installments/discard-draft', [InstallmentController::class, 'discardDraft'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.discard-draft');
     Route::get('/installments/{plan}', [InstallmentController::class, 'show'])->middleware(['edition:retailer', 'can:sales.view'])->name('installments.show');
     Route::post('/installments/{plan}/pay', [InstallmentController::class, 'recordPayment'])->middleware(['edition:retailer', 'can:sales.create'])->name('installments.pay');
     Route::post('/installments/{plan}/default', [InstallmentController::class, 'markDefaulted'])->middleware(['edition:retailer', 'can:sales.void'])->name('installments.default');

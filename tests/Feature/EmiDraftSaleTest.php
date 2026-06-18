@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\InstallmentPlan;
 use App\Services\InstallmentService;
 use App\Services\RetailerSalesService;
 use App\Support\TenantContext;
+use LogicException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
@@ -81,5 +83,59 @@ class EmiDraftSaleTest extends TestCase
 
         $fresh = Item::query()->withoutGlobalScopes()->find($item->id);
         $this->assertSame('sold', $fresh->status, 'After EMI finalize the item must be sold.');
+    }
+
+    public function test_cancelling_emi_discards_the_draft_and_items_stay_in_stock(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $lot = $this->createMetalLot($shop->id);
+        $customer = $this->createCustomer($shop->id);
+        $item = $this->createItem($shop->id, $lot->id);
+
+        $this->actingAs($user);
+
+        TenantContext::runFor($shop->id, function () use ($customer, $item) {
+            $draft = RetailerSalesService::prepareEmiDraftSale(
+                customerId: $customer->id,
+                itemIds: [$item->id],
+            );
+
+            // Cancel → discard the draft (the behaviour behind the Cancel button).
+            app(InstallmentService::class)->discardDraftPosEmiInvoice($draft);
+
+            $fresh = Invoice::query()->withoutGlobalScopes()->find($draft->id);
+            $this->assertSame(Invoice::STATUS_CANCELLED, $fresh->status, 'Discarded draft must be cancelled, not left as draft.');
+        });
+
+        // Item is untouched and still sellable.
+        $freshItem = Item::query()->withoutGlobalScopes()->find($item->id);
+        $this->assertSame('in_stock', $freshItem->status);
+    }
+
+    public function test_discard_refuses_a_finalized_invoice(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $lot = $this->createMetalLot($shop->id);
+        $customer = $this->createCustomer($shop->id);
+        $item = $this->createItem($shop->id, $lot->id);
+
+        $this->actingAs($user);
+
+        TenantContext::runFor($shop->id, function () use ($customer, $item) {
+            $draft = RetailerSalesService::prepareEmiDraftSale(
+                customerId: $customer->id,
+                itemIds: [$item->id],
+            );
+            // Finalize into a plan (now it's a real EMI, not a discardable draft).
+            app(InstallmentService::class)->finalizeDraftInvoiceToPlan(
+                invoice: $draft,
+                downPayment: 0.0,
+                totalEmis: 6,
+                interestRateAnnual: 0.0,
+            );
+
+            $this->expectException(LogicException::class);
+            app(InstallmentService::class)->discardDraftPosEmiInvoice($draft->fresh());
+        });
     }
 }
