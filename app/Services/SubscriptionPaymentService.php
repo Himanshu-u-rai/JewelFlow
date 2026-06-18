@@ -469,7 +469,8 @@ class SubscriptionPaymentService
             throw new \Exception('Platform configuration incomplete.');
         }
 
-        $trialDays = (int) config('business.subscription_trial_days', 30);
+        // Admin-configurable trial length (Platform Settings) → config → 30.
+        $trialDays = \App\Models\Platform\PlatformSetting::trialDays();
         $startsAt  = Carbon::now();
         $endsAt    = $startsAt->copy()->addDays($trialDays);
 

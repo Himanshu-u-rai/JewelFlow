@@ -189,6 +189,39 @@
             </div>
         </div>
 
+        {{-- ── Free Trial ─────────────────────────────────────────────── --}}
+        <div class="rounded-lg border border-slate-700 bg-slate-800/40 p-5 mb-6">
+            <h4 class="font-semibold text-slate-100">Free Trial</h4>
+            <p class="text-sm text-slate-400 mt-1">
+                How many days a new shop gets a fully-writable free trial before it must subscribe.
+            </p>
+            @error('subscription_trial_days')
+                <p class="text-xs text-rose-400 mt-2">{{ $message }}</p>
+            @enderror
+            <div class="mt-4 flex flex-wrap items-end gap-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Trial length (days)</label>
+                    <input type="number" name="subscription_trial_days" min="1" max="365" step="1"
+                           value="{{ old('subscription_trial_days', $settings['subscription_trial_days']) }}"
+                           class="w-32 rounded border border-slate-700 bg-slate-900 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <label class="flex items-start gap-2 text-sm text-slate-300 pb-2 max-w-md">
+                    <input type="checkbox" name="apply_trial_to_existing" value="1"
+                           class="mt-0.5 rounded border-slate-600 bg-slate-900">
+                    <span>
+                        Also update shops currently on trial
+                        @if(($settings['active_trial_count'] ?? 0) > 0)
+                            <span class="text-slate-400">({{ $settings['active_trial_count'] }} on trial now)</span>
+                        @endif
+                        <span class="block text-xs text-slate-500 mt-0.5">
+                            Each trial's end date is recomputed from its original start date.
+                            If the new length already passed, that shop's trial ends today (it won't be cut off mid-session).
+                        </span>
+                    </span>
+                </label>
+            </div>
+        </div>
+
         <div class="flex justify-end">
             <button type="submit" class="admin-btn admin-btn-primary px-6">Save Settings</button>
         </div>

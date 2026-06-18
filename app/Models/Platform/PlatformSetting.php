@@ -44,6 +44,21 @@ class PlatformSetting extends Model
         return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
     }
 
+    /**
+     * Free-trial length in days. Source of truth for both new trials and the
+     * admin "apply to existing trials" action. Precedence: admin setting →
+     * config('business.subscription_trial_days') → 30. Clamped to a sane range.
+     */
+    public static function trialDays(): int
+    {
+        $raw = static::get('subscription_trial_days');
+        $days = $raw !== null
+            ? (int) $raw
+            : (int) config('business.subscription_trial_days', 30);
+
+        return max(1, min(365, $days));
+    }
+
     // ── Shop-type availability ─────────────────────────────────────────────
 
     public static function retailerEnabled(): bool

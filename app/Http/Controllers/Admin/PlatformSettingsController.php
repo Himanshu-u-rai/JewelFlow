@@ -21,6 +21,8 @@ class PlatformSettingsController extends Controller
             'dhiran_enabled'       => PlatformSetting::dhiranEnabled(),
             'maintenance_mode'     => PlatformSetting::bool('maintenance_mode', false),
             'maintenance_message'  => PlatformSetting::get('maintenance_message', 'JewelFlow is temporarily down for maintenance. We\'ll be back shortly.'),
+            'subscription_trial_days' => PlatformSetting::trialDays(),
+            'active_trial_count'   => \App\Models\Platform\ShopSubscription::where('status', 'trial')->count(),
         ];
 
         $mailSettings = [
@@ -87,11 +89,69 @@ class PlatformSettingsController extends Controller
             $request
         );
 
+        // ── Free-trial length ─────────────────────────────────────────────
+        $trialMsg = $this->updateTrialLength($request);
+
         $msg = $maintenanceMode
             ? 'Settings saved. Maintenance mode is NOW ACTIVE — tenant traffic is blocked.'
             : 'Platform settings saved.';
+        if ($trialMsg) {
+            $msg .= ' ' . $trialMsg;
+        }
 
         return back()->with('success', $msg);
+    }
+
+    /**
+     * Save the free-trial length and, if the admin opted in, recompute the end
+     * date for shops currently on trial. Returns a status fragment for the flash
+     * message, or null if the field wasn't submitted.
+     */
+    private function updateTrialLength(Request $request): ?string
+    {
+        if (! $request->has('subscription_trial_days')) {
+            return null;
+        }
+
+        $validated = $request->validate([
+            'subscription_trial_days' => 'required|integer|min:1|max:365',
+            'apply_trial_to_existing' => 'sometimes|boolean',
+        ], [
+            'subscription_trial_days.min' => 'Trial length must be at least 1 day.',
+            'subscription_trial_days.max' => 'Trial length cannot exceed 365 days.',
+        ]);
+
+        $days     = (int) $validated['subscription_trial_days'];
+        $oldDays  = PlatformSetting::trialDays();
+        $applyAll = $request->boolean('apply_trial_to_existing');
+
+        PlatformSetting::set('subscription_trial_days', (string) $days);
+
+        $this->audit->log(
+            auth('platform_admin')->user(),
+            'admin.platform_settings.trial_length_updated',
+            PlatformSetting::class,
+            null,
+            ['subscription_trial_days' => $oldDays],
+            ['subscription_trial_days' => $days, 'apply_to_existing' => $applyAll],
+            'Free trial length updated',
+            $request
+        );
+
+        $fragment = "Free trial length set to {$days} day" . ($days === 1 ? '' : 's') . '.';
+
+        if ($applyAll) {
+            $adminId = auth('platform_admin')->id();
+            $result = app(\App\Services\SubscriptionTrialService::class)
+                ->applyTrialLengthToActiveTrials($days, $adminId ? (int) $adminId : null);
+            $fragment .= " Updated {$result['updated']} shop(s) currently on trial"
+                . ($result['clamped'] > 0 ? " ({$result['clamped']} clamped to today)" : '')
+                . '.';
+        } else {
+            $fragment .= ' Applies to new trials only.';
+        }
+
+        return $fragment;
     }
 
     private function updateMailSettings(Request $request): \Illuminate\Http\RedirectResponse
