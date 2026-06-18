@@ -26,6 +26,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Mobile\V1\CustomerController;
+use App\Http\Controllers\Api\Mobile\V1\InstallmentController;
 use App\Http\Controllers\Api\Mobile\V1\ItemController;
 use App\Http\Controllers\Api\Mobile\V1\JobOrderController;
 use App\Http\Controllers\Api\Mobile\V1\KarigarController;
@@ -209,5 +210,31 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
                 ->middleware('can:job_order.manage')
                 ->name('mobile.v1.job_orders.receipt');
 
+            // ─── EMI / Installments ────────────────────────────────────────
+            // Finalize a POS-EMI draft into a plan, record a monthly EMI payment,
+            // and discard an abandoned draft. Reuse the web InstallmentService.
+            Route::post('/installments/finalize', [InstallmentController::class, 'finalizeDraft'])
+                ->middleware('can:sales.create')
+                ->name('mobile.v1.installments.finalize');
+
+            Route::post('/installments/discard-draft', [InstallmentController::class, 'discardDraft'])
+                ->middleware('can:sales.create')
+                ->name('mobile.v1.installments.discard_draft');
+
+            Route::post('/installments/{plan}/pay', [InstallmentController::class, 'pay'])
+                ->whereNumber('plan')
+                ->middleware('can:sales.create')
+                ->name('mobile.v1.installments.pay');
+
         });
+
+        // EMI read endpoints (no idempotency needed) — gated to sales.view.
+        Route::get('/installments', [InstallmentController::class, 'index'])
+            ->middleware('can:sales.view')
+            ->name('mobile.v1.installments.index');
+
+        Route::get('/installments/{plan}', [InstallmentController::class, 'show'])
+            ->whereNumber('plan')
+            ->middleware('can:sales.view')
+            ->name('mobile.v1.installments.show');
     });

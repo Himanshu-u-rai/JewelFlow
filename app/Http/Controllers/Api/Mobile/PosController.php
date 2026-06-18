@@ -504,12 +504,16 @@ class PosController extends Controller
                     !((bool) ($validated['ignore_auto_offer'] ?? false)),
                 );
 
+                // EMI is a two-step flow: POS created the DRAFT; the app now
+                // finalizes it natively via POST /api/mobile/v1/installments/finalize
+                // (the invoice is determined here — carry this invoice_id, don't let
+                // the user pick a different one). Items stay in_stock until finalize.
                 return response()->json([
+                    'emi_draft' => true,
                     'invoice_id' => (int) $draftInvoice->id,
-                    'redirect_url' => route('installments.create', [
-                        'invoice_id' => $draftInvoice->id,
-                        'from_pos_emi' => 1,
-                    ]),
+                    'finalize_endpoint' => '/api/mobile/v1/installments/finalize',
+                    'discard_endpoint' => '/api/mobile/v1/installments/discard-draft',
+                    'message' => 'EMI draft created. Finalize it to create the plan, or discard if cancelled.',
                 ]);
             }
 
