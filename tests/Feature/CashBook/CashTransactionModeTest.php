@@ -218,6 +218,47 @@ class CashTransactionModeTest extends TestCase
         $this->assertSame('cash', $row->payment_mode);
     }
 
+    /** A known money-OUT reason cannot be saved against a money-IN entry. */
+    public function test_mismatched_direction_reason_is_rejected(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        $this->actingAs($user)->post('/cashbook', [
+            'type'        => 'in',
+            'amount'      => 1000,
+            'source_type' => 'karigar_payment', // an OUT reason
+        ])->assertSessionHasErrors('source_type');
+
+        TenantContext::set($shop->id);
+        $this->assertSame(0, CashTransaction::where('shop_id', $shop->id)->count(), 'No row should be written on a mismatch.');
+    }
+
+    /** A custom free-text reason is allowed for either direction. */
+    public function test_custom_reason_allowed_for_either_direction(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        $this->actingAs($user)->post('/cashbook', [
+            'type'        => 'in',
+            'amount'      => 250,
+            'source_type' => 'Tourist tip jar', // not in either known list
+        ])->assertSessionHasNoErrors();
+
+        TenantContext::set($shop->id);
+        $this->assertSame(1, CashTransaction::where('shop_id', $shop->id)->count());
+    }
+
+    /** Model helper: known reasons are direction-locked, custom passes. */
+    public function test_reason_matches_type_helper(): void
+    {
+        $this->assertTrue(CashTransaction::reasonMatchesType('in', 'customer_payment'));
+        $this->assertFalse(CashTransaction::reasonMatchesType('in', 'karigar_payment'));
+        $this->assertTrue(CashTransaction::reasonMatchesType('out', 'rent'));
+        $this->assertFalse(CashTransaction::reasonMatchesType('out', 'customer_payment'));
+        $this->assertTrue(CashTransaction::reasonMatchesType('in', 'anything_custom'));
+        $this->assertTrue(CashTransaction::reasonMatchesType('out', 'anything_custom'));
+    }
+
     private function previewTotal($user, $item, $customer): float
     {
         $preview = $this->actingAs($user)->postJson('/api/price-preview', [

@@ -54,31 +54,10 @@
                 <div class="cbf-field">
                     <label for="source_type" class="cbf-label">Reason *</label>
                     @php
-                        // value => label, grouped by direction. Plain, simple words
-                        // (shop owners may have limited schooling — no jargon).
-                        $inSources = [
-                            'customer_payment'  => 'Customer payment received',
-                            'customer_advance'  => 'Advance from customer',
-                            'old_gold_sold'     => 'Old gold / silver sold',
-                            'loan_received'     => 'Loan received',
-                            'owner_investment'  => 'Owner money put in',
-                            'opening_balance'   => 'Opening balance',
-                            'other_income'      => 'Other money in',
-                        ];
-                        $outSources = [
-                            'karigar_payment'   => 'Karigar (worker) payment',
-                            'gold_purchase'     => 'Gold / silver purchase (supplier)',
-                            'supplier_payment'  => 'Supplier payment',
-                            'salary'            => 'Salary / wages',
-                            'rent'              => 'Shop rent',
-                            'utility_bills'     => 'Electricity / water / bills',
-                            'repair_charges'    => 'Repair / polishing charges',
-                            'marketing_expense' => 'Marketing / festival expense',
-                            'petty_expense'     => 'Petty / daily expense',
-                            'loan_repayment'    => 'Loan repayment',
-                            'owner_withdrawal'  => 'Owner money taken out',
-                            'other_expense'     => 'Other money out',
-                        ];
+                        // Lists come from CashTransaction (single source of truth, shared
+                        // with the web + mobile controllers). Plain, simple words.
+                        $inSources  = \App\Models\CashTransaction::IN_SOURCES;
+                        $outSources = \App\Models\CashTransaction::OUT_SOURCES;
                         $oldSource = old('source_type', '');
                         $oldType   = old('type', 'in');
                         $knownSources = array_merge(array_keys($inSources), array_keys($outSources));

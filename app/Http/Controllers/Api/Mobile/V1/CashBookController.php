@@ -120,6 +120,15 @@ class CashBookController extends Controller
             'description'  => 'nullable|string|max:500',
         ]);
 
+        // Direction/reason consistency — mirrors the web cashbook (shared via
+        // CashTransaction). A known money-in reason can't be saved as money-out
+        // and vice versa; custom free-text reasons pass for either side.
+        if (! CashTransaction::reasonMatchesType($validated['type'], $validated['source_type'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'source_type' => ['That reason does not match a ' . ($validated['type'] === 'in' ? 'money-in' : 'money-out') . ' entry.'],
+            ]);
+        }
+
         $shopId = (int) $request->user()->shop_id;
         $userId = (int) $request->user()->id;
         SubscriptionGateService::assertShopWritable($shopId);
