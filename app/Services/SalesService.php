@@ -156,7 +156,6 @@ class SalesService
                 $payments = [['mode' => 'cash', 'amount' => (float) $invoice->total]];
             }
 
-            $cashTotal = 0;
             $paymentTotal = 0;
             foreach ($payments as $p) {
                 $mode   = $p['mode'];
@@ -223,8 +222,7 @@ class SalesService
                 // book can compute trustworthy per-mode balances. Old metal is NOT
                 // money and must never produce a cash row — it flows to the metal
                 // ledger above. Mirrors RetailerSalesService.
-                if (in_array($mode, ['cash', 'upi', 'bank', 'card', 'wallet', 'other'])) {
-                    $cashTotal += $amount;
+                if (in_array($mode, ['cash', 'upi', 'bank', 'wallet', 'other'])) {
                     CashTransaction::record([
                         'shop_id'      => $shopId,
                         'user_id'      => auth()->id(),
