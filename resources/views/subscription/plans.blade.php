@@ -292,11 +292,17 @@
             </button>
           @endforeach
 
+          @php
+            // Human label for the admin-configured trial length, matching what
+            // startTrial() actually grants. 30→"30-day", 60→"60-day", etc.
+            $trialDays = $trialDays ?? 30;
+            $trialLabel = $trialDays . '-day';
+          @endphp
           @if($trialPlan)
             <button type="button" class="md-opt md-opt-trial" role="tab" aria-selected="false" data-plan="trial">
               <div class="md-opt-main">
                 <div class="md-opt-title">Free trial</div>
-                <div class="md-opt-sub">1 month, no card</div>
+                <div class="md-opt-sub">{{ $trialDays }} days, no card</div>
               </div>
               <div class="md-opt-price">₹0</div>
             </button>
@@ -334,8 +340,8 @@
 
           @if($trialPlan)
             <div class="md-pane md-pane-trial" data-pane="trial">
-              <div class="md-pane-name">1-month free trial</div>
-              <div class="md-pane-price">₹0<span class="md-pane-per">for the first month</span></div>
+              <div class="md-pane-name">{{ $trialLabel }} free trial</div>
+              <div class="md-pane-price">₹0<span class="md-pane-per">for the first {{ $trialDays }} days</span></div>
               <div class="md-pane-sub">No card needed. Set up your shop and try everything, then pick a plan to keep going.</div>
 
               <form action="{{ route('subscription.trial.start') }}" method="POST" class="md-pane-form">

@@ -109,12 +109,18 @@ class SubscriptionController extends Controller
         $yearlyPlan = $plans->first(fn ($plan) => !is_null($plan->price_yearly));
         $featureLabels = self::featureLabels();
 
+        // Trial length shown to the owner MUST match what startTrial() actually
+        // grants (the admin-configurable PlatformSetting), not the unused
+        // plan->trial_days column or a hardcoded "1 month".
+        $trialDays = PlatformSetting::trialDays();
+
         return view('subscription.plans', compact(
             'plans',
             'shopType',
             'monthlyPlan',
             'yearlyPlan',
-            'featureLabels'
+            'featureLabels',
+            'trialDays'
         ));
     }
 
