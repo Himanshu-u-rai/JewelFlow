@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\InvoicePayment;
 use App\Models\InstallmentPlan;
 use App\Services\InvoiceAccountingService;
 use Illuminate\Http\Request;
@@ -23,6 +24,22 @@ class InvoiceController extends Controller
         }
         if ($request->filled('to_date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->to_date)) {
             $query->whereDate('created_at', '<=', $request->to_date);
+        }
+
+        $validStatuses = [
+            Invoice::STATUS_DRAFT,
+            Invoice::STATUS_FINALIZED,
+            Invoice::STATUS_CANCELLED,
+        ];
+
+        if ($request->filled('status') && in_array($request->status, $validStatuses, true)) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('payment_mode') && in_array($request->payment_mode, InvoicePayment::VALID_MODES, true)) {
+            $query->whereHas('payments', function ($paymentQuery) use ($request) {
+                $paymentQuery->where('mode', $request->payment_mode);
+            });
         }
 
         // Search by invoice number or customer.

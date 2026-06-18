@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\CashTransaction;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoicePayment;
 use App\Services\InvoiceAccountingService;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,6 +73,82 @@ class InvoiceFlowTest extends TestCase
         $response->assertOk();
         $invoices = $response->viewData('invoices');
         $this->assertEquals(0, $invoices->total());
+    }
+
+    public function test_invoice_index_filters_by_status_and_payment_mode(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        TenantContext::set($shop->id);
+
+        $customer = $this->createCustomer($shop->id);
+
+        $cashFinalized = Invoice::issue([
+            'shop_id' => $shop->id,
+            'customer_id' => $customer->id,
+            'status' => Invoice::STATUS_FINALIZED,
+            'gold_rate' => 0,
+            'subtotal' => 1000,
+            'gst' => 30,
+            'gst_rate' => 3,
+            'wastage_charge' => 0,
+            'discount' => 0,
+            'round_off' => 0,
+            'total' => 1030,
+            'finalized_at' => now(),
+        ]);
+
+        InvoicePayment::record([
+            'shop_id' => $shop->id,
+            'invoice_id' => $cashFinalized->id,
+            'mode' => InvoicePayment::MODE_CASH,
+            'amount' => 1030,
+        ]);
+
+        $upiFinalized = Invoice::issue([
+            'shop_id' => $shop->id,
+            'customer_id' => $customer->id,
+            'status' => Invoice::STATUS_FINALIZED,
+            'gold_rate' => 0,
+            'subtotal' => 2000,
+            'gst' => 60,
+            'gst_rate' => 3,
+            'wastage_charge' => 0,
+            'discount' => 0,
+            'round_off' => 0,
+            'total' => 2060,
+            'finalized_at' => now(),
+        ]);
+
+        InvoicePayment::record([
+            'shop_id' => $shop->id,
+            'invoice_id' => $upiFinalized->id,
+            'mode' => InvoicePayment::MODE_UPI,
+            'amount' => 2060,
+        ]);
+
+        Invoice::issue([
+            'shop_id' => $shop->id,
+            'customer_id' => $customer->id,
+            'status' => Invoice::STATUS_DRAFT,
+            'gold_rate' => 0,
+            'subtotal' => 3000,
+            'gst' => 0,
+            'gst_rate' => 3,
+            'wastage_charge' => 0,
+            'discount' => 0,
+            'round_off' => 0,
+            'total' => 3000,
+        ]);
+
+        TenantContext::clear();
+
+        $response = $this->actingAs($user)->get('/invoices?status=finalized&payment_mode=cash');
+
+        $response->assertOk();
+        $invoices = $response->viewData('invoices');
+
+        $this->assertSame(1, $invoices->total());
+        $this->assertSame($cashFinalized->id, $invoices->first()->id);
     }
 
     // ── Invoice Immutability ────────────────────────────────────────

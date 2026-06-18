@@ -9602,9 +9602,9 @@ input::-webkit-calendar-picker-indicator {
     align-items: center;
     min-height: 40px;
     padding: 0 18px;
-    border: 1px solid #0f172a;
+    border: 1px solid var(--invoice-gold, #b45309);
     border-radius: 10px;
-    background: #0f172a !important;
+    background: var(--invoice-gold, #b45309) !important;
     color: #ffffff !important;
     font-weight: 600;
     box-shadow: none !important;
@@ -9612,8 +9612,8 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .invoices-page-header .invoices-open-pos-btn:hover {
-    background: #1f2937 !important;
-    border-color: #1f2937;
+    background: var(--invoice-gold-dark, #92400e) !important;
+    border-color: var(--invoice-gold-dark, #92400e);
 }
 
 .invoices-page-header .invoices-open-pos-btn:active {
@@ -9700,7 +9700,8 @@ input::-webkit-calendar-picker-indicator {
 
 .invoices-index-page .invoices-table-card.invoices-table-card--main,
 .invoices-index-page .invoices-table-card {
-    overflow: hidden;
+    overflow: hidden !important;
+    isolation: isolate;
     border: 1px solid var(--invoice-border-soft) !important;
     border-top: 1px solid var(--invoice-border-soft) !important;
     border-radius: 14px !important;
@@ -9710,11 +9711,12 @@ input::-webkit-calendar-picker-indicator {
 
 .invoices-index-page .invoices-register-head {
     display: grid;
-    grid-template-columns: minmax(210px, 0.8fr) minmax(560px, 1.7fr);
+    grid-template-columns: minmax(170px, 0.5fr) minmax(0, 2fr);
     gap: 18px;
     align-items: end;
     padding: 18px;
     border-bottom: 1px solid var(--invoice-border-soft);
+    border-radius: 14px 14px 0 0;
     background: var(--invoice-surface);
 }
 
@@ -9737,7 +9739,7 @@ input::-webkit-calendar-picker-indicator {
 
 .invoices-index-page .invoices-register-toolbar {
     display: grid;
-    grid-template-columns: minmax(260px, 1.4fr) minmax(150px, 0.65fr) minmax(150px, 0.65fr) auto;
+    grid-template-columns: minmax(200px, 1.25fr) minmax(118px, 0.65fr) minmax(118px, 0.65fr) minmax(124px, 0.7fr) minmax(132px, 0.75fr) auto;
     gap: 10px;
     align-items: end;
 }
@@ -9794,7 +9796,7 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .invoices-index-page .invoices-control:focus {
-    border-color: var(--invoice-ink) !important;
+    border-color: var(--invoice-gold) !important;
     outline: 3px solid var(--invoice-focus);
     outline-offset: 0;
 }
@@ -9901,13 +9903,16 @@ input::-webkit-calendar-picker-indicator {
 .invoices-index-page .invoices-table-shell {
     overflow-x: auto;
     overflow-y: hidden;
-    border-radius: 0 !important;
+    border-radius: 0 0 14px 14px !important;
     background: #ffffff;
     -webkit-overflow-scrolling: touch;
 }
 
 .invoices-index-page .invoices-data-table {
+    width: 100% !important;
+    min-width: 1040px !important;
     border-collapse: collapse;
+    table-layout: fixed;
     background: #ffffff;
 }
 
@@ -9919,12 +9924,58 @@ input::-webkit-calendar-picker-indicator {
 
 .invoices-index-page .invoices-data-table thead th {
     padding-top: 14px !important;
+    padding-right: 12px !important;
     padding-bottom: 14px !important;
+    padding-left: 12px !important;
     color: #475569 !important;
     font-size: 12px !important;
     font-weight: 600 !important;
-    letter-spacing: 0.02em !important;
+    letter-spacing: 0 !important;
     line-height: 1.2;
+    text-transform: none !important;
+}
+
+.invoices-index-page .invoices-data-table thead th:nth-child(1),
+.invoices-index-page .invoices-data-table tbody td:nth-child(1) {
+    width: 100px;
+    padding-left: 18px !important;
+}
+
+.invoices-index-page .invoices-data-table thead th:nth-child(2),
+.invoices-index-page .invoices-data-table tbody td:nth-child(2) {
+    width: 94px;
+}
+
+.invoices-index-page .invoices-data-table thead th:nth-child(3),
+.invoices-index-page .invoices-data-table tbody td:nth-child(3) {
+    width: 150px;
+}
+
+.invoices-index-page .invoices-data-table thead th:nth-child(4),
+.invoices-index-page .invoices-data-table tbody td:nth-child(4),
+.invoices-index-page .invoices-data-table thead th:nth-child(5),
+.invoices-index-page .invoices-data-table tbody td:nth-child(5),
+.invoices-index-page .invoices-data-table thead th:nth-child(6),
+.invoices-index-page .invoices-data-table tbody td:nth-child(6),
+.invoices-index-page .invoices-data-table thead th:nth-child(7),
+.invoices-index-page .invoices-data-table tbody td:nth-child(7) {
+    width: 98px;
+}
+
+.invoices-index-page .invoices-data-table thead th:nth-child(8),
+.invoices-index-page .invoices-data-table tbody td:nth-child(8) {
+    width: 88px;
+}
+
+.invoices-index-page .invoices-data-table thead th:nth-child(9),
+.invoices-index-page .invoices-data-table tbody td:nth-child(9) {
+    width: 90px;
+}
+
+.invoices-index-page .invoices-data-table thead th:nth-child(10),
+.invoices-index-page .invoices-data-table tbody td:nth-child(10) {
+    width: 108px;
+    padding-right: 18px !important;
 }
 
 .invoices-index-page .invoices-data-table tbody tr,
@@ -9938,12 +9989,19 @@ input::-webkit-calendar-picker-indicator {
 
 .invoices-index-page .invoices-data-table tbody td {
     padding-top: 16px !important;
+    padding-right: 12px !important;
     padding-bottom: 16px !important;
+    padding-left: 12px !important;
     border-bottom: 1px solid #edf2f7 !important;
     color: var(--invoice-text);
     font-size: 15px !important;
     font-weight: 450;
     vertical-align: middle;
+}
+
+.invoices-index-page .invoices-data-table tbody td,
+.invoices-index-page .invoices-data-table tbody td * {
+    min-width: 0;
 }
 
 .invoices-index-page .invoices-data-table tbody td .text-sm {
@@ -9978,9 +10036,9 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .invoices-index-page .invoice-action-icon-link--view {
-    border-color: #bfdbfe;
-    background: #eff6ff;
-    color: var(--invoice-blue);
+    border-color: var(--invoice-gold);
+    background: var(--invoice-gold);
+    color: #ffffff;
 }
 
 .invoices-index-page .invoice-action-icon-link--edit {
@@ -10156,7 +10214,7 @@ input::-webkit-calendar-picker-indicator {
 
     .invoices-index-page .invoices-kpi-card {
         position: relative;
-        min-height: 108px;
+        min-height: 88px;
         padding: 11px !important;
         border-radius: 12px !important;
         overflow: hidden;
@@ -10165,7 +10223,7 @@ input::-webkit-calendar-picker-indicator {
     .invoices-index-page .invoices-kpi-card > .flex {
         position: relative;
         display: block !important;
-        min-height: 86px;
+        min-height: 66px;
         height: 100%;
     }
 
@@ -10204,7 +10262,7 @@ input::-webkit-calendar-picker-indicator {
         width: calc(100% - 12px);
         transform: translate(-50%, -42%);
         max-width: 100%;
-        font-size: clamp(18px, 4.8vw, 22px) !important;
+        font-size: clamp(17px, 4.6vw, 21px) !important;
         line-height: 1.12;
         text-align: center;
         overflow-wrap: anywhere;
@@ -10212,8 +10270,8 @@ input::-webkit-calendar-picker-indicator {
 
     .invoices-index-page .invoices-kpi-card--money {
         grid-column: 1 / -1;
-        min-height: 66px;
-        padding: 12px !important;
+        min-height: 58px;
+        padding: 10px 12px !important;
     }
 
     .invoices-index-page .invoices-kpi-card--money:nth-of-type(3) {
@@ -10237,7 +10295,7 @@ input::-webkit-calendar-picker-indicator {
         grid-template-columns: 34px minmax(0, 1fr);
         gap: 11px;
         align-items: center;
-        min-height: 40px;
+        min-height: 36px;
     }
 
     .invoices-index-page .invoices-kpi-card--money :is(.bg-amber-100, .bg-slate-100, .bg-emerald-100) {
@@ -10263,17 +10321,17 @@ input::-webkit-calendar-picker-indicator {
         position: static;
         width: auto;
         transform: none;
-        font-size: clamp(19px, 5.2vw, 22px) !important;
+        font-size: clamp(18px, 5vw, 21px) !important;
         text-align: right;
         white-space: nowrap;
     }
 
     .invoices-index-page .invoices-kpi-card--count {
-        min-height: 94px;
+        min-height: 82px;
     }
 
     .invoices-index-page .invoices-kpi-card--count > .flex {
-        min-height: 72px;
+        min-height: 60px;
     }
 
     .invoices-index-page .invoices-register-head {
@@ -10348,11 +10406,11 @@ input::-webkit-calendar-picker-indicator {
 
     .invoices-index-page .invoices-mobile-card {
         display: grid;
-        gap: 12px;
+        gap: 10px;
         border: 1px solid var(--invoice-border-soft);
         border-radius: 12px;
         background: #ffffff;
-        padding: 12px;
+        padding: 11px;
         box-shadow: none !important;
     }
 
@@ -10412,7 +10470,7 @@ input::-webkit-calendar-picker-indicator {
     .invoices-index-page .invoices-mobile-metrics > div {
         display: grid;
         gap: 4px;
-        min-height: 58px;
+        min-height: 52px;
         padding: 9px;
         border: 1px solid var(--invoice-border-soft);
         border-radius: 10px;
@@ -10438,7 +10496,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .invoices-index-page .invoices-row-action {
-        min-height: 38px;
+        min-height: 36px;
         padding: 0 10px;
         border: 1px solid var(--invoice-border);
         background: #ffffff;
