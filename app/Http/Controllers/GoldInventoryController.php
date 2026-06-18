@@ -50,10 +50,13 @@ class GoldInventoryController extends Controller
             'purity' => 'required|numeric|min:1|max:24',
             'cost_per_gram' => 'nullable|numeric|min:0',
             'supplier_name' => 'nullable|string|max:255',
+            'payment_mode' => 'nullable|in:cash,upi,bank,card,wallet,other',
             'notes' => 'nullable|string',
         ]);
 
         $shopId = auth()->user()->shop_id;
+        // Money paid out to the supplier; defaults to cash when not specified.
+        $paymentMode = $validated['payment_mode'] ?? 'cash';
 
         // Calculate fine gold via the single authority (gold inventory is gold-domain).
         $fineGold = $validated['gross_weight'] * \App\Services\MetalRegistry::fineWeightMultiplier('gold', (float) $validated['purity']);
@@ -62,7 +65,7 @@ class GoldInventoryController extends Controller
         $totalCost = ($validated['cost_per_gram'] ?? 0) * $validated['gross_weight'];
         $costPerFineGram = $fineGold > 0 ? $totalCost / $fineGold : 0;
 
-        DB::transaction(function () use ($validated, $shopId, $fineGold, $totalCost, $costPerFineGram) {
+        DB::transaction(function () use ($validated, $shopId, $fineGold, $totalCost, $costPerFineGram, $paymentMode) {
             // Create the metal lot
             $lot = MetalLot::create([
                 'shop_id' => $shopId,
@@ -94,7 +97,8 @@ class GoldInventoryController extends Controller
                     'amount' => $totalCost,
                     'source_type' => 'gold_' . $validated['source'],
                     'source_id' => $lot->id,
-                    'description' => ucfirst($validated['source']) . " - Lot #{$lot->lot_number} - " . 
+                    'payment_mode' => $paymentMode,
+                    'description' => ucfirst($validated['source']) . " - Lot #{$lot->lot_number} - " .
                         number_format($validated['gross_weight'], 3) . "g @ " . 
                         $validated['purity'] . "K",
                 ]);

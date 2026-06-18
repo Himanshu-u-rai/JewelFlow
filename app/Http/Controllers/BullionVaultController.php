@@ -193,8 +193,12 @@ class BullionVaultController extends Controller
             ],
             'cost_per_gram' => 'nullable|numeric|min:0',
             'vendor_id' => ['nullable', \Illuminate\Validation\Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+            'payment_mode' => 'nullable|in:cash,upi,bank,card,wallet,other',
             'notes' => 'nullable|string',
         ]);
+
+        // Money paid out to the supplier; defaults to cash when not specified.
+        $paymentMode = $validated['payment_mode'] ?? 'cash';
 
         // Fine weight comes ONLY from the MetalRegistry authority. It returns
         // null for any metal whose purity is not accounting truth, so a
@@ -210,7 +214,7 @@ class BullionVaultController extends Controller
         $totalCost = round(((float) ($validated['cost_per_gram'] ?? 0)) * $gross, 2);
         $costPerFineGram = $fineWeight > 0 ? round($totalCost / $fineWeight, 2) : 0;
 
-        $lot = DB::transaction(function () use ($validated, $shopId, $userId, $fineWeight, $totalCost, $costPerFineGram) {
+        $lot = DB::transaction(function () use ($validated, $shopId, $userId, $fineWeight, $totalCost, $costPerFineGram, $paymentMode) {
             $lot = MetalLot::create([
                 'shop_id' => $shopId,
                 'vendor_id' => $validated['vendor_id'] ?? null,
@@ -242,6 +246,7 @@ class BullionVaultController extends Controller
                     'amount' => $totalCost,
                     'source_type' => 'bullion_' . $validated['source'],
                     'source_id' => $lot->id,
+                    'payment_mode' => $paymentMode,
                     'description' => ucfirst($validated['metal_type']) . ' ' . $validated['source']
                         . " - Lot #{$lot->lot_number} - "
                         . number_format((float) $validated['gross_weight'], 3) . 'g @ '

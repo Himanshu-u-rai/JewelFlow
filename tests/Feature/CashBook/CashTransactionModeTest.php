@@ -182,6 +182,42 @@ class CashTransactionModeTest extends TestCase
         $this->assertSame($refundRows->count(), $refundRows->where('payment_mode', 'cash')->count());
     }
 
+    /** A manual cash-book entry records the chosen payment mode. */
+    public function test_manual_entry_records_selected_mode(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        $this->actingAs($user)->post('/cashbook', [
+            'type'         => 'out',
+            'amount'       => 1500,
+            'source_type'  => 'rent',
+            'payment_mode' => 'bank',
+            'description'  => 'Shop rent via bank',
+        ]);
+
+        TenantContext::set($shop->id);
+        $row = CashTransaction::where('shop_id', $shop->id)->latest('id')->first();
+        $this->assertNotNull($row);
+        $this->assertSame('bank', $row->payment_mode);
+    }
+
+    /** A manual entry with no mode defaults to cash (never null). */
+    public function test_manual_entry_defaults_to_cash(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        $this->actingAs($user)->post('/cashbook', [
+            'type'        => 'in',
+            'amount'      => 500,
+            'source_type' => 'other_income',
+        ]);
+
+        TenantContext::set($shop->id);
+        $row = CashTransaction::where('shop_id', $shop->id)->latest('id')->first();
+        $this->assertNotNull($row);
+        $this->assertSame('cash', $row->payment_mode);
+    }
+
     private function previewTotal($user, $item, $customer): float
     {
         $preview = $this->actingAs($user)->postJson('/api/price-preview', [

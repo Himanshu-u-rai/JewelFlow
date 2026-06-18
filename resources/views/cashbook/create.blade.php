@@ -84,6 +84,22 @@
                     @error('source_type') <p class="cbf-error">{{ $message }}</p> @enderror
                 </div>
 
+                {{-- Payment mode --}}
+                <div class="cbf-field">
+                    <label for="payment_mode" class="cbf-label">Payment mode *</label>
+                    @php $oldMode = old('payment_mode', 'cash'); @endphp
+                    <select name="payment_mode" id="payment_mode" class="cbf-input" required>
+                        <option value="cash"   {{ $oldMode === 'cash'   ? 'selected' : '' }}>Cash (drawer)</option>
+                        <option value="upi"    {{ $oldMode === 'upi'    ? 'selected' : '' }}>UPI</option>
+                        <option value="bank"   {{ $oldMode === 'bank'   ? 'selected' : '' }}>Bank</option>
+                        <option value="card"   {{ $oldMode === 'card'   ? 'selected' : '' }}>Card</option>
+                        <option value="wallet" {{ $oldMode === 'wallet' ? 'selected' : '' }}>Wallet</option>
+                        <option value="other"  {{ $oldMode === 'other'  ? 'selected' : '' }}>Other</option>
+                    </select>
+                    <p class="cbf-help">Cash counts toward your cash in hand. UPI/Bank/Card are tracked separately.</p>
+                    @error('payment_mode') <p class="cbf-error">{{ $message }}</p> @enderror
+                </div>
+
                 {{-- Description --}}
                 <div class="cbf-field">
                     <label for="description" class="cbf-label">Description (optional)</label>

@@ -452,6 +452,20 @@
                             <p class="vault-lot-help">Optional. Used for vault costing and cash value.</p>
                         </label>
 
+                        <label class="vault-lot-field">
+                            <span class="vault-lot-label">Paid via</span>
+                            @php $oldMode = old('payment_mode', 'cash'); @endphp
+                            <select name="payment_mode" class="vault-lot-control">
+                                <option value="cash"   {{ $oldMode === 'cash'   ? 'selected' : '' }}>Cash (drawer)</option>
+                                <option value="upi"    {{ $oldMode === 'upi'    ? 'selected' : '' }}>UPI</option>
+                                <option value="bank"   {{ $oldMode === 'bank'   ? 'selected' : '' }}>Bank</option>
+                                <option value="card"   {{ $oldMode === 'card'   ? 'selected' : '' }}>Card</option>
+                                <option value="wallet" {{ $oldMode === 'wallet' ? 'selected' : '' }}>Wallet</option>
+                                <option value="other"  {{ $oldMode === 'other'  ? 'selected' : '' }}>Other</option>
+                            </select>
+                            <p class="vault-lot-help">Only matters when a cost is paid. Cash reduces cash in hand.</p>
+                        </label>
+
                         <div class="vault-lot-field" x-show="source !== 'opening'">
                             <label>
                                 <span class="vault-lot-label">Supplier / Vendor</span>

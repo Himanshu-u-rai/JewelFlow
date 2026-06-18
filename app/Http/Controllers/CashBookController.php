@@ -80,10 +80,11 @@ class CashBookController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'type'        => 'required|in:in,out',
-            'amount'      => 'required|numeric|min:0.01',
-            'source_type' => 'required|string|max:100',
-            'description' => 'nullable|string|max:500',
+            'type'         => 'required|in:in,out',
+            'amount'       => 'required|numeric|min:0.01',
+            'source_type'  => 'required|string|max:100',
+            'payment_mode' => 'nullable|in:cash,upi,bank,card,wallet,other',
+            'description'  => 'nullable|string|max:500',
         ]);
 
         $shopId = auth()->user()->shop_id;
@@ -91,13 +92,14 @@ class CashBookController extends Controller
         SubscriptionGateService::assertShopWritable((int) $shopId);
 
         $transaction = CashTransaction::record([
-            'shop_id'     => $shopId,
-            'user_id'     => $userId,
-            'type'        => $validated['type'],
-            'amount'      => $validated['amount'],
-            'source_type' => $validated['source_type'],
-            'source_id'   => null,
-            'description' => $validated['description'] ?? null,
+            'shop_id'      => $shopId,
+            'user_id'      => $userId,
+            'type'         => $validated['type'],
+            'amount'       => $validated['amount'],
+            'source_type'  => $validated['source_type'],
+            'source_id'    => null,
+            'payment_mode' => $validated['payment_mode'] ?? 'cash',
+            'description'  => $validated['description'] ?? null,
         ]);
 
         AuditLog::create([

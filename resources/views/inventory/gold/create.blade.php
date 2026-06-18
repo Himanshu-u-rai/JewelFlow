@@ -100,6 +100,24 @@
                     @enderror
                 </div>
 
+                <div>
+                    <label for="payment_mode" class="block text-sm font-medium text-gray-700 mb-2">Paid via</label>
+                    @php $oldMode = old('payment_mode', 'cash'); @endphp
+                    <select name="payment_mode" id="payment_mode"
+                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500">
+                        <option value="cash"   {{ $oldMode === 'cash'   ? 'selected' : '' }}>Cash (drawer)</option>
+                        <option value="upi"    {{ $oldMode === 'upi'    ? 'selected' : '' }}>UPI</option>
+                        <option value="bank"   {{ $oldMode === 'bank'   ? 'selected' : '' }}>Bank</option>
+                        <option value="card"   {{ $oldMode === 'card'   ? 'selected' : '' }}>Card</option>
+                        <option value="wallet" {{ $oldMode === 'wallet' ? 'selected' : '' }}>Wallet</option>
+                        <option value="other"  {{ $oldMode === 'other'  ? 'selected' : '' }}>Other</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Only matters when a cost is paid. Cash reduces cash in hand.</p>
+                    @error('payment_mode')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <div class="flex items-center justify-between">
                         <span class="text-sm font-medium text-gray-600">Total Cost:</span>
