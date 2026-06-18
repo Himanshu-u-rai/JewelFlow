@@ -35,7 +35,16 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_active',
         'first_name',
         'last_name',
+        // Which customer-facing product this account belongs to: 'erp' | 'dhiran'.
+        // One account = one product (no combined multi-product account). Defaults
+        // to 'erp' (see the booted() creating hook) so all existing behaviour is
+        // unchanged. Set server-side at registration based on the request realm.
+        'realm',
     ];
+
+    public const REALM_ERP = 'erp';
+    public const REALM_DHIRAN = 'dhiran';
+    public const REALMS = [self::REALM_ERP, self::REALM_DHIRAN];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -60,6 +69,38 @@ class User extends Authenticatable implements MustVerifyEmail
             'password'             => 'hashed',
             'is_active'            => 'boolean',
         ];
+    }
+
+    /**
+     * Default the realm to 'erp' on create when not explicitly set, so any code
+     * path that creates a user without specifying a realm keeps today's ERP
+     * behaviour. Dhiran registration sets realm='dhiran' explicitly.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (User $user) {
+            if (empty($user->realm)) {
+                $user->realm = self::REALM_ERP;
+            }
+        });
+    }
+
+    /** Scope to a single realm: User::realm('dhiran')->... */
+    public function scopeRealm($query, string $realm)
+    {
+        return $query->where('realm', $realm);
+    }
+
+    /** This account belongs to the Dhiran product. */
+    public function isDhiran(): bool
+    {
+        return ($this->realm ?? self::REALM_ERP) === self::REALM_DHIRAN;
+    }
+
+    /** This account belongs to the Retail ERP product (the default). */
+    public function isErp(): bool
+    {
+        return ($this->realm ?? self::REALM_ERP) === self::REALM_ERP;
     }
 
     /**
