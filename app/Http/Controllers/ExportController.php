@@ -9,6 +9,7 @@ use App\Services\Reporting\Definition\ExportFormat;
 use App\Services\Reporting\Definition\ReportProfile;
 use App\Services\Reporting\Definition\ReportRegistry;
 use App\Services\Reporting\Render\Excel\BackupWorkbook;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Excel as ExcelWriter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -66,9 +67,31 @@ class ExportController extends Controller
         ReportRegistry $registry,
         ColumnPolicy $columns,
         ExcelWriter $excel,
-    ): StreamedResponse {
+    ): StreamedResponse|RedirectResponse {
         $user = Auth::user();
         $shopId = (int) $user->shop_id;
+
+        // The backup builds every data set synchronously and holds the whole
+        // workbook in memory, so it bypasses the per-report sync/queue router.
+        // Guard against a very large shop OOM/timeout: if the total estimated
+        // rows exceed the ceiling, refuse and point the owner at the individual
+        // exports (those auto-queue large data sets). Default ceiling is well
+        // above a normal shop's lifetime data; tune via REPORTING_BACKUP_MAX_ROWS.
+        $ceiling = (int) config('reporting.backup_max_rows', 50000);
+        $estimatedTotal = 0;
+        foreach (self::BACKUP_REPORTS as $key => $sheetTitle) {
+            if ($registry->has($key)) {
+                $estimatedTotal += (int) ($registry->datasetService($key)->estimateRowCount(
+                    $this->backupRequest($registry->definition($key), $columns, $user, $shopId)
+                ) ?? 0);
+            }
+        }
+        if ($estimatedTotal > $ceiling) {
+            return redirect()->route('export.index')->with('error',
+                'Your shop has too much data for a single combined backup ('
+                . number_format($estimatedTotal) . ' rows). Please export each data set individually — '
+                . 'large data sets download in the background.');
+        }
 
         $sheets = [];
         foreach (self::BACKUP_REPORTS as $key => $sheetTitle) {
@@ -77,27 +100,7 @@ class ExportController extends Controller
             }
 
             $definition = $registry->definition($key);
-
-            // Owner export: include sensitive columns only if the user is allowed.
-            $resolution = $columns->resolve(
-                definition: $definition,
-                profile: ReportProfile::Detailed,
-                user: $user,
-                includeSensitive: $user->can($definition->permissions->sensitive),
-            );
-
-            $request = new ReportRequest(
-                definition: $definition,
-                shopId: $shopId,
-                userId: (int) $user->id,
-                userName: (string) $user->name,
-                profile: ReportProfile::Detailed,
-                format: ExportFormat::Excel,
-                filters: [],
-                columnKeys: $resolution->columnKeys,
-                includeSensitive: $resolution->sensitiveIncluded,
-                revealMasked: $resolution->revealMasked,
-            );
+            $request = $this->backupRequest($definition, $columns, $user, $shopId);
 
             $meta = $this->backupMeta($request, $user);
             $dataset = $registry->datasetService($key)->build($request, $meta);
@@ -116,6 +119,37 @@ class ExportController extends Controller
         }, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
+    }
+
+    /**
+     * Build the canonical (full-data, no-filter) ReportRequest for one dataset in
+     * the backup. Sensitive columns are included only if the user is permitted.
+     */
+    private function backupRequest(
+        \App\Services\Reporting\Definition\ReportDefinition $definition,
+        ColumnPolicy $columns,
+        $user,
+        int $shopId,
+    ): ReportRequest {
+        $resolution = $columns->resolve(
+            definition: $definition,
+            profile: ReportProfile::Detailed,
+            user: $user,
+            includeSensitive: $user->can($definition->permissions->sensitive),
+        );
+
+        return new ReportRequest(
+            definition: $definition,
+            shopId: $shopId,
+            userId: (int) $user->id,
+            userName: (string) $user->name,
+            profile: ReportProfile::Detailed,
+            format: ExportFormat::Excel,
+            filters: [],
+            columnKeys: $resolution->columnKeys,
+            includeSensitive: $resolution->sensitiveIncluded,
+            revealMasked: $resolution->revealMasked,
+        );
     }
 
     private function backupMeta(ReportRequest $request, $user): ReportMeta

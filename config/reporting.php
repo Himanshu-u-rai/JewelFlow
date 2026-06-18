@@ -53,4 +53,15 @@ return [
         'pdf_sync_max_rows' => (int) env('REPORTING_PDF_SYNC_MAX_ROWS', 1500),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | "Export everything" backup ceiling
+    |--------------------------------------------------------------------------
+    | The combined Excel backup builds every data set synchronously in one
+    | request, so it bypasses the size router above. If the total estimated rows
+    | across all data sets exceed this ceiling, the backup is refused and the
+    | owner is directed to export individual data sets (which auto-queue).
+    */
+    'backup_max_rows' => (int) env('REPORTING_BACKUP_MAX_ROWS', 50000),
+
 ];

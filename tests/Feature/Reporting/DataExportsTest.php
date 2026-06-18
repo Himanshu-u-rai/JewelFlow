@@ -215,6 +215,18 @@ class DataExportsTest extends TestCase
         $this->assertStringContainsString('.xlsx', (string) $response->headers->get('Content-Disposition'));
     }
 
+    public function test_backup_refused_when_over_row_ceiling(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->seedCustomers($shop->id, 3); // 3 rows > ceiling of 1
+        $this->bypassTenantMiddleware();
+        config(['reporting.backup_max_rows' => 1]);
+
+        $response = TenantContext::runFor((int) $shop->id, fn () => $this->actingAs($owner)->post('/export/all'));
+        $response->assertRedirect(route('export.index'));
+        $response->assertSessionHas('error');
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();
