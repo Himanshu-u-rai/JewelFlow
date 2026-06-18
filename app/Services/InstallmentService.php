@@ -56,9 +56,9 @@ class InstallmentService
     /**
      * Record an EMI payment.
      */
-    public function recordPayment(InstallmentPlan $plan, float $amount, string $paymentMethod = 'cash', ?string $notes = null): InstallmentPayment
+    public function recordPayment(InstallmentPlan $plan, float $amount, string $paymentMethod = 'cash', ?string $notes = null, ?int $paymentMethodId = null): InstallmentPayment
     {
-        return DB::transaction(function () use ($plan, $amount, $paymentMethod, $notes) {
+        return DB::transaction(function () use ($plan, $amount, $paymentMethod, $notes, $paymentMethodId) {
             SubscriptionGateService::assertShopWritable((int) $plan->shop_id);
 
             $lockedPlan = InstallmentPlan::whereKey($plan->id)
@@ -83,6 +83,7 @@ class InstallmentService
                 'amount' => $amount,
                 'payment_date' => now()->toDateString(),
                 'payment_method' => $paymentMethod,
+                'payment_method_id' => $paymentMethodId,
                 'notes' => $notes,
             ]);
 
@@ -123,6 +124,7 @@ class InstallmentService
                         'amount' => $principalAllocation,
                         'reference' => null,
                         'note' => 'EMI installment payment (principal allocation)',
+                        'payment_method_id' => $paymentMethodId,
                     ]);
                 }
 

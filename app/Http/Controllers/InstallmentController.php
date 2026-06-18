@@ -299,10 +299,17 @@ class InstallmentController extends Controller
     {
         abort_if($plan->shop_id !== auth()->user()->shop_id, 403);
 
-        $plan->load(['customer', 'invoice', 'payments']);
+        $plan->load(['customer', 'invoice', 'payments.paymentMethod']);
         $summary = $this->installmentService->summary($plan);
 
-        return view('installments.show', compact('plan', 'summary'));
+        // Configured accounts for the record-payment picker (same as POS).
+        $paymentMethods = \App\Models\ShopPaymentMethod::where('shop_id', $plan->shop_id)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return view('installments.show', compact('plan', 'summary', 'paymentMethods'));
     }
 
     public function recordPayment(Request $request, InstallmentPlan $plan)
@@ -317,14 +324,41 @@ class InstallmentController extends Controller
         $data = $request->validate([
             'amount' => 'required|numeric|min:1',
             'payment_method' => 'required|in:cash,upi,card,bank_transfer',
+            'payment_method_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('shop_payment_methods', 'id')->where('shop_id', $plan->shop_id),
+            ],
             'notes' => 'nullable|string',
         ]);
+
+        // Account linkage applies to UPI / bank collections (same accounts POS uses).
+        // The payment_method maps to a ShopPaymentMethod type: upi→upi, bank_transfer→bank.
+        $accountType = match ($data['payment_method']) {
+            'upi' => 'upi',
+            'bank_transfer' => 'bank',
+            default => null, // cash / card carry no account
+        };
+        $methodId = $accountType ? ($data['payment_method_id'] ?? null) : null;
+
+        if ($accountType) {
+            $account = \App\Models\ShopPaymentMethod::where('shop_id', $plan->shop_id)
+                ->where('id', $methodId)
+                ->active()
+                ->first();
+            if (! $account || $account->type !== $accountType) {
+                return back()->withErrors([
+                    'payment_method_id' => 'Please choose a valid ' . strtoupper($accountType) . ' account for this payment.',
+                ])->withInput();
+            }
+        }
 
         $this->installmentService->recordPayment(
             $plan,
             $data['amount'],
             $data['payment_method'],
-            $data['notes'] ?? null
+            $data['notes'] ?? null,
+            $methodId,
         );
 
         return redirect()->route('installments.show', $plan)

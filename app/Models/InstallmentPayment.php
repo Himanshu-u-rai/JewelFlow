@@ -14,6 +14,7 @@ class InstallmentPayment extends Model
         'amount',
         'payment_date',
         'payment_method',
+        'payment_method_id',
         'notes',
     ];
 
@@ -25,5 +26,10 @@ class InstallmentPayment extends Model
     public function plan()
     {
         return $this->belongsTo(InstallmentPlan::class, 'plan_id');
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(ShopPaymentMethod::class, 'payment_method_id');
     }
 }

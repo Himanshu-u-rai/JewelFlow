@@ -189,6 +189,35 @@ class EmiDraftSaleTest extends TestCase
         $this->assertEqualsWithDelta(5000.0, (float) $payment->amount, 0.001);
     }
 
+    public function test_recurring_emi_payment_records_the_chosen_bank_account(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $lot = $this->createMetalLot($shop->id);
+        $customer = $this->createCustomer($shop->id);
+        $item = $this->createItem($shop->id, $lot->id);
+
+        $bank = \App\Models\ShopPaymentMethod::create([
+            'shop_id' => $shop->id, 'type' => 'bank', 'name' => 'HDFC Current',
+            'bank_name' => 'HDFC', 'account_number' => '123456', 'is_active' => true, 'sort_order' => 0,
+        ]);
+
+        $this->actingAs($user);
+
+        $payment = TenantContext::runFor($shop->id, function () use ($customer, $item, $bank) {
+            $draft = RetailerSalesService::prepareEmiDraftSale(customerId: $customer->id, itemIds: [$item->id]);
+            $plan = app(InstallmentService::class)->finalizeDraftInvoiceToPlan(
+                invoice: $draft, downPayment: 0.0, totalEmis: 6, interestRateAnnual: 0.0,
+            );
+
+            // A monthly EMI payment collected via bank → should link the account.
+            return app(InstallmentService::class)->recordPayment(
+                $plan->fresh(), 5000.0, 'bank_transfer', null, $bank->id,
+            );
+        });
+
+        $this->assertSame($bank->id, (int) $payment->payment_method_id, 'EMI payment must link to the chosen bank account.');
+    }
+
     public function test_discard_refuses_a_finalized_invoice(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
