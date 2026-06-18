@@ -140,6 +140,86 @@ class CashFlowReportTest extends TestCase
         $this->assertSame(3, $ledger->rowCount()); // 3 in-period entries
     }
 
+    // ---- ROW-LEVEL VIEW FILTERS (mode / type / source) ------------------
+
+    /** Build a request with extra (non-period) view filters merged in. */
+    private function requestWithFilters(int $shopId, array $extra): ReportRequest
+    {
+        return new ReportRequest(
+            definition: app(ReportRegistry::class)->definition(CashFlowDataset::KEY),
+            shopId: $shopId, userId: 1, userName: 'Cashier', profile: P::Detailed, format: F::Screen,
+            filters: array_merge($this->period(), $extra),
+            columnKeys: $this->keysFor(P::Detailed, true), includeSensitive: true,
+        );
+    }
+
+    private function mixedCash(int $shopId, int $userId): void
+    {
+        // opening (Feb) all cash
+        $this->cash($shopId, $userId, 'in', 5000, '2026-02-15 10:00:00');
+        // March: mixed modes / types / sources
+        DB::table('cash_transactions')->insert([
+            ['shop_id' => $shopId, 'user_id' => $userId, 'type' => 'in',  'amount' => 10000, 'payment_mode' => 'cash', 'source_type' => 'invoice',     'description' => 'm', 'created_at' => '2026-03-10 10:00:00', 'updated_at' => '2026-03-10 10:00:00'],
+            ['shop_id' => $shopId, 'user_id' => $userId, 'type' => 'in',  'amount' => 3000,  'payment_mode' => 'upi',  'source_type' => 'invoice',     'description' => 'm', 'created_at' => '2026-03-15 10:00:00', 'updated_at' => '2026-03-15 10:00:00'],
+            ['shop_id' => $shopId, 'user_id' => $userId, 'type' => 'out', 'amount' => 4000,  'payment_mode' => 'bank', 'source_type' => 'rent',        'description' => 'm', 'created_at' => '2026-03-20 10:00:00', 'updated_at' => '2026-03-20 10:00:00'],
+        ]);
+    }
+
+    public function test_payment_mode_filter_narrows_rows_but_keeps_balances_whole(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->mixedCash($shop->id, $owner->id);
+
+        $dataset = $this->build($shop->id, $this->requestWithFilters($shop->id, ['payment_mode' => 'upi']));
+        $summary = $dataset->section('summary')->rows;
+        $ledger = $dataset->section('ledger');
+
+        // Only the UPI row remains in the ledger view.
+        $this->assertSame(1, $ledger->rowCount());
+        $this->assertSame('upi', $ledger->rows[0]['payment_mode']);
+
+        // BUT the summary balances are computed over ALL cash (whole, unchanged).
+        $this->assertEqualsWithDelta(5000.0, $this->summaryValue($summary, 'Opening Balance'), 0.01);
+        $this->assertEqualsWithDelta(13000.0, $this->summaryValue($summary, 'Cash In'), 0.01);
+        $this->assertEqualsWithDelta(4000.0, $this->summaryValue($summary, 'Cash Out'), 0.01);
+        $this->assertEqualsWithDelta(14000.0, $this->summaryValue($summary, 'Closing Balance'), 0.01);
+    }
+
+    public function test_cash_type_filter_narrows_to_out_rows(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->mixedCash($shop->id, $owner->id);
+
+        $dataset = $this->build($shop->id, $this->requestWithFilters($shop->id, ['cash_type' => 'out']));
+        $ledger = $dataset->section('ledger');
+
+        $this->assertSame(1, $ledger->rowCount());
+        $this->assertStringContainsStringIgnoringCase('out', (string) $ledger->rows[0]['type']);
+        // balances still whole
+        $this->assertEqualsWithDelta(14000.0, $this->summaryValue($dataset->section('summary')->rows, 'Closing Balance'), 0.01);
+    }
+
+    public function test_cash_source_filter_narrows_to_source(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->mixedCash($shop->id, $owner->id);
+
+        $dataset = $this->build($shop->id, $this->requestWithFilters($shop->id, ['cash_source' => 'rent']));
+        $ledger = $dataset->section('ledger');
+
+        $this->assertSame(1, $ledger->rowCount());
+        $this->assertSame('rent', (string) $ledger->rows[0]['source']);
+    }
+
+    public function test_no_filter_shows_all_rows(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->mixedCash($shop->id, $owner->id);
+
+        $dataset = $this->build($shop->id, $this->requestWithFilters($shop->id, []));
+        $this->assertSame(3, $dataset->section('ledger')->rowCount());
+    }
+
     // ---- VALIDATOR (reports:validate CASH-1/2/3) ------------------------
 
     public function test_reports_validate_cash_path_passes(): void

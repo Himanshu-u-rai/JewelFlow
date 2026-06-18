@@ -22,6 +22,8 @@ enum FilterKey: string
     case MovementType = 'movement_type'; // metal movement ledger
     case Reference = 'reference';      // item/invoice/loan reference
     case Lot = 'lot';
+    case CashType = 'cash_type';       // cash ledger: money in / money out
+    case CashSource = 'cash_source';   // cash ledger: source_type (invoice, expense, …)
     case Branch = 'branch';            // RESERVED — never rendered (frozen §3.2)
 
     /** Date-style filters carry the FY-first preset set (frozen §17). */

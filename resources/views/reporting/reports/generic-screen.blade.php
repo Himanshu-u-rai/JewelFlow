@@ -27,6 +27,17 @@
                     @endforeach
                 </select>
             </div>
+            @foreach (($filterControls ?? []) as $fc)
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">{{ $fc['label'] }}</label>
+                    <select name="{{ $fc['key'] }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <option value="">All</option>
+                        @foreach ($fc['options'] as $opt)
+                            <option value="{{ $opt['value'] }}" @selected($fc['current'] === (string) $opt['value'])>{{ $opt['label'] }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endforeach
             @unless ($isRigid)
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Profile</label>
@@ -58,12 +69,22 @@
                 @if ($section['rowCount'] === 0)
                     <div class="px-5 py-10 text-center text-sm text-slate-400">No data for this scope.</div>
                 @else
+                    @php
+                        // The running-balance column is only meaningful in date order.
+                        // It is marked so the client sorter can hide it when the table
+                        // is sorted by any other column, and the date column is marked
+                        // as the "natural order" column.
+                        $hasRunningBalance = collect($section['columns'])->contains(fn ($c) => $c['key'] === 'running_balance');
+                    @endphp
                     <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
+                        <table class="min-w-full text-sm js-report-table" data-has-running-balance="{{ $hasRunningBalance ? '1' : '0' }}">
                             <thead class="bg-slate-50">
                                 <tr>
                                     @foreach ($section['columns'] as $col)
-                                        <th class="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 {{ $col['numeric'] ? 'text-right' : 'text-left' }}">{{ $col['label'] }}</th>
+                                        <th data-col-key="{{ $col['key'] }}" data-numeric="{{ $col['numeric'] ? '1' : '0' }}"
+                                            class="js-sort-th group cursor-pointer select-none px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 {{ $col['numeric'] ? 'text-right' : 'text-left' }}">
+                                            {{ $col['label'] }}<span class="js-sort-arrow ml-1 text-slate-400"></span>
+                                        </th>
                                     @endforeach
                                 </tr>
                             </thead>
@@ -71,7 +92,20 @@
                                 @foreach ($section['rows'] as $row)
                                     <tr class="hover:bg-slate-50">
                                         @foreach ($row as $cell)
-                                            <td class="px-4 py-2.5 text-slate-800 {{ $cell['numeric'] ? 'text-right tabular-nums' : 'text-left' }}">{{ $cell['display'] }}</td>
+                                            @php
+                                                $raw = $cell['raw'] ?? null;
+                                                if (is_numeric($raw)) {
+                                                    $sortVal = (string) $raw;
+                                                } elseif ($raw instanceof \DateTimeInterface) {
+                                                    $sortVal = (string) $raw->getTimestamp();
+                                                } elseif (is_string($raw) && strtotime($raw) !== false && preg_match('/^\d{4}-\d{2}-\d{2}/', $raw)) {
+                                                    $sortVal = (string) strtotime($raw);
+                                                } else {
+                                                    $sortVal = (string) ($cell['display'] ?? '');
+                                                }
+                                            @endphp
+                                            <td data-col-key="{{ $cell['key'] ?? '' }}" data-sort-value="{{ $sortVal }}"
+                                                class="px-4 py-2.5 text-slate-800 {{ $cell['numeric'] ? 'text-right tabular-nums' : 'text-left' }}">{{ $cell['display'] }}</td>
                                         @endforeach
                                     </tr>
                                 @endforeach
@@ -93,4 +127,69 @@
             </div>
         @endforeach
     </div>
+
+    <script>
+    (function () {
+        // Client-side column sort for report tables. Reorders the rendered rows
+        // only — never changes totals or the server-computed figures. The
+        // running-balance column is meaningful only in chronological (date)
+        // order, so when the table is sorted by any other column we hide its
+        // values (showing a muted dash) and restore them when sorted by date.
+        function sortTable(table, th) {
+            const headers = Array.from(table.tHead.rows[0].cells);
+            const colIndex = headers.indexOf(th);
+            const isNumeric = th.dataset.numeric === '1';
+            const colKey = th.dataset.colKey;
+            const dir = th.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+
+            headers.forEach(h => { h.dataset.sortDir = ''; const a = h.querySelector('.js-sort-arrow'); if (a) a.textContent = ''; });
+            th.dataset.sortDir = dir;
+            const arrow = th.querySelector('.js-sort-arrow');
+            if (arrow) arrow.textContent = dir === 'asc' ? '▲' : '▼';
+
+            const tbody = table.tBodies[0];
+            const rows = Array.from(tbody.rows);
+            rows.sort((ra, rb) => {
+                const a = ra.cells[colIndex]?.dataset.sortValue ?? '';
+                const b = rb.cells[colIndex]?.dataset.sortValue ?? '';
+                let cmp;
+                if (isNumeric || (a !== '' && b !== '' && !isNaN(a) && !isNaN(b))) {
+                    cmp = parseFloat(a || 0) - parseFloat(b || 0);
+                } else {
+                    cmp = String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+                }
+                return dir === 'asc' ? cmp : -cmp;
+            });
+            rows.forEach(r => tbody.appendChild(r));
+
+            // Running-balance is only valid in date order.
+            if (table.dataset.hasRunningBalance === '1') {
+                const sortedByDate = colKey === 'datetime';
+                const rbIndex = headers.findIndex(h => h.dataset.colKey === 'running_balance');
+                if (rbIndex !== -1) {
+                    Array.from(tbody.rows).forEach(r => {
+                        const cell = r.cells[rbIndex];
+                        if (!cell) return;
+                        if (sortedByDate) {
+                            if (cell.dataset.rbDisplay !== undefined) { cell.textContent = cell.dataset.rbDisplay; cell.classList.remove('text-slate-300'); }
+                        } else {
+                            if (cell.dataset.rbDisplay === undefined) cell.dataset.rbDisplay = cell.textContent;
+                            cell.textContent = '—';
+                            cell.classList.add('text-slate-300');
+                        }
+                    });
+                    const rbHeader = headers[rbIndex];
+                    if (rbHeader) rbHeader.title = sortedByDate ? '' : 'Running balance is shown only when sorted by date';
+                }
+            }
+        }
+
+        document.querySelectorAll('.js-report-table').forEach(table => {
+            if (!table.tHead || !table.tBodies[0]) return;
+            table.querySelectorAll('.js-sort-th').forEach(th => {
+                th.addEventListener('click', () => sortTable(table, th));
+            });
+        });
+    })();
+    </script>
 </x-app-layout>

@@ -77,6 +77,10 @@ final class ScreenRenderer
                     'key'     => $column->key,
                     'display' => $this->formatter->format($row[$column->key] ?? null, $column->type),
                     'numeric' => $column->type->isNumeric(),
+                    // Unformatted value for client-side sorting (numbers/dates sort
+                    // correctly instead of by their formatted string). Screen-only;
+                    // PDF/CSV/Excel renderers are unaffected.
+                    'raw'     => $row[$column->key] ?? null,
                 ];
             }
             $rows[] = $cells;

@@ -62,6 +62,12 @@ class CashFlowDataset extends ReportDatasetService
             profiles: [P::Summary, P::Detailed, P::Ca],
             filters: [
                 Filter::for(FK::Period, true),
+                // Row-level view filters. They narrow which ledger entries are
+                // shown; the opening/in/out/closing summary stays computed over
+                // ALL cash (the true drawer math) — see build().
+                Filter::for(FK::PaymentMode),
+                Filter::for(FK::CashType),
+                Filter::for(FK::CashSource),
             ],
             formats: [F::Pdf, F::Excel, F::Csv, F::Screen],
             permissions: Perm::default(),
@@ -89,8 +95,33 @@ class CashFlowDataset extends ReportDatasetService
             ['datetime', 'type', 'source', 'amount', 'running_balance', 'payment_mode', 'description', 'operator'],
             $keys
         ));
+        // Row-level view filters. The running balance is preserved from the
+        // service (computed in chronological order over ALL cash), so a filtered
+        // view still shows each surviving row's TRUE running balance, not a
+        // recomputed subset balance. The summary section above is untouched.
+        $fMode   = $request->filter('payment_mode');
+        $fType   = $request->filter('cash_type');     // 'in' | 'out'
+        $fSource = $request->filter('cash_source');
+
         $ledgerRows = [];
         foreach ($data->rows as $r) {
+            // NULL/empty payment_mode is treated as 'cash' (defensive, matches
+            // the cash book), so the cash filter also catches legacy rows.
+            $rowMode = ($r->payment_mode === null || trim((string) $r->payment_mode) === '') ? 'cash' : $r->payment_mode;
+            if ($fMode !== null && $rowMode !== $fMode) {
+                continue;
+            }
+            // Row 'type' is "Cash In" / "Cash Out"; map the in/out filter.
+            if ($fType !== null) {
+                $rowInOut = stripos((string) $r->type, 'in') !== false ? 'in' : 'out';
+                if ($rowInOut !== $fType) {
+                    continue;
+                }
+            }
+            if ($fSource !== null && (string) $r->source !== (string) $fSource) {
+                continue;
+            }
+
             $ledgerRows[] = [
                 'datetime' => $r->occurred_at,
                 'type' => $r->type,
