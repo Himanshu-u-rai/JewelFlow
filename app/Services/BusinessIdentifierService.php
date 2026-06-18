@@ -14,6 +14,7 @@ class BusinessIdentifierService
     public const KEY_CUSTOMER = 'customer';
     public const KEY_IMPORT = 'import';
     public const KEY_INVOICE = 'invoice';
+    public const KEY_CREDIT_NOTE = 'credit_note';
     public const KEY_QUICK_BILL = 'quick_bill';
     public const KEY_DHIRAN = 'dhiran';
     public const KEY_PURCHASE = 'purchase';
@@ -184,6 +185,23 @@ class BusinessIdentifierService
         return [
             'sequence' => $sequence,
             'number'   => 'QB-' . $sequence,
+        ];
+    }
+
+    /**
+     * Credit-note identifier. Indian shops keep a distinct CN sequence space
+     * separate from invoices (GSTR-1 credit-note section). Mirrors the other
+     * next*Identifier methods; race-safe via the shared nextCounter lock.
+     *
+     * @return array{sequence:int, number:string}
+     */
+    public static function nextCreditNoteIdentifier(int $shopId): array
+    {
+        $sequence = self::nextCounter($shopId, self::KEY_CREDIT_NOTE);
+
+        return [
+            'sequence' => $sequence,
+            'number'   => 'CN-' . $sequence,
         ];
     }
 

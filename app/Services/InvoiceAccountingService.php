@@ -384,7 +384,7 @@ class InvoiceAccountingService
         }
     }
 
-    private static function assertShopLockForDate(int $shopId, string $date): void
+    public static function assertShopLockForDate(int $shopId, string $date): void
     {
         $lockDate = DB::table('shop_rules')
             ->where('shop_id', $shopId)
