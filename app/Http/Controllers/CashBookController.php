@@ -55,9 +55,9 @@ class CashBookController extends Controller
             }
         }
 
-        // Search
+        // Search — cap the term defensively (feeds an unbounded ilike).
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = mb_substr((string) $request->input('search'), 0, 100);
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'ilike', "%{$search}%")
                   ->orWhere('source_type', 'ilike', "%{$search}%");

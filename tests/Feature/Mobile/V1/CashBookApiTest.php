@@ -162,6 +162,30 @@ class CashBookApiTest extends TestCase
         ])->assertStatus(403);
     }
 
+    public function test_manual_entry_lands_in_callers_shop_only(): void
+    {
+        [$userA, $shopA] = $this->createManufacturerTenant();
+        [, $shopB]       = $this->createManufacturerTenant();
+        $this->grant($userA, 'cash.view', 'cash.create');
+        Sanctum::actingAs($userA);
+        TenantContext::set((int) $shopA->id);
+
+        // shop_id comes from the authenticated user, never the request — a
+        // spoofed shop_id in the body must be ignored.
+        $this->withHeaders($this->idem('iso'))->postJson('/api/mobile/v1/cashbook', [
+            'type' => 'in', 'amount' => 700, 'source_type' => 'other_income',
+            'shop_id' => $shopB->id, // spoof attempt
+            'user_id' => 999999,     // spoof attempt
+        ])->assertStatus(201);
+
+        // The row belongs to shop A, not shop B.
+        $this->assertSame(1, CashTransaction::withoutGlobalScopes()->where('shop_id', $shopA->id)->count());
+        $this->assertSame(0, CashTransaction::withoutGlobalScopes()->where('shop_id', $shopB->id)->count());
+        // And it's attributed to the real caller, not the spoofed user_id.
+        $row = CashTransaction::withoutGlobalScopes()->where('shop_id', $shopA->id)->first();
+        $this->assertSame((int) $userA->id, (int) $row->user_id);
+    }
+
     public function test_index_is_shop_scoped(): void
     {
         [$userA, $shopA] = $this->createManufacturerTenant();
