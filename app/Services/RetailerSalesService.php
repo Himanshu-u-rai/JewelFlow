@@ -467,11 +467,14 @@ class RetailerSalesService
                     ->increment('usage_count');
             }
 
-            // Reserve items so they can't be sold while user fills EMI form
-            foreach ($items as $item) {
-                $item->status = 'reserved';
-                $item->save();
-            }
+            // Items intentionally stay 'in_stock' while the customer fills the EMI
+            // form. The draft invoice (STATUS_DRAFT, linked to these items) records
+            // the intent; the final EMI checkout (InstallmentService::…) requires
+            // the items to still be 'in_stock' and is the single place that moves
+            // them to 'sold'. A prior "reserve" write set status='reserved', but
+            // that value is not in the items_status_check constraint (so it 500'd)
+            // and the finalize step rejects anything not 'in_stock' — the two were
+            // incompatible. Leaving items in_stock is the correct, working flow.
 
             \App\Models\AuditLog::create([
                 'shop_id'    => $shopId,
