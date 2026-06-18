@@ -219,24 +219,24 @@ class SalesService
 
                 InvoicePayment::record($attrs);
 
-                // Accumulate cash-equivalent for CashTransaction
-                if (in_array($mode, ['cash', 'upi', 'bank', 'other'])) {
+                // Record cash inflow per money mode (one row per tender) so the cash
+                // book can compute trustworthy per-mode balances. Old metal is NOT
+                // money and must never produce a cash row — it flows to the metal
+                // ledger above. Mirrors RetailerSalesService.
+                if (in_array($mode, ['cash', 'upi', 'bank', 'card', 'wallet', 'other'])) {
                     $cashTotal += $amount;
+                    CashTransaction::record([
+                        'shop_id'      => $shopId,
+                        'user_id'      => auth()->id(),
+                        'type'         => 'in',
+                        'amount'       => $amount,
+                        'source_type'  => 'invoice',
+                        'source_id'    => $invoice->id,
+                        'invoice_id'   => $invoice->id,
+                        'payment_mode' => $mode,
+                        'description'  => "Sale ({$mode}) - Invoice {$invoice->invoice_number}",
+                    ]);
                 }
-            }
-
-            // Record cash inflow (money the shop received)
-            if ($cashTotal > 0) {
-                CashTransaction::record([
-                    'shop_id'     => $shopId,
-                    'user_id'     => auth()->id(),
-                    'type'        => 'in',
-                    'amount'      => $cashTotal,
-                    'source_type' => 'invoice',
-                    'source_id'   => $invoice->id,
-                    'invoice_id'  => $invoice->id,
-                    'description' => "Sale - Invoice {$invoice->invoice_number}",
-                ]);
             }
 
             // Validate payment total covers invoice (1 rupee tolerance for rounding)
