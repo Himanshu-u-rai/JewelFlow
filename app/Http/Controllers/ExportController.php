@@ -40,6 +40,15 @@ class ExportController extends Controller
         'stock-purchases' => 'Stock Purchases',
         'karigars' => 'Karigars',
         'karigar-invoices' => 'Karigar Invoices',
+        'job-orders' => 'Job Orders',
+        'returns' => 'Returns',
+        'credit-notes' => 'Credit Notes',
+        'repairs' => 'Repairs',
+        'installment-plans' => 'EMI Plans',
+        'scheme-enrollments' => 'Scheme Enrolments',
+        'store-credit' => 'Store Credit',
+        'loyalty' => 'Loyalty Points',
+        'old-gold' => 'Old Gold',
     ];
 
     public function index()

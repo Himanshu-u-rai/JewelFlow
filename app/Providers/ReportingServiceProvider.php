@@ -7,15 +7,24 @@ use App\Services\Reporting\ExportSizeRouter;
 use App\Services\Reporting\Render\ChromiumPdfService;
 use App\Services\Reporting\Render\HtmlToPdf;
 use App\Services\Reporting\Reports\CreditNoteRegisterDataset;
+use App\Services\Reporting\Reports\CreditNotesDataset;
 use App\Services\Reporting\Reports\CustomersDataset;
 use App\Services\Reporting\Reports\DailySummaryDataset;
 use App\Services\Reporting\Reports\DayBookDataset;
 use App\Services\Reporting\Reports\GoldBalancesDataset;
+use App\Services\Reporting\Reports\InstallmentPlansDataset;
 use App\Services\Reporting\Reports\InventoryItemsDataset;
+use App\Services\Reporting\Reports\JobOrdersDataset;
 use App\Services\Reporting\Reports\KarigarInvoicesDataset;
 use App\Services\Reporting\Reports\KarigarsDataset;
+use App\Services\Reporting\Reports\LoyaltyDataset;
+use App\Services\Reporting\Reports\OldGoldDataset;
 use App\Services\Reporting\Reports\ProductsDataset;
+use App\Services\Reporting\Reports\RepairsDataset;
+use App\Services\Reporting\Reports\ReturnsDataset;
+use App\Services\Reporting\Reports\SchemeEnrollmentsDataset;
 use App\Services\Reporting\Reports\StockPurchasesDataset;
+use App\Services\Reporting\Reports\StoreCreditDataset;
 use App\Services\Reporting\Reports\GstReportDataset;
 use App\Services\Reporting\Reports\Gstr1Dataset;
 use App\Services\Reporting\Reports\CashFlowDataset;
@@ -129,12 +138,23 @@ class ReportingServiceProvider extends ServiceProvider
         // items/purchases/karigar) — same data, now through the canonical
         // pipeline (CSV/Excel/PDF, sensitive-column gating, async-for-large).
         foreach ([
+            // Phase 1
             CustomersDataset::class,
             ProductsDataset::class,
             InventoryItemsDataset::class,
             StockPurchasesDataset::class,
             KarigarsDataset::class,
             KarigarInvoicesDataset::class,
+            // Phase 2
+            JobOrdersDataset::class,
+            ReturnsDataset::class,
+            CreditNotesDataset::class,
+            RepairsDataset::class,
+            InstallmentPlansDataset::class,
+            SchemeEnrollmentsDataset::class,
+            StoreCreditDataset::class,
+            LoyaltyDataset::class,
+            OldGoldDataset::class,
         ] as $dataset) {
             if (! $registry->has($dataset::KEY)) {
                 $registry->register($dataset::KEY, $dataset);

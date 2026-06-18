@@ -26,6 +26,21 @@
                 'Karigar & workers' => [
                     ['karigars', 'Karigars', 'Worker list with money owed (opening + invoiced − paid).'],
                     ['karigar-invoices', 'Karigar invoices', 'Labour/work invoices — pieces, making, tax, paid vs outstanding.'],
+                    ['job-orders', 'Job orders', 'Gold issued to karigars — issued vs returned fine weight, wastage, status.'],
+                ],
+                'Returns & service' => [
+                    ['returns', 'Returns', 'Customer returns — type, status, original invoice, refund total.'],
+                    ['credit-notes', 'Credit notes', 'Issued credit notes with amounts and the original invoice.'],
+                    ['repairs', 'Repairs', 'Repair jobs taken in — item, weight, estimated vs final cost, status.'],
+                ],
+                'Schemes & EMI' => [
+                    ['installment-plans', 'EMI plans', 'Customer instalment plans — paid, remaining, next due date.'],
+                    ['scheme-enrollments', 'Scheme enrolments', 'Savings-scheme participation — paid in, redeemed, maturity.'],
+                ],
+                'Customer balances' => [
+                    ['store-credit', 'Store credit', 'Store-credit ledger — credit issued and consumed per customer.'],
+                    ['loyalty', 'Loyalty points', 'Points ledger — earn and redeem with running balance.'],
+                    ['old-gold', 'Old gold', 'Customers\' own gold received / applied (fine-weight ledger).'],
                 ],
             ];
         @endphp

@@ -31,7 +31,13 @@ class DataExportsTest extends TestCase
     use RefreshDatabase;
     use CreatesTestTenant;
 
-    private const KEYS = ['customers', 'products', 'inventory-items', 'stock-purchases', 'karigars', 'karigar-invoices'];
+    private const KEYS = [
+        // Phase 1
+        'customers', 'products', 'inventory-items', 'stock-purchases', 'karigars', 'karigar-invoices',
+        // Phase 2
+        'job-orders', 'returns', 'credit-notes', 'repairs', 'installment-plans',
+        'scheme-enrollments', 'store-credit', 'loyalty', 'old-gold',
+    ];
 
     protected function setUp(): void
     {
@@ -188,7 +194,9 @@ class DataExportsTest extends TestCase
             ->assertSee('Data Exports')
             ->assertSee('Export everything')
             ->assertSee(route('reporting.export.panel', ['report' => 'customers']))
-            ->assertSee(route('reporting.export.panel', ['report' => 'karigar-invoices']));
+            ->assertSee(route('reporting.export.panel', ['report' => 'karigar-invoices']))
+            ->assertSee(route('reporting.export.panel', ['report' => 'returns']))
+            ->assertSee(route('reporting.export.panel', ['report' => 'old-gold']));
     }
 
     public function test_backup_downloads_multisheet_xlsx(): void
