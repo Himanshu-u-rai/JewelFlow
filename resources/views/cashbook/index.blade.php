@@ -9,10 +9,70 @@
         @php
             $todayNet = $stats['today_in'] - $stats['today_out'];
             $monthNet = $stats['month_in'] - $stats['month_out'];
-            $hasActiveFilters = request()->hasAny(['search', 'type', 'from_date', 'to_date']);
+            $hasActiveFilters = request()->hasAny(['search', 'type', 'from_date', 'payment_mode', 'to_date']);
+
+            // Money on Hand window label (matches the per-mode panel's date range).
+            $moneyRangeLabel = (request('from_date') || request('to_date'))
+                ? trim((request('from_date') ?: 'start') . ' to ' . (request('to_date') ?: 'today'))
+                : 'This month';
+
+            // Plain-English labels for each money mode.
+            $modeLabels = [
+                'cash' => 'Cash in hand', 'upi' => 'UPI', 'bank' => 'Bank',
+                'card' => 'Card', 'wallet' => 'Wallet', 'other' => 'Other',
+            ];
+            $cashRow = $perMode->cash();
+            $otherModes = $perMode->modes->reject(fn ($m) => $m->mode === 'cash');
         @endphp
 
         <div class="cb-flow">
+            {{-- ===== Money on Hand (per-mode balances) ===== --}}
+            <section class="cb-moh" aria-label="Money on hand">
+                <div class="cb-moh-head">
+                    <h2 class="cb-moh-title">Money on Hand</h2>
+                    <span class="cb-moh-range">{{ $moneyRangeLabel }}</span>
+                </div>
+
+                <div class="cb-moh-grid">
+                    {{-- Cash drawer — prominent --}}
+                    <div class="cb-moh-cash">
+                        <p class="cb-moh-cash-label">Cash in hand</p>
+                        <p class="cb-moh-cash-value">₹{{ number_format($cashRow->closing, 2) }}</p>
+                        <p class="cb-moh-cash-sub">
+                            Opening ₹{{ number_format($cashRow->opening, 2) }}
+                            · In ₹{{ number_format($cashRow->moneyIn, 2) }}
+                            · Out ₹{{ number_format($cashRow->moneyOut, 2) }}
+                        </p>
+                        <p class="cb-moh-cash-hint">Count your drawer against this figure.</p>
+                    </div>
+
+                    {{-- Other modes --}}
+                    <div class="cb-moh-modes">
+                        @forelse($otherModes as $m)
+                            <div class="cb-moh-mode">
+                                <p class="cb-moh-mode-label">{{ $modeLabels[$m->mode] ?? ucfirst($m->mode) }}</p>
+                                <p class="cb-moh-mode-value">₹{{ number_format($m->closing, 2) }}</p>
+                                <p class="cb-moh-mode-sub">
+                                    Opening ₹{{ number_format($m->opening, 2) }}
+                                    · In ₹{{ number_format($m->moneyIn, 2) }}
+                                    · Out ₹{{ number_format($m->moneyOut, 2) }}
+                                </p>
+                            </div>
+                        @empty
+                            <div class="cb-moh-mode cb-moh-mode--empty">
+                                <p class="cb-moh-mode-sub">No UPI, bank, or card money in this period.</p>
+                            </div>
+                        @endforelse
+                    </div>
+
+                    {{-- Total (separate, does not hide cash) --}}
+                    <div class="cb-moh-total">
+                        <p class="cb-moh-total-label">Total money</p>
+                        <p class="cb-moh-total-value">₹{{ number_format($perMode->totalClosing, 2) }}</p>
+                        <p class="cb-moh-total-sub">Cash + all other modes</p>
+                    </div>
+                </div>
+            </section>
             {{-- Controls toolbar (entry count + actions) --}}
             <div class="cb-toolbar">
                 <span class="cb-toolbar-label">{{ number_format($transactions->total()) }} {{ Str::plural('entry', $transactions->total()) }}</span>
@@ -63,8 +123,17 @@
                         <span class="cb-filter-label">Type</span>
                         <select name="type" class="cb-input">
                             <option value="">All Types</option>
-                            <option value="in"  {{ request('type') === 'in'  ? 'selected' : '' }}>Cash In</option>
-                            <option value="out" {{ request('type') === 'out' ? 'selected' : '' }}>Cash Out</option>
+                            <option value="in"  {{ request('type') === 'in'  ? 'selected' : '' }}>Money In</option>
+                            <option value="out" {{ request('type') === 'out' ? 'selected' : '' }}>Money Out</option>
+                        </select>
+                    </div>
+                    <div class="cb-filter-field">
+                        <span class="cb-filter-label">Mode</span>
+                        <select name="payment_mode" class="cb-input">
+                            <option value="">All Modes</option>
+                            @foreach(['cash' => 'Cash', 'upi' => 'UPI', 'bank' => 'Bank', 'card' => 'Card', 'wallet' => 'Wallet', 'other' => 'Other'] as $val => $label)
+                                <option value="{{ $val }}" {{ request('payment_mode') === $val ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="cb-filter-field">
@@ -114,11 +183,7 @@
                                     <td class="cb-mono">{{ $tx->invoice?->invoice_number ?? '-' }}</td>
                                     <td class="cb-desc">{{ $tx->description ?: '-' }}</td>
                                     <td>
-                                        @if($tx->payment_mode)
-                                            <span class="cb-mode">{{ ucfirst($tx->payment_mode) }}</span>
-                                        @else
-                                            <span class="cb-muted">-</span>
-                                        @endif
+                                        <span class="cb-mode">{{ ucfirst($tx->payment_mode ?: 'cash') }}</span>
                                     </td>
                                     <td class="text-right">
                                         <span class="cb-amount {{ $tx->type === 'in' ? 'cb-amount--in' : 'cb-amount--out' }}">
@@ -171,7 +236,7 @@
                                 </div>
                                 <div>
                                     <dt>Mode</dt>
-                                    <dd>{{ $tx->payment_mode ? ucfirst($tx->payment_mode) : '-' }}</dd>
+                                    <dd>{{ ucfirst($tx->payment_mode ?: 'cash') }}</dd>
                                 </div>
                                 <div>
                                     <dt>Description</dt>
@@ -290,6 +355,59 @@
         .cb-snap-value--out { color: var(--cb-neg); }
         .cb-snap-value--pos { color: var(--cb-pos); }
         .cb-snap-value--neg { color: var(--cb-neg); }
+
+        /* ===== Money on Hand (per-mode balances) ===== */
+        .cb-moh {
+            border: 1px solid var(--cb-border); border-radius: 16px;
+            background: #fff; box-shadow: var(--cb-shadow); overflow: hidden;
+        }
+        .cb-moh-head {
+            display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+            padding: 16px 18px; border-bottom: 1px solid var(--cb-border-soft);
+        }
+        .cb-moh-title { margin: 0; color: var(--cb-ink); font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+        .cb-moh-range { color: var(--cb-muted); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+        .cb-moh-grid {
+            display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) minmax(0, .9fr);
+            gap: 0;
+        }
+        /* Cash drawer — prominent (teal-tinted, larger figure) */
+        .cb-moh-cash {
+            padding: 18px 20px; border-right: 1px solid var(--cb-border-soft);
+            background: linear-gradient(180deg, rgba(13,148,136,.06), rgba(13,148,136,.02));
+        }
+        .cb-moh-cash-label { margin: 0 0 6px; color: var(--cb-accent-deep); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+        .cb-moh-cash-value { margin: 0; color: var(--cb-ink); font-size: 30px; font-weight: 800; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+        .cb-moh-cash-sub { margin: 8px 0 0; color: var(--cb-ink-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+        .cb-moh-cash-hint { margin: 6px 0 0; color: var(--cb-muted); font-size: 11.5px; }
+        /* Other modes grid */
+        .cb-moh-modes {
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0;
+            border-right: 1px solid var(--cb-border-soft);
+        }
+        .cb-moh-mode {
+            padding: 14px 16px; border-right: 1px solid var(--cb-border-soft); border-bottom: 1px solid var(--cb-border-soft);
+        }
+        .cb-moh-mode:nth-child(2n) { border-right: 0; }
+        .cb-moh-mode--empty { grid-column: 1 / -1; border: 0; display: flex; align-items: center; }
+        .cb-moh-mode-label { margin: 0 0 4px; color: var(--cb-muted); font-size: 12px; font-weight: 600; }
+        .cb-moh-mode-value { margin: 0; color: var(--cb-ink); font-size: 18px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+        .cb-moh-mode-sub { margin: 5px 0 0; color: var(--cb-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+        /* Total — separate, calm */
+        .cb-moh-total { padding: 18px 20px; display: flex; flex-direction: column; justify-content: center; }
+        .cb-moh-total-label { margin: 0 0 6px; color: var(--cb-muted); font-size: 12px; font-weight: 600; }
+        .cb-moh-total-value { margin: 0; color: var(--cb-ink); font-size: 24px; font-weight: 800; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+        .cb-moh-total-sub { margin: 6px 0 0; color: var(--cb-muted); font-size: 11.5px; }
+
+        @media (max-width: 900px) {
+            .cb-moh-grid { grid-template-columns: 1fr; }
+            .cb-moh-cash { border-right: 0; border-bottom: 1px solid var(--cb-border-soft); }
+            .cb-moh-modes { border-right: 0; border-bottom: 1px solid var(--cb-border-soft); }
+        }
+        @media (max-width: 520px) {
+            .cb-moh-modes { grid-template-columns: 1fr; }
+            .cb-moh-mode { border-right: 0; }
+        }
 
         /* Card wrapper (filter + table) */
         .cb-card {

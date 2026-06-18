@@ -4,31 +4,54 @@ namespace App\Http\Controllers;
 
 use App\Models\CashTransaction;
 use App\Models\AuditLog;
+use App\Reporting\LedgerService;
+use App\Reporting\ReportPeriod;
 use App\Services\SubscriptionGateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CashBookController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, LedgerService $ledger)
     {
         $shopId = auth()->user()->shop_id;
+
+        $fromDate = $request->filled('from_date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->from_date)
+            ? $request->from_date : null;
+        $toDate = $request->filled('to_date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->to_date)
+            ? $request->to_date : null;
+
+        $modeFilter = $request->filled('payment_mode')
+            && in_array($request->payment_mode, ['cash', 'upi', 'bank', 'card', 'wallet', 'other'], true)
+            ? $request->payment_mode : null;
 
         $query = CashTransaction::where('shop_id', $shopId)
             ->with('invoice')
             ->orderBy('created_at', 'desc');
 
-        // Date filtering — validate format before use.
-        if ($request->filled('from_date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->from_date)) {
-            $query->whereDate('created_at', '>=', $request->from_date);
+        // Date filtering — validated above.
+        if ($fromDate) {
+            $query->whereDate('created_at', '>=', $fromDate);
         }
-        if ($request->filled('to_date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', $request->to_date)) {
-            $query->whereDate('created_at', '<=', $request->to_date);
+        if ($toDate) {
+            $query->whereDate('created_at', '<=', $toDate);
         }
 
         // Type filtering
         if ($request->filled('type') && in_array($request->type, ['in', 'out'])) {
             $query->where('type', $request->type);
+        }
+
+        // Payment-mode filtering (NULL treated as cash so the cash filter still
+        // catches legacy/untagged rows).
+        if ($modeFilter) {
+            if ($modeFilter === 'cash') {
+                $query->where(function ($q) {
+                    $q->where('payment_mode', 'cash')->orWhereNull('payment_mode');
+                });
+            } else {
+                $query->where('payment_mode', $modeFilter);
+            }
         }
 
         // Search
@@ -41,6 +64,12 @@ class CashBookController extends Controller
         }
 
         $transactions = $query->paginate(25)->withQueryString();
+
+        // Per-mode "Money on Hand" over the same date window as the table,
+        // via the canonical reporting balance engine (LedgerService) — computed
+        // from immutable cash_transactions, never stored. When no dates are
+        // filtered, defaults to the current month (matches the month framing).
+        $perMode = $ledger->cashFlowByMode($shopId, ReportPeriod::range($fromDate, $toDate));
 
         // Stats — 2 aggregate queries instead of 4.
         $today = now()->toDateString();
@@ -69,7 +98,7 @@ class CashBookController extends Controller
             'month_out' => (float) ($monthStats->month_out ?? 0),
         ];
 
-        return view('cashbook.index', compact('transactions', 'stats'));
+        return view('cashbook.index', compact('transactions', 'stats', 'perMode', 'modeFilter'));
     }
 
     public function create()

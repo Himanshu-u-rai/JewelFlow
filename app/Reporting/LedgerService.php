@@ -211,6 +211,78 @@ class LedgerService
         );
     }
 
+    /**
+     * Per-payment-mode cash flow over a period. Same opening + in − out =
+     * closing identity as cashFlow(), but split by money mode so the cash book
+     * can show the physical drawer (cash) separately from UPI / bank / card /
+     * wallet / other. Computed from immutable cash_transactions; never stored.
+     *
+     * Historical NULL payment_mode is treated as 'cash' defensively via
+     * COALESCE — the stored NULL stays truthful. Old gold/silver never appears
+     * (those tenders never create a cash_transactions row).
+     */
+    public function cashFlowByMode(int $shopId, ReportPeriod $period): \App\Reporting\Data\PerModeCashFlowData
+    {
+        [$start, $end] = $period->bounds();
+        $modeExpr = "COALESCE(NULLIF(TRIM(payment_mode), ''), 'cash')";
+
+        // Opening per mode = net (in − out) before the period start.
+        $opening = DB::table('cash_transactions')
+            ->where('shop_id', $shopId)
+            ->where('created_at', '<', $start)
+            ->selectRaw("$modeExpr as mode, COALESCE(SUM(CASE WHEN type = 'in' THEN amount ELSE -amount END), 0) as net")
+            ->groupBy(DB::raw($modeExpr))
+            ->pluck('net', 'mode');
+
+        // In / out per mode within the period.
+        $within = DB::table('cash_transactions')
+            ->where('shop_id', $shopId)
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw("$modeExpr as mode")
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'in'  THEN amount ELSE 0 END), 0) as money_in")
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'out' THEN amount ELSE 0 END), 0) as money_out")
+            ->groupBy(DB::raw($modeExpr))
+            ->get()
+            ->keyBy('mode');
+
+        $allModes = collect($opening->keys())
+            ->merge($within->keys())
+            ->unique()
+            ->sort()
+            ->values();
+
+        $modes = collect();
+        $totalOpening = $totalIn = $totalOut = $totalClosing = 0.0;
+
+        foreach ($allModes as $mode) {
+            $open = round((float) ($opening[$mode] ?? 0), 2);
+            $in   = round((float) ($within[$mode]->money_in ?? 0), 2);
+            $out  = round((float) ($within[$mode]->money_out ?? 0), 2);
+            $close = round($open + $in - $out, 2);
+
+            $modes->push((object) [
+                'mode'     => $mode,
+                'opening'  => $open,
+                'moneyIn'  => $in,
+                'moneyOut' => $out,
+                'closing'  => $close,
+            ]);
+
+            $totalOpening += $open;
+            $totalIn      += $in;
+            $totalOut     += $out;
+            $totalClosing += $close;
+        }
+
+        return new \App\Reporting\Data\PerModeCashFlowData(
+            modes: $modes,
+            totalOpening: round($totalOpening, 2),
+            totalIn: round($totalIn, 2),
+            totalOut: round($totalOut, 2),
+            totalClosing: round($totalClosing, 2),
+        );
+    }
+
     private function event($occurredAt, string $type, ?string $reference, ?string $party, float $amount, string $direction, string $source): object
     {
         return (object) [
