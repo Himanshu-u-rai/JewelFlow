@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\Mobile\V1\KarigarController;
 use App\Http\Controllers\Api\Mobile\V1\ReferencePriceController;
 use App\Http\Controllers\Api\Mobile\V1\RegistryController;
 use App\Http\Controllers\Api\Mobile\V1\ReturnController;
+use App\Http\Controllers\Api\Mobile\V1\CashBookController;
 use App\Http\Controllers\Api\Mobile\V1\DevicePushTokenController;
 use App\Http\Controllers\Api\Mobile\V1\NotificationController;
 use App\Http\Controllers\Api\Mobile\V1\SessionController;
@@ -152,8 +153,24 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             ->middleware('can:settings.view')
             ->name('mobile.v1.reference_prices.index');
 
+        // ─── Cash Book (Phase 4) — read endpoints ──────────────────────
+        Route::get('/cashbook', [CashBookController::class, 'index'])
+            ->middleware('can:cash.view')
+            ->name('mobile.v1.cashbook.index');
+        Route::get('/cashbook/drawer-check', [CashBookController::class, 'drawerContext'])
+            ->middleware('can:cash.view')
+            ->name('mobile.v1.cashbook.drawer_context');
+
         // ─── Mutation routes (idempotency-protected) ───────────────────
         Route::middleware(['mobile.idempotency'])->group(function () {
+
+            // Cash Book (Phase 4) — manual entry + drawer check
+            Route::post('/cashbook', [CashBookController::class, 'store'])
+                ->middleware('can:cash.create')
+                ->name('mobile.v1.cashbook.store');
+            Route::post('/cashbook/drawer-check', [CashBookController::class, 'storeDrawerCheck'])
+                ->middleware('can:cash.create')
+                ->name('mobile.v1.cashbook.drawer_check');
 
             // M7 — session mutations
             Route::post('/sessions/lock', [SessionController::class, 'lock'])
