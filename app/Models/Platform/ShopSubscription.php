@@ -57,4 +57,20 @@ class ShopSubscription extends Model
     {
         return $this->hasMany(SubscriptionEvent::class);
     }
+
+    /**
+     * Whole calendar days from today until ends_at (signed: negative = overdue,
+     * 0 = ends today). Compared start-of-day to start-of-day so the result is an
+     * integer day count, not a fractional value from the current time-of-day
+     * (Carbon 3's diffInDays returns a float). Returns null if there's no end date.
+     */
+    public function daysRemaining(): ?int
+    {
+        if (! $this->ends_at) {
+            return null;
+        }
+
+        return (int) \Carbon\CarbonImmutable::now()->startOfDay()
+            ->diffInDays($this->ends_at->copy()->startOfDay(), false);
+    }
 }

@@ -280,9 +280,7 @@ class SettingsController extends Controller
                 ->first();
 
             if ($sub) {
-                $daysRemaining = $sub->ends_at
-                    ? \Carbon\Carbon::now()->diffInDays($sub->ends_at, false)
-                    : null;
+                $daysRemaining = $sub->daysRemaining();
                 $isExpired = $daysRemaining !== null && $daysRemaining < 0;
                 $isInGrace = $isExpired
                     && $sub->grace_ends_at

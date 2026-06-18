@@ -31,11 +31,15 @@ class SubscriptionManagementController extends Controller
 
         $subscriptions = $query->latest('shop_subscriptions.created_at')->paginate(25)->withQueryString();
 
-        // Calculate computed properties
+        // Calculate computed properties. days_remaining is whole calendar days
+        // (start-of-day to start-of-day), not a fractional time-of-day diff.
         $subscriptions->getCollection()->transform(function ($sub) {
-            $sub->days_remaining = Carbon::now()->diffInDays($sub->ends_at, false);
-            $sub->is_overdue = $sub->days_remaining < 0;
-            $sub->is_trial_ending = $sub->status === 'trial' && $sub->days_remaining >= 0 && $sub->days_remaining <= 3;
+            $sub->days_remaining = $sub->daysRemaining();
+            $sub->is_overdue = $sub->days_remaining !== null && $sub->days_remaining < 0;
+            $sub->is_trial_ending = $sub->status === 'trial'
+                && $sub->days_remaining !== null
+                && $sub->days_remaining >= 0
+                && $sub->days_remaining <= 3;
             return $sub;
         });
 

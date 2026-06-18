@@ -777,7 +777,13 @@
                     </div>
 
                     @if($daysRemaining !== null && $daysRemaining >= 0)
-                        <p class="sub-health-copy">About <strong style="color:var(--sub-text);">{{ $daysRemaining }}</strong> days remain before your next renewal date.</p>
+                        <p class="sub-health-copy">
+                            @if($daysRemaining === 0)
+                                Your next renewal is <strong style="color:var(--sub-text);">today</strong>.
+                            @else
+                                <strong style="color:var(--sub-text);">{{ $daysRemaining }}</strong> {{ \Illuminate\Support\Str::plural('day', $daysRemaining) }} left before your next renewal.
+                            @endif
+                        </p>
                         <div class="sub-progress-track">
                             <div class="sub-progress-fill" style="width: {{ $usedPercent }}%;"></div>
                         </div>

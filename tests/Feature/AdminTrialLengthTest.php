@@ -152,6 +152,38 @@ class AdminTrialLengthTest extends TestCase
         $this->assertSame($sub->id, $events->first()->shop_subscription_id);
     }
 
+    // ── daysRemaining() accessor (renewal-copy bug fix) ──────────────────
+
+    public function test_days_remaining_is_whole_integer_not_a_float(): void
+    {
+        $sub = $this->startTrial();
+        // ends in 7 calendar days.
+        $sub->forceFill(['ends_at' => Carbon::now()->addDays(7)->toDateString()])->save();
+
+        $days = $sub->refresh()->daysRemaining();
+
+        $this->assertIsInt($days);
+        $this->assertSame(7, $days); // not 6.33…
+    }
+
+    public function test_days_remaining_zero_on_last_day_and_negative_when_overdue(): void
+    {
+        $sub = $this->startTrial();
+
+        $sub->forceFill(['ends_at' => Carbon::now()->toDateString()])->save();
+        $this->assertSame(0, $sub->refresh()->daysRemaining());
+
+        $sub->forceFill(['ends_at' => Carbon::now()->subDays(3)->toDateString()])->save();
+        $this->assertSame(-3, $sub->refresh()->daysRemaining());
+    }
+
+    public function test_days_remaining_null_without_end_date(): void
+    {
+        $sub = $this->startTrial();
+        $sub->forceFill(['ends_at' => null])->save();
+        $this->assertNull($sub->refresh()->daysRemaining());
+    }
+
     public function test_non_trial_subscriptions_are_untouched(): void
     {
         $sub = $this->startTrial();
