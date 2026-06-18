@@ -284,6 +284,7 @@ class RepairController extends Controller
                 'source_type'      => 'invoice',
                 'source_id'        => $invoice->id,
                 'invoice_id'       => $invoice->id,
+                'payment_mode'     => 'cash',
                 'description'      => 'Repair delivery - ' . $repair->item_description,
                 'reference_type'   => 'invoice',
                 'reference_id'     => $invoice->id,

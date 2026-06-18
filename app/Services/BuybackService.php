@@ -50,6 +50,7 @@ class BuybackService
                 'amount' => $cashPaid,
                 'source_type' => 'buyback',
                 'source_id' => $lot->id,
+                'payment_mode' => 'cash',
                 'description' => "Gold Buyback - Lot {$lot->lot_number}",
             ]);
 
