@@ -136,6 +136,52 @@ class CashTransactionModeTest extends TestCase
         $this->assertSame(0, $rows->where('payment_mode', 'old_gold')->count());
     }
 
+    /** A cash refund (full return settled to cash) records an out row tagged payment_mode=cash. */
+    public function test_cash_refund_records_cash_mode(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $lot = $this->createMetalLot($shop->id);
+        $customer = $this->createCustomer($shop->id);
+        $item = $this->createItem($shop->id, $lot->id);
+
+        $total = $this->previewTotal($user, $item, $customer);
+
+        $sell = $this->actingAs($user)->postJson('/pos/sell', [
+            'customer_id' => $customer->id,
+            'item_id'     => $item->id,
+            'gold_rate'   => 6000,
+            'making'      => 500,
+            'stone'       => 200,
+            'discount'    => 0,
+            'round_off'   => 0,
+            'payments'    => [['mode' => 'cash', 'amount' => $total]],
+        ])->assertOk();
+
+        TenantContext::set($shop->id);
+        $invoice = Invoice::find($sell->json('invoice_id'));
+
+        // Drive the service directly: createFullReturn fires the cash refund
+        // immediately (no approval gate), settled to cash.
+        $this->actingAs($user);
+        app(\App\Services\Returns\ReturnService::class)->createFullReturn(
+            $invoice,
+            'Customer returned item for testing',
+            $user->id,
+            true, // skipPolicy
+            \App\Services\Returns\ReturnService::REFUND_SETTLEMENT_CASH,
+        );
+
+        TenantContext::set($shop->id);
+        $refundRows = CashTransaction::where('shop_id', $shop->id)
+            ->where('type', 'out')
+            ->where('source_type', 'credit_note')
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $refundRows->count(), 'a cash refund row should exist');
+        $this->assertSame(0, $refundRows->whereNull('payment_mode')->count(), 'refund cash rows must have a mode');
+        $this->assertSame($refundRows->count(), $refundRows->where('payment_mode', 'cash')->count());
+    }
+
     private function previewTotal($user, $item, $customer): float
     {
         $preview = $this->actingAs($user)->postJson('/api/price-preview', [

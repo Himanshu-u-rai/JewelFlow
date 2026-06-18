@@ -255,6 +255,7 @@ class InvoiceAccountingService
                 'source_type' => 'invoice_reversal',
                 'source_id' => $reversal->id,
                 'invoice_id' => $reversal->id,
+                'payment_mode' => 'cash',
                 'description' => "Reversal for {$invoice->invoice_number}",
                 'reference_type' => 'invoice',
                 'reference_id' => $reversal->id,

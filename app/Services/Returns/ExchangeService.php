@@ -154,6 +154,7 @@ class ExchangeService
                     'source_type'    => 'exchange_order',
                     'source_id'      => $exchange->id,
                     'invoice_id'     => $newInvoice->id,
+                    'payment_mode'   => 'cash',
                     'description'    => "Exchange #{$exchange->id}: net settlement — return {$returnOrder->creditNote?->credit_note_number} ↔ new sale {$newInvoice->invoice_number}",
                     'reference_type' => 'exchange_order',
                     'reference_id'   => $exchange->id,
