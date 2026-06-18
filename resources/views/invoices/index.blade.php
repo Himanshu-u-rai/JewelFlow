@@ -1,13 +1,32 @@
 <x-app-layout>
     @php
-        $hasInvoiceFilters = request()->hasAny(['search', 'from_date', 'to_date']);
-        $activeInvoiceFilterCount = collect(['search', 'from_date', 'to_date'])
+        $invoiceFilterKeys = ['search', 'from_date', 'to_date', 'status', 'payment_mode'];
+        $invoiceStatusOptions = [
+            \App\Models\Invoice::STATUS_FINALIZED => 'Finalized',
+            \App\Models\Invoice::STATUS_DRAFT => 'Draft',
+            \App\Models\Invoice::STATUS_CANCELLED => 'Cancelled',
+        ];
+        $invoicePaymentModeOptions = [
+            \App\Models\InvoicePayment::MODE_CASH => 'Cash',
+            \App\Models\InvoicePayment::MODE_UPI => 'UPI',
+            \App\Models\InvoicePayment::MODE_BANK => 'Bank',
+            \App\Models\InvoicePayment::MODE_WALLET => 'Wallet',
+            \App\Models\InvoicePayment::MODE_OLD_GOLD => 'Old gold',
+            \App\Models\InvoicePayment::MODE_OLD_SILVER => 'Old silver',
+            \App\Models\InvoicePayment::MODE_OTHER => 'Other',
+            \App\Models\InvoicePayment::MODE_EMI => 'EMI',
+            \App\Models\InvoicePayment::MODE_SCHEME => 'Scheme',
+        ];
+        $hasInvoiceFilters = request()->hasAny($invoiceFilterKeys);
+        $activeInvoiceFilterCount = collect($invoiceFilterKeys)
             ->filter(fn ($key) => request()->filled($key))
             ->count();
         $invoiceResultTotal = $invoices->total();
         $invoiceResultStart = $invoiceResultTotal ? $invoices->firstItem() : 0;
         $invoiceResultEnd = $invoiceResultTotal ? $invoices->lastItem() : 0;
         $invoiceDateSummary = null;
+        $invoiceStatusSummary = $invoiceStatusOptions[request('status')] ?? null;
+        $invoicePaymentModeSummary = $invoicePaymentModeOptions[request('payment_mode')] ?? null;
 
         if (request('from_date') && request('to_date')) {
             $invoiceDateSummary = request('from_date') . ' to ' . request('to_date');
@@ -141,6 +160,26 @@
                         <input type="date" name="to_date" value="{{ request('to_date') }}" class="invoices-control">
                     </label>
 
+                    <label class="invoices-filter-field">
+                        <span>Status</span>
+                        <select name="status" class="invoices-control">
+                            <option value="">All statuses</option>
+                            @foreach($invoiceStatusOptions as $value => $label)
+                                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="invoices-filter-field">
+                        <span>Payment</span>
+                        <select name="payment_mode" class="invoices-control">
+                            <option value="">All payments</option>
+                            @foreach($invoicePaymentModeOptions as $value => $label)
+                                <option value="{{ $value }}" @selected(request('payment_mode') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
                     <span class="invoices-toolbar-actions">
                         <button type="submit" class="invoices-filter-apply">Apply</button>
                         @if($hasInvoiceFilters)
@@ -154,6 +193,8 @@
                 <form method="GET" action="{{ route('invoices.index') }}" class="invoices-mobile-search">
                     <input type="hidden" name="from_date" value="{{ request('from_date') }}">
                     <input type="hidden" name="to_date" value="{{ request('to_date') }}">
+                    <input type="hidden" name="status" value="{{ request('status') }}">
+                    <input type="hidden" name="payment_mode" value="{{ request('payment_mode') }}">
                     <label class="invoices-input-wrap">
                         <svg class="invoices-input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text"
@@ -189,6 +230,12 @@
                     @endif
                     @if($invoiceDateSummary)
                         <span class="invoices-chip">Date <strong>{{ $invoiceDateSummary }}</strong></span>
+                    @endif
+                    @if($invoiceStatusSummary)
+                        <span class="invoices-chip">Status <strong>{{ $invoiceStatusSummary }}</strong></span>
+                    @endif
+                    @if($invoicePaymentModeSummary)
+                        <span class="invoices-chip">Payment <strong>{{ $invoicePaymentModeSummary }}</strong></span>
                     @endif
                     <a href="{{ route('invoices.index') }}" class="invoices-chip invoices-chip-clear">Clear all</a>
                 </div>
@@ -255,8 +302,11 @@
                                                         'cash' => 'bg-emerald-100 text-emerald-800',
                                                         'upi' => 'bg-violet-100 text-violet-800',
                                                         'bank' => 'bg-blue-100 text-blue-800',
+                                                        'wallet' => 'bg-cyan-100 text-cyan-800',
                                                         'old_gold' => 'bg-amber-100 text-amber-800',
                                                         'old_silver' => 'bg-gray-100 text-gray-800',
+                                                        'emi' => 'bg-orange-100 text-orange-800',
+                                                        'scheme' => 'bg-teal-100 text-teal-800',
                                                         'other' => 'bg-slate-100 text-slate-800',
                                                     ];
                                                 @endphp
@@ -444,6 +494,26 @@
                         <label class="invoices-filter-field">
                             <span>To date</span>
                             <input type="date" name="to_date" value="{{ request('to_date') }}" class="invoices-control">
+                        </label>
+
+                        <label class="invoices-filter-field">
+                            <span>Status</span>
+                            <select name="status" class="invoices-control">
+                                <option value="">All statuses</option>
+                                @foreach($invoiceStatusOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="invoices-filter-field">
+                            <span>Payment mode</span>
+                            <select name="payment_mode" class="invoices-control">
+                                <option value="">All payments</option>
+                                @foreach($invoicePaymentModeOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected(request('payment_mode') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
                         </label>
                     </div>
 
