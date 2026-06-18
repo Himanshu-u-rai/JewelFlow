@@ -167,15 +167,14 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware('role:owner')
         ->name('billing.invoices.show');
 
-    // ======= EXPORT (reports.export permission) =======
+    // ======= DATA EXPORTS HUB (reports.export permission) =======
+    // The per-dataset CSV exports (customers/products/invoices/gold-ledger/
+    // cash-transactions) were retired — those data sets now export through the
+    // reporting framework at /reports/{key}/export (CSV/Excel/PDF + filters +
+    // sensitive-column gating). The hub page links to those panels.
     Route::get('/export', [ExportController::class, 'index'])->middleware('can:reports.export')->name('export.index');
-    Route::post('/export/customers', [ExportController::class, 'exportCustomers'])->middleware('can:reports.export')->name('export.customers');
-    Route::post('/export/products', [ExportController::class, 'exportProducts'])->middleware('can:reports.export')->name('export.products');
-    Route::post('/export/invoices', [ExportController::class, 'exportInvoices'])->middleware('can:reports.export')->name('export.invoices');
-    Route::post('/export/gold-ledger', [ExportController::class, 'exportGoldLedger'])->middleware('can:reports.export')->name('export.gold-ledger');
-    Route::post('/export/cash-transactions', [ExportController::class, 'exportCashTransactions'])->middleware('can:reports.export')->name('export.cash-transactions');
-    Route::post('/export/all', [ExportController::class, 'exportAll'])
-        ->middleware(['can:reports.export', 'edition:manufacturer'])
+    Route::post('/export/all', [ExportController::class, 'exportAllWorkbook'])
+        ->middleware('can:reports.export')
         ->name('export.all');
 
     // ======= BULK IMPORTS (gated on the purpose-built imports.manage; held by owner+manager) =======

@@ -7,9 +7,15 @@ use App\Services\Reporting\ExportSizeRouter;
 use App\Services\Reporting\Render\ChromiumPdfService;
 use App\Services\Reporting\Render\HtmlToPdf;
 use App\Services\Reporting\Reports\CreditNoteRegisterDataset;
+use App\Services\Reporting\Reports\CustomersDataset;
 use App\Services\Reporting\Reports\DailySummaryDataset;
 use App\Services\Reporting\Reports\DayBookDataset;
 use App\Services\Reporting\Reports\GoldBalancesDataset;
+use App\Services\Reporting\Reports\InventoryItemsDataset;
+use App\Services\Reporting\Reports\KarigarInvoicesDataset;
+use App\Services\Reporting\Reports\KarigarsDataset;
+use App\Services\Reporting\Reports\ProductsDataset;
+use App\Services\Reporting\Reports\StockPurchasesDataset;
 use App\Services\Reporting\Reports\GstReportDataset;
 use App\Services\Reporting\Reports\Gstr1Dataset;
 use App\Services\Reporting\Reports\CashFlowDataset;
@@ -116,6 +122,23 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 4 — Owner: Gold Balances (vault fine-weight holdings by metal/purity).
         if (! $registry->has(GoldBalancesDataset::KEY)) {
             $registry->register(GoldBalancesDataset::KEY, GoldBalancesDataset::class);
+        }
+
+        // Data Exports (Phase 1): bulk data dumps that the /export hub links to.
+        // These replace the legacy standalone CSV exporter (customers/products/
+        // items/purchases/karigar) — same data, now through the canonical
+        // pipeline (CSV/Excel/PDF, sensitive-column gating, async-for-large).
+        foreach ([
+            CustomersDataset::class,
+            ProductsDataset::class,
+            InventoryItemsDataset::class,
+            StockPurchasesDataset::class,
+            KarigarsDataset::class,
+            KarigarInvoicesDataset::class,
+        ] as $dataset) {
+            if (! $registry->has($dataset::KEY)) {
+                $registry->register($dataset::KEY, $dataset);
+            }
         }
     }
 }
