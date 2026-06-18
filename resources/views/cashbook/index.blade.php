@@ -73,6 +73,70 @@
                     </div>
                 </div>
             </section>
+
+            {{-- ===== Match your drawer (Phase 3) ===== --}}
+            @can('cash.create')
+            <section class="cb-drawer" x-data="{ open: false }">
+                @if(session('drawer_check_result'))
+                    <div class="cb-drawer-result">{{ session('drawer_check_result') }}</div>
+                @endif
+
+                <div class="cb-drawer-head">
+                    <div>
+                        <h2 class="cb-drawer-title">Match your drawer</h2>
+                        <p class="cb-drawer-copy">Count the physical cash and check it against the expected cash in hand.</p>
+                    </div>
+                    <button type="button" class="cb-drawer-toggle" @click="open = !open" x-text="open ? 'Close' : 'Count drawer'"></button>
+                </div>
+
+                <div x-show="open" x-cloak class="cb-drawer-body">
+                    <form method="POST" action="{{ route('cashbook.drawer-check') }}" class="cb-drawer-form" data-turbo-frame="_top">
+                        @csrf
+                        <div class="cb-drawer-expected">
+                            <span class="cb-drawer-expected-label">Expected cash</span>
+                            <span class="cb-drawer-expected-value">₹{{ number_format($expectedCashToday, 2) }}</span>
+                        </div>
+                        <label class="cb-drawer-field">
+                            <span class="cb-drawer-label">Counted cash *</span>
+                            <input type="number" step="0.01" min="0" name="counted_cash" required
+                                   value="{{ old('counted_cash') }}" placeholder="What you counted in the drawer"
+                                   class="cb-input" x-data x-init="$el.focus()">
+                            @error('counted_cash') <p class="cb-drawer-error">{{ $message }}</p> @enderror
+                        </label>
+                        <label class="cb-drawer-field">
+                            <span class="cb-drawer-label">Note (optional)</span>
+                            <input type="text" name="note" maxlength="500" value="{{ old('note') }}"
+                                   placeholder="e.g. end of day count" class="cb-input">
+                        </label>
+                        <button type="submit" class="cb-drawer-save">Save drawer check</button>
+                    </form>
+
+                    @if($recentDrawerChecks->isNotEmpty())
+                        <div class="cb-drawer-history">
+                            <p class="cb-drawer-history-title">Recent counts</p>
+                            <ul class="cb-drawer-history-list">
+                                @foreach($recentDrawerChecks as $check)
+                                    <li class="cb-drawer-history-row">
+                                        <span class="cb-drawer-history-date">{{ $check->created_at->format('d M Y, h:i A') }}</span>
+                                        <span class="cb-drawer-history-amts">
+                                            Counted ₹{{ number_format($check->counted_cash, 2) }}
+                                            · Expected ₹{{ number_format($check->expected_cash, 2) }}
+                                        </span>
+                                        @php $d = (float) $check->difference; @endphp
+                                        <span class="cb-drawer-history-diff {{ abs($d) < 0.01 ? 'is-ok' : ($d > 0 ? 'is-over' : 'is-short') }}">
+                                            @if(abs($d) < 0.01) Matched
+                                            @elseif($d > 0) Over ₹{{ number_format($d, 2) }}
+                                            @else Short ₹{{ number_format(abs($d), 2) }}
+                                            @endif
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                </div>
+            </section>
+            @endcan
             {{-- Controls toolbar (entry count + actions) --}}
             <div class="cb-toolbar">
                 <span class="cb-toolbar-label">{{ number_format($transactions->total()) }} {{ Str::plural('entry', $transactions->total()) }}</span>
@@ -407,6 +471,68 @@
         @media (max-width: 520px) {
             .cb-moh-modes { grid-template-columns: 1fr; }
             .cb-moh-mode { border-right: 0; }
+        }
+
+        /* ===== Match your drawer (Phase 3) ===== */
+        .cb-drawer {
+            border: 1px solid var(--cb-border); border-radius: 16px;
+            background: #fff; box-shadow: var(--cb-shadow); overflow: hidden;
+        }
+        .cb-drawer-result {
+            margin: 14px 18px 0; padding: 10px 14px; border-radius: 10px;
+            background: rgba(13,148,136,.08); border: 1px solid rgba(13,148,136,.25);
+            color: var(--cb-accent-deep); font-size: 13px; font-weight: 600;
+        }
+        .cb-drawer-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 16px 18px;
+        }
+        .cb-drawer-title { margin: 0; color: var(--cb-ink); font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+        .cb-drawer-copy { margin: 4px 0 0; color: var(--cb-muted); font-size: 12.5px; }
+        .cb-drawer-toggle {
+            flex-shrink: 0; min-height: 38px; padding: 8px 16px; border-radius: 10px;
+            border: 1px solid var(--cb-accent-deep); background: var(--cb-accent-deep); color: #fff;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: background .16s var(--cb-ease), transform .12s var(--cb-ease);
+        }
+        .cb-drawer-body { padding: 0 18px 18px; border-top: 1px solid var(--cb-border-soft); }
+        .cb-drawer-form {
+            display: grid; grid-template-columns: auto minmax(0,1fr) minmax(0,1fr) auto;
+            gap: 12px; align-items: end; padding-top: 16px;
+        }
+        .cb-drawer-expected {
+            display: flex; flex-direction: column; gap: 4px; padding: 8px 14px;
+            border-radius: 10px; background: rgba(13,148,136,.06); border: 1px solid rgba(13,148,136,.18);
+        }
+        .cb-drawer-expected-label { color: var(--cb-accent-deep); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+        .cb-drawer-expected-value { color: var(--cb-ink); font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .cb-drawer-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .cb-drawer-label { color: var(--cb-muted); font-size: 12px; font-weight: 600; }
+        .cb-drawer-error { margin: 2px 0 0; color: var(--cb-neg); font-size: 12px; }
+        .cb-drawer-save {
+            min-height: 40px; padding: 9px 16px; border-radius: 10px;
+            border: 1px solid var(--cb-accent-deep); background: var(--cb-accent-deep); color: #fff;
+            font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+            transition: background .16s var(--cb-ease), transform .12s var(--cb-ease);
+        }
+        @media (hover:hover) and (pointer:fine) {
+            .cb-drawer-toggle:hover, .cb-drawer-save:hover { background: var(--cb-accent); }
+        }
+        .cb-drawer-toggle:active, .cb-drawer-save:active { transform: scale(.98); }
+        .cb-drawer-history { margin-top: 18px; border-top: 1px solid var(--cb-border-soft); padding-top: 14px; }
+        .cb-drawer-history-title { margin: 0 0 8px; color: var(--cb-muted); font-size: 12px; font-weight: 600; }
+        .cb-drawer-history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .cb-drawer-history-row {
+            display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+            font-size: 12.5px; color: var(--cb-ink-2); font-variant-numeric: tabular-nums;
+        }
+        .cb-drawer-history-date { color: var(--cb-muted); }
+        .cb-drawer-history-diff { font-weight: 700; }
+        .cb-drawer-history-diff.is-ok { color: var(--cb-pos); }
+        .cb-drawer-history-diff.is-over { color: var(--cb-accent-deep); }
+        .cb-drawer-history-diff.is-short { color: var(--cb-neg); }
+        @media (max-width: 760px) {
+            .cb-drawer-form { grid-template-columns: 1fr; }
         }
 
         /* Card wrapper (filter + table) */

@@ -602,6 +602,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/cashbook', [\App\Http\Controllers\CashBookController::class, 'index'])->middleware('can:cash.view')->name('cashbook.index');
     Route::get('/cashbook/create', [\App\Http\Controllers\CashBookController::class, 'create'])->middleware('can:cash.create')->name('cashbook.create');
     Route::post('/cashbook', [\App\Http\Controllers\CashBookController::class, 'store'])->middleware('can:cash.create')->name('cashbook.store');
+    Route::post('/cashbook/drawer-check', [\App\Http\Controllers\CashBookController::class, 'storeDrawerCheck'])->middleware('can:cash.create')->name('cashbook.drawer-check');
 
     // ======= STAFF MANAGEMENT (staff.view to read; staff.manage to mutate) =======
     Route::get('/staff', [\App\Http\Controllers\StaffController::class, 'index'])->middleware('can:staff.view')->name('staff.index');

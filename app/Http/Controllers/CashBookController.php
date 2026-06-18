@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashTransaction;
+use App\Models\CashDrawerCheck;
 use App\Models\AuditLog;
 use App\Reporting\LedgerService;
 use App\Reporting\ReportPeriod;
@@ -71,6 +72,18 @@ class CashBookController extends Controller
         // filtered, defaults to the current month (matches the month framing).
         $perMode = $ledger->cashFlowByMode($shopId, ReportPeriod::range($fromDate, $toDate));
 
+        // Today's computed cash-in-hand — the figure to count the drawer against.
+        $expectedCashToday = round((float) $ledger
+            ->cashFlowByMode($shopId, ReportPeriod::day(now()->toDateString()))
+            ->cash()->closing, 2);
+
+        // Recent drawer checks (read-only history; append-only table).
+        $recentDrawerChecks = CashDrawerCheck::where('shop_id', $shopId)
+            ->with('checkedBy:id,name')
+            ->latest('created_at')
+            ->limit(5)
+            ->get();
+
         // Stats — 2 aggregate queries instead of 4.
         $today = now()->toDateString();
 
@@ -98,7 +111,10 @@ class CashBookController extends Controller
             'month_out' => (float) ($monthStats->month_out ?? 0),
         ];
 
-        return view('cashbook.index', compact('transactions', 'stats', 'perMode', 'modeFilter'));
+        return view('cashbook.index', compact(
+            'transactions', 'stats', 'perMode', 'modeFilter',
+            'expectedCashToday', 'recentDrawerChecks'
+        ));
     }
 
     public function create()
@@ -142,5 +158,63 @@ class CashBookController extends Controller
 
         return redirect()->route('cashbook.index')
             ->with('success', 'Cash transaction recorded successfully.');
+    }
+
+    /**
+     * "Match your drawer" — record a physical cash count against the computed
+     * cash-in-hand. Append-only snapshot; never touches cash_transactions. The
+     * expected figure is computed server-side (never trusted from the client)
+     * so the difference is meaningful. Multiple checks per day are allowed.
+     */
+    public function storeDrawerCheck(Request $request, LedgerService $ledger)
+    {
+        $validated = $request->validate([
+            'counted_cash' => 'required|numeric|min:0|max:99999999.99',
+            'note'         => 'nullable|string|max:500',
+        ]);
+
+        $shopId = auth()->user()->shop_id;
+        $userId = auth()->id();
+        SubscriptionGateService::assertShopWritable((int) $shopId);
+
+        // Expected = today's computed cash-in-hand (current drawer balance).
+        // Server-computed, never from the request.
+        $expected = round((float) $ledger
+            ->cashFlowByMode($shopId, ReportPeriod::day(now()->toDateString()))
+            ->cash()->closing, 2);
+
+        // For a same-day cash-in-hand we want closing including all of today's
+        // movement plus prior balance. ReportPeriod::day gives today's window;
+        // cash().closing already = opening(before today) + today in - today out.
+
+        $counted = round((float) $validated['counted_cash'], 2);
+        $difference = round($counted - $expected, 2);
+
+        $check = CashDrawerCheck::record([
+            'shop_id'            => $shopId,
+            'business_date'      => now()->toDateString(),
+            'expected_cash'      => $expected,
+            'counted_cash'       => $counted,
+            'difference'         => $difference,
+            'note'               => $validated['note'] ?? null,
+            'checked_by_user_id' => $userId,
+        ]);
+
+        AuditLog::create([
+            'shop_id'     => $shopId,
+            'user_id'     => $userId,
+            'action'      => 'cash_drawer_check',
+            'model_type'  => 'CashDrawerCheck',
+            'model_id'    => $check->id,
+            'description' => "Drawer check: counted ₹{$counted} vs expected ₹{$expected} (difference ₹{$difference})",
+        ]);
+
+        $msg = abs($difference) < 0.01
+            ? 'Drawer matches. Counted ₹' . number_format($counted, 2) . ' equals expected cash in hand.'
+            : ($difference > 0
+                ? 'Saved. Drawer is OVER by ₹' . number_format($difference, 2) . ' (counted more than expected).'
+                : 'Saved. Drawer is SHORT by ₹' . number_format(abs($difference), 2) . ' (counted less than expected).');
+
+        return redirect()->route('cashbook.index')->with('drawer_check_result', $msg);
     }
 }
