@@ -1149,6 +1149,15 @@ window.initEnhancedFilterSelects = function () {
 function closeAllEnhancedFilterSelects() {
     document.querySelectorAll('.ui-filter-select-menu.is-open').forEach((menu) => {
         menu.classList.remove('is-open');
+        if (menu.dataset.viewportPlacement === 'true') {
+            menu.style.position = '';
+            menu.style.left = '';
+            menu.style.right = '';
+            menu.style.width = '';
+            menu.style.maxHeight = '';
+            menu.style.top = '';
+            menu.style.bottom = '';
+        }
     });
     document.querySelectorAll('.ui-filter-select-trigger.is-open').forEach((trigger) => {
         trigger.classList.remove('is-open');
@@ -1169,7 +1178,8 @@ function placeEnhancedFilterMenu(shell) {
     const roomAbove = triggerRect.top;
     const menuHeight = Math.min(menu.scrollHeight || 240, Math.floor(viewportHeight * 0.42));
 
-    const useViewportPlacement = shell.closest('.inventory-item-create-dropdowns') && window.matchMedia('(min-width: 769px)').matches;
+    const useViewportPlacement = shell.dataset.enhanceSelectsPlacement === 'viewport'
+        || (shell.closest('.inventory-item-create-dropdowns') && window.matchMedia('(min-width: 769px)').matches);
     if (useViewportPlacement) {
         const gap = 8;
         const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
@@ -1180,6 +1190,7 @@ function placeEnhancedFilterMenu(shell) {
         const fixedMenuHeight = Math.min(menu.scrollHeight || 280, availableHeight, Math.floor(viewportHeight * 0.56));
 
         shell.classList.toggle('open-up', opensUp);
+        menu.dataset.viewportPlacement = 'true';
         menu.style.position = 'fixed';
         menu.style.left = `${Math.max(12, Math.min(triggerRect.left, viewportWidth - triggerRect.width - 12))}px`;
         menu.style.right = 'auto';
@@ -1230,6 +1241,9 @@ function initEnhancedFilterSelects() {
             const shell = document.createElement('div');
             shell.className = 'ui-filter-select';
             shell.classList.add(formVariant === 'compact' ? 'ui-filter-select--compact' : 'ui-filter-select--standard');
+            if (root.dataset.enhanceSelectsPlacement) {
+                shell.dataset.enhanceSelectsPlacement = root.dataset.enhanceSelectsPlacement;
+            }
 
             const trigger = document.createElement('button');
             trigger.type = 'button';

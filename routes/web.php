@@ -594,6 +594,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/quick-bills/{quickBill}/print', [QuickBillController::class, 'print'])
         ->middleware('can:sales.view')
         ->name('quick-bills.print');
+    Route::get('/quick-bills/{quickBill}/print/original', [QuickBillController::class, 'printOriginal'])
+        ->middleware('can:sales.view')
+        ->name('quick-bills.print-original');
 
     // ======= CASH BOOK (cash.view / cash.create permissions) =======
     Route::get('/cashbook', [\App\Http\Controllers\CashBookController::class, 'index'])->middleware('can:cash.view')->name('cashbook.index');

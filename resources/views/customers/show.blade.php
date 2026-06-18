@@ -1,32 +1,6 @@
 <x-app-layout>
-    <x-page-header class="customers-show-header" :title="$customer->first_name . ' ' . $customer->last_name" subtitle="Customer Profile">
+    <x-page-header class="customers-show-header" title="Customer Profile" subtitle="Customer account and activity">
         <x-slot:actions>
-            @can('customers.edit')
-            <a href="{{ route('customers.edit', $customer) }}" class="btn btn-dark btn-sm customers-show-edit-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                <span class="customers-show-edit-label-full">Edit Customer</span>
-                <span class="customers-show-edit-label-short">Edit</span>
-            </a>
-            @endcan
-            @can('customers.delete')
-            @if($invoices->count() === 0 && $transactions->count() === 0 && !$hasRepairs)
-                <form method="POST" action="{{ route('customers.destroy', $customer) }}" data-confirm-message="Are you sure you want to delete this customer?" data-ajax-delete data-delete-redirect="{{ route('customers.index') }}">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-sm bg-red-600 text-white hover:bg-red-700 customers-show-delete-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        <span class="customers-show-delete-label-full">Delete Customer</span>
-                        <span class="customers-show-delete-label-short">Delete</span>
-                    </button>
-                </form>
-            @endif
-            @endcan
-            @if(auth()->user()?->isOwner())
-            <a href="{{ route('store-credit.adjust.create', $customer) }}" class="btn btn-secondary btn-sm" data-turbo-frame="_top">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                Store Credit
-            </a>
-            @endif
             <a href="{{ route('customers.index') }}" class="btn btn-secondary btn-sm customers-show-back-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                 <span class="customers-show-back-label-full">Back to Customers</span>
@@ -44,41 +18,90 @@
                 <div class="customers-show-retailer-alert customers-show-retailer-alert--error">{{ session('error') }}</div>
             @endif
 
-            <section class="customers-show-retailer-summary" aria-label="Customer summary">
-                <div class="customers-show-retailer-stat">
-                    <span>Total Spent</span>
-                    <strong>₹{{ number_format($totalSpent, 2) }}</strong>
-                    <small>{{ $invoices->count() }} recent {{ Str::plural('invoice', $invoices->count()) }}</small>
-                </div>
-                <div class="customers-show-retailer-stat">
-                    <span>Loyalty Points</span>
-                    <strong>{{ number_format($customer->loyalty_points ?? 0) }}</strong>
-                    <small>Worth ₹{{ number_format(($customer->loyalty_points ?? 0) * 0.25, 2) }}</small>
-                </div>
-                <div class="customers-show-retailer-stat">
-                    <span>Member Since</span>
-                    <strong>{{ $customer->created_at->format('M Y') }}</strong>
-                    <small>{{ $customer->created_at->format('d M Y') }}</small>
-                </div>
-                <div class="customers-show-retailer-stat">
-                    <span>Recent Invoices</span>
-                    <strong>{{ number_format($invoices->count()) }}</strong>
-                    <small>Latest 5 shown below</small>
-                </div>
-            </section>
+            <div class="customers-show-retailer-overview">
+                <section class="customers-show-retailer-profile" aria-label="Customer profile">
+                    <div class="customers-show-retailer-profile-main">
+                        <span class="customers-show-retailer-profile-kicker">Customer profile</span>
+                        <h2>{{ $customer->first_name }} {{ $customer->last_name }}</h2>
+                        <div class="customers-show-retailer-profile-meta">
+                            <div>
+                                <span>Mobile</span>
+                                <strong>{{ $customer->mobile }}</strong>
+                            </div>
+                            <div>
+                                <span>Email</span>
+                                <strong>{{ $customer->email ?? '—' }}</strong>
+                            </div>
+                            <div>
+                                <span>Member since</span>
+                                <strong>{{ $customer->created_at->format('d M Y') }}</strong>
+                            </div>
+                            <div class="customers-show-retailer-profile-meta-wide">
+                                <span>Address</span>
+                                <strong>{{ $customer->address ?? '—' }}</strong>
+                            </div>
+                        </div>
+                    </div>
 
-            <nav class="customers-show-retailer-actions" aria-label="Customer quick actions">
-                <a href="{{ url('/pos/customer/' . $customer->id) }}" class="customers-show-retailer-action">
-                    <span>Sell Item</span>
-                    <small>Open POS for this customer</small>
-                </a>
-                <a href="{{ route('invoices.index', ['customer' => $customer->id]) }}" class="customers-show-retailer-action">
-                    <span>View Invoices</span>
-                    <small>See full invoice history</small>
-                </a>
-            </nav>
+                    <div class="customers-show-retailer-profile-actions" aria-label="Customer actions">
+                        <a href="{{ url('/pos/customer/' . $customer->id) }}" class="customers-show-retailer-profile-action customers-show-retailer-profile-action--primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+                            <span>Sell Item</span>
+                        </a>
+                        <a href="{{ route('invoices.index', ['customer' => $customer->id]) }}" class="customers-show-retailer-profile-action">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            <span>View Invoices</span>
+                        </a>
+                        @can('customers.edit')
+                            <a href="{{ route('customers.edit', $customer) }}" class="customers-show-retailer-profile-action">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                <span>Edit Customer</span>
+                            </a>
+                        @endcan
+                        @if(auth()->user()?->isOwner())
+                            <a href="{{ route('store-credit.adjust.create', $customer) }}" class="customers-show-retailer-profile-action" data-turbo-frame="_top">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                                <span>Store Credit</span>
+                            </a>
+                        @endif
+                        @can('customers.delete')
+                            @if($invoices->count() === 0 && $transactions->count() === 0 && !$hasRepairs)
+                                <form method="POST" action="{{ route('customers.destroy', $customer) }}" data-confirm-message="Are you sure you want to delete this customer?" data-ajax-delete data-delete-redirect="{{ route('customers.index') }}">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="customers-show-retailer-profile-action customers-show-retailer-profile-action--danger">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        <span>Delete Customer</span>
+                                    </button>
+                                </form>
+                            @endif
+                        @endcan
+                    </div>
+                </section>
 
-            @include('customers.partials.compliance-card')
+                <section class="customers-show-retailer-summary" aria-label="Customer summary">
+                    <div class="customers-show-retailer-stat">
+                        <span>Total Spent</span>
+                        <strong>₹{{ number_format($totalSpent, 2) }}</strong>
+                        <small>{{ $invoices->count() }} recent {{ Str::plural('invoice', $invoices->count()) }}</small>
+                    </div>
+                    <div class="customers-show-retailer-stat">
+                        <span>Loyalty Points</span>
+                        <strong>{{ number_format($customer->loyalty_points ?? 0) }}</strong>
+                        <small>Worth ₹{{ number_format(($customer->loyalty_points ?? 0) * 0.25, 2) }}</small>
+                    </div>
+                    <div class="customers-show-retailer-stat">
+                        <span>Member Since</span>
+                        <strong>{{ $customer->created_at->format('M Y') }}</strong>
+                        <small>{{ $customer->created_at->format('d M Y') }}</small>
+                    </div>
+                    <div class="customers-show-retailer-stat">
+                        <span>Recent Invoices</span>
+                        <strong>{{ number_format($invoices->count()) }}</strong>
+                        <small>Latest 5 shown below</small>
+                    </div>
+                </section>
+            </div>
 
             <div class="customers-show-retailer-grid">
                 <main class="customers-show-retailer-primary">
@@ -243,6 +266,10 @@
                 </main>
 
                 <aside class="customers-show-retailer-side">
+                    <div class="customers-show-retailer-kyc">
+                        @include('customers.partials.compliance-card')
+                    </div>
+
                     <section class="customers-show-retailer-panel">
                         <div class="customers-show-retailer-panel-head">
                             <div>
@@ -268,28 +295,6 @@
                         </div>
                     </section>
 
-                    <section class="customers-show-retailer-panel">
-                        <div class="customers-show-retailer-panel-head">
-                            <div>
-                                <h2>Customer Stats</h2>
-                                <p>Compact account summary.</p>
-                            </div>
-                        </div>
-                        <dl class="customers-show-retailer-stat-list">
-                            <div>
-                                <dt>Total Spent</dt>
-                                <dd>₹{{ number_format($totalSpent, 2) }}</dd>
-                            </div>
-                            <div>
-                                <dt>Loyalty Points</dt>
-                                <dd>{{ number_format($customer->loyalty_points ?? 0) }} pts</dd>
-                            </div>
-                            <div>
-                                <dt>Member Since</dt>
-                                <dd>{{ $customer->created_at->format('M Y') }}</dd>
-                            </div>
-                        </dl>
-                    </section>
                 </aside>
             </div>
         </div>
@@ -301,6 +306,28 @@
             @if(session('error'))
                 <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">{{ session('error') }}</div>
             @endif
+
+            <div class="customers-show-manufacturer-actions" aria-label="Customer account actions">
+                @can('customers.edit')
+                    <a href="{{ route('customers.edit', $customer) }}" class="customers-show-manufacturer-action">
+                        Edit Customer
+                    </a>
+                @endcan
+                @if(auth()->user()?->isOwner())
+                    <a href="{{ route('store-credit.adjust.create', $customer) }}" class="customers-show-manufacturer-action" data-turbo-frame="_top">
+                        Store Credit
+                    </a>
+                @endif
+                @can('customers.delete')
+                    @if($invoices->count() === 0 && $transactions->count() === 0 && !$hasRepairs)
+                        <form method="POST" action="{{ route('customers.destroy', $customer) }}" data-confirm-message="Are you sure you want to delete this customer?" data-ajax-delete data-delete-redirect="{{ route('customers.index') }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="customers-show-manufacturer-action customers-show-manufacturer-action--danger">Delete Customer</button>
+                        </form>
+                    @endif
+                @endcan
+            </div>
 
             <div class="customers-show-top-grid customers-show-kpi-grid grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <div class="customers-show-card customers-show-kpi-card bg-white rounded-lg shadow-sm border border-gray-200 p-4">

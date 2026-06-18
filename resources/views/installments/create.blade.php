@@ -15,11 +15,11 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner" x-data="emiPlanForm()">
+    <div class="content-inner emi-create-page" x-data="emiPlanForm()">
         @if ($errors->any())
-            <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
-                <p class="font-medium mb-2">Please correct the following:</p>
-                <ul class="list-disc ml-5 text-sm space-y-1">
+            <div class="emi-create-alert">
+                <p>Please correct the following:</p>
+                <ul>
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -27,163 +27,189 @@
             </div>
         @endif
 
-        <div class="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4 mb-6 text-sm">
-            <p class="font-medium">How this works:</p>
-            <p class="mt-1">This dropdown shows eligible unpaid invoices and POS EMI drafts. Final invoice and EMI plan are created only after you click <span class="font-semibold">Create EMI Plan</span>.</p>
-        </div>
+        <form method="POST" action="{{ route('installments.store') }}" class="emi-create-layout">
+            @csrf
+            <input type="hidden" name="from_pos_emi" :value="isDraftInvoice() ? '1' : '0'">
 
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <form method="POST" action="{{ route('installments.store') }}" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                @csrf
-                <input type="hidden" name="from_pos_emi" :value="isDraftInvoice() ? '1' : '0'">
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                    <select name="customer_id"
-                            x-model="customerId"
-                            @change="onCustomerChange"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                            required>
-                        <option value="">Select customer</option>
-                        @foreach($customers as $customer)
-                            <option value="{{ $customer->id }}">
-                                {{ $customer->name }} ({{ $customer->mobile }})
-                            </option>
-                        @endforeach
-                    </select>
+            <section class="emi-create-panel emi-create-panel--main">
+                <div class="emi-create-panel-head">
+                    <div>
+                        <h2>Invoice selection</h2>
+                        <p>Choose the customer and invoice that should become an EMI plan.</p>
+                    </div>
+                    <span class="emi-create-state">Eligible invoices only</span>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
-                    <select name="invoice_id"
-                            x-model="invoiceId"
-                            @change="onInvoiceChange"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                            required>
-                        <option value="">Select invoice</option>
-                        <template x-for="inv in filteredInvoices()" :key="inv.id">
-                            <option :value="String(inv.id)" x-text="invoiceOptionLabel(inv)"></option>
-                        </template>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">Only invoices with pending balance and no EMI plan are listed.</p>
+                <div class="emi-create-grid emi-create-grid--two">
+                    <label class="emi-create-field">
+                        <span>Customer</span>
+                        <select name="customer_id"
+                                x-model="customerId"
+                                @change="onCustomerChange"
+                                required>
+                            <option value="">Select customer</option>
+                            @foreach($customers as $customer)
+                                <option value="{{ $customer->id }}">
+                                    {{ $customer->name }} ({{ $customer->mobile }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="emi-create-field">
+                        <span>Invoice</span>
+                        <select name="invoice_id"
+                                x-model="invoiceId"
+                                @change="onInvoiceChange"
+                                required>
+                            <option value="">Select invoice</option>
+                            <template x-for="inv in filteredInvoices()" :key="inv.id">
+                                <option :value="String(inv.id)" x-text="invoiceOptionLabel(inv)"></option>
+                            </template>
+                        </select>
+                        <small>Only invoices with pending balance and no EMI plan are listed.</small>
+                    </label>
                 </div>
 
-                <div class="lg:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                        <div>
-                            <p class="text-gray-500">Invoice Total</p>
-                            <p class="font-semibold text-gray-900" x-text="'₹' + formatMoney(currentInvoice.total)"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Already Paid</p>
-                            <p class="font-semibold text-emerald-700" x-text="'₹' + formatMoney(currentInvoice.paid)"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500">Current Outstanding</p>
-                            <p class="font-semibold text-rose-700" x-text="'₹' + formatMoney(currentInvoice.outstanding)"></p>
-                        </div>
+                <div class="emi-create-note">
+                    Final invoice and EMI plan are created only after you submit this form.
+                </div>
+
+                <div class="emi-create-strip" aria-label="Selected invoice summary">
+                    <div>
+                        <span>Invoice total</span>
+                        <strong x-text="'₹' + formatMoney(currentInvoice.total)"></strong>
+                    </div>
+                    <div>
+                        <span>Already paid</span>
+                        <strong class="is-success" x-text="'₹' + formatMoney(currentInvoice.paid)"></strong>
+                    </div>
+                    <div>
+                        <span>Current outstanding</span>
+                        <strong class="is-danger" x-text="'₹' + formatMoney(currentInvoice.outstanding)"></strong>
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Down Payment (₹)</label>
-                    <input type="number"
-                           name="down_payment"
-                           x-model.number="downPayment"
-                           step="0.01"
-                           min="0"
-                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                           required>
-                    <p class="text-xs text-gray-500 mt-1" x-show="!isDraftInvoice()">For accounting consistency, this must match amount already paid on invoice.</p>
-                    <p class="text-xs text-gray-500 mt-1" x-show="isDraftInvoice()">For POS EMI checkout, this is the upfront amount collected right now.</p>
+                <div class="emi-create-section-title">
+                    <h2>Plan terms</h2>
+                    <p>Set the repayment length and interest for the selected balance.</p>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Number of EMIs</label>
-                    <input type="number"
-                           name="total_emis"
-                           x-model.number="totalEmis"
-                           min="2"
-                           max="24"
-                           step="1"
-                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                           required>
-                    <p class="text-xs text-gray-500 mt-1">Allowed range: 2 to 24</p>
-                </div>
+                <div class="emi-create-grid emi-create-grid--three">
+                    <label class="emi-create-field">
+                        <span>Down Payment (₹)</span>
+                        <input type="number"
+                               name="down_payment"
+                               x-model.number="downPayment"
+                               step="0.01"
+                               min="0"
+                               required>
+                        <small x-show="!isDraftInvoice()">Must match amount already paid on invoice.</small>
+                        <small x-show="isDraftInvoice()">Upfront amount collected for POS EMI checkout.</small>
+                    </label>
 
-                <div class="lg:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Interest Rate (Annual %)</label>
-                    <input type="number"
-                           name="interest_rate_annual"
-                           x-model.number="interestRateAnnual"
-                           min="0"
-                           max="60"
-                           step="0.01"
-                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
-                    <p class="text-xs text-gray-500 mt-1">Flat interest formula: Principal × Rate × (Months / 12)</p>
+                    <label class="emi-create-field">
+                        <span>Number of EMIs</span>
+                        <input type="number"
+                               name="total_emis"
+                               x-model.number="totalEmis"
+                               min="2"
+                               max="24"
+                               step="1"
+                               required>
+                        <small>Allowed range: 2 to 24</small>
+                    </label>
+
+                    <label class="emi-create-field">
+                        <span>Interest Rate (Annual %)</span>
+                        <input type="number"
+                               name="interest_rate_annual"
+                               x-model.number="interestRateAnnual"
+                               min="0"
+                               max="60"
+                               step="0.01">
+                        <small>Flat formula: Principal x Rate x (Months / 12)</small>
+                    </label>
                 </div>
 
                 <template x-if="isDraftInvoice()">
-                    <div class="lg:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                        <p class="text-sm font-semibold text-amber-800 mb-3">POS EMI Checkout Details</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Down Payment Method</label>
-                                <select name="down_payment_method" x-model="downPaymentMethod" class="w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                    <div class="emi-create-pos-box">
+                        <div class="emi-create-section-title">
+                            <h2>POS EMI checkout</h2>
+                            <p>Capture the down payment details used while finalizing the draft invoice.</p>
+                        </div>
+                        <div class="emi-create-grid emi-create-grid--two">
+                            <label class="emi-create-field">
+                                <span>Down Payment Method</span>
+                                <select name="down_payment_method" x-model="downPaymentMethod">
                                     <option value="cash">Cash</option>
                                     <option value="upi">UPI</option>
                                     <option value="bank">Bank</option>
                                     <option value="other">Other</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Down Payment Reference</label>
-                                <input type="text" name="down_payment_reference" x-model="downPaymentReference" class="w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500" placeholder="Optional reference">
-                            </div>
-                            <div class="md:col-span-2 text-xs text-amber-800 bg-white border border-amber-200 rounded-md px-3 py-2">
-                                First installment is not collected here. It will be recorded later from the EMI plan page as per due schedule.
-                            </div>
-                            <div class="md:col-span-2 text-xs text-gray-600">
-                                Invoice will be finalized only after you click <span class="font-semibold">Create EMI Plan</span>.
-                            </div>
+                            </label>
+                            <label class="emi-create-field">
+                                <span>Down Payment Reference</span>
+                                <input type="text" name="down_payment_reference" x-model="downPaymentReference" placeholder="Optional reference">
+                            </label>
+                        </div>
+                        <div class="emi-create-note is-amber">
+                            First installment is recorded later from the EMI plan page. The invoice is finalized only after this form is submitted.
                         </div>
                     </div>
                 </template>
+            </section>
 
-                <div class="lg:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                        <div>
-                            <p class="text-gray-600">Principal</p>
-                            <p class="font-semibold text-gray-900" x-text="'₹' + formatMoney(principalAmount())"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-600">Interest Amount</p>
-                            <p class="font-semibold text-amber-700" x-text="'₹' + formatMoney(interestAmount())"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-600">Total Payable</p>
-                            <p class="font-semibold text-gray-900" x-text="'₹' + formatMoney(totalPayable())"></p>
-                        </div>
-                        <div>
-                            <p class="text-gray-600">Estimated EMI Amount</p>
-                            <p class="font-semibold text-amber-700" x-text="'₹' + formatMoney(estimatedEmiAmount())"></p>
-                        </div>
+            <aside class="emi-create-panel emi-create-panel--summary" aria-label="EMI plan preview">
+                <div class="emi-create-panel-head">
+                    <div>
+                        <h2>Plan preview</h2>
+                        <p>Calculated from the selected invoice and terms.</p>
                     </div>
                 </div>
 
-                <div class="lg:col-span-2 flex flex-wrap items-center gap-3 pt-1">
+                <div class="emi-create-summary-total">
+                    <span>Estimated EMI Amount</span>
+                    <strong x-text="'₹' + formatMoney(estimatedEmiAmount())"></strong>
+                </div>
+
+                <div class="emi-create-summary-list">
+                    <div>
+                        <span>Principal</span>
+                        <strong x-text="'₹' + formatMoney(principalAmount())"></strong>
+                    </div>
+                    <div>
+                        <span>Interest Amount</span>
+                        <strong class="is-gold" x-text="'₹' + formatMoney(interestAmount())"></strong>
+                    </div>
+                    <div>
+                        <span>Total Payable</span>
+                        <strong x-text="'₹' + formatMoney(totalPayable())"></strong>
+                    </div>
+                    <div>
+                        <span>EMI Count</span>
+                        <strong x-text="Number(totalEmis || 0)"></strong>
+                    </div>
+                </div>
+
+                <div class="emi-create-summary-note">
+                    <strong>Before creating</strong>
+                    <span>Confirm the selected customer matches the invoice and the down payment is correct.</span>
+                </div>
+
+                <div class="emi-create-actions">
                     <button type="submit"
-                            class="btn btn-dark btn-sm"
+                            class="emi-create-primary"
                             :disabled="!canSubmit()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M20 6 9 17l-5-5"/>
                         </svg>
                         Create EMI Plan
                     </button>
-                    <a href="{{ route('installments.index') }}" class="btn btn-secondary btn-sm">Cancel</a>
+                    <a href="{{ route('installments.index') }}" class="emi-create-secondary">Cancel</a>
                 </div>
-            </form>
-        </div>
+            </aside>
+        </form>
     </div>
 
     @php
