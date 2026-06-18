@@ -122,6 +122,23 @@ class CashBookController extends Controller
         return view('cashbook.create');
     }
 
+    /**
+     * Known manual-entry reasons, grouped by direction. The create form shows
+     * the matching list for the chosen type; this is the server-side mirror so a
+     * money-IN reason can never be saved against a money-OUT entry (or vice
+     * versa). Free-text ("custom") reasons are not listed here and are allowed
+     * for either direction.
+     */
+    private const IN_SOURCES = [
+        'customer_payment', 'customer_advance', 'old_gold_sold',
+        'loan_received', 'owner_investment', 'opening_balance', 'other_income',
+    ];
+    private const OUT_SOURCES = [
+        'karigar_payment', 'gold_purchase', 'supplier_payment', 'salary', 'rent',
+        'utility_bills', 'repair_charges', 'marketing_expense', 'petty_expense',
+        'loan_repayment', 'owner_withdrawal', 'other_expense',
+    ];
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -131,6 +148,17 @@ class CashBookController extends Controller
             'payment_mode' => 'nullable|in:cash,upi,bank,card,wallet,other',
             'description'  => 'nullable|string|max:500',
         ]);
+
+        // Keep direction and reason consistent for the KNOWN reasons. A custom
+        // (free-text) reason isn't in either list, so it's accepted as-is.
+        $source = $validated['source_type'];
+        $wrongForIn  = $validated['type'] === 'in'  && in_array($source, self::OUT_SOURCES, true);
+        $wrongForOut = $validated['type'] === 'out' && in_array($source, self::IN_SOURCES, true);
+        if ($wrongForIn || $wrongForOut) {
+            return back()->withInput()->withErrors([
+                'source_type' => 'That reason does not match a ' . ($validated['type'] === 'in' ? 'money-in' : 'money-out') . ' entry. Please pick a matching reason.',
+            ]);
+        }
 
         $shopId = auth()->user()->shop_id;
         $userId = auth()->id();

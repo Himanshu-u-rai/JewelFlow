@@ -20,14 +20,14 @@
                     <span class="cbf-label">Transaction Type *</span>
                     <div class="cbf-type-grid">
                         <label class="cbf-type">
-                            <input type="radio" name="type" value="in" {{ old('type', 'in') === 'in' ? 'checked' : '' }}>
+                            <input type="radio" name="type" value="in" {{ old('type', 'in') === 'in' ? 'checked' : '' }} onchange="handleTypeChange('in')">
                             <span class="cbf-type-box cbf-type-box--in">
                                 <span class="cbf-type-name">Cash In</span>
                                 <span class="cbf-type-sub">Money received</span>
                             </span>
                         </label>
                         <label class="cbf-type">
-                            <input type="radio" name="type" value="out" {{ old('type') === 'out' ? 'checked' : '' }}>
+                            <input type="radio" name="type" value="out" {{ old('type') === 'out' ? 'checked' : '' }} onchange="handleTypeChange('out')">
                             <span class="cbf-type-box cbf-type-box--out">
                                 <span class="cbf-type-name">Cash Out</span>
                                 <span class="cbf-type-sub">Money paid out</span>
@@ -49,38 +49,56 @@
                     @error('amount') <p class="cbf-error">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Source / reason --}}
+                {{-- Source / reason — the list changes with the type chosen above:
+                     money-IN reasons when "Cash In", money-OUT reasons when "Cash Out". --}}
                 <div class="cbf-field">
-                    <label for="source_type" class="cbf-label">Source / Reason *</label>
+                    <label for="source_type" class="cbf-label">Reason *</label>
                     @php
-                        $knownSources = ['opening_balance','loan_received','owner_investment','other_income','salary','rent','utility_bills','gold_purchase','supplier_payment','loan_repayment','owner_withdrawal','other_expense'];
+                        // value => label, grouped by direction. Plain, simple words
+                        // (shop owners may have limited schooling — no jargon).
+                        $inSources = [
+                            'customer_payment'  => 'Customer payment received',
+                            'customer_advance'  => 'Advance from customer',
+                            'old_gold_sold'     => 'Old gold / silver sold',
+                            'loan_received'     => 'Loan received',
+                            'owner_investment'  => 'Owner money put in',
+                            'opening_balance'   => 'Opening balance',
+                            'other_income'      => 'Other money in',
+                        ];
+                        $outSources = [
+                            'karigar_payment'   => 'Karigar (worker) payment',
+                            'gold_purchase'     => 'Gold / silver purchase (supplier)',
+                            'supplier_payment'  => 'Supplier payment',
+                            'salary'            => 'Salary / wages',
+                            'rent'              => 'Shop rent',
+                            'utility_bills'     => 'Electricity / water / bills',
+                            'repair_charges'    => 'Repair / polishing charges',
+                            'marketing_expense' => 'Marketing / festival expense',
+                            'petty_expense'     => 'Petty / daily expense',
+                            'loan_repayment'    => 'Loan repayment',
+                            'owner_withdrawal'  => 'Owner money taken out',
+                            'other_expense'     => 'Other money out',
+                        ];
                         $oldSource = old('source_type', '');
-                        $isCustom = $oldSource !== '' && !in_array($oldSource, $knownSources);
+                        $oldType   = old('type', 'in');
+                        $knownSources = array_merge(array_keys($inSources), array_keys($outSources));
+                        $isCustom  = $oldSource !== '' && !in_array($oldSource, $knownSources);
                     @endphp
                     <select name="source_type" id="source_type" class="cbf-input" required onchange="handleSourceChange(this)">
-                        <option value="">Select source</option>
-                        <optgroup label="Cash In Sources">
-                            <option value="opening_balance" {{ $oldSource === 'opening_balance' ? 'selected' : '' }}>Opening Balance</option>
-                            <option value="loan_received" {{ $oldSource === 'loan_received' ? 'selected' : '' }}>Loan Received</option>
-                            <option value="owner_investment" {{ $oldSource === 'owner_investment' ? 'selected' : '' }}>Owner Investment</option>
-                            <option value="other_income" {{ $oldSource === 'other_income' ? 'selected' : '' }}>Other Income</option>
-                        </optgroup>
-                        <optgroup label="Cash Out Sources">
-                            <option value="salary" {{ $oldSource === 'salary' ? 'selected' : '' }}>Salary Payment</option>
-                            <option value="rent" {{ $oldSource === 'rent' ? 'selected' : '' }}>Rent</option>
-                            <option value="utility_bills" {{ $oldSource === 'utility_bills' ? 'selected' : '' }}>Utility Bills</option>
-                            <option value="gold_purchase" {{ $oldSource === 'gold_purchase' ? 'selected' : '' }}>Gold Purchase (Supplier)</option>
-                            <option value="supplier_payment" {{ $oldSource === 'supplier_payment' ? 'selected' : '' }}>Supplier Payment</option>
-                            <option value="loan_repayment" {{ $oldSource === 'loan_repayment' ? 'selected' : '' }}>Loan Repayment</option>
-                            <option value="owner_withdrawal" {{ $oldSource === 'owner_withdrawal' ? 'selected' : '' }}>Owner Withdrawal</option>
-                            <option value="other_expense" {{ $oldSource === 'other_expense' ? 'selected' : '' }}>Other Expense</option>
-                        </optgroup>
-                        <option value="custom" {{ $isCustom ? 'selected' : '' }}>Custom (Enter below)</option>
+                        <option value="">Select a reason</option>
+                        @foreach($inSources as $val => $label)
+                            <option value="{{ $val }}" data-dir="in" {{ $oldSource === $val ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                        @foreach($outSources as $val => $label)
+                            <option value="{{ $val }}" data-dir="out" {{ $oldSource === $val ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                        <option value="custom" data-dir="both" {{ $isCustom ? 'selected' : '' }}>Something else (type it)</option>
                     </select>
                     <input type="text" id="custom_source"
                            class="cbf-input cbf-custom {{ $isCustom ? '' : 'cbf-hidden' }}"
-                           placeholder="Enter custom source/reason" maxlength="100"
+                           placeholder="Type the reason" maxlength="100"
                            value="{{ $isCustom ? $oldSource : '' }}">
+                    <p class="cbf-help" id="source_hint">Pick why money came in.</p>
                     @error('source_type') <p class="cbf-error">{{ $message }}</p> @enderror
                 </div>
 
@@ -256,8 +274,40 @@
             }
         }
 
+        // Show only the reasons that match the chosen direction (in / out). When
+        // the type flips, hide the other side's options and clear a now-invalid
+        // selection so a money-out reason can never be saved against a money-in
+        // entry (or vice versa).
+        function handleTypeChange(dir) {
+            const select = document.getElementById('source_type');
+            if (!select) return;
+            let clearedSelection = false;
+            Array.from(select.options).forEach(opt => {
+                const optDir = opt.getAttribute('data-dir');
+                const visible = !optDir || optDir === 'both' || optDir === dir || opt.value === '';
+                opt.hidden = !visible;
+                opt.disabled = !visible;
+                if (!visible && opt.selected) {
+                    clearedSelection = true;
+                }
+            });
+            if (clearedSelection) {
+                select.value = '';
+                handleSourceChange(select);
+            }
+            // Recolour the placeholder hint via the label so it's obvious which list this is.
+            const hint = document.getElementById('source_hint');
+            if (hint) {
+                hint.textContent = dir === 'in'
+                    ? 'Pick why money came in.'
+                    : 'Pick why money went out.';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const select = document.getElementById('source_type');
+            const checkedType = document.querySelector('input[name="type"]:checked');
+            handleTypeChange(checkedType ? checkedType.value : 'in');
             if (select && select.value === 'custom') {
                 const customInput = document.getElementById('custom_source');
                 customInput.required = true;
