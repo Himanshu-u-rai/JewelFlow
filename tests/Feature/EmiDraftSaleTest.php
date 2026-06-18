@@ -147,6 +147,48 @@ class EmiDraftSaleTest extends TestCase
         $this->assertStringNotContainsString('Draft #' . $draftB->id, $html, 'Other drafts must not be offered.');
     }
 
+    public function test_emi_down_payment_records_the_chosen_upi_account(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $lot = $this->createMetalLot($shop->id);
+        $customer = $this->createCustomer($shop->id);
+        $item = $this->createItem($shop->id, $lot->id);
+
+        $upi = \App\Models\ShopPaymentMethod::create([
+            'shop_id' => $shop->id, 'type' => 'upi', 'name' => 'Shop GPay',
+            'upi_id' => 'shop@upi', 'is_active' => true, 'sort_order' => 0,
+        ]);
+
+        $this->actingAs($user);
+
+        $plan = TenantContext::runFor($shop->id, function () use ($customer, $item, $upi) {
+            $draft = RetailerSalesService::prepareEmiDraftSale(
+                customerId: $customer->id,
+                itemIds: [$item->id],
+            );
+
+            return app(InstallmentService::class)->finalizeDraftInvoiceToPlan(
+                invoice: $draft,
+                downPayment: 5000.0,
+                totalEmis: 6,
+                interestRateAnnual: 0.0,
+                downPaymentMethod: 'upi',
+                downPaymentReference: 'TXN123',
+                downPaymentMethodId: $upi->id,
+            );
+        });
+
+        // The down-payment InvoicePayment must carry the chosen UPI account.
+        $payment = \App\Models\InvoicePayment::query()->withoutGlobalScopes()
+            ->where('invoice_id', $plan->invoice_id)
+            ->where('mode', 'upi')
+            ->first();
+
+        $this->assertNotNull($payment, 'A UPI down-payment row should exist.');
+        $this->assertSame($upi->id, (int) $payment->payment_method_id, 'Down payment must link to the chosen UPI account.');
+        $this->assertEqualsWithDelta(5000.0, (float) $payment->amount, 0.001);
+    }
+
     public function test_discard_refuses_a_finalized_invoice(): void
     {
         [$user, $shop] = $this->createRetailerTenant();

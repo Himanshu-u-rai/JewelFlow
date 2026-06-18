@@ -81,6 +81,15 @@ class InstallmentController extends Controller
             ->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name', 'mobile']);
 
+        // Configured UPI / bank / wallet accounts for the down-payment picker
+        // (same accounts POS offers), so a non-cash down payment links to a
+        // specific account rather than just a bare "UPI"/"Bank".
+        $paymentMethods = \App\Models\ShopPaymentMethod::where('shop_id', $shopId)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
         $selectedInvoiceId = (int) $request->query('invoice_id');
 
         // POS EMI: the invoice is DETERMINED by POS (it created the draft and
@@ -115,7 +124,7 @@ class InstallmentController extends Controller
                 $customers = $customers->where('id', $draftInvoice->customer_id)->values();
             }
 
-            return view('installments.create', compact('customers', 'invoices', 'selectedInvoiceId', 'fromPosEmi'));
+            return view('installments.create', compact('customers', 'invoices', 'selectedInvoiceId', 'fromPosEmi', 'paymentMethods'));
         }
 
         $invoices = $this->eligibleInvoices($shopId);
@@ -125,7 +134,7 @@ class InstallmentController extends Controller
                 ->with('error', 'Selected invoice is not eligible for EMI conversion.');
         }
 
-        return view('installments.create', compact('customers', 'invoices', 'selectedInvoiceId', 'fromPosEmi'));
+        return view('installments.create', compact('customers', 'invoices', 'selectedInvoiceId', 'fromPosEmi', 'paymentMethods'));
     }
 
     public function store(Request $request)
@@ -147,9 +156,34 @@ class InstallmentController extends Controller
             'total_emis' => 'required|integer|min:2|max:24',
             'interest_rate_annual' => 'nullable|numeric|min:0|max:60',
             'from_pos_emi' => 'nullable|boolean',
-            'down_payment_method' => 'nullable|in:cash,upi,bank,other',
+            'down_payment_method' => 'nullable|in:cash,upi,bank,wallet,other',
+            'down_payment_method_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('shop_payment_methods', 'id')->where('shop_id', $shopId),
+            ],
             'down_payment_reference' => 'nullable|string|max:100',
         ]);
+
+        // A non-cash down payment that is collected (POS EMI with down_payment > 0)
+        // must name a specific configured account, matching POS. Validate the
+        // chosen account exists, is active, and its type matches the method.
+        $downMethod = $data['down_payment_method'] ?? 'cash';
+        $methodId = $data['down_payment_method_id'] ?? null;
+        $collectsDownPayment = (bool) ($data['from_pos_emi'] ?? false) && round((float) $data['down_payment'], 2) > 0;
+        if ($collectsDownPayment && in_array($downMethod, ['upi', 'bank', 'wallet'], true)) {
+            $account = \App\Models\ShopPaymentMethod::where('shop_id', $shopId)
+                ->where('id', $methodId)
+                ->active()
+                ->first();
+            if (! $account || $account->type !== $downMethod) {
+                return back()->withErrors([
+                    'down_payment_method_id' => 'Please choose a valid ' . strtoupper($downMethod) . ' account for the down payment.',
+                ])->withInput();
+            }
+        } elseif (! $collectsDownPayment || $downMethod === 'cash' || $downMethod === 'other') {
+            $methodId = null; // cash / other / no-collection carries no account
+        }
 
         $invoice = Invoice::where('shop_id', $shopId)
             ->with(['payments', 'customer'])
@@ -185,8 +219,9 @@ class InstallmentController extends Controller
                     round((float) $data['down_payment'], 2),
                     (int) $data['total_emis'],
                     (float) ($data['interest_rate_annual'] ?? 0),
-                    $data['down_payment_method'] ?? 'cash',
-                    $data['down_payment_reference'] ?? null
+                    $downMethod,
+                    $data['down_payment_reference'] ?? null,
+                    $methodId,
                 );
 
                 return redirect()->route('installments.show', $plan)

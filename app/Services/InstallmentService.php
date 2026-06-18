@@ -246,6 +246,7 @@ class InstallmentService
         float $interestRateAnnual,
         string $downPaymentMethod = 'cash',
         ?string $downPaymentReference = null,
+        ?int $downPaymentMethodId = null,
     ): InstallmentPlan {
         return DB::transaction(function () use (
             $invoice,
@@ -254,6 +255,7 @@ class InstallmentService
             $interestRateAnnual,
             $downPaymentMethod,
             $downPaymentReference,
+            $downPaymentMethodId,
         ) {
             $lockedInvoice = Invoice::whereKey($invoice->id)
                 ->where('shop_id', $invoice->shop_id)
@@ -312,7 +314,8 @@ class InstallmentService
                 $downPayment,
                 $downPaymentMethod,
                 $downPaymentReference,
-                'EMI down payment at plan creation'
+                'EMI down payment at plan creation',
+                $downPaymentMethodId,
             );
 
             $plan = $this->createPlan(
@@ -382,7 +385,8 @@ class InstallmentService
         float $amount,
         string $mode,
         ?string $reference,
-        string $note
+        string $note,
+        ?int $paymentMethodId = null,
     ): void {
         if ($amount <= 0) {
             return;
@@ -395,6 +399,7 @@ class InstallmentService
             'amount' => $amount,
             'reference' => $reference,
             'note' => $note,
+            'payment_method_id' => $paymentMethodId,
         ]);
 
         CashTransaction::record([

@@ -162,13 +162,28 @@
                         <div class="emi-create-grid emi-create-grid--two">
                             <label class="emi-create-field">
                                 <span>Down Payment Method</span>
-                                <select name="down_payment_method" x-model="downPaymentMethod">
+                                <select name="down_payment_method" x-model="downPaymentMethod" @change="onDownMethodChange">
                                     <option value="cash">Cash</option>
                                     <option value="upi">UPI</option>
                                     <option value="bank">Bank</option>
+                                    <option value="wallet">Wallet</option>
                                     <option value="other">Other</option>
                                 </select>
                             </label>
+
+                            {{-- Account picker — same accounts POS offers, shown only for
+                                 upi / bank / wallet so the down payment links to a real account. --}}
+                            <label class="emi-create-field" x-show="needsAccount()" x-cloak>
+                                <span x-text="downPaymentMethod === 'upi' ? 'UPI account' : (downPaymentMethod === 'bank' ? 'Bank account' : 'Wallet')"></span>
+                                <select name="down_payment_method_id" x-model="downPaymentMethodId">
+                                    <option value="">Select account</option>
+                                    <template x-for="acc in accountsForDownMethod()" :key="acc.id">
+                                        <option :value="String(acc.id)" x-text="acc.account_label"></option>
+                                    </template>
+                                </select>
+                                <small x-show="accountsForDownMethod().length === 0" class="is-amber" x-text="'No ' + downPaymentMethod.toUpperCase() + ' account is set up. Add one in Settings → Payment methods.'"></small>
+                            </label>
+
                             <label class="emi-create-field">
                                 <span>Down Payment Reference</span>
                                 <input type="text" name="down_payment_reference" x-model="downPaymentReference" placeholder="Optional reference">
@@ -276,17 +291,37 @@
             const oldInterestRateAnnual = '{{ old('interest_rate_annual', 0) }}';
             const oldDownPaymentMethod = '{{ old('down_payment_method', 'cash') }}' || 'cash';
             const oldDownPaymentReference = '{{ old('down_payment_reference') }}' || '';
+            const oldDownPaymentMethodId = '{{ old('down_payment_method_id') }}' || '';
             const hasOldDownPayment = oldDownPayment !== '';
+            const paymentMethods = @json(($paymentMethods ?? collect())->map(fn ($m) => ['id' => (int) $m->id, 'type' => (string) $m->type, 'account_label' => (string) $m->account_label]));
 
             return {
                 invoices,
+                paymentMethods,
                 customerId: oldCustomerId,
                 invoiceId: oldInvoiceId,
                 downPayment: oldDownPayment !== '' ? parseFloat(oldDownPayment) : 0,
                 totalEmis: oldTotalEmis !== '' ? parseInt(oldTotalEmis, 10) : 6,
                 interestRateAnnual: oldInterestRateAnnual !== '' ? parseFloat(oldInterestRateAnnual) : 0,
                 downPaymentMethod: oldDownPaymentMethod,
+                downPaymentMethodId: oldDownPaymentMethodId,
                 downPaymentReference: oldDownPaymentReference,
+
+                needsAccount() {
+                    return ['upi', 'bank', 'wallet'].includes(this.downPaymentMethod);
+                },
+                accountsForDownMethod() {
+                    return this.paymentMethods.filter(m => m.type === this.downPaymentMethod);
+                },
+                onDownMethodChange() {
+                    // Clear a stale account when switching method; auto-pick if only one.
+                    const accounts = this.accountsForDownMethod();
+                    if (!this.needsAccount()) {
+                        this.downPaymentMethodId = '';
+                    } else if (!accounts.some(a => String(a.id) === String(this.downPaymentMethodId))) {
+                        this.downPaymentMethodId = accounts.length === 1 ? String(accounts[0].id) : '';
+                    }
+                },
 
                 get currentInvoice() {
                     return this.invoices.find(i => String(i.id) === String(this.invoiceId)) || {
@@ -367,6 +402,8 @@
                     if (this.isDraftInvoice()) {
                         if (Number(this.downPayment) < 0) return false;
                         if (Number(this.downPayment) >= Number(invoice.total)) return false;
+                        // A non-cash down payment being collected must name an account.
+                        if (Number(this.downPayment) > 0 && this.needsAccount() && !this.downPaymentMethodId) return false;
                         return true;
                     }
                     if (Math.abs(Number(this.downPayment) - Number(invoice.paid)) > 0.01) return false;
