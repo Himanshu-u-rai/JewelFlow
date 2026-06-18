@@ -4462,7 +4462,7 @@
                                         </div>
 
                                         <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap;">
-                                            <a href="{{ route('subscription.plans') }}" data-turbo-frame="_top" class="sub-btn primary">Change Plan</a>
+                                            <a href="{{ route('subscription.plans') }}" data-turbo-frame="_top" class="sub-btn primary">{{ $rawStatus === 'trial' ? 'Subscribe to a paid plan' : 'Change Plan' }}</a>
                                             <a href="mailto:{{ config('app.support_email') }}" class="sub-btn secondary">Contact Support</a>
                                         </div>
                                     </div>

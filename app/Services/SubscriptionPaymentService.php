@@ -120,6 +120,45 @@ class SubscriptionPaymentService
     /**
      * Create the subscription and event in a single transaction.
      */
+    /**
+     * Where a new paid term should begin, given the shop's current subscription.
+     *
+     *  - No shop yet / no current sub / fully lapsed  → now()  (fresh term today)
+     *  - Current TRIAL                                 → trial.ends_at (keep free days)
+     *  - Current live PAID (active/grace/read_only)    → throws (no stacked term)
+     *
+     * Trial end dates are stored at start-of-day; max(ends_at, today) guards the
+     * (rare) case of paying on the trial's final day so the paid term never
+     * backdates before now.
+     */
+    private function paidTermStartsAt(): Carbon
+    {
+        $now    = Carbon::now();
+        $shopId = Auth::user()?->shop_id;
+
+        if (! $shopId) {
+            return $now; // pay-before-shop onboarding: first-ever purchase
+        }
+
+        $current = ShopSubscription::where('shop_id', $shopId)->latest('id')->first();
+
+        if (! $current) {
+            return $now;
+        }
+
+        if (in_array($current->status, ['active', 'grace', 'read_only'], true)) {
+            throw new \LogicException('Shop already has an active paid subscription; cannot start a second paid term.');
+        }
+
+        if ($current->status === 'trial' && $current->ends_at) {
+            $trialEnd = Carbon::parse($current->ends_at)->startOfDay();
+            return $trialEnd->greaterThan($now) ? $trialEnd : $now;
+        }
+
+        // expired / cancelled trial, or trial with no end date → fresh term today
+        return $now;
+    }
+
     public function createSubscription(
         Plan $plan,
         string $billingCycle,
@@ -141,8 +180,19 @@ class SubscriptionPaymentService
         // billing cycle — trial_days is NEVER read here, otherwise a paid yearly
         // purchase would silently collapse into a 7-day trial window (the bug this
         // method previously had).
-        $startsAt = Carbon::now();
         $status = 'active';
+
+        // Term anchoring (early-upgrade aware):
+        //  - First-ever purchase (or fully lapsed): the term starts NOW.
+        //  - Shop currently on TRIAL: the paid term starts when the trial ENDS, so
+        //    the customer keeps every free trial day they have left and there is no
+        //    read-only gap at the seam.
+        //  - Shop already holds a LIVE PAID subscription (active/grace/read_only):
+        //    refuse — never stack a second paid term. This is the authoritative
+        //    money guard; the controller gates block reaching here, this is the
+        //    last line of defence.
+        $startsAt = $this->paidTermStartsAt();
+
         $endsAt = $billingCycle === 'yearly'
             ? $startsAt->copy()->addYear()
             : $startsAt->copy()->addMonth();

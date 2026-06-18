@@ -146,6 +146,9 @@ class PlatformSettingsController extends Controller
                 ->applyTrialLengthToActiveTrials($days, $adminId ? (int) $adminId : null);
             $fragment .= " Updated {$result['updated']} shop(s) currently on trial"
                 . ($result['clamped'] > 0 ? " ({$result['clamped']} clamped to today)" : '')
+                . (($result['skipped_upgraded'] ?? 0) > 0
+                    ? " ({$result['skipped_upgraded']} already upgraded to a paid plan — left unchanged)"
+                    : '')
                 . '.';
         } else {
             $fragment .= ' Applies to new trials only.';

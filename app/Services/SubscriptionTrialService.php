@@ -30,7 +30,7 @@ class SubscriptionTrialService
     /**
      * Recompute ends_at for every active trial to start + $days (clamped to ≥ today).
      *
-     * @return array{updated:int, clamped:int, unchanged:int}
+     * @return array{updated:int, clamped:int, unchanged:int, skipped_upgraded:int}
      */
     public function applyTrialLengthToActiveTrials(int $days, ?int $adminId = null): array
     {
@@ -40,13 +40,27 @@ class SubscriptionTrialService
         $updated = 0;
         $clamped = 0;
         $unchanged = 0;
+        $skippedUpgraded = 0;
 
-        DB::transaction(function () use ($days, $today, $adminId, &$updated, &$clamped, &$unchanged) {
+        DB::transaction(function () use ($days, $today, $adminId, &$updated, &$clamped, &$unchanged, &$skippedUpgraded) {
             ShopSubscription::query()
                 ->where('status', 'trial')
                 ->orderBy('id')
-                ->chunkById(200, function ($subscriptions) use ($days, $today, $adminId, &$updated, &$clamped, &$unchanged) {
+                ->chunkById(200, function ($subscriptions) use ($days, $today, $adminId, &$updated, &$clamped, &$unchanged, &$skippedUpgraded) {
                     foreach ($subscriptions as $sub) {
+                        // Skip trials whose shop already bought a paid term (early
+                        // upgrade): the paid row's starts_at is pinned to THIS
+                        // trial's end date, so moving the trial end would desync
+                        // the seam. An upgraded shop's trial length is frozen.
+                        $alreadyUpgraded = ShopSubscription::where('shop_id', $sub->shop_id)
+                            ->where('id', '>', $sub->id)
+                            ->whereIn('status', ['active', 'grace', 'read_only'])
+                            ->exists();
+                        if ($alreadyUpgraded) {
+                            $skippedUpgraded++;
+                            continue;
+                        }
+
                         $startsAt = $sub->starts_at
                             ? CarbonImmutable::parse($sub->starts_at)->startOfDay()
                             : CarbonImmutable::parse($sub->created_at)->startOfDay();
@@ -96,6 +110,11 @@ class SubscriptionTrialService
                 });
         });
 
-        return ['updated' => $updated, 'clamped' => $clamped, 'unchanged' => $unchanged];
+        return [
+            'updated' => $updated,
+            'clamped' => $clamped,
+            'unchanged' => $unchanged,
+            'skipped_upgraded' => $skippedUpgraded,
+        ];
     }
 }

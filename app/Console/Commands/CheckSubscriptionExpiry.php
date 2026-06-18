@@ -48,6 +48,15 @@ class CheckSubscriptionExpiry extends Command
                     continue;
                 }
 
+                // Superseded-row guard: if a NEWER subscription row for this shop
+                // is already in a live state, this older row lapsing is pure
+                // bookkeeping. Transition its status, but never revoke the edition
+                // or downgrade the shop — the newer row (e.g. a paid term bought
+                // early during a trial, or an ordinary renewal) covers it. This is
+                // what makes early trial→paid upgrade seamless: when the trial row
+                // expires, the already-active paid row keeps the shop running.
+                $superseded = $this->hasNewerLiveSubscription($subscription);
+
                 $before = $subscription->toArray();
                 $subscription->update(['status' => $newStatus]);
 
@@ -58,7 +67,9 @@ class CheckSubscriptionExpiry extends Command
                     'event_type' => 'subscription.auto_expired',
                     'before' => $before,
                     'after' => $subscription->fresh()->toArray(),
-                    'reason' => "Auto-transitioned to {$newStatus} by scheduler",
+                    'reason' => $superseded
+                        ? "Auto-transitioned to {$newStatus} by scheduler (superseded by a newer live subscription — shop unaffected)"
+                        : "Auto-transitioned to {$newStatus} by scheduler",
                 ]);
 
                 // A full lapse (expired) revokes the subscription-backed edition
@@ -66,11 +77,13 @@ class CheckSubscriptionExpiry extends Command
                 // read_only are still entitling states — editions stay. Do this
                 // BEFORE deciding shop access_mode so the "other entitled product"
                 // check below reflects the post-revoke state.
-                if ($newStatus === 'expired') {
+                // Skip entirely when superseded: a newer live row of the same
+                // product is still granting the edition.
+                if ($newStatus === 'expired' && ! $superseded) {
                     $this->revokeEditionForLapsed($subscription);
                 }
 
-                if ($subscription->shop_id) {
+                if ($subscription->shop_id && ! $superseded) {
                     $shop = Shop::find($subscription->shop_id);
 
                     // Multi-product guard: a single product's lapse must NOT
@@ -162,6 +175,28 @@ class CheckSubscriptionExpiry extends Command
         $this->info("Processed {$expired->count()} expired + {$graceExpired->count()} grace-expired subscriptions. Transitioned: {$transitioned}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Whether a NEWER subscription row for the same shop is in a live state
+     * (trial / active / grace / read_only). When true, the lapsing of an older
+     * row is bookkeeping only — the newer row already covers the shop, so the
+     * shop must not be downgraded and the edition must not be revoked.
+     *
+     * This is what makes an early trial→paid upgrade seamless: the paid row is
+     * created with a higher id while the trial is still live, so when the trial
+     * row later expires this returns true and the shop keeps running.
+     */
+    private function hasNewerLiveSubscription(ShopSubscription $subscription): bool
+    {
+        if (! $subscription->shop_id) {
+            return false;
+        }
+
+        return ShopSubscription::where('shop_id', $subscription->shop_id)
+            ->where('id', '>', $subscription->id)
+            ->whereIn('status', ['trial', 'active', 'grace', 'read_only'])
+            ->exists();
     }
 
     /**

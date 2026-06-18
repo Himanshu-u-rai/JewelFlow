@@ -53,16 +53,12 @@ class SubscriptionController extends Controller
         $user = Auth::user();
         $shopType = $user->shop?->shop_type ?? session('onboarding_shop_type') ?? $user->onboarding_shop_type;
 
-        if ($user->shop_id) {
-            $currentSubscription = ShopSubscription::query()
-                ->where('shop_id', $user->shop_id)
-                ->latest('id')
-                ->first();
-
-            if ($currentSubscription && in_array($currentSubscription->status, ['active', 'trial', 'grace', 'read_only'], true)) {
-                return redirect()->route('subscription.status')
-                    ->with('error', 'Your shop already has an active subscription.');
-            }
+        // A shop on a TRIAL may upgrade early (it keeps its free days; the paid
+        // term begins when the trial ends). Only a shop that already holds a live
+        // PAID subscription is blocked from buying again.
+        if ($this->hasLivePaidSubscription()) {
+            return redirect()->route('subscription.status')
+                ->with('error', 'Your shop already has an active paid subscription.');
         }
 
         // If user already has a pending (paid) subscription, skip to shop creation
@@ -114,28 +110,63 @@ class SubscriptionController extends Controller
         // plan->trial_days column or a hardcoded "1 month".
         $trialDays = PlatformSetting::trialDays();
 
+        // If the shop is reaching this page mid-trial, it's an EARLY UPGRADE: the
+        // free trial keeps running and the paid term begins when the trial ends.
+        // Pass the trial end date so the view can reassure the owner no days are lost.
+        $current = $this->currentSubscription();
+        $upgradingFromTrial = $current && $current->status === 'trial';
+        $trialEndsAt = $upgradingFromTrial ? $current->ends_at : null;
+
         return view('subscription.plans', compact(
             'plans',
             'shopType',
             'monthlyPlan',
             'yearlyPlan',
             'featureLabels',
-            'trialDays'
+            'trialDays',
+            'upgradingFromTrial',
+            'trialEndsAt'
         ));
+    }
+
+    /**
+     * The shop's latest subscription, or null. Single read used by the gates.
+     */
+    private function currentSubscription(): ?ShopSubscription
+    {
+        $shopId = Auth::user()?->shop_id;
+        if (! $shopId) {
+            return null;
+        }
+
+        return ShopSubscription::query()
+            ->where('shop_id', $shopId)
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * Live PAID subscription states — a shop in one of these has already paid
+     * for a current term and must NOT be allowed to start another purchase
+     * (no double-charge, no stacked term). A `trial` is NOT here on purpose:
+     * a trialing shop may upgrade early (it keeps its free days; the paid term
+     * begins when the trial ends — see SubscriptionPaymentService::createSubscription).
+     */
+    private const LIVE_PAID_STATUSES = ['active', 'grace', 'read_only'];
+
+    /** True when the shop already holds a live paid subscription (blocks buying). */
+    private function hasLivePaidSubscription(): bool
+    {
+        $sub = $this->currentSubscription();
+
+        return $sub !== null && in_array($sub->status, self::LIVE_PAID_STATUSES, true);
     }
 
     public function choosePlan(Request $request)
     {
-        if (Auth::user()?->shop_id) {
-            $currentSubscription = ShopSubscription::query()
-                ->where('shop_id', Auth::user()->shop_id)
-                ->latest('id')
-                ->first();
-
-            if ($currentSubscription && in_array($currentSubscription->status, ['active', 'trial', 'grace', 'read_only'], true)) {
-                return redirect()->route('subscription.status')
-                    ->with('error', 'Your shop already has an active subscription.');
-            }
+        if ($this->hasLivePaidSubscription()) {
+            return redirect()->route('subscription.status')
+                ->with('error', 'Your shop already has an active paid subscription.');
         }
 
         $validated = $request->validate([
@@ -223,16 +254,10 @@ class SubscriptionController extends Controller
 
     public function payment()
     {
-        if (Auth::user()?->shop_id) {
-            $currentSubscription = ShopSubscription::query()
-                ->where('shop_id', Auth::user()->shop_id)
-                ->latest('id')
-                ->first();
-
-            if ($currentSubscription && in_array($currentSubscription->status, ['active', 'trial', 'grace', 'read_only'], true)) {
-                return redirect()->route('subscription.status')
-                    ->with('error', 'Your shop already has an active subscription.');
-            }
+        // Trial shops may proceed to pay (early upgrade); only live paid shops are blocked.
+        if ($this->hasLivePaidSubscription()) {
+            return redirect()->route('subscription.status')
+                ->with('error', 'Your shop already has an active paid subscription.');
         }
 
         $planId = session('pending_plan_id');
@@ -282,6 +307,16 @@ class SubscriptionController extends Controller
 
     public function initiatePayment(Request $request)
     {
+        // Defence in depth: this endpoint previously had no subscription gate and
+        // relied on the upstream pages. Block a live PAID shop from creating a
+        // Razorpay order here directly (a trial shop is allowed — early upgrade).
+        if ($this->hasLivePaidSubscription()) {
+            return response()->json([
+                'error' => 'Your shop already has an active paid subscription.',
+                'redirect' => route('subscription.status'),
+            ], 422);
+        }
+
         // Only trust session values set by choosePlan() — never accept from request body
         $planId = session('pending_plan_id');
         $billingCycle = session('pending_billing_cycle');
@@ -443,6 +478,22 @@ class SubscriptionController extends Controller
             $subscription = $this->paymentService->createSubscription(
                 $plan, $billingCycle, (float) $expectedPrice, $paymentId, $orderId
             );
+        } catch (\LogicException $e) {
+            // Anti-stacking guard fired: the shop already holds a live paid term,
+            // yet a captured payment reached here (a true race — the upstream
+            // gates block this normally). Money WAS taken; log loudly so support
+            // can refund. We deliberately do NOT create a second paid term.
+            Log::critical('Captured payment rejected by anti-stacking guard — manual refund required', [
+                'payment_id' => $paymentId,
+                'order_id' => $orderId,
+                'user_id' => Auth::id(),
+                'shop_id' => Auth::user()?->shop_id,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('subscription.status')
+                ->with('error', 'Your shop already has an active paid subscription, so this payment was not applied. '
+                    . 'Please contact support for a refund with ref: ' . $paymentId);
         } catch (\Exception $e) {
             return redirect()->route('subscription.payment')
                 ->with('error', $e->getMessage() === 'Platform configuration incomplete.'

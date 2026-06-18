@@ -218,6 +218,16 @@
       </svg>
       {{ ucfirst($shopType) }} Plan
     </div>
+
+    @if(!empty($upgradingFromTrial))
+      <div style="margin:18px auto 0;max-width:560px;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:12px;padding:13px 18px;font-size:13.5px;line-height:1.5;text-align:left;display:flex;gap:11px;align-items:flex-start;">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="#059669" style="flex-shrink:0;margin-top:1px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        <span>
+          <strong>Your free trial keeps running{{ $trialEndsAt ? ' until ' . \Carbon\Carbon::parse($trialEndsAt)->format('d M, Y') : '' }}.</strong>
+          Subscribe now and your paid plan starts right after your trial ends — you don’t lose any of your free days.
+        </span>
+      </div>
+    @endif
   </div>
 
   @php
@@ -298,7 +308,7 @@
             $trialDays = $trialDays ?? 30;
             $trialLabel = $trialDays . '-day';
           @endphp
-          @if($trialPlan)
+          @if($trialPlan && empty($upgradingFromTrial))
             <button type="button" class="md-opt md-opt-trial" role="tab" aria-selected="false" data-plan="trial">
               <div class="md-opt-main">
                 <div class="md-opt-title">Free trial</div>
@@ -323,7 +333,7 @@
                 @csrf
                 <input type="hidden" name="plan_id" value="{{ $opt['plan']->id }}">
                 <input type="hidden" name="billing_cycle" value="{{ $opt['cycle'] }}">
-                <button type="submit" class="md-cta">Get Started →</button>
+                <button type="submit" class="md-cta">{{ !empty($upgradingFromTrial) ? 'Subscribe now →' : 'Get Started →' }}</button>
               </form>
 
               <div class="md-pane-features-head">What's included</div>
@@ -338,7 +348,7 @@
             </div>
           @endforeach
 
-          @if($trialPlan)
+          @if($trialPlan && empty($upgradingFromTrial))
             <div class="md-pane md-pane-trial" data-pane="trial">
               <div class="md-pane-name">{{ $trialLabel }} free trial</div>
               <div class="md-pane-price">₹0<span class="md-pane-per">for the first {{ $trialDays }} days</span></div>
