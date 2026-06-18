@@ -39,7 +39,8 @@ class CapabilityResolver
             schemes:      $this->gate($planFeatures, 'schemes', $user, null),
             loyalty:      $this->gate($planFeatures, 'loyalty', $user, null),
             installments: $this->gate($planFeatures, 'installments', $user, null),
-            cashbook:     $this->gate($planFeatures, null, $user, 'cash.view', true),
+            cashbook:        $this->gate($planFeatures, null, $user, 'cash.view', true),
+            cashbook_create: $this->gate($planFeatures, null, $user, 'cash.create', true),
         );
     }
 

@@ -26,5 +26,6 @@ class CapabilitiesData extends Data
         public bool $loyalty,
         public bool $installments,
         public bool $cashbook,
+        public bool $cashbook_create,
     ) {}
 }
