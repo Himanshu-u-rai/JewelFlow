@@ -81,30 +81,48 @@ class InstallmentController extends Controller
             ->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name', 'mobile']);
 
-        $invoices = $this->eligibleInvoices($shopId);
         $selectedInvoiceId = (int) $request->query('invoice_id');
 
-        if ($selectedInvoiceId > 0 && !$invoices->contains('id', $selectedInvoiceId)) {
-            if ($fromPosEmi) {
-                $draftInvoice = Invoice::where('shop_id', $shopId)
-                    ->where('status', Invoice::STATUS_DRAFT)
-                    ->with(['customer:id,first_name,last_name,mobile'])
-                    ->withSum('items as line_total_sum', 'line_total')
-                    ->find($selectedInvoiceId);
+        // POS EMI: the invoice is DETERMINED by POS (it created the draft and
+        // passed its id), not chosen. Lock the page to exactly that draft so the
+        // cashier cannot accidentally pick a different draft from a dropdown —
+        // which would finalize the EMI against the wrong invoice. The invoice
+        // list is restricted to the single draft; the view locks the selectors.
+        if ($fromPosEmi) {
+            if ($selectedInvoiceId <= 0) {
+                return redirect()->route('installments.index')
+                    ->with('error', 'No POS EMI draft was specified.');
+            }
 
-                if ($draftInvoice) {
-                    $draftInvoice->paid_amount = (float) ($draftInvoice->payments()->sum('amount') ?? 0);
-                    $draftInvoice->total = $this->computeDraftInvoiceTotal($draftInvoice);
-                    $draftInvoice->outstanding_amount = $draftInvoice->total - (float) $draftInvoice->paid_amount;
-                    $invoices = $invoices->push($draftInvoice)->unique('id')->values();
-                } else {
-                    return redirect()->route('installments.index')
-                        ->with('error', 'Selected invoice is not eligible for EMI conversion.');
-                }
-            } else {
+            $draftInvoice = Invoice::where('shop_id', $shopId)
+                ->where('status', Invoice::STATUS_DRAFT)
+                ->with(['customer:id,first_name,last_name,mobile'])
+                ->withSum('items as line_total_sum', 'line_total')
+                ->find($selectedInvoiceId);
+
+            if (!$draftInvoice) {
                 return redirect()->route('installments.index')
                     ->with('error', 'Selected invoice is not eligible for EMI conversion.');
             }
+
+            $draftInvoice->paid_amount = (float) ($draftInvoice->payments()->sum('amount') ?? 0);
+            $draftInvoice->total = $this->computeDraftInvoiceTotal($draftInvoice);
+            $draftInvoice->outstanding_amount = $draftInvoice->total - (float) $draftInvoice->paid_amount;
+
+            // Only this draft is selectable; only its customer is offered.
+            $invoices = collect([$draftInvoice]);
+            if ($draftInvoice->customer) {
+                $customers = $customers->where('id', $draftInvoice->customer_id)->values();
+            }
+
+            return view('installments.create', compact('customers', 'invoices', 'selectedInvoiceId', 'fromPosEmi'));
+        }
+
+        $invoices = $this->eligibleInvoices($shopId);
+
+        if ($selectedInvoiceId > 0 && !$invoices->contains('id', $selectedInvoiceId)) {
+            return redirect()->route('installments.index')
+                ->with('error', 'Selected invoice is not eligible for EMI conversion.');
         }
 
         return view('installments.create', compact('customers', 'invoices', 'selectedInvoiceId', 'fromPosEmi'));

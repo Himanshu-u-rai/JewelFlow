@@ -40,36 +40,57 @@
                     <span class="emi-create-state">Eligible invoices only</span>
                 </div>
 
-                <div class="emi-create-grid emi-create-grid--two">
-                    <label class="emi-create-field">
-                        <span>Customer</span>
-                        <select name="customer_id"
-                                x-model="customerId"
-                                @change="onCustomerChange"
-                                required>
-                            <option value="">Select customer</option>
-                            @foreach($customers as $customer)
-                                <option value="{{ $customer->id }}">
-                                    {{ $customer->name }} ({{ $customer->mobile }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </label>
+                @if(!empty($fromPosEmi))
+                    {{-- POS EMI: customer + invoice are fixed by the POS draft, not chosen.
+                         Shown read-only so the wrong invoice can never be selected; the
+                         actual ids are submitted via hidden inputs. --}}
+                    @php $posInvoice = $invoices->first(); @endphp
+                    <div class="emi-create-grid emi-create-grid--two">
+                        <label class="emi-create-field">
+                            <span>Customer</span>
+                            <input type="text" value="{{ $posInvoice?->customer?->name }} ({{ $posInvoice?->customer?->mobile }})" readonly disabled>
+                            <input type="hidden" name="customer_id" value="{{ $posInvoice?->customer_id }}">
+                        </label>
 
-                    <label class="emi-create-field">
-                        <span>Invoice</span>
-                        <select name="invoice_id"
-                                x-model="invoiceId"
-                                @change="onInvoiceChange"
-                                required>
-                            <option value="">Select invoice</option>
-                            <template x-for="inv in filteredInvoices()" :key="inv.id">
-                                <option :value="String(inv.id)" x-text="invoiceOptionLabel(inv)"></option>
-                            </template>
-                        </select>
-                        <small>Only invoices with pending balance and no EMI plan are listed.</small>
-                    </label>
-                </div>
+                        <label class="emi-create-field">
+                            <span>Invoice</span>
+                            <input type="text" value="POS EMI Draft #{{ $posInvoice?->id }} · ₹{{ number_format((float) ($posInvoice?->total ?? 0), 2) }}" readonly disabled>
+                            <input type="hidden" name="invoice_id" value="{{ $posInvoice?->id }}">
+                            <small>This EMI is for the bill you just created at the counter.</small>
+                        </label>
+                    </div>
+                @else
+                    <div class="emi-create-grid emi-create-grid--two">
+                        <label class="emi-create-field">
+                            <span>Customer</span>
+                            <select name="customer_id"
+                                    x-model="customerId"
+                                    @change="onCustomerChange"
+                                    required>
+                                <option value="">Select customer</option>
+                                @foreach($customers as $customer)
+                                    <option value="{{ $customer->id }}">
+                                        {{ $customer->name }} ({{ $customer->mobile }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="emi-create-field">
+                            <span>Invoice</span>
+                            <select name="invoice_id"
+                                    x-model="invoiceId"
+                                    @change="onInvoiceChange"
+                                    required>
+                                <option value="">Select invoice</option>
+                                <template x-for="inv in filteredInvoices()" :key="inv.id">
+                                    <option :value="String(inv.id)" x-text="invoiceOptionLabel(inv)"></option>
+                                </template>
+                            </select>
+                            <small>Only invoices with pending balance and no EMI plan are listed.</small>
+                        </label>
+                    </div>
+                @endif
 
                 <div class="emi-create-note">
                     Final invoice and EMI plan are created only after you submit this form.

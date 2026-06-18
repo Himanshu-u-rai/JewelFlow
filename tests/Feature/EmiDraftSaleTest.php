@@ -112,6 +112,41 @@ class EmiDraftSaleTest extends TestCase
         $this->assertSame('in_stock', $freshItem->status);
     }
 
+    public function test_pos_emi_create_page_locks_to_the_passed_draft_only(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $lot = $this->createMetalLot($shop->id);
+        $customer = $this->createCustomer($shop->id);
+        $itemA = $this->createItem($shop->id, $lot->id);
+        $itemB = $this->createItem($shop->id, $lot->id);
+
+        $this->actingAs($user);
+
+        // Two POS-EMI drafts exist (the bug: both showed in the dropdown).
+        [$draftA, $draftB] = TenantContext::runFor($shop->id, fn () => [
+            RetailerSalesService::prepareEmiDraftSale(customerId: $customer->id, itemIds: [$itemA->id]),
+            RetailerSalesService::prepareEmiDraftSale(customerId: $customer->id, itemIds: [$itemB->id]),
+        ]);
+
+        $this->withoutMiddleware([
+            \App\Http\Middleware\EnsureTenantUser::class,
+            \App\Http\Middleware\EnsureSubscriptionIsActive::class,
+            \App\Http\Middleware\EnsureAccountIsActive::class,
+            \App\Http\Middleware\EnsureShopExists::class,
+        ]);
+
+        $html = TenantContext::runFor($shop->id, fn () => $this->actingAs($user)
+            ->get(route('installments.create', ['invoice_id' => $draftA->id, 'from_pos_emi' => 1])))
+            ->assertOk()
+            ->getContent();
+
+        // The page is locked to draft A: no free invoice <select>, A shown,
+        // and the OTHER draft (B) must NOT appear as a choice.
+        $this->assertStringNotContainsString('<select name="invoice_id"', $html, 'POS EMI must not render an invoice dropdown.');
+        $this->assertStringContainsString('value="' . $draftA->id . '"', $html);
+        $this->assertStringNotContainsString('Draft #' . $draftB->id, $html, 'Other drafts must not be offered.');
+    }
+
     public function test_discard_refuses_a_finalized_invoice(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
