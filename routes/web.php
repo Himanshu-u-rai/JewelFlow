@@ -41,6 +41,28 @@ Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     }
 
+    // Dhiran subdomain (dhiran.jewelflows.com/) is a separate product front door.
+    // The realm is derived from the host, so the root must never leak the ERP
+    // landing or the ERP dashboard to a Dhiran visitor (and vice-versa).
+    if (\App\Support\Realm::current() === \App\Support\Realm::DHIRAN) {
+        $user = auth()->user();
+
+        if (! $user) {
+            // Guest → Dhiran-branded login (its own entry page).
+            return redirect()->route('login');
+        }
+
+        // ERP account on the Dhiran host → bounce to its own realm; it never
+        // gets the Dhiran app experience.
+        if (! $user->isDhiran()) {
+            return redirect('/dashboard');
+        }
+
+        // Dhiran account → the Dhiran dashboard. That controller itself renders
+        // the activation/onboarding placeholder when Dhiran isn't set up yet.
+        return redirect()->route('dhiran.dashboard');
+    }
+
     if (auth()->check()) {
         return redirect('/dashboard');
     }
@@ -155,6 +177,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
 
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
+        ->middleware('realm:erp')
         ->name('dashboard');
 
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])->name('subscription.status');
@@ -702,7 +725,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         abort(404);
     })->where('any', '.*');
 
-    Route::prefix('dhiran')->name('dhiran.')->group(function () {
+    // realm:dhiran — an ERP-realm account can never reach Dhiran app routes
+    // (it is redirected to its own dashboard), and vice-versa. Belt-and-suspenders
+    // on top of the per-host session cookie isolation.
+    Route::prefix('dhiran')->name('dhiran.')->middleware('realm:dhiran')->group(function () {
         // Dashboard & Activation — no dhiran.enabled check (dashboard shows activation page)
         Route::get('/', [\App\Http\Controllers\DhiranController::class, 'dashboard'])->middleware('can:dhiran.view')->name('dashboard');
         Route::post('/activate', [\App\Http\Controllers\DhiranController::class, 'activate'])->middleware('can:dhiran.settings')->name('activate');

@@ -1,6 +1,7 @@
 <x-guest-layout>
+    @php $brand = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? 'Dhiran' : 'JewelFlow'; @endphp
     <div class="mb-4 text-sm text-gray-600">
-        Enter the email address you verified in your JewelFlow account and we'll send you a password reset link.
+        Enter the email address you verified in your {{ $brand }} account and we'll send you a password reset link.
     </div>
 
     <div class="mb-4 p-3 text-sm" style="background:#f0fdf4; border:1px solid #86efac; color:#166534;">

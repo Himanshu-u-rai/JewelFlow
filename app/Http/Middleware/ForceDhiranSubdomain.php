@@ -33,8 +33,17 @@ class ForceDhiranSubdomain
             return $next($request);
         }
 
-        if (! $request->user()) {
+        $user = $request->user();
+
+        if (! $user) {
             return $next($request);
+        }
+
+        // An ERP account that lands on the Dhiran host must NOT be forced into the
+        // Dhiran app — send it back to its own realm. Only genuine Dhiran accounts
+        // are funnelled to the Dhiran dashboard.
+        if (! $user->isDhiran()) {
+            return redirect('/dashboard');
         }
 
         return redirect()->route('dhiran.dashboard');

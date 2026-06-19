@@ -1,10 +1,20 @@
+@php
+    // Realm-aware branding: the same auth layout serves both products. On the
+    // dhiran.* host it renders as "Dhiran", otherwise "Jewelflow" (ERP).
+    $isDhiran = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN;
+    $brandName    = $isDhiran ? 'Dhiran' : 'Jewelflow';
+    $brandTagline = $isDhiran
+        ? 'Gold-loan & pledge management made simple. Issue loans, track interest, and manage releases — all in one place.'
+        : 'The complete jewellery business platform. Manage your inventory, sales, and customers in one place.';
+    $brandSubtitle = $isDhiran ? 'Gold Loan & Pledge Management' : 'Jewellery Business Management';
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-    <title>Jewelflow</title>
+    <title>{{ $brandName }}</title>
     @include('partials.favicon')
 
     <!-- Fonts -->
@@ -501,11 +511,10 @@
                 </svg>
             </div>
 
-            <h2 class="left-brand">Jewel<span>flow</span></h2>
-            <p class="left-tagline">
-                The complete jewellery business platform. Manage your inventory,
-                sales, and customers in one place.
-            </p>
+            <h2 class="left-brand">
+                @if($isDhiran)<span>{{ $brandName }}</span>@else Jewel<span>flow</span>@endif
+            </h2>
+            <p class="left-tagline">{{ $brandTagline }}</p>
 
             <div class="trust-row">
                 <div class="trust-badge">
@@ -541,9 +550,9 @@
                                 </linearGradient>
                             </defs>
                         </svg>
-                        <h1>Jewelflow</h1>
+                        <h1>{{ $brandName }}</h1>
                     </div>
-                    <p>Jewellery Business Management</p>
+                    <p>{{ $brandSubtitle }}</p>
                 </div>
 
                 <hr class="gold-divider">
@@ -552,7 +561,7 @@
             </div>
 
             <div class="auth-footer">
-                © {{ date('Y') }} Jewelflow · Secure · Professional
+                © {{ date('Y') }} {{ $brandName }} · Secure · Professional
             </div>
         </div>
     </div>

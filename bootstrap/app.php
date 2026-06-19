@@ -50,6 +50,33 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ForceDhiranSubdomain::class,
         ]);
 
+        // Middleware execution priority.
+        //
+        // Realm separation (Dhiran): EnsureRealm MUST run before EnsureShopExists
+        // so the product boundary is the FIRST authoritative gate — a cross-realm
+        // user is bounced to their own realm before shop-onboarding can redirect a
+        // shopless visitor into the wrong product's onboarding (e.g. a shopless
+        // Dhiran user must never be sent to the ERP shops.choose-type chooser).
+        // The list below preserves Laravel's default ordering and only inserts the
+        // realm/tenant gates ahead of shop existence; routes only re-sort the
+        // middleware they actually carry, so untouched routes are unaffected.
+        $middleware->priority([
+            \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            \Illuminate\Routing\Middleware\ThrottleRequestsWithRedis::class,
+            \Illuminate\Contracts\Session\Middleware\AuthenticatesSessions::class,
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\EnsureTenantUser::class,
+            \App\Http\Middleware\EnsureRealm::class,
+            \App\Http\Middleware\EnsureShopExists::class,
+            \Illuminate\Auth\Middleware\Authorize::class,
+        ]);
+
         // Register middleware aliases
         $middleware->alias([
             'nocache' => \App\Http\Middleware\NoCache::class,
@@ -64,6 +91,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'edition' => \App\Http\Middleware\EnsureShopEdition::class,
             'catalog.shop' => \App\Http\Middleware\ResolveCatalogShop::class,
             'dhiran.enabled' => \App\Http\Middleware\EnsureDhiranEnabled::class,
+            'realm' => \App\Http\Middleware\EnsureRealm::class,
             'rate.shop' => \App\Http\Middleware\RateLimitByShop::class,
             'mobile.envelope'  => \App\Http\Middleware\MobileEnvelope::class,
             'mobile.idempotency' => \App\Http\Middleware\EnsureIdempotency::class,

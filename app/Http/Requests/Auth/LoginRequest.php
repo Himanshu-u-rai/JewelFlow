@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use App\Support\Realm;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -52,10 +53,18 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        // Login is scoped to the current realm (from the host): a login on
+        // dhiran.* only ever authenticates a Dhiran account, and the main domain
+        // only an ERP account. The same mobile may exist in both realms, so the
+        // realm is part of both the existence check and the auth attempt.
+        $realm = Realm::current($this);
+
         // Product decision: distinguish "unknown mobile" from "wrong password"
         // so users know whether to register. Enumeration risk is capped by the
         // IP-level secondary throttle in ensureIsNotRateLimited().
-        $userExists = User::where('mobile_number', $this->input('mobile_number'))->exists();
+        $userExists = User::where('mobile_number', $this->input('mobile_number'))
+            ->where('realm', $realm)
+            ->exists();
 
         if (! $userExists) {
             RateLimiter::hit($this->throttleKey());
@@ -67,7 +76,10 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if (! Auth::attempt($this->only('mobile_number', 'password'), $this->boolean('remember'))) {
+        if (! Auth::attempt(
+            array_merge($this->only('mobile_number', 'password'), ['realm' => $realm]),
+            $this->boolean('remember'),
+        )) {
             RateLimiter::hit($this->throttleKey());
             RateLimiter::hit($this->ipThrottleKey());
             session()->flash('login_modal', 'wrong_password');
