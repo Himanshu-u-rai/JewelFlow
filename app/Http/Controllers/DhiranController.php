@@ -23,7 +23,23 @@ class DhiranController extends Controller
 
     public function dashboard()
     {
-        $shopId   = auth()->user()->shop_id;
+        $user = auth()->user();
+
+        // Dhiran onboarding gate (Phase 3). A Dhiran-realm customer who hasn't
+        // finished onboarding must be routed into the Dhiran-only flow, never the
+        // ERP one:
+        //   • no shop yet + a paid/pending Dhiran subscription → create the business
+        //   • no shop yet + no subscription                    → choose the plan
+        // (An ERP account never reaches here — realm:dhiran on this group bounces it.)
+        if (! $user->shop_id) {
+            if (\App\Services\OnboardingResumeService::findPendingSubscription($user)) {
+                return redirect()->route('dhiran.onboarding');
+            }
+
+            return redirect()->route('dhiran.plans');
+        }
+
+        $shopId   = $user->shop_id;
         $settings = DhiranSettings::getForShop($shopId);
 
         if (! $settings->is_enabled) {

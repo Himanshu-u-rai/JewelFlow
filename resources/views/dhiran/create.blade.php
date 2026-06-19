@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="New Loan">
     <style>
         :root {
             --dh-ink: #0f172a;
@@ -525,4 +525,4 @@
         });
     </script>
     @endpush
-</x-app-layout>
+</x-dhiran-layout>

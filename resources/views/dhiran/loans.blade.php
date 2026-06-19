@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Loans">
     <x-page-header>
         <div>
             <h1 class="page-title">Gold Loans</h1>
@@ -135,4 +135,4 @@
             @endif
         </div>
     </div>
-</x-app-layout>
+</x-dhiran-layout>

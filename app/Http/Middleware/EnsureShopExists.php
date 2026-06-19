@@ -30,20 +30,41 @@ class EnsureShopExists
         //   • an ERP account on the Dhiran host (e.g. crafted /dhiran URL) → the
         //     ERP dashboard, never the Dhiran app.
         // logout is always allowed so a user can sign out from anywhere.
+        // Decide on the HOST, not the route name. This middleware can run before
+        // route binding (route() is null at this point), so routeIs() is unreliable
+        // here — but the host is always known and is the authoritative realm signal.
         if (! $request->routeIs('logout')) {
             $userRealm = Realm::of($user);
             $hostRealm = Realm::current($request);
 
-            if ($userRealm === Realm::DHIRAN) {
-                // Dhiran account: let it stay inside its own product, send it home
-                // otherwise (Dhiran owns its own future onboarding).
-                if (! $request->routeIs('dhiran.*')) {
-                    return redirect()->route('dhiran.dashboard');
-                }
-            } elseif ($hostRealm === Realm::DHIRAN || $request->routeIs('dhiran.*')) {
-                // ERP account reaching the Dhiran host / a Dhiran route → bounce to
-                // its own realm; it never gets the Dhiran experience or onboarding.
+            if ($userRealm === Realm::DHIRAN && $hostRealm !== Realm::DHIRAN) {
+                // Dhiran account on the ERP host → its own realm; never the ERP
+                // onboarding flow.
+                return redirect()->route('dhiran.dashboard');
+            }
+
+            if ($userRealm !== Realm::DHIRAN && $hostRealm === Realm::DHIRAN) {
+                // ERP account on the Dhiran host (e.g. crafted /dhiran URL) → bounce
+                // to its own realm; it never gets the Dhiran experience.
                 return redirect()->route('dashboard');
+            }
+
+            // Dhiran account on the Dhiran host → inside its own product.
+            if ($userRealm === Realm::DHIRAN) {
+                // A shopless Dhiran user has no role/permissions yet, so the
+                // dashboard's can:dhiran.view gate would 403 before onboarding.
+                // Route them into the Dhiran onboarding flow here (this runs before
+                // Authorize). The onboarding routes themselves are NOT in this
+                // middleware group, so they are reachable.
+                if (is_null($user->shop_id)) {
+                    if (\App\Services\OnboardingResumeService::findPendingSubscription($user)) {
+                        return redirect()->route('dhiran.onboarding');
+                    }
+
+                    return redirect()->route('dhiran.plans');
+                }
+
+                return $next($request);
             }
         }
 

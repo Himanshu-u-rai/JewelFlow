@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Dhiran Settings">
     <style>
         .dhiran-settings-root {
             --dset-ink: #0f172a;
@@ -308,4 +308,4 @@
             </div>
         </form>
     </div>
-</x-app-layout>
+</x-dhiran-layout>

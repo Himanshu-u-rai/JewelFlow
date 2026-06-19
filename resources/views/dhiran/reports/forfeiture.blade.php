@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Forfeiture Report">
     <x-page-header>
         <div>
             <h1 class="page-title">Forfeiture Report</h1>
@@ -73,4 +73,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-dhiran-layout>

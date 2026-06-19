@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Active Loans Report">
     <x-page-header>
         <div>
             <h1 class="page-title">Active Loans Report</h1>
@@ -99,4 +99,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-dhiran-layout>

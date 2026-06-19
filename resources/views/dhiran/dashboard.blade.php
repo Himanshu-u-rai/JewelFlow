@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Dhiran Dashboard">
     <style>
         .dhiran-dash {
             --dd-ink: #0f172a;
@@ -208,4 +208,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-dhiran-layout>

@@ -146,6 +146,31 @@ Route::middleware(['auth', 'tenant', 'account.active'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| DHIRAN ONBOARDING (Phase 3)
+| Authenticated Dhiran-realm user, NO shop yet.
+| → Dhiran-only plan selection + Dhiran business creation.
+|--------------------------------------------------------------------------
+| Deliberately NOT inside the shop.exists / subscription.active groups: the
+| Dhiran customer reaches these before having a shop or a subscription. realm:dhiran
+| keeps the flow Dhiran-only (an ERP account is bounced out). The shared payment
+| screens (subscription.payment / .initiate / .callback, above) are reused as-is.
+*/
+Route::middleware(['auth', 'tenant', 'account.active', 'realm:dhiran'])
+    ->prefix('dhiran')
+    ->name('dhiran.')
+    ->group(function () {
+        Route::get('/plans', [\App\Http\Controllers\DhiranOnboardingController::class, 'plans'])
+            ->name('plans');
+        Route::post('/subscribe', [\App\Http\Controllers\DhiranOnboardingController::class, 'subscribe'])
+            ->name('subscribe');
+        Route::get('/onboarding', [\App\Http\Controllers\DhiranOnboardingController::class, 'onboarding'])
+            ->name('onboarding');
+        Route::post('/onboarding', [\App\Http\Controllers\DhiranOnboardingController::class, 'store'])
+            ->name('onboarding.store');
+    });
+
+/*
+|--------------------------------------------------------------------------
 | AUTHENTICATED + MUST HAVE A SHOP
 |--------------------------------------------------------------------------
 */
@@ -717,13 +742,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/report/whatsapp/collection-link', [CatalogController::class, 'storeCollection'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('report.whatsapp.collection-link');
 
     // ======= DHIRAN (Gold Loan / Pledge Module) =======
-    // On the main domain, redirect all /dhiran/* to the dedicated subdomain
-    Route::get('/dhiran/{any?}', function () {
-        if (! str_starts_with(request()->getHost(), 'dhiran.')) {
-            return redirect('https://dhiran.jewelflows.com/' . request()->path(), 301);
-        }
-        abort(404);
-    })->where('any', '.*');
+    // The real Dhiran routes are registered first (below). The main-domain →
+    // subdomain redirect catch-all is registered AFTER them so it only catches
+    // paths the real routes didn't, and never shadows them on the subdomain.
 
     // realm:dhiran — an ERP-realm account can never reach Dhiran app routes
     // (it is redirected to its own dashboard), and vice-versa. Belt-and-suspenders
@@ -782,6 +803,17 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             Route::get('/reports/profitability', [\App\Http\Controllers\DhiranController::class, 'reportProfitability'])->middleware('can:dhiran.reports')->name('reports.profitability');
         });
     });
+
+    // Main-domain → subdomain redirect for /dhiran/*. Registered AFTER the real
+    // Dhiran routes so it only catches paths they didn't (it never shadows the
+    // dashboard or module routes on the subdomain). On the subdomain a genuinely
+    // unknown /dhiran/* path 404s as expected.
+    Route::get('/dhiran/{any}', function (string $any) {
+        if (! str_starts_with(request()->getHost(), 'dhiran.')) {
+            return redirect('https://dhiran.jewelflows.com/' . request()->path(), 301);
+        }
+        abort(404);
+    })->where('any', '.*')->name('dhiran.maindomain-redirect');
 });
 
 /*

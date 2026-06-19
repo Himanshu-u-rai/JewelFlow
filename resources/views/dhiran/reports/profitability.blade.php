@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Profitability Report">
     @php
         $totalDisbursed = $loans->sum('principal_amount');
         $totalInterestEarned = $loans->sum('total_interest_collected');
@@ -126,4 +126,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-dhiran-layout>

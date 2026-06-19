@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Reports">
     <style>
         .dhiran-reports-root {
             --dr-ink: #0f172a;
@@ -178,4 +178,4 @@
         </div>
         @endif
     </div>
-</x-app-layout>
+</x-dhiran-layout>

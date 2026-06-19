@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Overdue Report">
     <x-page-header>
         <div>
             <h1 class="page-title">Overdue Loans Report</h1>
@@ -110,4 +110,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-dhiran-layout>

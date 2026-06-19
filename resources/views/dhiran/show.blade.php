@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Loan Detail">
     <style>
         .dhiran-show-root {
             --ds-ink: #0f172a;
@@ -445,4 +445,4 @@
             </form>
         </div>
     </dialog>
-</x-app-layout>
+</x-dhiran-layout>

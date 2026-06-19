@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Interest Report">
     @php
         $fromDate = request('from', now()->startOfMonth()->format('Y-m-d'));
         $toDate = request('to', now()->format('Y-m-d'));
@@ -121,4 +121,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-dhiran-layout>

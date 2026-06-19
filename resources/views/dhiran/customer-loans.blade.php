@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Customer Loans">
     <x-page-header>
         <div>
             <h1 class="page-title">{{ $customer->name }} &mdash; Gold Loans</h1>
@@ -133,4 +133,4 @@
             @endif
         </div>
     </div>
-</x-app-layout>
+</x-dhiran-layout>

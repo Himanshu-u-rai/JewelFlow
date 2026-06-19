@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dhiran-layout title="Activate Dhiran">
     <style>
         .dhiran-activate-root {
             --da-ink: #0f172a;
@@ -171,4 +171,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-dhiran-layout>
