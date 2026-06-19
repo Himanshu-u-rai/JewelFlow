@@ -21,7 +21,17 @@ class ForceDhiranSubdomain
 
         $name = $request->route()?->getName() ?? '';
 
-        $exempt = in_array($name, ['login', 'login.store', 'logout', 'register', 'password.request', 'password.email', 'password.reset', 'password.store', 'verification.notice', 'verification.verify', 'verification.send'], true)
+        $exempt = in_array($name, [
+                'login', 'login.store', 'logout', 'register',
+                'password.request', 'password.email', 'password.reset', 'password.store',
+                'verification.notice', 'verification.verify', 'verification.send',
+                // Dhiran onboarding reuses the shared, product-agnostic payment flow.
+                // These routes MUST be reachable on the dhiran.* host or the Dhiran
+                // "Continue to payment" step dead-loops back to the dashboard.
+                'subscription.payment', 'subscription.payment.initiate',
+                'subscription.payment.callback', 'subscription.payment.webhook',
+                'subscription.choose', 'subscription.trial.start',
+            ], true)
             || str_starts_with($name, 'dhiran.')
             || str_starts_with($request->path(), 'dhiran/')
             || $request->path() === 'dhiran'

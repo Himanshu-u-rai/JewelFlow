@@ -371,4 +371,20 @@ class DhiranOnboardingTest extends TestCase
         $this->assertSame('yearly', session('pending_billing_cycle'));
         $this->assertSame($this->dhiranYearlyPlan()->id, session('pending_plan_id'));
     }
+
+    // Regression: the shared payment page MUST be reachable on the dhiran.* host.
+    // ForceDhiranSubdomain previously bounced /subscription/payment back to the
+    // Dhiran dashboard, dead-looping the "Continue to payment" step.
+    public function test_shared_payment_page_reachable_on_dhiran_host(): void
+    {
+        $user = $this->dhiranUser(['mobile_number' => '9390000099']);
+
+        // Seed the pending-plan session via the real subscribe handoff.
+        $this->actingAs($user)->post(self::DHIRAN.'/dhiran/subscribe')
+            ->assertRedirect(route('subscription.payment'));
+
+        // The payment page must render (200), NOT redirect back to /dhiran.
+        $this->actingAs($user)->get(self::DHIRAN.'/subscription/payment')
+            ->assertOk();
+    }
 }
