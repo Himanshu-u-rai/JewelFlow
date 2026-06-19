@@ -77,6 +77,28 @@
 
     <div class="content-inner dhiran-dash">
 
+        {{-- Cross-promotion (Phase 4): a calm suggestion for a Dhiran customer who
+             doesn't yet run a Retail ERP store. Links to the SEPARATE JewelFlow ERP
+             register — never grants an edition or links accounts. --}}
+        @php
+            $promoUser = auth()->user();
+            $promoShop = $promoUser?->shop;
+            $hasErpEdition = $promoShop
+                && ($promoShop->hasEdition(\App\Support\ShopEdition::RETAILER)
+                    || $promoShop->hasEdition(\App\Support\ShopEdition::MANUFACTURER));
+            $showErpPromo = config('platform.cross_promotion.enabled')
+                && $promoUser?->isDhiran()
+                && ! $hasErpEdition;
+        @endphp
+        @if($showErpPromo)
+            <x-cross-promo-card
+                heading="Running a jewellery store too?"
+                body="Use JewelFlow ERP for inventory, POS billing, returns, karigar work and reports — as its own separate account."
+                cta="Explore JewelFlow ERP"
+                :url="config('platform.cross_promotion.erp_register_url')"
+            />
+        @endif
+
         {{-- KPI Cards --}}
         <div class="dd-kpi-grid">
             <div class="dd-kpi-card">

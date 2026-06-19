@@ -3941,6 +3941,24 @@
     </script>
 
     <div class="content-inner dash-root dash-loading space-y-3" data-dashboard-shell>
+        {{-- Cross-promotion (Phase 4): a calm, one-time-per-view suggestion for an
+             ERP customer who doesn't yet use Dhiran. Links to Dhiran's SEPARATE
+             register front door — never grants an edition or links accounts. --}}
+        @php
+            $promoUser = auth()->user();
+            $showDhiranPromo = config('platform.cross_promotion.enabled')
+                && $promoUser?->isErp()
+                && ! ($promoUser?->shop?->hasEdition(\App\Support\ShopEdition::DHIRAN) ?? false);
+        @endphp
+        @if($showDhiranPromo)
+            <x-cross-promo-card
+                heading="Offer gold-loan services?"
+                body="Use Dhiran to manage pledges, interest, repayments, renewals and closures — as its own separate service."
+                cta="Explore Dhiran"
+                :url="config('platform.cross_promotion.dhiran_register_url')"
+            />
+        @endif
+
         <div
             x-data="{ mobileFabOpen: false }"
             class="dash-mobile-fab"
