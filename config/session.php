@@ -142,6 +142,15 @@ return [
         Str::slug((string) env('APP_NAME', 'laravel')).'-platform-admin-session'
     ),
 
+    // Dhiran (dhiran.* subdomain) uses its own session cookie so a Dhiran login
+    // and an ERP login can coexist in the same browser without overwriting each
+    // other (SESSION_DOMAIN is shared across subdomains). Selected at runtime by
+    // UseRouteScopedSessionCookie when the host is dhiran.*.
+    'dhiran_cookie' => env(
+        'DHIRAN_SESSION_COOKIE',
+        Str::slug((string) env('APP_NAME', 'laravel')).'-dhiran-session'
+    ),
+
     /*
     |--------------------------------------------------------------------------
     | Session Cookie Path

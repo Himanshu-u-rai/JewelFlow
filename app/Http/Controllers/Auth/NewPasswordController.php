@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Realm;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,8 +40,16 @@ class NewPasswordController extends Controller
         // Here we will attempt to reset the user's password. If it is successful we
         // will update the password on an actual user model and persist it to the
         // database. Otherwise we will parse the error and return the response.
-        $status = Password::reset(
+        // Scope the reset to the current realm so the token is matched against the
+        // SAME (email, realm) it was created for — the same email may have a token
+        // in both realms; each must only validate within its own realm.
+        $credentials = array_merge(
             $request->only('email', 'password', 'password_confirmation', 'token'),
+            ['realm' => Realm::current($request)],
+        );
+
+        $status = Password::reset(
+            $credentials,
             function (User $user) use ($request) {
                 $user->forceFill([
                     'password' => Hash::make($request->password),

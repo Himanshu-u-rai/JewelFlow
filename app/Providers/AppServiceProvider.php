@@ -53,7 +53,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Realm-aware password resets: rebind the broker manager so reset tokens
+        // are keyed by (email, realm), not email alone. This keeps Dhiran and ERP
+        // resets independent for the same email. Behaviour is identical to the
+        // framework default for ERP (the only realm pre-Dhiran).
+        $this->app->extend('auth.password', function ($manager, $app) {
+            return new \App\Auth\RealmPasswordBrokerManager($app);
+        });
     }
 
     /**

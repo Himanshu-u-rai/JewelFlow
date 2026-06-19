@@ -13,11 +13,19 @@ class UseRouteScopedSessionCookie
         $isPlatformRoute = $request->is('admin') || $request->is('admin/*')
             || $request->is('super-admin') || $request->is('super-admin/*');
 
-        config([
-            'session.cookie' => $isPlatformRoute
-                ? config('session.platform_admin_cookie')
-                : config('session.tenant_cookie'),
-        ]);
+        // The Dhiran customer-facing product lives on the dhiran.* subdomain and
+        // gets its OWN session cookie, so a Dhiran login and an ERP login don't
+        // overwrite each other in the same browser (the session domain is shared
+        // across subdomains). Platform/admin routes keep priority.
+        $isDhiranHost = str_starts_with(strtolower($request->getHost()), 'dhiran.');
+
+        $cookie = match (true) {
+            $isPlatformRoute => config('session.platform_admin_cookie'),
+            $isDhiranHost    => config('session.dhiran_cookie'),
+            default          => config('session.tenant_cookie'),
+        };
+
+        config(['session.cookie' => $cookie]);
 
         return $next($request);
     }

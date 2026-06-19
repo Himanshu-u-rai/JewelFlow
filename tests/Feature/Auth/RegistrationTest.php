@@ -37,8 +37,11 @@ class RegistrationTest extends TestCase
             'otp_verified_mobile' => $mobileNumber,
         ])->post('/register', [
             'mobile_number' => $mobileNumber,
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            // Must satisfy the app's hardened policy (Password::min(10)->mixedCase
+            // ->numbers->symbols, see AppServiceProvider). The stock-Breeze weak
+            // password failed validation, so the user was never created/authenticated.
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'otp_verified' => true,
         ]);
 
