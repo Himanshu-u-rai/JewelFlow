@@ -40,6 +40,11 @@
             display: flex;
             flex-direction: column;
             padding: 20px 14px;
+            /* Pin the sidebar: it stays put while only the main content scrolls. */
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
         }
         .dh-brand {
             display: flex;
@@ -102,7 +107,7 @@
         .dh-flash-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
         @media (max-width: 720px) {
             .dh-shell { flex-direction: column; }
-            .dh-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; padding: 12px; }
+            .dh-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; padding: 12px; position: static; height: auto; overflow: visible; }
             .dh-nav { flex-direction: row; flex-wrap: wrap; flex: 1 1 100%; }
             .dh-foot { border-top: 0; padding-top: 0; }
             .dh-main { padding: 18px; }
