@@ -60,7 +60,7 @@
 
     <div class="content-inner dhiran-settings-root">
 
-        <form method="POST" action="{{ route('dhiran.settings.update') }}" class="max-w-3xl mx-auto">
+        <form method="POST" action="{{ route('dhiran.settings.update') }}" class="max-w-3xl mx-auto" data-turbo-frame="_top">
             @csrf
             @method('PATCH')
 

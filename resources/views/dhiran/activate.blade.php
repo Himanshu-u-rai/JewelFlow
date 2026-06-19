@@ -158,7 +158,7 @@
                 </div>
 
                 @can('dhiran.settings')
-                <form method="POST" action="{{ route('dhiran.activate') }}">
+                <form method="POST" action="{{ route('dhiran.activate') }}" data-turbo-frame="_top">
                     @csrf
                     <button type="submit" class="da-activate-btn">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>

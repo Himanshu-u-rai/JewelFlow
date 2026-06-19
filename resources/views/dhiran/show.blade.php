@@ -94,7 +94,7 @@
                 </button>
                 @endcan
                 @can('dhiran.forfeit')
-                <form method="POST" action="{{ route('dhiran.send-notice', $loan) }}" class="inline">
+                <form method="POST" action="{{ route('dhiran.send-notice', $loan) }}" class="inline" data-turbo-frame="_top">
                     @csrf
                     <button type="submit" class="btn btn-secondary btn-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -324,7 +324,7 @@
     <dialog id="payInterestModal" class="rounded-2xl border border-slate-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/40">
         <div class="p-6">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Pay Interest</h3>
-            <form method="POST" action="{{ route('dhiran.pay-interest', $loan) }}">
+            <form method="POST" action="{{ route('dhiran.pay-interest', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Amount</label>
@@ -351,7 +351,7 @@
     <dialog id="repayModal" class="rounded-2xl border border-slate-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/40">
         <div class="p-6">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Repay Loan</h3>
-            <form method="POST" action="{{ route('dhiran.repay', $loan) }}">
+            <form method="POST" action="{{ route('dhiran.repay', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Amount</label>
@@ -378,7 +378,7 @@
     <dialog id="releaseItemModal" class="rounded-2xl border border-slate-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/40">
         <div class="p-6">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Release Pledged Item</h3>
-            <form method="POST" action="{{ route('dhiran.release-item', $loan) }}">
+            <form method="POST" action="{{ route('dhiran.release-item', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Select Item</label>
@@ -404,7 +404,7 @@
         <div class="p-6">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Pre-Close Loan</h3>
             <p class="text-sm text-slate-600 mb-4">This will close the loan and release all pledged items. Total outstanding: <strong>{{ $currencySymbol ?? '₹' }}{{ number_format($loan->total_outstanding ?? 0, 2) }}</strong></p>
-            <form method="POST" action="{{ route('dhiran.pre-close', $loan) }}">
+            <form method="POST" action="{{ route('dhiran.pre-close', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Payment Method</label>
@@ -426,7 +426,7 @@
     <dialog id="renewModal" class="rounded-2xl border border-slate-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/40">
         <div class="p-6">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Renew Loan</h3>
-            <form method="POST" action="{{ route('dhiran.renew', $loan) }}">
+            <form method="POST" action="{{ route('dhiran.renew', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">New Tenure (Months)</label>

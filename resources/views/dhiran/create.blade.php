@@ -143,7 +143,7 @@
 
     <div class="content-inner" x-data="dhiranCreateForm()">
 
-        <form method="POST" action="{{ route('dhiran.store') }}" class="max-w-4xl mx-auto space-y-6" @submit="prepareSubmit">
+        <form method="POST" action="{{ route('dhiran.store') }}" class="max-w-4xl mx-auto space-y-6" @submit="prepareSubmit" data-turbo-frame="_top">
             @csrf
 
             {{-- Customer Section --}}
