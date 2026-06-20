@@ -91,6 +91,12 @@ class Invoice extends Model
         return $this->belongsTo(\App\Models\Customer::class);
     }
 
+    /** Owning shop. shop_id is always set; lets callers eager-load shop.preferences. */
+    public function shop()
+    {
+        return $this->belongsTo(\App\Models\Shop::class);
+    }
+
     /** The operator who created (sold) this invoice (#16). Nullable for legacy rows. */
     public function user()
     {
