@@ -171,7 +171,8 @@
          @keydown.escape.window="open = false"
          @turbo:before-cache.window="open = false">
 
-        {{-- Mobile-only top bar: brand + menu toggle. Hidden ≥720px. --}}
+        {{-- Mobile-only top bar: menu toggle only. The brand lives inside the
+             drawer (dh-sidebar) so it is not repeated outside it. Hidden ≥720px. --}}
         <header class="dh-topbar">
             <button type="button" class="dh-hamburger"
                     @click="open = true"
@@ -179,13 +180,6 @@
                     aria-label="Open menu" aria-controls="dh-sidebar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
-            <a href="{{ route('dhiran.dashboard') }}" class="dh-brand" style="text-decoration:none;color:inherit;">
-                <span class="dh-brand-mark">D</span>
-                <span>
-                    <span class="dh-brand-name">Dhiran</span>
-                    <span class="dh-brand-sub">Pledge Loan Manager</span>
-                </span>
-            </a>
         </header>
 
         {{-- Scrim: tap to close the drawer. --}}
