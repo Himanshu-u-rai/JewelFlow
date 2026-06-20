@@ -1438,24 +1438,18 @@ class DhiranService
      * ══════════════════════════════════════════════════════════ */
 
     /**
-     * Full computed snapshot of a loan's current state.
+     * Full computed snapshot of a loan's current state. PURE READ (Phase 5,
+     * Part D): this NO LONGER accrues interest, so it is safe on any HTTP GET
+     * (show / receipt / report) and on a read-replica. The returned interest /
+     * penalty reflect state as of the last accrual (interest_accrued_through).
      *
-     * WARNING — not a pure read: when the loan is active, this method calls
-     * accrueInterest(), which writes to dhiran_loans (updates
-     * interest_accrued_through, outstanding_interest, outstanding_penalty)
-     * and posts interest/penalty accrual rows to the ledger. Any HTTP GET
-     * endpoint that invokes loanSummary() therefore mutates state, so it
-     * MUST NOT be routed to a read-replica — callers on replicas must either
-     * take the "stale" branch or bypass this method.
+     * Callers that must act on TODAY's numbers before a financial write (payment,
+     * pre-close, renew, forfeit) already call accrueInterest() inside their own
+     * transaction; for a read context that explicitly wants fresh figures, use
+     * accrueAndSummary() instead.
      */
     public function loanSummary(DhiranLoan $loan): array
     {
-        // Accrue interest to get up-to-date numbers (only if active)
-        if ($loan->status === 'active') {
-            $this->accrueInterest($loan);
-            $loan->refresh();
-        }
-
         $loan->loadMissing(['items', 'payments', 'customer']);
 
         $pledgedItems  = $loan->items->where('status', 'pledged');
@@ -1506,6 +1500,22 @@ class DhiranService
             'forfeited_at'             => $loan->forfeited_at?->toDateTimeString(),
             'forfeiture_notice_sent_at' => $loan->forfeiture_notice_sent_at?->toDateTimeString(),
         ];
+    }
+
+    /**
+     * Accrue interest to today (a WRITE), then return the fresh snapshot. Use this
+     * only from an explicit POST action / scheduled job / service call that intends
+     * to bring the loan current before reading — never from a plain GET. GET routes
+     * should call the pure loanSummary() instead.
+     */
+    public function accrueAndSummary(DhiranLoan $loan): array
+    {
+        if ($loan->status === 'active') {
+            $this->accrueInterest($loan);
+            $loan->refresh();
+        }
+
+        return $this->loanSummary($loan);
     }
 
     /* ══════════════════════════════════════════════════════════

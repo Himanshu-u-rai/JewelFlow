@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Platform\PlatformAdmin;
 use App\Models\Platform\ShopSubscription;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -251,6 +252,32 @@ class Shop extends Model
                         'source'       => ShopEditionAssignment::SOURCE_SEED,
                         'activated_at' => now(),
                     ]
+                );
+            }
+        });
+
+        // Financial-safety guard (Phase 5, Part A). A hard Shop::delete() would
+        // otherwise be the only thing standing between an operator mistake and the
+        // destruction of regulated pawn/loan history. The DB-level RESTRICT FKs are
+        // the last line of defence; this app-level hook fails earlier with a clear,
+        // owner-friendly message. Use deactivation (access_mode) to retire a shop,
+        // never a hard delete, while it holds financial records.
+        static::deleting(function (Shop $shop): void {
+            // Only guards a TRUE hard delete. SoftDeletes (if ever added) sets
+            // forceDeleting=false; we let those through.
+            if (method_exists($shop, 'isForceDeleting') && ! $shop->isForceDeleting()) {
+                return;
+            }
+
+            $hasDhiranFinancialData = DB::table('dhiran_loans')->where('shop_id', $shop->id)->exists()
+                || DB::table('dhiran_payments')->where('shop_id', $shop->id)->exists()
+                || DB::table('dhiran_ledger_entries')->where('shop_id', $shop->id)->exists()
+                || DB::table('dhiran_cash_entries')->where('shop_id', $shop->id)->exists();
+
+            if ($hasDhiranFinancialData) {
+                throw new \RuntimeException(
+                    'This shop has Dhiran gold-loan records and cannot be deleted. '
+                    . 'Pawn and loan history must be kept. Deactivate the shop instead.'
                 );
             }
         });

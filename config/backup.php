@@ -149,10 +149,16 @@ return [
 
             /*
              * The disk names on which the backups will be stored.
+             *
+             * Off-server backup (Phase 5, Part B): always keep 'local', and add
+             * the off-server S3-compatible disk ONLY when BACKUP_OFFSITE_ENABLED
+             * is true AND its credentials are configured (config/filesystems 's3').
+             * Until creds are set this stays local-only — no fake off-server.
              */
-            'disks' => [
+            'disks' => array_values(array_filter([
                 'local',
-            ],
+                env('BACKUP_OFFSITE_ENABLED', false) ? env('BACKUP_OFFSITE_DISK', 's3') : null,
+            ])),
         ],
 
         /*
