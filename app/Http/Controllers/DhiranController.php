@@ -236,6 +236,9 @@ class DhiranController extends Controller
             'kyc_pan'               => $data['pan'] ?? null,
             'notes'                 => $data['notes'] ?? null,
             'created_by'            => auth()->id(),
+            // Evidence gate: a loan created from the UI starts inactive until the
+            // required photo + ID proof are uploaded and the owner activates it.
+            'status'                => 'pending_evidence',
         ];
 
         try {
@@ -245,7 +248,25 @@ class DhiranController extends Controller
         }
 
         return redirect()->route('dhiran.show', $loan)
-            ->with('success', 'Loan created successfully.');
+            ->with('success', 'Loan created. Upload the pledged-item photo and borrower ID proof, then activate the loan.');
+    }
+
+    /**
+     * Activate a pending-evidence loan once the required evidence is uploaded.
+     * The service re-checks the evidence (authoritative guard); this is not a
+     * UI-only gate.
+     */
+    public function activateLoan(Request $request, DhiranLoan $loan)
+    {
+        abort_unless($loan->status === 'pending_evidence', 422, 'This loan is not awaiting evidence.');
+
+        try {
+            $this->dhiranService->activateLoan($loan);
+        } catch (\LogicException $e) {
+            return redirect()->route('dhiran.show', $loan)->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('dhiran.show', $loan)->with('success', 'Loan activated.');
     }
 
     /* ================================================================
@@ -310,7 +331,10 @@ class DhiranController extends Controller
             ->latest()
             ->get();
 
-        return view('dhiran.show', compact('loan', 'attachments'));
+        // Evidence gate status for the checklist + activation button.
+        $evidence = $this->dhiranService->evidenceStatus($loan);
+
+        return view('dhiran.show', compact('loan', 'attachments', 'evidence'));
     }
 
     /* ================================================================

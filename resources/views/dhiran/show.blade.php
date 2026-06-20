@@ -51,6 +51,7 @@
                 {{ $loan->customer->name ?? '---' }}
                 @php
                     $statusColors = [
+                        'pending_evidence' => 'bg-amber-100 text-amber-800',
                         'active' => 'bg-emerald-100 text-emerald-800',
                         'overdue' => 'bg-rose-100 text-rose-800',
                         'closed' => 'bg-slate-100 text-slate-600',
@@ -59,7 +60,7 @@
                     ];
                 @endphp
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ml-2 {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
-                    {{ ucfirst($loan->status) }}
+                    {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
                 </span>
             </p>
         </div>
@@ -151,6 +152,47 @@
     </x-page-header>
 
     <div class="content-inner dhiran-show-root">
+
+        {{-- Evidence gate: a pending-evidence loan must have a pledged-item photo
+             AND a borrower ID proof before it can be activated. --}}
+        @if($loan->status === 'pending_evidence')
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-6 mb-6">
+            <h2 class="text-base font-semibold text-amber-900 mb-1">Evidence required before activation</h2>
+            <p class="text-xs text-amber-800/80 mb-4">This loan is not active yet. Upload the required evidence below, then activate it.</p>
+            <ul class="space-y-2 mb-4">
+                <li class="flex items-center gap-2 text-sm {{ ($evidence['item_photo'] ?? false) ? 'text-emerald-700' : 'text-amber-900' }}">
+                    @if($evidence['item_photo'] ?? false)
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    @else
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+                    @endif
+                    Pledged item photo
+                </li>
+                <li class="flex items-center gap-2 text-sm {{ ($evidence['id_proof'] ?? false) ? 'text-emerald-700' : 'text-amber-900' }}">
+                    @if($evidence['id_proof'] ?? false)
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    @else
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+                    @endif
+                    Borrower ID proof
+                </li>
+            </ul>
+            @can('dhiran.create')
+            @if($evidence['ok'] ?? false)
+                <form method="POST" action="{{ route('dhiran.activate-loan', $loan) }}" data-turbo-frame="_top"
+                      onsubmit="return confirm('Activate this loan? Interest will start accruing.');">
+                    @csrf
+                    <button type="submit" class="btn btn-dark btn-sm" style="background:#059669;border-color:#059669;">
+                        Activate Loan
+                    </button>
+                </form>
+            @else
+                <button type="button" class="btn btn-sm" disabled style="opacity:.55;cursor:not-allowed;">Activate Loan</button>
+                <p class="text-xs text-amber-800/80 mt-2">Upload both required documents in the Evidence &amp; Documents section below to enable activation.</p>
+            @endif
+            @endcan
+        </div>
+        @endif
 
         {{-- Loan Info Grid --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">

@@ -176,7 +176,11 @@ class DhiranService
                 'min_lock_months'          => $minLockMonths,
                 'grace_period_days'        => $gracePeriodDays,
                 'min_interest_months'      => $minInterestMonths,
-                'status'                   => 'active',
+                // Status defaults to 'active' (internal/renewal callers keep their
+                // behaviour). The customer-facing create flow passes
+                // 'pending_evidence' so a loan cannot operate until the required
+                // photo + ID proof are uploaded and the owner activates it.
+                'status'                   => $params['status'] ?? 'active',
                 'renewed_count'            => 0,
                 'renewed_from_id'          => $params['renewed_from_id'] ?? null,
                 'kyc_aadhaar'              => $params['kyc_aadhaar'] ?? null,
@@ -308,6 +312,66 @@ class DhiranService
 
             return $loan->fresh(['items', 'payments']);
         });
+    }
+
+    /* ══════════════════════════════════════════════════════════
+     *  1b. EVIDENCE GATE (pending_evidence → active)
+     * ══════════════════════════════════════════════════════════ */
+
+    /**
+     * Whether a loan has the minimum evidence required to activate:
+     *   - at least one pledged-item photo (owned by the loan or any of its items), AND
+     *   - at least one borrower ID proof (id_proof_front/back, owned by the loan or
+     *     its customer).
+     * Returns ['item_photo' => bool, 'id_proof' => bool, 'ok' => bool].
+     */
+    public function evidenceStatus(DhiranLoan $loan): array
+    {
+        $itemIds = $loan->items->isNotEmpty()
+            ? $loan->items->pluck('id')->all()
+            : DhiranLoanItem::where('dhiran_loan_id', $loan->id)->pluck('id')->all();
+
+        $hasItemPhoto = \App\Models\Dhiran\DhiranAttachment::query()
+            ->where('document_type', 'item_photo')
+            ->where(function ($q) use ($loan, $itemIds) {
+                $q->where(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_LOAN)->where('owner_id', $loan->id))
+                  ->orWhere(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_ITEM)->whereIn('owner_id', $itemIds ?: [0]));
+            })
+            ->exists();
+
+        $hasIdProof = \App\Models\Dhiran\DhiranAttachment::query()
+            ->whereIn('document_type', ['id_proof_front', 'id_proof_back'])
+            ->where(function ($q) use ($loan) {
+                $q->where(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_LOAN)->where('owner_id', $loan->id));
+                if ($loan->customer_id) {
+                    $q->orWhere(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_CUSTOMER)->where('owner_id', $loan->customer_id));
+                }
+            })
+            ->exists();
+
+        return [
+            'item_photo' => $hasItemPhoto,
+            'id_proof'   => $hasIdProof,
+            'ok'         => $hasItemPhoto && $hasIdProof,
+        ];
+    }
+
+    /**
+     * Activate a pending_evidence loan once the required evidence exists.
+     * Authoritative backend guard — never rely on UI hiding alone.
+     */
+    public function activateLoan(DhiranLoan $loan): void
+    {
+        if ($loan->status !== 'pending_evidence') {
+            throw new LogicException('Only loans awaiting evidence can be activated.');
+        }
+
+        if (! $this->evidenceStatus($loan)['ok']) {
+            throw new LogicException('Required evidence is missing: a pledged-item photo and a borrower ID proof must be uploaded first.');
+        }
+
+        $loan->status = 'active';
+        $loan->save();
     }
 
     /* ══════════════════════════════════════════════════════════

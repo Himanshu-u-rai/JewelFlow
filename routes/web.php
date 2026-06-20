@@ -774,6 +774,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             // Loan listing & detail — view permission
             Route::get('/loans', [\App\Http\Controllers\DhiranController::class, 'loans'])->middleware('can:dhiran.view')->name('loans');
             Route::get('/loans/{loan}', [\App\Http\Controllers\DhiranController::class, 'show'])->middleware('can:dhiran.view')->name('show');
+            // Activate a pending-evidence loan (evidence-gated in the service).
+            Route::post('/loans/{loan}/activate', [\App\Http\Controllers\DhiranController::class, 'activateLoan'])->middleware('can:dhiran.create')->name('activate-loan');
 
             // Payments — pay permission
             Route::post('/loans/{loan}/pay-interest', [\App\Http\Controllers\DhiranController::class, 'payInterest'])->middleware('can:dhiran.pay')->name('pay-interest');
