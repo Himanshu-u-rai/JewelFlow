@@ -200,6 +200,31 @@ class DhiranLoan extends Model
         return $this->status === 'active' && ! $this->isInLockPeriod();
     }
 
+    /** A forfeiture notice has been sent for this loan. */
+    public function forfeitureNoticeSent(): bool
+    {
+        return $this->forfeiture_notice_sent_at !== null;
+    }
+
+    /**
+     * Whether forfeiture can be EXECUTED right now. Mirrors the authoritative
+     * service guard (DhiranService::executeForfeit): the loan must be active, a
+     * notice must have been sent, and the configured notice period must have
+     * elapsed. The UI uses this to show/hide the action; the service guard remains
+     * the real protection.
+     */
+    public function canExecuteForfeit(): bool
+    {
+        if ($this->status !== 'active' || ! $this->forfeiture_notice_sent_at) {
+            return false;
+        }
+
+        $noticeDays   = (int) (\App\Models\Dhiran\DhiranSettings::getForShop($this->shop_id)->forfeiture_notice_days ?? 0);
+        $requiredDate = \Illuminate\Support\Carbon::parse($this->forfeiture_notice_sent_at)->copy()->addDays($noticeDays);
+
+        return ! today()->lt($requiredDate);
+    }
+
     /* ── Route Model Binding (tenant-scoped) ──────────── */
 
     public function resolveRouteBinding($value, $field = null)

@@ -94,6 +94,7 @@
                 </button>
                 @endcan
                 @can('dhiran.forfeit')
+                @if(! $loan->forfeitureNoticeSent())
                 <form method="POST" action="{{ route('dhiran.send-notice', $loan) }}" class="inline" data-turbo-frame="_top">
                     @csrf
                     <button type="submit" class="btn btn-secondary btn-sm">
@@ -101,8 +102,43 @@
                         Send Notice
                     </button>
                 </form>
+                @endif
+
+                {{-- Execute Forfeit — only after the notice is sent AND the notice
+                     period has elapsed (mirrors the service guard). Serious terminal
+                     action → explicit confirm. --}}
+                @if($loan->canExecuteForfeit())
+                <form method="POST" action="{{ route('dhiran.forfeit', $loan) }}" class="inline" data-turbo-frame="_top"
+                      onsubmit="return confirm('Execute forfeiture for {{ $loan->loan_number }}? This permanently forfeits all pledged items and writes off the outstanding balance. This cannot be undone.');">
+                    @csrf
+                    <button type="submit" class="btn btn-sm" style="background:#b91c1c;color:#fff;border-color:#b91c1c;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        Execute Forfeit
+                    </button>
+                </form>
+                @endif
                 @endcan
             @endif
+
+            {{-- Print Forfeiture Notice — visible once the notice is sent (and stays
+                 available after forfeiture, where it is legally useful). --}}
+            @can('dhiran.view')
+            @if($loan->forfeitureNoticeSent())
+            <a href="{{ route('dhiran.forfeiture-notice', $loan) }}" target="_blank" class="btn btn-secondary btn-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Print Forfeiture Notice
+            </a>
+            @endif
+
+            {{-- Print Closure Certificate — only for closed loans. --}}
+            @if($loan->status === 'closed')
+            <a href="{{ route('dhiran.closure-certificate', $loan) }}" target="_blank" class="btn btn-secondary btn-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Print Closure Certificate
+            </a>
+            @endif
+            @endcan
+
             <a href="{{ route('dhiran.receipt', $loan) }}" target="_blank" class="btn btn-secondary btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                 Print Receipt
@@ -273,11 +309,7 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-center">
-                                    @if($payment->receipt_url ?? false)
-                                        <a href="{{ $payment->receipt_url }}" target="_blank" class="text-amber-700 hover:underline text-xs font-medium">View</a>
-                                    @else
-                                        <span class="text-slate-400 text-xs">---</span>
-                                    @endif
+                                    <a href="{{ route('dhiran.payment-receipt', [$loan, $payment]) }}" target="_blank" class="text-amber-700 hover:underline text-xs font-medium">Print Receipt</a>
                                 </td>
                             </tr>
                         @empty
