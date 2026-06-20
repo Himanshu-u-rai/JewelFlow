@@ -158,25 +158,18 @@
     <body class="app-shell">
 
         @php
+            // ERP app shell. Dhiran is a separate customer-facing product served by
+            // its own x-dhiran-layout on the dhiran.* subdomain, so this layout is
+            // always the ERP (JewelFlow) chrome — it never re-skins itself as Dhiran.
             $authUser = auth()->user();
             $authShop = $authUser?->shop;
             $hasRetailer = (bool) $authShop?->isRetailer();
             $hasManufacturer = (bool) $authShop?->isManufacturer();
             $hasDhiran = (bool) $authShop?->hasDhiran();
-            $dhiranOnly = $hasDhiran && ! $hasRetailer && ! $hasManufacturer;
-            $onDhiranHost = str_starts_with(request()->getHost(), 'dhiran.');
-            $onDhiranRoute = request()->routeIs('dhiran.*');
-            $dhiranChrome = $dhiranOnly || $onDhiranHost || $onDhiranRoute;
-            $homeRoute = $dhiranChrome ? 'dhiran.dashboard' : 'dashboard';
-            $brandName = $dhiranChrome ? __('Dhiran') : 'JewelFlow';
-            $brandSubtitle = $dhiranChrome ? __('Gold Loan Suite') : __('Enterprise System');
-            $settingsRoute = $dhiranChrome ? 'dhiran.settings' : 'settings.edit';
-        @endphp
-        @php
-            if ($dhiranChrome) {
-                $hasRetailer = false;
-                $hasManufacturer = false;
-            }
+            $homeRoute = 'dashboard';
+            $brandName = 'JewelFlow';
+            $brandSubtitle = __('Enterprise System');
+            $settingsRoute = 'settings.edit';
         @endphp
 
         <div id="global-toast" class="global-toast" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true"></div>
@@ -617,29 +610,9 @@
                     </div>
                     @endif
 
-                    @if($onDhiranHost)
-                    @can('dhiran.view')
-                    <div class="nav-section">
-                        <div class="nav-section-title">{{ __('Gold Loans') }}</div>
-                        <a href="{{ route('dhiran.dashboard') }}" class="nav-link">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v4"/><path d="M12 14v4"/><path d="M16 14v4"/></svg>
-                            {{ __('Dashboard') }}
-                        </a>
-                        <a href="{{ route('dhiran.loans') }}" class="nav-link">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                            {{ __('Loans') }}
-                        </a>
-                        <a href="{{ route('dhiran.settings') }}" class="nav-link">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3"/></svg>
-                            {{ __('Settings') }}
-                        </a>
-                        <a href="{{ route('dhiran.reports.active') }}" class="nav-link">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                            {{ __('Reports') }}
-                        </a>
-                    </div>
-                    @endcan
-                    @endif
+                    {{-- Dhiran (Gold Loans) is its own product on the dhiran.* subdomain
+                         with its own x-dhiran-layout nav. It is intentionally NOT shown
+                         in the ERP sidebar. --}}
 
                     {{-- ─── ACCOUNT ─── --}}
                     <div class="nav-section">
