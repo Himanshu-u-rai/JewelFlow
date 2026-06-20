@@ -2,7 +2,7 @@
     <x-page-header>
         <div>
             <h1 class="page-title">Active Loans Report</h1>
-            <p class="text-sm text-gray-500 mt-1">All currently active gold loans</p>
+            <p class="text-sm text-gray-500 mt-1">All currently active pledge loans</p>
         </div>
         <div class="page-actions">
             <span class="header-badge">{{ $loans->count() }} Active Loans</span>

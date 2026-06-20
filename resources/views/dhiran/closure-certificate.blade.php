@@ -440,7 +440,7 @@
                 </section>
 
                 <section class="cert-statement">
-                    This is to certify that Gold Loan <strong>{{ $loan->loan_number }}</strong>
+                    This is to certify that Pledge Loan <strong>{{ $loan->loan_number }}</strong>
                     dated <strong>{{ $loanDate }}</strong>, sanctioned in favour of
                     <strong>{{ $customer?->name ?? 'Walk-in Customer' }}</strong>,
                     for an amount of <strong>{{ number_format((float) $loan->principal_amount, 2) }}</strong>,

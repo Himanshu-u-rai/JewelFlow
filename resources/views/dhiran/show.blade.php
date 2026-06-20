@@ -343,6 +343,60 @@
         </div>
         @endif
 
+        {{-- Evidence & Documents (private, shop-scoped attachments) --}}
+        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 mb-1">Evidence &amp; Documents</h2>
+            <p class="text-xs text-slate-500 mb-4">Pledged-item photos, borrower ID proof, and loan documents. Files are private to your shop.</p>
+
+            @if(($attachments ?? collect())->isNotEmpty())
+                <ul class="divide-y divide-slate-100 mb-4">
+                    @foreach($attachments as $att)
+                        <li class="flex items-center justify-between gap-3 py-2.5">
+                            <div class="min-w-0">
+                                <span class="text-sm font-medium text-slate-800">{{ ucwords(str_replace('_', ' ', $att->document_type)) }}</span>
+                                <span class="text-xs text-slate-400 block truncate">{{ $att->original_name }} · {{ number_format(($att->size_bytes ?? 0) / 1024) }} KB</span>
+                            </div>
+                            <a href="{{ route('dhiran.attachments.show', $att) }}" target="_blank" rel="noopener" class="text-amber-700 hover:underline text-xs font-semibold shrink-0">View</a>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="text-sm text-slate-400 mb-4">No documents uploaded yet.</p>
+            @endif
+
+            @can('dhiran.create')
+            @if($errors->has('file'))
+                <p class="text-sm text-red-600 mb-2">{{ $errors->first('file') }}</p>
+            @endif
+            <form method="POST" action="{{ route('dhiran.attachments.store') }}" enctype="multipart/form-data" data-turbo-frame="_top"
+                  class="flex flex-col sm:flex-row sm:items-end gap-3 border-t border-slate-100 pt-4">
+                @csrf
+                <input type="hidden" name="owner_type" value="dhiran_loan">
+                <input type="hidden" name="owner_id" value="{{ $loan->id }}">
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Document type</label>
+                    <select name="document_type" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <option value="item_photo">Pledged item photo</option>
+                        <option value="id_proof_front">ID proof (front)</option>
+                        <option value="id_proof_back">ID proof (back)</option>
+                        <option value="address_proof">Address proof</option>
+                        <option value="borrower_photo">Borrower photo</option>
+                        <option value="pledge_agreement">Pledge agreement</option>
+                        <option value="signed_terms">Signed terms</option>
+                        <option value="valuation_proof">Valuation proof</option>
+                        <option value="loan_document">Other loan document</option>
+                    </select>
+                </div>
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">File <span class="text-slate-400">(JPG/PNG/PDF, max 8 MB)</span></label>
+                    <input type="file" name="file" required accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                           class="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-white file:text-xs">
+                </div>
+                <button type="submit" class="btn btn-dark btn-sm shrink-0">Upload</button>
+            </form>
+            @endcan
+        </div>
+
         {{-- Notes --}}
         @if($loan->notes)
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 mb-6">

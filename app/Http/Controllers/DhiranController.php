@@ -193,7 +193,9 @@ class DhiranController extends Controller
             'penalty_rate_monthly'     => 'nullable|numeric|min:0|max:10',
             'processing_fee'           => 'nullable|numeric|min:0',
             'processing_fee_type'      => 'nullable|in:flat,percent',
-            'aadhaar'                  => 'nullable|string|max:20',
+            // Aadhaar: accept a full 12-digit number OR an already-masked value, but
+            // NEVER persist the full number (masked to last-4 before save below).
+            'aadhaar'                  => ['nullable', 'string', 'max:20', 'regex:/^[0-9Xx\- ]{4,20}$/'],
             'pan'                      => 'nullable|string|max:20',
             'notes'                    => 'nullable|string|max:1000',
             'items'                    => 'required|array|min:1',
@@ -228,7 +230,9 @@ class DhiranController extends Controller
             'penalty_rate_monthly'  => $data['penalty_rate_monthly'] ?? null,
             'processing_fee'        => $data['processing_fee'] ?? null,
             'processing_fee_type'   => $data['processing_fee_type'] ?? null,
-            'kyc_aadhaar'           => $data['aadhaar'] ?? null,
+            // Privacy: store only a masked Aadhaar (last 4). The full number is
+            // never persisted, logged, or shown. PAN is kept as-is for now.
+            'kyc_aadhaar'           => \App\Support\AadhaarMask::mask($data['aadhaar'] ?? null),
             'kyc_pan'               => $data['pan'] ?? null,
             'notes'                 => $data['notes'] ?? null,
             'created_by'            => auth()->id(),
@@ -292,7 +296,21 @@ class DhiranController extends Controller
             'creator',
         ]);
 
-        return view('dhiran.show', compact('loan'));
+        // Evidence attachments for this loan, its pledged items, and its borrower
+        // (all tenant-scoped via BelongsToShop). Grouped for the view.
+        $itemIds = $loan->items->pluck('id')->all();
+        $attachments = \App\Models\Dhiran\DhiranAttachment::query()
+            ->where(function ($q) use ($loan, $itemIds) {
+                $q->where(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_LOAN)->where('owner_id', $loan->id))
+                  ->orWhere(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_ITEM)->whereIn('owner_id', $itemIds ?: [0]));
+                if ($loan->customer_id) {
+                    $q->orWhere(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_CUSTOMER)->where('owner_id', $loan->customer_id));
+                }
+            })
+            ->latest()
+            ->get();
+
+        return view('dhiran.show', compact('loan', 'attachments'));
     }
 
     /* ================================================================
@@ -444,6 +462,81 @@ class DhiranController extends Controller
 
         return redirect()->route('dhiran.show', $loan)
             ->with('success', 'Forfeiture notice sent.');
+    }
+
+    /* ================================================================
+     *  EVIDENCE ATTACHMENTS (private, shop-scoped) — Phase E2/E3
+     * ================================================================ */
+
+    /**
+     * Upload a Dhiran evidence file (pledged-item photo, borrower ID proof, or
+     * loan document). The owner (loan/item/customer) is verified to belong to the
+     * current shop; shop_id is taken from the auth shop, never the request. Files
+     * land on the private disk via DhiranAttachmentService.
+     */
+    public function storeAttachment(Request $request)
+    {
+        $shopId   = auth()->user()->shop_id;
+        $settings = DhiranSettings::getForShop($shopId);
+        abort_unless($settings->is_enabled, 403, 'Dhiran module is not enabled.');
+
+        $data = $request->validate([
+            'owner_type'    => ['required', 'in:dhiran_loan,dhiran_loan_item,customer'],
+            'owner_id'      => ['required', 'integer'],
+            'document_type' => ['required', 'in:' . implode(',', \App\Models\Dhiran\DhiranAttachment::DOCUMENT_TYPES)],
+            'file'          => ['required', 'file', 'max:8192', 'mimes:jpg,jpeg,png,pdf'],
+        ]);
+
+        // Verify the owner exists AND belongs to THIS shop (no raw-id trust).
+        $this->assertOwnerInShop($data['owner_type'], (int) $data['owner_id'], $shopId);
+
+        try {
+            $attachment = app(\App\Services\Dhiran\DhiranAttachmentService::class)->store(
+                $request->file('file'),
+                $shopId,
+                $data['owner_type'],
+                (int) $data['owner_id'],
+                $data['document_type'],
+                auth()->id(),
+            );
+        } catch (\LogicException $e) {
+            return back()->withErrors(['file' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'File uploaded.');
+    }
+
+    /**
+     * Stream a Dhiran attachment after a shop + permission check. Never a public
+     * URL: the file is read from the private disk and streamed inline. Route
+     * binding is BelongsToShop-scoped; the explicit shop check is belt-and-suspenders.
+     */
+    public function showAttachment(\App\Models\Dhiran\DhiranAttachment $attachment)
+    {
+        abort_unless((int) $attachment->shop_id === (int) auth()->user()->shop_id, 404);
+
+        $disk = \Illuminate\Support\Facades\Storage::disk($attachment->file_disk);
+        abort_unless($disk->exists($attachment->file_path), 404);
+
+        return $disk->response(
+            $attachment->file_path,
+            $attachment->original_name,
+            ['Content-Type' => $attachment->mime_type ?: 'application/octet-stream'],
+            'inline'
+        );
+    }
+
+    /** Resolve+verify an attachment owner is in the current shop, or 404. */
+    private function assertOwnerInShop(string $ownerType, int $ownerId, int $shopId): void
+    {
+        $model = match ($ownerType) {
+            'dhiran_loan'      => DhiranLoan::find($ownerId),
+            'dhiran_loan_item' => DhiranLoanItem::find($ownerId),
+            'customer'         => Customer::find($ownerId),
+            default            => null,
+        };
+
+        abort_if($model === null || (int) $model->shop_id !== $shopId, 404, 'Not found.');
     }
 
     public function forfeit(Request $request, DhiranLoan $loan)

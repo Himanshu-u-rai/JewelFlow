@@ -164,7 +164,7 @@
 
     <x-page-header>
         <div>
-            <h1 class="page-title">New Gold Loan</h1>
+            <h1 class="page-title">New Pledge Loan</h1>
             <p class="text-sm text-gray-500 mt-1">Create a new Dhiran / Girvi pledge loan</p>
         </div>
         <div class="page-actions">

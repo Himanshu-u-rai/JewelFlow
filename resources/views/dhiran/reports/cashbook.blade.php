@@ -10,7 +10,7 @@
     <x-page-header>
         <div>
             <h1 class="page-title">Dhiran Cash Book</h1>
-            <p class="text-sm text-gray-500 mt-1">All cash inflows and outflows for gold loans</p>
+            <p class="text-sm text-gray-500 mt-1">All cash inflows and outflows for pledge (gold & silver) loans</p>
         </div>
         <div class="page-actions">
             <form method="GET" action="{{ route('dhiran.reports.cashbook') }}" class="flex flex-wrap gap-3 items-end">

@@ -1,7 +1,7 @@
 <x-dhiran-layout title="Customer Loans">
     <x-page-header>
         <div>
-            <h1 class="page-title">{{ $customer->name }} &mdash; Gold Loans</h1>
+            <h1 class="page-title">{{ $customer->name }} &mdash; Pledge Loans</h1>
             <p class="text-sm text-gray-500 mt-1">{{ $customer->mobile ?? '' }} {{ $customer->email ? '/ ' . $customer->email : '' }}</p>
         </div>
         <div class="page-actions">
@@ -118,7 +118,7 @@
                             <tr>
                                 <td colspan="7" class="px-6 py-12 text-center text-slate-500">
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loans for this customer</p>
-                                    <p class="text-sm">Create a new gold loan to get started</p>
+                                    <p class="text-sm">Create a new pledge loan to get started</p>
                                 </td>
                             </tr>
                         @endforelse

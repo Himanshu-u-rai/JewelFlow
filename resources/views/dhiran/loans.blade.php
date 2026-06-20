@@ -1,7 +1,7 @@
 <x-dhiran-layout title="Loans">
     <x-page-header>
         <div>
-            <h1 class="page-title">Gold Loans</h1>
+            <h1 class="page-title">Pledge Loans</h1>
             <p class="text-sm text-gray-500 mt-1">All Dhiran / Girvi pledge loans</p>
         </div>
         <div class="page-actions">

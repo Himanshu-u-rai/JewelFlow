@@ -79,7 +79,7 @@
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div class="dr-report-title">Active Loans Report</div>
-                <div class="dr-report-desc">All currently active gold loans with principal, outstanding, and maturity details.</div>
+                <div class="dr-report-desc">All currently active pledge loans with principal, outstanding, and maturity details.</div>
             </a>
             <a href="{{ route('dhiran.reports.index', ['type' => 'overdue']) }}" class="dr-report-card">
                 <div class="dr-report-icon bg-rose-100 text-rose-700">
@@ -114,7 +114,7 @@
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                 </div>
                 <div class="dr-report-title">Profitability Report</div>
-                <div class="dr-report-desc">Interest income, processing fees, and net profit from gold loan operations.</div>
+                <div class="dr-report-desc">Interest income, processing fees, and net profit from pledge loan operations.</div>
             </a>
         </div>
 

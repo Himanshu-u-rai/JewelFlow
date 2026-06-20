@@ -307,7 +307,7 @@
                         {!! nl2br(e($loan->forfeiture_notice_text)) !!}
                     @else
                         <p>
-                            This notice is issued in connection with Gold Loan <strong>{{ $loan->loan_number }}</strong>
+                            This notice is issued in connection with Pledge Loan <strong>{{ $loan->loan_number }}</strong>
                             dated <strong>{{ $loanDate }}</strong> for a principal amount of
                             <strong>{{ number_format((float) $loan->principal_amount, 2) }}</strong>.
                         </p>

@@ -60,7 +60,7 @@
 
     <x-page-header>
         <div>
-            <h1 class="page-title">Dhiran &mdash; Gold Loans</h1>
+            <h1 class="page-title">Dhiran &mdash; Pledge Loans</h1>
             <p class="text-sm text-gray-500 mt-1">Overview of all gold pledge loan activity</p>
         </div>
         <div class="page-actions">
@@ -226,7 +226,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33"/>
                                     </svg>
                                     <p class="text-lg font-semibold mb-1 text-slate-700">No loans yet</p>
-                                    <p class="text-sm">Create your first gold loan to get started</p>
+                                    <p class="text-sm">Create your first pledge loan to get started</p>
                                 </td>
                             </tr>
                         @endforelse
