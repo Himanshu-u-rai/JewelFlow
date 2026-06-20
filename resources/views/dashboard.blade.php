@@ -3950,9 +3950,13 @@
                 && $promoUser?->isErp()
                 && ! ($promoUser?->shop?->hasEdition(\App\Support\ShopEdition::DHIRAN) ?? false);
         @endphp
+        {{-- Admin-editable offers/deals banner (platform announcements, type=banner). --}}
+        <x-promo-banner realm="erp" />
+
         @if($showDhiranPromo)
             <x-cross-promo-card
                 key="dhiran"
+                realm="erp"
                 heading="Offer gold-loan services?"
                 body="Use Dhiran to manage pledges, interest, repayments, renewals and closures — as its own separate service."
                 cta="Explore Dhiran"

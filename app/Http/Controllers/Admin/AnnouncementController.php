@@ -22,18 +22,29 @@ class AnnouncementController extends Controller
         return view('super-admin.announcements.index', compact('announcements'));
     }
 
-    public function store(Request $request): RedirectResponse
+    /** Shared validation rules for create/update. */
+    private function rules(): array
     {
-        $validated = $request->validate([
+        return [
             'title'        => ['required', 'string', 'max:255'],
             'body'         => ['required', 'string', 'max:5000'],
-            'type'         => ['required', 'in:info,warning,critical'],
+            'cta_label'    => ['nullable', 'string', 'max:80'],
+            'cta_url'      => ['nullable', 'string', 'max:2048', 'url'],
+            // info/warning/critical = system notice; banner = big offers/deals;
+            // cross_promo = overrides the product cross-promo toast.
+            'type'         => ['required', 'in:info,warning,critical,banner,cross_promo'],
             'target'       => ['required', 'in:all,plan,edition'],
             'target_value' => ['nullable', 'string', 'max:100'],
+            'realm'        => ['nullable', 'in:erp,dhiran'],
             'publish_at'   => ['nullable', 'date'],
             'expires_at'   => ['nullable', 'date', 'after:publish_at'],
             'send_email'   => ['boolean'],
-        ]);
+        ];
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate($this->rules());
 
         $announcement = PlatformAnnouncement::create([
             ...$validated,
@@ -52,7 +63,31 @@ class AnnouncementController extends Controller
             $request
         );
 
-        return back()->with('success', 'Announcement created.');
+        return back()->with('success', 'Message created.');
+    }
+
+    public function update(PlatformAnnouncement $announcement, Request $request): RedirectResponse
+    {
+        $validated = $request->validate($this->rules());
+        $before = $announcement->toArray();
+
+        $announcement->update([
+            ...$validated,
+            'send_email' => $request->boolean('send_email'),
+        ]);
+
+        $this->audit->log(
+            auth('platform_admin')->user(),
+            'announcement.update',
+            PlatformAnnouncement::class,
+            $announcement->id,
+            $before,
+            $announcement->fresh()->toArray(),
+            null,
+            $request
+        );
+
+        return back()->with('success', 'Message updated.');
     }
 
     public function destroy(PlatformAnnouncement $announcement, Request $request): RedirectResponse

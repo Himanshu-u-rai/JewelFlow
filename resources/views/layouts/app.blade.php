@@ -703,7 +703,11 @@
             
             <!-- Main Content Area -->
             @php
+                // Small inline notices only (info/warning/critical). Big "banner"
+                // offers/deals and "cross_promo" toast overrides render via their
+                // own surfaces (x-promo-banner / cross-promo toast), not here.
                 $activeAnnouncements = \App\Models\Platform\PlatformAnnouncement::active()
+                    ->whereIn('type', \App\Models\Platform\PlatformAnnouncement::SYSTEM_TYPES)
                     ->whereNotExists(function($q) {
                         $q->select(\DB::raw(1))->from('platform_announcement_dismissals')
                           ->where('user_id', auth()->id())

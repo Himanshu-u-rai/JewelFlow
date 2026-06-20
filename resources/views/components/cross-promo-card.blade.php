@@ -4,7 +4,20 @@
     'cta',
     'url',
     'key' => 'default',
+    'realm' => null,   // 'erp' | 'dhiran' — used to pick up an admin override
 ])
+
+@php
+    // Admin override: a platform 'cross_promo' announcement for this realm replaces
+    // the default heading/body/cta/url. Falls back to the passed-in defaults.
+    $override = $realm ? \App\Models\Platform\PlatformAnnouncement::crossPromoFor($realm) : null;
+    if ($override) {
+        $heading = $override->title ?: $heading;
+        $body    = $override->body ?: $body;
+        $cta     = $override->cta_label ?: $cta;
+        $url     = $override->cta_url ?: $url;
+    }
+@endphp
 
 {{-- Cross-promotion as a dismissable toast/pop notification (not a body card).
      It is fixed-position (overlays the corner), so it NEVER pushes page content.

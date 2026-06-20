@@ -119,6 +119,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
             Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
             Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+            Route::put('/announcements/{announcement}', [AnnouncementController::class, 'update'])->name('announcements.update');
             Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');
 
             Route::get('/backup', [BackupStatusController::class, 'index'])->name('backup.index');

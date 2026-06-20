@@ -90,9 +90,13 @@
                 && $promoUser?->isDhiran()
                 && ! $hasErpEdition;
         @endphp
+        {{-- Admin-editable offers/deals banner (platform announcements, type=banner). --}}
+        <x-promo-banner realm="dhiran" />
+
         @if($showErpPromo)
             <x-cross-promo-card
                 key="erp"
+                realm="dhiran"
                 heading="Running a jewellery store too?"
                 body="Use JewelFlow ERP for inventory, POS billing, returns, karigar work and reports — as its own separate account."
                 cta="Explore JewelFlow ERP"
