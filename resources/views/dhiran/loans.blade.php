@@ -37,6 +37,7 @@
                     <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Status</label>
                     <select name="status" class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none" style="appearance:none;-webkit-appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;">
                         <option value="">All</option>
+                        <option value="pending_evidence" {{ request('status') === 'pending_evidence' ? 'selected' : '' }}>Awaiting Evidence</option>
                         <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
                         <option value="closed" {{ request('status') === 'closed' ? 'selected' : '' }}>Closed</option>
                         <option value="renewed" {{ request('status') === 'renewed' ? 'selected' : '' }}>Renewed</option>
@@ -90,6 +91,7 @@
                                 <td class="px-4 py-4 whitespace-nowrap text-center">
                                     @php
                                         $statusColors = [
+                                            'pending_evidence' => 'bg-amber-100 text-amber-800',
                                             'active' => 'bg-emerald-100 text-emerald-800',
                                             'overdue' => 'bg-rose-100 text-rose-800',
                                             'closed' => 'bg-slate-100 text-slate-600',
@@ -98,8 +100,11 @@
                                         ];
                                     @endphp
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
-                                        {{ ucfirst($loan->status) }}
+                                        {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
                                     </span>
+                                    @if($loan->status === 'pending_evidence')
+                                        <span class="block text-[10px] text-amber-700 mt-0.5">Upload required proof to activate</span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                                     {{ $loan->maturity_date ? $loan->maturity_date->format('d M Y') : '---' }}

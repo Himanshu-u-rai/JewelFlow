@@ -204,6 +204,7 @@
                                 <td class="px-4 py-4 whitespace-nowrap text-center">
                                     @php
                                         $statusColors = [
+                                            'pending_evidence' => 'bg-amber-100 text-amber-800',
                                             'active' => 'bg-emerald-100 text-emerald-800',
                                             'overdue' => 'bg-rose-100 text-rose-800',
                                             'closed' => 'bg-slate-100 text-slate-600',
@@ -212,7 +213,7 @@
                                         ];
                                     @endphp
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$loan->status] ?? 'bg-slate-100 text-slate-600' }}">
-                                        {{ ucfirst($loan->status) }}
+                                        {{ $loan->status === 'pending_evidence' ? 'Awaiting Evidence' : ucfirst($loan->status) }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-500">

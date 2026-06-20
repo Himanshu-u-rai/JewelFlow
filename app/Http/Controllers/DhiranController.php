@@ -276,7 +276,7 @@ class DhiranController extends Controller
     public function loans(Request $request)
     {
         $request->validate([
-            'status' => ['nullable', Rule::in(['active', 'closed', 'renewed', 'forfeited'])],
+            'status' => ['nullable', Rule::in(['pending_evidence', 'active', 'closed', 'renewed', 'forfeited'])],
             'search' => 'nullable|string|max:100',
         ]);
 

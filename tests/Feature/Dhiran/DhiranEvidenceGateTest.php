@@ -208,4 +208,81 @@ class DhiranEvidenceGateTest extends TestCase
             app(\App\Http\Controllers\DhiranController::class)->showAttachment($row);
         });
     }
+
+    // ── pending_evidence visibility (loan list + filter + badge) ──
+
+    /** Render the loans list view for a given status filter request. */
+    private function renderLoans(Shop $shop, User $owner, ?string $status = null): string
+    {
+        return TenantContext::runFor($shop->id, function () use ($owner, $status) {
+            $this->actingAs($owner);
+            view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+            $q = DhiranLoan::query();
+            if ($status) {
+                $q->where('status', $status);
+            }
+            return view('dhiran.loans', ['loans' => $q->latest()->paginate(20)])->render();
+        });
+    }
+
+    // 1. Pending-evidence loan appears in "All Loans".
+    public function test_pending_loan_appears_in_all_loans(): void
+    {
+        [$shop, $owner] = $this->shopOwner('9390000110');
+        $loan = $this->pendingLoan($shop, $owner);
+
+        $html = $this->renderLoans($shop, $owner, null);
+        $this->assertStringContainsString($loan->loan_number, $html);
+        $this->assertStringContainsString('Awaiting Evidence', $html);
+    }
+
+    // 2. Pending-evidence loan appears under the "Awaiting Evidence" filter.
+    public function test_pending_loan_appears_in_awaiting_evidence_filter(): void
+    {
+        [$shop, $owner] = $this->shopOwner('9390000111');
+        $loan = $this->pendingLoan($shop, $owner);
+
+        $html = $this->renderLoans($shop, $owner, 'pending_evidence');
+        $this->assertStringContainsString($loan->loan_number, $html);
+    }
+
+    // 3. Active filter does NOT include pending-evidence loans.
+    public function test_active_filter_excludes_pending(): void
+    {
+        [$shop, $owner] = $this->shopOwner('9390000112');
+        $pending = $this->pendingLoan($shop, $owner);
+        // an active loan via the service default
+        $active = TenantContext::runFor($shop->id, function () use ($shop, $owner) {
+            $c = Customer::create(['shop_id' => $shop->id, 'first_name' => 'C', 'last_name' => 'O', 'mobile' => '9811130003']);
+            return $this->service->createLoan($shop, $c, [[
+                'description' => 'X', 'metal_type' => 'gold', 'purity' => 22, 'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000,
+            ]], ['principal_amount' => 100000, 'gold_rate_on_date' => 6000, 'created_by' => $owner->id]);
+        });
+
+        $html = $this->renderLoans($shop, $owner, 'active');
+        $this->assertStringContainsString($active->loan_number, $html);
+        $this->assertStringNotContainsString($pending->loan_number, $html);
+    }
+
+    // 4. The "Awaiting Evidence" badge + helper line render in the list.
+    public function test_awaiting_evidence_badge_renders(): void
+    {
+        [$shop, $owner] = $this->shopOwner('9390000113');
+        $this->pendingLoan($shop, $owner);
+
+        $html = $this->renderLoans($shop, $owner, null);
+        $this->assertStringContainsString('Awaiting Evidence', $html);
+        $this->assertStringContainsString('Upload required proof to activate', $html);
+    }
+
+    // 5. The status filter accepts pending_evidence (controller validation).
+    public function test_filter_validation_accepts_pending_evidence(): void
+    {
+        [$shop, $owner] = $this->shopOwner('9390000114');
+        $this->pendingLoan($shop, $owner);
+
+        // pending_evidence is a valid status filter value (no 302-with-errors).
+        $this->actingAs($owner)->get('https://dhiran.jewelflows.com/dhiran/loans?status=pending_evidence')
+            ->assertSessionHasNoErrors();
+    }
 }
