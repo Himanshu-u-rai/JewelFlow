@@ -7,7 +7,7 @@
         $net = $totalInflows - $totalOutflows;
     @endphp
 
-    <x-page-header>
+    <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Dhiran Cash Book</h1>
             <p class="text-sm text-gray-500 mt-1">All cash inflows and outflows for pledge (gold & silver) loans</p>
@@ -32,7 +32,7 @@
                 Print
             </button>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner">
         {{-- Summary Cards --}}

@@ -106,12 +106,12 @@
         }
     </style>
 
-    <x-page-header>
+    <x-dhiran.page-header>
         <h1 class="page-title">Dhiran (Gold Loan)</h1>
         <div class="page-actions">
             <span class="header-badge">Module Setup</span>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner dhiran-activate-root">
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">

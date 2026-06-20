@@ -29,7 +29,7 @@
         .dr-report-desc { font-size: 12px; color: var(--dr-muted); line-height: 1.5; margin-bottom: 12px; }
     </style>
 
-    <x-page-header>
+    <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Dhiran Reports</h1>
             <p class="text-sm text-gray-500 mt-1">Gold loan analytics and reports</p>
@@ -40,7 +40,7 @@
                 Back to Dashboard
             </a>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner dhiran-reports-root">
 

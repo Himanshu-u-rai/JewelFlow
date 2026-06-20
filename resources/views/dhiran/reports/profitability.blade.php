@@ -8,7 +8,7 @@
         $netProfit = $totalInterestEarned + $totalPenalties + $totalProcessingFees;
     @endphp
 
-    <x-page-header>
+    <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Profitability Report</h1>
             <p class="text-sm text-gray-500 mt-1">Revenue and profitability analysis across all loans</p>
@@ -19,7 +19,7 @@
                 Print
             </button>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner">
         {{-- Summary Cards --}}

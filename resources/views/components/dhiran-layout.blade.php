@@ -105,24 +105,98 @@
         }
         .dh-flash-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
         .dh-flash-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        /* iOS-style drawer easing — slides in fast, settles soft. */
+        :root { --dh-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+
+        /* Mobile top bar + hamburger: only shown ≤720px. */
+        .dh-topbar { display: none; }
+        .dh-hamburger {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 40px; height: 40px; border-radius: 10px;
+            border: 1px solid var(--dh-line); background: #fff; color: var(--dh-ink);
+            cursor: pointer; flex-shrink: 0;
+            transition: transform 140ms var(--dh-ease), background 140ms var(--dh-ease);
+        }
+        .dh-hamburger:active { transform: scale(0.94); }
+        @media (hover: hover) and (pointer: fine) {
+            .dh-hamburger:hover { background: #f1f5f9; }
+        }
+        .dh-hamburger svg { width: 20px; height: 20px; }
+        /* Scrim sits behind the drawer; fades with opacity only. */
+        .dh-scrim {
+            position: fixed; inset: 0; z-index: 40;
+            background: rgba(15, 23, 42, 0.45);
+            opacity: 0; pointer-events: none;
+            transition: opacity 240ms var(--dh-ease-drawer);
+        }
+
         @media (max-width: 720px) {
             .dh-shell { flex-direction: column; }
-            .dh-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; padding: 12px; position: static; height: auto; overflow: visible; }
-            .dh-nav { flex-direction: row; flex-wrap: wrap; flex: 1 1 100%; }
-            .dh-foot { border-top: 0; padding-top: 0; }
+            .dh-topbar {
+                display: flex; align-items: center; gap: 12px;
+                padding: 12px 16px; background: #fff;
+                border-bottom: 1px solid var(--dh-line);
+                position: sticky; top: 0; z-index: 30;
+            }
+            .dh-topbar .dh-brand {
+                padding: 0; margin: 0; border: 0; flex: 1; min-width: 0;
+            }
+            /* Sidebar becomes an off-canvas left drawer. */
+            .dh-sidebar {
+                position: fixed; top: 0; left: 0; bottom: 0;
+                width: min(82vw, 300px); height: 100dvh; z-index: 50;
+                box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
+                transform: translateX(-100%);
+                transition: transform 260ms var(--dh-ease-drawer);
+                will-change: transform;
+            }
             .dh-main { padding: 18px; }
+
+            /* Open state, driven by Alpine on .dh-shell. */
+            .dh-shell.is-open .dh-sidebar { transform: translateX(0); }
+            .dh-shell.is-open .dh-scrim { opacity: 1; pointer-events: auto; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .dh-sidebar, .dh-scrim, .dh-hamburger { transition-duration: 0ms; }
         }
     </style>
     @stack('styles')
 </head>
 <body>
-    <div class="dh-shell">
-        <aside class="dh-sidebar">
+    <div class="dh-shell"
+         x-data="{ open: false }"
+         :class="{ 'is-open': open }"
+         @keydown.escape.window="open = false"
+         @turbo:before-cache.window="open = false">
+
+        {{-- Mobile-only top bar: brand + menu toggle. Hidden ≥720px. --}}
+        <header class="dh-topbar">
+            <button type="button" class="dh-hamburger"
+                    @click="open = true"
+                    :aria-expanded="open"
+                    aria-label="Open menu" aria-controls="dh-sidebar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
             <a href="{{ route('dhiran.dashboard') }}" class="dh-brand" style="text-decoration:none;color:inherit;">
                 <span class="dh-brand-mark">D</span>
                 <span>
                     <span class="dh-brand-name">Dhiran</span>
-                    <span class="dh-brand-sub">Gold Loan Manager</span>
+                    <span class="dh-brand-sub">Pledge Loan Manager</span>
+                </span>
+            </a>
+        </header>
+
+        {{-- Scrim: tap to close the drawer. --}}
+        <div class="dh-scrim" @click="open = false" aria-hidden="true"></div>
+
+        <aside class="dh-sidebar" id="dh-sidebar" @click="open = false">
+            <a href="{{ route('dhiran.dashboard') }}" class="dh-brand" style="text-decoration:none;color:inherit;">
+                <span class="dh-brand-mark">D</span>
+                <span>
+                    <span class="dh-brand-name">Dhiran</span>
+                    <span class="dh-brand-sub">Pledge Loan Manager</span>
                 </span>
             </a>
 

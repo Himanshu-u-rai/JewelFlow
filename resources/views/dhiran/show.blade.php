@@ -44,7 +44,7 @@
         }
     </style>
 
-    <x-page-header>
+    <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Loan {{ $loan->loan_number }}</h1>
             <p class="text-sm text-gray-500 mt-1">
@@ -149,7 +149,7 @@
                 All Loans
             </a>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner dhiran-show-root">
 

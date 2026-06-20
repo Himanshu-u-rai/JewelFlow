@@ -162,7 +162,7 @@
         .dh-borrower-save:disabled { opacity: .6; cursor: not-allowed; }
     </style>
 
-    <x-page-header>
+    <x-dhiran.page-header>
         <div>
             <h1 class="page-title">New Pledge Loan</h1>
             <p class="text-sm text-gray-500 mt-1">Create a new Dhiran / Girvi pledge loan</p>
@@ -173,7 +173,7 @@
                 Back to Loans
             </a>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner" x-data="dhiranCreateForm()">
 

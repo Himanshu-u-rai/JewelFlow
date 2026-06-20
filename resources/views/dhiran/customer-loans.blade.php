@@ -1,5 +1,5 @@
 <x-dhiran-layout title="Customer Loans">
-    <x-page-header>
+    <x-dhiran.page-header>
         <div>
             <h1 class="page-title">{{ $customer->name }} &mdash; Pledge Loans</h1>
             <p class="text-sm text-gray-500 mt-1">{{ $customer->mobile ?? '' }} {{ $customer->email ? '/ ' . $customer->email : '' }}</p>
@@ -14,7 +14,7 @@
                 All Loans
             </a>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner">
 

@@ -58,7 +58,7 @@
         }
     </style>
 
-    <x-page-header>
+    <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Dhiran &mdash; Pledge Loans</h1>
             <p class="text-sm text-gray-500 mt-1">Overview of all gold pledge loan activity</p>
@@ -73,7 +73,7 @@
                 Settings
             </a>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner dhiran-dash">
 

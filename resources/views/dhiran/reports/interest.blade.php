@@ -7,7 +7,7 @@
         $totalPrincipal = $payments->sum('principal_component');
     @endphp
 
-    <x-page-header>
+    <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Interest Income Report</h1>
             <p class="text-sm text-gray-500 mt-1">Interest and penalty collections breakdown</p>
@@ -32,7 +32,7 @@
                 Print
             </button>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner">
         {{-- Summary Cards --}}

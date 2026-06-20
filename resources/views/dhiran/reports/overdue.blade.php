@@ -1,5 +1,5 @@
 <x-dhiran-layout title="Overdue Report">
-    <x-page-header>
+    <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Overdue Loans Report</h1>
             <p class="text-sm text-gray-500 mt-1">Loans past maturity date requiring attention</p>
@@ -11,7 +11,7 @@
                 Print
             </button>
         </div>
-    </x-page-header>
+    </x-dhiran.page-header>
 
     <div class="content-inner">
         {{-- Summary Cards --}}
