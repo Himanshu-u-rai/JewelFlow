@@ -3,9 +3,15 @@
 @endphp
 
 <x-app-layout>
+    <div
+        x-data="{ invoicePreviewOpen: false }"
+        x-effect="document.body.classList.toggle('invoice-preview-body-locked', invoicePreviewOpen)"
+        x-on:keydown.escape.window="invoicePreviewOpen = false"
+        x-on:turbo:before-cache.window="invoicePreviewOpen = false; document.body.classList.remove('invoice-preview-body-locked')"
+    >
     <x-page-header class="invoice-show-header {{ $emiQuickMenuEnabled ? 'invoice-show-header-emi-fab' : '' }}">
         <div>
-            <h1 class="page-title">Invoice {{ $invoice->invoice_number }}</h1>
+            <h1 class="page-title">Invoice&nbsp;{{ $invoice->invoice_number }}</h1>
             <p class="text-sm text-gray-500 mt-1">{{ $invoice->created_at->format('d M Y, h:i A') }}</p>
         </div>
         <div class="page-actions flex flex-wrap gap-2">
@@ -36,6 +42,13 @@
                 </svg>
                 Print
             </a>
+            <button type="button" class="btn btn-secondary btn-sm invoice-preview-action" x-on:click="invoicePreviewOpen = true">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15.25A3.25 3.25 0 1112 8.75a3.25 3.25 0 010 6.5z"/>
+                </svg>
+                Preview
+            </button>
             @can('returns.create')
                 @if($invoice->status === \App\Models\Invoice::STATUS_FINALIZED)
                 <a href="{{ route('returns.create', $invoice) }}" class="btn btn-secondary btn-sm" data-turbo-frame="_top">
@@ -49,7 +62,7 @@
                 @endif
             @endcan
             <a href="{{ route('invoices.index') }}" 
-               class="btn btn-secondary btn-sm">
+               class="btn btn-secondary btn-sm invoice-back-action">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
@@ -95,7 +108,7 @@
         </div>
     @endif
 
-    <div class="content-inner invoice-show-page">
+    <div class="content-inner invoice-show-page jf-skeleton-host is-loading">
         @php
             $isRetailer = auth()->user()->shop?->isRetailer();
             $isRepairInvoice = str_starts_with($invoice->invoice_number, 'REP-') || $invoice->items->isEmpty();
@@ -104,6 +117,18 @@
             $offerDiscount = (float) ($offerApplied->discount_amount ?? 0);
             $manualDiscount = max(0, (float) $invoice->discount - $offerDiscount);
             $schemeRedemptionTotal = (float) $invoice->schemeRedemptions->sum('amount');
+            $lineItemsTotal = $isRepairInvoice ? (float) $invoice->total : (float) $invoice->items->sum('line_total');
+            $paidAmount = (float) $invoice->payments->sum('amount');
+            $lineCount = $isRepairInvoice ? 1 : $invoice->items->count();
+            $paymentModeSummary = $invoice->payments->pluck('mode')
+                ->filter()
+                ->unique()
+                ->map(fn ($mode) => \App\Support\PaymentMethodLabel::modeLabel($mode))
+                ->implode(', ');
+            $paymentModeSummary = $paymentModeSummary !== '' ? $paymentModeSummary : 'Not recorded';
+            $invoiceTypeLabel = $isRepairInvoice ? 'Repair service' : 'Sale';
+            $showDraftTotalsNote = $invoice->status === \App\Models\Invoice::STATUS_DRAFT
+                && abs($lineItemsTotal - (float) $invoice->total) > 0.01;
 
             if ($isRepairInvoice) {
                 $repairLog = \App\Models\AuditLog::where('shop_id', auth()->user()->shop_id)
@@ -117,395 +142,424 @@
                     $repair = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)->find($repairLog->model_id);
                 }
             }
+
+            $statusBadgeClass = match($invoice->status) {
+                \App\Models\Invoice::STATUS_FINALIZED => 'invoice-show-status invoice-show-status--finalized',
+                \App\Models\Invoice::STATUS_CANCELLED => 'invoice-show-status invoice-show-status--cancelled',
+                default                               => 'invoice-show-status invoice-show-status--draft',
+            };
         @endphp
 
-        <div class="grid grid-cols-12 gap-4">
-            <!-- Invoice Header Card -->
-            <div class="col-span-12 bg-white shadow-sm border border-gray-200 p-4 invoice-show-card invoice-show-card--header">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 bg-green-100 flex items-center justify-center">
-                            <svg class="w-7 h-7 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                        </div>
+        <div class="invoice-show-layout">
+            <main class="invoice-show-main">
+                <section class="invoice-show-document" aria-labelledby="invoice-document-heading">
+                    <div class="invoice-show-document-head jf-skel">
                         <div>
-                            <div class="text-xl font-bold text-gray-900">{{ $invoice->invoice_number }}</div>
-                            <div class="text-sm text-gray-500">{{ $invoice->created_at->format('d M Y, h:i A') }}</div>
+                            <p class="invoice-show-eyebrow">{{ $invoiceTypeLabel }}</p>
+                            <h2 id="invoice-document-heading">{{ $invoice->invoice_number }}</h2>
+                            <p>{{ $invoice->created_at->format('d M Y, h:i A') }}</p>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        @if(!$isRetailer)
-                        <div class="text-right">
-                            <div class="text-[11px] text-gray-500 uppercase">{{ $isRepairInvoice ? 'Invoice Type' : 'Gold Rate' }}</div>
-                            <div class="text-lg font-semibold text-amber-600">
-                                {{ $isRepairInvoice ? 'Repair Service' : '₹' . number_format($invoice->gold_rate, 2) . '/g' }}
-                            </div>
-                        </div>
-                        @elseif($isRepairInvoice)
-                        <div class="text-right">
-                            <div class="text-[11px] text-gray-500 uppercase">Invoice Type</div>
-                            <div class="text-lg font-semibold text-amber-600">Repair Service</div>
-                        </div>
-                        @endif
-                        @php
-                            // Colour by the actual Invoice status (draft/finalized/cancelled).
-                            // The old check compared to 'paid', which is never an Invoice
-                            // status, so every badge rendered amber (UX2).
-                            $statusBadgeClass = match($invoice->status) {
-                                \App\Models\Invoice::STATUS_FINALIZED => 'bg-emerald-100 text-emerald-800',
-                                \App\Models\Invoice::STATUS_CANCELLED => 'bg-rose-100 text-rose-800',
-                                default                               => 'bg-amber-100 text-amber-800',
-                            };
-                        @endphp
-                        <span class="inline-flex items-center px-3 py-1.5 text-sm font-medium {{ $statusBadgeClass }}">
-                            {{ ucfirst($invoice->status) }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Customer Card -->
-            <div class="col-span-12 lg:col-span-4 bg-white shadow-sm border border-gray-200 p-4 invoice-show-card invoice-show-card--customer">
-                <h2 class="text-sm font-semibold text-gray-900 mb-3">Customer</h2>
-                @if($invoice->customer)
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-amber-100 flex items-center justify-center flex-shrink-0">
-                            <span class="text-lg font-bold text-amber-700">
-                                {{ strtoupper(substr($invoice->customer->name, 0, 2)) }}
-                            </span>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="font-semibold text-gray-900 truncate">{{ $invoice->customer->name }}</p>
-                            <p class="text-sm text-gray-500">{{ $invoice->customer->mobile }}</p>
-                        </div>
-                    </div>
-                    @if($invoice->customer->address)
-                        <p class="text-xs text-gray-500 mt-2 truncate">{{ $invoice->customer->address }}</p>
-                    @endif
-                @else
-                    <p class="text-gray-500">Walk-in Customer</p>
-                @endif
-            </div>
-
-            <!-- Payment Summary Card -->
-            <div class="col-span-12 lg:col-span-4 bg-white shadow-sm border border-gray-200 p-4 invoice-show-card invoice-show-card--summary">
-                <h2 class="text-sm font-semibold text-gray-900 mb-3">Payment Summary</h2>
-                <div class="space-y-2 text-sm">
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">Subtotal</span>
-                        <span class="font-medium text-gray-900">₹{{ number_format($invoice->subtotal, 2) }}</span>
-                    </div>
-                    {{-- Fixed-skeleton: every row always renders so the
-                         Payment Summary card has the same shape on every
-                         invoice. Zero/empty values show explicitly. --}}
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">Wastage Charge</span>
-                        <span class="font-medium text-gray-900">₹{{ number_format($invoice->wastage_charge, 2) }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">GST ({{ $invoice->gst_rate ?? 3 }}%)</span>
-                        <span class="font-medium text-gray-900">₹{{ number_format($invoice->gst, 2) }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">Manual Discount</span>
-                        <span class="font-medium {{ $manualDiscount > 0 ? 'text-red-600' : 'text-gray-400' }}">{{ $manualDiscount > 0 ? '−' : '' }}₹{{ number_format($manualDiscount, 2) }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">Offer Discount @if($offerApplied)<span class="text-xs text-gray-400">({{ $offerApplied->scheme_name_snapshot }})</span>@endif</span>
-                        <span class="font-medium {{ $offerDiscount > 0 ? 'text-red-600' : 'text-gray-400' }}">{{ $offerDiscount > 0 ? '−' : '' }}₹{{ number_format($offerDiscount, 2) }}</span>
-                    </div>
-                    {{-- Legacy fallback row (pre-Phase-0 invoices that lack the
-                         manual/offer split) — removed; every invoice now uses
-                         the Manual + Offer rows above. --}}
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">Round Off</span>
-                        <span class="font-medium text-gray-700">{{ $invoice->round_off > 0 ? '+' : ($invoice->round_off < 0 ? '' : '') }}₹{{ number_format($invoice->round_off, 2) }}</span>
-                    </div>
-                    <div class="border-t border-gray-100 pt-2 mt-2">
-                        <div class="flex justify-between items-center">
-                            <span class="font-semibold text-gray-900">Total</span>
-                            <span class="text-xl font-bold text-emerald-600">₹{{ number_format($invoice->total, 2) }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Info Card -->
-            <div class="col-span-12 lg:col-span-4 bg-white rounded-xl shadow-sm border border-gray-200 p-4 invoice-show-card invoice-show-card--details">
-                <h2 class="text-sm font-semibold text-gray-900 mb-3">Details</h2>
-                <div class="grid grid-cols-2 gap-3 invoice-details-kpi-grid">
-                    <div class="bg-gray-50 border border-gray-100 p-2 invoice-details-kpi-card">
-                        <div class="text-[11px] text-gray-500 invoice-details-kpi-label">Items</div>
-                        <div class="text-lg font-semibold text-gray-900 invoice-details-kpi-value">{{ $invoice->items->count() }}</div>
-                    </div>
-                    <div class="bg-gray-50 border border-gray-100 p-2 invoice-details-kpi-card">
-                        <div class="text-[11px] text-gray-500 invoice-details-kpi-label">Payment</div>
-                        @if($invoice->payments->count())
-                            <div class="text-sm font-semibold text-gray-900 invoice-details-kpi-value">
-                                {{ $invoice->payments->pluck('mode')->unique()->map(fn($m) => ucfirst(str_replace('_', ' ', $m)))->implode(', ') }}
-                            </div>
-                        @else
-                            <div class="text-sm font-semibold text-gray-900 invoice-details-kpi-value">Cash</div>
-                        @endif
-                    </div>
-                    <div class="bg-gray-50 border border-gray-100 p-2 invoice-details-kpi-card">
-                        <div class="text-[11px] text-gray-500 invoice-details-kpi-label">Type</div>
-                        <div class="text-sm font-semibold text-gray-900 invoice-details-kpi-value">{{ $isRepairInvoice ? 'Repair' : 'Sale' }}</div>
-                    </div>
-                    <div class="bg-gray-50 border border-gray-100 p-2 invoice-details-kpi-card">
-                        <div class="text-[11px] text-gray-500 invoice-details-kpi-label">Invoice Number</div>
-                        <div class="text-sm font-semibold text-gray-900 invoice-details-kpi-value">{{ $invoice->invoice_number }}</div>
-                    </div>
-                </div>
-
-                {{-- Payment Breakdown — fixed-skeleton: always renders 4
-                     slots so the card height stays constant. Real payments
-                     fill from the top, remaining slots show "—". --}}
-                @php
-                    $showMaxPayments = 4;
-                    $showPayments    = $invoice->payments->take($showMaxPayments);
-                    $showBlanks      = max(0, $showMaxPayments - $showPayments->count());
-                @endphp
-                <div class="mt-4 pt-3 border-t border-gray-100">
-                    <div class="text-[11px] text-gray-500 uppercase mb-2">Payment Breakdown</div>
-                    <div class="space-y-2">
-                        @foreach($showPayments as $payment)
-                            <div class="flex items-center justify-between text-sm">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-gray-700">{{ ucfirst(str_replace('_', ' ', $payment->mode)) }}</span>
-                                    @if($payment->reference)
-                                        <span class="text-xs text-gray-400">({{ $payment->reference }})</span>
-                                    @endif
-                                </div>
-                                <span class="font-medium text-gray-900">₹{{ number_format($payment->amount, 2) }}</span>
-                            </div>
-                            @if(in_array($payment->mode, ['old_gold', 'old_silver']) && $payment->metal_fine_weight)
-                                <div class="ml-7 text-xs text-gray-500">
-                                    {{ number_format($payment->metal_gross_weight, 3) }}g gross
-                                    · {{ $payment->mode === 'old_gold' ? $payment->metal_purity . 'K' : $payment->metal_purity . '‰' }}
-                                    · {{ number_format($payment->metal_fine_weight, 3) }}g fine
-                                    @ ₹{{ number_format($payment->metal_rate_per_gram, 2) }}/g
+                        <div class="invoice-show-document-head__aside">
+                            @if(!$isRetailer && !$isRepairInvoice)
+                                <div class="invoice-show-rate-chip">
+                                    <span>Gold rate</span>
+                                    <strong>₹{{ number_format($invoice->gold_rate, 2) }}/g</strong>
                                 </div>
                             @endif
-                        @endforeach
-                        @for($i = 0; $i < $showBlanks; $i++)
-                            <div class="flex items-center justify-between text-sm text-gray-300">
-                                <span>—</span>
-                                <span>—</span>
-                            </div>
-                        @endfor
+                            <span class="{{ $statusBadgeClass }}">{{ ucfirst($invoice->status) }}</span>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            {{-- Apply Store Credit — only when the customer has wallet credit and
-                 the finalized invoice still has an outstanding balance (M12). --}}
-            @can('sales.create')
-            @if(($storeCreditApplicable ?? 0) > 0)
-            <div class="col-span-12 bg-white shadow-sm border border-emerald-200 rounded-lg p-4">
-                <h2 class="text-sm font-semibold text-gray-900 mb-1">Apply Store Credit</h2>
-                <p class="text-xs text-gray-500 mb-3">This customer has ₹{{ number_format($storeCreditAvailable, 2) }} in store credit. Outstanding on this bill: ₹{{ number_format($outstandingAmount, 2) }}.</p>
-                <form method="POST" action="{{ route('store-credit.apply', $invoice) }}" data-turbo-frame="_top" class="flex flex-wrap items-end gap-3">
-                    @csrf
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Amount to apply (₹)</label>
-                        <input type="number" name="amount" step="0.01" min="0.01" max="{{ $storeCreditApplicable }}"
-                               value="{{ $storeCreditApplicable }}" required
-                               class="w-40 rounded-md border-gray-300 shadow-sm text-sm font-mono focus:border-emerald-500 focus:ring-emerald-500">
-                        <p class="text-[11px] text-gray-400 mt-1">Max ₹{{ number_format($storeCreditApplicable, 2) }}</p>
-                    </div>
-                    <button type="submit" class="px-4 py-2 rounded-md text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700">Apply Store Credit</button>
-                </form>
-            </div>
-            @endif
-            @endcan
-
-            <!-- Items Table -->
-            <div class="col-span-12 bg-white shadow-sm border border-gray-200 invoice-show-table-card">
-                <div class="px-4 py-3 border-b border-gray-200">
-                    <h2 class="text-sm font-semibold text-gray-900">{{ $isRepairInvoice ? 'Repair Details' : 'Sold Items' }}</h2>
-                </div>
-                <div class="overflow-x-auto invoice-show-table-shell">
-                    @if($isRepairInvoice)
-                        <table class="w-full invoice-show-data-table invoice-show-data-table--repair">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Description</th>
-                                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Weight</th>
-                                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Purity</th>
-                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Service Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-3 text-sm text-gray-900">
-                                        {{ $repair?->item_description ?? 'Repair service' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-center text-sm text-gray-700">
-                                        {{ $repair ? number_format($repair->gross_weight, 3) . ' g' : '—' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-center text-sm text-gray-700">
-                                        {{ $repair ? number_format($repair->purity, 2) . 'K' : '—' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right text-sm font-semibold text-gray-900">
-                                        ₹{{ number_format($invoice->total, 2) }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                            <tfoot class="bg-gray-50 border-t border-gray-200">
-                                <tr>
-                                    <td colspan="3" class="px-4 py-3 text-right text-sm font-semibold text-gray-900">Total</td>
-                                    <td class="px-4 py-3 text-right text-lg font-bold text-emerald-600">₹{{ number_format($invoice->total, 2) }}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    @else
-                    <table class="w-full invoice-show-data-table invoice-show-data-table--sales">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Item</th>
-                                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Weight</th>
-                                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Purity</th>
-                                @if(!$isRetailer)
-                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Rate</th>
-                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Making</th>
-                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Stone</th>
+                    <section class="invoice-show-customer-strip jf-skel" aria-labelledby="invoice-customer-heading">
+                        <div>
+                            <p class="invoice-show-section-kicker">Customer</p>
+                            <h3 id="invoice-customer-heading">
+                                {{ $invoice->customer?->name ?? 'Walk-in Customer' }}
+                            </h3>
+                        </div>
+                        <div class="invoice-show-customer-meta">
+                            @if($invoice->customer)
+                                <span>{{ $invoice->customer->mobile }}</span>
+                                @if($invoice->customer->address)
+                                    <span>{{ $invoice->customer->address }}</span>
                                 @endif
-                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            @foreach($invoice->items as $invoiceItem)
-                                @php
-                                    $linkedItem = $invoiceItem->item;
-                                @endphp
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-3">
-                                        <div class="flex items-center gap-3">
-                                            @if($linkedItem && $linkedItem->image)
-                                                <img src="{{ asset('storage/' . $linkedItem->image) }}" alt="{{ $linkedItem->design ?: ($linkedItem->category ?: 'Item') }} image" class="object-cover bg-gray-100" style="width: 40px; height: 40px;">
-                                            @else
-                                                <div class="bg-amber-50 text-amber-700 flex items-center justify-center" style="width: 40px; height: 40px;">
-                                                    <span class="text-lg"></span>
-                                                </div>
+                            @else
+                                <span>No customer profile attached</span>
+                            @endif
+                        </div>
+                    </section>
+
+                    <section class="invoice-show-lines" aria-labelledby="invoice-lines-heading">
+                        <div class="invoice-show-section-head">
+                            <div>
+                                <p class="invoice-show-section-kicker">{{ $lineCount }} {{ $lineCount === 1 ? 'line' : 'lines' }}</p>
+                                <h3 id="invoice-lines-heading">{{ $isRepairInvoice ? 'Repair details' : 'Sold items' }}</h3>
+                            </div>
+                            <span class="invoice-show-line-total-pill jf-skel">
+                                Line total ₹{{ number_format($lineItemsTotal, 2) }}
+                            </span>
+                        </div>
+
+                        <div class="invoice-show-table-shell">
+                            @if($isRepairInvoice)
+                                <table class="invoice-show-data-table invoice-show-data-table--repair">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th class="text-center">Weight</th>
+                                            <th class="text-center">Purity</th>
+                                            <th class="text-right">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="jf-skel-row">
+                                            <td data-label="Description">{{ $repair?->item_description ?? 'Repair service' }}</td>
+                                            <td data-label="Weight" class="text-center">{{ $repair ? number_format($repair->gross_weight, 3) . ' g' : '—' }}</td>
+                                            <td data-label="Purity" class="text-center">{{ $repair ? number_format($repair->purity, 2) . 'K' : '—' }}</td>
+                                            <td data-label="Amount" class="text-right invoice-show-money">₹{{ number_format($lineItemsTotal, 2) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            @else
+                                <table class="invoice-show-data-table invoice-show-data-table--sales">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th class="text-center">Weight</th>
+                                            <th class="text-center">Purity</th>
+                                            @if(!$isRetailer)
+                                                <th class="text-right">Rate</th>
+                                                <th class="text-right">Making</th>
+                                                <th class="text-right">Stone</th>
                                             @endif
-                                            <div>
-                                                @if($linkedItem)
-                                                    <div class="text-sm font-medium text-gray-900">{{ $linkedItem->design ?? 'N/A' }}</div>
-                                                    <div class="text-xs text-gray-500 font-mono">{{ $linkedItem->barcode }}</div>
-                                                    <div class="text-xs text-gray-400">{{ $linkedItem->category }}</div>
-                                                @else
-                                                    <div class="text-sm font-medium text-gray-900">Item (unlinked)</div>
+                                            <th class="text-right">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($invoice->items as $invoiceItem)
+                                            @php
+                                                $linkedItem = $invoiceItem->item;
+                                            @endphp
+                                            <tr class="jf-skel-row">
+                                                <td data-label="Item">
+                                                    <div class="invoice-show-item-cell">
+                                                        @if($linkedItem && $linkedItem->image)
+                                                            <img src="{{ asset('storage/' . $linkedItem->image) }}" alt="{{ $linkedItem->design ?: ($linkedItem->category ?: 'Item') }} image">
+                                                        @else
+                                                            <div class="invoice-show-item-media" aria-hidden="true"></div>
+                                                        @endif
+                                                        <div>
+                                                            @if($linkedItem)
+                                                                <strong>{{ $linkedItem->design ?? 'N/A' }}</strong>
+                                                                <span>{{ $linkedItem->barcode }}</span>
+                                                                <small>{{ $linkedItem->category }}</small>
+                                                            @else
+                                                                <strong>Item (unlinked)</strong>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Weight" class="text-center">{{ number_format($invoiceItem->weight, 3) }} g</td>
+                                                <td data-label="Purity" class="text-center">
+                                                    <span class="invoice-show-purity">{{ $linkedItem?->purity_label ?? (($linkedItem->purity ?? 22) . 'K') }}</span>
+                                                </td>
+                                                @if(!$isRetailer)
+                                                    <td data-label="Rate" class="text-right">₹{{ number_format($invoiceItem->rate, 2) }}</td>
+                                                    <td data-label="Making" class="text-right">
+                                                        ₹{{ number_format($invoiceItem->making_charges, 2) }}
+                                                        @if($invoiceItem->making_charge_type === 'percentage')
+                                                            <small>{{ rtrim(rtrim(number_format($invoiceItem->making_charge_value, 2), '0'), '.') }}% of metal</small>
+                                                        @elseif($invoiceItem->making_charge_type === 'per_gram')
+                                                            <small>₹{{ rtrim(rtrim(number_format($invoiceItem->making_charge_value, 2), '0'), '.') }}/g</small>
+                                                        @endif
+                                                    </td>
+                                                    <td data-label="Stone" class="text-right">₹{{ number_format($invoiceItem->stone_amount, 2) }}</td>
                                                 @endif
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-3 text-center text-sm text-gray-700">
-                                        {{ number_format($invoiceItem->weight, 3) }} g
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                            {{ $linkedItem->purity ?? 22 }}K
-                                        </span>
-                                    </td>
-                                    @if(!$isRetailer)
-                                    <td class="px-4 py-3 text-right text-sm text-gray-700">
-                                        ₹{{ number_format($invoiceItem->rate, 2) }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right text-sm text-gray-700">
-                                        ₹{{ number_format($invoiceItem->making_charges, 2) }}
-                                        @if($invoiceItem->making_charge_type === 'percentage')
-                                            <span class="block text-xs text-gray-400">{{ rtrim(rtrim(number_format($invoiceItem->making_charge_value, 2), '0'), '.') }}% of metal</span>
-                                        @elseif($invoiceItem->making_charge_type === 'per_gram')
-                                            <span class="block text-xs text-gray-400">₹{{ rtrim(rtrim(number_format($invoiceItem->making_charge_value, 2), '0'), '.') }}/g</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3 text-right text-sm text-gray-700">
-                                        ₹{{ number_format($invoiceItem->stone_amount, 2) }}
-                                    </td>
-                                    @endif
-                                    <td class="px-4 py-3 text-right text-sm font-semibold text-gray-900">
-                                        ₹{{ number_format($invoiceItem->line_total, 2) }}
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                        <tfoot class="bg-gray-50 border-t border-gray-200">
-                            <tr>
-                                <td colspan="{{ $isRetailer ? 3 : 6 }}" class="px-4 py-3 text-right text-sm font-semibold text-gray-900">Total</td>
-                                <td class="px-4 py-3 text-right text-lg font-bold text-emerald-600">₹{{ number_format($invoice->total, 2) }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                                                <td data-label="Amount" class="text-right invoice-show-money">₹{{ number_format($invoiceItem->line_total, 2) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @endif
+                        </div>
+                    </section>
+
+                    <section class="invoice-show-totals jf-skel" aria-label="Invoice totals">
+                        <div class="invoice-show-totals-grid">
+                            <div class="invoice-show-totals-note">
+                                @if($showDraftTotalsNote)
+                                    <span>Draft totals are not finalized yet.</span>
+                                @else
+                                    <span>{{ ucfirst($invoice->status) }} invoice summary</span>
+                                @endif
+                            </div>
+                            <div class="invoice-show-totals-box">
+                                <div>
+                                    <span>Line total</span>
+                                    <strong>₹{{ number_format($lineItemsTotal, 2) }}</strong>
+                                </div>
+                                <div>
+                                    <span>Subtotal</span>
+                                    <strong>₹{{ number_format($invoice->subtotal, 2) }}</strong>
+                                </div>
+                                <div>
+                                    <span>Wastage charge</span>
+                                    <strong>₹{{ number_format($invoice->wastage_charge, 2) }}</strong>
+                                </div>
+                                <div>
+                                    <span>GST ({{ $invoice->gst_rate ?? 3 }}%)</span>
+                                    <strong>₹{{ number_format($invoice->gst, 2) }}</strong>
+                                </div>
+                                <div>
+                                    <span>Manual discount</span>
+                                    <strong class="{{ $manualDiscount > 0 ? 'is-negative' : 'is-muted' }}">{{ $manualDiscount > 0 ? '−' : '' }}₹{{ number_format($manualDiscount, 2) }}</strong>
+                                </div>
+                                <div>
+                                    <span>Offer discount @if($offerApplied)<small>{{ $offerApplied->scheme_name_snapshot }}</small>@endif</span>
+                                    <strong class="{{ $offerDiscount > 0 ? 'is-negative' : 'is-muted' }}">{{ $offerDiscount > 0 ? '−' : '' }}₹{{ number_format($offerDiscount, 2) }}</strong>
+                                </div>
+                                @if($schemeRedemptionTotal > 0)
+                                    <div>
+                                        <span>Scheme redemption</span>
+                                        <strong class="is-negative">−₹{{ number_format($schemeRedemptionTotal, 2) }}</strong>
+                                    </div>
+                                @endif
+                                <div>
+                                    <span>Round off</span>
+                                    <strong>{{ $invoice->round_off > 0 ? '+' : ($invoice->round_off < 0 ? '' : '') }}₹{{ number_format($invoice->round_off, 2) }}</strong>
+                                </div>
+                                <div class="invoice-show-total-row">
+                                    <span>Grand total</span>
+                                    <strong class="{{ (float) $invoice->total < 0 ? 'is-negative' : '' }}">₹{{ number_format($invoice->total, 2) }}</strong>
+                                </div>
+                                <div class="invoice-show-paid-row">
+                                    <span>Paid</span>
+                                    <strong class="is-paid">₹{{ number_format($paidAmount, 2) }}</strong>
+                                </div>
+                                <div class="invoice-show-due-row {{ $outstandingAmount > 0 ? 'has-due' : 'is-clear' }}">
+                                    <span>Due</span>
+                                    <strong class="{{ $outstandingAmount > 0 ? 'is-due' : '' }}">₹{{ number_format($outstandingAmount, 2) }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </section>
+
+                {{-- Apply Store Credit — only when the customer has wallet credit and
+                     the finalized invoice still has an outstanding balance (M12). --}}
+                @can('sales.create')
+                    @if(($storeCreditApplicable ?? 0) > 0)
+                        <section class="invoice-show-store-credit">
+                            <div>
+                                <h2>Apply store credit</h2>
+                                <p>This customer has ₹{{ number_format($storeCreditAvailable, 2) }} in store credit. Outstanding on this bill: ₹{{ number_format($outstandingAmount, 2) }}.</p>
+                            </div>
+                            <form method="POST" action="{{ route('store-credit.apply', $invoice) }}" data-turbo-frame="_top">
+                                @csrf
+                                <label>
+                                    <span>Amount to apply</span>
+                                    <input type="number" name="amount" step="0.01" min="0.01" max="{{ $storeCreditApplicable }}" value="{{ $storeCreditApplicable }}" required>
+                                </label>
+                                <button type="submit">Apply credit</button>
+                            </form>
+                        </section>
                     @endif
-                </div>
-            </div>
+                @endcan
+
+            </main>
+
+            <aside class="invoice-show-rail" aria-label="Invoice side details">
+                <section class="invoice-show-panel invoice-show-facts jf-skel" aria-labelledby="invoice-facts-heading">
+                    <h2 id="invoice-facts-heading">Invoice facts</h2>
+                    <dl class="invoice-show-key-values">
+                        <div>
+                            <dt>Status</dt>
+                            <dd><span class="{{ $statusBadgeClass }}">{{ ucfirst($invoice->status) }}</span></dd>
+                        </div>
+                        <div>
+                            <dt>Invoice #</dt>
+                            <dd>{{ $invoice->invoice_number }}</dd>
+                        </div>
+                        <div>
+                            <dt>Date</dt>
+                            <dd>{{ $invoice->created_at->format('d M Y') }}</dd>
+                        </div>
+                        <div>
+                            <dt>Type</dt>
+                            <dd>{{ $invoiceTypeLabel }}</dd>
+                        </div>
+                        <div>
+                            <dt>Lines</dt>
+                            <dd>{{ $lineCount }}</dd>
+                        </div>
+                        <div>
+                            <dt>Payment</dt>
+                            <dd>{{ $paymentModeSummary }}</dd>
+                        </div>
+                        @if(!$isRetailer && !$isRepairInvoice)
+                            <div>
+                                <dt>Gold rate</dt>
+                                <dd>₹{{ number_format($invoice->gold_rate, 2) }}/g</dd>
+                            </div>
+                        @endif
+                        @if($invoice->finalized_at)
+                            <div>
+                                <dt>Finalized</dt>
+                                <dd>{{ $invoice->finalized_at->format('d M Y') }}</dd>
+                            </div>
+                        @endif
+                        @if($invoice->cancelled_at)
+                            <div>
+                                <dt>Cancelled</dt>
+                                <dd>{{ $invoice->cancelled_at->format('d M Y') }}</dd>
+                            </div>
+                        @endif
+                    </dl>
+                </section>
+
+                <section class="invoice-show-panel invoice-show-payments jf-skel" aria-labelledby="invoice-payments-heading">
+                    <div class="invoice-show-panel-head">
+                        <h2 id="invoice-payments-heading">Payment breakdown</h2>
+                        <span>₹{{ number_format($paidAmount, 2) }} paid</span>
+                    </div>
+                    <div class="invoice-show-payment-list">
+                        @forelse($invoice->payments as $payment)
+                            <article class="invoice-show-payment-row">
+                                <div>
+                                    <strong>{{ \App\Support\PaymentMethodLabel::modeLabel($payment->mode) }}</strong>
+                                    @if($payment->reference)
+                                        <span>{{ $payment->reference }}</span>
+                                    @endif
+                                </div>
+                                <strong>₹{{ number_format($payment->amount, 2) }}</strong>
+                            </article>
+                            @if(in_array($payment->mode, ['old_gold', 'old_silver'], true) && $payment->metal_fine_weight)
+                                <div class="invoice-show-metal-detail">
+                                    <span>{{ number_format($payment->metal_gross_weight, 3) }}g gross</span>
+                                    <span>{{ $payment->mode === 'old_gold' ? $payment->metal_purity . 'K' : $payment->metal_purity . '‰' }}</span>
+                                    <span>{{ number_format($payment->metal_fine_weight, 3) }}g fine</span>
+                                    <span>₹{{ number_format($payment->metal_rate_per_gram, 2) }}/g</span>
+                                </div>
+                            @endif
+                        @empty
+                            <div class="invoice-show-empty-line">No payment recorded yet.</div>
+                        @endforelse
+                    </div>
+                    <div class="invoice-show-payment-footer">
+                        <div>
+                            <span>Grand total</span>
+                            <strong>₹{{ number_format($invoice->total, 2) }}</strong>
+                        </div>
+                        <div>
+                            <span>Due</span>
+                            <strong class="{{ $outstandingAmount > 0 ? 'is-due' : '' }}">₹{{ number_format($outstandingAmount, 2) }}</strong>
+                        </div>
+                    </div>
+                </section>
+            </aside>
         </div>
+    </div>
 
-        <div class="col-span-12 bg-white rounded-xl shadow-sm border border-gray-200 mt-2">
-            <div class="px-4 py-3 border-b border-gray-200">
-                <h2 class="text-sm font-semibold text-gray-900">Invoice Preview</h2>
-            </div>
-            <div class="p-4">
-                <div class="mx-auto max-w-3xl rounded-lg border border-gray-200 bg-white p-4">
-                    <div class="text-center border-b border-gray-200 pb-3 mb-3">
-                        <div class="text-lg font-semibold text-gray-900">{{ auth()->user()->shop->name }}</div>
-                        <div class="text-sm text-gray-500">{{ auth()->user()->shop->phone }}</div>
+    <div
+        class="invoice-preview-viewer"
+        x-cloak
+        x-show="invoicePreviewOpen"
+        x-transition.opacity.duration.150ms
+        x-bind:aria-hidden="(!invoicePreviewOpen).toString()"
+    >
+        <button type="button" class="invoice-preview-backdrop" aria-label="Close invoice preview" x-on:click="invoicePreviewOpen = false"></button>
+        <section class="invoice-preview-panel" role="dialog" aria-modal="true" aria-labelledby="invoice-preview-title" x-on:click.stop>
+            <header class="invoice-preview-panel-head">
+                <div>
+                    <p>Invoice display</p>
+                    <h2 id="invoice-preview-title">{{ $invoice->invoice_number }}</h2>
+                </div>
+                <div class="invoice-preview-panel-actions">
+                    <a href="{{ route('invoices.print', $invoice) }}" target="_blank" class="invoice-preview-print-link">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                        Print
+                    </a>
+                    <button type="button" class="invoice-preview-close" x-on:click="invoicePreviewOpen = false" aria-label="Close invoice preview">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="invoice-preview-panel-body">
+                <article class="invoice-preview-document">
+                    <div class="invoice-preview-shop">
+                        <h3>{{ auth()->user()->shop->name }}</h3>
+                        <p>{{ auth()->user()->shop->phone }}</p>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm mb-3">
-                        <div><span class="text-gray-500">Invoice:</span> <span class="font-medium">{{ $invoice->invoice_number }}</span></div>
-                        <div><span class="text-gray-500">Date:</span> <span class="font-medium">{{ $invoice->created_at->format('d M Y, h:i A') }}</span></div>
-                        <div><span class="text-gray-500">Customer:</span> <span class="font-medium">{{ $invoice->customer?->name ?? 'Walk-in' }}</span></div>
-                        <div><span class="text-gray-500">Type:</span> <span class="font-medium">{{ $isRepairInvoice ? 'Repair Service' : 'Sale' }}</span></div>
-                    </div>
+                    <dl class="invoice-preview-meta">
+                        <div>
+                            <dt>Invoice</dt>
+                            <dd>{{ $invoice->invoice_number }}</dd>
+                        </div>
+                        <div>
+                            <dt>Date</dt>
+                            <dd>{{ $invoice->created_at->format('d M Y, h:i A') }}</dd>
+                        </div>
+                        <div>
+                            <dt>Customer</dt>
+                            <dd>{{ $invoice->customer?->name ?? 'Walk-in' }}</dd>
+                        </div>
+                        <div>
+                            <dt>Type</dt>
+                            <dd>{{ $isRepairInvoice ? 'Repair Service' : 'Sale' }}</dd>
+                        </div>
+                    </dl>
 
-                    <div class="overflow-x-auto">
+                    <div class="invoice-preview-table-wrap">
                         @if($isRepairInvoice)
-                            <table class="w-full text-sm border border-gray-200">
-                                <thead class="bg-gray-50">
+                            <table class="invoice-preview-table">
+                                <thead>
                                     <tr>
-                                        <th class="px-3 py-2 border-b border-gray-200 text-left">Description</th>
-                                        <th class="px-3 py-2 border-b border-gray-200 text-center">Weight</th>
-                                        <th class="px-3 py-2 border-b border-gray-200 text-center">Purity</th>
-                                        <th class="px-3 py-2 border-b border-gray-200 text-right">Amount</th>
+                                        <th>Description</th>
+                                        <th class="text-center">Weight</th>
+                                        <th class="text-center">Purity</th>
+                                        <th class="text-right">Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td class="px-3 py-2 border-b border-gray-200">{{ $repair?->item_description ?? 'Repair service' }}</td>
-                                        <td class="px-3 py-2 border-b border-gray-200 text-center">{{ $repair ? number_format($repair->gross_weight, 3) . ' g' : '—' }}</td>
-                                        <td class="px-3 py-2 border-b border-gray-200 text-center">{{ $repair ? number_format($repair->purity, 2) . 'K' : '—' }}</td>
-                                        <td class="px-3 py-2 border-b border-gray-200 text-right">₹{{ number_format($invoice->total, 2) }}</td>
+                                        <td>{{ $repair?->item_description ?? 'Repair service' }}</td>
+                                        <td class="text-center">{{ $repair ? number_format($repair->gross_weight, 3) . ' g' : '—' }}</td>
+                                        <td class="text-center">{{ $repair ? number_format($repair->purity, 2) . 'K' : '—' }}</td>
+                                        <td class="text-right">₹{{ number_format($invoice->total, 2) }}</td>
                                     </tr>
                                 </tbody>
                             </table>
                         @else
-                            <table class="w-full text-sm border border-gray-200">
-                                <thead class="bg-gray-50">
+                            <table class="invoice-preview-table">
+                                <thead>
                                     <tr>
-                                        <th class="px-3 py-2 border-b border-gray-200 text-left">Item</th>
-                                        <th class="px-3 py-2 border-b border-gray-200 text-center">Weight</th>
+                                        <th>Item</th>
+                                        <th class="text-center">Weight</th>
                                         @if(!$isRetailer)
-                                            <th class="px-3 py-2 border-b border-gray-200 text-right">Rate</th>
-                                            <th class="px-3 py-2 border-b border-gray-200 text-right">Making</th>
-                                            <th class="px-3 py-2 border-b border-gray-200 text-right">Stone</th>
+                                            <th class="text-right">Rate</th>
+                                            <th class="text-right">Making</th>
+                                            <th class="text-right">Stone</th>
                                         @endif
-                                        <th class="px-3 py-2 border-b border-gray-200 text-right">Total</th>
+                                        <th class="text-right">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($invoice->items as $line)
                                         <tr>
-                                            <td class="px-3 py-2 border-b border-gray-200">{{ optional($line->item)->design ?? 'Item #' . $line->item_id }}</td>
-                                            <td class="px-3 py-2 border-b border-gray-200 text-center">{{ number_format($line->weight, 3) }}</td>
+                                            <td>{{ optional($line->item)->design ?? 'Item #' . $line->item_id }}</td>
+                                            <td class="text-center">{{ number_format($line->weight, 3) }}</td>
                                             @if(!$isRetailer)
-                                                <td class="px-3 py-2 border-b border-gray-200 text-right">₹{{ number_format($line->rate, 2) }}</td>
-                                                <td class="px-3 py-2 border-b border-gray-200 text-right">₹{{ number_format($line->making_charges, 2) }}</td>
-                                                <td class="px-3 py-2 border-b border-gray-200 text-right">₹{{ number_format($line->stone_amount, 2) }}</td>
+                                                <td class="text-right">₹{{ number_format($line->rate, 2) }}</td>
+                                                <td class="text-right">₹{{ number_format($line->making_charges, 2) }}</td>
+                                                <td class="text-right">₹{{ number_format($line->stone_amount, 2) }}</td>
                                             @endif
-                                            <td class="px-3 py-2 border-b border-gray-200 text-right">₹{{ number_format($line->line_total, 2) }}</td>
+                                            <td class="text-right">₹{{ number_format($line->line_total, 2) }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -513,40 +567,59 @@
                         @endif
                     </div>
 
-                    <div class="mt-3 text-sm space-y-1">
-                        <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span class="font-medium">₹{{ number_format($invoice->subtotal, 2) }}</span></div>
+                    <div class="invoice-preview-total-list">
+                        <div>
+                            <span>Subtotal</span>
+                            <strong>₹{{ number_format($invoice->subtotal, 2) }}</strong>
+                        </div>
                         @if($invoice->wastage_charge > 0)
-                            <div class="flex justify-between"><span class="text-gray-500">Wastage Charge</span><span class="font-medium">₹{{ number_format($invoice->wastage_charge, 2) }}</span></div>
+                            <div>
+                                <span>Wastage charge</span>
+                                <strong>₹{{ number_format($invoice->wastage_charge, 2) }}</strong>
+                            </div>
                         @endif
-                        <div class="flex justify-between"><span class="text-gray-500">GST ({{ number_format($invoice->gst_rate ?? 0, 2) }}%)</span><span class="font-medium">₹{{ number_format($invoice->gst, 2) }}</span></div>
+                        <div>
+                            <span>GST ({{ number_format($invoice->gst_rate ?? 0, 2) }}%)</span>
+                            <strong>₹{{ number_format($invoice->gst, 2) }}</strong>
+                        </div>
                         @if($invoice->discount > 0)
-                            <div class="flex justify-between"><span class="text-gray-500">Discount</span><span class="font-medium text-red-600">−₹{{ number_format($invoice->discount, 2) }}</span></div>
+                            <div>
+                                <span>Discount</span>
+                                <strong class="is-negative">−₹{{ number_format($invoice->discount, 2) }}</strong>
+                            </div>
                         @endif
                         @if($invoice->round_off != 0)
-                            <div class="flex justify-between"><span class="text-gray-500">Round Off</span><span class="font-medium">{{ $invoice->round_off > 0 ? '+' : '' }}₹{{ number_format($invoice->round_off, 2) }}</span></div>
+                            <div>
+                                <span>Round off</span>
+                                <strong>{{ $invoice->round_off > 0 ? '+' : '' }}₹{{ number_format($invoice->round_off, 2) }}</strong>
+                            </div>
                         @endif
-                        <div class="flex justify-between border-t border-gray-200 pt-2"><span class="font-semibold text-gray-900">Grand Total</span><span class="font-semibold text-gray-900">₹{{ number_format($invoice->total, 2) }}</span></div>
+                        <div class="invoice-preview-grand-total">
+                            <span>Grand total</span>
+                            <strong>₹{{ number_format($invoice->total, 2) }}</strong>
+                        </div>
                     </div>
 
                     @if($invoice->payments->count())
-                        <div class="mt-3 pt-2 border-t border-gray-200 text-sm">
-                            <div class="font-semibold text-gray-900 mb-1">Payment Received</div>
+                        <section class="invoice-preview-payments" aria-label="Payment received">
+                            <h4>Payment received</h4>
                             @foreach($invoice->payments as $payment)
-                                <div class="flex justify-between text-gray-700">
-                                    <span>{{ ucfirst(str_replace('_', ' ', $payment->mode)) }}@if($payment->reference) <span class="text-gray-400">({{ $payment->reference }})</span>@endif</span>
-                                    <span>₹{{ number_format($payment->amount, 2) }}</span>
+                                <div>
+                                    <span>{{ \App\Support\PaymentMethodLabel::modeLabel($payment->mode) }}@if($payment->reference) <small>{{ $payment->reference }}</small>@endif</span>
+                                    <strong>₹{{ number_format($payment->amount, 2) }}</strong>
                                 </div>
                             @endforeach
-                        </div>
+                        </section>
                     @endif
 
                     @if($schemeRedemptionTotal > 0)
-                        <div class="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                        <div class="invoice-preview-redemption">
                             Scheme redemption applied: ₹{{ number_format($schemeRedemptionTotal, 2) }}
                         </div>
                     @endif
-                </div>
+                </article>
             </div>
-        </div>
+        </section>
+    </div>
     </div>
 </x-app-layout>

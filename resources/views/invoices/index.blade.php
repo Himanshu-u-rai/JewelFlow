@@ -53,6 +53,7 @@
 
     <div class="content-inner invoices-index-page jf-skeleton-host is-loading"
          x-data="{ invoiceFiltersOpen: false }"
+         :class="{ 'invoices-filters-open': invoiceFiltersOpen }"
          x-effect="document.body.style.overflow = invoiceFiltersOpen ? 'hidden' : ''"
          @keydown.escape.window="invoiceFiltersOpen = false">
 
