@@ -109,20 +109,22 @@
         /* iOS-style drawer easing — slides in fast, settles soft. */
         :root { --dh-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
 
-        /* Mobile top bar + hamburger: only shown ≤720px. */
-        .dh-topbar { display: none; }
-        .dh-hamburger {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 40px; height: 40px; border-radius: 10px;
+        /* Mobile nav toggle: a self-contained floating control (no top bar),
+           so it never reads as an empty/duplicate header. Hidden ≥720px. */
+        .dh-menu-toggle { display: none; }
+        .dh-menu-toggle {
+            align-items: center; justify-content: center;
+            width: 42px; height: 42px; border-radius: 12px;
             border: 1px solid var(--dh-line); background: #fff; color: var(--dh-ink);
-            cursor: pointer; flex-shrink: 0;
-            transition: transform 140ms var(--dh-ease), background 140ms var(--dh-ease);
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.10);
+            cursor: pointer;
+            transition: transform 140ms var(--dh-ease), background 140ms var(--dh-ease), opacity 160ms var(--dh-ease);
         }
-        .dh-hamburger:active { transform: scale(0.94); }
+        .dh-menu-toggle:active { transform: scale(0.94); }
         @media (hover: hover) and (pointer: fine) {
-            .dh-hamburger:hover { background: #f1f5f9; }
+            .dh-menu-toggle:hover { background: #f1f5f9; }
         }
-        .dh-hamburger svg { width: 20px; height: 20px; }
+        .dh-menu-toggle svg { width: 21px; height: 21px; }
         /* Scrim sits behind the drawer; fades with opacity only. */
         .dh-scrim {
             position: fixed; inset: 0; z-index: 40;
@@ -133,15 +135,14 @@
 
         @media (max-width: 720px) {
             .dh-shell { flex-direction: column; }
-            .dh-topbar {
-                display: flex; align-items: center; gap: 12px;
-                padding: 12px 16px; background: #fff;
-                border-bottom: 1px solid var(--dh-line);
-                position: sticky; top: 0; z-index: 30;
+            /* Float the toggle top-left, above content. */
+            .dh-menu-toggle {
+                display: inline-flex;
+                position: fixed; top: 14px; left: 14px; z-index: 45;
             }
-            .dh-topbar .dh-brand {
-                padding: 0; margin: 0; border: 0; flex: 1; min-width: 0;
-            }
+            /* Hide the toggle while the drawer is open (drawer + scrim take over). */
+            .dh-shell.is-open .dh-menu-toggle { opacity: 0; pointer-events: none; }
+
             /* Sidebar becomes an off-canvas left drawer. */
             .dh-sidebar {
                 position: fixed; top: 0; left: 0; bottom: 0;
@@ -151,7 +152,8 @@
                 transition: transform 260ms var(--dh-ease-drawer);
                 will-change: transform;
             }
-            .dh-main { padding: 18px; }
+            /* Leave room for the floating toggle at the top of the content. */
+            .dh-main { padding: 18px; padding-top: 70px; }
 
             /* Open state, driven by Alpine on .dh-shell. */
             .dh-shell.is-open .dh-sidebar { transform: translateX(0); }
@@ -159,7 +161,7 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .dh-sidebar, .dh-scrim, .dh-hamburger { transition-duration: 0ms; }
+            .dh-sidebar, .dh-scrim, .dh-menu-toggle { transition-duration: 0ms; }
         }
     </style>
     @stack('styles')
@@ -171,16 +173,14 @@
          @keydown.escape.window="open = false"
          @turbo:before-cache.window="open = false">
 
-        {{-- Mobile-only top bar: menu toggle only. The brand lives inside the
-             drawer (dh-sidebar) so it is not repeated outside it. Hidden ≥720px. --}}
-        <header class="dh-topbar">
-            <button type="button" class="dh-hamburger"
-                    @click="open = true"
-                    :aria-expanded="open"
-                    aria-label="Open menu" aria-controls="dh-sidebar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
-        </header>
+        {{-- Mobile-only floating nav toggle. No top bar: the brand and links live
+             inside the drawer. Hidden ≥720px. --}}
+        <button type="button" class="dh-menu-toggle"
+                @click="open = true"
+                :aria-expanded="open"
+                aria-label="Open menu" aria-controls="dh-sidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
 
         {{-- Scrim: tap to close the drawer. --}}
         <div class="dh-scrim" @click="open = false" aria-hidden="true"></div>
