@@ -92,6 +92,7 @@
         @endphp
         @if($showErpPromo)
             <x-cross-promo-card
+                key="erp"
                 heading="Running a jewellery store too?"
                 body="Use JewelFlow ERP for inventory, POS billing, returns, karigar work and reports — as its own separate account."
                 cta="Explore JewelFlow ERP"

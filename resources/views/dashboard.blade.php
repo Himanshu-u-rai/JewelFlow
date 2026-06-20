@@ -3952,6 +3952,7 @@
         @endphp
         @if($showDhiranPromo)
             <x-cross-promo-card
+                key="dhiran"
                 heading="Offer gold-loan services?"
                 body="Use Dhiran to manage pledges, interest, repayments, renewals and closures — as its own separate service."
                 cta="Explore Dhiran"

@@ -70,6 +70,22 @@ class CrossPromotionTest extends TestCase
         $response->assertSee(self::DHIRAN_REGISTER, false);
     }
 
+    // 1b. The promo is a dismissable, once-per-day toast — not a body card.
+    public function test_promo_is_a_dismissable_once_per_day_toast(): void
+    {
+        [$erpOwner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($erpOwner)->get('https://jewelflows.com/dashboard');
+        $response->assertOk();
+        // Fixed-position toast container (overlays, does not push content), starts hidden.
+        $response->assertSee('cross-promo-toast', false);
+        $response->assertSee('data-cross-promo', false);
+        // Dismiss control present.
+        $response->assertSee('data-cross-promo-close', false);
+        // Once-per-day storage key, namespaced per promo.
+        $response->assertSee('cross_promo_seen:dhiran', false);
+    }
+
     // 2. ERP user WITH Dhiran access does not see the Dhiran promo.
     public function test_erp_user_with_dhiran_does_not_see_dhiran_promo(): void
     {
