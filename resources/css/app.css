@@ -864,6 +864,51 @@
     font-weight: 550 !important;
 }
 
+/* Quick-pick reason chips (multi-select) under the reason / override fields. */
+.returns-create-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.returns-create-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 11px;
+    border: 1px solid var(--jf-border, #e2e8f0);
+    border-radius: 999px;
+    background: var(--jf-surface-soft, #f8fafc);
+    color: var(--jf-text-muted, #475569);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background 150ms cubic-bezier(0.23, 1, 0.32, 1),
+                border-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+                color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+                transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.returns-create-chip:active {
+    transform: scale(0.96);
+}
+@media (hover: hover) and (pointer: fine) {
+    .returns-create-chip:hover {
+        background: var(--jf-surface-accent, #fff7ea);
+        border-color: var(--jf-gold, #f4a300);
+        color: var(--jf-ink, #0f172a);
+    }
+}
+.returns-create-chip.is-active {
+    background: linear-gradient(135deg, var(--jf-gold, #f4a300), var(--jf-gold-deep, #d98b00));
+    border-color: var(--jf-gold-deep, #d98b00);
+    color: #fff;
+}
+.returns-create-chip:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .returns-create-selected-summary {
     display: grid;
     grid-template-columns: 1fr;

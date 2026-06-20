@@ -321,7 +321,13 @@
                                                                       maxlength="500"
                                                                       placeholder="Reason for manual adjustment"
                                                                       data-return-line-control="{{ $idx }}"
+                                                                      data-reason-input
                                                                       @disabled(!$isSelected)>{{ old("lines.$idx.override_reason") }}</textarea>
+                                                            <div class="returns-create-chips" data-reason-chips>
+                                                                @foreach(['Manager discount','Goodwill gesture','Loyal customer','Making charges waived','Partial damage','Price match'] as $preset)
+                                                                    <button type="button" class="returns-create-chip" data-reason-chip="{{ $preset }}" data-return-line-control="{{ $idx }}" @disabled(!$isSelected)>{{ $preset }}</button>
+                                                                @endforeach
+                                                            </div>
                                                         </label>
                                                     </div>
                                                 </details>
@@ -350,7 +356,13 @@
                                       minlength="5"
                                       maxlength="500"
                                       rows="4"
+                                      data-reason-input
                                       placeholder="e.g. Wrong size, damaged item, customer changed mind">{{ old('reason') }}</textarea>
+                            <div class="returns-create-chips" data-reason-chips>
+                                @foreach(['Wrong size','Damaged item','Customer changed mind','Defective product','Not as described','Wrong item delivered','Quality issue'] as $preset)
+                                    <button type="button" class="returns-create-chip" data-reason-chip="{{ $preset }}">{{ $preset }}</button>
+                                @endforeach
+                            </div>
                             @error('reason')<small class="returns-create-error">{{ $message }}</small>@enderror
                         </label>
 
@@ -489,6 +501,49 @@
                     selectAll.indeterminate = count > 0 && count < checkboxes.length;
                 }
             };
+
+            // ── Quick-pick reason chips (multi-select). Clicking a chip toggles
+            //    its phrase in the sibling reason textarea (comma-separated). ──
+            const splitPhrases = (value) => value
+                .split(',')
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0);
+
+            const syncChips = (wrap, input) => {
+                const phrases = splitPhrases(input.value);
+                wrap.querySelectorAll('[data-reason-chip]').forEach((chip) => {
+                    chip.classList.toggle('is-active', phrases.includes(chip.dataset.reasonChip));
+                });
+            };
+
+            form.querySelectorAll('[data-reason-chips]').forEach((wrap) => {
+                const field = wrap.closest('label') || wrap.parentElement;
+                const input = field ? field.querySelector('[data-reason-input]') : null;
+                if (!input) {
+                    return;
+                }
+                syncChips(wrap, input);
+                wrap.querySelectorAll('[data-reason-chip]').forEach((chip) => {
+                    chip.addEventListener('click', () => {
+                        if (chip.disabled) {
+                            return;
+                        }
+                        const phrase = chip.dataset.reasonChip;
+                        const phrases = splitPhrases(input.value);
+                        const at = phrases.indexOf(phrase);
+                        if (at === -1) {
+                            phrases.push(phrase);
+                        } else {
+                            phrases.splice(at, 1);
+                        }
+                        input.value = phrases.join(', ');
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        syncChips(wrap, input);
+                    });
+                });
+                // Keep chip highlight in sync when the user types directly.
+                input.addEventListener('input', () => syncChips(wrap, input));
+            });
 
             if (selectAll) {
                 selectAll.addEventListener('change', (event) => {
