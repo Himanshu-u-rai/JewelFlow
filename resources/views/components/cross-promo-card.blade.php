@@ -133,7 +133,9 @@
             var storeKey = el.getAttribute('data-cross-promo-key');
             var seen = null;
             try { seen = window.localStorage.getItem(storeKey); } catch (e) {}
-            // Already shown/dismissed today → stay hidden.
+            // Only stay hidden once it has been DISMISSED today. A plain refresh
+            // does NOT mark it seen, so the toast persists across reloads until the
+            // user cancels it; after dismissal it stays gone until the next day.
             if (seen === todayKey()) { el.remove(); return; }
 
             el.hidden = false;
@@ -141,10 +143,11 @@
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () { el.setAttribute('data-show', ''); });
             });
-            // Mark seen for today as soon as it is shown (so a reload same day won't re-show).
-            try { window.localStorage.setItem(storeKey, todayKey()); } catch (e) {}
 
             function dismiss() {
+                // Record the dismissal — this is the ONLY thing that hides it for
+                // the rest of the day.
+                try { window.localStorage.setItem(storeKey, todayKey()); } catch (e) {}
                 el.removeAttribute('data-show');
                 el.setAttribute('data-hide', '');
                 window.setTimeout(function () { el.remove(); }, 220);
