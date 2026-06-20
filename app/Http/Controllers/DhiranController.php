@@ -105,6 +105,73 @@ class DhiranController extends Controller
         return view('dhiran.create', compact('settings', 'customers'));
     }
 
+    /**
+     * Create a borrower inline from the Dhiran New Loan page. Strictly scoped to
+     * the current Dhiran shop: shop_id is NEVER taken from the request — it is set
+     * by the Customer model's BelongsToShop hook from the tenant context (and we
+     * pass the authenticated shop_id explicitly as belt-and-suspenders). A mobile
+     * already used in THIS shop returns that existing customer instead of creating
+     * a duplicate (the (shop_id, mobile) unique index also enforces this at the DB).
+     */
+    public function storeCustomer(Request $request)
+    {
+        $shopId   = auth()->user()->shop_id;
+        $settings = DhiranSettings::getForShop($shopId);
+        abort_unless($settings->is_enabled, 403, 'Dhiran module is not enabled.');
+
+        $data = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name'  => ['nullable', 'string', 'max:255'],
+            'mobile'     => ['required', 'string', 'regex:/^[0-9]{10}$/'],
+            'address'    => ['nullable', 'string', 'max:500'],
+            'state_code' => ['nullable', 'string', 'max:10'],
+            'pan'        => ['nullable', 'string', 'max:20'],
+            'id_number'  => ['nullable', 'string', 'max:50'],
+            'notes'      => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        // Dedupe within THIS shop (BelongsToShop scope keeps the lookup tenant-local).
+        $existing = Customer::where('mobile', $data['mobile'])->first();
+        if ($existing) {
+            return response()->json([
+                'ok'        => true,
+                'duplicate' => true,
+                'message'   => 'A borrower with this mobile already exists in your shop — selected it.',
+                'customer'  => [
+                    'id'     => $existing->id,
+                    'name'   => trim($existing->first_name . ' ' . ($existing->last_name ?? '')),
+                    'mobile' => $existing->mobile,
+                ],
+            ]);
+        }
+
+        // shop_id and customer_code are set by the Customer model hooks (tenant
+        // context + per-shop counter); state_code is not mass-assignable, so set it
+        // via forceFill after create. We never read shop_id from the request.
+        $customer = Customer::create([
+            'first_name' => $data['first_name'],
+            'last_name'  => $data['last_name'] ?? null,
+            'mobile'     => $data['mobile'],
+            'address'    => $data['address'] ?? null,
+            'pan'        => $data['pan'] ?? null,
+            'id_number'  => $data['id_number'] ?? null,
+            'notes'      => $data['notes'] ?? null,
+        ]);
+
+        if (! empty($data['state_code'])) {
+            $customer->forceFill(['state_code' => $data['state_code']])->save();
+        }
+
+        return response()->json([
+            'ok'       => true,
+            'customer' => [
+                'id'     => $customer->id,
+                'name'   => trim($customer->first_name . ' ' . ($customer->last_name ?? '')),
+                'mobile' => $customer->mobile,
+            ],
+        ], 201);
+    }
+
     public function store(Request $request)
     {
         $shopId = auth()->user()->shop_id;

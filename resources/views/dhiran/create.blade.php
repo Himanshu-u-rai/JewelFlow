@@ -126,6 +126,40 @@
         .dh-dd-opt-name { font-size: 13px; font-weight: 600; color: var(--dh-ink); }
         .dh-dd-opt-sub { font-size: 11px; color: var(--dh-muted); margin-top: 1px; }
         .dh-dd-empty { padding: 14px; text-align: center; color: var(--dh-muted); font-size: 12px; }
+
+        /* Inline "add new borrower" affordance + form. */
+        [x-cloak] { display: none !important; }
+        .dh-dd-add {
+            display: flex; align-items: center; gap: 7px;
+            width: 100%; padding: 10px 12px;
+            border: none; border-top: 1px solid var(--dh-line);
+            background: #fffdf7; color: var(--dh-gold-deep, #d98b00);
+            font-size: 12.5px; font-weight: 700; cursor: pointer;
+        }
+        .dh-dd-add:hover { background: #fff7e6; }
+        .dh-borrower-form {
+            padding: 12px;
+            border-top: 1px solid var(--dh-line);
+            background: #fff;
+        }
+        .dh-borrower-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+        }
+        .dh-borrower-input {
+            width: 100%; padding: 8px 10px;
+            border: 1px solid var(--dh-line); border-radius: 8px;
+            font-size: 12.5px; background: #fff;
+        }
+        .dh-borrower-input:focus { outline: none; border-color: var(--dh-accent, #d98b00); box-shadow: 0 0 0 3px rgba(217,139,0,.12); }
+        .dh-borrower-input--wide { grid-column: 1 / -1; }
+        .dh-borrower-error { margin: 8px 0 0; color: #b91c1c; font-size: 12px; font-weight: 600; }
+        .dh-borrower-save {
+            margin-top: 10px; width: 100%;
+            padding: 9px 12px; border: none; border-radius: 9px;
+            background: linear-gradient(135deg, var(--dh-gold, #f4a300), var(--dh-gold-deep, #d98b00));
+            color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+        }
+        .dh-borrower-save:disabled { opacity: .6; cursor: not-allowed; }
     </style>
 
     <x-page-header>
@@ -171,14 +205,36 @@
                                     <input type="text" class="dh-dd-search" placeholder="Search customer..." x-model="customerSearch" @click.stop>
                                 </div>
                                 <div class="dh-dd-list">
-                                    @foreach($customers ?? [] as $c)
-                                        <div class="dh-dd-opt"
-                                             x-show="'{{ strtolower($c->name) }} {{ strtolower($c->mobile ?? '') }}'.includes(customerSearch.toLowerCase())"
-                                             @click="selectCustomer({{ $c->id }}, '{{ addslashes($c->name) }}', '{{ $c->mobile ?? '' }}')">
-                                            <div class="dh-dd-opt-name">{{ $c->name }}</div>
-                                            <div class="dh-dd-opt-sub">{{ $c->mobile ?? '' }}</div>
+                                    <template x-for="c in filteredCustomers" :key="c.id">
+                                        <div class="dh-dd-opt" @click="selectCustomer(c.id, c.name, c.mobile)">
+                                            <div class="dh-dd-opt-name" x-text="c.name"></div>
+                                            <div class="dh-dd-opt-sub" x-text="c.mobile"></div>
                                         </div>
-                                    @endforeach
+                                    </template>
+                                    <div x-show="filteredCustomers.length === 0" class="dh-dd-opt" style="cursor:default;color:var(--dh-muted)">
+                                        No borrowers found.
+                                    </div>
+                                </div>
+                                <button type="button" class="dh-dd-add" @click.stop="newBorrowerOpen = !newBorrowerOpen">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    <span x-text="newBorrowerOpen ? 'Cancel new borrower' : 'Add new borrower'"></span>
+                                </button>
+
+                                {{-- Inline new-borrower form (Dhiran-scoped create). --}}
+                                <div class="dh-borrower-form" x-show="newBorrowerOpen" @click.stop x-cloak>
+                                    <div class="dh-borrower-grid">
+                                        <input type="text" class="dh-borrower-input" placeholder="First name *" x-model="nb.first_name">
+                                        <input type="text" class="dh-borrower-input" placeholder="Last name" x-model="nb.last_name">
+                                        <input type="tel" class="dh-borrower-input" placeholder="Mobile (10 digits) *" maxlength="10" x-model="nb.mobile">
+                                        <input type="text" class="dh-borrower-input" placeholder="PAN (optional)" x-model="nb.pan">
+                                        <input type="text" class="dh-borrower-input" placeholder="ID number (optional)" x-model="nb.id_number">
+                                        <input type="text" class="dh-borrower-input" placeholder="State code (optional)" x-model="nb.state_code">
+                                        <input type="text" class="dh-borrower-input dh-borrower-input--wide" placeholder="Address (optional)" x-model="nb.address">
+                                    </div>
+                                    <p class="dh-borrower-error" x-show="nbError" x-text="nbError"></p>
+                                    <button type="button" class="dh-borrower-save" @click="saveBorrower()" :disabled="nbSaving">
+                                        <span x-text="nbSaving ? 'Saving…' : 'Save borrower'"></span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -459,6 +515,15 @@
                 customerDisplayName: '',
                 customerDropdownOpen: false,
                 customerSearch: '',
+                customers: {{ Illuminate\Support\Js::from(($customers ?? collect())->map(fn ($c) => [
+                    'id'     => $c->id,
+                    'name'   => trim($c->first_name . ' ' . ($c->last_name ?? '')),
+                    'mobile' => $c->mobile ?? '',
+                ])->values()) }},
+                newBorrowerOpen: false,
+                nbSaving: false,
+                nbError: '',
+                nb: { first_name: '', last_name: '', mobile: '', pan: '', id_number: '', state_code: '', address: '' },
                 goldRateOnDate: {{ old('gold_rate_on_date', 0) }},
                 principal_amount: {{ old('principal_amount', 0) }},
                 interest_rate_monthly: {{ old('interest_rate_monthly', $defaults['interest_rate_monthly'] ?? 1.5) }},
@@ -487,11 +552,52 @@
                     return (this.principal_amount || 0) * (this.processingFeePercent || 0) / 100;
                 },
 
+                get filteredCustomers() {
+                    const q = (this.customerSearch || '').toLowerCase();
+                    if (!q) return this.customers;
+                    return this.customers.filter(c =>
+                        (c.name + ' ' + (c.mobile || '')).toLowerCase().includes(q));
+                },
+
                 selectCustomer(id, name, mobile) {
                     this.customer_id = id;
                     this.customerDisplayName = name + (mobile ? ' (' + mobile + ')' : '');
                     this.customerDropdownOpen = false;
                     this.customerSearch = '';
+                },
+
+                async saveBorrower() {
+                    this.nbError = '';
+                    if (!this.nb.first_name.trim()) { this.nbError = 'First name is required.'; return; }
+                    if (!/^[0-9]{10}$/.test(this.nb.mobile.trim())) { this.nbError = 'Enter a valid 10-digit mobile number.'; return; }
+                    this.nbSaving = true;
+                    try {
+                        const res = await fetch('{{ route('dhiran.customers.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify(this.nb),
+                        });
+                        const out = await res.json().catch(() => ({}));
+                        if (!res.ok || !out.ok) {
+                            this.nbError = (out.errors ? Object.values(out.errors)[0][0] : out.message) || 'Could not save borrower.';
+                            return;
+                        }
+                        // Add to the list if new; always select it.
+                        if (!this.customers.some(c => c.id === out.customer.id)) {
+                            this.customers.unshift(out.customer);
+                        }
+                        this.selectCustomer(out.customer.id, out.customer.name, out.customer.mobile);
+                        this.newBorrowerOpen = false;
+                        this.nb = { first_name: '', last_name: '', mobile: '', pan: '', id_number: '', state_code: '', address: '' };
+                    } catch (e) {
+                        this.nbError = 'Network error. Please try again.';
+                    } finally {
+                        this.nbSaving = false;
+                    }
                 },
 
                 addItem() {

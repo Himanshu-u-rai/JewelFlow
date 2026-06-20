@@ -321,15 +321,19 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // ======= CUSTOMERS =======
     // Staff: view + create (needed for POS). Edit = owner + manager. Delete = owner only.
-    Route::get('/customers', [CustomerController::class, 'index'])->middleware('can:customers.view')->name('customers.index');
-    Route::get('/customers/create', [CustomerController::class, 'create'])->middleware('can:customers.create')->name('customers.create');
-    Route::post('/customers', [CustomerController::class, 'store'])->middleware('can:customers.create')->name('customers.store');
-    Route::post('/customers/quick-store', [CustomerController::class, 'quickStore'])->middleware('can:customers.create')->name('customers.quick-store');
-    Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware('can:customers.view')->name('customers.show');
-    Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->middleware('can:customers.edit')->name('customers.edit');
-    Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware('can:customers.edit')->name('customers.update');
-    Route::post('/customers/{customer}/verify-compliance', [CustomerController::class, 'verifyCompliance'])->middleware('can:customers.edit')->name('customers.verify-compliance');
-    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware('can:customers.delete')->name('customers.destroy');
+    // The ERP customer screens are retailer/manufacturer-only. edition:retailer,
+    // manufacturer keeps a Dhiran-ONLY shop out of the ERP customer UI (Dhiran has
+    // its own shop-scoped borrower creation). Data is already shop-scoped; this
+    // prevents ERP-screen exposure inside Dhiran.
+    Route::get('/customers', [CustomerController::class, 'index'])->middleware(['edition:retailer,manufacturer', 'can:customers.view'])->name('customers.index');
+    Route::get('/customers/create', [CustomerController::class, 'create'])->middleware(['edition:retailer,manufacturer', 'can:customers.create'])->name('customers.create');
+    Route::post('/customers', [CustomerController::class, 'store'])->middleware(['edition:retailer,manufacturer', 'can:customers.create'])->name('customers.store');
+    Route::post('/customers/quick-store', [CustomerController::class, 'quickStore'])->middleware(['edition:retailer,manufacturer', 'can:customers.create'])->name('customers.quick-store');
+    Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware(['edition:retailer,manufacturer', 'can:customers.view'])->name('customers.show');
+    Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->middleware(['edition:retailer,manufacturer', 'can:customers.edit'])->name('customers.edit');
+    Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware(['edition:retailer,manufacturer', 'can:customers.edit'])->name('customers.update');
+    Route::post('/customers/{customer}/verify-compliance', [CustomerController::class, 'verifyCompliance'])->middleware(['edition:retailer,manufacturer', 'can:customers.edit'])->name('customers.verify-compliance');
+    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware(['edition:retailer,manufacturer', 'can:customers.delete'])->name('customers.destroy');
 
     // KYC docs follow customer access: create-class can attach, delete-class can remove.
     Route::post('/kyc-documents', [\App\Http\Controllers\KycDocumentController::class, 'store'])->middleware('can:customers.create')->name('kyc-documents.store');
@@ -759,6 +763,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             // Loan CRUD — create permission
             Route::get('/create', [\App\Http\Controllers\DhiranController::class, 'create'])->middleware('can:dhiran.create')->name('create');
             Route::post('/', [\App\Http\Controllers\DhiranController::class, 'store'])->middleware('can:dhiran.create')->name('store');
+
+            // Inline borrower creation from the New Loan page (Dhiran-scoped).
+            Route::post('/customers', [\App\Http\Controllers\DhiranController::class, 'storeCustomer'])->middleware('can:dhiran.create')->name('customers.store');
 
             // Loan listing & detail — view permission
             Route::get('/loans', [\App\Http\Controllers\DhiranController::class, 'loans'])->middleware('can:dhiran.view')->name('loans');
