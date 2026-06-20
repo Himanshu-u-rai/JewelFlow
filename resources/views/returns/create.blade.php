@@ -423,13 +423,19 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        function initReturnsCreate() {
+            const form = document.querySelector('form[action="{{ route('returns.store', $invoice) }}"]');
+            // Idempotent: Turbo can fire both DOMContentLoaded and turbo:load; bind once.
+            if (!form || form.dataset.returnsInit) {
+                return;
+            }
+            form.dataset.returnsInit = '1';
+
             const selectAll = document.getElementById('selectAll');
             const checkboxes = Array.from(document.querySelectorAll('.line-checkbox'));
             const selectedCount = document.querySelector('[data-selected-count]');
             const selectedRefund = document.querySelector('[data-selected-refund]');
             const submitButton = document.querySelector('[data-return-submit]');
-            const form = document.querySelector('form[action="{{ route('returns.store', $invoice) }}"]');
 
             const money = new Intl.NumberFormat('en-IN', {
                 minimumFractionDigits: 2,
@@ -511,6 +517,24 @@
             }
 
             updateSummary();
+        }
+
+        // Run on a hard load AND on Turbo navigations (Turbo Drive does not fire
+        // DOMContentLoaded on subsequent visits, which left the line fields stuck
+        // disabled when the page was reached via a Turbo link). initReturnsCreate
+        // is idempotent, so binding both events is safe.
+        document.addEventListener('DOMContentLoaded', initReturnsCreate);
+        document.addEventListener('turbo:load', initReturnsCreate);
+        if (document.readyState !== 'loading') {
+            initReturnsCreate();
+        }
+        // Turbo caches the HTML snapshot but not the JS listeners; clear the init
+        // flag before caching so the handlers are re-bound when the page is restored.
+        document.addEventListener('turbo:before-cache', () => {
+            const form = document.querySelector('form[action="{{ route('returns.store', $invoice) }}"]');
+            if (form) {
+                delete form.dataset.returnsInit;
+            }
         });
     </script>
 </x-app-layout>
