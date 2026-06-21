@@ -285,7 +285,9 @@
                     <tbody class="divide-y divide-slate-100">
                         @forelse($loan->items ?? [] as $item)
                             <tr class="hover:bg-slate-50/70">
-                                <td class="pl-6 pr-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{{ $item->description }}</td>
+                                <td class="pl-6 pr-4 py-4 whitespace-nowrap text-sm font-medium">
+                                    <a href="{{ route('dhiran.items.show', $item) }}" class="text-slate-700 hover:text-amber-700">{{ $item->description }}</a>
+                                </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->gross_weight, 3) }}g</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->net_metal_weight, 3) }}g</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">{{ $item->purity }}K</td>

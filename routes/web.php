@@ -803,6 +803,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             Route::get('/borrowers', [\App\Http\Controllers\DhiranController::class, 'borrowers'])->middleware('can:dhiran.view')->name('borrowers.index');
             Route::get('/borrowers/{customer}', [\App\Http\Controllers\DhiranController::class, 'borrowerProfile'])->middleware('can:dhiran.view')->name('borrowers.show');
 
+            // Pledged item detail — view permission. Shop-scoped.
+            Route::get('/items/{item}', [\App\Http\Controllers\DhiranController::class, 'itemDetail'])->middleware('can:dhiran.view')->name('items.show');
+
             // Legacy customer-loans route → redirect into the borrower profile (no duplicate page).
             Route::get('/customers/{customer}', function (\App\Models\Customer $customer) {
                 return redirect()->route('dhiran.borrowers.show', $customer);

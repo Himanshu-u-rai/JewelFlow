@@ -736,6 +736,40 @@ class DhiranController extends Controller
     }
 
     /* ================================================================
+     *  PLEDGED ITEM DETAIL
+     * ================================================================ */
+
+    /**
+     * One pledged item: details, valuation (stored values only), evidence,
+     * linked borrower + loan, and a simple status history. Shop-scoped.
+     */
+    public function itemDetail(DhiranLoanItem $item)
+    {
+        // Route binding is tenant-scoped via BelongsToShop; explicit backstop.
+        abort_unless((int) $item->shop_id === (int) auth()->user()->shop_id, 404);
+
+        $item->load(['loan.customer']);
+        $loan = $item->loan;
+
+        // Evidence: attachments owned by this item, plus loan-level item photos /
+        // valuation proofs / loan documents that belong to the same loan (we never
+        // fake item ownership — loan-owned rows are shown as loan documents).
+        $attachments = \App\Models\Dhiran\DhiranAttachment::query()
+            ->where(function ($q) use ($item, $loan) {
+                $q->where(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_ITEM)->where('owner_id', $item->id));
+                if ($loan) {
+                    $q->orWhere(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_LOAN)
+                        ->where('owner_id', $loan->id)
+                        ->whereIn('document_type', ['item_photo', 'valuation_proof', 'loan_document']));
+                }
+            })
+            ->latest('id')
+            ->get();
+
+        return view('dhiran.items.show', compact('item', 'loan', 'attachments'));
+    }
+
+    /* ================================================================
      *  SETTINGS
      * ================================================================ */
 

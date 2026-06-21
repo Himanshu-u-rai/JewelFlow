@@ -193,7 +193,9 @@
                     <tbody class="divide-y divide-slate-100">
                         @foreach($allItems as [$item, $loan])
                             <tr class="hover:bg-slate-50/70">
-                                <td class="pl-6 pr-4 py-3 text-sm text-slate-800">{{ $item->description }}</td>
+                                <td class="pl-6 pr-4 py-3 text-sm">
+                                    <a href="{{ route('dhiran.items.show', $item) }}" class="text-slate-800 hover:text-amber-700">{{ $item->description }}</a>
+                                </td>
                                 <td class="px-4 py-3 text-sm text-slate-600 capitalize">{{ $item->metal_type ?? 'gold' }}</td>
                                 <td class="px-4 py-3 text-sm text-center text-slate-600">{{ $item->purity }}K</td>
                                 <td class="px-4 py-3 text-sm text-right text-slate-600 whitespace-nowrap">{{ number_format($item->gross_weight, 3) }} / {{ number_format($item->net_metal_weight, 3) }} / {{ number_format($item->fine_weight, 3) }}g</td>
