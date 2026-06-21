@@ -99,9 +99,15 @@ class DhiranAttachmentService
     /** Re-encode an image with GD to drop all metadata; returns the raw bytes. */
     private function stripImageMetadata(UploadedFile $file, string $mime): string
     {
-        $img = @imagecreatefromstring(file_get_contents($file->getRealPath()));
+        $original = file_get_contents($file->getRealPath());
+
+        // Fail open: if GD can't decode this image (an unusual but still-valid
+        // photo from some phones/cameras), don't reject the operator's upload —
+        // store the original validated bytes. The file already passed the MIME +
+        // extension + size checks, so this is safe; we just couldn't strip EXIF.
+        $img = @imagecreatefromstring($original);
         if ($img === false) {
-            throw new LogicException('The image could not be processed.');
+            return (string) $original;
         }
 
         ob_start();
@@ -114,6 +120,11 @@ class DhiranAttachmentService
         }
         $bytes = ob_get_clean();
         imagedestroy($img);
+
+        // If re-encoding produced nothing, keep the original rather than an empty file.
+        if ($bytes === false || $bytes === '') {
+            return (string) $original;
+        }
 
         return (string) $bytes;
     }

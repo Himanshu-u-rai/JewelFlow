@@ -202,11 +202,18 @@ class DhiranController extends Controller
         $settings = DhiranSettings::getForShop($shopId);
         abort_unless($settings->is_enabled, 403, 'Dhiran module is not enabled.');
 
+        // A metal rate is only needed for metal-valued items of that metal. A
+        // pure-silver or pure-Other (appraised) loan must not be forced to enter a
+        // gold rate, and vice-versa.
+        $rawItems   = $request->input('items', []);
+        $needsGold  = collect($rawItems)->contains(fn ($i) => ($i['metal_type'] ?? 'gold') === 'gold'   && (($i['value_mode'] ?? 'metal') !== 'appraised'));
+        $needsSilver = collect($rawItems)->contains(fn ($i) => ($i['metal_type'] ?? 'gold') === 'silver' && (($i['value_mode'] ?? 'metal') !== 'appraised'));
+
         $data = $request->validate([
             'customer_id'              => ['required', 'integer', Rule::exists('customers', 'id')->where('shop_id', $shopId)],
             'principal_amount'         => 'required|numeric|min:1',
-            'gold_rate_on_date'        => 'required|numeric|min:0',
-            'silver_rate_on_date'      => 'nullable|numeric|min:0',
+            'gold_rate_on_date'        => ($needsGold ? 'required' : 'nullable') . '|numeric|min:0',
+            'silver_rate_on_date'      => ($needsSilver ? 'required' : 'nullable') . '|numeric|min:0',
             'interest_rate_monthly'    => 'nullable|numeric|min:0|max:10',
             'interest_type'            => 'nullable|in:flat,daily,compound',
             'loan_date'                => 'nullable|date',
@@ -292,7 +299,7 @@ class DhiranController extends Controller
 
         $params = [
             'principal_amount'      => $data['principal_amount'],
-            'gold_rate_on_date'     => $data['gold_rate_on_date'],
+            'gold_rate_on_date'     => $data['gold_rate_on_date'] ?? 0,
             'silver_rate_on_date'   => $data['silver_rate_on_date'] ?? null,
             'interest_rate_monthly' => $data['interest_rate_monthly'] ?? null,
             'interest_type'         => $data['interest_type'] ?? null,
@@ -331,6 +338,7 @@ class DhiranController extends Controller
      */
     public function activateLoan(Request $request, DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless($loan->status === 'pending_evidence', 422, 'This loan is not awaiting evidence.');
 
         try {
@@ -416,6 +424,7 @@ class DhiranController extends Controller
 
     public function payInterest(Request $request, DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
@@ -436,6 +445,7 @@ class DhiranController extends Controller
 
     public function repay(Request $request, DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
@@ -456,6 +466,7 @@ class DhiranController extends Controller
 
     public function releaseItem(Request $request, DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
@@ -486,6 +497,7 @@ class DhiranController extends Controller
 
     public function preClose(Request $request, DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
@@ -505,6 +517,7 @@ class DhiranController extends Controller
 
     public function renew(Request $request, DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         $data = $request->validate([
@@ -548,6 +561,7 @@ class DhiranController extends Controller
 
     public function sendNotice(Request $request, DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         try {
@@ -638,6 +652,7 @@ class DhiranController extends Controller
 
     public function forfeit(Request $request, DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless($loan->status === 'active', 422, 'Loan is not active.');
         abort_unless($loan->forfeiture_notice_sent_at !== null, 422, 'Forfeiture notice must be sent first.');
 
@@ -658,6 +673,7 @@ class DhiranController extends Controller
 
     public function receipt(DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         $loan->load(['customer', 'items', 'creator']);
 
         return view('dhiran.receipt', compact('loan'));
@@ -665,6 +681,7 @@ class DhiranController extends Controller
 
     public function closureCertificate(DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless(in_array($loan->status, ['closed', 'forfeited']), 422, 'Loan is still active.');
 
         $loan->load(['customer', 'items', 'payments']);
@@ -674,6 +691,7 @@ class DhiranController extends Controller
 
     public function forfeitureNotice(DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         $loan->load(['customer', 'items']);
 
         return view('dhiran.forfeiture-notice', compact('loan'));

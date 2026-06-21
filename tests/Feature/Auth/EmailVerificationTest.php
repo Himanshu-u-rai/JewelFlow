@@ -55,4 +55,54 @@ class EmailVerificationTest extends TestCase
 
         $this->assertFalse($user->fresh()->hasVerifiedEmail());
     }
+
+    /**
+     * F1: the same email may be verified on both an ERP and a Dhiran account
+     * (login + reset are realm-scoped). The email-OTP "already taken" check must
+     * be realm-scoped, so an ERP account holding a verified email does NOT block a
+     * Dhiran account from verifying the same email.
+     */
+    public function test_email_otp_taken_check_is_realm_scoped(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        // ERP account already verified with this email.
+        User::create([
+            'mobile_number' => '9300004001', 'password' => bcrypt('x'), 'realm' => 'erp',
+            'is_active' => true, 'email' => 'shared@example.com', 'email_verified_at' => now(),
+        ]);
+
+        // A Dhiran account tries to verify the SAME email — must be allowed (not "taken").
+        $dhiran = User::create([
+            'mobile_number' => '9300004001', 'password' => bcrypt('x'), 'realm' => 'dhiran',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($dhiran);
+        $req = \Illuminate\Http\Request::create('/dhiran/verify-email/send', 'POST', ['email' => 'shared@example.com']);
+        $resp = app(\App\Http\Controllers\EmailVerificationOtpController::class)->sendOtp($req);
+
+        $this->assertSame(200, $resp->getStatusCode());
+        $this->assertStringContainsString('sent', json_encode($resp->getData()));
+        $this->assertSame('shared@example.com', $dhiran->fresh()->email);
+    }
+
+    /** F1 negative: same-realm verified email IS still blocked. */
+    public function test_email_otp_blocks_same_realm_duplicate(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        User::create([
+            'mobile_number' => '9300004010', 'password' => bcrypt('x'), 'realm' => 'dhiran',
+            'is_active' => true, 'email' => 'dup@example.com', 'email_verified_at' => now(),
+        ]);
+        $other = User::create([
+            'mobile_number' => '9300004011', 'password' => bcrypt('x'), 'realm' => 'dhiran', 'is_active' => true,
+        ]);
+
+        $this->actingAs($other);
+        $req = \Illuminate\Http\Request::create('/dhiran/verify-email/send', 'POST', ['email' => 'dup@example.com']);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(\App\Http\Controllers\EmailVerificationOtpController::class)->sendOtp($req);
+    }
 }

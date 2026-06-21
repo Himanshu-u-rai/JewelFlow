@@ -219,4 +219,39 @@ class DhiranMetalPurityTest extends TestCase
         $item = TenantContext::runFor($shop->id, fn () => $loan->items()->first());
         $this->assertEqualsWithDelta(120000, (float) $item->market_value, 0.01); // operator value, not fine×rate
     }
+
+    // A silver-only loan does not require a gold rate (F2): gold_rate_on_date omitted.
+    public function test_silver_only_loan_needs_no_gold_rate(): void
+    {
+        [$shop, $owner] = $this->dhiranShop('9390003010');
+        $c = $this->customer($shop, '9812230010');
+        $resp = $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', [
+            'customer_id' => $c->id, 'principal_amount' => 3000,
+            'silver_rate_on_date' => 80,
+            // gold_rate_on_date deliberately omitted
+            'items' => [[
+                'metal_type' => 'silver', 'purity' => 925, 'gross_weight' => 100, 'rate_per_gram_at_pledge' => 80,
+                'description' => 'Silver chain, no gold rate',
+            ]],
+        ]);
+        $resp->assertRedirect();
+        $this->assertNotNull($this->latestLoan($shop));
+    }
+
+    // An Other-only loan needs neither gold nor silver rate (F2).
+    public function test_other_only_loan_needs_no_metal_rate(): void
+    {
+        [$shop, $owner] = $this->dhiranShop('9390003011');
+        $c = $this->customer($shop, '9812230011');
+        $resp = $this->actingAs($owner)->post('https://dhiran.jewelflows.com/dhiran', [
+            'customer_id' => $c->id, 'principal_amount' => 10000,
+            // no gold_rate_on_date, no silver_rate_on_date
+            'items' => [[
+                'metal_type' => 'other', 'value_mode' => 'appraised', 'market_value' => 50000,
+                'description' => 'Diamond ring, no metal rate',
+            ]],
+        ]);
+        $resp->assertRedirect();
+        $this->assertNotNull($this->latestLoan($shop));
+    }
 }

@@ -221,10 +221,18 @@
                     <div class="ds-info-item-label">LTV %</div>
                     <div class="ds-info-item-value">{{ number_format($loan->ltv_percent ?? 0, 1) }}%</div>
                 </div>
+                @if((float) $loan->gold_rate_on_date > 0)
                 <div>
-                    <div class="ds-info-item-label">Gold Rate (at pledge)</div>
+                    <div class="ds-info-item-label">Gold rate (at pledge)</div>
                     <div class="ds-info-item-value">{{ $currencySymbol ?? '₹' }}{{ number_format($loan->gold_rate_on_date, 2) }}</div>
                 </div>
+                @endif
+                @if((float) ($loan->silver_rate_on_date ?? 0) > 0)
+                <div>
+                    <div class="ds-info-item-label">Silver rate (at pledge)</div>
+                    <div class="ds-info-item-value">{{ $currencySymbol ?? '₹' }}{{ number_format($loan->silver_rate_on_date, 2) }}</div>
+                </div>
+                @endif
                 <div>
                     <div class="ds-info-item-label">Customer</div>
                     <div class="ds-info-item-value">

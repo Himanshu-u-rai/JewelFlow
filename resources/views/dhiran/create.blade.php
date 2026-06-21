@@ -246,14 +246,14 @@
                     <div>
                         <label for="gold_rate_on_date" class="dh-label">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                            Gold Rate on Date (per gram) *
+                            Gold rate today (per gram)
                         </label>
                         <div class="dh-cost-wrap">
                             <span class="dh-cost-symbol">{{ $currencySymbol ?? '₹' }}</span>
                             <input type="number" step="0.01" name="gold_rate_on_date" id="gold_rate_on_date"
                                    x-model.number="goldRateOnDate"
                                    value="{{ old('gold_rate_on_date') }}"
-                                   placeholder="e.g. 7500.00" class="dh-input" required>
+                                   placeholder="Optional reference rate" class="dh-input">
                         </div>
                         @error('gold_rate_on_date')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
