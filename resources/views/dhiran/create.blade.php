@@ -165,7 +165,7 @@
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">New Pledge Loan</h1>
-            <p class="text-sm text-gray-500 mt-1">Create a new Dhiran / Girvi pledge loan</p>
+            <p class="text-sm text-gray-500 mt-1">Create a new gold &amp; silver pledge loan</p>
         </div>
         <div class="page-actions">
             <a href="{{ route('dhiran.loans') }}" class="btn btn-secondary btn-sm">

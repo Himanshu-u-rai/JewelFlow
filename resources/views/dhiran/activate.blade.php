@@ -107,7 +107,7 @@
     </style>
 
     <x-dhiran.page-header>
-        <h1 class="page-title">Dhiran (Gold Loan)</h1>
+        <h1 class="page-title">Dhiran (Pledge Loans)</h1>
         <div class="page-actions">
             <span class="header-badge">Module Setup</span>
         </div>
@@ -121,9 +121,9 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                     </svg>
                 </div>
-                <h2 class="da-hero-title">Dhiran &mdash; Gold Loan / Girvi Module</h2>
+                <h2 class="da-hero-title">Dhiran &mdash; Pledge Loan Module</h2>
                 <p class="da-hero-subtitle">
-                    Manage gold pledge loans (Girvi) directly from JewelFlow. Track collateral, calculate interest, handle renewals and forfeitures &mdash; all in one place.
+                    Manage gold &amp; silver pledge loans directly from JewelFlow. Track collateral, calculate interest, handle renewals and forfeitures &mdash; all in one place.
                 </p>
 
                 <div class="da-features">
@@ -131,8 +131,8 @@
                         <div class="da-feature-card-icon bg-amber-100 text-amber-700">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33"/></svg>
                         </div>
-                        <div class="da-feature-card-title">Gold Pledge Loans</div>
-                        <div class="da-feature-card-desc">Issue loans against gold jewellery with configurable LTV ratios and interest rates.</div>
+                        <div class="da-feature-card-title">Gold &amp; Silver Pledge Loans</div>
+                        <div class="da-feature-card-desc">Issue loans against gold &amp; silver jewellery with configurable LTV ratios and interest rates.</div>
                     </div>
                     <div class="da-feature-card">
                         <div class="da-feature-card-icon bg-emerald-100 text-emerald-700">

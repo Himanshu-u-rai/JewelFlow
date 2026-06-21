@@ -50,7 +50,7 @@
     <div class="dop-wrap">
         <div class="dop-head">
             <h1>Start your Dhiran subscription</h1>
-            <p>Run your gold-loan business with confidence.</p>
+            <p>Run your pledge loan business with confidence.</p>
         </div>
 
         <div class="dop-card">
@@ -66,7 +66,7 @@
             <ul class="dop-feat">
                 <li>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Track every gold loan, interest, and repayment in one place.
+                    Track every pledge loan, interest, and repayment in one place.
                 </li>
                 <li>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>

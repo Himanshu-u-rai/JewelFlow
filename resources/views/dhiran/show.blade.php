@@ -290,7 +290,7 @@
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->gross_weight, 3) }}g</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->net_metal_weight, 3) }}g</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">{{ $item->purity }}K</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}K</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->fine_weight, 3) }}g</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">{{ $currencySymbol ?? '₹' }}{{ number_format($item->market_value, 2) }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($item->loan_value, 2) }}</td>

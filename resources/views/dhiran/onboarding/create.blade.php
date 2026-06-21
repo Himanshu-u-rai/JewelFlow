@@ -49,7 +49,7 @@
     <div class="dob-wrap">
         <div class="dob-head">
             <h1>Set up your Dhiran business</h1>
-            <p>Just a few details to get your gold-loan shop ready.</p>
+            <p>Just a few details to get your pledge loan shop ready.</p>
         </div>
 
         <div class="dob-card">

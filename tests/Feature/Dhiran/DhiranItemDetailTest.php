@@ -89,7 +89,7 @@ class DhiranItemDetailTest extends TestCase
         $this->assertStringContainsString('Item details', $html);
         $this->assertStringContainsString($loan->loan_number, $html);    // linked loan (5)
         $this->assertStringContainsString('Asha B', $html);              // linked borrower (4)
-        $this->assertStringContainsString('22.00', $html);               // stored purity value (6)
+        $this->assertStringContainsString('22K', $html);                 // purity rendered (trailing zeros stripped) (6)
         $this->assertStringContainsString('History', $html);             // history (6)
     }
 

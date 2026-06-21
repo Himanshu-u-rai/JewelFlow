@@ -61,7 +61,7 @@
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Dhiran &mdash; Pledge Loans</h1>
-            <p class="text-sm text-gray-500 mt-1">Overview of all gold pledge loan activity</p>
+            <p class="text-sm text-gray-500 mt-1">Overview of all pledge loan activity</p>
         </div>
         <div class="page-actions">
             <a href="{{ route('dhiran.create') }}" class="btn btn-dark btn-sm">

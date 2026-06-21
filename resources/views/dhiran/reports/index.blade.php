@@ -32,7 +32,7 @@
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Dhiran Reports</h1>
-            <p class="text-sm text-gray-500 mt-1">Gold loan analytics and reports</p>
+            <p class="text-sm text-gray-500 mt-1">Pledge loan analytics and reports</p>
         </div>
         <div class="page-actions">
             <a href="{{ route('dhiran.dashboard') }}" class="btn btn-secondary btn-sm">

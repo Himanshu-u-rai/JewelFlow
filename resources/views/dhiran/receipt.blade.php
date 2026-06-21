@@ -305,7 +305,7 @@
                         </td>
                         <td class="text-right">{{ number_format($item->gross_weight, 3) }}</td>
                         <td class="text-right">{{ number_format($item->net_metal_weight, 3) }}</td>
-                        <td class="text-center">{{ $item->purity }}K</td>
+                        <td class="text-center">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}K</td>
                         <td class="text-right">{{ number_format($item->fine_weight, 3) }}</td>
                         <td class="text-right">{{ $currencySymbol ?? '₹' }}{{ number_format($item->market_value, 2) }}</td>
                     </tr>
