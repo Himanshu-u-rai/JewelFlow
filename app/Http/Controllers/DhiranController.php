@@ -208,15 +208,43 @@ class DhiranController extends Controller
             'notes'                    => 'nullable|string|max:1000',
             'items'                    => 'required|array|min:1',
             'items.*.description'      => 'required|string|max:255',
+            // Launch scope: gold + silver only. Optional; a missing metal_type
+            // defaults to gold (safe default — silver is always explicit, so it
+            // can never be mislabelled). The metal/purity combo is checked below.
             'items.*.metal_type'       => 'nullable|in:gold,silver',
             'items.*.category'         => 'nullable|string|max:100',
             'items.*.quantity'         => 'nullable|integer|min:1|max:1000',
-            'items.*.purity'           => 'required|numeric|min:0|max:24',
+            // Purity scale differs per metal (gold karat ≤24, silver fineness
+            // ≤1000); the metal/purity combination is checked below.
+            'items.*.purity'           => 'required|numeric|min:1|max:1000',
             'items.*.gross_weight'     => 'required|numeric|min:0|max:9999.999999',
             'items.*.stone_weight'     => 'nullable|numeric|min:0|max:9999.999999',
             'items.*.rate_per_gram_at_pledge' => 'required|numeric|min:0|max:999999.9999',
             'items.*.huid'             => 'nullable|string|max:50',
         ]);
+
+        // Authoritative metal/purity gate (gold = karat 1..24, silver = fineness
+        // 1..1000). Rejects silver-with-gold-purity and vice versa with a clear,
+        // metal-specific message. Backend is the source of truth, not the form.
+        $supportedPurities = [
+            'gold'   => [24, 22, 20, 18, 14],
+            'silver' => [999, 958, 925, 900, 800],
+        ];
+        $purityErrors = [];
+        foreach ($data['items'] as $idx => $row) {
+            $metal  = $row['metal_type'] ?? 'gold';
+            $purity = (int) round((float) ($row['purity'] ?? 0));
+            if (! in_array($metal, ['gold', 'silver'], true)) {
+                $purityErrors["items.{$idx}.metal_type"] = "Metal type is not supported. Choose gold or silver.";
+                continue;
+            }
+            if (! in_array($purity, $supportedPurities[$metal], true)) {
+                $purityErrors["items.{$idx}.purity"] = "Selected purity is not supported for {$metal}.";
+            }
+        }
+        if (! empty($purityErrors)) {
+            return back()->withErrors($purityErrors)->withInput();
+        }
 
         $customer = Customer::findOrFail($data['customer_id']);
 

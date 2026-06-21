@@ -299,13 +299,14 @@
                         <td>{{ $index + 1 }}</td>
                         <td>
                             {{ $item->description }}
+                            <br><span style="font-size:9px;color:#64748b;">{{ ucfirst($item->metal_type ?? 'gold') }}</span>
                             @if($item->huid)
-                                <br><span style="font-size:9px;color:#64748b;">HUID: {{ $item->huid }}</span>
+                                <span style="font-size:9px;color:#64748b;"> · HUID: {{ $item->huid }}</span>
                             @endif
                         </td>
                         <td class="text-right">{{ number_format($item->gross_weight, 3) }}</td>
                         <td class="text-right">{{ number_format($item->net_metal_weight, 3) }}</td>
-                        <td class="text-center">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}K</td>
+                        <td class="text-center">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}{{ ($item->metal_type ?? 'gold') === 'silver' ? '' : 'K' }}</td>
                         <td class="text-right">{{ number_format($item->fine_weight, 3) }}</td>
                         <td class="text-right">{{ $currencySymbol ?? '₹' }}{{ number_format($item->market_value, 2) }}</td>
                     </tr>

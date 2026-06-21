@@ -272,6 +272,7 @@
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th class="pl-6 pr-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Description</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Metal</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Gross Wt</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Net Wt</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Purity</th>
@@ -288,9 +289,10 @@
                                 <td class="pl-6 pr-4 py-4 whitespace-nowrap text-sm font-medium">
                                     <a href="{{ route('dhiran.items.show', $item) }}" class="text-slate-700 hover:text-amber-700">{{ $item->description }}</a>
                                 </td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-slate-600 capitalize">{{ $item->metal_type ?? 'gold' }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->gross_weight, 3) }}g</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->net_metal_weight, 3) }}g</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}K</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-slate-600">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}{{ ($item->metal_type ?? 'gold') === 'silver' ? '' : 'K' }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-600">{{ number_format($item->fine_weight, 3) }}g</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">{{ $currencySymbol ?? '₹' }}{{ number_format($item->market_value, 2) }}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-800">{{ $currencySymbol ?? '₹' }}{{ number_format($item->loan_value, 2) }}</td>
@@ -311,7 +313,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="px-6 py-8 text-center text-slate-500 text-sm">No items recorded</td>
+                                <td colspan="10" class="px-6 py-8 text-center text-slate-500 text-sm">No items recorded</td>
                             </tr>
                         @endforelse
                     </tbody>

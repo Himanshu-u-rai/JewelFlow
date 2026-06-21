@@ -65,7 +65,7 @@
                         @if($item->category)<div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Category</dt><dd class="text-slate-800 mt-0.5">{{ $item->category }}</dd></div>@endif
                         <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Metal</dt><dd class="text-slate-800 mt-0.5 capitalize">{{ $item->metal_type ?? 'gold' }}</dd></div>
                         <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Quantity</dt><dd class="text-slate-800 mt-0.5">{{ $item->quantity ?? 1 }}</dd></div>
-                        <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Purity</dt><dd class="text-slate-800 mt-0.5">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}K</dd></div>
+                        <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Purity</dt><dd class="text-slate-800 mt-0.5">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}{{ ($item->metal_type ?? 'gold') === 'silver' ? '' : 'K' }}</dd></div>
                         @if($item->huid)<div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">HUID</dt><dd class="text-slate-800 font-mono mt-0.5">{{ $item->huid }}</dd></div>@endif
                         <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Gross weight</dt><dd class="text-slate-800 mt-0.5">{{ number_format($item->gross_weight, 3) }} g</dd></div>
                         <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Stone weight</dt><dd class="text-slate-800 mt-0.5">{{ number_format($item->stone_weight, 3) }} g</dd></div>

@@ -306,7 +306,7 @@
                             <div class="col-span-2">
                                 <label class="dh-label">Description *</label>
                                 <input type="text" :name="'items['+index+'][description]'" x-model="item.description"
-                                       placeholder="e.g. Gold Chain 22K" class="dh-input" required>
+                                       placeholder="e.g. Gold chain, silver anklet" class="dh-input" required>
                             </div>
                             <div>
                                 <label class="dh-label">Gross Weight (g) *</label>
@@ -322,14 +322,19 @@
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                             <div>
-                                <label class="dh-label">Purity (K) *</label>
+                                <label class="dh-label">Metal *</label>
+                                <select :name="'items['+index+'][metal_type]'" x-model="item.metal_type" class="dh-select" required @change="onMetalChange(index)">
+                                    <option value="gold">Gold</option>
+                                    <option value="silver">Silver</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="dh-label">Purity *</label>
                                 <select :name="'items['+index+'][purity]'" x-model.number="item.purity" class="dh-select" required @change="recalcItem(index)">
                                     <option value="">Select</option>
-                                    <option value="24">24K</option>
-                                    <option value="22">22K</option>
-                                    <option value="21">21K</option>
-                                    <option value="18">18K</option>
-                                    <option value="14">14K</option>
+                                    <template x-for="opt in purityOptions(item.metal_type)" :key="opt.value">
+                                        <option :value="opt.value" x-text="opt.label"></option>
+                                    </template>
                                 </select>
                             </div>
                             <div>
@@ -534,7 +539,7 @@
                 ltvPercent: {{ $defaults['ltv_percent'] ?? 75 }},
 
                 items: [{
-                    description: '', gross_weight: 0, stone_weight: 0, purity: 22,
+                    description: '', metal_type: 'gold', gross_weight: 0, stone_weight: 0, purity: 22,
                     rate_per_gram_at_pledge: 0, huid: '',
                     net_metal_weight: 0, fine_weight: 0, market_value: 0, loan_value: 0
                 }],
@@ -611,10 +616,40 @@
 
                 addItem() {
                     this.items.push({
-                        description: '', gross_weight: 0, stone_weight: 0, purity: 22,
+                        description: '', metal_type: 'gold', gross_weight: 0, stone_weight: 0, purity: 22,
                         rate_per_gram_at_pledge: 0, huid: '',
                         net_metal_weight: 0, fine_weight: 0, market_value: 0, loan_value: 0
                     });
+                },
+
+                // Supported purities per metal (MetalRegistry: gold = karat/24,
+                // silver = millesimal/1000). Display-list only; the backend is
+                // authoritative.
+                purityOptions(metal) {
+                    if (metal === 'silver') {
+                        return [
+                            { value: 999, label: '999' },
+                            { value: 958, label: '958' },
+                            { value: 925, label: '925' },
+                            { value: 900, label: '900' },
+                            { value: 800, label: '800' },
+                        ];
+                    }
+                    return [
+                        { value: 24, label: '24K' },
+                        { value: 22, label: '22K' },
+                        { value: 20, label: '20K' },
+                        { value: 18, label: '18K' },
+                        { value: 14, label: '14K' },
+                    ];
+                },
+
+                // When metal changes, reset a now-invalid purity and recompute.
+                onMetalChange(index) {
+                    const item = this.items[index];
+                    const valid = this.purityOptions(item.metal_type).some(o => o.value === Number(item.purity));
+                    if (!valid) item.purity = '';
+                    this.recalcItem(index);
                 },
 
                 removeItem(index) {
@@ -626,7 +661,10 @@
                 recalcItem(index) {
                     let item = this.items[index];
                     item.net_metal_weight = Math.max(0, (item.gross_weight || 0) - (item.stone_weight || 0));
-                    item.fine_weight = item.net_metal_weight * (item.purity || 0) / 24;
+                    // Metal-aware fine-weight scale: gold = purity/24 (karat),
+                    // silver = purity/1000 (millesimal). Mirrors MetalRegistry.
+                    const divisor = item.metal_type === 'silver' ? 1000 : 24;
+                    item.fine_weight = item.net_metal_weight * (item.purity || 0) / divisor;
                     let rate = item.rate_per_gram_at_pledge || this.goldRateOnDate || 0;
                     item.market_value = item.fine_weight * rate;
                     item.loan_value = item.market_value * (this.ltvPercent / 100);

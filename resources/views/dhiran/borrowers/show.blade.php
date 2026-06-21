@@ -197,7 +197,7 @@
                                     <a href="{{ route('dhiran.items.show', $item) }}" class="text-slate-800 hover:text-amber-700">{{ $item->description }}</a>
                                 </td>
                                 <td class="px-4 py-3 text-sm text-slate-600 capitalize">{{ $item->metal_type ?? 'gold' }}</td>
-                                <td class="px-4 py-3 text-sm text-center text-slate-600">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}K</td>
+                                <td class="px-4 py-3 text-sm text-center text-slate-600">{{ rtrim(rtrim((string) $item->purity, "0"), ".") }}{{ ($item->metal_type ?? 'gold') === 'silver' ? '' : 'K' }}</td>
                                 <td class="px-4 py-3 text-sm text-right text-slate-600 whitespace-nowrap">{{ number_format($item->gross_weight, 3) }} / {{ number_format($item->net_metal_weight, 3) }} / {{ number_format($item->fine_weight, 3) }}g</td>
                                 <td class="px-4 py-3 text-center text-sm text-slate-600 capitalize">{{ $item->status ?? 'pledged' }}</td>
                                 <td class="px-4 py-3 text-sm font-mono"><a href="{{ route('dhiran.show', $loan) }}" class="text-slate-600 hover:text-amber-700">{{ $loan->loan_number }}</a></td>
