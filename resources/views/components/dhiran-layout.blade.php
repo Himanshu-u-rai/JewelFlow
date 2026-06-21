@@ -125,6 +125,22 @@
             .dh-menu-toggle:hover { background: #f1f5f9; }
         }
         .dh-menu-toggle svg { width: 21px; height: 21px; }
+
+        /* Nav toggle that rides inside the sticky page header (mobile only). */
+        .dh-header-toggle {
+            display: none;
+            align-items: center; justify-content: center;
+            width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+            border: 1px solid var(--dh-line); background: #fff; color: var(--dh-ink);
+            cursor: pointer;
+            transition: transform 140ms var(--dh-ease), background 140ms var(--dh-ease);
+        }
+        .dh-header-toggle:active { transform: scale(0.94); }
+        @media (hover: hover) and (pointer: fine) {
+            .dh-header-toggle:hover { background: #f1f5f9; }
+        }
+        .dh-header-toggle svg { width: 20px; height: 20px; }
+
         /* Scrim sits behind the drawer; fades with opacity only. */
         .dh-scrim {
             position: fixed; inset: 0; z-index: 40;
@@ -135,12 +151,19 @@
 
         @media (max-width: 720px) {
             .dh-shell { flex-direction: column; }
-            /* Float the toggle top-left, above content. */
-            .dh-menu-toggle {
+
+            /* Page-header pages: the toggle rides inside the sticky header. */
+            .dh-header-toggle { display: inline-flex; }
+            .dh-page-header { gap: 12px; }
+
+            /* Float the toggle ONLY on pages with no page header (e.g. onboarding). */
+            .dh-menu-toggle { display: none; }
+            .dh-main:not(:has(.content-header)) .dh-menu-toggle {
                 display: inline-flex;
                 position: fixed; top: 14px; left: 14px; z-index: 45;
             }
-            /* Hide the toggle while the drawer is open (drawer + scrim take over). */
+            .dh-main:not(:has(.content-header)) { padding-top: 70px; }
+            /* Hide the floating toggle while the drawer is open. */
             .dh-shell.is-open .dh-menu-toggle { opacity: 0; pointer-events: none; }
 
             /* Sidebar becomes an off-canvas left drawer. */
@@ -152,8 +175,7 @@
                 transition: transform 260ms var(--dh-ease-drawer);
                 will-change: transform;
             }
-            /* Leave room for the floating toggle at the top of the content. */
-            .dh-main { padding: 18px; padding-top: 70px; }
+            .dh-main { padding: 18px; }
 
             /* Open state, driven by Alpine on .dh-shell. */
             .dh-shell.is-open .dh-sidebar { transform: translateX(0); }
@@ -161,7 +183,7 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .dh-sidebar, .dh-scrim, .dh-menu-toggle { transition-duration: 0ms; }
+            .dh-sidebar, .dh-scrim, .dh-menu-toggle, .dh-header-toggle { transition-duration: 0ms; }
         }
     </style>
     @stack('styles')
@@ -171,7 +193,8 @@
          x-data="{ open: false }"
          :class="{ 'is-open': open }"
          @keydown.escape.window="open = false"
-         @turbo:before-cache.window="open = false">
+         @turbo:before-cache.window="open = false"
+         @dhiran-menu.window="open = true">
 
         {{-- Mobile-only floating nav toggle. No top bar: the brand and links live
              inside the drawer. Hidden ≥720px. --}}
