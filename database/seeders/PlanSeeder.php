@@ -21,7 +21,7 @@ class PlanSeeder extends Seeder
             [
                 'code' => 'retailer_monthly',
                 'name' => 'Retailer Monthly',
-                'price_monthly' => 1999.00,
+                'price_monthly' => 4630.00,
                 'price_yearly' => null,
                 'trial_days' => 0,
                 'grace_days' => 7,
@@ -51,8 +51,8 @@ class PlanSeeder extends Seeder
             [
                 'code' => 'retailer_yearly',
                 'name' => 'Retailer Yearly',
-                'price_monthly' => 1666.00,
-                'price_yearly' => 19999.00,
+                'price_monthly' => 4167.00,
+                'price_yearly' => 50000.00,
                 'trial_days' => 0,
                 'grace_days' => 14,
                 'downgrade_to_read_only_on_due' => \DB::raw('true'),
@@ -81,7 +81,7 @@ class PlanSeeder extends Seeder
             [
                 'code' => 'manufacturer_monthly',
                 'name' => 'Manufacturer Monthly',
-                'price_monthly' => 2999.00,
+                'price_monthly' => 6482.00,
                 'price_yearly' => null,
                 'trial_days' => 0,
                 'grace_days' => 7,
@@ -109,8 +109,8 @@ class PlanSeeder extends Seeder
             [
                 'code' => 'manufacturer_yearly',
                 'name' => 'Manufacturer Yearly',
-                'price_monthly' => 2499.00,
-                'price_yearly' => 29999.00,
+                'price_monthly' => 5833.00,
+                'price_yearly' => 70000.00,
                 'trial_days' => 0,
                 'grace_days' => 14,
                 'downgrade_to_read_only_on_due' => \DB::raw('true'),
@@ -137,7 +137,7 @@ class PlanSeeder extends Seeder
             [
                 'code' => 'dhiran_monthly',
                 'name' => 'Dhiran Monthly',
-                'price_monthly' => 1499.00,
+                'price_monthly' => 1852.00,
                 'price_yearly' => null,
                 'trial_days' => 0,
                 'grace_days' => 7,
@@ -156,8 +156,8 @@ class PlanSeeder extends Seeder
             [
                 'code' => 'dhiran_yearly',
                 'name' => 'Dhiran Yearly',
-                'price_monthly' => 1249.00,
-                'price_yearly' => 14999.00,
+                'price_monthly' => 1667.00,
+                'price_yearly' => 19999.00,
                 'trial_days' => 0,
                 'grace_days' => 14,
                 'downgrade_to_read_only_on_due' => \DB::raw('true'),
