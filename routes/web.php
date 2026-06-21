@@ -799,8 +799,14 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             Route::get('/loans/{loan}/forfeiture-notice', [\App\Http\Controllers\DhiranController::class, 'forfeitureNotice'])->middleware('can:dhiran.view')->name('forfeiture-notice');
             Route::get('/loans/{loan}/payments/{payment}/receipt', [\App\Http\Controllers\DhiranController::class, 'paymentReceipt'])->middleware('can:dhiran.view')->name('payment-receipt');
 
-            // Customer loan history — view permission
-            Route::get('/customers/{customer}', [\App\Http\Controllers\DhiranController::class, 'customerLoans'])->middleware('can:dhiran.view')->name('customer-loans');
+            // Borrowers (Dhiran customer profiles) — view permission. Shop-scoped.
+            Route::get('/borrowers', [\App\Http\Controllers\DhiranController::class, 'borrowers'])->middleware('can:dhiran.view')->name('borrowers.index');
+            Route::get('/borrowers/{customer}', [\App\Http\Controllers\DhiranController::class, 'borrowerProfile'])->middleware('can:dhiran.view')->name('borrowers.show');
+
+            // Legacy customer-loans route → redirect into the borrower profile (no duplicate page).
+            Route::get('/customers/{customer}', function (\App\Models\Customer $customer) {
+                return redirect()->route('dhiran.borrowers.show', $customer);
+            })->middleware('can:dhiran.view')->name('customer-loans');
 
             // Settings — settings permission
             Route::get('/settings', [\App\Http\Controllers\DhiranController::class, 'settings'])->middleware('can:dhiran.settings')->name('settings');

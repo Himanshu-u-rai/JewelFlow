@@ -511,7 +511,7 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('dhiranCreateForm', () => ({
-                customer_id: '{{ old('customer_id', '') }}',
+                customer_id: '{{ old('customer_id', $preselectedCustomerId ?? '') }}',
                 customerDisplayName: '',
                 customerDropdownOpen: false,
                 customerSearch: '',
@@ -550,6 +550,15 @@
                 },
                 get processingFee() {
                     return (this.principal_amount || 0) * (this.processingFeePercent || 0) / 100;
+                },
+
+                init() {
+                    // If a borrower was preselected (?customer_id= from the borrower
+                    // profile/list), show their name in the picker on load.
+                    if (this.customer_id) {
+                        const c = this.customers.find(x => String(x.id) === String(this.customer_id));
+                        if (c) this.customerDisplayName = c.name + (c.mobile ? ' (' + c.mobile + ')' : '');
+                    }
                 },
 
                 get filteredCustomers() {

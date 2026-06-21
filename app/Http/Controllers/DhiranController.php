@@ -7,6 +7,7 @@ use App\Models\Dhiran\DhiranLoan;
 use App\Models\Dhiran\DhiranLoanItem;
 use App\Models\Dhiran\DhiranPayment;
 use App\Models\Dhiran\DhiranSettings;
+use Illuminate\Support\Facades\DB;
 use App\Services\DhiranService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -90,7 +91,7 @@ class DhiranController extends Controller
      *  LOAN CRUD
      * ================================================================ */
 
-    public function create()
+    public function create(Request $request)
     {
         $shopId   = auth()->user()->shop_id;
         $settings = DhiranSettings::getForShop($shopId);
@@ -102,7 +103,14 @@ class DhiranController extends Controller
             ->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name', 'mobile']);
 
-        return view('dhiran.create', compact('settings', 'customers'));
+        // Preselect a borrower when arriving from the borrower profile / list
+        // (?customer_id=). Only honoured if that customer belongs to this shop.
+        $preselectedCustomerId = null;
+        if ($request->filled('customer_id')) {
+            $preselectedCustomerId = $customers->firstWhere('id', (int) $request->customer_id)?->id;
+        }
+
+        return view('dhiran.create', compact('settings', 'customers', 'preselectedCustomerId'));
     }
 
     /**
@@ -616,20 +624,115 @@ class DhiranController extends Controller
     }
 
     /* ================================================================
-     *  CUSTOMER LOAN HISTORY
+     *  BORROWERS (customer profiles, Dhiran-scoped)
      * ================================================================ */
 
-    public function customerLoans(Customer $customer)
+    /**
+     * Borrowers index — only customers of the current shop who have at least one
+     * Dhiran loan here. Shop isolation comes from BelongsToShop on Customer +
+     * DhiranLoan (both auto-filtered by tenant context); the whereHas keeps the
+     * list to actual borrowers (customers with a pledge loan in this shop).
+     */
+    public function borrowers(Request $request)
     {
-        // Defense-in-depth: route binding is tenant-scoped via BelongsToShop, this is a belt-and-suspenders guard.
-        abort_unless((int) $customer->shop_id === (int) auth()->user()->shop_id, 403);
+        $request->validate(['search' => 'nullable|string|max:100']);
+        $shopId = (int) auth()->user()->shop_id;
+
+        $query = Customer::query()
+            ->whereHas('dhiranLoans', fn ($q) => $q->where('shop_id', $shopId))
+            ->withCount([
+                'dhiranLoans as active_loans_count'        => fn ($q) => $q->where('status', 'active'),
+                'dhiranLoans as pending_evidence_count'    => fn ($q) => $q->where('status', 'pending_evidence'),
+                'dhiranLoans as closed_loans_count'        => fn ($q) => $q->where('status', 'closed'),
+                'dhiranLoans as forfeited_loans_count'     => fn ($q) => $q->where('status', 'forfeited'),
+            ]);
+
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('first_name', 'ilike', "%{$s}%")
+                  ->orWhere('last_name', 'ilike', "%{$s}%")
+                  ->orWhere('mobile', 'ilike', "%{$s}%")
+                  ->orWhere('customer_code', 'ilike', "%{$s}%");
+            });
+        }
+
+        $borrowers = $query->orderBy('first_name')->paginate(20)->withQueryString();
+
+        // Outstanding per borrower (active loans only), scoped to this shop.
+        $outstanding = [];
+        foreach ($borrowers as $b) {
+            $outstanding[$b->id] = (float) DhiranLoan::where('customer_id', $b->id)
+                ->whereIn('status', ['active', 'pending_evidence'])
+                ->sum(DB::raw('outstanding_principal + outstanding_interest + outstanding_penalty'));
+        }
+
+        return view('dhiran.borrowers.index', compact('borrowers', 'outstanding'));
+    }
+
+    /**
+     * Borrower profile — full Dhiran-scoped view of one borrower: details, KYC
+     * documents, loan summary + table, recent payments, pledged-item history.
+     */
+    public function borrowerProfile(Customer $customer)
+    {
+        // Route binding is tenant-scoped via BelongsToShop; this is the explicit
+        // belt-and-suspenders shop guard (rejects ERP + other-shop customers).
+        abort_unless((int) $customer->shop_id === (int) auth()->user()->shop_id, 404);
+        $shopId = (int) auth()->user()->shop_id;
 
         $loans = DhiranLoan::where('customer_id', $customer->id)
             ->with('items')
             ->latest()
-            ->paginate(15);
+            ->get();
 
-        return view('dhiran.customer-loans', compact('customer', 'loans'));
+        $loanIds = $loans->pluck('id')->all();
+        $itemIds = $loans->flatMap(fn ($l) => $l->items->pluck('id'))->all();
+
+        // Counts + totals (read straight off the loans; no new financial formulas).
+        $summary = [
+            'active'          => $loans->where('status', 'active')->count(),
+            'pending_evidence' => $loans->where('status', 'pending_evidence')->count(),
+            'closed'          => $loans->where('status', 'closed')->count(),
+            'renewed'         => $loans->where('status', 'renewed')->count(),
+            'forfeited'       => $loans->where('status', 'forfeited')->count(),
+            'principal_outstanding' => (float) $loans->sum(fn ($l) => (float) $l->outstanding_principal),
+            'interest_outstanding'  => (float) $loans->sum(fn ($l) => (float) $l->outstanding_interest),
+            'total_collected'       => (float) $loans->sum(fn ($l) => (float) $l->total_principal_collected + (float) $l->total_interest_collected),
+        ];
+
+        // Recent payments across this borrower's loans (this shop only).
+        $payments = DhiranPayment::whereIn('dhiran_loan_id', $loanIds ?: [0])
+            ->with('loan:id,loan_number')
+            ->latest('payment_date')
+            ->latest('id')
+            ->limit(25)
+            ->get();
+
+        // KYC / evidence documents: borrower-owned + this borrower's loans + items.
+        $attachments = \App\Models\Dhiran\DhiranAttachment::query()
+            ->where(function ($q) use ($customer, $loanIds, $itemIds) {
+                $q->where(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_CUSTOMER)->where('owner_id', $customer->id))
+                  ->orWhere(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_LOAN)->whereIn('owner_id', $loanIds ?: [0]))
+                  ->orWhere(fn ($w) => $w->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_ITEM)->whereIn('owner_id', $itemIds ?: [0]));
+            })
+            ->latest('id')
+            ->get();
+
+        // Item ids that have a photo (for the "photo" indicator on the items list).
+        $itemsWithPhoto = $attachments
+            ->where('owner_type', \App\Models\Dhiran\DhiranAttachment::OWNER_ITEM)
+            ->where('document_type', 'item_photo')
+            ->pluck('owner_id')->unique()->all();
+
+        // Masked Aadhaar / PAN, if any loan captured KYC. Aadhaar is already stored
+        // masked; never show a full number.
+        $kycAadhaar = $loans->pluck('kyc_aadhaar')->filter()->first();
+        $kycPan     = $loans->pluck('kyc_pan')->filter()->first();
+
+        return view('dhiran.borrowers.show', compact(
+            'customer', 'loans', 'summary', 'payments', 'attachments', 'itemsWithPhoto', 'kycAadhaar', 'kycPan'
+        ));
     }
 
     /* ================================================================
