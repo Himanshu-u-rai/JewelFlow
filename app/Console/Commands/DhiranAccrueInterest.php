@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Dhiran\DhiranSettings;
 use App\Services\DhiranService;
+use App\Support\TenantContext;
 use Illuminate\Console\Command;
 
 class DhiranAccrueInterest extends Command
@@ -13,7 +14,12 @@ class DhiranAccrueInterest extends Command
 
     public function handle(): int
     {
-        $enabledSettings = DhiranSettings::whereRaw('is_enabled IS TRUE')->get();
+        // Cross-shop discovery query: BelongsToShop fails closed in console, so
+        // bypass the tenant scope to actually find every enabled shop. Each
+        // shop's work then runs inside its own TenantContext so the tenant-scoped
+        // loan queries resolve (otherwise they fail closed and accrue nothing).
+        $enabledSettings = DhiranSettings::withoutGlobalScope('shop')
+            ->whereRaw('is_enabled IS TRUE')->get();
         $totalProcessed = 0;
         $errors = 0;
 
@@ -23,7 +29,10 @@ class DhiranAccrueInterest extends Command
 
         foreach ($enabledSettings as $settings) {
             try {
-                $count = $service->accrueInterestBatch($settings->shop_id);
+                $count = TenantContext::runFor(
+                    $settings->shop_id,
+                    fn () => $service->accrueInterestBatch($settings->shop_id)
+                );
                 $this->info("Shop #{$settings->shop_id}: accrued interest on {$count} loan(s)");
                 $totalProcessed += $count;
             } catch (\Throwable $e) {

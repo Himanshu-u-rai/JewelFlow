@@ -42,6 +42,7 @@ class CrossPromotionTest extends TestCase
     {
         $user = User::create([
             'mobile_number' => $mobile, 'password' => bcrypt('x'), 'realm' => 'dhiran', 'is_active' => true,
+            'email_verified_at' => now(),
         ]);
 
         ShopSubscription::create([

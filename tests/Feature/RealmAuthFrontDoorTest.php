@@ -109,7 +109,7 @@ class RealmAuthFrontDoorTest extends TestCase
         // SHOPLESS Dhiran user. The realm gate must fire BEFORE shop-onboarding —
         // they are bounced to the Dhiran dashboard by realm:erp, and must NEVER be
         // sent to the ERP shops.choose-type chooser.
-        $dhiran = User::create(['mobile_number' => '9300000006', 'password' => bcrypt('x'), 'realm' => 'dhiran', 'is_active' => true]);
+        $dhiran = User::create(['mobile_number' => '9300000006', 'password' => bcrypt('x'), 'realm' => 'dhiran', 'is_active' => true, 'email_verified_at' => now()]);
         $this->assertNull($dhiran->shop_id);
 
         $response = $this->actingAs($dhiran)->get('https://jewelflows.com/dashboard');
@@ -167,7 +167,7 @@ class RealmAuthFrontDoorTest extends TestCase
         // Logged-in Dhiran user at dhiran.jewelflows.com/ → Dhiran dashboard,
         // which itself renders the activation/onboarding placeholder when Dhiran
         // is not yet set up.
-        $dhiran = User::create(['mobile_number' => '9300000010', 'password' => bcrypt('x'), 'realm' => 'dhiran', 'is_active' => true]);
+        $dhiran = User::create(['mobile_number' => '9300000010', 'password' => bcrypt('x'), 'realm' => 'dhiran', 'is_active' => true, 'email_verified_at' => now()]);
 
         $this->actingAs($dhiran)->get('https://dhiran.jewelflows.com/')
             ->assertRedirect(route('dhiran.dashboard'));

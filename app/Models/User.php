@@ -35,6 +35,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_active',
         'first_name',
         'last_name',
+        // Server-side only (set via markEmailAsVerified()/the email-OTP verify
+        // flow, never from request input — all create() sites use fixed arrays,
+        // not $request->all(), so this is not a mass-assignment risk). Fillable
+        // so factories/tests can seed already-verified accounts.
+        'email_verified_at',
         // Which customer-facing product this account belongs to: 'erp' | 'dhiran'.
         // One account = one product (no combined multi-product account). Defaults
         // to 'erp' (see the booted() creating hook) so all existing behaviour is

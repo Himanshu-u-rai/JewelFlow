@@ -101,7 +101,7 @@ class ShopDeleteProtectionTest extends TestCase
         ]);
         DhiranSettings::getForShop($shop->id)->update(['is_enabled' => true]);
         $actor = User::create(['mobile_number' => '9393100001', 'password' => bcrypt('x'),
-            'realm' => 'dhiran', 'is_active' => true, 'shop_id' => $shop->id]);
+            'realm' => 'dhiran', 'is_active' => true, 'shop_id' => $shop->id, 'email_verified_at' => now()]);
 
         $loan = TenantContext::runFor($shop->id, function () use ($shop, $actor) {
             $c = Customer::create(['shop_id' => $shop->id, 'first_name' => 'C', 'last_name' => 'O', 'mobile' => '9811111121']);

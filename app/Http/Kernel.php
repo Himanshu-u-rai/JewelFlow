@@ -46,6 +46,7 @@ class Kernel extends HttpKernel
         'account.active' => \App\Http\Middleware\EnsureAccountIsActive::class,
         'edition' => \App\Http\Middleware\EnsureShopEdition::class,
         'dhiran.enabled' => \App\Http\Middleware\EnsureDhiranEnabled::class,
+        'dhiran.email-verified' => \App\Http\Middleware\EnsureDhiranEmailVerified::class,
         'permission' => \App\Http\Middleware\CheckPermission::class,
     ];
 }

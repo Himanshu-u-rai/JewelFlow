@@ -91,6 +91,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'edition' => \App\Http\Middleware\EnsureShopEdition::class,
             'catalog.shop' => \App\Http\Middleware\ResolveCatalogShop::class,
             'dhiran.enabled' => \App\Http\Middleware\EnsureDhiranEnabled::class,
+            'dhiran.email-verified' => \App\Http\Middleware\EnsureDhiranEmailVerified::class,
             'realm' => \App\Http\Middleware\EnsureRealm::class,
             'rate.shop' => \App\Http\Middleware\RateLimitByShop::class,
             'mobile.envelope'  => \App\Http\Middleware\MobileEnvelope::class,

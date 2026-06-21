@@ -439,6 +439,7 @@ class DhiranFinancialTest extends TestCase
         $ownerA = \App\Models\User::create([
             'mobile_number' => '9390000099', 'password' => bcrypt('x'), 'realm' => 'dhiran', 'is_active' => true,
             'shop_id' => $this->makeDhiranShop('Shop A')->id,
+            'email_verified_at' => now(),
         ]);
 
         $this->actingAs($ownerA)
@@ -466,6 +467,7 @@ class DhiranFinancialTest extends TestCase
         $ownerA = \App\Models\User::create([
             'mobile_number' => '9392000099', 'password' => bcrypt('x'), 'realm' => 'dhiran', 'is_active' => true,
             'shop_id' => $this->makeDhiranShop('Shop A')->id,
+            'email_verified_at' => now(),
         ]);
 
         $this->actingAs($ownerA)

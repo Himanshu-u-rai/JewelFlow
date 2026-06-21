@@ -1610,6 +1610,8 @@ class DhiranService
      */
     public function accrueInterestBatch(int $shopId): int
     {
+        // Callers run this inside TenantContext::runFor($shopId); the explicit
+        // where('shop_id') is belt-and-suspenders alongside the tenant scope.
         $loans = DhiranLoan::where('shop_id', $shopId)
             ->where('status', 'active')
             ->get();
@@ -1617,8 +1619,13 @@ class DhiranService
         $count = 0;
 
         foreach ($loans as $loan) {
-            $this->accrueInterest($loan);
-            $count++;
+            // One bad loan must not abort the rest of the shop's batch.
+            try {
+                $this->accrueInterest($loan);
+                $count++;
+            } catch (\Throwable $e) {
+                \Log::error("dhiran accrueInterestBatch: loan #{$loan->id} failed", ['exception' => $e]);
+            }
         }
 
         return $count;

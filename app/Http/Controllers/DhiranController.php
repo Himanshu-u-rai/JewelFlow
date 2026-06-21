@@ -87,6 +87,21 @@ class DhiranController extends Controller
             ->with('success', 'Dhiran module activated successfully.');
     }
 
+    /**
+     * Email-verification gate page. A Dhiran account registers with mobile only,
+     * so it must capture + verify an email here (via the email-OTP flow) before
+     * using the app — otherwise a forgotten password is unrecoverable. Already-
+     * verified users skip straight to the dashboard.
+     */
+    public function verifyEmail()
+    {
+        if (auth()->user()->email_verified_at !== null) {
+            return redirect()->route('dhiran.dashboard');
+        }
+
+        return view('dhiran.verify-email', ['user' => auth()->user()]);
+    }
+
     /* ================================================================
      *  LOAN CRUD
      * ================================================================ */

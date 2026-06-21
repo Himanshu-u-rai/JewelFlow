@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Dhiran\DhiranLoan;
 use App\Models\Dhiran\DhiranSettings;
+use App\Support\TenantContext;
 use Illuminate\Console\Command;
 
 class DhiranOverdueReminder extends Command
@@ -13,7 +14,10 @@ class DhiranOverdueReminder extends Command
 
     public function handle(): int
     {
-        $enabledSettings = DhiranSettings::whereRaw('is_enabled IS TRUE')
+        // Cross-shop discovery bypasses the tenant scope (fails closed in console);
+        // each shop's loan queries then run inside its own TenantContext.
+        $enabledSettings = DhiranSettings::withoutGlobalScope('shop')
+            ->whereRaw('is_enabled IS TRUE')
             ->whereRaw('sms_reminders_enabled IS TRUE')
             ->get();
 
@@ -25,6 +29,7 @@ class DhiranOverdueReminder extends Command
 
         foreach ($enabledSettings as $settings) {
             try {
+                [$approachingCount, $overdueCount] = TenantContext::runFor($settings->shop_id, function () use ($settings) {
                 $reminderDays = $settings->reminder_days_before_due ?? 7;
 
                 // Loans approaching maturity (within reminder_days_before_due)
@@ -41,7 +46,6 @@ class DhiranOverdueReminder extends Command
                     $this->warn("Shop #{$settings->shop_id} | APPROACHING: Loan #{$loan->loan_number} ({$customerName}) — matures {$loan->maturity_date->format('Y-m-d')} ({$loan->daysTillMaturity()} days)");
                     // TODO: Send SMS/notification to customer
                 }
-                $totalApproaching += $approaching->count();
 
                 // Already overdue loans
                 $overdue = DhiranLoan::where('shop_id', $settings->shop_id)
@@ -54,9 +58,13 @@ class DhiranOverdueReminder extends Command
                     $this->warn("Shop #{$settings->shop_id} | OVERDUE: Loan #{$loan->loan_number} ({$customerName}) — {$loan->daysOverdue()} days overdue");
                     // TODO: Send SMS/notification to customer
                 }
-                $totalOverdue += $overdue->count();
 
-                $this->info("Shop #{$settings->shop_id}: {$approaching->count()} approaching, {$overdue->count()} overdue");
+                    return [$approaching->count(), $overdue->count()];
+                });
+
+                $totalApproaching += $approachingCount;
+                $totalOverdue += $overdueCount;
+                $this->info("Shop #{$settings->shop_id}: {$approachingCount} approaching, {$overdueCount} overdue");
             } catch (\Throwable $e) {
                 $errors++;
                 $this->error("Shop #{$settings->shop_id}: reminder check failed — {$e->getMessage()}");

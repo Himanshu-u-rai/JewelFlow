@@ -753,7 +753,18 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // realm:dhiran — an ERP-realm account can never reach Dhiran app routes
     // (it is redirected to its own dashboard), and vice-versa. Belt-and-suspenders
     // on top of the per-host session cookie isolation.
-    Route::prefix('dhiran')->name('dhiran.')->middleware('realm:dhiran')->group(function () {
+    Route::prefix('dhiran')->name('dhiran.')->middleware(['realm:dhiran', 'dhiran.email-verified'])->group(function () {
+        // Email-verification gate. A Dhiran account has no email at registration,
+        // so it cannot recover a forgotten password. This page (exempt from the
+        // gate middleware) captures + verifies an email via the email-OTP flow;
+        // until verified, every other Dhiran route redirects here.
+        Route::get('/verify-email', [\App\Http\Controllers\DhiranController::class, 'verifyEmail'])->name('verify-email');
+        // Dhiran-local email-OTP endpoints — reachable by any authed Dhiran user
+        // (no shop/subscription requirement), so the gate can never deadlock.
+        Route::post('/verify-email/send',   [\App\Http\Controllers\EmailVerificationOtpController::class, 'sendOtp'])->middleware('throttle:5,1')->name('verify-email.send');
+        Route::post('/verify-email/verify', [\App\Http\Controllers\EmailVerificationOtpController::class, 'verifyOtp'])->middleware('throttle:10,1')->name('verify-email.verify');
+        Route::post('/verify-email/resend', [\App\Http\Controllers\EmailVerificationOtpController::class, 'resend'])->middleware('throttle:3,1')->name('verify-email.resend');
+
         // Dashboard & Activation — no dhiran.enabled check (dashboard shows activation page)
         Route::get('/', [\App\Http\Controllers\DhiranController::class, 'dashboard'])->middleware('can:dhiran.view')->name('dashboard');
         Route::post('/activate', [\App\Http\Controllers\DhiranController::class, 'activate'])->middleware('can:dhiran.settings')->name('activate');

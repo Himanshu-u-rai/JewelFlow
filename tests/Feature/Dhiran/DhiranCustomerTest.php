@@ -45,7 +45,7 @@ class DhiranCustomerTest extends TestCase
 
         $owner = User::create([
             'mobile_number' => $mobile, 'password' => bcrypt('x'), 'realm' => 'dhiran',
-            'is_active' => true, 'shop_id' => $shop->id, 'role_id' => $role->id,
+            'is_active' => true, 'email_verified_at' => now(), 'shop_id' => $shop->id, 'role_id' => $role->id,
         ]);
 
         return [$shop, $owner];
