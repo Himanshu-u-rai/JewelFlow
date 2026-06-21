@@ -308,12 +308,12 @@
                                 <input type="text" :name="'items['+index+'][description]'" x-model="item.description"
                                        placeholder="e.g. Gold chain, silver anklet" class="dh-input" required>
                             </div>
-                            <div>
-                                <label class="dh-label">Gross Weight (g) *</label>
+                            <div x-show="item.metal_type !== 'other'">
+                                <label class="dh-label">Gross Weight (g) <span x-show="item.value_mode !== 'appraised'">*</span></label>
                                 <input type="number" step="0.001" :name="'items['+index+'][gross_weight]'" x-model.number="item.gross_weight"
-                                       placeholder="0.000" class="dh-input" required @input="recalcItem(index)">
+                                       placeholder="0.000" class="dh-input" :required="item.metal_type !== 'other' && item.value_mode !== 'appraised'" @input="recalcItem(index)">
                             </div>
-                            <div>
+                            <div x-show="item.metal_type !== 'other'">
                                 <label class="dh-label">Stone Weight (g)</label>
                                 <input type="number" step="0.001" :name="'items['+index+'][stone_weight]'" x-model.number="item.stone_weight"
                                        placeholder="0.000" class="dh-input" @input="recalcItem(index)">
@@ -322,54 +322,77 @@
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                             <div>
-                                <label class="dh-label">Metal *</label>
+                                <label class="dh-label">Type *</label>
                                 <select :name="'items['+index+'][metal_type]'" x-model="item.metal_type" class="dh-select" required @change="onMetalChange(index)">
                                     <option value="gold">Gold</option>
                                     <option value="silver">Silver</option>
+                                    <option value="other">Other (diamond, platinum, watch…)</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="dh-label">Purity *</label>
-                                <select :name="'items['+index+'][purity]'" x-model.number="item.purity" class="dh-select" required @change="recalcItem(index)">
-                                    <option value="">Select</option>
-                                    <template x-for="opt in purityOptions(item.metal_type)" :key="opt.value">
-                                        <option :value="opt.value" x-text="opt.label"></option>
-                                    </template>
+                            {{-- Valuation: metal-melt (auto from purity × rate) OR appraised
+                                 (operator enters value). 'Other' is always appraised. --}}
+                            <div x-show="item.metal_type !== 'other'">
+                                <label class="dh-label">Valuation</label>
+                                <select :name="'items['+index+'][value_mode]'" x-model="item.value_mode" class="dh-select" @change="recalcItem(index)">
+                                    <option value="metal">Auto (metal value)</option>
+                                    <option value="appraised">Appraised (enter value)</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="dh-label">Rate/gram at Pledge</label>
-                                <div class="dh-cost-wrap">
-                                    <span class="dh-cost-symbol">{{ $currencySymbol ?? '₹' }}</span>
-                                    <input type="number" step="0.01" :name="'items['+index+'][rate_per_gram_at_pledge]'" x-model.number="item.rate_per_gram_at_pledge"
-                                           placeholder="0.00" class="dh-input" @input="recalcItem(index)">
+
+                            {{-- Metal-mode fields (gold/silver, auto valuation) --}}
+                            <template x-if="item.metal_type !== 'other' && item.value_mode !== 'appraised'">
+                                <div>
+                                    <label class="dh-label">Purity *</label>
+                                    <select :name="'items['+index+'][purity]'" x-model.number="item.purity" class="dh-select" required @change="recalcItem(index)">
+                                        <option value="">Select</option>
+                                        <template x-for="opt in purityOptions(item.metal_type)" :key="opt.value">
+                                            <option :value="opt.value" x-text="opt.label"></option>
+                                        </template>
+                                    </select>
                                 </div>
-                            </div>
+                            </template>
+                            <template x-if="item.metal_type !== 'other' && item.value_mode !== 'appraised'">
+                                <div>
+                                    <label class="dh-label">Rate/gram at Pledge</label>
+                                    <div class="dh-cost-wrap">
+                                        <span class="dh-cost-symbol">{{ $currencySymbol ?? '₹' }}</span>
+                                        <input type="number" step="0.01" :name="'items['+index+'][rate_per_gram_at_pledge]'" x-model.number="item.rate_per_gram_at_pledge"
+                                               placeholder="0.00" class="dh-input" @input="recalcItem(index)">
+                                    </div>
+                                </div>
+                            </template>
+
                             <div>
                                 <label class="dh-label">HUID (optional)</label>
                                 <input type="text" :name="'items['+index+'][huid]'" x-model="item.huid"
                                        placeholder="HUID" class="dh-input" maxlength="12">
                             </div>
+                        </div>
+
+                        {{-- Weights row: only for metal-valued items. --}}
+                        <div class="grid grid-cols-3 gap-3 mb-3" x-show="item.metal_type !== 'other' && item.value_mode !== 'appraised'">
                             <div>
                                 <label class="dh-label">Net Metal Wt (g)</label>
-                                <input type="text" readonly class="dh-input dh-calc-field"
-                                       :value="item.net_metal_weight.toFixed(3)">
-                                <input type="hidden" :name="'items['+index+'][net_metal_weight]'" :value="item.net_metal_weight">
+                                <input type="text" readonly class="dh-input dh-calc-field" :value="item.net_metal_weight.toFixed(3)">
                             </div>
+                            <div>
+                                <label class="dh-label">Fine Weight (g)</label>
+                                <input type="text" readonly class="dh-input dh-calc-field" :value="item.fine_weight.toFixed(3)">
+                            </div>
+                            <div></div>
                         </div>
 
                         <div class="grid grid-cols-3 gap-3">
+                            {{-- Market value: read-only (computed) for metal mode, editable for appraised/other. --}}
                             <div>
-                                <label class="dh-label">Fine Weight (g)</label>
-                                <input type="text" readonly class="dh-input dh-calc-field"
-                                       :value="item.fine_weight.toFixed(3)">
-                                <input type="hidden" :name="'items['+index+'][fine_weight]'" :value="item.fine_weight">
-                            </div>
-                            <div>
-                                <label class="dh-label">Market Value</label>
-                                <input type="text" readonly class="dh-input dh-calc-field"
+                                <label class="dh-label" x-text="(item.metal_type === 'other' || item.value_mode === 'appraised') ? 'Appraised Value *' : 'Market Value'"></label>
+                                <div class="dh-cost-wrap" x-show="item.metal_type === 'other' || item.value_mode === 'appraised'">
+                                    <span class="dh-cost-symbol">{{ $currencySymbol ?? '₹' }}</span>
+                                    <input type="number" step="0.01" min="0" :name="'items['+index+'][market_value]'"
+                                           x-model.number="item.market_value" placeholder="0.00" class="dh-input" @input="recalcItem(index)">
+                                </div>
+                                <input type="text" readonly class="dh-input dh-calc-field" x-show="item.metal_type !== 'other' && item.value_mode !== 'appraised'"
                                        :value="'{{ $currencySymbol ?? '₹' }}' + item.market_value.toFixed(2)">
-                                <input type="hidden" :name="'items['+index+'][market_value]'" :value="item.market_value">
                             </div>
                             <div>
                                 <label class="dh-label">Loan Value</label>
@@ -377,7 +400,13 @@
                                        :value="'{{ $currencySymbol ?? '₹' }}' + item.loan_value.toFixed(2)">
                                 <input type="hidden" :name="'items['+index+'][loan_value]'" :value="item.loan_value">
                             </div>
+                            <div></div>
                         </div>
+
+                        {{-- Hidden carriers so server always gets net/fine even when the
+                             weight row is hidden (0 for appraised/other). --}}
+                        <input type="hidden" :name="'items['+index+'][net_metal_weight]'" :value="item.net_metal_weight">
+                        <input type="hidden" :name="'items['+index+'][fine_weight]'" :value="item.fine_weight">
                     </div>
                 </template>
 
@@ -539,7 +568,7 @@
                 ltvPercent: {{ $defaults['ltv_percent'] ?? 75 }},
 
                 items: [{
-                    description: '', metal_type: 'gold', gross_weight: 0, stone_weight: 0, purity: 22,
+                    description: '', metal_type: 'gold', value_mode: 'metal', gross_weight: 0, stone_weight: 0, purity: 22,
                     rate_per_gram_at_pledge: 0, huid: '',
                     net_metal_weight: 0, fine_weight: 0, market_value: 0, loan_value: 0
                 }],
@@ -616,7 +645,7 @@
 
                 addItem() {
                     this.items.push({
-                        description: '', metal_type: 'gold', gross_weight: 0, stone_weight: 0, purity: 22,
+                        description: '', metal_type: 'gold', value_mode: 'metal', gross_weight: 0, stone_weight: 0, purity: 22,
                         rate_per_gram_at_pledge: 0, huid: '',
                         net_metal_weight: 0, fine_weight: 0, market_value: 0, loan_value: 0
                     });
@@ -647,8 +676,14 @@
                 // When metal changes, reset a now-invalid purity and recompute.
                 onMetalChange(index) {
                     const item = this.items[index];
-                    const valid = this.purityOptions(item.metal_type).some(o => o.value === Number(item.purity));
-                    if (!valid) item.purity = '';
+                    if (item.metal_type === 'other') {
+                        // Other = always appraised; clear metal-only fields.
+                        item.value_mode = 'appraised';
+                        item.purity = '';
+                    } else {
+                        const valid = this.purityOptions(item.metal_type).some(o => o.value === Number(item.purity));
+                        if (!valid) item.purity = '';
+                    }
                     this.recalcItem(index);
                 },
 
@@ -660,13 +695,21 @@
 
                 recalcItem(index) {
                     let item = this.items[index];
-                    item.net_metal_weight = Math.max(0, (item.gross_weight || 0) - (item.stone_weight || 0));
-                    // Metal-aware fine-weight scale: gold = purity/24 (karat),
-                    // silver = purity/1000 (millesimal). Mirrors MetalRegistry.
-                    const divisor = item.metal_type === 'silver' ? 1000 : 24;
-                    item.fine_weight = item.net_metal_weight * (item.purity || 0) / divisor;
-                    let rate = item.rate_per_gram_at_pledge || this.goldRateOnDate || 0;
-                    item.market_value = item.fine_weight * rate;
+                    const appraised = item.metal_type === 'other' || item.value_mode === 'appraised';
+                    if (appraised) {
+                        // Operator-entered market value is authoritative; no metal math.
+                        item.net_metal_weight = 0;
+                        item.fine_weight = 0;
+                        item.market_value = Number(item.market_value) || 0;
+                    } else {
+                        item.net_metal_weight = Math.max(0, (item.gross_weight || 0) - (item.stone_weight || 0));
+                        // Metal-aware fine-weight scale: gold = purity/24 (karat),
+                        // silver = purity/1000 (millesimal). Mirrors MetalRegistry.
+                        const divisor = item.metal_type === 'silver' ? 1000 : 24;
+                        item.fine_weight = item.net_metal_weight * (item.purity || 0) / divisor;
+                        let rate = item.rate_per_gram_at_pledge || this.goldRateOnDate || 0;
+                        item.market_value = item.fine_weight * rate;
+                    }
                     item.loan_value = item.market_value * (this.ltvPercent / 100);
                 },
 

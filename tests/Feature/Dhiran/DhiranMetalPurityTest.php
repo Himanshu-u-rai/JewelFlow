@@ -75,7 +75,7 @@ class DhiranMetalPurityTest extends TestCase
         });
         $this->assertStringNotContainsString('Gold Purity', $html);
         $this->assertStringNotContainsString('Purity (K)', $html);
-        $this->assertStringContainsString('>Metal', $html);   // metal selector present
+        $this->assertStringContainsString('>Type', $html); // collateral type selector present
         // silver purity options exist in the page
         $this->assertStringContainsString('925', $html);
     }
@@ -172,5 +172,51 @@ class DhiranMetalPurityTest extends TestCase
         $msg = $errors->first('items.0.purity');
         $this->assertStringContainsString('silver', $msg);
         $this->assertStringNotContainsString('gold', $msg);
+    }
+
+    // 'Other' collateral (diamond/platinum/watch) is created with a manual
+    // appraised value — no purity / fine weight.
+    public function test_other_collateral_created_with_appraised_value(): void
+    {
+        [$shop, $owner] = $this->dhiranShop('9390003007');
+        $c = $this->customer($shop, '9812230007');
+        $this->submitLoan($owner, [[
+            'metal_type' => 'other', 'value_mode' => 'appraised', 'market_value' => 50000,
+            'description' => 'Diamond ring',
+        ]], $c, 20000)->assertRedirect();
+        $loan = $this->latestLoan($shop);
+        $this->assertNotNull($loan);
+        $item = TenantContext::runFor($shop->id, fn () => $loan->items()->first());
+        $this->assertSame('other', $item->metal_type);
+        $this->assertEqualsWithDelta(50000, (float) $item->market_value, 0.01);
+        $this->assertEqualsWithDelta(0, (float) $item->fine_weight, 0.0001); // no metal fine weight
+    }
+
+    // 'Other' without an appraised value is rejected.
+    public function test_other_without_value_rejected(): void
+    {
+        [$shop, $owner] = $this->dhiranShop('9390003008');
+        $c = $this->customer($shop, '9812230008');
+        $resp = $this->submitLoan($owner, [[
+            'metal_type' => 'other', 'description' => 'Watch, no value',
+        ]], $c);
+        $resp->assertSessionHasErrors();
+        $this->assertNull($this->latestLoan($shop));
+    }
+
+    // Gold with an appraised override uses the operator's value, not metal-melt.
+    public function test_gold_appraised_override_uses_manual_value(): void
+    {
+        [$shop, $owner] = $this->dhiranShop('9390003009');
+        $c = $this->customer($shop, '9812230009');
+        $this->submitLoan($owner, [[
+            'metal_type' => 'gold', 'value_mode' => 'appraised', 'market_value' => 120000,
+            'purity' => 22, 'gross_weight' => 50, 'rate_per_gram_at_pledge' => 6000,
+            'description' => 'Antique gold (appraised above melt)',
+        ]], $c, 50000)->assertRedirect();
+        $loan = $this->latestLoan($shop);
+        $this->assertNotNull($loan);
+        $item = TenantContext::runFor($shop->id, fn () => $loan->items()->first());
+        $this->assertEqualsWithDelta(120000, (float) $item->market_value, 0.01); // operator value, not fine×rate
     }
 }

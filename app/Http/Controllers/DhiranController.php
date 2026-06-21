@@ -208,48 +208,70 @@ class DhiranController extends Controller
             'notes'                    => 'nullable|string|max:1000',
             'items'                    => 'required|array|min:1',
             'items.*.description'      => 'required|string|max:255',
-            // Launch scope: gold + silver only. Optional; a missing metal_type
-            // defaults to gold (safe default — silver is always explicit, so it
-            // can never be mislabelled). The metal/purity combo is checked below.
-            'items.*.metal_type'       => 'nullable|in:gold,silver',
+            // gold / silver = metal-valued (purity → fine weight). other =
+            // manually appraised (diamonds, platinum, watches, mixed pieces).
+            'items.*.metal_type'       => 'nullable|in:gold,silver,other',
+            'items.*.value_mode'       => 'nullable|in:metal,appraised',
             'items.*.category'         => 'nullable|string|max:100',
             'items.*.quantity'         => 'nullable|integer|min:1|max:1000',
-            // Purity scale differs per metal (gold karat ≤24, silver fineness
-            // ≤1000); the metal/purity combination is checked below.
-            'items.*.purity'           => 'required|numeric|min:1|max:1000',
-            'items.*.gross_weight'     => 'required|numeric|min:0|max:9999.999999',
+            // Purity required only for metal-valued items (checked in the gate).
+            'items.*.purity'           => 'nullable|numeric|min:1|max:1000',
+            'items.*.gross_weight'     => 'nullable|numeric|min:0|max:9999.999999',
             'items.*.stone_weight'     => 'nullable|numeric|min:0|max:9999.999999',
-            'items.*.rate_per_gram_at_pledge' => 'required|numeric|min:0|max:999999.9999',
+            'items.*.rate_per_gram_at_pledge' => 'nullable|numeric|min:0|max:999999.9999',
+            // Appraised value (required for 'other' / appraised mode; checked below).
+            'items.*.market_value'     => 'nullable|numeric|min:0|max:999999999.99',
             'items.*.huid'             => 'nullable|string|max:50',
         ]);
 
-        // Authoritative metal/purity gate (gold = karat 1..24, silver = fineness
-        // 1..1000). Rejects silver-with-gold-purity and vice versa with a clear,
-        // metal-specific message. Backend is the source of truth, not the form.
+        // Authoritative collateral gate. Metal-valued gold/silver need a supported
+        // purity (gold karat, silver fineness) and gross weight; appraised / other
+        // items need a market value. Backend is the source of truth, not the form.
         $supportedPurities = [
             'gold'   => [24, 22, 20, 18, 14],
             'silver' => [999, 958, 925, 900, 800],
         ];
-        $purityErrors = [];
+        $itemErrors = [];
         foreach ($data['items'] as $idx => $row) {
-            $metal  = $row['metal_type'] ?? 'gold';
-            $purity = (int) round((float) ($row['purity'] ?? 0));
-            if (! in_array($metal, ['gold', 'silver'], true)) {
-                $purityErrors["items.{$idx}.metal_type"] = "Metal type is not supported. Choose gold or silver.";
+            $metal     = $row['metal_type'] ?? 'gold';
+            $isOther   = $metal === 'other';
+            $valueMode = $isOther ? 'appraised' : ($row['value_mode'] ?? 'metal');
+
+            if (! in_array($metal, ['gold', 'silver', 'other'], true)) {
+                $itemErrors["items.{$idx}.metal_type"] = "This collateral type is not supported. Choose gold, silver, or other.";
                 continue;
             }
-            if (! in_array($purity, $supportedPurities[$metal], true)) {
-                $purityErrors["items.{$idx}.purity"] = "Selected purity is not supported for {$metal}.";
+
+            if ($valueMode === 'appraised') {
+                // Manual value path — appraised market value is required.
+                if ((float) ($row['market_value'] ?? 0) <= 0) {
+                    $itemErrors["items.{$idx}.market_value"] = 'Enter an appraised market value for this item.';
+                }
+            } else {
+                // Metal-melt path (gold/silver) — purity, weight, rate required.
+                $purity = (int) round((float) ($row['purity'] ?? 0));
+                if (! in_array($purity, $supportedPurities[$metal] ?? [], true)) {
+                    $itemErrors["items.{$idx}.purity"] = "Selected purity is not supported for {$metal}.";
+                }
+                if ((float) ($row['gross_weight'] ?? 0) <= 0) {
+                    $itemErrors["items.{$idx}.gross_weight"] = 'Gross weight is required for a metal-valued item.';
+                }
+                if (! isset($row['rate_per_gram_at_pledge']) || $row['rate_per_gram_at_pledge'] === '') {
+                    $itemErrors["items.{$idx}.rate_per_gram_at_pledge"] = 'Rate per gram is required for a metal-valued item.';
+                }
             }
         }
-        if (! empty($purityErrors)) {
-            return back()->withErrors($purityErrors)->withInput();
+        if (! empty($itemErrors)) {
+            return back()->withErrors($itemErrors)->withInput();
         }
 
         $customer = Customer::findOrFail($data['customer_id']);
 
         $items = array_map(
-            fn ($i) => array_merge($i, ['metal_type' => $i['metal_type'] ?? 'gold']),
+            fn ($i) => array_merge($i, [
+                'metal_type' => $i['metal_type'] ?? 'gold',
+                'value_mode' => (($i['metal_type'] ?? 'gold') === 'other') ? 'appraised' : ($i['value_mode'] ?? 'metal'),
+            ]),
             $data['items']
         );
 

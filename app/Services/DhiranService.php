@@ -63,27 +63,46 @@ class DhiranService
             $totalCollateral  = 0.0;
 
             foreach ($items as $item) {
-                $grossWeight     = (float) $item['gross_weight'];
+                $grossWeight     = (float) ($item['gross_weight'] ?? 0);
                 $stoneWeight     = (float) ($item['stone_weight'] ?? 0);
-                $purity          = (float) $item['purity'];
-                $ratePerGram     = (float) $item['rate_per_gram_at_pledge'];
-
-                $netMetalWeight  = $grossWeight - $stoneWeight;
-                // Fine weight via the single authority. Dhiran collateral is
-                // gold (metal_type defaults to gold); the authority refuses any
-                // non-accounting metal.
+                $ratePerGram     = (float) ($item['rate_per_gram_at_pledge'] ?? 0);
                 $pledgeMetal     = (string) ($item['metal_type'] ?? 'gold');
-                $fineMultiplier  = \App\Services\MetalRegistry::fineWeightMultiplier($pledgeMetal, $purity);
-                if ($fineMultiplier === null) {
-                    throw new \LogicException("Cannot derive fine weight for non-accounting metal '{$pledgeMetal}' in dhiran pledge.");
+
+                // Valuation mode:
+                //  - 'appraised' : operator enters the market value directly (any
+                //    item, and mandatory for 'other' collateral — diamonds,
+                //    platinum, watches — which has no purity/fine-weight).
+                //  - 'metal'     : gold/silver valued from fine weight × rate.
+                $isOther    = $pledgeMetal === 'other';
+                $valueMode  = $isOther ? 'appraised' : (string) ($item['value_mode'] ?? 'metal');
+
+                $netMetalWeight = max(0.0, $grossWeight - $stoneWeight);
+
+                if ($valueMode === 'appraised') {
+                    // No fine-weight math; the appraised market value is authoritative.
+                    $purity      = $isOther ? 0.0 : (float) ($item['purity'] ?? 0);
+                    $fineWeight  = 0.0;
+                    $marketValue = round((float) ($item['market_value'] ?? 0), 2);
+                    if ($marketValue <= 0) {
+                        throw new \LogicException('An appraised market value is required for manually-valued collateral.');
+                    }
+                } else {
+                    // Metal-melt valuation for gold/silver via the single authority.
+                    $purity          = (float) $item['purity'];
+                    $fineMultiplier  = \App\Services\MetalRegistry::fineWeightMultiplier($pledgeMetal, $purity);
+                    if ($fineMultiplier === null) {
+                        throw new \LogicException("Cannot derive fine weight for non-accounting metal '{$pledgeMetal}' in dhiran pledge. Use an appraised value instead.");
+                    }
+                    $fineWeight  = $netMetalWeight * $fineMultiplier;
+                    $marketValue = round($fineWeight * $ratePerGram, 2);
                 }
-                $fineWeight      = $netMetalWeight * $fineMultiplier;
-                $marketValue     = round($fineWeight * $ratePerGram, 2);
 
                 $totalFineWeight += $fineWeight;
                 $totalCollateral += $marketValue;
 
                 $computedItems[] = array_merge($item, [
+                    'metal_type'             => $pledgeMetal,
+                    'purity'                 => $purity,
                     'net_metal_weight'       => round($netMetalWeight, 6),
                     'fine_weight'            => round($fineWeight, 6),
                     'market_value'           => $marketValue,
@@ -200,12 +219,12 @@ class DhiranService
                     'category'               => $ci['category'] ?? null,
                     'metal_type'             => $ci['metal_type'] ?? 'gold',
                     'quantity'               => (int) ($ci['quantity'] ?? 1),
-                    'gross_weight'           => $ci['gross_weight'],
+                    'gross_weight'           => $ci['gross_weight'] ?? 0,
                     'stone_weight'           => $ci['stone_weight'] ?? 0,
                     'net_metal_weight'       => $ci['net_metal_weight'],
-                    'purity'                 => $ci['purity'],
+                    'purity'                 => $ci['purity'] ?? 0,
                     'fine_weight'            => $ci['fine_weight'],
-                    'rate_per_gram_at_pledge' => $ci['rate_per_gram_at_pledge'],
+                    'rate_per_gram_at_pledge' => $ci['rate_per_gram_at_pledge'] ?? 0,
                     'market_value'           => $ci['market_value'],
                     'loan_value'             => $ci['loan_value'],
                     'photo_path'             => $ci['photo_path'] ?? null,
