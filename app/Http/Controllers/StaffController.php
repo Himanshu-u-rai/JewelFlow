@@ -61,9 +61,17 @@ class StaffController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
             'role_id' => [
                 'required',
-                Rule::exists('roles', 'id')
-                    ->where('shop_id', auth()->user()->shop_id)
-                    ->where('name', '!=', 'owner'),
+                // SECURITY: must scope to THIS shop AND exclude the owner role.
+                // A chained ->where('name','!=','owner') on the exists rule does
+                // NOT honour the 3-arg operator form (Laravel's DatabaseRule::where
+                // reads only column+value), so the owner role was NOT excluded and
+                // new/edited staff could be assigned the OWNER role — full
+                // privilege escalation. Express it as a closure, where the operator
+                // form IS honoured.
+                Rule::exists('roles', 'id')->where(function ($query) {
+                    $query->where('shop_id', auth()->user()->shop_id)
+                        ->where('name', '!=', 'owner');
+                }),
             ],
         ], [
             'mobile_number.unique' => 'This mobile number is already registered. Each mobile number can belong to only one account.',
@@ -144,9 +152,17 @@ class StaffController extends Controller
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->where('shop_id', $shopId)->ignore($staff->id)],
             'role_id' => [
                 'required',
-                Rule::exists('roles', 'id')
-                    ->where('shop_id', auth()->user()->shop_id)
-                    ->where('name', '!=', 'owner'),
+                // SECURITY: must scope to THIS shop AND exclude the owner role.
+                // A chained ->where('name','!=','owner') on the exists rule does
+                // NOT honour the 3-arg operator form (Laravel's DatabaseRule::where
+                // reads only column+value), so the owner role was NOT excluded and
+                // new/edited staff could be assigned the OWNER role — full
+                // privilege escalation. Express it as a closure, where the operator
+                // form IS honoured.
+                Rule::exists('roles', 'id')->where(function ($query) {
+                    $query->where('shop_id', auth()->user()->shop_id)
+                        ->where('name', '!=', 'owner');
+                }),
             ],
             'password' => ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()],
         ], [
