@@ -479,7 +479,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/reports', [ReportController::class, 'hub'])->middleware('can:reports.view')->name('report.hub');
     // Gold Balances — served by the reporting spine (Phase 4). Same URL/name/permission.
     Route::get('/report/gold', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'gold-balances')->middleware('can:reports.view')->name('report.gold');
-    Route::get('/report/metal-exchange', [\App\Http\Controllers\MetalExchangeReportController::class, 'index'])->middleware(['can:reports.view', 'edition:retailer'])->name('report.metal-exchange');
+    // metal-exchange migrated to the spine (GAP 2 tail): transaction-level report
+    // + gold/silver summary via the generic screen. The legacy weekly-lots
+    // drill-down toggle is dropped (it is a vault view, not a flat report; the
+    // same lots appear in the vault/metal-ledger views). Export via POST.
+    Route::get('/report/metal-exchange', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'metal-exchange')->middleware(['can:reports.view', 'edition:retailer'])->name('report.metal-exchange');
     Route::post('/old-metal-lots/{metalLot}/dispatch', [\App\Http\Controllers\OldMetalWeeklyLotController::class, 'dispatch'])->middleware(['can:vault.manage', 'edition:retailer'])->name('old-metal-lots.dispatch');
     // Daily Sales Summary — served by the reporting spine (Phase 3). Same URL/name/permission;
     // honours the legacy ?date=YYYY-MM-DD bookmark. Sales/GST + the day's metal movement.
@@ -510,12 +514,14 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // dead-stock migrated to the spine (GAP 2): generic screen + gated spine export.
     Route::get('/report/dead-stock', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'dead-stock')->middleware('can:reports.view')->name('report.dead-stock');
     // report.dead-stock.csv retired (GAP 2/3): export via POST /reports/dead-stock/export.
-    Route::get('/report/karigar-settlement', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'settlement'])->middleware('can:reports.view')->name('report.karigar-settlement');
-    Route::get('/report/karigar-settlement/export', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'settlementCsv'])->middleware('can:reports.view')->name('report.karigar-settlement.csv');
-    Route::get('/report/shrinkage', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'shrinkage'])->middleware('can:reports.view')->name('report.shrinkage');
-    Route::get('/report/shrinkage/export', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'shrinkageCsv'])->middleware('can:reports.view')->name('report.shrinkage.csv');
-    Route::get('/report/purchase-efficiency', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'purchaseEfficiency'])->middleware('can:reports.view')->name('report.purchase-efficiency');
-    Route::get('/report/purchase-efficiency/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'purchaseEfficiencyCsv'])->middleware('can:reports.view')->name('report.purchase-efficiency.csv');
+    // karigar-settlement / shrinkage / purchase-efficiency migrated to the spine
+    // (GAP 2 tail). Generic screen + gated spine export; legacy fputcsv retired.
+    Route::get('/report/karigar-settlement', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'karigar-settlement')->middleware('can:reports.view')->name('report.karigar-settlement');
+    // report.karigar-settlement.csv retired (GAP 2/3): export via POST /reports/karigar-settlement/export.
+    Route::get('/report/shrinkage', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'shrinkage')->middleware('can:reports.view')->name('report.shrinkage');
+    // report.shrinkage.csv retired (GAP 2/3): export via POST /reports/shrinkage/export.
+    Route::get('/report/purchase-efficiency', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'purchase-efficiency')->middleware('can:reports.view')->name('report.purchase-efficiency');
+    // report.purchase-efficiency.csv retired (GAP 2/3): export via POST /reports/purchase-efficiency/export.
     // operator-performance + suspicious-activity migrated to the spine (GAP 2).
     // Audit class → the generic screen enforces the owner/manager surface gate
     // (reports.audit, frozen §11). Export via POST /reports/{key}/export.
@@ -523,12 +529,17 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // report.operator-performance.csv retired (GAP 2/3): export via POST /reports/operator-performance/export.
     Route::get('/report/suspicious-activity', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'suspicious-activity')->middleware('can:reports.view')->name('report.suspicious-activity');
     // report.suspicious-activity.csv retired (GAP 2/3): export via POST /reports/suspicious-activity/export.
-    Route::get('/report/dues-aging', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'duesAging'])->middleware('can:reports.view')->name('report.dues-aging');
-    Route::get('/report/dues-aging/export', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'duesAgingCsv'])->middleware('can:reports.view')->name('report.dues-aging.csv');
-    Route::get('/report/emi', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'emi'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.emi');
-    Route::get('/report/emi/export', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'emiCsv'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.emi.csv');
-    Route::get('/report/scheme-liability', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'schemeLiability'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.scheme-liability');
-    Route::get('/report/scheme-liability/export', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'schemeLiabilityCsv'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.scheme-liability.csv');
+    // dues-aging / emi / scheme-liability migrated to the spine (GAP 2 tail).
+    // Generic screen + gated spine export; legacy fputcsv retired. dues-aging
+    // customer mobile is a sensitive (permission-gated) column. emi +
+    // scheme-liability keep the retailer-edition route gate (dataset gate is the
+    // belt-and-suspenders backstop).
+    Route::get('/report/dues-aging', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'dues-aging')->middleware('can:reports.view')->name('report.dues-aging');
+    // report.dues-aging.csv retired (GAP 2/3): export via POST /reports/dues-aging/export.
+    Route::get('/report/emi', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'emi')->middleware(['edition:retailer', 'can:reports.view'])->name('report.emi');
+    // report.emi.csv retired (GAP 2/3): export via POST /reports/emi/export.
+    Route::get('/report/scheme-liability', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'scheme-liability')->middleware(['edition:retailer', 'can:reports.view'])->name('report.scheme-liability');
+    // report.scheme-liability.csv retired (GAP 2/3): export via POST /reports/scheme-liability/export.
     // Metal Liability — served by the reporting spine (Phase 3). Same URL/name/permission.
     Route::get('/report/metal-liability', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'metal-liability')->middleware('can:reports.view')->name('report.metal-liability');
     // report.metal-liability.csv retired (Phase 3) — use the spine export (POST /reports/metal-liability/export).

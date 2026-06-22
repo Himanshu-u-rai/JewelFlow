@@ -12,6 +12,13 @@ use App\Services\Reporting\Reports\CustomersDataset;
 use App\Services\Reporting\Reports\DailySummaryDataset;
 use App\Services\Reporting\Reports\DayBookDataset;
 use App\Services\Reporting\Reports\DeadStockDataset;
+use App\Services\Reporting\Reports\DuesAgingDataset;
+use App\Services\Reporting\Reports\EmiDataset;
+use App\Services\Reporting\Reports\KarigarSettlementDataset;
+use App\Services\Reporting\Reports\MetalExchangeDataset;
+use App\Services\Reporting\Reports\PurchaseEfficiencyDataset;
+use App\Services\Reporting\Reports\SchemeLiabilityDataset;
+use App\Services\Reporting\Reports\ShrinkageDataset;
 use App\Services\Reporting\Reports\GoldBalancesDataset;
 use App\Services\Reporting\Reports\InstallmentPlansDataset;
 use App\Services\Reporting\Reports\InventoryItemsDataset;
@@ -146,6 +153,22 @@ class ReportingServiceProvider extends ServiceProvider
         }
         if (! $registry->has(DeadStockDataset::KEY)) {
             $registry->register(DeadStockDataset::KEY, DeadStockDataset::class);
+        }
+
+        // GAP 2 tail — the remaining financial/operational reports onto the spine
+        // (each wraps its canonical service verbatim, reconciles by construction).
+        foreach ([
+            DuesAgingDataset::class,
+            EmiDataset::class,
+            SchemeLiabilityDataset::class,
+            KarigarSettlementDataset::class,
+            ShrinkageDataset::class,
+            PurchaseEfficiencyDataset::class,
+            MetalExchangeDataset::class,
+        ] as $dataset) {
+            if (! $registry->has($dataset::KEY)) {
+                $registry->register($dataset::KEY, $dataset);
+            }
         }
 
         // Data Exports (Phase 1): bulk data dumps that the /export hub links to.
