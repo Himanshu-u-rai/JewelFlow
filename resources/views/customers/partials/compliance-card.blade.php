@@ -53,11 +53,16 @@
                 @if($customer->isComplianceVerified())
                     <dl class="customers-show-kyc-facts">
                         <div><dt>PAN</dt><dd>{{ $customer->pan ?: '—' }}</dd></div>
-                        <div><dt>Aadhaar</dt><dd>{{ $customer->id_number ?: '—' }}</dd></div>
+                        <div><dt>Aadhaar</dt><dd>{{ \App\Support\AadhaarMask::mask($customer->id_number) ?: '—' }}</dd></div>
                         <div><dt>Verified On</dt><dd>{{ optional($customer->compliance_verified_at)->format('d M Y') }}</dd></div>
                     </dl>
                 @endif
 
+                {{-- The verify form (and the editable Aadhaar input pre-filled in
+                     full) is gated to customers.edit — matching the route gate.
+                     A customers.view-only user must not see the full Aadhaar in an
+                     input value; they only see the masked read-only display above. --}}
+                @can('customers.edit')
                 <form method="POST" action="{{ route('customers.verify-compliance', $customer) }}" data-turbo-frame="_top" class="customers-show-kyc-form">
                     @csrf
                     <div class="customers-show-kyc-form-grid">
@@ -81,6 +86,7 @@
                     @error('consent')<p class="customers-show-kyc-error">{{ $message }}</p>@enderror
                     <button type="submit" class="customers-show-kyc-primary">Verify Customer</button>
                 </form>
+                @endcan
 
                 <div class="customers-show-compliance-docs">
                     <h3>ID Documents</h3>
