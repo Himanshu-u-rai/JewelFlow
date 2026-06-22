@@ -549,6 +549,16 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware('signed')
         ->name('reporting.exports.download');
 
+    // Shop-wide export presets (frozen §8; GAP 1). reports.export gates all of
+    // these; the controller restricts create/edit/delete to owner/manager. A
+    // preset only pre-fills the export panel — it never bypasses the export gate.
+    Route::middleware('can:reports.export')->group(function () {
+        Route::get('/reports/{report}/export-presets', [\App\Http\Controllers\Reporting\PresetController::class, 'index'])->name('reporting.presets.index');
+        Route::post('/reports/{report}/export-presets', [\App\Http\Controllers\Reporting\PresetController::class, 'store'])->name('reporting.presets.store');
+        Route::patch('/reports/{report}/export-presets/{preset}', [\App\Http\Controllers\Reporting\PresetController::class, 'update'])->name('reporting.presets.update');
+        Route::delete('/reports/{report}/export-presets/{preset}', [\App\Http\Controllers\Reporting\PresetController::class, 'destroy'])->name('reporting.presets.destroy');
+    });
+
     // ======= SETTINGS =======
     Route::get('/profile/mobile/change', [\App\Http\Controllers\MobileChangeController::class, 'showForm'])->middleware('can:settings.edit')->name('profile.mobile.change');
     Route::post('/profile/mobile/change-request', [\App\Http\Controllers\MobileChangeController::class, 'requestChange'])->middleware('can:settings.edit')->name('profile.mobile.request');

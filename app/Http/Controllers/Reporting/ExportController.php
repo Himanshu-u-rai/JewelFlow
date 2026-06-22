@@ -56,10 +56,31 @@ class ExportController extends Controller
         $user = request()->user();
         abort_unless($user !== null && $user->can($definition->permissions->effectiveViewGate()), 403);
 
+        $canExportSensitive = $user->can($definition->permissions->sensitive);
+        $canManagePresets = $user->can($definition->permissions->export)
+            && ($user->isOwner() || $user->isManager());
+
+        // Shop-wide saved presets for this report (BelongsToShop scopes them).
+        $savedPresets = \App\Models\Reporting\ReportingPreset::query()
+            ->where('report_key', $report)
+            ->orderBy('name')
+            ->get();
+
+        // Optional ?preset= pre-fills the form. A preset only seeds the form;
+        // the export POST still re-validates and re-gates (ExportRequest), so a
+        // preset can never widen what the running user may export.
+        $applied = null;
+        if (request()->filled('preset')) {
+            $applied = $savedPresets->firstWhere('id', (int) request('preset'));
+        }
+
         return new Response(View::make('reporting.export-panel', [
             'definition' => $definition,
             'presets' => DatePreset::cases(),
-            'canExportSensitive' => $user->can($definition->permissions->sensitive),
+            'canExportSensitive' => $canExportSensitive,
+            'canManagePresets' => $canManagePresets,
+            'savedPresets' => $savedPresets,
+            'appliedPreset' => $applied,
         ]));
     }
 
