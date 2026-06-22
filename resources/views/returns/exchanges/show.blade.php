@@ -3,205 +3,268 @@
         $ro = $exchange->returnOrder;
         $cn = $ro?->creditNote;
         $newInv = $exchange->newInvoice;
-        $netAbs = number_format(abs((float) $exchange->net_amount), 2);
-        if ((float) $exchange->net_amount > 0.005) {
-            $netLabel = 'Customer paid ₹' . $netAbs;
-            $netTone = 'text-emerald-700';
-        } elseif ((float) $exchange->net_amount < -0.005) {
-            $netLabel = 'Shop refunded ₹' . $netAbs;
-            $netTone = 'text-rose-700';
+        $customerName = $exchange->customer
+            ? trim(($exchange->customer->first_name ?? '') . ' ' . ($exchange->customer->last_name ?? ''))
+            : ($newInv?->customer ? trim(($newInv->customer->first_name ?? '') . ' ' . ($newInv->customer->last_name ?? '')) : 'Walk-in customer');
+        $customerName = trim($customerName) !== '' ? $customerName : 'Walk-in customer';
+        $netAmount = (float) $exchange->net_amount;
+        $netAbs = number_format(abs($netAmount), 2);
+        if ($netAmount > 0.005) {
+            $netLabel = 'Customer paid';
+            $netValue = '₹' . $netAbs;
+            $netTone = 'is-positive';
+        } elseif ($netAmount < -0.005) {
+            $netLabel = 'Shop refunded';
+            $netValue = '₹' . $netAbs;
+            $netTone = 'is-negative';
         } else {
             $netLabel = 'Even swap';
-            $netTone = 'text-slate-700';
+            $netValue = '₹0.00';
+            $netTone = 'is-even';
         }
+
+        $basisLabels = [
+            'sale_day_rate' => 'Sale-day rate',
+            'today_rate' => "Today's rate",
+            'manual_override' => 'Manual override',
+        ];
+        $basisLabel = $basisLabels[$exchange->valuation_basis_source] ?? str_replace('_', ' ', (string) $exchange->valuation_basis_source);
     @endphp
 
-    <x-page-header
-        :title="'Exchange #' . $exchange->id"
-        :subtitle="$cn?->credit_note_number . ' ↔ ' . $newInv?->invoice_number">
-        <x-slot:actions>
-            <a href="{{ route('exchanges.receipt', $exchange) }}" target="_blank"
-               class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
-                Print Receipt
+    <x-page-header class="exchange-show-header jf-header-auto-mobile">
+        <div class="min-w-0 exchange-show-title-block">
+            <h1 class="page-title">Exchange #{{ $exchange->id }}</h1>
+            <p class="page-subtitle">{{ $cn?->credit_note_number ?? 'No credit note' }} / {{ $newInv?->invoice_number ?? 'No new invoice' }}</p>
+        </div>
+
+        <div class="page-actions exchange-show-header-actions">
+            <a href="{{ route('exchanges.receipt', $exchange) }}"
+               target="_blank"
+               class="exchange-show-action exchange-show-action--primary">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6v-8z"/>
+                </svg>
+                <span>Print receipt</span>
             </a>
             <a href="{{ route('returns.index') }}"
-               class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                Back to Returns
+               class="exchange-show-action exchange-show-action--back">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span>Back to returns</span>
             </a>
-        </x-slot:actions>
+        </div>
     </x-page-header>
 
-    <div class="content-inner space-y-6">
+    <div class="content-inner exchange-show-page">
+        <section class="exchange-show-summary" aria-label="Exchange totals">
+            <article class="exchange-show-stat exchange-show-stat--credit">
+                <span>Return credit</span>
+                <strong>₹{{ number_format((float) ($cn?->total ?? 0), 2) }}</strong>
+                <small>{{ $cn?->credit_note_number ?? 'Credit note missing' }}</small>
+            </article>
+            <article class="exchange-show-stat">
+                <span>New sale</span>
+                <strong>₹{{ number_format((float) ($newInv?->total ?? 0), 2) }}</strong>
+                <small>{{ $newInv?->invoice_number ?? 'Invoice missing' }}</small>
+            </article>
+            <article class="exchange-show-stat exchange-show-stat--net {{ $netTone }}">
+                <span>Net settlement</span>
+                <strong>{{ $netLabel }} {{ $netValue }}</strong>
+                <small>Basis: {{ $basisLabel }}</small>
+            </article>
+        </section>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Return Credit</p>
-                <p class="text-2xl font-semibold text-emerald-700 mt-2">₹{{ number_format((float) ($cn?->total ?? 0), 2) }}</p>
-                <p class="text-xs text-slate-500 mt-2">{{ $cn?->credit_note_number ?? '—' }}</p>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">New Sale</p>
-                <p class="text-2xl font-semibold text-slate-900 mt-2">₹{{ number_format((float) ($newInv?->total ?? 0), 2) }}</p>
-                <p class="text-xs text-slate-500 mt-2">{{ $newInv?->invoice_number ?? '—' }}</p>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Net Settlement</p>
-                <p class="text-2xl font-semibold mt-2 {{ $netTone }}">{{ $netLabel }}</p>
-                <p class="text-xs text-slate-500 mt-2">Basis: {{ str_replace('_', ' ', $exchange->valuation_basis_source) }}</p>
-            </div>
-        </div>
-
-        {{-- Valuation Detail --}}
-        <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-200">
-                <h3 class="text-base font-semibold text-slate-900">Valuation Detail</h3>
-            </div>
-            <dl class="divide-y divide-slate-100 px-5 py-2">
-                <div class="flex justify-between py-2">
-                    <dt class="text-sm text-slate-500">Gold rate basis</dt>
-                    <dd class="text-sm font-medium text-slate-900">
-                        @if($exchange->valuation_basis_source === 'sale_day_rate') Sale-day Rate
-                        @elseif($exchange->valuation_basis_source === 'today_rate') Today's Rate
-                        @elseif($exchange->valuation_basis_source === 'manual_override') Manual Override
-                        @else {{ $exchange->valuation_basis_source ?? '—' }}
-                        @endif
-                    </dd>
-                </div>
-                @if($exchange->valuation_rate_override)
-                <div class="flex justify-between py-2">
-                    <dt class="text-sm text-slate-500">Override rate</dt>
-                    <dd class="text-sm font-medium text-slate-900">₹{{ number_format($exchange->valuation_rate_override, 2) }}/g</dd>
-                </div>
-                @endif
-                @if($exchange->approvedBy ?? null)
-                <div class="flex justify-between py-2">
-                    <dt class="text-sm text-slate-500">Rate authorized by</dt>
-                    <dd class="text-sm text-slate-900">{{ $exchange->approvedBy->name }} · {{ \Carbon\Carbon::parse($exchange->approved_at)->format('d M Y, H:i') }}</dd>
-                </div>
-                @endif
-                @if(auth()->user()->shop?->preferences?->exchange_rate_basis_locked ?? false)
-                <div class="py-2">
-                    <dt class="text-sm text-slate-500">Policy note</dt>
-                    <dd class="text-sm text-slate-500 italic">Shop policy locks rate basis to default.</dd>
-                </div>
-                @endif
-            </dl>
-        </div>
-
-        {{-- Actual money flow — pulled from the two halves, not from the
-             exchange row's payment_method (which is metadata for Phase 4). --}}
-        <div class="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 class="text-base font-semibold text-slate-900">How the money actually moved</h2>
-            <p class="text-xs text-slate-500 mt-1">The exchange link is metadata only — no new cash entry was written when you linked them. These are the real entries from each half:</p>
-            <dl class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
-                <div>
-                    <dt class="text-slate-500 text-xs uppercase tracking-wide">Refund out (return half)</dt>
-                    <dd class="mt-1">
-                        @if($refundCashOut)
-                            <span class="font-semibold text-rose-700">−₹{{ number_format((float) $refundCashOut->amount, 2) }}</span>
-                            <span class="text-slate-500 text-xs ml-2">cash, on {{ optional($refundCashOut->created_at)->format('d M Y, h:i A') }}</span>
-                        @else
-                            <span class="text-slate-400">No cash entry found for the CN</span>
-                        @endif
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-slate-500 text-xs uppercase tracking-wide">New sale payments (new invoice)</dt>
-                    <dd class="mt-1">
-                        @if($newSalePaymentMethods->isEmpty())
-                            <span class="text-slate-400">No payment rows on the new invoice yet</span>
-                        @else
-                            <span class="font-semibold text-emerald-700">+₹{{ number_format((float) ($exchange->newInvoice?->total ?? 0), 2) }}</span>
-                            <span class="text-slate-500 text-xs ml-2">via {{ $newSalePaymentMethods->map(fn($m) => str_replace('_', ' ', $m))->implode(', ') }}</span>
-                        @endif
-                    </dd>
-                </div>
-            </dl>
-        </div>
-
-        {{-- Return side --}}
-        @if($ro)
-            <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-lg font-semibold text-slate-900">Items Returned</h2>
-                        <p class="text-xs text-slate-500 mt-1">Credit note {{ $cn?->credit_note_number }}, return order #{{ $ro->id }}</p>
+        <div class="exchange-show-layout">
+            <main class="exchange-show-main" aria-label="Exchange review">
+                <section class="exchange-show-card exchange-show-money" aria-labelledby="exchange-money-title">
+                    <div class="exchange-show-card-head">
+                        <div>
+                            <p class="exchange-show-eyebrow">Settlement</p>
+                            <h2 id="exchange-money-title">How the money moved</h2>
+                        </div>
                     </div>
-                    <a href="{{ route('returns.show', $ro) }}" class="text-sm text-amber-700 hover:underline">View full return →</a>
-                </div>
-                <table class="w-full">
-                    <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        <tr>
-                            <th class="px-5 py-3 text-left">Item</th>
-                            <th class="px-5 py-3 text-left">Condition</th>
-                            <th class="px-5 py-3 text-right">Refund</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach($ro->lineItems as $rl)
-                            <tr>
-                                <td class="px-5 py-4">
-                                    <div class="text-sm font-semibold text-slate-900">{{ $rl->item?->barcode ?? '—' }}</div>
-                                    <div class="text-xs text-slate-500 mt-1">{{ $rl->item?->design ?? $rl->item?->category }}</div>
-                                </td>
-                                <td class="px-5 py-4 text-sm text-slate-700 capitalize">{{ str_replace('_', ' ', $rl->condition) }}</td>
-                                <td class="px-5 py-4 text-right text-sm font-semibold text-emerald-700">
-                                    ₹{{ number_format((float) $rl->refund_total, 2) }}
-                                    @include('returns.partials.policy-breakdown', [
-                                        'breakdown' => $rl->policy_breakdown ?: null,
-                                        'lineId'    => 'exc-' . $rl->id,
-                                    ])
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-
-        {{-- New sale side --}}
-        @if($newInv)
-            <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-lg font-semibold text-slate-900">Items Bought</h2>
-                        <p class="text-xs text-slate-500 mt-1">{{ $newInv->invoice_number }} · finalized {{ optional($newInv->finalized_at)->format('d M Y, h:i A') }}</p>
+                    <div class="exchange-show-money-grid">
+                        <div class="exchange-show-money-row">
+                            <span>Refund out</span>
+                            @if($refundCashOut)
+                                <strong class="is-negative">−₹{{ number_format((float) $refundCashOut->amount, 2) }}</strong>
+                                <small>Cash, {{ optional($refundCashOut->created_at)->format('d M Y, h:i A') }}</small>
+                            @else
+                                <strong>₹0.00</strong>
+                                <small>No cash entry found for the credit note</small>
+                            @endif
+                        </div>
+                        <div class="exchange-show-money-row">
+                            <span>New sale payments</span>
+                            @if($newSalePaymentMethods->isEmpty())
+                                <strong>₹0.00</strong>
+                                <small>No payment rows on the new invoice yet</small>
+                            @else
+                                <strong class="is-positive">+₹{{ number_format((float) ($newInv?->total ?? 0), 2) }}</strong>
+                                <small>Via {{ $newSalePaymentMethods->map(fn($m) => str_replace('_', ' ', $m))->implode(', ') }}</small>
+                            @endif
+                        </div>
                     </div>
-                    <a href="{{ route('invoices.show', $newInv) }}" class="text-sm text-amber-700 hover:underline">View full invoice →</a>
-                </div>
-                <table class="w-full">
-                    <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        <tr>
-                            <th class="px-5 py-3 text-left">Item</th>
-                            <th class="px-5 py-3 text-right">Line Total</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach($newInv->items as $il)
-                            <tr>
-                                <td class="px-5 py-4">
-                                    <div class="text-sm font-semibold text-slate-900">{{ $il->item?->barcode ?? '—' }}</div>
-                                    <div class="text-xs text-slate-500 mt-1">{{ $il->item?->design ?? $il->item?->category }}</div>
-                                </td>
-                                <td class="px-5 py-4 text-right text-sm font-semibold text-slate-900">₹{{ number_format((float) $il->line_total, 2) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
+                </section>
 
-        {{-- Audit --}}
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 text-xs text-slate-500">
-            <p>Linked by {{ $exchange->createdBy?->name }} on {{ optional($exchange->created_at)->format('d M Y, h:i A') }}.</p>
-            @if($exchange->settled_at)
-                <p>Settled {{ $exchange->settled_at->format('d M Y, h:i A') }}{{ $exchange->settledBy ? ' by ' . $exchange->settledBy->name : '' }}.</p>
-            @endif
-            @if($exchange->reason)
-                <p class="mt-2">Reason: {{ $exchange->reason }}</p>
-            @endif
+                @if($ro)
+                    <section class="exchange-show-card" aria-labelledby="exchange-returned-title">
+                        <div class="exchange-show-card-head">
+                            <div>
+                                <p class="exchange-show-eyebrow">Return half</p>
+                                <h2 id="exchange-returned-title">Items returned</h2>
+                                <small>Credit note {{ $cn?->credit_note_number ?? '—' }} / return order #{{ $ro->id }}</small>
+                            </div>
+                            <a href="{{ route('returns.show', $ro) }}" class="exchange-show-link">View return</a>
+                        </div>
+
+                        <div class="exchange-show-lines">
+                            @foreach($ro->lineItems as $rl)
+                                <article class="exchange-show-line">
+                                    <div class="exchange-show-line__item">
+                                        <span>{{ $rl->item?->barcode ?? '—' }}</span>
+                                        <strong>{{ $rl->item?->design ?? $rl->item?->category ?? 'Returned item' }}</strong>
+                                    </div>
+                                    <div class="exchange-show-line__meta">
+                                        <span>Condition</span>
+                                        <strong>{{ str_replace('_', ' ', $rl->condition) }}</strong>
+                                    </div>
+                                    <div class="exchange-show-line__amount is-positive">
+                                        <span>Refund</span>
+                                        <strong>₹{{ number_format((float) $rl->refund_total, 2) }}</strong>
+                                        @include('returns.partials.policy-breakdown', [
+                                            'breakdown' => $rl->policy_breakdown ?: null,
+                                            'lineId'    => 'exc-' . $rl->id,
+                                        ])
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+
+                @if($newInv)
+                    <section class="exchange-show-card" aria-labelledby="exchange-bought-title">
+                        <div class="exchange-show-card-head">
+                            <div>
+                                <p class="exchange-show-eyebrow">New sale half</p>
+                                <h2 id="exchange-bought-title">Items bought</h2>
+                                <small>{{ $newInv->invoice_number }}{{ $newInv->finalized_at ? ' / finalized ' . optional($newInv->finalized_at)->format('d M Y, h:i A') : '' }}</small>
+                            </div>
+                            <a href="{{ route('invoices.show', $newInv) }}" class="exchange-show-link">View invoice</a>
+                        </div>
+
+                        <div class="exchange-show-lines">
+                            @foreach($newInv->items as $il)
+                                <article class="exchange-show-line exchange-show-line--sale">
+                                    <div class="exchange-show-line__item">
+                                        <span>{{ $il->item?->barcode ?? '—' }}</span>
+                                        <strong>{{ $il->item?->design ?? $il->item?->category ?? 'Invoice item' }}</strong>
+                                    </div>
+                                    <div class="exchange-show-line__meta">
+                                        <span>Source</span>
+                                        <strong>{{ $newInv->invoice_number }}</strong>
+                                    </div>
+                                    <div class="exchange-show-line__amount">
+                                        <span>Line total</span>
+                                        <strong>₹{{ number_format((float) $il->line_total, 2) }}</strong>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+            </main>
+
+            <aside class="exchange-show-rail" aria-label="Exchange details">
+                <section class="exchange-show-card">
+                    <div class="exchange-show-card-head exchange-show-card-head--compact">
+                        <div>
+                            <p class="exchange-show-eyebrow">Details</p>
+                            <h2>Exchange facts</h2>
+                        </div>
+                    </div>
+                    <dl class="exchange-show-facts">
+                        <div>
+                            <dt>Customer</dt>
+                            <dd>{{ $customerName }}</dd>
+                        </div>
+                        <div>
+                            <dt>Credit note</dt>
+                            <dd>{{ $cn?->credit_note_number ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>New invoice</dt>
+                            <dd>{{ $newInv?->invoice_number ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>Linked by</dt>
+                            <dd>{{ $exchange->createdBy?->name ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt>Linked on</dt>
+                            <dd>{{ optional($exchange->created_at)->format('d M Y, h:i A') ?? '—' }}</dd>
+                        </div>
+                        @if($exchange->settled_at)
+                            <div>
+                                <dt>Settled</dt>
+                                <dd>
+                                    {{ $exchange->settled_at->format('d M Y, h:i A') }}
+                                    @if($exchange->settledBy)
+                                        <small>by {{ $exchange->settledBy->name }}</small>
+                                    @endif
+                                </dd>
+                            </div>
+                        @endif
+                    </dl>
+                </section>
+
+                <section class="exchange-show-card">
+                    <div class="exchange-show-card-head exchange-show-card-head--compact">
+                        <div>
+                            <p class="exchange-show-eyebrow">Valuation</p>
+                            <h2>Rate basis</h2>
+                        </div>
+                    </div>
+                    <dl class="exchange-show-facts">
+                        <div>
+                            <dt>Gold rate basis</dt>
+                            <dd>{{ $basisLabel }}</dd>
+                        </div>
+                        @if($exchange->valuation_rate_override)
+                            <div>
+                                <dt>Override rate</dt>
+                                <dd>₹{{ number_format($exchange->valuation_rate_override, 2) }}/g</dd>
+                            </div>
+                        @endif
+                        @if($exchange->approvedBy ?? null)
+                            <div>
+                                <dt>Rate authorized by</dt>
+                                <dd>{{ $exchange->approvedBy->name }} / {{ \Carbon\Carbon::parse($exchange->approved_at)->format('d M Y, H:i') }}</dd>
+                            </div>
+                        @endif
+                        @if(auth()->user()->shop?->preferences?->exchange_rate_basis_locked ?? false)
+                            <div>
+                                <dt>Policy note</dt>
+                                <dd>Shop policy locks rate basis to default.</dd>
+                            </div>
+                        @endif
+                    </dl>
+                </section>
+
+                @if($exchange->reason)
+                    <section class="exchange-show-card exchange-show-reason">
+                        <div class="exchange-show-card-head exchange-show-card-head--compact">
+                            <div>
+                                <p class="exchange-show-eyebrow">Audit</p>
+                                <h2>Reason</h2>
+                            </div>
+                        </div>
+                        <p>{{ $exchange->reason }}</p>
+                    </section>
+                @endif
+            </aside>
         </div>
     </div>
 </x-app-layout>

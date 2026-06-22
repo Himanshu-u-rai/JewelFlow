@@ -1,283 +1,378 @@
+@php
+    $customerName = $invoice->customer
+        ? trim($invoice->customer->first_name . ' ' . $invoice->customer->last_name)
+        : 'No customer linked';
+    $approvalRuleCopy = 'Changing the valuation basis away from the shop default (' . str_replace('_', ' ', $defaultBasis) . ') is checked against user permissions during submit. Manual rate override requires exchange override permission. Line-level refund changes require Approve Returns permission.';
+@endphp
+
 <x-app-layout>
-    <x-page-header
-        :title="'Process Exchange — ' . $invoice->invoice_number"
-        :subtitle="$invoice->customer ? 'Customer: ' . trim($invoice->customer->first_name . ' ' . $invoice->customer->last_name) : 'No customer linked'">
-        <x-slot:actions>
-            <a href="{{ route('invoices.show', $invoice) }}"
-               class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                Cancel
+    <x-page-header class="exchange-create-header jf-header-auto-mobile">
+        <div class="min-w-0 exchange-create-title-block">
+            <div class="exchange-create-title-row">
+                <h1 class="page-title">Process exchange</h1>
+                <div class="exchange-rule-help" data-exchange-rule-help>
+                    <button type="button"
+                            class="exchange-rule-help__trigger"
+                            data-exchange-rule-trigger
+                            aria-label="Show exchange approval rules"
+                            aria-expanded="false"
+                            aria-controls="exchange-rule-popover">i</button>
+                    <div id="exchange-rule-popover" class="exchange-rule-popover" role="tooltip" hidden>
+                        <strong>Approval rules</strong>
+                        <p>{{ $approvalRuleCopy }}</p>
+                    </div>
+                </div>
+            </div>
+            <p class="page-subtitle">{{ $invoice->invoice_number }} / {{ $customerName }}</p>
+        </div>
+
+        <div class="page-actions">
+            <a href="{{ route('invoices.show', $invoice) }}" class="exchange-create-back-btn" data-turbo-frame="_top">
+                <svg class="exchange-create-back-btn__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span>Cancel</span>
             </a>
-        </x-slot:actions>
+        </div>
     </x-page-header>
 
-    <div class="content-inner space-y-6">
-
+    <div class="content-inner exchange-create-page">
         @if($errors->any())
-            <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                <ul class="list-disc list-inside space-y-1">
-                    @foreach($errors->all() as $err)<li>{{ $err }}</li>@endforeach
+            <div class="exchange-create-alert" role="alert">
+                <strong>Exchange cannot be processed yet</strong>
+                <ul>
+                    @foreach($errors->all() as $err)
+                        <li>{{ $err }}</li>
+                    @endforeach
                 </ul>
             </div>
         @endif
 
-        <div class="flex items-center gap-0 rounded-2xl border border-slate-200 bg-white overflow-hidden">
-            <div class="flex-1 flex items-center gap-3 px-5 py-3 bg-blue-50 border-r border-slate-200">
-                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold flex-shrink-0">1</span>
-                <span class="text-sm font-medium text-blue-900">Select items to return</span>
-            </div>
-            <div class="flex-1 flex items-center gap-3 px-5 py-3 bg-blue-50 border-r border-slate-200">
-                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold flex-shrink-0">2</span>
-                <span class="text-sm font-medium text-blue-900">Add new items</span>
-            </div>
-            <div class="flex-1 flex items-center gap-3 px-5 py-3 bg-slate-50">
-                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-400 text-white text-xs font-bold flex-shrink-0">3</span>
-                <span class="text-sm font-medium text-slate-600">Review &amp; settle</span>
-            </div>
-        </div>
-
-        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 flex items-start gap-3">
-            <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m4 6H8m0 0l4 4m-4-4l4-4"/></svg>
+        <div class="exchange-rule-notice" data-exchange-rule-notice role="status" aria-live="polite">
             <div>
-                Process the return and new sale in one step. Pick items being returned on the left, scan/type barcodes of new items on the right. System computes the net settlement automatically.
+                <strong>Approval rules for this exchange</strong>
+                <p>{{ $approvalRuleCopy }}</p>
             </div>
+            <button type="button" data-exchange-rule-close aria-label="Close approval rules notice">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"/>
+                </svg>
+            </button>
         </div>
 
-        <form method="POST" action="{{ route('exchanges.unified.store', $invoice) }}" class="space-y-6">
+        <form method="POST"
+              action="{{ route('exchanges.unified.store', $invoice) }}"
+              class="exchange-create-form"
+              data-exchange-form
+              novalidate>
             @csrf
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                {{-- LEFT: items being returned --}}
-                <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                    <div class="px-5 py-4 border-b border-slate-200 bg-rose-50/40">
-                        <h2 class="text-lg font-semibold text-slate-900">← Returned (from {{ $invoice->invoice_number }})</h2>
-                        <p class="text-xs text-slate-500 mt-1">Pick which items the customer is bringing back. Default disposition is restock.</p>
+            <div class="exchange-create-main-grid">
+                <section class="exchange-create-card exchange-create-card--return" aria-labelledby="exchange-return-title">
+                    <div class="exchange-create-section-head">
+                        <div>
+                            <p class="exchange-create-eyebrow">Original invoice</p>
+                            <h2 id="exchange-return-title">Items being returned</h2>
+                        </div>
+                        <span class="exchange-create-count">{{ $invoice->items->count() }} line{{ $invoice->items->count() === 1 ? '' : 's' }}</span>
                     </div>
-                    <table class="w-full text-sm">
-                        <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-                            <tr>
-                                <th class="px-4 py-3 text-left w-10"></th>
-                                <th class="px-4 py-3 text-left">Item</th>
-                                <th class="px-4 py-3 text-right">Line Total</th>
-                                <th class="px-4 py-3 text-left">What happens to this item</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach($invoice->items as $idx => $line)
-                                @php $already = $line->returned_at !== null; @endphp
-                                <tr class="{{ $already ? 'opacity-50 bg-slate-50' : '' }}">
-                                    <td class="px-4 py-3">
-                                        @if($already)
-                                            <span class="text-xs text-slate-400 italic">returned</span>
-                                        @else
-                                            <input type="checkbox" name="lines[{{ $idx }}][selected]" value="1"
-                                                   class="line-checkbox rounded border-slate-300" data-line-idx="{{ $idx }}"
+                    <p class="exchange-create-section-copy">Select only the items the customer is bringing back. Returned lines stay locked.</p>
+                    <p class="exchange-create-inline-error" data-return-error hidden></p>
+
+                    <div class="exchange-return-list">
+                        @foreach($invoice->items as $idx => $line)
+                            @php
+                                $already = $line->returned_at !== null;
+                                $lineTotal = (float) $line->line_total + (float) $line->gst_amount - (float) $line->allocated_discount + (float) $line->allocated_round_off;
+                            @endphp
+
+                            <article class="exchange-return-line {{ $already ? 'is-disabled' : '' }}" data-return-line>
+                                <div class="exchange-return-line__select">
+                                    @if($already)
+                                        <span class="exchange-return-line__badge">Returned</span>
+                                    @else
+                                        <label class="exchange-return-check">
+                                            <input type="checkbox"
+                                                   name="lines[{{ $idx }}][selected]"
+                                                   value="1"
+                                                   class="line-checkbox"
+                                                   data-line-idx="{{ $idx }}"
                                                    {{ old("lines.$idx.selected") ? 'checked' : '' }}>
-                                            <input type="hidden" name="lines[{{ $idx }}][invoice_item_id]" value="{{ $line->id }}">
-                                            <input type="hidden" name="lines[{{ $idx }}][condition]" value="good_condition">
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="font-semibold text-slate-900">{{ $line->item?->barcode ?? '—' }}</div>
-                                        <div class="text-xs text-slate-500 mt-1">{{ $line->item?->design ?? $line->item?->category }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 text-right font-semibold text-slate-900" data-return-total data-line-idx="{{ $idx }}" data-amount="{{ (float) $line->line_total + (float) $line->gst_amount - (float) $line->allocated_discount + (float) $line->allocated_round_off }}">
-                                        ₹{{ number_format((float) $line->line_total + (float) $line->gst_amount - (float) $line->allocated_discount + (float) $line->allocated_round_off, 2) }}
-                                        @can('returns.approve')
-                                        @php
-                                            $maxRefundable = (float)$line->line_total + (float)$line->gst_amount
-                                                           - (float)$line->allocated_discount + (float)$line->allocated_round_off;
-                                        @endphp
-                                        <details class="mt-2 text-left">
-                                            <summary class="cursor-pointer text-xs font-semibold text-indigo-600 hover:text-indigo-800 select-none">
-                                                Adjust Refund
-                                            </summary>
-                                            <div class="mt-2 rounded border border-indigo-200 bg-indigo-50 p-3 space-y-2 text-xs">
-                                                <p class="text-indigo-700 font-medium">Component adjustments</p>
-                                                <label class="flex items-center gap-2">
-                                                    <input type="checkbox" name="lines[{{ $idx }}][override_making_charges]" value="1"
-                                                           class="rounded text-indigo-600">
-                                                    <span class="text-gray-700">Refund making charges for this line</span>
-                                                </label>
-                                                <label class="flex items-center gap-2">
-                                                    <input type="checkbox" name="lines[{{ $idx }}][override_stone_charges]" value="1"
-                                                           class="rounded text-indigo-600">
-                                                    <span class="text-gray-700">Refund stone charges for this line</span>
-                                                </label>
-                                                <label class="flex items-center gap-2">
-                                                    <input type="checkbox" name="lines[{{ $idx }}][override_gst]" value="1"
-                                                           class="rounded text-indigo-600">
-                                                    <span class="text-gray-700">Refund GST for this line</span>
-                                                </label>
-                                                <label class="flex items-center gap-2">
-                                                    <input type="checkbox" name="lines[{{ $idx }}][override_waive_restocking]" value="1"
-                                                           class="rounded text-indigo-600">
-                                                    <span class="text-gray-700">Waive restocking fee for this line</span>
-                                                </label>
-                                                <div class="flex items-center gap-2">
-                                                    <label class="text-gray-700 shrink-0">Custom wear loss %</label>
-                                                    <input type="number" name="lines[{{ $idx }}][override_wear_loss_pct]"
-                                                           min="0" max="25" step="0.1" placeholder="0–25"
-                                                           class="w-20 rounded border-gray-300 text-xs shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                                </div>
+                                            <span>Select</span>
+                                        </label>
+                                        <input type="hidden" name="lines[{{ $idx }}][invoice_item_id]" value="{{ $line->id }}">
+                                        <input type="hidden" name="lines[{{ $idx }}][condition]" value="good_condition">
+                                    @endif
+                                </div>
 
-                                                <div class="border-t border-indigo-200 pt-2">
-                                                    <p class="text-indigo-700 font-medium mb-1">— or enter a manual total —</p>
-                                                    <div class="flex items-center gap-2">
-                                                        <label class="text-gray-700 shrink-0">Manual refund (₹)</label>
-                                                        <input type="number" name="lines[{{ $idx }}][override_manual_total]"
-                                                               min="0" max="{{ $maxRefundable }}" step="0.01"
-                                                               placeholder="0.00"
-                                                               class="w-32 rounded border-gray-300 text-xs shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                                        <span class="text-gray-400">max ₹{{ number_format($maxRefundable, 2) }}</span>
-                                                    </div>
-                                                </div>
+                                <div class="exchange-return-line__item">
+                                    <span class="exchange-return-line__barcode">{{ $line->item?->barcode ?? '—' }}</span>
+                                    <strong>{{ $line->item?->design ?? $line->item?->category ?? 'Invoice item' }}</strong>
+                                </div>
 
-                                                <div class="border-t border-indigo-200 pt-2">
-                                                    <label class="block text-gray-700 font-medium mb-1">
-                                                        Override reason <span class="text-red-500">*</span>
-                                                        <span class="text-gray-400 font-normal">(required if any adjustment made)</span>
-                                                    </label>
-                                                    <textarea name="lines[{{ $idx }}][override_reason]" rows="2" minlength="5" maxlength="500"
-                                                              placeholder="e.g. VIP customer — waiving restocking fee as goodwill gesture"
-                                                              class="w-full rounded border-gray-300 text-xs shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                                                </div>
-                                            </div>
-                                        </details>
-                                        @endcan
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <select name="lines[{{ $idx }}][disposition]"
-                                                class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs {{ $already ? 'pointer-events-none' : '' }}"
-                                                {{ $already ? 'disabled' : '' }}>
+                                <div class="exchange-return-line__amount"
+                                     data-return-total
+                                     data-line-idx="{{ $idx }}"
+                                     data-amount="{{ $lineTotal }}">
+                                    <span>Refund value</span>
+                                    <strong>₹{{ number_format($lineTotal, 2) }}</strong>
+                                </div>
+
+                                <div class="exchange-return-line__disposition">
+                                    @if($already)
+                                        <span class="exchange-return-line__locked">Already returned</span>
+                                    @else
+                                        <label for="line-disposition-{{ $idx }}">Disposition</label>
+                                        <select id="line-disposition-{{ $idx }}" name="lines[{{ $idx }}][disposition]">
                                             @foreach($dispositions as $val => $label)
                                                 <option value="{{ $val }}" @selected(old("lines.$idx.disposition", 'restocked') === $val)>{{ $label }}</option>
                                             @endforeach
                                         </select>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                                    @endif
+                                </div>
 
-                {{-- RIGHT: new items being taken --}}
-                <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                    <div class="px-5 py-4 border-b border-slate-200 bg-emerald-50/40">
-                        <h2 class="text-lg font-semibold text-slate-900">→ New Sale</h2>
-                        <p class="text-xs text-slate-500 mt-1">Scan or type the barcode(s) of items the customer is taking. Comma-separated.</p>
+                                @can('returns.approve')
+                                    @unless($already)
+                                        @php
+                                            $maxRefundable = $lineTotal;
+                                        @endphp
+                                        <div class="exchange-refund-options">
+                                            <div class="exchange-refund-options__head">
+                                                <span>Owner refund options</span>
+                                                <small>Adjust only when policy needs an approved exception</small>
+                                            </div>
+                                            <div class="exchange-refund-options__body">
+                                                <div class="exchange-refund-options__checks">
+                                                    <label class="exchange-refund-check">
+                                                        <input type="checkbox" name="lines[{{ $idx }}][override_making_charges]" value="1" @checked(old("lines.$idx.override_making_charges"))>
+                                                        <span class="exchange-refund-check__box" aria-hidden="true"></span>
+                                                        <span class="exchange-refund-check__text">Refund making charges</span>
+                                                    </label>
+                                                    <label class="exchange-refund-check">
+                                                        <input type="checkbox" name="lines[{{ $idx }}][override_stone_charges]" value="1" @checked(old("lines.$idx.override_stone_charges"))>
+                                                        <span class="exchange-refund-check__box" aria-hidden="true"></span>
+                                                        <span class="exchange-refund-check__text">Refund stone charges</span>
+                                                    </label>
+                                                    <label class="exchange-refund-check">
+                                                        <input type="checkbox" name="lines[{{ $idx }}][override_gst]" value="1" @checked(old("lines.$idx.override_gst"))>
+                                                        <span class="exchange-refund-check__box" aria-hidden="true"></span>
+                                                        <span class="exchange-refund-check__text">Refund GST</span>
+                                                    </label>
+                                                    <label class="exchange-refund-check">
+                                                        <input type="checkbox" name="lines[{{ $idx }}][override_waive_restocking]" value="1" @checked(old("lines.$idx.override_waive_restocking"))>
+                                                        <span class="exchange-refund-check__box" aria-hidden="true"></span>
+                                                        <span class="exchange-refund-check__text">Waive restocking fee</span>
+                                                    </label>
+                                                </div>
+
+                                                <div class="exchange-refund-options__grid">
+                                                    <label>
+                                                        <span>Custom wear loss %</span>
+                                                        <input type="number"
+                                                               name="lines[{{ $idx }}][override_wear_loss_pct]"
+                                                               min="0"
+                                                               max="25"
+                                                               step="0.1"
+                                                               value="{{ old("lines.$idx.override_wear_loss_pct") }}"
+                                                               placeholder="0-25">
+                                                    </label>
+                                                    <label>
+                                                        <span>Manual refund</span>
+                                                        <input type="number"
+                                                               name="lines[{{ $idx }}][override_manual_total]"
+                                                               min="0"
+                                                               max="{{ $maxRefundable }}"
+                                                               step="0.01"
+                                                               value="{{ old("lines.$idx.override_manual_total") }}"
+                                                               placeholder="Max ₹{{ number_format($maxRefundable, 2) }}">
+                                                    </label>
+                                                </div>
+
+                                                <label class="exchange-refund-options__reason">
+                                                    <span>Override reason <em>required if adjusted</em></span>
+                                                    <textarea name="lines[{{ $idx }}][override_reason]"
+                                                              rows="2"
+                                                              minlength="5"
+                                                              maxlength="500"
+                                                              data-reason-input
+                                                              placeholder="Reason for approving this refund change">{{ old("lines.$idx.override_reason") }}</textarea>
+                                                    <div class="exchange-reason-chips" data-reason-chips>
+                                                        @foreach(['Approved by owner','Policy exception','Customer retention','Billing correction','Manual rate','Price commitment'] as $preset)
+                                                            <button type="button"
+                                                                    class="exchange-reason-chip"
+                                                                    data-reason-chip="{{ $preset }}"
+                                                                    data-reason-target="override">{{ $preset }}</button>
+                                                        @endforeach
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    @endunless
+                                @endcan
+                            </article>
+                        @endforeach
                     </div>
-                    <div class="p-5 space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 mb-2">Barcodes</label>
-                            <textarea name="new_item_barcodes" id="new_item_barcodes" rows="3" required
-                                      placeholder="e.g. JFLOW0123, JFLOW0124"
-                                      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono">{{ old('new_item_barcodes') }}</textarea>
-                            <p class="text-xs text-slate-500 mt-1">Each barcode must refer to an in-stock item with a selling price set.</p>
-                        </div>
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 mb-2">Estimated total</p>
-                            <p class="text-2xl font-bold text-emerald-700">
-                                <span id="newSaleEstimate">—</span>
-                            </p>
-                            <p class="text-xs text-slate-500 mt-1">Exact total computed at submit time using each item's current price + GST.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </section>
 
-            {{-- Settings + summary row --}}
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                    <label class="block text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 mb-2">Valuation Basis</label>
-
-                    <div class="space-y-1">
-                        <div class="flex items-start gap-3 py-2">
-                            <input type="radio" id="basis_sale_day" name="valuation_basis_source" value="sale_day_rate" class="mt-0.5 h-4 w-4"
-                                {{ old('valuation_basis_source', $defaultBasis) === 'sale_day_rate' ? 'checked' : '' }}
-                                onchange="toggleOverrideSection(this.value)">
-                            <label for="basis_sale_day" class="flex-1 cursor-pointer">
-                                <span class="font-medium text-sm">Sale-day rate{{ $defaultBasis === 'sale_day_rate' ? ' (shop default)' : '' }}</span>
-                                <span class="block text-xs text-slate-500">Value returned items at the rate they were originally sold.</span>
-                            </label>
-                        </div>
-                        <div class="flex items-start gap-3 py-2">
-                            <input type="radio" id="basis_today" name="valuation_basis_source" value="today_rate" class="mt-0.5 h-4 w-4"
-                                {{ old('valuation_basis_source', $defaultBasis) === 'today_rate' ? 'checked' : '' }}
-                                onchange="toggleOverrideSection(this.value)">
-                            <label for="basis_today" class="flex-1 cursor-pointer">
-                                <span class="font-medium text-sm">Today's rate{{ $defaultBasis === 'today_rate' ? ' (shop default)' : '' }}</span>
-                                <span class="block text-xs text-slate-500">Revalues each returned line at today's gold rate from daily pricing.</span>
-                            </label>
-                        </div>
-
-                        @can('exchanges.override_rate')
-                            @unless($shop->preferences?->exchange_rate_basis_locked ?? false)
-                            <div class="flex items-start gap-3 py-2">
-                                <input type="radio" id="basis_manual" name="valuation_basis_source" value="manual_override" class="mt-0.5 h-4 w-4"
-                                    {{ old('valuation_basis_source') === 'manual_override' ? 'checked' : '' }}
-                                    onchange="toggleOverrideSection(this.value)">
-                                <label for="basis_manual" class="flex-1 cursor-pointer">
-                                    <span class="font-medium text-sm">Manual Rate Override</span>
-                                    <span class="block text-xs text-slate-500">Specify a custom gold rate. Requires owner permission and must be within ±20% of today's rate.</span>
-                                </label>
+                <aside class="exchange-create-side">
+                    <section class="exchange-create-card exchange-create-card--sale" aria-labelledby="exchange-new-sale-title">
+                        <div class="exchange-create-section-head">
+                            <div>
+                                <p class="exchange-create-eyebrow">Replacement sale</p>
+                                <h2 id="exchange-new-sale-title">Add new item barcodes</h2>
                             </div>
-                            @endunless
-                        @endcan
-                    </div>
+                            <span class="exchange-create-count" data-barcode-count>0 items</span>
+                        </div>
+                        <p class="exchange-create-section-copy">Scan or type one code at a time. Press Enter or use Add. Review the chips before processing.</p>
 
-                    <div id="override-rate-section" class="{{ old('valuation_basis_source') === 'manual_override' ? '' : 'hidden' }} mt-3 pl-2 border-l-2 border-amber-300 pl-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Override Rate (₹/gram, 24k)</label>
-                        <input type="number" name="gold_rate_per_gram_override" step="0.01" min="0"
-                            value="{{ old('gold_rate_per_gram_override') }}" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm w-48">
-                        <label class="block text-sm font-medium text-gray-700 mt-2 mb-1">Reason for override</label>
-                        <input type="text" name="override_reason" maxlength="500"
-                            value="{{ old('override_reason') }}" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm w-full" placeholder="e.g. Agreed rate from prior negotiation">
-                        @error('gold_rate_per_gram_override')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
-                        @error('override_reason')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                    <p class="text-xs font-semibold uppercase tracking-[0.15em] text-amber-800 mb-2">Owner approval</p>
-                    <p class="text-sm text-amber-700">
-                        When the selected valuation basis differs from the shop default ({{ str_replace('_', ' ', $defaultBasis) }}), owner-level permission is required. This is verified automatically based on your account role.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                    <label class="block text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 mb-2">Reason <span class="text-rose-600">*</span></label>
-                    <textarea name="reason" rows="2" required minlength="5" maxlength="500"
-                              placeholder="e.g. Customer upgraded to a bigger chain"
-                              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">{{ old('reason') }}</textarea>
-                </div>
+                        <textarea name="new_item_barcodes"
+                                  id="new_item_barcodes"
+                                  class="exchange-barcode-hidden"
+                                  aria-hidden="true">{{ old('new_item_barcodes') }}</textarea>
+
+                        <div class="exchange-barcode-box">
+                            <label for="exchange_barcode_entry">Barcode</label>
+                            <div class="exchange-barcode-entry">
+                                <input type="text"
+                                       id="exchange_barcode_entry"
+                                       data-barcode-entry
+                                       inputmode="text"
+                                       autocomplete="off"
+                                       placeholder="Scan or type barcode">
+                                <button type="button" data-barcode-add>Add</button>
+                            </div>
+                            <p class="exchange-create-inline-error" data-barcode-error hidden></p>
+                            <div class="exchange-barcode-list" data-barcode-list aria-live="polite"></div>
+                        </div>
+
+                        <div class="exchange-sale-estimate">
+                            <span>New sale estimate</span>
+                            <strong id="newSaleEstimate">—</strong>
+                            <small>Exact total is computed at submit using the current item price and GST.</small>
+                        </div>
+                    </section>
+
+                    <section class="exchange-create-card exchange-create-card--summary" aria-label="Exchange summary">
+                        <div class="exchange-summary-row">
+                            <span>Return refund</span>
+                            <strong class="is-refund">−₹<span id="returnEstimate">0.00</span></strong>
+                        </div>
+                        <div class="exchange-summary-row">
+                            <span>New sale</span>
+                            <strong id="newSaleEstimate2">—</strong>
+                        </div>
+                        <div class="exchange-summary-total">
+                            <span>Net settlement</span>
+                            <strong id="netLabel">—</strong>
+                            <small id="netDirection"></small>
+                        </div>
+                    </section>
+                </aside>
             </div>
 
-            {{-- Net preview card --}}
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <p class="text-xs uppercase tracking-wide text-slate-500">Return Refund (est)</p>
-                    <p class="text-xl font-semibold text-rose-700 mt-1">−₹<span id="returnEstimate">0.00</span></p>
+            <section class="exchange-create-card exchange-create-card--settings" aria-labelledby="exchange-settings-title">
+                <div class="exchange-create-section-head">
+                    <div>
+                        <p class="exchange-create-eyebrow">Settlement controls</p>
+                        <h2 id="exchange-settings-title">Valuation and reason</h2>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-xs uppercase tracking-wide text-slate-500">New Sale (est)</p>
-                    <p class="text-xl font-semibold text-emerald-700 mt-1">+₹<span id="newSaleEstimate2">0.00</span></p>
-                </div>
-                <div>
-                    <p class="text-xs uppercase tracking-wide text-slate-500">Net</p>
-                    <p class="text-2xl font-bold mt-1" id="netLabel">—</p>
-                    <p class="text-xs text-slate-500 mt-1" id="netDirection"></p>
-                </div>
-            </div>
 
-            <div class="flex items-center justify-end gap-3">
-                <a href="{{ route('invoices.show', $invoice) }}"
-                   class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                    Cancel
-                </a>
-                <button type="submit"
-                        class="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
-                    Process Exchange
-                </button>
+                <div class="exchange-settings-grid">
+                    <div class="exchange-rate-group">
+                        <span class="exchange-field-label">Valuation basis</span>
+                        <div class="exchange-rate-options">
+                            <label>
+                                <input type="radio"
+                                       id="basis_sale_day"
+                                       name="valuation_basis_source"
+                                       value="sale_day_rate"
+                                       {{ old('valuation_basis_source', $defaultBasis) === 'sale_day_rate' ? 'checked' : '' }}
+                                       onchange="toggleOverrideSection(this.value)">
+                                <span>
+                                    <strong>Sale-day rate{{ $defaultBasis === 'sale_day_rate' ? ' (default)' : '' }}</strong>
+                                    <small>Value returned items at the rate they were originally sold.</small>
+                                </span>
+                            </label>
+                            <label>
+                                <input type="radio"
+                                       id="basis_today"
+                                       name="valuation_basis_source"
+                                       value="today_rate"
+                                       {{ old('valuation_basis_source', $defaultBasis) === 'today_rate' ? 'checked' : '' }}
+                                       onchange="toggleOverrideSection(this.value)">
+                                <span>
+                                    <strong>Today's rate{{ $defaultBasis === 'today_rate' ? ' (default)' : '' }}</strong>
+                                    <small>Use today's shop daily gold rate.</small>
+                                </span>
+                            </label>
+
+                            @can('exchanges.override_rate')
+                                @unless($shop->preferences?->exchange_rate_basis_locked ?? false)
+                                    <label>
+                                        <input type="radio"
+                                               id="basis_manual"
+                                               name="valuation_basis_source"
+                                               value="manual_override"
+                                               {{ old('valuation_basis_source') === 'manual_override' ? 'checked' : '' }}
+                                               onchange="toggleOverrideSection(this.value)">
+                                        <span>
+                                            <strong>Manual rate override</strong>
+                                            <small>Owner permission required. Must stay within the allowed rate band.</small>
+                                        </span>
+                                    </label>
+                                @endunless
+                            @endcan
+                        </div>
+
+                        <div id="override-rate-section" class="exchange-manual-rate {{ old('valuation_basis_source') === 'manual_override' ? '' : 'hidden' }}">
+                            <label>
+                                <span>Override rate (₹/gram, 24K)</span>
+                                <input type="number"
+                                       name="gold_rate_per_gram_override"
+                                       step="0.01"
+                                       min="0"
+                                       value="{{ old('gold_rate_per_gram_override') }}"
+                                       placeholder="0.00">
+                            </label>
+                            <label>
+                                <span>Reason for rate override</span>
+                                <input type="text"
+                                       name="override_reason"
+                                       maxlength="500"
+                                       value="{{ old('override_reason') }}"
+                                       placeholder="Agreed rate from prior negotiation">
+                            </label>
+                            @error('gold_rate_per_gram_override')<p class="exchange-create-inline-error">{{ $message }}</p>@enderror
+                            @error('override_reason')<p class="exchange-create-inline-error">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+
+                    <label class="exchange-reason-field">
+                        <span>Exchange reason <em>*</em></span>
+                        <textarea name="reason"
+                                  rows="4"
+                                  required
+                                  minlength="5"
+                                  maxlength="500"
+                                  data-reason-input
+                                  placeholder="e.g. Customer upgraded to a bigger chain">{{ old('reason') }}</textarea>
+                        <div class="exchange-reason-chips" data-reason-chips>
+                            @foreach(['Customer upgraded item','Wrong size','Changed design','Damaged item','Billing correction','Quality issue','Wrong item delivered'] as $preset)
+                                <button type="button"
+                                        class="exchange-reason-chip"
+                                        data-reason-chip="{{ $preset }}"
+                                        data-reason-target="exchange">{{ $preset }}</button>
+                            @endforeach
+                        </div>
+                    </label>
+                    <p class="exchange-create-inline-error" data-reason-error hidden></p>
+                </div>
+            </section>
+
+            <div class="exchange-create-actions">
+                <a href="{{ route('invoices.show', $invoice) }}" class="exchange-create-cancel" data-turbo-frame="_top">Cancel</a>
+                <button type="submit" class="exchange-create-submit">Process exchange</button>
             </div>
         </form>
     </div>
@@ -290,51 +385,384 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Strip unchecked-line groups on submit so server validation only sees selected items.
-            const form = document.querySelector('form[action="{{ route('exchanges.unified.store', $invoice) }}"]');
-            const checkboxes = Array.from(document.querySelectorAll('.line-checkbox'));
-            const returnTotals = Array.from(document.querySelectorAll('[data-return-total]'));
-            const barcodes = document.getElementById('new_item_barcodes');
-            const returnEst = document.getElementById('returnEstimate');
-            const newSaleEst = document.getElementById('newSaleEstimate');
-            const newSaleEst2 = document.getElementById('newSaleEstimate2');
-            const netLabel = document.getElementById('netLabel');
-            const netDir = document.getElementById('netDirection');
+        (() => {
+            const initExchangeRuleUi = () => {
+                document.querySelectorAll('[data-exchange-rule-help]').forEach((help) => {
+                    if (help.dataset.exchangeRuleReady === '1') return;
+                    help.dataset.exchangeRuleReady = '1';
 
-            const fmt = (n) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const trigger = help.querySelector('[data-exchange-rule-trigger]');
+                    const popover = help.querySelector('.exchange-rule-popover');
+                    if (!trigger || !popover) return;
+                    let pinned = false;
 
-            const recompute = () => {
-                // Return estimate = sum of selected lines' totals
-                let returnTotal = 0;
-                checkboxes.forEach(cb => {
-                    if (cb.checked) {
-                        const idx = cb.dataset.lineIdx;
-                        const cell = document.querySelector(`[data-return-total][data-line-idx="${idx}"]`);
-                        if (cell) returnTotal += parseFloat(cell.dataset.amount || '0');
-                    }
+                    const open = () => {
+                        popover.hidden = false;
+                        trigger.setAttribute('aria-expanded', 'true');
+                    };
+                    const close = () => {
+                        pinned = false;
+                        popover.hidden = true;
+                        trigger.setAttribute('aria-expanded', 'false');
+                    };
+
+                    trigger.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (pinned && !popover.hidden) {
+                            close();
+                        } else {
+                            pinned = true;
+                            open();
+                        }
+                    });
+                    help.addEventListener('mouseenter', () => {
+                        if (!pinned) open();
+                    });
+                    help.addEventListener('mouseleave', () => {
+                        if (!pinned) close();
+                    });
+                    document.addEventListener('click', (event) => {
+                        if (!help.contains(event.target)) close();
+                    });
+                    document.addEventListener('keydown', (event) => {
+                        if (event.key === 'Escape') close();
+                    });
                 });
-                returnEst.textContent = fmt(returnTotal);
-                // New sale is only known at submit (we don't fetch prices client-side in MVP)
-                const barcodeCount = (barcodes.value || '').split(/[,\s]+/).filter(Boolean).length;
-                newSaleEst.textContent = barcodeCount > 0 ? `${barcodeCount} item(s) — total at submit` : '—';
-                newSaleEst2.textContent = '— (computed at submit)';
-                netLabel.textContent = barcodeCount > 0 ? 'Computed at submit' : '—';
-                netDir.textContent = barcodeCount > 0 ? 'Based on items selected; system computes exact net after lookup.' : '';
+
+                document.querySelectorAll('[data-exchange-rule-notice]').forEach((notice) => {
+                    if (notice.dataset.exchangeNoticeReady === '1') return;
+                    notice.dataset.exchangeNoticeReady = '1';
+                    notice.hidden = false;
+
+                    notice.querySelector('[data-exchange-rule-close]')?.addEventListener('click', () => {
+                        notice.hidden = true;
+                    });
+                });
             };
 
-            checkboxes.forEach(cb => cb.addEventListener('change', recompute));
-            barcodes.addEventListener('input', recompute);
-            recompute();
+            const initExchangeForm = () => {
+                initExchangeRuleUi();
 
-            form.addEventListener('submit', () => {
-                checkboxes.forEach(cb => {
-                    if (!cb.checked) {
-                        const idx = cb.dataset.lineIdx;
-                        form.querySelectorAll(`[name^="lines[${idx}]"]`).forEach(el => el.disabled = true);
-                    }
+                document.querySelectorAll('[data-exchange-form]').forEach((form) => {
+                    if (form.dataset.exchangeReady === '1') return;
+                    form.dataset.exchangeReady = '1';
+
+                    const checkboxes = Array.from(form.querySelectorAll('.line-checkbox'));
+                    const barcodes = form.querySelector('#new_item_barcodes');
+                    const barcodeEntry = form.querySelector('[data-barcode-entry]');
+                    const barcodeAdd = form.querySelector('[data-barcode-add]');
+                    const barcodeList = form.querySelector('[data-barcode-list]');
+                    const barcodeCount = form.querySelector('[data-barcode-count]');
+                    const barcodeError = form.querySelector('[data-barcode-error]');
+                    const returnError = form.querySelector('[data-return-error]');
+                    const reasonError = form.querySelector('[data-reason-error]');
+                    const reason = form.querySelector('[name="reason"]');
+                    const returnEst = form.querySelector('#returnEstimate');
+                    const newSaleEst = form.querySelector('#newSaleEstimate');
+                    const newSaleEst2 = form.querySelector('#newSaleEstimate2');
+                    const netLabel = form.querySelector('#netLabel');
+                    const netDir = form.querySelector('#netDirection');
+                    const barcodePattern = /^[A-Za-z0-9._/-]+$/;
+                    const barcodeLookupBase = @json(url('/api/item-by-barcode'));
+                    let barcodeTokens = [];
+                    const barcodeDetails = new Map();
+                    const barcodeLookupInFlight = new Set();
+
+                    const fmt = (n) => Number(n).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    });
+                    const money = (n) => Number(n || 0).toLocaleString('en-IN', {
+                        style: 'currency',
+                        currency: 'INR',
+                        maximumFractionDigits: 2,
+                    });
+                    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#039;',
+                    }[ch]));
+                    const escapeAttr = (value) => escapeHtml(value).replace(/`/g, '&#096;');
+
+                    const parseBarcodeText = (value) => (value || '')
+                        .split(/[\s,]+/)
+                        .map((code) => code.trim())
+                        .filter(Boolean);
+
+                    const setError = (node, message) => {
+                        if (!node) return;
+                        node.textContent = message || '';
+                        node.hidden = !message;
+                    };
+
+                    const splitPhrases = (value) => (value || '')
+                        .split(',')
+                        .map((phrase) => phrase.trim())
+                        .filter(Boolean);
+
+                    const syncReasonChips = (wrap, input) => {
+                        const phrases = splitPhrases(input.value);
+                        wrap.querySelectorAll('[data-reason-chip]').forEach((chip) => {
+                            chip.classList.toggle('is-active', phrases.includes(chip.dataset.reasonChip));
+                        });
+                    };
+
+                    form.querySelectorAll('[data-reason-chips]').forEach((wrap) => {
+                        const field = wrap.closest('label') || wrap.parentElement;
+                        const input = field ? field.querySelector('[data-reason-input]') : null;
+                        if (!input) return;
+
+                        syncReasonChips(wrap, input);
+                        wrap.querySelectorAll('[data-reason-chip]').forEach((chip) => {
+                            chip.addEventListener('click', () => {
+                                const phrase = chip.dataset.reasonChip;
+                                const phrases = splitPhrases(input.value);
+                                const at = phrases.indexOf(phrase);
+                                if (at === -1) {
+                                    phrases.push(phrase);
+                                } else {
+                                    phrases.splice(at, 1);
+                                }
+                                input.value = phrases.join(', ');
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                syncReasonChips(wrap, input);
+                            });
+                        });
+                        input.addEventListener('input', () => syncReasonChips(wrap, input));
+                    });
+
+                    const recompute = () => {
+                        let returnTotal = 0;
+                        checkboxes.forEach((cb) => {
+                            if (!cb.checked) return;
+                            const cell = form.querySelector(`[data-return-total][data-line-idx="${cb.dataset.lineIdx}"]`);
+                            if (cell) returnTotal += parseFloat(cell.dataset.amount || '0');
+                        });
+
+                        returnEst.textContent = fmt(returnTotal);
+                        newSaleEst.textContent = barcodeTokens.length > 0
+                            ? `${barcodeTokens.length} item${barcodeTokens.length === 1 ? '' : 's'} - priced at submit`
+                            : '-';
+                        newSaleEst2.textContent = barcodeTokens.length > 0 ? 'Priced at submit' : '-';
+                        netLabel.textContent = barcodeTokens.length > 0 ? 'Computed at submit' : '-';
+                        netDir.textContent = barcodeTokens.length > 0
+                            ? 'Server checks stock, price, GST, and barcode validity before settlement.'
+                            : '';
+                    };
+
+                    const barcodeTitle = (item, code) => {
+                        if (!item) return code;
+                        return item.design
+                            || [item.category, item.sub_category].filter(Boolean).join(' / ')
+                            || code;
+                    };
+
+                    const barcodeMeta = (item) => {
+                        if (!item) return [];
+                        return [
+                            item.category,
+                            item.sub_category,
+                            item.purity ? `${item.purity}K` : '',
+                            item.gross_weight ? `${Number(item.gross_weight).toFixed(3)}g gross` : '',
+                            item.weight ? `${Number(item.weight).toFixed(3)}g net` : '',
+                            item.status ? String(item.status).replace(/_/g, ' ') : '',
+                        ].filter(Boolean);
+                    };
+
+                    const renderBarcodeChip = (code) => {
+                        const detail = barcodeDetails.get(code);
+                        const safeCode = escapeHtml(code);
+                        const safeCodeAttr = escapeAttr(code);
+                        const removeButton = `<button type="button" data-remove-barcode="${safeCodeAttr}" aria-label="Remove ${safeCodeAttr}">Remove</button>`;
+
+                        if (!detail || detail.state === 'loading') {
+                            return (
+                                `<article class="exchange-barcode-chip exchange-barcode-chip--detail is-loading" data-barcode-item-detail data-barcode="${safeCodeAttr}">` +
+                                    `<div class="exchange-barcode-chip__main">` +
+                                        `<strong>${safeCode}</strong>` +
+                                        `<span>Checking item details...</span>` +
+                                    `</div>` +
+                                    removeButton +
+                                `</article>`
+                            );
+                        }
+
+                        if (detail.state === 'error') {
+                            return (
+                                `<article class="exchange-barcode-chip exchange-barcode-chip--detail is-error" data-barcode-item-detail data-barcode="${safeCodeAttr}">` +
+                                    `<div class="exchange-barcode-chip__main">` +
+                                        `<strong>${safeCode}</strong>` +
+                                        `<span>${escapeHtml(detail.message || 'Item not found. Check the barcode before processing.')}</span>` +
+                                    `</div>` +
+                                    removeButton +
+                                `</article>`
+                            );
+                        }
+
+                        const item = detail.item || {};
+                        const meta = barcodeMeta(item);
+                        const price = item.selling_price ? money(item.selling_price) : '';
+                        return (
+                            `<article class="exchange-barcode-chip exchange-barcode-chip--detail" data-barcode-item-detail data-barcode="${safeCodeAttr}">` +
+                                `<div class="exchange-barcode-chip__main">` +
+                                    `<strong>${escapeHtml(barcodeTitle(item, code))}</strong>` +
+                                    `<span>${safeCode}</span>` +
+                                `</div>` +
+                                `<div class="exchange-barcode-chip__meta">` +
+                                    meta.map((entry) => `<small>${escapeHtml(entry)}</small>`).join('') +
+                                `</div>` +
+                                (price ? `<b>${escapeHtml(price)}</b>` : '') +
+                                removeButton +
+                            `</article>`
+                        );
+                    };
+
+                    const lookupBarcodeDetail = async (code) => {
+                        if (!code || barcodeDetails.has(code) || barcodeLookupInFlight.has(code)) return;
+
+                        barcodeLookupInFlight.add(code);
+                        try {
+                            const response = await fetch(`${barcodeLookupBase}/${encodeURIComponent(code)}`, {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                            });
+
+                            if (!response.ok) {
+                                barcodeDetails.set(code, {
+                                    state: 'error',
+                                    message: response.status === 404
+                                        ? 'Item not found. Check the barcode before processing.'
+                                        : 'Could not load item details. The server will verify this barcode.',
+                                });
+                            } else {
+                                const item = await response.json();
+                                barcodeDetails.set(code, { state: 'loaded', item });
+                            }
+                        } catch (error) {
+                            barcodeDetails.set(code, {
+                                state: 'error',
+                                message: 'Could not load item details. The server will verify this barcode.',
+                            });
+                        } finally {
+                            barcodeLookupInFlight.delete(code);
+                            renderBarcodes();
+                        }
+                    };
+
+                    const renderBarcodes = () => {
+                        barcodes.value = barcodeTokens.join(', ');
+                        barcodeCount.textContent = `${barcodeTokens.length} item${barcodeTokens.length === 1 ? '' : 's'}`;
+
+                        if (barcodeTokens.length === 0) {
+                            barcodeList.innerHTML = '<p class="exchange-barcode-empty">No replacement items added yet.</p>';
+                        } else {
+                            barcodeList.innerHTML = barcodeTokens.map(renderBarcodeChip).join('');
+                            barcodeTokens.forEach((code) => lookupBarcodeDetail(code));
+                        }
+                        recompute();
+                    };
+
+                    const addBarcodes = (value) => {
+                        const codes = parseBarcodeText(value);
+                        if (codes.length === 0) {
+                            setError(barcodeError, 'Enter a barcode before adding.');
+                            return;
+                        }
+
+                        const invalid = codes.filter((code) => !barcodePattern.test(code));
+                        if (invalid.length > 0) {
+                            setError(barcodeError, `Barcode contains unsupported characters: ${invalid.join(', ')}`);
+                            return;
+                        }
+
+                        let added = 0;
+                        codes.forEach((code) => {
+                            if (!barcodeTokens.includes(code)) {
+                                barcodeTokens.push(code);
+                                added += 1;
+                            }
+                        });
+
+                        setError(barcodeError, added === 0 ? 'This barcode is already in the replacement list.' : '');
+                        barcodeEntry.value = '';
+                        renderBarcodes();
+                    };
+
+                    barcodeTokens = parseBarcodeText(barcodes.value);
+                    renderBarcodes();
+
+                    checkboxes.forEach((cb) => cb.addEventListener('change', () => {
+                        setError(returnError, '');
+                        recompute();
+                    }));
+
+                    barcodeAdd.addEventListener('click', () => addBarcodes(barcodeEntry.value));
+                    barcodeEntry.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ',') {
+                            event.preventDefault();
+                            addBarcodes(barcodeEntry.value);
+                        }
+                    });
+                    barcodeEntry.addEventListener('paste', () => {
+                        window.setTimeout(() => {
+                            if (/[\s,]+/.test(barcodeEntry.value)) addBarcodes(barcodeEntry.value);
+                        }, 0);
+                    });
+                    barcodeList.addEventListener('click', (event) => {
+                        const button = event.target.closest('[data-remove-barcode]');
+                        if (!button) return;
+                        barcodeTokens = barcodeTokens.filter((code) => code !== button.dataset.removeBarcode);
+                        barcodeDetails.delete(button.dataset.removeBarcode);
+                        setError(barcodeError, '');
+                        renderBarcodes();
+                    });
+
+                    form.addEventListener('submit', (event) => {
+                        setError(returnError, '');
+                        setError(barcodeError, '');
+                        setError(reasonError, '');
+
+                        if (!checkboxes.some((cb) => cb.checked)) {
+                            event.preventDefault();
+                            setError(returnError, 'Select at least one item from the original invoice.');
+                            checkboxes[0]?.focus();
+                            return;
+                        }
+
+                        if (barcodeTokens.length === 0) {
+                            event.preventDefault();
+                            setError(barcodeError, 'Add at least one replacement item barcode.');
+                            barcodeEntry.focus();
+                            return;
+                        }
+
+                        if (!reason.value.trim() || reason.value.trim().length < 5) {
+                            event.preventDefault();
+                            setError(reasonError, 'Enter an exchange reason with at least 5 characters.');
+                            reason.focus();
+                            return;
+                        }
+
+                        checkboxes.forEach((cb) => {
+                            if (!cb.checked) {
+                                const idx = cb.dataset.lineIdx;
+                                form.querySelectorAll(`[name^="lines[${idx}]"]`).forEach((el) => {
+                                    el.disabled = true;
+                                });
+                            }
+                        });
+                    });
                 });
-            });
-        });
+            };
+
+            document.addEventListener('DOMContentLoaded', initExchangeForm);
+            document.addEventListener('turbo:load', initExchangeForm);
+            initExchangeForm();
+        })();
     </script>
 </x-app-layout>

@@ -58,26 +58,62 @@
             </section>
         @endif
 
-        <section class="returns-create-summary" aria-label="Return context">
-            <article>
-                <span>Invoice</span>
-                <strong>{{ $invoice->invoice_number }}</strong>
-                <small>{{ optional($invoice->finalized_at ?? $invoice->created_at)->format('d M Y') }}</small>
+        <section class="returns-create-kpis" aria-label="Return summary">
+            <article class="returns-create-kpi-card">
+                <span class="returns-create-kpi-icon" aria-hidden="true">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3h7l4 4v14H7z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3v5h5M9 13h6M9 17h4"/>
+                    </svg>
+                </span>
+                <div>
+                    <span>Invoice</span>
+                    <strong>{{ $invoice->invoice_number }}</strong>
+                    <small>{{ optional($invoice->finalized_at ?? $invoice->created_at)->format('d M Y') }}</small>
+                </div>
             </article>
-            <article>
-                <span>Customer</span>
-                <strong>{{ $customerName ?: 'Walk-in' }}</strong>
-                <small>{{ $invoice->customer?->mobile ?: 'No mobile number' }}</small>
+
+            <article class="returns-create-kpi-card">
+                <span class="returns-create-kpi-icon" aria-hidden="true">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4" stroke-width="2"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    </svg>
+                </span>
+                <div>
+                    <span>Customer</span>
+                    <strong>{{ $customerName ?: 'Walk-in' }}</strong>
+                    <small>{{ $invoice->customer?->mobile ?: 'No mobile number' }}</small>
+                </div>
             </article>
-            <article>
-                <span>Returnable lines</span>
-                <strong>{{ $returnableLines->count() }}</strong>
-                <small>{{ $returnedLines->count() }} already returned</small>
+
+            <article class="returns-create-kpi-card">
+                <span class="returns-create-kpi-icon" aria-hidden="true">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14 4 9l5-5"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9h11a5 5 0 0 1 0 10h-1"/>
+                    </svg>
+                </span>
+                <div>
+                    <span>Returnable lines</span>
+                    <strong>{{ $returnableLines->count() }}</strong>
+                    <small>{{ $returnedLines->count() }} already returned</small>
+                </div>
             </article>
-            <article class="returns-create-summary__refund">
-                <span>Estimated refund</span>
-                <strong>₹{{ number_format($estimatedRefundTotal, 2) }}</strong>
-                <small>If all returnable lines are selected</small>
+
+            <article class="returns-create-kpi-card returns-create-kpi-card--amount">
+                <span class="returns-create-kpi-icon" aria-hidden="true">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6h12M6 10h12M8 14h5a4 4 0 0 0 0-8"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m8 14 6 6"/>
+                    </svg>
+                </span>
+                <div>
+                    <span>Estimated refund</span>
+                    <strong>₹{{ number_format($estimatedRefundTotal, 2) }}</strong>
+                    <small>If all returnable lines are selected</small>
+                </div>
             </article>
         </section>
 
@@ -349,6 +385,12 @@
                             </div>
                         </div>
 
+                        <div class="returns-create-live-total" aria-live="polite">
+                            <span>Selected refund</span>
+                            <strong>₹<span data-selected-refund>0.00</span></strong>
+                            <small><span data-selected-count>0</span> / {{ $returnableLines->count() }} lines selected</small>
+                        </div>
+
                         <label class="returns-create-field">
                             <span>Reason for return <small>required</small></span>
                             <textarea name="reason"
@@ -408,17 +450,6 @@
                             @error('override')<small class="returns-create-error">{{ $message }}</small>@enderror
                             @error('return')<small class="returns-create-error">{{ $message }}</small>@enderror
                         </fieldset>
-
-                        <dl class="returns-create-selected-summary">
-                            <div>
-                                <dt>Selected lines</dt>
-                                <dd><span data-selected-count>0</span> / {{ $returnableLines->count() }}</dd>
-                            </div>
-                            <div>
-                                <dt>Estimated selected refund</dt>
-                                <dd>₹<span data-selected-refund>0.00</span></dd>
-                            </div>
-                        </dl>
 
                         <div class="returns-create-actions">
                             <a href="{{ route('invoices.show', $invoice) }}" class="returns-create-secondary-action">

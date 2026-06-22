@@ -257,145 +257,120 @@
             <div class="returns-show-section-head">
                 <div>
                     <h2>Returned Lines</h2>
-                    <p>Inventory disposition and refund value for each returned item.</p>
+                    <p>Returned item, refund decision, and stock handling in one compact record.</p>
                 </div>
+                <span class="returns-show-section-count">{{ $returnOrder->lineItems->count() }} {{ Str::plural('item', $returnOrder->lineItems->count()) }}</span>
             </div>
 
-            <div class="returns-show-table-wrap">
-                <table class="returns-show-table">
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th>Condition</th>
-                            <th class="text-right">Refund</th>
-                            <th>Outcome</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($returnOrder->lineItems as $line)
-                            @php
-                                $latest = $line->dispositions->sortByDesc('id')->first();
-                                $condition = ucfirst(str_replace('_', ' ', (string) $line->condition));
-                                $disposition = $latest ? ucfirst(str_replace('_', ' ', (string) $latest->disposition)) : 'Pending';
-                            @endphp
-                            <tr>
-                                <td>
-                                    <span class="returns-show-item-code">{{ $line->item?->barcode ?? '-' }}</span>
-                                    <small>{{ $line->item?->design ?? $line->item?->category ?? 'No item detail' }}</small>
-                                </td>
-                                <td>{{ $condition }}</td>
-                                <td class="text-right">
-                                    <span class="returns-show-refund">₹{{ number_format((float) $line->refund_total, 2) }}</span>
-                                    @include('returns.partials.policy-breakdown', [
-                                        'breakdown' => $line->policy_breakdown ?: null,
-                                        'lineId'    => $line->id,
-                                    ])
-                                </td>
-                                <td>
-                                    @include('returns.partials.disposition-history', ['dispositions' => $line->dispositions->sortBy('dispositioned_at')])
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="returns-show-mobile-lines">
+            <div class="returns-show-lines-list">
                 @foreach($returnOrder->lineItems as $line)
                     @php
                         $latest = $line->dispositions->sortByDesc('id')->first();
                         $condition = ucfirst(str_replace('_', ' ', (string) $line->condition));
                         $disposition = $latest ? ucfirst(str_replace('_', ' ', (string) $latest->disposition)) : 'Pending';
                     @endphp
-                    <article class="returns-show-mobile-line">
-                        <div class="returns-show-mobile-line-head">
-                            <div>
-                                <h3>{{ $line->item?->barcode ?? '-' }}</h3>
-                                <p>{{ $line->item?->design ?? $line->item?->category ?? 'No item detail' }}</p>
+                    <article class="returns-show-line-card">
+                        <div class="returns-show-line-top">
+                            <div class="returns-show-line-identity">
+                                <span class="returns-show-item-code">{{ $line->item?->barcode ?? '-' }}</span>
+                                <h3>{{ $line->item?->design ?? $line->item?->category ?? 'No item detail' }}</h3>
+                                <div class="returns-show-line-tags">
+                                    <span class="returns-show-line-tag">Condition: {{ $condition }}</span>
+                                    <span class="returns-show-line-tag {{ $latest ? 'returns-show-line-tag--outcome' : 'returns-show-line-tag--pending' }}">
+                                        {{ $disposition }}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <span class="returns-show-refund">₹{{ number_format((float) $line->refund_total, 2) }}</span>
-                                @include('returns.partials.policy-breakdown', [
-                                    'breakdown' => $line->policy_breakdown ?: null,
-                                    'lineId'    => 'mob-' . $line->id,
-                                ])
+
+                            <div class="returns-show-line-refund">
+                                <span>Refund value</span>
+                                <strong class="returns-show-refund">₹{{ number_format((float) $line->refund_total, 2) }}</strong>
                             </div>
                         </div>
 
-                        <dl class="returns-show-mobile-grid">
-                            <div>
-                                <dt>Condition</dt>
-                                <dd>{{ $condition }}</dd>
-                            </div>
-                            <div>
-                                <dt>Item outcome</dt>
-                                <dd>
+                        <div class="returns-show-line-body">
+                            <div class="returns-show-line-outcome">
+                                <span>Stock handling</span>
+                                <div class="returns-show-disposition-flow">
                                     @include('returns.partials.disposition-history', ['dispositions' => $line->dispositions->sortBy('dispositioned_at')])
-                                </dd>
+                                </div>
                             </div>
-                        </dl>
+
+                            <div class="returns-show-line-policy">
+                                <span>Refund policy</span>
+                                <div class="returns-show-deduction-action">
+                                    @include('returns.partials.policy-breakdown', [
+                                        'breakdown' => $line->policy_breakdown ?: null,
+                                        'lineId'    => $line->id,
+                                    ])
+                                </div>
+                            </div>
+                        </div>
                     </article>
                 @endforeach
             </div>
         </section>
 
-        <div class="bg-white shadow rounded-lg overflow-hidden mt-6">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-base font-semibold text-gray-900">Approval & Policy Context</h3>
+        <section class="returns-show-approval" aria-label="Approval and policy context">
+            <div class="returns-show-section-head">
+                <div>
+                    <h2>Approval & Policy Context</h2>
+                    <p>Settlement rules and policy checks used for this return.</p>
+                </div>
             </div>
-            <dl class="divide-y divide-gray-100 px-6 py-4 space-y-3">
-                <div class="flex justify-between items-center py-2">
-                    <dt class="text-sm text-gray-500">Settlement method</dt>
-                    <dd class="text-sm font-medium text-gray-900">
+            <dl class="returns-show-policy-list">
+                <div>
+                    <dt>Settlement method</dt>
+                    <dd>
                         {{ $returnOrder->refund_settlement === 'store_credit' ? 'Store credit' : 'Cash refund' }}
                     </dd>
                 </div>
 
                 @if($approvalReason ?? null)
-                <div class="py-2">
-                    <dt class="text-sm text-gray-500 mb-1">Approval required because</dt>
+                <div>
+                    <dt>Approval required because</dt>
                     <dd>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        <span class="returns-show-pill returns-show-pill--warning">
                             {{ $approvalReason }}
                         </span>
                     </dd>
                 </div>
                 @else
-                <div class="flex justify-between items-center py-2">
-                    <dt class="text-sm text-gray-500">Approval</dt>
-                    <dd><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">No approval required</span></dd>
+                <div>
+                    <dt>Approval</dt>
+                    <dd><span class="returns-show-pill returns-show-pill--success">No approval required</span></dd>
                 </div>
                 @endif
 
                 @if($returnOrder->approvedBy ?? null)
-                <div class="flex justify-between items-center py-2">
-                    <dt class="text-sm text-gray-500">Approved by</dt>
-                    <dd class="text-sm text-gray-900">{{ $returnOrder->approvedBy->name }} · {{ \Carbon\Carbon::parse($returnOrder->approved_at)->format('d M Y, H:i') }}</dd>
+                <div>
+                    <dt>Approved by</dt>
+                    <dd>{{ $returnOrder->approvedBy->name }} · {{ \Carbon\Carbon::parse($returnOrder->approved_at)->format('d M Y, H:i') }}</dd>
                 </div>
                 @endif
 
                 @if($returnOrder->status === 'cancelled' && str_starts_with($returnOrder->cancellation_reason ?? '', 'Rejected by approver'))
-                <div class="py-2">
-                    <dt class="text-sm text-gray-500 mb-1">Rejection reason</dt>
-                    <dd class="text-sm bg-red-50 border border-red-200 rounded px-3 py-2 text-red-800">{{ $returnOrder->cancellation_reason }}</dd>
+                <div>
+                    <dt>Rejection reason</dt>
+                    <dd class="returns-show-rejection">{{ $returnOrder->cancellation_reason }}</dd>
                 </div>
                 @endif
 
                 @if($windowContext ?? null)
-                <div class="flex justify-between items-center py-2">
-                    <dt class="text-sm text-gray-500">Return window</dt>
-                    <dd class="text-sm">
+                <div>
+                    <dt>Return window</dt>
+                    <dd>
                         Invoice was {{ $windowContext['days_since'] }} day(s) old. Policy window: {{ $windowContext['window_days'] }} days.
                         @if($windowContext['within'])
-                            <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Within window</span>
+                            <span class="returns-show-pill returns-show-pill--success">Within window</span>
                         @else
-                            <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Override approved</span>
+                            <span class="returns-show-pill returns-show-pill--warning">Override approved</span>
                         @endif
                     </dd>
                 </div>
                 @endif
             </dl>
-        </div>
+        </section>
 
         <section class="returns-show-audit" aria-label="Return audit">
             <p>Created on {{ optional($returnOrder->created_at)->format('d M Y, h:i A') ?? '-' }} · {{ $returnOrder->createdBy?->name ?? 'system' }}.</p>

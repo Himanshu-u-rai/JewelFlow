@@ -1,20 +1,565 @@
 <x-app-layout>
+    <style>
+        .returns-control-page {
+            --rc-gold: #b45309;
+            --rc-gold-hover: #92400e;
+            --rc-line-soft: #e2e8f0;
+            --rc-line: #cbd5e1;
+            --rc-ink: #1f2430;
+            --rc-text: #4a4334;
+            --rc-muted: #64748b;
+            --rc-soft: #faf6ee;
+            --rc-focus: rgba(245, 158, 11, .2);
+            width: 100%;
+            max-width: none;
+            background: #f6f7f9;
+            color: var(--rc-ink);
+        }
+
+        .content-header.returns-control-header {
+            border-bottom: 1px solid #cbd5e1;
+            background: #ffffff;
+            box-shadow: none;
+        }
+
+        .content-header.returns-control-header .page-title {
+            color: #111827;
+            font-size: 22px;
+            font-weight: 620;
+            letter-spacing: 0;
+        }
+
+        .content-header.returns-control-header .page-subtitle {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .rc-back-btn,
+        .returns-control-page .rc-action,
+        .returns-control-page .rc-action button,
+        .returns-control-page .rc-action-primary,
+        .returns-control-page .rc-action-secondary,
+        .returns-control-page .rc-action-success,
+        .returns-control-page .rc-action-danger,
+        .returns-control-page .rc-action-muted {
+            box-shadow: none !important;
+        }
+
+        .rc-back-btn {
+            display: inline-flex;
+            min-height: 40px;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 1px solid var(--rc-line);
+            border-radius: 10px;
+            background: #ffffff;
+            padding: 0 14px;
+            color: var(--rc-text);
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .rc-back-btn:hover {
+            border-color: #94a3b8;
+            background: #f8fafc;
+            color: var(--rc-ink);
+        }
+
+        .returns-control-page .rc-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .returns-control-page .rc-kpi-card {
+            border: 1px solid var(--rc-line-soft) !important;
+            border-radius: 14px !important;
+            background: #ffffff !important;
+            padding: 14px 15px !important;
+            box-shadow: none !important;
+        }
+
+        .returns-control-page .rc-kpi-card__inner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .returns-control-page .rc-kpi-icon {
+            display: inline-flex;
+            width: 36px;
+            height: 36px;
+            flex: 0 0 36px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #f3dcb6;
+            border-radius: 10px;
+            background: #fdf6ec;
+            color: var(--rc-gold);
+        }
+
+        .returns-control-page .rc-kpi-card.is-calm .rc-kpi-icon {
+            border-color: var(--rc-line-soft);
+            background: #f8fafc;
+            color: #475569;
+        }
+
+        .returns-control-page .rc-kpi-value {
+            color: var(--rc-ink);
+            font-size: 22px;
+            font-weight: 650;
+            line-height: 1.1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .returns-control-page .rc-kpi-label {
+            margin-top: 4px;
+            color: var(--rc-muted);
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        .returns-control-page .rc-section {
+            border: 1px solid var(--rc-line-soft);
+            border-radius: 14px;
+            background: #ffffff;
+            box-shadow: none;
+            overflow: hidden;
+        }
+
+        .returns-control-page .rc-section + .rc-section {
+            margin-top: 16px;
+        }
+
+        .returns-control-page .rc-section-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            border-bottom: 1px solid var(--rc-line-soft);
+            padding: 16px 18px;
+            background: #ffffff;
+        }
+
+        .returns-control-page .rc-section-title {
+            margin: 0;
+            color: var(--rc-ink);
+            font-size: 17px;
+            font-weight: 650;
+            letter-spacing: -0.1px;
+            line-height: 1.2;
+        }
+
+        .returns-control-page .rc-section-copy {
+            margin: 4px 0 0;
+            color: var(--rc-muted);
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .returns-control-page .rc-section-body {
+            display: grid;
+            gap: 14px;
+            padding: 14px;
+        }
+
+        .returns-control-page .rc-queue {
+            border: 1px solid var(--rc-line-soft);
+            border-radius: 12px;
+            background: #ffffff;
+            overflow: hidden;
+        }
+
+        .returns-control-page .rc-queue-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-bottom: 1px solid var(--rc-line-soft);
+            padding: 13px 14px;
+            background: #fbfcfd;
+        }
+
+        .returns-control-page .rc-queue-title {
+            display: block;
+            min-width: 0;
+            color: var(--rc-ink);
+            font-size: 14px;
+            font-weight: 650;
+            word-spacing: 0.08em;
+            line-height: 1.2;
+        }
+
+        .returns-control-page .rc-queue-copy {
+            margin: 0;
+            padding: 0 14px 12px;
+            color: var(--rc-muted);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .returns-control-page .rc-count {
+            display: inline-flex;
+            min-width: 24px;
+            height: 22px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #f8d28b;
+            border-radius: 999px;
+            background: #fff7ed;
+            padding: 0 7px;
+            color: var(--rc-gold);
+            font-size: 12px;
+            font-weight: 650;
+            line-height: 1;
+        }
+
+        .returns-control-page .rc-table-card {
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+
+        .returns-control-page .rc-table-card table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .returns-control-page .rc-table-card thead {
+            border-bottom: 1px solid #e5e7eb;
+            background: #f8fafc !important;
+        }
+
+        .returns-control-page .rc-table-card thead th {
+            padding: 12px 16px;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        .returns-control-page .rc-table-card tbody td {
+            border-bottom: 1px solid #edf2f7;
+            padding: 14px 16px;
+            color: var(--rc-text);
+            font-size: 14px;
+            font-weight: 400;
+            vertical-align: middle;
+        }
+
+        .returns-control-page .rc-table-card tbody tr:nth-child(even) {
+            background: #f8fbff;
+        }
+
+        .returns-control-page .rc-table-card tbody tr:hover {
+            background: #edf5ff;
+        }
+
+        .returns-control-page .rc-action-primary {
+            display: inline-flex;
+            min-height: 36px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--rc-gold) !important;
+            border-radius: 9px !important;
+            background: var(--rc-gold) !important;
+            padding: 8px 11px !important;
+            color: #ffffff !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            text-decoration: none;
+        }
+
+        .returns-control-page .rc-action-primary:hover {
+            border-color: var(--rc-gold-hover) !important;
+            background: var(--rc-gold-hover) !important;
+            color: #ffffff !important;
+        }
+
+        .returns-control-page .rc-action-secondary,
+        .returns-control-page .rc-action-muted {
+            display: inline-flex;
+            min-height: 36px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--rc-line) !important;
+            border-radius: 9px !important;
+            background: #ffffff !important;
+            padding: 8px 11px !important;
+            color: var(--rc-text) !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            text-decoration: none;
+        }
+
+        .returns-control-page .rc-action-success {
+            border-color: #bbf7d0 !important;
+            background: #ecfdf5 !important;
+            color: #047857 !important;
+        }
+
+        .returns-control-page .rc-action-danger {
+            border-color: #fecaca !important;
+            background: #fff1f2 !important;
+            color: #be123c !important;
+        }
+
+        .returns-control-page .rc-action-warn {
+            border-color: #fed7aa !important;
+            background: #fff7ed !important;
+            color: #c2410c !important;
+        }
+
+        .returns-control-page .rc-queue .ui-state {
+            border: 0;
+            border-top: 1px solid var(--rc-line-soft);
+            border-radius: 0;
+            background: #fbfcfd;
+            padding: 24px 16px;
+            box-shadow: none;
+        }
+
+        .returns-control-page .rc-queue .ui-state-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+        }
+
+        .returns-control-page .rc-queue .ui-state-title {
+            margin-top: 10px;
+            font-size: 15px;
+            font-weight: 650;
+        }
+
+        .returns-control-page .rc-queue .ui-state-description {
+            margin-top: 5px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 768px) {
+            .content-header.returns-control-header {
+                display: grid;
+                grid-template-columns: 40px minmax(0, 1fr) 40px;
+                align-items: center;
+                gap: 8px;
+                min-height: 64px;
+                padding: 12px 14px !important;
+                overflow: hidden;
+            }
+
+            .content-header.returns-control-header .content-header-nav {
+                grid-column: 1;
+                grid-row: 1;
+                margin-right: 0;
+                padding-top: 0;
+            }
+
+            .content-header.returns-control-header > :nth-child(2) {
+                grid-column: 2;
+                grid-row: 1;
+                min-width: 0;
+                text-align: center;
+            }
+
+            .content-header.returns-control-header .page-title {
+                margin: 0;
+                font-size: 17px;
+                white-space: nowrap;
+            }
+
+            .content-header.returns-control-header .page-subtitle {
+                display: none;
+            }
+
+            .content-header.returns-control-header .page-actions {
+                grid-column: 3;
+                grid-row: 1;
+                justify-self: end;
+                width: 40px !important;
+                height: 40px !important;
+                overflow: hidden;
+            }
+
+            .content-header.returns-control-header .page-actions > .rc-back-btn {
+                width: 36px !important;
+                min-width: 36px !important;
+                height: 36px !important;
+                min-height: 36px !important;
+                padding: 0 !important;
+                font-size: 0 !important;
+                line-height: 0 !important;
+            }
+
+            .content-header.returns-control-header .page-actions > .rc-back-btn span {
+                display: none !important;
+            }
+
+            .returns-control-page {
+                padding: 14px !important;
+            }
+
+            .returns-control-page .rc-kpi-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+
+            .returns-control-page .rc-kpi-card {
+                min-height: 72px;
+                padding: 9px 8px !important;
+            }
+
+            .returns-control-page .rc-kpi-card__inner {
+                align-items: flex-start;
+                gap: 7px;
+            }
+
+            .returns-control-page .rc-kpi-icon {
+                width: 30px;
+                height: 30px;
+                flex-basis: 30px;
+                border-radius: 9px;
+            }
+
+            .returns-control-page .rc-kpi-value {
+                font-size: 18px;
+                line-height: 1;
+            }
+
+            .returns-control-page .rc-kpi-label {
+                display: -webkit-box;
+                margin-top: 3px;
+                font-size: 10.5px;
+                line-height: 1.05;
+                overflow: hidden;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: 2;
+            }
+
+            .returns-control-page .rc-section-head {
+                padding: 13px 12px;
+            }
+
+            .returns-control-page .rc-section-title {
+                font-size: 16px;
+            }
+
+            .returns-control-page .rc-section-body {
+                gap: 12px;
+                padding: 10px;
+            }
+
+            .returns-control-page .rc-queue-head {
+                padding: 12px;
+            }
+
+            .returns-control-page .rc-queue-copy {
+                padding: 0 12px 10px;
+                font-size: 12px;
+            }
+
+            .returns-control-page .rc-table-card table,
+            .returns-control-page .rc-table-card thead,
+            .returns-control-page .rc-table-card tbody,
+            .returns-control-page .rc-table-card tr,
+            .returns-control-page .rc-table-card td {
+                display: block;
+                width: 100%;
+            }
+
+            .returns-control-page .rc-table-card thead {
+                display: none;
+            }
+
+            .returns-control-page .rc-table-card tbody {
+                display: grid;
+                gap: 10px;
+                padding: 10px;
+                background: #fbfcfd;
+            }
+
+            .returns-control-page .rc-table-card tbody tr {
+                border: 1px solid var(--rc-line-soft);
+                border-radius: 12px;
+                background: #ffffff !important;
+                overflow: hidden;
+            }
+
+            .returns-control-page .rc-table-card tbody td {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 12px;
+                border-bottom: 1px solid #edf2f7;
+                padding: 10px 12px !important;
+                text-align: right !important;
+                font-size: 13px;
+            }
+
+            .returns-control-page .rc-table-card tbody td::before {
+                content: attr(data-label);
+                flex: 0 0 38%;
+                color: var(--rc-muted);
+                font-size: 11px;
+                font-weight: 500;
+                line-height: 1.2;
+                text-align: left;
+            }
+
+            .returns-control-page .rc-table-card tbody td:last-child {
+                border-bottom: 0;
+            }
+
+            .returns-control-page .rc-table-card tbody td[data-label="Actions"],
+            .returns-control-page .rc-table-card tbody td[data-label="Action"] {
+                display: block;
+                text-align: left !important;
+            }
+
+            .returns-control-page .rc-table-card tbody td[data-label="Actions"]::before,
+            .returns-control-page .rc-table-card tbody td[data-label="Action"]::before {
+                display: block;
+                margin-bottom: 8px;
+            }
+
+            .returns-control-page .rc-table-card tbody td[data-label="Actions"] form,
+            .returns-control-page .rc-table-card tbody td[data-label="Action"] form {
+                width: 100%;
+            }
+
+            .returns-control-page .rc-table-card tbody td[data-label="Actions"] :is(a, button),
+            .returns-control-page .rc-table-card tbody td[data-label="Action"] :is(a, button, span) {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+
     <x-page-header
+        class="returns-control-header"
         title="Operations"
         subtitle="What needs your attention right now">
         <x-slot:actions>
             <a href="{{ route('returns.index') }}"
-               class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+               class="rc-back-btn">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                All Returns
+                <span>All Returns</span>
             </a>
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner">
+    <div class="content-inner customers-index-page returns-control-page jf-skeleton-host is-loading">
 
-        {{-- KPI chips --}}
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        {{-- KPI strip --}}
+        <div class="rc-kpi-grid">
             @php
                 $needsDecisionCount = $pendingApprovals->count() + $returnedAwaitingDecision->count();
                 $incompleteStepsCount = $goldPendingRecovery->count() + $withKarigar->count() + $orphanedWithKarigar->count();
@@ -61,30 +606,48 @@
             @endphp
             @foreach($chips as $chip)
                 @php $isUrgent = $chip['urgent'] && $chip['count'] > 0; @endphp
-                <div class="rounded-2xl border {{ $isUrgent ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white' }} px-5 py-4">
-                    <div class="text-2xl font-bold {{ $isUrgent ? 'text-amber-700' : 'text-slate-400' }}">
-                        {{ $chip['count'] }}
-                    </div>
-                    <div class="mt-1 text-xs font-semibold uppercase tracking-[0.15em] {{ $isUrgent ? 'text-amber-600' : 'text-slate-400' }}">
-                        {{ $chip['label'] }}
+                <div class="rc-kpi-card {{ $isUrgent ? 'is-urgent' : 'is-calm' }}">
+                    <div class="rc-kpi-card__inner">
+                        <div class="rc-kpi-icon">
+                            @if($loop->first)
+                                <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 11l3 3L22 4M2 12l5 5m0 0l5-5m-5 5V3"/>
+                                </svg>
+                            @elseif($loop->iteration === 2)
+                                <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            @else
+                                <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01"/>
+                                </svg>
+                            @endif
+                        </div>
+                        <div>
+                            <div class="rc-kpi-value {{ $isUrgent ? 'text-amber-700' : '' }}">{{ $chip['count'] }}</div>
+                            <div class="rc-kpi-label">{{ $chip['label'] }}</div>
+                        </div>
                     </div>
                 </div>
             @endforeach
         </div>
 
         {{-- Group 1: Blocked — needs your decision --}}
-        <section id="blocked" class="mb-10">
-            <div class="mb-4">
-                <h2 class="text-base font-semibold text-slate-900">Blocked — needs your decision</h2>
-                <p class="text-sm text-slate-500 mt-1">The refund or next step is on hold until you act. These are your bottleneck.</p>
+        <section id="blocked" class="rc-section">
+            <div class="rc-section-head">
+                <div>
+                    <h2 class="rc-section-title">Blocked — needs your decision</h2>
+                    <p class="rc-section-copy">The refund or next step is on hold until you act. These are your bottleneck.</p>
+                </div>
             </div>
+            <div class="rc-section-body">
 
             {{-- Approval queue --}}
-            <div class="mb-6">
-                <div class="flex items-center gap-3 mb-1">
-                    <h3 class="text-sm font-semibold text-slate-700">Needs My Approval</h3>
+            <div class="rc-queue">
+                <div class="rc-queue-head">
+                    <h3 class="rc-queue-title">Needs My Approval</h3>
                     @if($pendingApprovals->count() > 0)
-                        <span class="inline-flex items-center justify-center min-w-[22px] h-[20px] px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
+                        <span class="rc-count">
                             {{ $pendingApprovals->count() }}
                         </span>
                     @endif
@@ -97,7 +660,7 @@
                         :compact="true"
                     />
                 @else
-                    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                    <div class="rc-table-card rounded-2xl border border-slate-200 bg-white overflow-hidden">
                         <table class="w-full">
                             <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 <tr>
@@ -118,7 +681,7 @@
                                             : null;
                                     @endphp
                                     <tr class="align-top">
-                                        <td class="px-5 py-4">
+                                        <td data-label="Invoice" class="px-5 py-4">
                                             @if($returnOrder->invoice)
                                                 <a href="{{ route('returns.show', $returnOrder) }}"
                                                    class="text-sm font-semibold text-amber-700 hover:underline">
@@ -128,25 +691,25 @@
                                                 <span class="text-sm text-slate-400">—</span>
                                             @endif
                                         </td>
-                                        <td class="px-5 py-4 text-sm text-slate-700">
+                                        <td data-label="Customer" class="px-5 py-4 text-sm text-slate-700">
                                             {{ $customerName ?? '—' }}
                                         </td>
-                                        <td class="px-5 py-4 text-right text-sm text-slate-700">
+                                        <td data-label="Est. Refund" class="px-5 py-4 text-right text-sm text-slate-700">
                                             @if($returnOrder->creditNote)
                                                 ₹{{ number_format((float) $returnOrder->creditNote->total, 2) }}
                                             @else
                                                 <span class="text-slate-400">—</span>
                                             @endif
                                         </td>
-                                        <td class="px-5 py-4 text-sm text-slate-600">
+                                        <td data-label="Submitted by" class="px-5 py-4 text-sm text-slate-600">
                                             {{ $returnOrder->createdBy?->name ?? '—' }}
                                         </td>
-                                        <td class="px-5 py-4 text-sm text-slate-500">
+                                        <td data-label="Waiting since" class="px-5 py-4 text-sm text-slate-500">
                                             {{ \Carbon\Carbon::parse($returnOrder->created_at)->diffForHumans() }}
                                         </td>
-                                        <td class="px-5 py-4 text-right">
+                                        <td data-label="Action" class="px-5 py-4 text-right">
                                             <a href="{{ route('returns.approve-review', $returnOrder) }}"
-                                               class="inline-flex items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition">
+                                               class="rc-action-primary inline-flex items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition">
                                                 Review &amp; Decide
                                             </a>
                                         </td>
@@ -159,16 +722,16 @@
             </div>
 
             {{-- Returned items awaiting decision --}}
-            <div>
-                <div class="flex items-center gap-3 mb-1">
-                    <h3 class="text-sm font-semibold text-slate-700">Returned Items — Decide What To Do</h3>
+            <div class="rc-queue">
+                <div class="rc-queue-head">
+                    <h3 class="rc-queue-title">Returned Items — Decide What To Do</h3>
                     @if($returnedAwaitingDecision->count() > 0)
-                        <span class="inline-flex items-center justify-center min-w-[22px] h-[20px] px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
+                        <span class="rc-count">
                             {{ $returnedAwaitingDecision->count() }}
                         </span>
                     @endif
                 </div>
-                <p class="text-sm text-slate-500 mb-3">These pieces were set aside for inspection before restocking. Confirm they're ready, or redirect to melt/rework/write-off.</p>
+                <p class="rc-queue-copy">These pieces were set aside for inspection before restocking. Confirm they're ready, or redirect to melt/rework/write-off.</p>
 
                 @if($returnedAwaitingDecision->isEmpty())
                     <x-empty-state
@@ -193,15 +756,15 @@
                                 type="button"
                                 x-show="!showPreview"
                                 @click="showPreview = true"
-                                class="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 transition"
+                                class="rc-action-secondary rc-action-success inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 transition"
                             >
-                                ⚡ Send all good-condition items back to stock
+                                Send all good-condition items back to stock
                                 <span class="ml-1 inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold leading-none">
                                     {{ $goodConditionItems->count() }}
                                 </span>
                             </button>
 
-                            <div x-show="showPreview" x-transition class="rounded-2xl border border-emerald-200 bg-emerald-50 overflow-hidden">
+                            <div x-show="showPreview" x-transition class="rc-table-card rounded-2xl border border-emerald-200 bg-emerald-50 overflow-hidden">
                                 <div class="px-5 py-4 border-b border-emerald-200 flex items-center justify-between">
                                     <div>
                                         <p class="text-sm font-semibold text-emerald-900">
@@ -228,12 +791,12 @@
                                                 $batchDays = (int) \Carbon\Carbon::parse($batchReturnedAt)->diffInDays(now());
                                             @endphp
                                             <tr>
-                                                <td class="px-5 py-3">
+                                                <td data-label="Item" class="px-5 py-3">
                                                     <div class="text-sm font-semibold text-slate-900">{{ $batchItem->barcode ?? '—' }}</div>
                                                     <div class="text-xs text-slate-500">{{ $batchItem->design ?? '—' }}</div>
                                                 </td>
-                                                <td class="px-5 py-3 text-sm text-emerald-800">Good condition</td>
-                                                <td class="px-5 py-3 text-sm text-slate-600">
+                                                <td data-label="Condition" class="px-5 py-3 text-sm text-emerald-800">Good condition</td>
+                                                <td data-label="Waiting since" class="px-5 py-3 text-sm text-slate-600">
                                                     @if($batchDays === 0)
                                                         Today
                                                     @elseif($batchDays === 1)
@@ -255,8 +818,8 @@
                                             <input type="hidden" name="item_ids[]" value="{{ $batchItem->id }}">
                                         @endforeach
                                         <button type="submit"
-                                                class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition">
-                                            ✓ Confirm — Send back to stock
+                                                class="rc-action-secondary rc-action-success inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+                                            Confirm send back to stock
                                         </button>
                                     </form>
                                 </div>
@@ -264,7 +827,7 @@
                         </div>
                     @endif
 
-                    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                    <div class="rc-table-card rounded-2xl border border-slate-200 bg-white overflow-hidden">
                         <table class="w-full">
                             <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 <tr>
@@ -303,27 +866,27 @@
                                         };
                                     @endphp
                                     <tr class="align-top">
-                                        <td class="px-5 py-4">
+                                        <td data-label="Item" class="px-5 py-4">
                                             <div class="text-sm font-semibold text-slate-900">{{ $item->barcode ?? '—' }}</div>
                                             <div class="text-xs text-slate-500">{{ $item->design ?? '—' }}</div>
                                         </td>
-                                        <td class="px-5 py-4 text-sm text-slate-600">
+                                        <td data-label="Condition" class="px-5 py-4 text-sm text-slate-600">
                                             {{ $conditionLabel ?? '—' }}
                                         </td>
-                                        <td class="px-5 py-4 text-sm text-slate-600">
+                                        <td data-label="Returned" class="px-5 py-4 text-sm text-slate-600">
                                             {{ \Carbon\Carbon::parse($returnedAt)->diffForHumans() }}
                                         </td>
-                                        <td class="px-5 py-4 text-right">
+                                        <td data-label="Actions" class="px-5 py-4 text-right">
                                             <form method="POST"
                                                   action="{{ route('returns.items.redispose', $item) }}"
                                                   class="inline-flex items-center gap-2 justify-end flex-wrap">
                                                 @csrf
                                                 <button type="submit" name="disposition" value="restocked"
-                                                        class="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition {{ $suggestedDisp === 'restocked' ? 'ring-2 ring-emerald-400 ring-offset-1' : '' }}">
+                                                        class="rc-action-secondary rc-action-success inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition {{ $suggestedDisp === 'restocked' ? 'ring-2 ring-emerald-400 ring-offset-1' : '' }}">
                                                     Back to Stock{{ $suggestedDisp === 'restocked' ? ' ✓' : '' }}
                                                 </button>
                                                 <button type="submit" name="disposition" value="sent_to_melt"
-                                                        class="inline-flex items-center rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100 transition {{ $suggestedDisp === 'sent_to_melt' ? 'ring-2 ring-orange-400 ring-offset-1' : '' }}">
+                                                        class="rc-action-secondary rc-action-warn inline-flex items-center rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-800 hover:bg-orange-100 transition {{ $suggestedDisp === 'sent_to_melt' ? 'ring-2 ring-orange-400 ring-offset-1' : '' }}">
                                                     Send to Melt{{ $suggestedDisp === 'sent_to_melt' ? ' ✓' : '' }}
                                                 </button>
                                                 {{-- "Send to Karigar" retired (M11): the rework job-work backend was
@@ -331,7 +894,7 @@
                                                      To rework a returned piece: Send to Melt → record recovery into the
                                                      vault → create a karigar job from that lot. --}}
                                                 <button type="submit" name="disposition" value="written_off"
-                                                        class="inline-flex items-center rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition {{ $suggestedDisp === 'written_off' ? 'ring-2 ring-slate-400 ring-offset-1' : '' }}">
+                                                        class="rc-action-secondary inline-flex items-center rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition {{ $suggestedDisp === 'written_off' ? 'ring-2 ring-slate-400 ring-offset-1' : '' }}">
                                                     Write Off{{ $suggestedDisp === 'written_off' ? ' ✓' : '' }}
                                                 </button>
                                             </form>
@@ -346,32 +909,36 @@
                     </div>
                 @endif
             </div>
+            </div>
         </section>
 
         {{-- Group 2: Started but not finished --}}
-        <section id="incomplete" class="mb-10">
-            <div class="mb-4">
-                <h2 class="text-base font-semibold text-slate-900">Started But Not Finished</h2>
-                <p class="text-sm text-slate-500 mt-1">A step was started but not finished. These need to be done before everything is properly closed.</p>
+        <section id="incomplete" class="rc-section">
+            <div class="rc-section-head">
+                <div>
+                    <h2 class="rc-section-title">Started But Not Finished</h2>
+                    <p class="rc-section-copy">A step was started but not finished. These need to be done before everything is properly closed.</p>
+                </div>
             </div>
+            <div class="rc-section-body">
 
             {{-- Gold melt unrecorded --}}
-            <div class="mb-6">
-                <div class="flex items-center gap-3 mb-1">
-                    <h3 class="text-sm font-semibold text-slate-700">Gold melt unrecorded</h3>
+            <div class="rc-queue">
+                <div class="rc-queue-head">
+                    <h3 class="rc-queue-title">Gold melt unrecorded</h3>
                     @if($goldPendingRecovery->count() > 0)
-                        <span class="inline-flex items-center justify-center min-w-[22px] h-[20px] px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
+                        <span class="rc-count">
                             {{ $goldPendingRecovery->count() }}
                         </span>
                     @endif
                 </div>
-                <p class="text-sm text-slate-500 mb-3">These pieces have been set aside for melting. Record the gold recovery to add the weight back to your stock.</p>
+                <p class="rc-queue-copy">These pieces have been set aside for melting. Record the gold recovery to add the weight back to your stock.</p>
 
                 @if($goldPendingRecovery->isNotEmpty())
                     @if($goldRatePerGram > 0)
-                        <div class="mb-4 inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800">
+                        <div class="mb-4 inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">
                             Estimated recoverable value: ₹{{ number_format($goldPendingValue, 0) }}
-                            <span class="text-xs font-normal text-blue-600">(based on today's rate ₹{{ number_format($goldRatePerGram, 0) }}/g)</span>
+                            <span class="text-xs font-normal text-amber-700">(based on today's rate ₹{{ number_format($goldRatePerGram, 0) }}/g)</span>
                         </div>
                     @else
                         <div class="mb-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
@@ -387,7 +954,7 @@
                         :compact="true"
                     />
                 @else
-                    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                    <div class="rc-table-card rounded-2xl border border-slate-200 bg-white overflow-hidden">
                         <table class="w-full">
                             <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 <tr>
@@ -411,7 +978,7 @@
                                         }
                                     @endphp
                                     <tr class="align-top">
-                                        <td class="px-5 py-4">
+                                        <td data-label="Item" class="px-5 py-4">
                                             <div class="text-sm font-semibold text-slate-900">{{ $item?->barcode ?? '—' }}</div>
                                             <div class="text-xs text-slate-500">{{ $item?->design ?? '—' }}</div>
                                             @if($ro)
@@ -421,26 +988,26 @@
                                                 </a>
                                             @endif
                                         </td>
-                                        <td class="px-5 py-4 text-right text-sm text-slate-700">
+                                        <td data-label="Est. Fine Weight" class="px-5 py-4 text-right text-sm text-slate-700">
                                             @if($fineWeight !== null)
                                                 {{ number_format($fineWeight, 2) }} g
                                             @else
                                                 <span class="text-slate-400">—</span>
                                             @endif
                                         </td>
-                                        <td class="px-5 py-4 text-right text-sm text-slate-700">
+                                        <td data-label="Est. Value" class="px-5 py-4 text-right text-sm text-slate-700">
                                             @if($estValue !== null)
                                                 ₹{{ number_format($estValue, 0) }}
                                             @else
                                                 <span class="text-slate-400">—</span>
                                             @endif
                                         </td>
-                                        <td class="px-5 py-4 text-sm text-slate-500">
+                                        <td data-label="Sitting since" class="px-5 py-4 text-sm text-slate-500">
                                             {{ \Carbon\Carbon::parse($disp->dispositioned_at)->diffForHumans() }}
                                         </td>
-                                        <td class="px-5 py-4 text-right">
+                                        <td data-label="Action" class="px-5 py-4 text-right">
                                             <a href="{{ route('returns.items.recover', $disp) }}"
-                                               class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
+                                               class="rc-action-primary inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
                                                 Record Recovery
                                             </a>
                                         </td>
@@ -454,15 +1021,15 @@
 
             {{-- Items orphaned by cancelled job orders --}}
             @if($orphanedWithKarigar->isNotEmpty())
-            <div class="mb-6">
-                <div class="flex items-center gap-3 mb-1">
-                    <h3 class="text-sm font-semibold text-rose-700">Items stuck after cancelled job</h3>
-                    <span class="inline-flex items-center justify-center min-w-[22px] h-[20px] px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-none">
+            <div class="rc-queue">
+                <div class="rc-queue-head">
+                    <h3 class="rc-queue-title text-rose-700">Items stuck after cancelled job</h3>
+                    <span class="rc-count">
                         {{ $orphanedWithKarigar->count() }}
                     </span>
                 </div>
-                <p class="text-sm text-slate-500 mb-3">These items are still marked "with karigar" but the job order was cancelled. Their status needs to be corrected manually.</p>
-                <div class="rounded-2xl border border-rose-200 bg-white overflow-hidden">
+                <p class="rc-queue-copy">These items are still marked "with karigar" but the job order was cancelled. Their status needs to be corrected manually.</p>
+                <div class="rc-table-card rounded-2xl border border-rose-200 bg-white overflow-hidden">
                     <table class="w-full">
                         <thead class="bg-rose-50 border-b border-rose-100 text-xs font-semibold uppercase tracking-[0.18em] text-rose-600">
                             <tr>
@@ -475,7 +1042,7 @@
                         <tbody class="divide-y divide-slate-100">
                             @foreach($orphanedWithKarigar as $job)
                                 <tr class="align-top">
-                                    <td class="px-5 py-4">
+                                    <td data-label="Item" class="px-5 py-4">
                                         <div class="flex items-center gap-2">
                                             <span class="text-sm font-semibold text-slate-900">{{ $job->sourceItem?->barcode ?? '—' }}</span>
                                             @if($job->job_type === \App\Models\JobOrder::JOB_TYPE_REPAIR)
@@ -484,17 +1051,17 @@
                                         </div>
                                         <div class="text-xs text-slate-500">{{ $job->sourceItem?->design ?? '—' }}</div>
                                     </td>
-                                    <td class="px-5 py-4">
+                                    <td data-label="Cancelled Job" class="px-5 py-4">
                                         <a href="{{ route('job-orders.show', $job->id) }}"
                                            class="text-sm font-semibold text-rose-700 hover:underline">
                                             {{ $job->job_order_number ?? 'JO#'.$job->id }}
                                         </a>
                                         <div class="text-xs text-slate-500 capitalize">{{ $job->job_type }} · cancelled</div>
                                     </td>
-                                    <td class="px-5 py-4 text-sm text-slate-600">
+                                    <td data-label="Karigar" class="px-5 py-4 text-sm text-slate-600">
                                         {{ $job->karigar?->name ?? '—' }}
                                     </td>
-                                    <td class="px-5 py-4 text-right">
+                                    <td data-label="Actions" class="px-5 py-4 text-right">
                                         @php $fixLabel = $job->job_type === \App\Models\JobOrder::JOB_TYPE_REPAIR ? 'in stock' : 'returned'; @endphp
                                         <div class="flex items-center justify-end gap-2">
                                             <form method="POST"
@@ -502,12 +1069,12 @@
                                                   onsubmit="return confirm('Mark {{ $job->sourceItem?->barcode ?? $job->source_item_id }} as {{ $fixLabel }}?')">
                                                 @csrf
                                                 <button type="submit"
-                                                        class="inline-flex items-center rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition">
+                                                        class="rc-action-secondary rc-action-success inline-flex items-center rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition">
                                                     Fix Status
                                                 </button>
                                             </form>
                                             <a href="{{ route('inventory.items.show', $job->source_item_id) }}"
-                                               class="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition">
+                                               class="rc-action-secondary rc-action-danger inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition">
                                                 View
                                             </a>
                                         </div>
@@ -521,16 +1088,16 @@
             @endif
 
             {{-- Legacy rework items (sent_to_rework retired in M11) --}}
-            <div>
-                <div class="flex items-center gap-3 mb-1">
-                    <h3 class="text-sm font-semibold text-slate-700">Pieces marked for rework (legacy)</h3>
+            <div class="rc-queue">
+                <div class="rc-queue-head">
+                    <h3 class="rc-queue-title">Pieces marked for rework (legacy)</h3>
                     @if($withKarigar->count() > 0)
-                        <span class="inline-flex items-center justify-center min-w-[22px] h-[20px] px-1.5 rounded-full bg-slate-400 text-white text-[10px] font-bold leading-none">
+                        <span class="rc-count">
                             {{ $withKarigar->count() }}
                         </span>
                     @endif
                 </div>
-                <p class="text-sm text-slate-500 mb-3">These pieces were marked for rework under the old flow. To rework a returned piece now: choose <span class="font-semibold">Send to Melt</span> above, record the recovery into the vault, then create a karigar job from that gold lot.</p>
+                <p class="rc-queue-copy">These pieces were marked for rework under the old flow. To rework a returned piece now: choose <span class="font-semibold">Send to Melt</span> above, record the recovery into the vault, then create a karigar job from that gold lot.</p>
 
                 @if($withKarigar->isEmpty())
                     <x-empty-state
@@ -539,7 +1106,7 @@
                         :compact="true"
                     />
                 @else
-                    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                    <div class="rc-table-card rounded-2xl border border-slate-200 bg-white overflow-hidden">
                         <table class="w-full">
                             <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 <tr>
@@ -560,7 +1127,7 @@
                                             : ($daysOut > 7 ? 'text-amber-700 font-semibold' : 'text-slate-600');
                                     @endphp
                                     <tr class="align-top">
-                                        <td class="px-5 py-4">
+                                        <td data-label="Item" class="px-5 py-4">
                                             <div class="text-sm font-semibold text-slate-900">
                                                 {{ $disp->item?->barcode ?? '—' }}
                                             </div>
@@ -568,7 +1135,7 @@
                                                 {{ $disp->item?->design ?? '—' }}
                                             </div>
                                         </td>
-                                        <td class="px-5 py-4">
+                                        <td data-label="From Return" class="px-5 py-4">
                                             @if($ro)
                                                 <a href="{{ route('returns.show', $ro->id) }}"
                                                    class="text-sm font-semibold text-amber-700 hover:underline">
@@ -578,14 +1145,14 @@
                                                 <span class="text-sm text-slate-400">—</span>
                                             @endif
                                         </td>
-                                        <td class="px-5 py-4 text-sm text-slate-600">
+                                        <td data-label="Sent out" class="px-5 py-4 text-sm text-slate-600">
                                             {{ \Carbon\Carbon::parse($disp->dispositioned_at)->diffForHumans() }}
                                         </td>
-                                        <td class="px-5 py-4 text-center text-sm {{ $daysColor }}">
+                                        <td data-label="Days out" class="px-5 py-4 text-center text-sm {{ $daysColor }}">
                                             {{ $daysOut }}d
                                         </td>
-                                        <td class="px-5 py-4 text-right">
-                                            <span class="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-400 cursor-not-allowed"
+                                        <td data-label="Action" class="px-5 py-4 text-right">
+                                            <span class="rc-action-muted inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-400 cursor-not-allowed"
                                                   title="In-app rework job creation is not available yet — track the karigar rework manually.">
                                                 Rework (manual)
                                             </span>
@@ -597,14 +1164,18 @@
                     </div>
                 @endif
             </div>
+            </div>
         </section>
 
         {{-- Group 3: Time-sensitive --}}
-        <section id="time-sensitive" class="mb-10">
-            <div class="mb-4">
-                <h2 class="text-base font-semibold text-slate-900">Time-sensitive</h2>
-                <p class="text-sm text-slate-500 mt-1">Items that have been waiting a long time. These will become problems if not resolved soon.</p>
+        <section id="time-sensitive" class="rc-section">
+            <div class="rc-section-head">
+                <div>
+                    <h2 class="rc-section-title">Time-sensitive</h2>
+                    <p class="rc-section-copy">Items that have been waiting a long time. These will become problems if not resolved soon.</p>
+                </div>
             </div>
+            <div class="rc-section-body">
 
             @php
                 // $overdueDecision, $overdueGold, $overdueKarigar already computed above
@@ -617,7 +1188,7 @@
                     :compact="true"
                 />
             @else
-                <div class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-none">
                     <ul class="space-y-2">
                         @if($overdueDecision > 0)
                             <li class="text-sm text-amber-800">
@@ -643,6 +1214,7 @@
                     </ul>
                 </div>
             @endif
+            </div>
         </section>
 
     </div>
