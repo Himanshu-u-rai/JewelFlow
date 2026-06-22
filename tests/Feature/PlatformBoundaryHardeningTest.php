@@ -54,7 +54,10 @@ class PlatformBoundaryHardeningTest extends TestCase
         $response = $this->actingAs($platformAdmin, 'platform_admin')
             ->getJson('/api/_control/read');
 
-        $response->assertStatus(401);
+        // A platform admin is not a tenant user. The tenant boundary
+        // (EnsureTenantUser) fails closed with a clean 403 — never a 500 from
+        // downstream code assuming an App\Models\User principal.
+        $response->assertStatus(403);
     }
 
     public function test_last_super_admin_cannot_be_deleted(): void
@@ -101,19 +104,37 @@ class PlatformBoundaryHardeningTest extends TestCase
             'created_at' => now(),
         ]);
 
+        // Each mutation runs inside its own nested transaction (a PostgreSQL
+        // SAVEPOINT). When the append-only trigger raises, PG aborts only to the
+        // savepoint, so the outer RefreshDatabase transaction stays usable and the
+        // SECOND check (delete) can run cleanly — without this, the first failure
+        // poisons the whole transaction ("current transaction is aborted").
+        $updateBlocked = false;
         try {
-            DB::table('platform_audit_logs')->where('id', $id)->update(['reason' => 'tamper']);
+            DB::transaction(function () use ($id) {
+                DB::table('platform_audit_logs')->where('id', $id)->update(['reason' => 'tamper']);
+            });
             $this->fail('Expected update on platform_audit_logs to be blocked.');
         } catch (\Illuminate\Database\QueryException $e) {
+            $updateBlocked = true;
             $this->assertStringContainsString('append-only', $e->getMessage());
         }
+        $this->assertTrue($updateBlocked, 'platform audit log must reject UPDATE');
 
+        $deleteBlocked = false;
         try {
-            DB::table('platform_audit_logs')->where('id', $id)->delete();
+            DB::transaction(function () use ($id) {
+                DB::table('platform_audit_logs')->where('id', $id)->delete();
+            });
             $this->fail('Expected delete on platform_audit_logs to be blocked.');
         } catch (\Illuminate\Database\QueryException $e) {
+            $deleteBlocked = true;
             $this->assertStringContainsString('append-only', $e->getMessage());
         }
+        $this->assertTrue($deleteBlocked, 'platform audit log must reject DELETE');
+
+        // The row survives both attempts → immutability holds.
+        $this->assertDatabaseHas('platform_audit_logs', ['id' => $id, 'reason' => 'test']);
     }
 
     public function test_suspended_shop_blocks_write_routes(): void
@@ -155,7 +176,10 @@ class PlatformBoundaryHardeningTest extends TestCase
         $write = $this->actingAs($tenant)->postJson('/api/_control/write', ['x' => 1]);
 
         $read->assertOk();
-        $write->assertStatus(423);
+        // App convention: EnsureSubscriptionIsActive blocks read-only writes on
+        // api/JSON routes with 403 (it runs before account.active), so 403 is the
+        // effective status for a subscription-driven read-only shop.
+        $write->assertStatus(403);
         $this->assertSame('read_only', $shop->fresh()->access_mode);
     }
 
