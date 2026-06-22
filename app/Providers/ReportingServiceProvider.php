@@ -11,6 +11,7 @@ use App\Services\Reporting\Reports\CreditNotesDataset;
 use App\Services\Reporting\Reports\CustomersDataset;
 use App\Services\Reporting\Reports\DailySummaryDataset;
 use App\Services\Reporting\Reports\DayBookDataset;
+use App\Services\Reporting\Reports\DeadStockDataset;
 use App\Services\Reporting\Reports\GoldBalancesDataset;
 use App\Services\Reporting\Reports\InstallmentPlansDataset;
 use App\Services\Reporting\Reports\InventoryItemsDataset;
@@ -19,7 +20,9 @@ use App\Services\Reporting\Reports\KarigarInvoicesDataset;
 use App\Services\Reporting\Reports\KarigarsDataset;
 use App\Services\Reporting\Reports\LoyaltyDataset;
 use App\Services\Reporting\Reports\OldGoldDataset;
+use App\Services\Reporting\Reports\OperatorPerformanceDataset;
 use App\Services\Reporting\Reports\ProductsDataset;
+use App\Services\Reporting\Reports\SuspiciousActivityDataset;
 use App\Services\Reporting\Reports\RepairsDataset;
 use App\Services\Reporting\Reports\ReturnsDataset;
 use App\Services\Reporting\Reports\SchemeEnrollmentsDataset;
@@ -131,6 +134,18 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 4 — Owner: Gold Balances (vault fine-weight holdings by metal/purity).
         if (! $registry->has(GoldBalancesDataset::KEY)) {
             $registry->register(GoldBalancesDataset::KEY, GoldBalancesDataset::class);
+        }
+
+        // GAP 2 — migrate the safest legacy reports onto the spine (each wraps an
+        // existing canonical service verbatim, so totals reconcile by construction).
+        if (! $registry->has(OperatorPerformanceDataset::KEY)) {
+            $registry->register(OperatorPerformanceDataset::KEY, OperatorPerformanceDataset::class);
+        }
+        if (! $registry->has(SuspiciousActivityDataset::KEY)) {
+            $registry->register(SuspiciousActivityDataset::KEY, SuspiciousActivityDataset::class);
+        }
+        if (! $registry->has(DeadStockDataset::KEY)) {
+            $registry->register(DeadStockDataset::KEY, DeadStockDataset::class);
         }
 
         // Data Exports (Phase 1): bulk data dumps that the /export hub links to.

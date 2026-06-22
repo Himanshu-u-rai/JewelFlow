@@ -504,19 +504,25 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // report.day-book.csv retired (Phase 3 Cleanup #1) — use the spine export.
     // Inventory Valuation — served by the reporting spine (Phase 3). Same URL/name/permission.
     Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'inventory-valuation')->middleware('can:reports.view')->name('report.inventory-valuation');
-    Route::get('/report/inventory-valuation/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'inventoryValuationCsv'])->middleware('can:reports.view')->name('report.inventory-valuation.csv');
-    Route::get('/report/dead-stock', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'deadStock'])->middleware('can:reports.view')->name('report.dead-stock');
-    Route::get('/report/dead-stock/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'deadStockCsv'])->middleware('can:reports.view')->name('report.dead-stock.csv');
+    // report.inventory-valuation.csv retired (GAP 3): inventory-valuation is on the
+    // spine; export goes through POST /reports/inventory-valuation/export (gated,
+    // provenance-stamped) instead of the legacy fputcsv path.
+    // dead-stock migrated to the spine (GAP 2): generic screen + gated spine export.
+    Route::get('/report/dead-stock', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'dead-stock')->middleware('can:reports.view')->name('report.dead-stock');
+    // report.dead-stock.csv retired (GAP 2/3): export via POST /reports/dead-stock/export.
     Route::get('/report/karigar-settlement', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'settlement'])->middleware('can:reports.view')->name('report.karigar-settlement');
     Route::get('/report/karigar-settlement/export', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'settlementCsv'])->middleware('can:reports.view')->name('report.karigar-settlement.csv');
     Route::get('/report/shrinkage', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'shrinkage'])->middleware('can:reports.view')->name('report.shrinkage');
     Route::get('/report/shrinkage/export', [\App\Http\Controllers\Reporting\KarigarReportController::class, 'shrinkageCsv'])->middleware('can:reports.view')->name('report.shrinkage.csv');
     Route::get('/report/purchase-efficiency', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'purchaseEfficiency'])->middleware('can:reports.view')->name('report.purchase-efficiency');
     Route::get('/report/purchase-efficiency/export', [\App\Http\Controllers\Reporting\ReconciliationReportController::class, 'purchaseEfficiencyCsv'])->middleware('can:reports.view')->name('report.purchase-efficiency.csv');
-    Route::get('/report/operator-performance', [\App\Http\Controllers\Reporting\AuditReportController::class, 'operatorPerformance'])->middleware('can:reports.view')->name('report.operator-performance');
-    Route::get('/report/operator-performance/export', [\App\Http\Controllers\Reporting\AuditReportController::class, 'operatorPerformanceCsv'])->middleware('can:reports.view')->name('report.operator-performance.csv');
-    Route::get('/report/suspicious-activity', [\App\Http\Controllers\Reporting\AuditReportController::class, 'suspiciousActivity'])->middleware('can:reports.view')->name('report.suspicious-activity');
-    Route::get('/report/suspicious-activity/export', [\App\Http\Controllers\Reporting\AuditReportController::class, 'suspiciousActivityCsv'])->middleware('can:reports.view')->name('report.suspicious-activity.csv');
+    // operator-performance + suspicious-activity migrated to the spine (GAP 2).
+    // Audit class → the generic screen enforces the owner/manager surface gate
+    // (reports.audit, frozen §11). Export via POST /reports/{key}/export.
+    Route::get('/report/operator-performance', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'operator-performance')->middleware('can:reports.view')->name('report.operator-performance');
+    // report.operator-performance.csv retired (GAP 2/3): export via POST /reports/operator-performance/export.
+    Route::get('/report/suspicious-activity', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'suspicious-activity')->middleware('can:reports.view')->name('report.suspicious-activity');
+    // report.suspicious-activity.csv retired (GAP 2/3): export via POST /reports/suspicious-activity/export.
     Route::get('/report/dues-aging', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'duesAging'])->middleware('can:reports.view')->name('report.dues-aging');
     Route::get('/report/dues-aging/export', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'duesAgingCsv'])->middleware('can:reports.view')->name('report.dues-aging.csv');
     Route::get('/report/emi', [\App\Http\Controllers\Reporting\ReceivablesReportController::class, 'emi'])->middleware(['edition:retailer', 'can:reports.view'])->name('report.emi');
