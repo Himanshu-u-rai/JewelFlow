@@ -270,13 +270,17 @@ class ShopController extends Controller
 
         $data['shop_type'] = $primary;
 
+        // address_line2 and country are nullable rules, so a request that omits
+        // them leaves the key ABSENT from $data (not just empty). Coalesce before
+        // use — otherwise building the address string throws "Undefined array key"
+        // and the whole shop-create 500s for any owner who skips address line 2.
         $data['address'] = trim(
             $data['address_line1'] . ', ' .
-            ($data['address_line2'] ? $data['address_line2'] . ', ' : '') .
+            (($data['address_line2'] ?? null) ? $data['address_line2'] . ', ' : '') .
             $data['city'] . ', ' .
             $data['state'] . ' - ' .
             $data['pincode'] .
-            ($data['country'] ? ', ' . $data['country'] : '')
+            (($data['country'] ?? null) ? ', ' . $data['country'] : '')
         );
         $data['country'] = $data['country'] ?? 'India';
 
