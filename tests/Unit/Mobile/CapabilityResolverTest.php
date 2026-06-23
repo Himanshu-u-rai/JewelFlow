@@ -50,6 +50,10 @@ class CapabilityResolverTest extends TestCase
             permissions: [
                 'inventory.view',
                 'sales.pos',
+                // The invoice capability gates on sales.view (the same permission
+                // the web invoices.show route uses), not invoices.view — grant it
+                // so the "user has permission" path is actually exercised.
+                'sales.view',
                 'invoices.view',
                 'customers.view',
                 'repairs.view',

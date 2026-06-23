@@ -88,6 +88,10 @@ class MobileRetailerItemPricingParityTest extends TestCase
         [$user, $shop] = $this->createRetailerTenant();
         $this->seedRetailerPricing($shop, $user);
         Sanctum::actingAs($user);
+        // Route-model binding for {item} runs in console (PHPUnit), where the
+        // BelongsToShop scope needs an explicit tenant; in real mobile HTTP the
+        // shop resolves via the authed user. Sibling mobile tests do the same.
+        \App\Support\TenantContext::set((int) $shop->id);
 
         $item = $this->createItem($shop->id, null, [
             'barcode' => 'RTL-MOB-UPD-001',
@@ -118,10 +122,12 @@ class MobileRetailerItemPricingParityTest extends TestCase
         ]);
 
         $response->assertOk();
-        $response->assertJsonPath('hallmark_charges', 40.0);
-        $response->assertJsonPath('rhodium_charges', 20.0);
-        $response->assertJsonPath('other_charges', 30.0);
-        $response->assertJsonPath('resolved_rate_per_gram', 6600.0);
+        // Whole-number floats serialize without a trailing .0, so assertJsonPath
+        // strict-compares against ints (same convention as the store test above).
+        $response->assertJsonPath('hallmark_charges', 40);
+        $response->assertJsonPath('rhodium_charges', 20);
+        $response->assertJsonPath('other_charges', 30);
+        $response->assertJsonPath('resolved_rate_per_gram', 6600);
         $this->assertSame(59400.0, round((float) $response->json('cost_price'), 2));
         $this->assertSame(59640.0, round((float) $response->json('selling_price'), 2));
 
@@ -139,6 +145,10 @@ class MobileRetailerItemPricingParityTest extends TestCase
         [$user, $shop] = $this->createRetailerTenant();
         $this->seedRetailerPricing($shop, $user);
         Sanctum::actingAs($user);
+        // Route-model binding for {item} runs in console (PHPUnit), where the
+        // BelongsToShop scope needs an explicit tenant; in real mobile HTTP the
+        // shop resolves via the authed user. Sibling mobile tests do the same.
+        \App\Support\TenantContext::set((int) $shop->id);
 
         $item = $this->createItem($shop->id, null, [
             'barcode' => 'RTL-MOB-PATCH-001',
@@ -169,10 +179,11 @@ class MobileRetailerItemPricingParityTest extends TestCase
         ]);
 
         $response->assertOk();
-        $response->assertJsonPath('hallmark_charges', 10.0);
-        $response->assertJsonPath('rhodium_charges', 20.0);
-        $response->assertJsonPath('other_charges', 60.0);
-        $response->assertJsonPath('resolved_rate_per_gram', 6600.0);
+        // Whole-number floats serialize without a trailing .0 (see store test).
+        $response->assertJsonPath('hallmark_charges', 10);
+        $response->assertJsonPath('rhodium_charges', 20);
+        $response->assertJsonPath('other_charges', 60);
+        $response->assertJsonPath('resolved_rate_per_gram', 6600);
         $this->assertSame(59400.0, round((float) $response->json('cost_price'), 2));
         $this->assertSame(59640.0, round((float) $response->json('selling_price'), 2));
 

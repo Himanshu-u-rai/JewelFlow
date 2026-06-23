@@ -113,8 +113,18 @@ class ItemController extends Controller
                     // Required only for accounting-truth metals (gold/silver);
                     // piece-priced metals (platinum/copper) treat purity as an
                     // optional spec — identical semantics to the web flow.
-                    Rule::requiredIf(fn () => MetalRegistry::isSupported((string) $request->input('metal_type', ''))
-                        && MetalRegistry::purityIsAccountingTruth((string) $request->input('metal_type', ''))),
+                    // On a partial update metal_type may be absent; guard the empty
+                    // string so MetalRegistry::isSupported('') (which normalizes and
+                    // throws on empty) is never called — otherwise a partial PATCH
+                    // without metal_type 500s instead of falling back to the
+                    // persisted metal_type during recompute.
+                    Rule::requiredIf(function () use ($request) {
+                        $metalType = (string) $request->input('metal_type', '');
+
+                        return $metalType !== ''
+                            && MetalRegistry::isSupported($metalType)
+                            && MetalRegistry::purityIsAccountingTruth($metalType);
+                    }),
                     'nullable', 'numeric', 'min:0.001', 'max:1000',
                 ],
                 'cost_price' => 'sometimes|nullable|numeric|min:0',
