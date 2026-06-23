@@ -78,13 +78,16 @@ class InstallmentDefaultCloseTest extends TestCase
 
     public function test_mark_defaulted_closes_plan_and_preserves_writeoff(): void
     {
-        [, $shop] = $this->createRetailerTenant();
+        [$owner, $shop] = $this->createRetailerTenant();
         $plan = $this->makeActivePlan($shop->id, 5000.0);
 
         // Tenant context mirrors the live HTTP request scope; in console the
         // BelongsToShop global scope otherwise resolves to a null tenant (G5).
+        // Pass the real owner id (not a hardcoded 1) so the AuditLog user_id FK
+        // holds regardless of test order — the PG sequence advances past prior
+        // rolled-back tests, so user id 1 may not exist when this runs later.
         TenantContext::runFor($shop->id, fn () =>
-            app(InstallmentService::class)->markDefaulted($plan, 'Customer unreachable', 1)
+            app(InstallmentService::class)->markDefaulted($plan, 'Customer unreachable', $owner->id)
         );
 
         $fresh = InstallmentPlan::withoutGlobalScopes()->find($plan->id);
@@ -108,13 +111,13 @@ class InstallmentDefaultCloseTest extends TestCase
 
     public function test_cannot_default_an_already_closed_plan(): void
     {
-        [, $shop] = $this->createRetailerTenant();
+        [$owner, $shop] = $this->createRetailerTenant();
         $plan = $this->makeActivePlan($shop->id);
         $plan->update(['status' => 'completed']);
 
         $this->expectException(\LogicException::class);
         TenantContext::runFor($shop->id, fn () =>
-            app(InstallmentService::class)->markDefaulted($plan, null, 1)
+            app(InstallmentService::class)->markDefaulted($plan, null, $owner->id)
         );
     }
 }
