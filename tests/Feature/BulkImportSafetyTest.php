@@ -157,6 +157,28 @@ class BulkImportSafetyTest extends TestCase
         $this->assertNotNull($sub);
     }
 
+    public function test_manufacture_row_with_lot_missing_metal_type_is_a_clean_row_error(): void
+    {
+        // Regression: a manufacture row references a (legacy, nullable) lot with no
+        // metal_type. The importer must derive metal from the lot and reject the
+        // row cleanly — never pass an empty string to MetalRegistry (which throws).
+        [$shop, $user] = $this->createTenant();
+        $lot = TenantContext::runFor($shop->id, fn () => MetalLot::create([
+            'source' => 'purchase', 'purity' => 22.00,
+            'fine_weight_total' => 20.0, 'fine_weight_remaining' => 20.0, 'cost_per_fine_gram' => 7000,
+            // metal_type intentionally omitted (null) — a legacy lot.
+        ]));
+        $service = app(BulkImportService::class);
+
+        // No exception (no 500): preview completes and flags the row invalid.
+        $import = TenantContext::runFor($shop->id, fn () => $service->createPreview(
+            $shop->id, $user->id, Import::TYPE_MANUFACTURE,
+            $this->manufactureCsv([['NOMETAL-001', '', $lot->lot_number, 2, 0, 22, 0, 0, 0]])
+        ));
+
+        $this->assertSame(0, $import->valid_rows, 'a null-metal lot row must be rejected, not crash');
+    }
+
     public function test_manufacture_execute_auto_creates_missing_default_metadata(): void
     {
         [$shop, $user] = $this->createTenant();
@@ -174,7 +196,7 @@ class BulkImportSafetyTest extends TestCase
             );
         });
 
-        $row = $import->rows()->firstOrFail();
+        $row = TenantContext::runFor($shop->id, fn () => $import->rows()->firstOrFail());
         $this->assertTrue((bool) data_get($row->computed, 'will_create_category'));
         $this->assertTrue((bool) data_get($row->computed, 'will_create_sub_category'));
 
@@ -437,9 +459,11 @@ class BulkImportSafetyTest extends TestCase
 
         $movement = MetalMovement::withoutTenant()->where('shop_id', $shop->id)->firstOrFail();
 
+        // forceFill to reach the ImmutableLedger updating guard; a plain update()
+        // trips MetalMovement's mass-assignment guard first (different exception).
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('append-only');
-        $movement->update(['fine_weight' => 999]);
+        $movement->forceFill(['fine_weight' => 999])->save();
     }
 
     public function test_import_execution_is_idempotent_after_completion(): void
@@ -512,6 +536,10 @@ class BulkImportSafetyTest extends TestCase
     {
         return TenantContext::runFor($shopId, fn () => MetalLot::create([
             'source' => 'purchase',
+            // Real lots always carry a metal_type (vault/buyback/purchase set it);
+            // manufacture import derives the row's metal from its lot, so the
+            // fixture must too.
+            'metal_type' => 'gold',
             'purity' => $purity,
             'fine_weight_total' => $fine,
             'fine_weight_remaining' => $fine,

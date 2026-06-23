@@ -484,11 +484,20 @@ class BulkImportService
         }
 
         $net = round($normalized['gross_weight'] - $normalized['stone_weight'], 6);
+        // Manufacture rows carry no metal_type column — the metal comes from the
+        // resolved lot. Guard an empty/absent lot metal BEFORE calling the
+        // authority (MetalRegistry::normalize throws on an empty string), so a
+        // bad row is a clean row-level error, never a 500.
+        $metalType = (string) ($lot->metal_type ?? '');
+        if ($metalType === '') {
+            return ['valid' => false, 'normalized' => $normalized, 'error' => 'Could not determine the metal type from the lot for this row.'];
+        }
+        $normalized['metal_type'] = $metalType;
         // Fine weight via the single authority. Returns null for any metal whose
-        // purity is not accounting truth — bulk stock import is gold/silver only.
-        $fineMultiplier = \App\Services\MetalRegistry::fineWeightMultiplier((string) ($normalized['metal_type'] ?? ''), (float) $normalized['purity']);
+        // purity is not accounting truth — bulk manufacture is gold/silver only.
+        $fineMultiplier = \App\Services\MetalRegistry::fineWeightMultiplier($metalType, (float) $normalized['purity']);
         if ($fineMultiplier === null) {
-            return ['valid' => false, 'normalized' => $normalized, 'error' => 'Bulk stock import supports only fine-weight metals (gold, silver).'];
+            return ['valid' => false, 'normalized' => $normalized, 'error' => 'Bulk import supports only fine-weight metals (gold, silver).'];
         }
         $fineRequired = round($net * $fineMultiplier, 6);
         $wastageFine = round($fineRequired * ($normalized['wastage_percent'] / 100), 6);

@@ -40,7 +40,11 @@ class ImportPermissionGateTest extends TestCase
 
     public function test_export_routes_still_use_reports_export(): void
     {
-        $route = Route::getRoutes()->getByName('export.customers');
+        // The old per-entity export.customers route was removed in the
+        // data-exports → reporting-framework refactor; the export hub
+        // (export.index) is the current reports.export-gated surface.
+        $route = Route::getRoutes()->getByName('export.index');
+        $this->assertNotNull($route, 'export hub route must exist');
         $this->assertContains('can:reports.export', $route->gatherMiddleware(),
             'export routes must keep reports.export');
     }
