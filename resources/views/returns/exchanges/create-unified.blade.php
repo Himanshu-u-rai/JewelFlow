@@ -122,7 +122,7 @@
                                     @if($already)
                                         <span class="exchange-return-line__locked">Already returned</span>
                                     @else
-                                        <label for="line-disposition-{{ $idx }}">Disposition</label>
+                                        <label for="line-disposition-{{ $idx }}">What to do with this item</label>
                                         <select id="line-disposition-{{ $idx }}" name="lines[{{ $idx }}][disposition]">
                                             @foreach($dispositions as $val => $label)
                                                 <option value="{{ $val }}" @selected(old("lines.$idx.disposition", 'restocked') === $val)>{{ $label }}</option>

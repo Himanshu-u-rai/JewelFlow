@@ -3500,9 +3500,9 @@
             ['label' => 'Start Sale (POS)', 'sub' => 'Open billing counter', 'url' => route('pos.index'), 'keywords' => 'pos billing sale invoice'],
             ['label' => 'Customers', 'sub' => 'Customer directory', 'url' => route('customers.index'), 'keywords' => 'customer crm contacts'],
             ['label' => 'Invoices', 'sub' => 'Sales invoices', 'url' => route('invoices.index'), 'keywords' => 'invoice sales billing'],
-            ['label' => 'Stock / Items', 'sub' => 'Inventory list', 'url' => route('inventory.items.index'), 'keywords' => 'items stock inventory product'],
+            ['label' => 'Jewellery Stock', 'sub' => 'Inventory list', 'url' => route('inventory.items.index'), 'keywords' => 'items stock inventory product'],
             ['label' => 'Quick Bills', 'sub' => 'Fast billing register', 'url' => route('quick-bills.index'), 'keywords' => 'quick bill register'],
-            ['label' => 'Cash Ledger', 'sub' => 'Cashbook entries', 'url' => route('cashbook.index'), 'keywords' => 'cashbook cash ledger'],
+            ['label' => 'Cash Book', 'sub' => 'Cashbook entries', 'url' => route('cashbook.index'), 'keywords' => 'cashbook cash ledger'],
             ['label' => 'Repairs', 'sub' => 'Repair workflow', 'url' => route('repairs.index'), 'keywords' => 'repair service jobs'],
             ['label' => 'Categories', 'sub' => 'Category master list', 'url' => route('categories.index'), 'keywords' => 'category product master'],
             ['label' => 'Sub Categories', 'sub' => 'Sub category mappings', 'url' => route('sub-categories.index'), 'keywords' => 'sub category catalog'],
@@ -3511,14 +3511,14 @@
         ];
 
         if ($isOwner || $isManager) {
-            $dashCommandPages[] = ['label' => 'Exports', 'sub' => 'Export data files', 'url' => route('export.index'), 'keywords' => 'export data reports'];
-            $dashCommandPages[] = ['label' => 'Bulk Imports', 'sub' => 'Import stock and catalog files', 'url' => route('imports.index'), 'keywords' => 'import uploads csv excel'];
+            $dashCommandPages[] = ['label' => 'Download Reports', 'sub' => 'Export data files', 'url' => route('export.index'), 'keywords' => 'export data reports'];
+            $dashCommandPages[] = ['label' => 'Import Data', 'sub' => 'Import stock and catalog files', 'url' => route('imports.index'), 'keywords' => 'import uploads csv excel'];
         }
 
         if ($isOwner) {
-            $dashCommandPages[] = ['label' => 'Daily Closing', 'sub' => 'Closing summary', 'url' => route('report.closing'), 'keywords' => 'closing report day end'];
+            $dashCommandPages[] = ['label' => 'Close Day', 'sub' => 'Closing summary', 'url' => route('report.closing'), 'keywords' => 'closing report day end'];
             $dashCommandPages[] = ['label' => 'Gold Report', 'sub' => 'Gold ledger insights', 'url' => route('report.gold'), 'keywords' => 'gold report'];
-            $dashCommandPages[] = ['label' => 'Daily Report', 'sub' => 'Business day report', 'url' => route('report.daily'), 'keywords' => 'daily report'];
+            $dashCommandPages[] = ['label' => 'Daily Summary', 'sub' => 'Business day report', 'url' => route('report.daily'), 'keywords' => 'daily report'];
             $dashCommandPages[] = ['label' => 'Cash Report', 'sub' => 'Cash transaction report', 'url' => route('report.cash'), 'keywords' => 'cash report'];
             $dashCommandPages[] = ['label' => 'P&L Report', 'sub' => 'Profit and loss summary', 'url' => route('report.pnl'), 'keywords' => 'pnl profit loss'];
             $dashCommandPages[] = ['label' => 'Repairs Report', 'sub' => 'Repairs analytics', 'url' => route('report.repairs'), 'keywords' => 'repairs analytics report'];
@@ -3545,14 +3545,14 @@
             $dashCommandPages[] = ['label' => 'Installments', 'sub' => 'EMI plans and collections', 'url' => route('installments.index'), 'keywords' => 'installments emi plans'];
             $dashCommandPages[] = ['label' => 'Reorder Alerts', 'sub' => 'Low stock rules', 'url' => route('reorder.index'), 'keywords' => 'reorder low stock alert'];
             $dashCommandPages[] = ['label' => 'Tag Printing', 'sub' => 'Print labels and tags', 'url' => route('tags.index'), 'keywords' => 'tags labels print'];
-            $dashCommandPages[] = ['label' => 'Bullion Vault', 'sub' => 'Vault lots and balances', 'url' => route('vault.index'), 'keywords' => 'bullion vault lots'];
+            $dashCommandPages[] = ['label' => 'Metal Vault', 'sub' => 'Vault lots and balances', 'url' => route('vault.index'), 'keywords' => 'bullion vault lots'];
             $dashCommandPages[] = ['label' => 'Karigars', 'sub' => 'Artisan directory', 'url' => route('karigars.index'), 'keywords' => 'karigar artisans job work'];
             $dashCommandPages[] = ['label' => 'Job Orders', 'sub' => 'Issue and receive jobs', 'url' => route('job-orders.index'), 'keywords' => 'job orders issue receive'];
-            $dashCommandPages[] = ['label' => 'Karigar Invoices', 'sub' => 'Job-work billing', 'url' => route('karigar-invoices.index'), 'keywords' => 'karigar invoices billing'];
+            $dashCommandPages[] = ['label' => 'Karigar Bills', 'sub' => 'Job-work billing', 'url' => route('karigar-invoices.index'), 'keywords' => 'karigar invoices billing'];
             $dashCommandPages[] = ['label' => 'Stock Aging', 'sub' => 'Stock aging buckets', 'url' => route('report.stock-aging'), 'keywords' => 'stock aging inventory'];
             $dashCommandPages[] = ['label' => 'Sell Trend', 'sub' => 'Sales movement trends', 'url' => route('report.sellers'), 'keywords' => 'sell trend best sellers'];
             $dashCommandPages[] = ['label' => 'Occasions Report', 'sub' => 'Occasion-wise sales report', 'url' => route('report.occasions'), 'keywords' => 'occasion report'];
-            $dashCommandPages[] = ['label' => 'Metal Exchange', 'sub' => 'Old metal exchange report', 'url' => route('report.metal-exchange'), 'keywords' => 'metal exchange old gold silver'];
+            $dashCommandPages[] = ['label' => 'Old Gold Exchange', 'sub' => 'Old metal exchange report', 'url' => route('report.metal-exchange'), 'keywords' => 'metal exchange old gold silver'];
             if ($isOwner) {
                 $dashCommandPages[] = ['label' => 'GST Report', 'sub' => 'Tax summary', 'url' => route('report.gst'), 'keywords' => 'gst tax report'];
             }

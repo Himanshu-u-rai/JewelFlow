@@ -555,7 +555,7 @@
             <div class="ki-head">
                 <div>
                     <h2 class="ki-title">Invoice Register</h2>
-                    <p class="ki-copy">Karigar billing, job-order references, totals, payment status, and discrepancy flags.</p>
+                    <p class="ki-copy">Karigar billing, job-order references, totals, payment status, and review flags.</p>
                 </div>
                 <span class="ki-count">{{ $invoices->total() }} {{ Str::plural('invoice', $invoices->total()) }}</span>
             </div>

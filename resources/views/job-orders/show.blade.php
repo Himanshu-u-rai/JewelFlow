@@ -42,7 +42,7 @@
             <div class="bg-rose-50 border border-rose-200 rounded-xl p-4 mb-4 flex items-start gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b42318" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-none mt-0.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <div class="flex-1">
-                    <p class="text-sm font-bold text-rose-800 mb-1">Discrepancies flagged on this job order</p>
+                    <p class="text-sm font-bold text-rose-800 mb-1">Weight mismatch — needs review on this job order</p>
                     <div class="flex flex-wrap gap-2">
                         @foreach($jobOrder->discrepancy_flags as $flag)
                             <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-rose-200 text-rose-900">{{ str_replace('_', ' ', $flag) }}</span>

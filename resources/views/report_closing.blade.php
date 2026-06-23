@@ -1,5 +1,5 @@
 <x-app-layout>
-    <x-page-header title="Daily Closing" :subtitle="'Summary for ' . $date" />
+    <x-page-header title="Close Day" :subtitle="'Summary for ' . $date" />
 
     <div class="content-inner clr-page">
         @php

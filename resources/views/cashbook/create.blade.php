@@ -1,12 +1,12 @@
 <x-app-layout>
-    <x-page-header class="cashbook-create-header" title="Add Ledger Entry" subtitle="Record a manual cash movement">
+    <x-page-header class="cashbook-create-header" title="Add entry" subtitle="Record a manual cash movement">
         <x-slot:actions>
-            <a href="{{ route('cashbook.index') }}" class="cbf-header-back" aria-label="Back to Cash Ledger">
+            <a href="{{ route('cashbook.index') }}" class="cbf-header-back" aria-label="Back to Cash book">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <line x1="19" y1="12" x2="5" y2="12"/>
                     <polyline points="12 19 5 12 12 5"/>
                 </svg>
-                <span>Back to Cash Ledger</span>
+                <span>Back to Cash book</span>
             </a>
         </x-slot:actions>
     </x-page-header>
@@ -121,7 +121,7 @@
                     <div class="cbf-field cbf-field--full">
                         <label for="description" class="cbf-label">Description</label>
                         <textarea name="description" id="description" rows="3"
-                                  placeholder="Add optional notes for this ledger entry"
+                                  placeholder="Add optional notes for this entry"
                                   class="cbf-input cbf-textarea">{{ old('description') }}</textarea>
                         @error('description') <p class="cbf-error">{{ $message }}</p> @enderror
                     </div>

@@ -678,7 +678,7 @@
         <div class="ki-show-stack">
             @if(! empty($invoice->discrepancy_flags))
                 <div class="ki-show-alert">
-                    <p class="ki-show-alert-title">Discrepancies flagged</p>
+                    <p class="ki-show-alert-title">Needs review</p>
                     <div class="ki-show-flag-list">
                         @foreach($invoice->discrepancy_flags as $flag)
                             <span class="ki-show-flag">{{ str_replace('_', ' ', $flag) }}</span>

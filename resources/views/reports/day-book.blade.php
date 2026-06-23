@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-page-header>
         <div>
-            <h1 class="page-title">Day Book / Journal</h1>
+            <h1 class="page-title">Daily Transactions / Journal</h1>
             <p class="text-sm text-gray-500 mt-1">Chronological accounting events — {{ $period->label() }}</p>
         </div>
         <div class="page-actions">

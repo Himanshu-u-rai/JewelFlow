@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="cb-shell" x-data="{ drawerOpen: false }" @keydown.escape.window="drawerOpen = false">
-    <x-page-header class="cashbook-page-header" title="Cash Ledger" subtitle="Transaction-by-transaction cash history">
+    <x-page-header class="cashbook-page-header" title="Cash book" subtitle="Transaction-by-transaction cash history">
         <x-slot:actions>
             @can('cash.create')
                 <button type="button" class="cb-header-btn cb-drawer-header-btn" @click="drawerOpen = true; $nextTick(() => $refs.countedCash?.focus())" aria-label="Match your drawer">
@@ -10,7 +10,7 @@
                     </svg>
                     <span class="cb-action-label">Match drawer</span>
                 </button>
-                <a href="{{ route('cashbook.create') }}" class="cb-add-btn" aria-label="Add ledger entry">
+                <a href="{{ route('cashbook.create') }}" class="cb-add-btn" aria-label="Add entry">
                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <line x1="12" y1="5" x2="12" y2="19" stroke-width="2" stroke-linecap="round"/>
                         <line x1="5" y1="12" x2="19" y2="12" stroke-width="2" stroke-linecap="round"/>
@@ -30,7 +30,7 @@
 
     <div class="content-inner cb-page">
         @unless(auth()->user()->can('cash.create'))
-            @include('partials.view-only-banner', ['permission' => 'cash.create', 'message' => 'adding ledger entries'])
+            @include('partials.view-only-banner', ['permission' => 'cash.create', 'message' => 'adding entries'])
         @endunless
 
         @php
@@ -173,7 +173,7 @@
             <div class="cb-card" x-data="{ filtersOpen: false }" @keydown.escape.window="filtersOpen = false">
                 <div class="cb-register-head">
                     <div>
-                        <h2 class="cb-register-title">Ledger entries</h2>
+                        <h2 class="cb-register-title">Entries</h2>
                         <p class="cb-register-copy">{{ number_format($transactions->total()) }} {{ Str::plural('entry', $transactions->total()) }} in this view</p>
                     </div>
                     <button type="button" class="cb-filter-trigger" @click="filtersOpen = true" :aria-expanded="filtersOpen.toString()" aria-controls="cashbook-filter-sheet">
@@ -202,7 +202,7 @@
                     <div class="cb-filter-sheet-head">
                         <div>
                             <p>Filters</p>
-                            <span>Refine ledger entries</span>
+                            <span>Refine entries</span>
                         </div>
                         <button type="button" @click="filtersOpen = false" aria-label="Close filters">
                             <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -294,7 +294,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                                             </svg>
                                             <p class="cb-empty-title">No transactions found</p>
-                                            <p class="cb-empty-copy">Cash transactions appear here as they are recorded in the ledger.</p>
+                                            <p class="cb-empty-copy">Cash transactions appear here as they are recorded in the cash book.</p>
                                         </div>
                                     </td>
                                 </tr>
