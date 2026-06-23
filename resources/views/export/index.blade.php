@@ -1,7 +1,9 @@
 <x-app-layout>
     <x-page-header
+        class="export-page-header"
         title="Data Exports"
         subtitle="Download your shop data as Excel, PDF or CSV — pick filters and columns on the next screen."
+        badge="CSV/PDF"
     />
 
     <div class="content-inner xp-page">
@@ -169,6 +171,52 @@
             .xp-card, .xp-card-arrow, .xp-backup-btn { transition-duration: .16s; }
         }
         @media (max-width: 600px) {
+            .export-page-header {
+                display: grid;
+                grid-template-columns: 34px minmax(0, 1fr) 78px;
+                align-items: center;
+                gap: 10px;
+                min-height: 62px;
+                padding: 12px 14px !important;
+            }
+            .export-page-header .content-header-nav {
+                grid-column: 1;
+                margin: 0;
+                padding: 0;
+            }
+            .export-page-header > :nth-child(2) {
+                grid-column: 2;
+                min-width: 0;
+                text-align: center;
+            }
+            .export-page-header .page-title {
+                font-size: 16px;
+                font-weight: 650;
+                line-height: 1.2;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .export-page-header .page-subtitle {
+                display: none;
+            }
+            .export-page-header .page-actions {
+                grid-column: 3;
+                min-width: 0;
+                width: 78px;
+                justify-content: flex-end;
+            }
+            .export-page-header .header-badge {
+                width: 78px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                padding: 6px 8px;
+                font-size: 11px;
+                border-color: #fde68a;
+                background: #fef9ee;
+                color: #b45309;
+            }
             .xp-page { gap: 12px; }
             .xp-backup { flex-direction: column; align-items: stretch; padding: 14px; margin-bottom: 18px; }
             .xp-backup-btn { width: 100%; justify-content: center; }

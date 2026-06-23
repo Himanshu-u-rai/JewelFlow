@@ -12636,27 +12636,26 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .repairs-management-page .repairs-kpi-card {
-    background: var(--rep-charcoal) !important;
-    border-color: var(--rep-charcoal-border) !important;
-    color: var(--rep-charcoal-ink) !important;
-    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #111827 !important;
+    box-shadow: none !important;
 }
 
 .repairs-management-page .repairs-kpi-card :is(p, span) {
-    color: var(--rep-charcoal-ink) !important;
+    color: #111827 !important;
 }
 
 .repairs-management-page .repairs-kpi-card .text-gray-500 {
-    color: var(--rep-charcoal-muted) !important;
+    color: #64748b !important;
 }
 
 .repairs-management-page .repairs-kpi-card :is(.bg-amber-100, .bg-sky-100, .bg-emerald-100) {
-    background: rgba(248, 250, 252, 0.12) !important;
-    color: #fff !important;
-    border: 1px solid rgba(248, 250, 252, 0.2);
+    background: #fff7ed !important;
+    color: #c65a1e !important;
+    border: 1px solid #fed7aa;
 }
 
-.repairs-management-page .repairs-surface-card,
 .repairs-report-page .repairs-report-table-card,
 .repairs-edit-page .repairs-edit-card {
     border-radius: 18px;
@@ -12666,9 +12665,17 @@ input::-webkit-calendar-picker-indicator {
     overflow: hidden;
 }
 
+.repairs-management-page .repairs-surface-card {
+    border-radius: 12px;
+    border-color: #e2e8f0 !important;
+    background: #ffffff;
+    box-shadow: none !important;
+    overflow: hidden;
+}
+
 .repairs-management-page .repairs-table-card,
 .repairs-report-page .repairs-report-table-card {
-    border-top: 3px solid #0f172a;
+    border-top: 1px solid #e2e8f0;
 }
 
 .repairs-management-page .repairs-table-card > .p-6.border-b,
@@ -12752,7 +12759,8 @@ input::-webkit-calendar-picker-indicator {
 
 @media (hover: hover) and (pointer: fine) {
     .repairs-management-page .repairs-kpi-card:hover {
-        background: var(--rep-charcoal-soft) !important;
+        background: #fffdfb !important;
+        border-color: #cbd5e1 !important;
     }
 }
 
