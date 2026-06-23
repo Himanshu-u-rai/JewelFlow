@@ -136,6 +136,12 @@ class MobilePaymentMethodEnforcementTest extends TestCase
     {
         [$user, $shop] = $this->createManufacturerTenant();
         Sanctum::actingAs($user);
+        // The {invoice} route-model binding runs in console (PHPUnit), where the
+        // BelongsToShop scope needs an explicit tenant; real mobile HTTP resolves
+        // it from the authed user. Without it the bound invoice 404s before
+        // validation runs. (The request lifecycle clears it, so it is re-set
+        // before any subsequent bound request below.)
+        \App\Support\TenantContext::set((int) $shop->id);
 
         $customer = $this->createCustomer($shop->id);
         $invoice = $this->createFinalizedInvoice($shop->id, $customer->id, 2500);
@@ -152,6 +158,9 @@ class MobilePaymentMethodEnforcementTest extends TestCase
             $singlePayloadResponse->json('errors')['payments.0.payment_method_id'][0]
         );
 
+        // Lifecycle cleared the tenant after the first request — re-set before
+        // this second {invoice}-bound POST (real mobile HTTP re-resolves per request).
+        \App\Support\TenantContext::set((int) $shop->id);
         $paymentsArrayResponse = $this->postJson("/api/mobile/invoices/{$invoice->id}/payments", [
             'payments' => [
                 ['mode' => 'bank', 'amount' => 500],
@@ -170,6 +179,12 @@ class MobilePaymentMethodEnforcementTest extends TestCase
     {
         [$user, $shop] = $this->createManufacturerTenant();
         Sanctum::actingAs($user);
+        // The {invoice} route-model binding runs in console (PHPUnit), where the
+        // BelongsToShop scope needs an explicit tenant; real mobile HTTP resolves
+        // it from the authed user. Without it the bound invoice 404s before
+        // validation runs. (The request lifecycle clears it, so it is re-set
+        // before any subsequent bound request below.)
+        \App\Support\TenantContext::set((int) $shop->id);
 
         $customer = $this->createCustomer($shop->id);
         $invoice = $this->createFinalizedInvoice($shop->id, $customer->id, 2500);

@@ -177,6 +177,12 @@ class SalesService
                     'shop_id'    => $shopId,
                     'mode'       => $mode,
                     'amount'     => $amount,
+                    // Persist the chosen shop payment method so non-cash tenders
+                    // (UPI/bank/card/wallet) keep their attribution on the payment
+                    // row — the API validates it but it was being dropped here.
+                    // Caller (PosController) has already validated the id against
+                    // the shop + mode; null for cash/old-metal.
+                    'payment_method_id' => $p['payment_method_id'] ?? null,
                     'reference'  => $p['reference'] ?? null,
                     'note'       => $p['note'] ?? null,
                 ];
