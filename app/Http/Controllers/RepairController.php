@@ -104,7 +104,7 @@ class RepairController extends Controller
             'metal_type'       => $validated['metal_type'] ?? Repair::DEFAULT_METAL_TYPE,
             'gross_weight'     => $validated['gross_weight'],
             'purity'           => $validated['purity'] ?? null,
-            'estimated_cost'   => $validated['estimated_cost'],
+            'estimated_cost'   => $validated['estimated_cost'] ?? null,
             'status'           => 'received',
         ]);
 
