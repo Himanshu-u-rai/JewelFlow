@@ -421,8 +421,10 @@ class QuickBillService
             $lineDiscount = round(max(0, (float) Arr::get($item, 'line_discount', 0)), 2);
 
             // Purity factor: the rate entered is the PURE (24K / 999) rate; scale
-            // it by purity. Gold = purity/24 (karats), silver = purity/1000
-            // (fineness) - matches MetalRegistry::fineWeightMultiplier. Unknown
+            // it by purity using the karat scale for gold and the millesimal scale
+            // for silver — the same scaling MetalRegistry::fineWeightMultiplier
+            // applies (kept inline here only because quick-bill metal labels are
+            // freeform and may not normalise to a registry-supported metal). Unknown
             // metal or no purity ⇒ factor 1 (net × rate), so nothing regresses.
             $purityNum = (float) preg_replace('/[^0-9.]/', '', (string) Arr::get($item, 'purity', ''));
             $metalRaw  = strtolower(trim((string) Arr::get($item, 'metal_type', '')));

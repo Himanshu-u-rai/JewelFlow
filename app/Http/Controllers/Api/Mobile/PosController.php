@@ -623,7 +623,13 @@ class PosController extends Controller
             $kycEstimate = (float) $resolvedBreakdown['total'];
         } else {
             $item = \App\Models\Item::where('shop_id', $shopId)->find((int) $validated['item_id']);
-            $fineWeight = $item ? round((float) $item->net_metal_weight * ((float) $item->purity / 24), 4) : 0.0;
+            // Fine weight must come from the MetalRegistry authority, never inline
+            // karat math: the previous hardcoded karat divisor was gold-only and
+            // silently wrong for silver (millesimal). null = non-accounting metal
+            // (platinum/copper) → 0 metal component in this rough KYC-gate estimate.
+            $fineWeight = $item
+                ? round((float) (\App\Services\MetalRegistry::fineWeight((string) $item->metal_type, (float) $item->net_metal_weight, (float) $item->purity) ?? 0.0), 4)
+                : 0.0;
             $kycBase = round($fineWeight * (float) $validated['gold_rate'] + (float) ($validated['making'] ?? 0) + (float) ($validated['stone'] ?? 0) - (float) ($validated['discount'] ?? 0), 2);
             $kycGst  = (float) ($shop?->gst_rate ?? config('business.gst_rate_default'));
             $kycEstimate = round(max($kycBase, 0) * (1 + $kycGst / 100), 2);

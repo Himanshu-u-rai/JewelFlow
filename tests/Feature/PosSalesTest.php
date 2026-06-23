@@ -115,8 +115,14 @@ class PosSalesTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['item_id']);
+        // The sale must be refused. The controller wraps the SalesService
+        // `status !== 'in_stock'` guard (after lockForUpdate) in a 409 Conflict
+        // with a clear "sold by another cashier" message — the correct race-UX
+        // response for a sold-item collision. (Was asserting 422; the live guard
+        // returns 409 with the item_id validation error in the body.)
+        $response->assertStatus(409);
+        $response->assertJson(['error' => 'items_unavailable']);
+        $this->assertArrayHasKey('item_id', $response->json('errors'));
     }
 
     public function test_manufacturer_sale_validates_required_fields(): void

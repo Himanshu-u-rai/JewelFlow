@@ -49,11 +49,20 @@ class SalesService
             $makingType, $makingValue
         ) {
             $shop = auth()->user()->shop;
-            if (!$shop || !$shop->isManufacturer()) {
+            if (!$shop) {
                 throw new \LogicException('Manufacturer edition required for this sale flow.');
             }
             $shopId = $shop->id;
+            // Access/subscription gate is the OUTERMOST boundary — an expired,
+            // suspended or read-only shop must be blocked here regardless of
+            // edition (parity with ItemManufacturingService), so the operator sees
+            // the real "write blocked" reason instead of a misleading
+            // "manufacturer edition required". Edition is checked only once the
+            // shop is actually allowed to write.
             SubscriptionGateService::assertShopWritable($shopId);
+            if (!$shop->isManufacturer()) {
+                throw new \LogicException('Manufacturer edition required for this sale flow.');
+            }
 
             // Lock the item so it can't be sold twice
             $item = Item::where('shop_id', $shopId)
