@@ -7,19 +7,21 @@
 
     <style>
         .wa-catalog-root {
-            --wa-bg-1: #eef6f5;
-            --wa-bg-2: #d8ebe8;
+            --wa-bg-1: #f6f7f9;
+            --wa-bg-2: #ffffff;
             --wa-accent: #0f766e;
             --wa-accent-dark: #115e59;
             --wa-ink: #0f172a;
             --wa-muted: #475569;
             --wa-olive: #b45309;
+            --wa-border: #cbd5e1;
+            --wa-soft-border: #e2e8f0;
         }
         .wa-hero {
-            border: 1px solid #cfe3df;
-            border-radius: 16px;
-            padding: 18px 20px;
-            background: linear-gradient(135deg, var(--wa-bg-1), var(--wa-bg-2));
+            border: 1px solid var(--wa-soft-border);
+            border-radius: 12px;
+            padding: 16px 18px;
+            background: #fff;
             margin-bottom: 18px;
             display: grid;
             gap: 12px;
@@ -29,10 +31,10 @@
             max-width: 760px;
         }
         .wa-hero-title {
-            font-size: 1.35rem;
-            font-weight: 800;
+            font-size: 1.22rem;
+            font-weight: 650;
             color: var(--wa-ink);
-            letter-spacing: -0.02em;
+            letter-spacing: 0;
         }
         .wa-hero-sub {
             margin-top: 4px;
@@ -46,24 +48,23 @@
             margin-top: 2px;
         }
         .wa-template-chip {
-            border: 1px solid #c7d7d3;
+            border: 1px solid var(--wa-border);
             background: #fff;
             color: #1f2937;
             padding: 7px 12px;
             border-radius: 8px;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 600;
             cursor: pointer;
-            transition: all .15s ease;
+            transition: background-color .15s ease, border-color .15s ease, color .15s ease;
             min-height: 32px;
             white-space: nowrap;
             flex: 0 0 auto;
         }
         .wa-template-chip.active {
-            background: var(--wa-accent);
-            border-color: var(--wa-accent);
+            background: var(--wa-olive);
+            border-color: var(--wa-olive);
             color: #fff;
-            box-shadow: 0 6px 16px rgba(15,118,110,.18);
         }
         .wa-tools {
             display: grid;
@@ -88,8 +89,8 @@
         }
         .wa-textarea {
             width: 100%;
-            border: 1px solid #ced8d5;
-            border-radius: 12px;
+            border: 1px solid var(--wa-border);
+            border-radius: 10px;
             padding: 9px 11px;
             font-size: 13px;
             color: #0f172a;
@@ -100,8 +101,8 @@
             font-family: inherit;
         }
         .wa-textarea:focus {
-            border-color: var(--wa-accent);
-            box-shadow: 0 0 0 3px rgba(15,118,110,.12);
+            border-color: #111827;
+            box-shadow: 0 0 0 3px rgba(17, 24, 39, .10);
         }
         @media (min-width: 768px) {
             .wa-custom-field.header { grid-column: span 6; }
@@ -127,7 +128,7 @@
         .wa-field label {
             display: block;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 650;
             color: #334155;
             margin-bottom: 4px;
             text-transform: uppercase;
@@ -135,8 +136,8 @@
         }
         .wa-input, .wa-select {
             width: 100%;
-            border: 1px solid #ced8d5;
-            border-radius: 12px;
+            border: 1px solid var(--wa-border);
+            border-radius: 10px;
             padding: 9px 11px;
             font-size: 14px;
             color: #0f172a;
@@ -144,32 +145,32 @@
             outline: none;
         }
         .wa-input:focus, .wa-select:focus {
-            border-color: var(--wa-accent);
-            box-shadow: 0 0 0 3px rgba(15,118,110,.12);
+            border-color: #111827;
+            box-shadow: 0 0 0 3px rgba(17, 24, 39, .10);
         }
         .wa-select-all-label {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 600;
             color: #334155;
             background: #f8fafc;
-            border: 1px solid #d8e2ef;
+            border: 1px solid var(--wa-border);
             padding: 8px 12px;
             border-radius: 10px;
             cursor: pointer;
-            transition: all .15s ease;
+            transition: background-color .15s ease, border-color .15s ease, color .15s ease;
             white-space: nowrap;
             height: 38px;
         }
         .wa-select-all-label:hover {
-            border-color: var(--wa-accent);
-            background: #edf8f6;
+            border-color: #94a3b8;
+            background: #fff;
         }
         .wa-select-all-label.all-selected {
-            background: var(--wa-accent);
-            border-color: var(--wa-accent);
+            background: var(--wa-olive);
+            border-color: var(--wa-olive);
             color: #fff;
         }
         .wa-select-all-checkbox {
@@ -192,11 +193,27 @@
             .wa-field-actions { grid-column: span 5; }
         }
         @media (min-width: 1200px) {
-            .wa-field.search { grid-column: span 4; }
-            .wa-field.category { grid-column: span 2; }
-            .wa-field.phone { grid-column: span 2; }
-            .wa-field-select-all { grid-column: span 2; }
-            .wa-field-actions { grid-column: span 2; }
+            .wa-tools {
+                grid-template-columns:
+                    minmax(260px, 1.35fr)
+                    minmax(148px, .72fr)
+                    minmax(160px, .78fr)
+                    minmax(145px, .68fr)
+                    minmax(150px, auto)
+                    minmax(116px, auto);
+                align-items: end;
+            }
+            .wa-field.search,
+            .wa-field.category,
+            .wa-field.phone,
+            .wa-field-select-all,
+            .wa-field-actions {
+                grid-column: auto;
+            }
+            .wa-field-actions {
+                display: flex;
+                justify-content: stretch;
+            }
             .wa-filter-btn {
                 min-width: 120px;
                 max-width: none;
@@ -204,8 +221,13 @@
         }
         .wa-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 12px;
+        }
+        @media (min-width: 1200px) {
+            .wa-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
         }
         @media (max-width: 767px) {
             .wa-grid {
@@ -213,10 +235,10 @@
             }
         }
         .wa-item-card {
-            border: 1px solid #dbe5e2;
-            border-radius: 16px;
+            border: 1px solid var(--wa-soft-border);
+            border-radius: 12px;
             background: #fff;
-            box-shadow: 0 2px 12px rgba(2, 8, 23, .04);
+            box-shadow: none;
             padding: 0;
             position: relative;
             overflow: visible;
@@ -224,14 +246,14 @@
         .wa-item-layout {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            min-height: 258px;
+            min-height: 248px;
             border-radius: inherit;
             overflow: hidden;
         }
         .wa-media-pane {
             position: relative;
             min-height: 100%;
-            border-right: 1px solid #dbe5e2;
+            border-right: 1px solid var(--wa-soft-border);
             background: #f8fafc;
         }
         .wa-content-pane {
@@ -239,7 +261,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            padding: 40px 12px 12px;
+            padding: 38px 12px 12px;
         }
         .wa-item-top {
             min-width: 0;
@@ -261,13 +283,13 @@
             display: grid;
             place-items: center;
             color: #64748b;
-            font-weight: 800;
+            font-weight: 650;
             font-size: 18px;
             letter-spacing: .08em;
         }
         .wa-name {
             font-size: 15px;
-            font-weight: 800;
+            font-weight: 650;
             color: #0f172a;
             line-height: 1.25;
             letter-spacing: -.01em;
@@ -286,7 +308,7 @@
         }
         .wa-badge {
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             border-radius: 9999px;
             padding: 4px 8px;
             border: 1px solid #d8dee6;
@@ -322,11 +344,11 @@
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: .04em;
-            font-weight: 700;
+            font-weight: 650;
         }
         .wa-metric-value {
             margin-top: 2px;
-            font-weight: 800;
+            font-weight: 650;
             color: #0f172a;
             font-size: 13px;
         }
@@ -349,6 +371,18 @@
             align-items: start;
             margin-top: auto;
         }
+        .wa-actions .wa-btn {
+            white-space: nowrap;
+        }
+        @media (min-width: 1200px) {
+            .wa-actions {
+                gap: 6px;
+            }
+            .wa-actions .wa-btn {
+                padding-inline: 8px;
+                font-size: 11px;
+            }
+        }
         .wa-item-select-wrap {
             display: flex;
             justify-content: flex-end;
@@ -362,10 +396,10 @@
             align-items: center;
             justify-content: center;
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             color: #334155;
             background: #f8fafc;
-            border: 1px solid #d8e2ef;
+            border: 1px solid var(--wa-border);
             padding: 5px 6px;
             border-radius: 8px;
             cursor: pointer;
@@ -375,8 +409,8 @@
             margin: 0;
         }
         .wa-item-card.selected {
-            border-color: #0f766e;
-            box-shadow: 0 0 0 1px rgba(15,118,110,.25), 0 8px 20px rgba(15,118,110,.12);
+            border-color: var(--wa-olive);
+            box-shadow: none;
         }
         .wa-selection-shell[hidden] {
             display: none !important;
@@ -385,8 +419,8 @@
             margin: 0 0 14px;
         }
         .wa-selection-bar {
-            border: 1px solid #c9ddd9;
-            background: linear-gradient(135deg, #f8fdfc, #edf8f6);
+            border: 1px solid var(--wa-soft-border);
+            background: #fff;
             padding: 12px 14px;
             border-radius: 12px;
             display: flex;
@@ -398,7 +432,7 @@
         }
         .wa-selection-count {
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 650;
             color: #0f172a;
         }
         .wa-selection-note {
@@ -470,7 +504,7 @@
             border: 0;
             border-radius: 10px;
             padding: 9px 11px;
-            font-weight: 700;
+            font-weight: 650;
             font-size: 12px;
             cursor: pointer;
             display: inline-flex;
@@ -478,10 +512,9 @@
             justify-content: center;
             gap: 6px;
             text-decoration: none;
-            transition: transform .08s ease, opacity .15s ease;
+            transition: background-color .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease;
         }
-        .wa-btn:hover { transform: translateY(-1px); }
-        .wa-btn:active { transform: translateY(0); }
+        .wa-btn:active { opacity: .9; }
         .wa-btn-share {
             flex: 1;
             background: #15803d;
@@ -502,7 +535,7 @@
             min-width: 0;
             background: #fff;
             color: #0f172a;
-            border: 1px solid #d8dee6;
+            border: 1px solid var(--wa-border);
             padding-inline: 0;
             font-size: 16px;
             line-height: 1;
@@ -520,8 +553,8 @@
             min-width: 180px;
             display: none;
             background: #fff;
-            border: 1px solid #dbe5e2;
-            box-shadow: 0 10px 24px rgba(15,23,42,.12);
+            border: 1px solid var(--wa-border);
+            box-shadow: none;
             z-index: 60;
         }
         .wa-menu.open {
@@ -534,7 +567,7 @@
             background: #fff;
             color: #0f172a;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 650;
             padding: 11px 12px;
             cursor: pointer;
         }
@@ -608,7 +641,7 @@
             }
 
             .wa-media-pane {
-                border-right: 1px solid #dbe5e2;
+                border-right: 1px solid var(--wa-soft-border);
             }
 
             .wa-content-pane {
@@ -683,10 +716,10 @@
             }
 
             .wa-hero {
-                border-radius: 14px;
-                padding: 12px;
+                border-radius: 12px;
+                padding: 10px;
                 margin-bottom: 10px;
-                background: linear-gradient(165deg, #ecf7f5 0%, #d8ebe8 100%);
+                background: #fff;
             }
 
             .wa-hero-title {
@@ -721,14 +754,12 @@
 
             .wa-tools {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 8px;
-                margin-top: 10px;
+                gap: 7px;
+                margin-top: 8px;
                 padding: 8px;
-                border: 1px solid #d3e2df;
-                border-radius: 12px;
-                background: rgba(255, 255, 255, 0.72);
-                backdrop-filter: blur(2px);
-                -webkit-backdrop-filter: blur(2px);
+                border: 1px solid var(--wa-soft-border);
+                border-radius: 10px;
+                background: #f8fafc;
             }
 
             .wa-field.search {
@@ -736,15 +767,15 @@
             }
 
             .wa-field.category {
-                grid-column: 1;
+                grid-column: auto;
             }
 
             .wa-field.phone {
-                grid-column: 2;
+                grid-column: 1;
             }
 
             .wa-field-select-all {
-                grid-column: 1 / -1;
+                grid-column: 2;
             }
 
             .wa-field label {
@@ -755,20 +786,26 @@
             .wa-input,
             .wa-select {
                 border-radius: 10px;
-                padding: 7px 9px;
+                padding: 7px 8px;
                 font-size: 12px;
                 line-height: 1.25;
             }
 
             .wa-field-actions {
                 grid-column: 1 / -1;
-                justify-content: flex-end;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                justify-content: stretch;
                 gap: 6px;
+            }
+
+            .wa-field-actions .wa-filter-btn:only-child {
+                grid-column: 1 / -1;
             }
 
             .wa-filter-btn {
                 min-height: 32px;
-                max-width: 168px;
+                max-width: none;
                 padding: 0 10px;
                 font-size: 11px;
             }
@@ -776,17 +813,25 @@
 
         @media (max-width: 480px) {
             .wa-tools {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 7px;
                 padding: 7px;
             }
 
-            .wa-field.category,
-            .wa-field.phone {
+            .wa-field.search,
+            .wa-field-actions {
                 grid-column: 1 / -1;
             }
 
+            .wa-field.category,
+            .wa-field.phone,
+            .wa-field-select-all {
+                grid-column: auto;
+            }
+
             .wa-field-actions {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 justify-content: stretch;
             }
 
@@ -809,7 +854,7 @@
             }
 
             .wa-item-layout {
-                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                grid-template-columns: minmax(0, 40%) minmax(0, 60%);
                 min-height: 176px;
             }
 
@@ -911,8 +956,8 @@
 
         <section class="wa-hero">
             <div class="wa-hero-copy">
-                <div class="wa-hero-title">Share Product Catalog</div>
-                <div class="wa-hero-sub">Send a single product directly, or create one clean collection page when you select multiple products.</div>
+                <div class="wa-hero-title">Catalog sharing</div>
+                <div class="wa-hero-sub">Filter items, choose a message style, and share product links without changing the catalog data.</div>
             </div>
 
             <div class="wa-chip-row">

@@ -50,7 +50,7 @@ class ReportScreenController extends Controller
         $canSensitive = $user->can($definition->permissions->sensitive);
 
         $profile = $this->resolveProfile($definition, $request, $isRigid);
-        $period = $this->resolvePeriod($request);
+        $period = $this->resolvePeriod($request, $definition);
 
         $includeSensitive = ! $isRigid && $request->boolean('include_sensitive') && $canSensitive;
         $resolution = $this->columns->resolve($definition, $profile, $user, includeSensitive: $includeSensitive);
@@ -198,7 +198,7 @@ class ReportScreenController extends Controller
      * Resolve the screen period. Honours legacy ?month=&year= bookmarks from the
      * pre-spine report URLs (bookmark preservation), else the FY-first presets.
      */
-    private function resolvePeriod(Request $request): \App\Services\Reporting\Filters\ResolvedPeriod
+    private function resolvePeriod(Request $request, $definition): \App\Services\Reporting\Filters\ResolvedPeriod
     {
         // Legacy single-date bookmark (?date=YYYY-MM-DD) — e.g. Daily Closing / Cash.
         if ($request->filled('date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->input('date'))) {
@@ -211,6 +211,18 @@ class ReportScreenController extends Controller
             $from = CarbonImmutable::create((int) $request->input('year'), (int) $request->input('month'), 1)->startOfDay();
 
             return $this->filters->resolve(DatePreset::Custom, $from, $from->endOfMonth());
+        }
+
+        $isAsOfReport = collect($definition->filters)->contains(
+            fn ($filter) => $filter->key === \App\Services\Reporting\Definition\FilterKey::AsOf
+        );
+        $hasExplicitDatePreset = $request->filled('date_preset')
+            || $request->filled('date_from')
+            || $request->filled('date_to')
+            || $request->filled('fy_name');
+
+        if ($isAsOfReport && ! $hasExplicitDatePreset) {
+            return $this->filters->resolve(DatePreset::Today);
         }
 
         $preset = DatePreset::tryFrom((string) $request->input('date_preset')) ?? DatePreset::ThisMonth;

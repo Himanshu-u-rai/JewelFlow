@@ -62,7 +62,7 @@
 
         @foreach($groups as $groupTitle => $cards)
             <h3 class="xp-group-title">{{ $groupTitle }}</h3>
-            <div class="xp-grid">
+            <div class="xp-grid {{ count($cards) === 1 ? 'xp-grid--single' : '' }}">
                 @foreach($cards as [$key, $title, $desc])
                     <a href="{{ $panel($key) }}" class="xp-card" data-turbo-frame="_top">
                         <div class="xp-card-top">
@@ -95,7 +95,9 @@
             --xp-muted:       #78716c;
             --xp-surface:     #fffdf8;
             --xp-ease:        cubic-bezier(0.23,1,0.32,1);
-            max-width: 980px;
+            width: 100%;
+            max-width: none;
+            margin-inline: 0;
         }
 
         /* Backup banner */
@@ -103,7 +105,7 @@
             display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
             border: 1px solid var(--xp-border); border-radius: 16px;
             background: linear-gradient(180deg, var(--xp-surface), #fff);
-            padding: 18px 22px; margin-bottom: 26px;
+            padding: 16px 20px; margin-bottom: 20px;
             box-shadow: 0 1px 2px rgba(28,25,23,.04), 0 14px 30px -20px rgba(28,25,23,.18);
         }
         .xp-backup-title { margin: 0; font-size: 15.5px; font-weight: 700; color: var(--xp-ink); letter-spacing: -.01em; }
@@ -120,17 +122,23 @@
         .xp-backup-btn:active { transform: scale(.98); }
 
         .xp-group-title {
-            margin: 0 0 12px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+            margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
             color: var(--xp-muted);
         }
         .xp-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 28px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-bottom: 22px;
+        }
+        .xp-grid--single {
+            grid-template-columns: 1fr;
+        }
+        .xp-grid--single .xp-card-desc {
+            max-width: 76ch;
         }
 
         .xp-card {
             display: flex; flex-direction: column; gap: 8px;
             border: 1px solid var(--xp-border); border-radius: 14px; background: #fff;
-            padding: 16px 17px; text-decoration: none;
+            padding: 14px 15px; text-decoration: none;
             transition: border-color .16s var(--xp-ease), box-shadow .16s var(--xp-ease), transform .16s var(--xp-ease);
         }
         .xp-card:hover {
@@ -152,7 +160,7 @@
         .xp-note {
             display: flex; gap: 11px; align-items: flex-start;
             border: 1px solid var(--xp-border-soft); border-radius: 12px; background: var(--xp-surface);
-            padding: 13px 16px; margin-top: 4px;
+            padding: 12px 14px; margin-top: 2px;
         }
         .xp-note svg { flex-shrink: 0; margin-top: 1px; color: #c9a06a; }
         .xp-note p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--xp-ink-2); }
@@ -161,8 +169,11 @@
             .xp-card, .xp-card-arrow, .xp-backup-btn { transition-duration: .16s; }
         }
         @media (max-width: 600px) {
-            .xp-backup { flex-direction: column; align-items: stretch; }
+            .xp-page { gap: 12px; }
+            .xp-backup { flex-direction: column; align-items: stretch; padding: 14px; margin-bottom: 18px; }
             .xp-backup-btn { width: 100%; justify-content: center; }
+            .xp-grid { grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
+            .xp-card { padding: 13px 14px; }
         }
     </style>
 </x-app-layout>
