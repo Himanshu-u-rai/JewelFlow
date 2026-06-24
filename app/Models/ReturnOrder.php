@@ -58,6 +58,11 @@ class ReturnOrder extends Model
         'settled_at'   => 'datetime',
         'cancelled_at' => 'datetime',
         'override_approved_at' => 'datetime',
+        // jsonb column: createPendingApproval() writes an associative array
+        // ({selections, reason, line_overrides}) and approveReturn() reads it
+        // back via $data['selections']. Without this cast Eloquent inserts the
+        // raw array (Array-to-string error) and reads an undecoded JSON string.
+        'pending_data' => 'array',
     ];
 
     public function invoice(): BelongsTo

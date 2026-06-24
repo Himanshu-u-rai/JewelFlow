@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Concerns\EmitsEntityTag;
 use App\Models\Invoice;
 use App\Models\ReturnOrder;
+use App\Services\Returns\RefundPolicyResolver;
 use App\Services\Returns\ReturnApprovalService;
 use App\Services\Returns\ReturnService;
-use App\Services\Returns\ValuationBasis;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -143,25 +143,54 @@ class ReturnController extends Controller
         ]);
 
         $invoice = Invoice::where('shop_id', $shopId)
-            ->with(['items'])
+            ->with(['items.item', 'shop.preferences'])
             ->findOrFail($validated['invoice_id']);
 
-        // Map lines to the service's selection format.
-        $selections = collect($validated['lines'])->map(fn ($l) => [
-            'invoice_item_id'   => (int) $l['invoice_item_id'],
-            'condition'         => $l['condition'],
-        ])->all();
+        // Build selections KEYED BY invoice_item_id — the exact shape both
+        // ReturnApprovalService::checkRequired() and ReturnService consume
+        // (they do array_keys()/$selections[$line->id] lookups). A flat list
+        // here silently breaks the service layer. Mobile returns always
+        // restock (no disposition overrides), so disposition defaults inside
+        // the service to 'restocked'.
+        $selections = [];
+        foreach ($validated['lines'] as $row) {
+            $selections[(int) $row['invoice_item_id']] = [
+                'condition' => $row['condition'],
+            ];
+        }
 
-        // Check if approval is required BEFORE processing.
-        $approvalReq = $this->approvals->checkRequired(
+        // Pre-compute per-line refund totals so the approval threshold check
+        // sees real amounts — identical to the web returns flow
+        // (ReturnsController::store). The same RefundPolicyResolver + basis are
+        // used here and inside createPartialReturn so the threshold decision
+        // and the eventual settlement agree.
+        $shopPolicy       = $request->user()->shop?->preferences;
+        $resolver         = app(RefundPolicyResolver::class);
+        $basis            = $resolver->basisFromPolicy($shopPolicy);
+        $lineRefundTotals = [];
+        foreach ($selections as $itemId => $sel) {
+            $line = $invoice->items->firstWhere('id', $itemId);
+            if ($line) {
+                $lineRefundTotals[$itemId] = $resolver
+                    ->resolve($line, $invoice, $basis, $shopPolicy)
+                    ->refundTotal;
+            }
+        }
+
+        // checkRequired() returns ?string: null = no approval needed; a
+        // non-null string = the human-readable reason approval is required.
+        $approvalReason = $this->approvals->checkRequired(
             $invoice,
             $selections,
-            $request->user()->shop->preferences
+            $lineRefundTotals,
+            $shopPolicy,
         );
 
         try {
-            if ($approvalReq->required) {
-                // Creates a pending_approval return — does NOT settle.
+            if ($approvalReason !== null) {
+                // Approval required → park as pending_approval. A user holding
+                // the returns.approve permission settles it via the approve
+                // endpoint. Same rule as the web flow — not a mobile-only gate.
                 $returnOrder = $this->returns->createPendingApproval(
                     invoice: $invoice,
                     selections: $selections,
@@ -170,14 +199,14 @@ class ReturnController extends Controller
                     refundSettlement: $validated['refund_settlement'],
                 );
             } else {
+                // No approval needed → settle now. Pass basis: null so the
+                // service derives it via basisFromPolicy() — the same basis we
+                // used for the threshold pre-check above, mirroring web.
                 $returnOrder = $this->returns->createPartialReturn(
                     invoice: $invoice,
                     selections: $selections,
                     reason: $validated['reason'],
                     userId: (int) $request->user()->id,
-                    basis: ValuationBasis::saleDayRate(
-                        $request->user()->shop->preferences?->toRefundDeductions() ?? []
-                    ),
                     refundSettlement: $validated['refund_settlement'],
                 );
             }
