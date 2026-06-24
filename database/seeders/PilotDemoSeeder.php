@@ -191,12 +191,22 @@ class PilotDemoSeeder extends Seeder
 
     private function user(int $shopId, int $roleId, string $name, string $mobile): User
     {
-        return User::factory()->create([
-            'shop_id' => $shopId, 'role_id' => $roleId, 'name' => $name,
-            'mobile_number' => $mobile, 'password' => Hash::make(self::DEMO_PASSWORD), 'is_active' => true,
-        ]);
-    }
+        // Built directly, not via factory. Factories need fakerphp/faker, which is
+        // a dev-only dependency excluded by composer install --no-dev.
+        $user = new User();
 
+        $user->forceFill([
+            'shop_id' => $shopId,
+            'role_id' => $roleId,
+            'name' => $name,
+            'mobile_number' => $mobile,
+            'password' => Hash::make(self::DEMO_PASSWORD),
+            'is_active' => true,
+            'email_verified_at' => now(),
+        ])->save();
+
+        return $user;
+    }
     private function paymentMethods(int $shopId): void
     {
         foreach ([['cash', 'Cash'], ['upi', 'Shop UPI'], ['bank', 'Shop Bank'], ['card', 'Card Machine']] as [$type, $name]) {
