@@ -111,7 +111,11 @@
     <div class="content-inner invoice-show-page jf-skeleton-host is-loading">
         @php
             $isRetailer = auth()->user()->shop?->isRetailer();
-            $isRepairInvoice = str_starts_with($invoice->invoice_number, 'REP-') || $invoice->items->isEmpty();
+            // Authoritative: a repair bill is an invoice a Repair points at (repairs.invoice_id).
+            // The REP- prefix is kept as a secondary signal for any legacy/imported rows.
+            $isRepairInvoice = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)
+                    ->where('invoice_id', $invoice->id)->exists()
+                || str_starts_with($invoice->invoice_number, 'REP-');
             $repair = null;
             $offerApplied = $invoice->offerApplication;
             $offerDiscount = (float) ($offerApplied->discount_amount ?? 0);
@@ -131,15 +135,24 @@
                 && abs($lineItemsTotal - (float) $invoice->total) > 0.01;
 
             if ($isRepairInvoice) {
-                $repairLog = \App\Models\AuditLog::where('shop_id', auth()->user()->shop_id)
-                    ->where('action', 'repair_deliver')
-                    ->where('model_type', 'repair')
-                    ->whereRaw("(data->>'invoice_id')::bigint = ?", [(int) $invoice->id])
+                // Primary: the Repair that points at this invoice (repairs.invoice_id).
+                $repair = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)
+                    ->where('invoice_id', $invoice->id)
                     ->latest()
                     ->first();
 
-                if ($repairLog) {
-                    $repair = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)->find($repairLog->model_id);
+                // Fallback for legacy rows where invoice_id was never back-filled.
+                if (! $repair) {
+                    $repairLog = \App\Models\AuditLog::where('shop_id', auth()->user()->shop_id)
+                        ->where('action', 'repair_deliver')
+                        ->where('model_type', 'repair')
+                        ->whereRaw("(data->>'invoice_id')::bigint = ?", [(int) $invoice->id])
+                        ->latest()
+                        ->first();
+
+                    if ($repairLog) {
+                        $repair = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)->find($repairLog->model_id);
+                    }
                 }
             }
 

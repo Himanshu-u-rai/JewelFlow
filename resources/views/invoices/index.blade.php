@@ -24,6 +24,11 @@
         $invoiceResultTotal = $invoices->total();
         $invoiceResultStart = $invoiceResultTotal ? $invoices->firstItem() : 0;
         $invoiceResultEnd = $invoiceResultTotal ? $invoices->lastItem() : 0;
+        // Repair bills share the INV- prefix, so flag them by the repairs->invoice_id
+        // link. Preloaded once for this page to avoid a per-row query.
+        $repairInvoiceIds = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)
+            ->whereIn('invoice_id', $invoices->pluck('id')->filter()->all())
+            ->pluck('invoice_id')->flip();
         $invoiceDateSummary = null;
         $invoiceStatusSummary = $invoiceStatusOptions[request('status')] ?? null;
         $invoicePaymentModeSummary = $invoicePaymentModeOptions[request('payment_mode')] ?? null;
@@ -264,7 +269,7 @@
                                 <td class="pl-8 pr-6 py-5 whitespace-nowrap">
                                     <div class="flex items-center gap-2">
                                         <span class="font-mono font-medium text-slate-700">{{ $invoice->invoice_number }}</span>
-                                        @if(str_starts_with($invoice->invoice_number, 'REP-'))
+                                        @if($repairInvoiceIds->has($invoice->id) || str_starts_with($invoice->invoice_number, 'REP-'))
                                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-100 text-sky-800 uppercase tracking-wide">
                                                 Repair
                                             </span>
@@ -390,7 +395,7 @@
                 @forelse($invoices as $invoice)
                     @php
                         $paymentModes = $invoice->payments->pluck('mode')->unique();
-                        $isRepairInvoice = str_starts_with($invoice->invoice_number, 'REP-');
+                        $isRepairInvoice = $repairInvoiceIds->has($invoice->id) || str_starts_with($invoice->invoice_number, 'REP-');
                     @endphp
                     <article class="invoices-mobile-card">
                         <div class="invoices-mobile-card__top">
