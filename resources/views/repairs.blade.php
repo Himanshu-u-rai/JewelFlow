@@ -1357,7 +1357,9 @@
                 opt.style.display = show ? '' : 'none';
                 if (show) visible++;
             });
-            updateQuickAddCustomerState(visible === 0 ? rawQuery : '');
+            // Always offer "Create '<name>'" while a query is typed — even when an
+            // existing customer matches — so a second same-name customer can be added.
+            updateQuickAddCustomerState(rawQuery);
         }
 
         function selectCust(el) {
