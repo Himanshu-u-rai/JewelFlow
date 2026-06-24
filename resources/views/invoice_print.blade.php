@@ -37,6 +37,8 @@
     $showGstin   = $billing?->show_gstin         ?? true;
     $showAddr    = $billing?->show_customer_address ?? true;
     $showIdPan   = $billing?->show_customer_id_pan  ?? true;
+    $showMode    = $billing?->show_mode             ?? true;
+    $showTime    = $billing?->show_time             ?? true;
     $igstMode    = $billing?->igst_mode          ?? false;
     $copyCount   = (int) ($billing?->copy_count  ?? 1);
     $copyCount   = max(1, min(2, $copyCount));
@@ -517,8 +519,8 @@
                 <div class="kv"><div class="k">Invoice No.</div><div class="v">: {{ $invoice->invoice_number }}</div></div>
                 <div class="kv"><div class="k">Invoice Date</div><div class="v">: {{ $invoice->created_at?->format('d/m/Y') }}</div></div>
                 <div class="kv"><div class="k">State & Code</div><div class="v">: {{ $stateAndCode }}</div></div>
-                <div class="kv"><div class="k">Time</div><div class="v">: {{ $invoice->created_at?->format('h:i A') }}</div></div>
-                <div class="kv"><div class="k">Mode</div><div class="v">: {{ $invoice->status === \App\Models\Invoice::STATUS_CANCELLED ? 'Cancelled' : ($isRepairInvoice ? 'Repair Service' : 'Sale') }}</div></div>
+                <div class="kv"><div class="k">Time</div><div class="v">: {{ $showTime ? $invoice->created_at?->format('h:i A') : '' }}</div></div>
+                <div class="kv"><div class="k">Mode</div><div class="v">: {{ $showMode ? ($invoice->status === \App\Models\Invoice::STATUS_CANCELLED ? 'Cancelled' : ($isRepairInvoice ? 'Repair Service' : 'Sale')) : '' }}</div></div>
             </div>
         </div>
 

@@ -504,6 +504,8 @@ class SettingsController extends Controller
             'show_gstin'             => 'nullable|boolean',
             'show_customer_address'  => 'nullable|boolean',
             'show_customer_id_pan'   => 'nullable|boolean',
+            'show_mode'              => 'nullable|boolean',
+            'show_time'              => 'nullable|boolean',
             // Tax (igst_mode + HSN codes) moved to the dedicated GST & Tax tab.
             // Footer / print
             'second_signature_label' => 'nullable|string|max:100',

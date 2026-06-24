@@ -2683,6 +2683,8 @@
                             'show_gstin'            => ['label' => 'Show GSTIN on Invoice',          'hint' => 'Displays shop GST number at the top'],
                             'show_customer_address' => ['label' => 'Show Customer Address',          'hint' => 'Address row in bill-to section'],
                             'show_customer_id_pan'  => ['label' => 'Show Customer ID / PAN',         'hint' => 'ID number and PAN rows in bill-to section'],
+                            'show_mode'             => ['label' => 'Show Mode',                       'hint' => 'Sale / Repair Service value in the invoice header'],
+                            'show_time'             => ['label' => 'Show Time',                       'hint' => 'Time value in the invoice header'],
                         ];
                     @endphp
 

@@ -47,6 +47,8 @@ class ShopBillingSettings extends Model
         'show_gstin',
         'show_customer_address',
         'show_customer_id_pan',
+        'show_mode',
+        'show_time',
         // Tax
         'igst_mode',
         'hsn_gold',
@@ -71,6 +73,8 @@ class ShopBillingSettings extends Model
         'show_gstin'              => 'boolean',
         'show_customer_address'   => 'boolean',
         'show_customer_id_pan'    => 'boolean',
+        'show_mode'               => 'boolean',
+        'show_time'               => 'boolean',
         'igst_mode'               => 'boolean',
     ];
 
