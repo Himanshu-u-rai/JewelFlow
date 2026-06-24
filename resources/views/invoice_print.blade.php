@@ -65,20 +65,31 @@
 
     // ── Invoice calculations ───────────────────────────────────────────────
     $customer       = $invoice->customer;
-    $isRepairInvoice = str_starts_with((string) $invoice->invoice_number, 'REP-') || $invoice->items->isEmpty();
+    // Authoritative: a repair bill is an invoice a Repair points at (repairs.invoice_id,
+    // set in RepairController::deliver). Prefix/empty-items kept as secondary signals.
+    $isRepairInvoice = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)
+            ->where('invoice_id', $invoice->id)->exists()
+        || str_starts_with((string) $invoice->invoice_number, 'REP-')
+        || $invoice->items->isEmpty();
     $repair = null;
     if ($isRepairInvoice) {
-        $repairLog = \App\Models\AuditLog::where('shop_id', auth()->user()->shop_id)
-            ->where('action', 'repair_deliver')
-            ->where('model_type', 'repair')
+        $repair = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)
+            ->where('invoice_id', $invoice->id)
             ->latest()
-            ->take(300)
-            ->get()
-            ->first(function ($log) use ($invoice) {
-                return (int) data_get($log->data, 'invoice_id') === (int) $invoice->id;
-            });
-        if ($repairLog) {
-            $repair = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)->find($repairLog->model_id);
+            ->first();
+        if (! $repair) {
+            $repairLog = \App\Models\AuditLog::where('shop_id', auth()->user()->shop_id)
+                ->where('action', 'repair_deliver')
+                ->where('model_type', 'repair')
+                ->latest()
+                ->take(300)
+                ->get()
+                ->first(function ($log) use ($invoice) {
+                    return (int) data_get($log->data, 'invoice_id') === (int) $invoice->id;
+                });
+            if ($repairLog) {
+                $repair = \App\Models\Repair::where('shop_id', auth()->user()->shop_id)->find($repairLog->model_id);
+            }
         }
     }
 
@@ -507,7 +518,7 @@
                 <div class="kv"><div class="k">Invoice Date</div><div class="v">: {{ $invoice->created_at?->format('d/m/Y') }}</div></div>
                 <div class="kv"><div class="k">State & Code</div><div class="v">: {{ $stateAndCode }}</div></div>
                 <div class="kv"><div class="k">Time</div><div class="v">: {{ $invoice->created_at?->format('h:i A') }}</div></div>
-                <div class="kv"><div class="k">Mode</div><div class="v">: {{ $invoice->status === \App\Models\Invoice::STATUS_CANCELLED ? 'Cancelled' : 'Sale' }}</div></div>
+                <div class="kv"><div class="k">Mode</div><div class="v">: {{ $invoice->status === \App\Models\Invoice::STATUS_CANCELLED ? 'Cancelled' : ($isRepairInvoice ? 'Repair Service' : 'Sale') }}</div></div>
             </div>
         </div>
 
