@@ -12624,6 +12624,853 @@ input::-webkit-calendar-picker-indicator {
     }
 }
 
+/* Repair detail + edit: flat JewelFlow ERP record workflow. */
+.content-header.repairs-show-header,
+.content-header.repairs-edit-header {
+    border-bottom: 1px solid var(--jf-erp-border);
+    background: #ffffff;
+}
+
+.repairs-show-title-block,
+.repairs-edit-title-block {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.repairs-show-header .page-title,
+.repairs-edit-header .page-title {
+    color: var(--jf-erp-ink);
+    font-size: 22px;
+    font-weight: 620;
+    line-height: 1.2;
+    letter-spacing: 0;
+}
+
+.repairs-show-header .page-subtitle,
+.repairs-edit-header .page-subtitle {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.repairs-show-header-actions,
+.repairs-edit-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.repairs-show-action,
+.repairs-edit-back,
+.repairs-edit-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    border: 1px solid var(--jf-erp-border);
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 9px 13px;
+    color: var(--jf-erp-ink);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
+    box-shadow: none !important;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 120ms ease-out;
+}
+
+.repairs-show-action svg,
+.repairs-edit-back svg,
+.repairs-edit-button svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    margin: 0 !important;
+}
+
+.repairs-show-action:hover,
+.repairs-edit-back:hover,
+.repairs-edit-button--secondary:hover {
+    border-color: var(--jf-erp-border-strong);
+    background: #f8fafc;
+    color: var(--jf-erp-ink);
+}
+
+.repairs-show-action--primary,
+.repairs-edit-button--primary {
+    border-color: var(--jf-erp-primary);
+    background: var(--jf-erp-primary);
+    color: #ffffff;
+}
+
+.repairs-show-action--primary:hover,
+.repairs-edit-button--primary:hover {
+    border-color: var(--jf-erp-primary-hover);
+    background: var(--jf-erp-primary-hover);
+    color: #ffffff;
+}
+
+.repairs-edit-button--danger {
+    border-color: #fecdd3;
+    background: #fff1f2;
+    color: #be123c;
+}
+
+.repairs-edit-button--danger:hover {
+    border-color: #fb7185;
+    background: #ffe4e6;
+    color: #9f1239;
+}
+
+.repairs-show-action:active,
+.repairs-edit-back:active,
+.repairs-edit-button:active {
+    transform: scale(0.98);
+}
+
+.content-inner.repairs-show-page,
+.content-inner.repairs-edit-page {
+    --app-card-shadow: none;
+    --app-card-shadow-hover: none;
+    width: 100%;
+    max-width: none;
+    background: var(--jf-erp-page);
+    color: var(--jf-erp-ink);
+}
+
+.content-inner.repairs-show-page {
+    padding: 26px 32px;
+}
+
+.repairs-show-workflow,
+.repairs-show-card,
+.repairs-edit-card {
+    border: 1px solid var(--jf-erp-border);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: none !important;
+}
+
+.repairs-show-workflow {
+    padding: 15px 18px 17px;
+}
+
+.repairs-show-workflow-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 15px;
+}
+
+.repairs-show-workflow-head strong {
+    display: block;
+    margin-top: 4px;
+    color: var(--jf-erp-ink);
+    font-size: 17px;
+    font-weight: 620;
+    line-height: 1.2;
+}
+
+.repairs-show-label,
+.repairs-show-facts dt,
+.repairs-show-customer-grid dt,
+.repairs-show-cost-list dt {
+    display: block;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 620;
+    line-height: 1.2;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
+
+.repairs-show-status,
+.repairs-show-ticket {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 29px;
+    border: 1px solid var(--jf-erp-border);
+    border-radius: 999px;
+    background: #f8fafc;
+    padding: 5px 10px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 620;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.repairs-show-status.is-progress,
+.repairs-show-status.is-received,
+.repairs-show-ticket {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #92400e;
+}
+
+.repairs-show-status.is-ready {
+    border-color: #bae6fd;
+    background: #f0f9ff;
+    color: #075985;
+}
+
+.repairs-show-status.is-delivered {
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.repairs-show-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.repairs-show-steps li {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 560;
+    line-height: 1.25;
+}
+
+.repairs-show-steps li:not(:last-child)::after {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    left: 43px;
+    z-index: 0;
+    height: 1px;
+    background: #e2e8f0;
+    content: "";
+}
+
+.repairs-show-step-dot {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--jf-erp-border);
+    border-radius: 50%;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.repairs-show-step-dot svg {
+    width: 14px;
+    height: 14px;
+}
+
+.repairs-show-steps li.is-current,
+.repairs-show-steps li.is-complete {
+    color: var(--jf-erp-ink);
+}
+
+.repairs-show-steps li.is-current .repairs-show-step-dot {
+    border-color: var(--jf-erp-primary);
+    background: var(--jf-erp-primary);
+    color: #ffffff;
+}
+
+.repairs-show-steps li.is-complete .repairs-show-step-dot {
+    border-color: #059669;
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.repairs-show-steps li.is-complete:not(:last-child)::after {
+    background: #6ee7b7;
+}
+
+.repairs-show-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+    gap: 16px;
+    align-items: start;
+    margin-top: 16px;
+}
+
+.repairs-show-main,
+.repairs-show-rail {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+}
+
+.repairs-show-card {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.repairs-show-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 15px 16px;
+}
+
+.repairs-show-card-head h2 {
+    margin: 4px 0 0;
+    color: var(--jf-erp-ink);
+    font-size: 17px;
+    font-weight: 620;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.repairs-show-description {
+    padding: 16px;
+}
+
+.repairs-show-description p {
+    max-width: 72ch;
+    margin: 7px 0 0;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.repairs-show-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    border-top: 1px solid #e2e8f0;
+}
+
+.repairs-show-facts > div {
+    min-width: 0;
+    padding: 14px 16px;
+}
+
+.repairs-show-facts > div + div {
+    border-left: 1px solid #e2e8f0;
+}
+
+.repairs-show-facts dd,
+.repairs-show-customer-grid dd,
+.repairs-show-cost-list dd {
+    margin: 6px 0 0;
+    color: var(--jf-erp-ink);
+    font-size: 14px;
+    font-weight: 590;
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.repairs-show-customer-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+}
+
+.repairs-show-customer-grid > div {
+    min-width: 0;
+    padding: 15px 16px;
+}
+
+.repairs-show-customer-grid > div + div {
+    border-left: 1px solid #e2e8f0;
+}
+
+.repairs-show-cost-list {
+    display: grid;
+    margin: 0;
+    padding: 3px 16px 14px;
+}
+
+.repairs-show-cost-list > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    border-top: 1px solid #e2e8f0;
+    padding: 12px 0;
+}
+
+.repairs-show-cost-list > div:first-child {
+    border-top: 0;
+}
+
+.repairs-show-cost-list dd {
+    margin-top: 0;
+    text-align: right;
+}
+
+.repairs-show-cost-list a {
+    color: var(--jf-erp-primary);
+    text-decoration: none;
+}
+
+.repairs-show-cost-list a:hover {
+    color: var(--jf-erp-primary-hover);
+    text-decoration: underline;
+}
+
+.repairs-show-photo {
+    padding: 14px;
+}
+
+.repairs-show-photo img,
+.repairs-show-photo-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 190px;
+    max-height: 300px;
+    border: 1px dashed var(--jf-erp-border);
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.repairs-show-photo img {
+    object-fit: contain;
+}
+
+.repairs-show-photo-empty {
+    flex-direction: column;
+    gap: 9px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 520;
+}
+
+.repairs-show-photo-empty svg {
+    width: 30px;
+    height: 30px;
+    color: #94a3b8;
+}
+
+.content-inner.repairs-edit-page {
+    --app-control-bg: #ffffff;
+    --app-control-border: #cbd5e1;
+    --app-control-border-focus: #b45309;
+    padding: 26px 32px;
+}
+
+.repairs-edit-card {
+    width: 100%;
+    max-width: none;
+    overflow: visible !important;
+}
+
+.repairs-edit-card-head {
+    border-bottom: 1px solid #e2e8f0;
+    padding: 15px 18px;
+}
+
+.repairs-edit-card-head h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--jf-erp-ink);
+    font-size: 17px;
+    font-weight: 620;
+    line-height: 1.25;
+}
+
+.repairs-edit-card-head p {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.repairs-edit-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    padding: 20px;
+}
+
+.repairs-edit-field,
+.repairs-edit-status-card {
+    min-width: 0;
+}
+
+.repairs-edit-field--full,
+.repairs-edit-field--description,
+.repairs-edit-actions {
+    grid-column: 1 / -1;
+}
+
+.repairs-edit-status-card {
+    border: 1px solid #fed7aa !important;
+    border-radius: 10px;
+    background: #fffaf0 !important;
+    padding: 13px;
+}
+
+.repairs-edit-status-card > div {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.45fr) auto;
+    align-items: end;
+    gap: 18px;
+}
+
+.repairs-edit-ticket {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    border: 1px solid #fed7aa;
+    border-radius: 9px;
+    background: #ffffff;
+    padding: 7px 10px;
+    color: #92400e;
+    font-family: var(--jf-font-mono);
+    font-size: 12px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.repairs-edit-field--specs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.content-inner.repairs-edit-page .r-label {
+    color: #334155;
+    font-size: 12px;
+    font-weight: 560;
+}
+
+.content-inner.repairs-edit-page .r-label svg {
+    color: #64748b;
+}
+
+.content-inner.repairs-edit-page :is(.r-input, .r-select, .r-textarea, .r-dd-trigger) {
+    min-height: 42px;
+    border: 1px solid var(--jf-erp-border) !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    color: var(--jf-erp-ink);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: none;
+}
+
+.content-inner.repairs-edit-page .r-textarea {
+    min-height: 104px;
+}
+
+.content-inner.repairs-edit-page :is(.r-input, .r-textarea)::placeholder {
+    color: #64748b;
+}
+
+.content-inner.repairs-edit-page :is(.r-input, .r-select, .r-textarea, .r-dd-trigger):focus,
+.content-inner.repairs-edit-page .r-dd-trigger.open {
+    outline: none;
+    border-color: var(--jf-erp-primary);
+    background-color: #ffffff;
+    box-shadow: var(--jf-erp-focus-ring);
+}
+
+.content-inner.repairs-edit-page .r-dd-panel {
+    border-color: var(--jf-erp-primary);
+    box-shadow: none !important;
+}
+
+.content-inner.repairs-edit-page .r-dd-opt:hover,
+.content-inner.repairs-edit-page .r-dd-opt.active {
+    background: #fff7ed;
+}
+
+.content-inner.repairs-edit-page .r-input[type="file"] {
+    min-height: 44px;
+    padding: 5px;
+}
+
+.content-inner.repairs-edit-page .r-input[type="file"]::file-selector-button {
+    min-height: 32px;
+    margin-right: 10px;
+    border: 1px solid var(--jf-erp-border);
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 6px 10px;
+    color: #334155;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.repairs-edit-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 2px -20px -20px;
+    border-top: 1px solid #e2e8f0;
+    border-radius: 0 0 12px 12px;
+    background: #f8fafc;
+    padding: 13px 20px;
+}
+
+.repairs-edit-actions-main {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 9px;
+}
+
+@media (max-width: 1024px) {
+    .repairs-show-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .repairs-show-rail {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .content-header.repairs-show-header,
+    .content-header.repairs-edit-header {
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        min-height: 64px;
+        padding-inline: 14px;
+    }
+
+    .repairs-show-header .content-header-nav,
+    .repairs-edit-header .content-header-nav {
+        grid-column: 1;
+        grid-row: 1;
+        margin-right: 0;
+        padding-top: 0;
+    }
+
+    .repairs-show-title-block,
+    .repairs-edit-title-block {
+        grid-column: 2;
+        grid-row: 1;
+        text-align: center;
+    }
+
+    .repairs-show-header .page-title,
+    .repairs-edit-header .page-title {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .repairs-show-header .page-subtitle,
+    .repairs-edit-header .page-subtitle {
+        display: none;
+    }
+
+    .repairs-show-header .page-actions,
+    .repairs-edit-header .page-actions {
+        grid-column: 3;
+        grid-row: 1;
+        width: auto;
+        justify-self: end;
+    }
+
+    .repairs-show-header-actions {
+        gap: 5px;
+    }
+
+    .repairs-show-action,
+    .repairs-edit-back {
+        width: 36px !important;
+        min-width: 36px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        border-radius: 10px;
+        padding: 0;
+        font-size: 0;
+    }
+
+    .repairs-show-action span,
+    .repairs-edit-back span {
+        display: none;
+    }
+
+    .repairs-show-action svg,
+    .repairs-edit-back svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .content-inner.repairs-show-page,
+    .content-inner.repairs-edit-page {
+        padding: 14px !important;
+    }
+
+    .repairs-show-workflow {
+        padding: 13px;
+    }
+
+    .repairs-show-workflow-head {
+        margin-bottom: 13px;
+    }
+
+    .repairs-show-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 8px;
+    }
+
+    .repairs-show-steps li::after {
+        display: none;
+    }
+
+    .repairs-show-layout {
+        margin-top: 12px;
+    }
+
+    .repairs-show-rail,
+    .repairs-show-facts,
+    .repairs-show-customer-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .repairs-show-card-head {
+        padding: 13px;
+    }
+
+    .repairs-show-description {
+        padding: 13px;
+    }
+
+    .repairs-show-facts > div,
+    .repairs-show-customer-grid > div {
+        padding: 12px 13px;
+    }
+
+    .repairs-show-facts > div + div,
+    .repairs-show-customer-grid > div + div {
+        border-top: 1px solid #e2e8f0;
+        border-left: 0;
+    }
+
+    .repairs-show-photo img,
+    .repairs-show-photo-empty {
+        min-height: 170px;
+    }
+
+    .repairs-edit-card {
+        border-radius: 12px;
+    }
+
+    .repairs-edit-card-head {
+        padding: 14px;
+    }
+
+    .repairs-edit-form {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 15px;
+        padding: 14px;
+    }
+
+    .repairs-edit-field--full,
+    .repairs-edit-field--description,
+    .repairs-edit-actions {
+        grid-column: auto;
+    }
+
+    .repairs-edit-status-card > div {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+    }
+
+    .repairs-edit-ticket {
+        align-self: end;
+    }
+
+    .repairs-edit-field--specs {
+        gap: 10px;
+    }
+
+    .repairs-edit-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        margin: 2px -14px -14px;
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+        border-radius: 0;
+        padding: 11px 14px calc(11px + env(safe-area-inset-bottom));
+    }
+
+    .repairs-edit-button {
+        min-height: 38px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .repairs-edit-actions-main {
+        flex: 1 1 auto;
+    }
+
+    .repairs-edit-actions-main .repairs-edit-button {
+        flex: 1 1 0;
+    }
+}
+
+@media (max-width: 390px) {
+    .repairs-edit-status-card > div,
+    .repairs-edit-field--specs {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .repairs-edit-ticket {
+        justify-self: start;
+    }
+
+    .repairs-edit-button--danger {
+        flex: 0 0 40px;
+        width: 40px;
+        min-width: 40px;
+        padding: 0;
+        font-size: 0;
+    }
+
+    .repairs-edit-button--danger span {
+        display: none;
+    }
+
+    .repairs-edit-button--danger svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
 /* Repairs management + subpages makeover (UI only, scoped) */
 .repairs-management-page,
 .repairs-report-page,
@@ -12656,8 +13503,7 @@ input::-webkit-calendar-picker-indicator {
     border: 1px solid #fed7aa;
 }
 
-.repairs-report-page .repairs-report-table-card,
-.repairs-edit-page .repairs-edit-card {
+.repairs-report-page .repairs-report-table-card {
     border-radius: 18px;
     border-color: #d8e1ec !important;
     background: #ffffff;
@@ -12753,8 +13599,8 @@ input::-webkit-calendar-picker-indicator {
 }
 
 .repairs-edit-page .repairs-edit-status-card {
-    background: #f8fafc !important;
-    border-color: #dbe6f2 !important;
+    background: #fffaf0 !important;
+    border-color: #fed7aa !important;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -12774,8 +13620,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .repairs-management-page .repairs-surface-card,
-    .repairs-report-page .repairs-report-table-card,
-    .repairs-edit-page .repairs-edit-card {
+    .repairs-report-page .repairs-report-table-card {
         border-radius: 14px;
     }
 

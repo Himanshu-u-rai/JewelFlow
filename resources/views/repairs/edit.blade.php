@@ -4,9 +4,9 @@
             --r-ink: #0f172a;
             --r-ink-soft: #334155;
             --r-muted: #64748b;
-            --r-border: #e2e8f0;
-            --r-bg: #f8fafc;
-            --r-accent: #0d9488;
+            --r-border: #cbd5e1;
+            --r-bg: #ffffff;
+            --r-accent: #b45309;
         }
         .r-label {
             display: flex; align-items: center; gap: 6px;
@@ -22,7 +22,7 @@
         }
         .r-input:focus, .r-select:focus, .r-textarea:focus {
             outline: none; border-color: var(--r-accent); background: #fff;
-            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.20);
         }
         .r-input::placeholder, .r-textarea::placeholder { color: #9ca3af; font-weight: 400; }
         .r-select {
@@ -49,8 +49,8 @@
             transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
             text-align: left; position: relative;
         }
-        .r-dd-trigger:focus { outline: none; border-color: var(--r-accent); background: #fff; box-shadow: 0 0 0 3px rgba(13,148,136,.12); }
-        .r-dd-trigger.open { border-color: var(--r-accent); background: #fff; box-shadow: 0 0 0 3px rgba(13,148,136,.12); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+        .r-dd-trigger:focus { outline: none; border-color: var(--r-accent); background: #fff; box-shadow: 0 0 0 3px rgba(245,158,11,.20); }
+        .r-dd-trigger.open { border-color: var(--r-accent); background: #fff; box-shadow: 0 0 0 3px rgba(245,158,11,.20); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
         .r-dd-trigger::after {
             content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
             width: 16px; height: 16px;
@@ -63,7 +63,7 @@
             display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 18;
             background: #fff; border: 1.5px solid var(--r-accent); border-top: none;
             border-radius: 0 0 10px 10px;
-            box-shadow: 0 8px 24px rgba(0,0,0,.1); max-height: 220px; overflow: hidden;
+            box-shadow: none; max-height: 220px; overflow: hidden;
         }
         .r-dd-panel.open { display: block; }
         .r-dd-wrap.dd-dropup .r-dd-trigger.open {
@@ -78,7 +78,7 @@
             border-top: 1.5px solid var(--r-accent);
             border-bottom: none;
             border-radius: 10px 10px 0 0;
-            box-shadow: 0 -8px 24px rgba(0,0,0,.1);
+            box-shadow: none;
         }
 
         .repairs-edit-card {
@@ -97,36 +97,41 @@
             border-bottom: 1px solid #f8fafc;
         }
         .r-dd-opt:last-child { border-bottom: none; }
-        .r-dd-opt:hover, .r-dd-opt.active { background: #f0fdfa; }
+        .r-dd-opt:hover, .r-dd-opt.active { background: #fff7ed; }
         .r-dd-opt-name { font-size: 13px; font-weight: 600; color: var(--r-ink); }
         .r-dd-opt-sub { font-size: 11px; color: var(--r-muted); margin-top: 1px; }
         .r-dd-empty { padding: 14px; text-align: center; color: var(--r-muted); font-size: 12px; }
     </style>
-    <x-page-header>
-        <div>
+    <x-page-header class="repairs-edit-header">
+        <div class="repairs-edit-title-block">
             <h1 class="page-title">Edit Repair #{{ $repair->repair_number ?? '—' }}</h1>
-            <p class="text-sm text-gray-500 mt-1">Update repair details</p>
+            <p class="page-subtitle">Update repair details and work status</p>
         </div>
-        <div class="page-actions">
-            <a href="{{ route('repairs.index') }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Back to Repairs</a>
+        <div class="page-actions repairs-edit-header-actions">
+            <a href="{{ route('repairs.show', $repair) }}" class="repairs-edit-back">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7 7-7-7 7-7"/>
+                </svg>
+                <span>Back to Repair</span>
+            </a>
         </div>
     </x-page-header>
 
     <div class="content-inner repairs-edit-page">
-        <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden repairs-edit-card">
-            <div class="p-5 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <div class="bg-white border border-gray-200 overflow-hidden repairs-edit-card">
+            <div class="repairs-edit-card-head">
+                <h2>
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    Edit Repair Details
+                    Repair details
                 </h2>
-                <p class="text-sm text-gray-500 mt-1">Received on {{ $repair->created_at->format('d M Y') }}</p>
+                <p>Received {{ $repair->created_at->format('d M Y') }}</p>
             </div>
 
-            <form method="POST" action="{{ route('repairs.update', $repair) }}" class="p-6 space-y-5" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('repairs.update', $repair) }}" class="repairs-edit-form" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 repairs-edit-status-card">
+                <div class="repairs-edit-status-card repairs-edit-field--full">
                     <div class="flex items-center justify-between gap-4">
                         <div class="flex-1">
                             <label for="status" class="r-label">
@@ -142,11 +147,11 @@
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
-                        <div class="text-sm font-mono font-semibold text-gray-600 pt-5">REP-{{ str_pad($repair->repair_number, 3, '0', STR_PAD_LEFT) }}</div>
+                        <div class="repairs-edit-ticket">REP-{{ str_pad($repair->repair_number, 3, '0', STR_PAD_LEFT) }}</div>
                     </div>
                 </div>
 
-                <div>
+                <div class="repairs-edit-field repairs-edit-field--customer">
                     <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>Customer *</label>
                     <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id', $repair->customer_id) }}" required>
                     <div class="r-dd-wrap" id="custDdWrap">
@@ -179,7 +184,7 @@
                     @enderror
                 </div>
 
-                <div>
+                <div class="repairs-edit-field repairs-edit-field--item">
                     <label for="item_description" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Item Description *</label>
                     <input type="text" name="item_description" id="item_description"
                            value="{{ old('item_description', $repair->item_description) }}"
@@ -190,7 +195,7 @@
                     @enderror
                 </div>
 
-                <div>
+                <div class="repairs-edit-field repairs-edit-field--description repairs-edit-field--full">
                     <label for="description" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Repair Description</label>
                     <textarea name="description" id="description" rows="3"
                               placeholder="e.g., Resize from size 6 to size 7, Broken link in chain needs soldering"
@@ -204,7 +209,7 @@
                     $currentMetal  = old('metal_type', $repair->metal_type ?? 'gold');
                     $currentPurity = old('purity', $repair->purity);
                 @endphp
-                <div class="mb-4">
+                <div class="repairs-edit-field repairs-edit-field--metal">
                     <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>Metal</label>
                     <input type="hidden" name="metal_type" id="metal_type" value="{{ $currentMetal }}">
                     <div class="r-dd-wrap" id="metalDdWrap">
@@ -222,7 +227,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="repairs-edit-field repairs-edit-field--specs">
                     <div>
                         <label for="gross_weight" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>Gross Weight (g) *</label>
                         <input type="number" step="0.001" name="gross_weight" id="gross_weight"
@@ -259,7 +264,7 @@
                     </div>
                 </div>
 
-                <div>
+                <div class="repairs-edit-field repairs-edit-field--photo">
                     <label class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Photo <span style="color:var(--r-muted);font-weight:normal">(optional)</span></label>
                     @php($existingRepairImageUrl = $repair->resolveImageUrl('public'))
                     @if($existingRepairImageUrl)
@@ -280,7 +285,7 @@
                     @enderror
                 </div>
 
-                <div>
+                <div class="repairs-edit-field repairs-edit-field--cost">
                     <label for="estimated_cost" class="r-label"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Estimated Cost (₹)</label>
                     <div class="r-cost-wrap">
                         <span class="r-cost-symbol">₹</span>
@@ -294,28 +299,37 @@
                     @enderror
                 </div>
 
-                <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-200">
+                <div class="repairs-edit-actions repairs-edit-field--full">
                     @can('repairs.delete')
-                    <form method="POST" action="{{ route('repairs.destroy', $repair) }}"
-                          onsubmit="return confirm('Delete REP-{{ str_pad($repair->repair_number, 3, '0', STR_PAD_LEFT) }}? This cannot be undone.')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger btn-sm">
+                        <button type="submit" form="repairDeleteForm" class="repairs-edit-button repairs-edit-button--danger" aria-label="Delete repair" title="Delete repair">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                            Delete Repair
+                            <span>Delete Repair</span>
                         </button>
-                    </form>
                     @else
-                    <span></span>
+                        <span></span>
                     @endcan
-                    <div class="flex gap-3">
-                        <a href="{{ route('repairs.index') }}" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel</a>
-                        <button type="submit" class="btn btn-dark btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Changes</button>
+                    <div class="repairs-edit-actions-main">
+                        <a href="{{ route('repairs.show', $repair) }}" class="repairs-edit-button repairs-edit-button--secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            Cancel
+                        </a>
+                        <button type="submit" class="repairs-edit-button repairs-edit-button--primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Save Changes
+                        </button>
                     </div>
                 </div>
             </form>
         </div>
     </div>
+
+    @can('repairs.delete')
+        <form id="repairDeleteForm" method="POST" action="{{ route('repairs.destroy', $repair) }}"
+              onsubmit="return confirm('Delete REP-{{ str_pad($repair->repair_number, 3, '0', STR_PAD_LEFT) }}? This cannot be undone.')">
+            @csrf
+            @method('DELETE')
+        </form>
+    @endcan
 
     <script>
         /* ─── Metal-aware purity (server-driven presets) ── */

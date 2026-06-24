@@ -137,6 +137,80 @@
         .r-dd-opt-name { font-size: 13px; font-weight: 600; color: var(--r-ink); }
         .r-dd-opt-sub { font-size: 11px; color: var(--r-muted); margin-top: 1px; }
         .r-dd-empty { padding: 14px; text-align: center; color: var(--r-muted); font-size: 12px; }
+        .r-dd-quick-add {
+            display: grid;
+            gap: 4px;
+            border-top: 1px solid var(--r-border-soft);
+            background: #ffffff;
+            padding: 4px;
+        }
+        .r-dd-quick-add.hidden { display: none; }
+        .r-dd-quick-add-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 26px;
+            width: 26px;
+            height: 26px;
+            border: 1px solid #fed7aa;
+            border-radius: 7px;
+            background: var(--r-accent-soft);
+            color: var(--r-accent);
+        }
+        .r-dd-quick-add-icon svg {
+            width: 14px;
+            height: 14px;
+        }
+        .r-dd-quick-add-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 9px;
+            width: 100%;
+            min-height: 40px;
+            border: 0;
+            border-radius: 7px;
+            background: #ffffff;
+            padding: 7px 8px;
+            color: var(--r-ink);
+            font-size: 12.5px;
+            font-weight: 600;
+            line-height: 1.2;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease-out;
+        }
+        .r-dd-quick-add-button:hover {
+            background: var(--r-accent-soft);
+            color: var(--r-accent-dark);
+        }
+        .r-dd-quick-add-button:active { transform: scale(0.98); }
+        .r-dd-quick-add-button:focus-visible {
+            outline: 2px solid rgba(198, 90, 30, .18);
+            outline-offset: 0;
+        }
+        .r-dd-quick-add-button:disabled {
+            background: #f8fafc;
+            color: #64748b;
+            cursor: wait;
+            transform: none;
+        }
+        .r-dd-quick-add-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .r-dd-quick-add-error {
+            margin: 0;
+            border-top: 1px solid #fecdd3;
+            padding: 7px 8px 5px;
+            color: #be123c;
+            font-size: 11px;
+            font-weight: 560;
+            line-height: 1.35;
+        }
+        .r-dd-quick-add-error.hidden { display: none; }
 
         .repairs-table-shell {
             overflow-x: auto;
@@ -692,6 +766,17 @@
                                             </div>
                                         @endforeach
                                     </div>
+                                    <div class="r-dd-quick-add hidden" id="custQuickAddState" aria-live="polite">
+                                        <button type="button" class="r-dd-quick-add-button" id="custQuickAddButton" onclick="confirmQuickAddCustomer()">
+                                            <span class="r-dd-quick-add-icon" aria-hidden="true">
+                                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                </svg>
+                                            </span>
+                                            <span class="r-dd-quick-add-label" id="custQuickAddLabel">Create customer</span>
+                                        </button>
+                                        <p class="r-dd-quick-add-error hidden" id="custQuickAddError"></p>
+                                    </div>
                                 </div>
                             </div>
                             @error('customer_id')
@@ -1244,16 +1329,25 @@
             if (!e.target.closest('.r-dd-wrap')) closeAllDd();
         });
 
-        // Close dropdowns when the page scrolls so panels don't drift into sticky header.
-        document.querySelector('.content-body')?.addEventListener('scroll', closeAllDd, { passive: true });
-        window.addEventListener('scroll', closeAllDd, { passive: true });
+        // Desktop panels close on scroll. Mobile opening/focusing a field can
+        // scroll the form into view, so closing there makes the picker unusable.
+        function closeDropdownsOnScroll() {
+            if (window.matchMedia('(max-width: 768px)').matches || navigator.maxTouchPoints > 0) {
+                return;
+            }
+            closeAllDd();
+        }
+        document.querySelector('.content-body')?.addEventListener('scroll', closeDropdownsOnScroll, { passive: true });
+        window.addEventListener('scroll', closeDropdownsOnScroll, { passive: true });
         window.addEventListener('resize', () => {
             document.querySelectorAll('.r-dd-panel.open').forEach(updateDdDirection);
         }, { passive: true });
 
         /* ─── Customer Dropdown ──────────── */
         function filterCustDd() {
-            const q = (document.getElementById('custDdSearch')?.value || '').toLowerCase();
+            const searchInput = document.getElementById('custDdSearch');
+            const rawQuery = (searchInput?.value || '').trim();
+            const q = rawQuery.toLowerCase();
             const opts = document.querySelectorAll('#custDdList .r-dd-opt');
             let visible = 0;
             opts.forEach(opt => {
@@ -1263,20 +1357,7 @@
                 opt.style.display = show ? '' : 'none';
                 if (show) visible++;
             });
-            // Show/hide empty state
-            let empty = document.getElementById('custDdEmpty');
-            if (visible === 0) {
-                if (!empty) {
-                    empty = document.createElement('div');
-                    empty.id = 'custDdEmpty';
-                    empty.className = 'r-dd-empty';
-                    empty.textContent = 'No customer found';
-                    document.getElementById('custDdList').appendChild(empty);
-                }
-                empty.style.display = '';
-            } else if (empty) {
-                empty.style.display = 'none';
-            }
+            updateQuickAddCustomerState(visible === 0 ? rawQuery : '');
         }
 
         function selectCust(el) {
@@ -1289,7 +1370,32 @@
             closeAllDd();
         }
 
-        /* Enter in customer search with no match → offer quick-add. */
+        let pendingQuickCustomerName = '';
+
+        function updateQuickAddCustomerState(name) {
+            const state = document.getElementById('custQuickAddState');
+            const button = document.getElementById('custQuickAddButton');
+            const label = document.getElementById('custQuickAddLabel');
+            const error = document.getElementById('custQuickAddError');
+            if (!state || !button || !label || !error) return;
+
+            pendingQuickCustomerName = (name || '').trim();
+            error.textContent = '';
+            error.classList.add('hidden');
+
+            if (!pendingQuickCustomerName) {
+                state.classList.add('hidden');
+                button.disabled = false;
+                label.textContent = 'Create customer';
+                return;
+            }
+
+            button.disabled = false;
+            label.textContent = 'Create "' + pendingQuickCustomerName + '"';
+            state.classList.remove('hidden');
+        }
+
+        /* Enter moves focus to the explicit quick-add action; it never creates silently. */
         function handleCustSearchKey(e) {
             if (e.key !== 'Enter') return;
             e.preventDefault();
@@ -1302,12 +1408,32 @@
                 selectCust(visible[0]);
                 return;
             }
-            if (!confirm('No matching customer. Add "' + name + '" as a new customer?')) return;
-            quickAddCustomer(name);
+            updateQuickAddCustomerState(name);
+            if (shouldAutoFocusInlineSearch()) {
+                focusWithoutScroll(document.getElementById('custQuickAddButton'));
+            }
+        }
+
+        function confirmQuickAddCustomer() {
+            if (!pendingQuickCustomerName) return;
+            quickAddCustomer(pendingQuickCustomerName);
         }
 
         function quickAddCustomer(name) {
             const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const button = document.getElementById('custQuickAddButton');
+            const label = document.getElementById('custQuickAddLabel');
+            const error = document.getElementById('custQuickAddError');
+            if (button) {
+                button.disabled = true;
+            }
+            if (label) {
+                label.textContent = 'Creating customer...';
+            }
+            if (error) {
+                error.textContent = '';
+                error.classList.add('hidden');
+            }
             const fd = new FormData();
             fd.append('name', name);
             fd.append('_token', token);
@@ -1334,15 +1460,25 @@
                   opt.appendChild(nameDiv);
                   opt.appendChild(subDiv);
                   list.insertBefore(opt, list.firstChild);
-                  const empty = document.getElementById('custDdEmpty');
-                  if (empty) empty.style.display = 'none';
                   document.getElementById('custDdSearch').value = '';
                   filterCustDd();
                   selectCust(opt);
               })
               .catch(err => {
-                  const msg = (err && err.message) || 'Failed to add customer.';
-                  alert(msg);
+                  const validationMessage = err && err.errors
+                      ? Object.values(err.errors).flat().find(Boolean)
+                      : null;
+                  const msg = validationMessage || (err && err.message) || 'Could not add customer. Check the name and try again.';
+                  if (error) {
+                      error.textContent = msg;
+                      error.classList.remove('hidden');
+                  }
+                  if (button) {
+                      button.disabled = false;
+                  }
+                  if (label) {
+                      label.textContent = 'Try creating "' + name + '" again';
+                  }
               });
         }
 
