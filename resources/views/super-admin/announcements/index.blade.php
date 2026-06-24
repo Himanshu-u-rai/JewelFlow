@@ -153,23 +153,26 @@
                                 {{ $ann->expires_at ? $ann->expires_at->format('d M Y, H:i') : '— never —' }}
                             </td>
                             <td class="px-4 py-3 text-right whitespace-nowrap">
+                                @php
+                                    $annPayload = [
+                                        "id" => $ann->id,
+                                        "title" => $ann->title,
+                                        "body" => $ann->body,
+                                        "cta_label" => $ann->cta_label,
+                                        "cta_url" => $ann->cta_url,
+                                        "type" => $ann->type,
+                                        "target" => $ann->target,
+                                        "target_value" => $ann->target_value,
+                                        "realm" => $ann->realm,
+                                        "publish_at" => optional($ann->publish_at)->format("Y-m-d\TH:i"),
+                                        "expires_at" => optional($ann->expires_at)->format("Y-m-d\TH:i"),
+                                        "send_email" => (bool) $ann->send_email,
+                                        "update_url" => route("admin.announcements.update", $ann),
+                                    ];
+                                @endphp
                                 <button type="button" class="admin-btn admin-btn-xs"
                                         data-ann-edit
-                                        data-ann='@json([
-                                            "id" => $ann->id,
-                                            "title" => $ann->title,
-                                            "body" => $ann->body,
-                                            "cta_label" => $ann->cta_label,
-                                            "cta_url" => $ann->cta_url,
-                                            "type" => $ann->type,
-                                            "target" => $ann->target,
-                                            "target_value" => $ann->target_value,
-                                            "realm" => $ann->realm,
-                                            "publish_at" => optional($ann->publish_at)->format("Y-m-d\TH:i"),
-                                            "expires_at" => optional($ann->expires_at)->format("Y-m-d\TH:i"),
-                                            "send_email" => (bool) $ann->send_email,
-                                            "update_url" => route("admin.announcements.update", $ann),
-                                        ])'>Edit</button>
+                                        data-ann='@json($annPayload)'>Edit</button>
                                 <form method="POST" action="{{ route('admin.announcements.destroy', $ann) }}" class="inline"
                                       onsubmit="return confirm('Delete this message?')">
                                     @csrf
