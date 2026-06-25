@@ -197,6 +197,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         // Delivery confirmation — scanner polls whether its scans reached the cart.
         Route::post('/scan/status', [ScanController::class, 'status'])
             ->middleware(['throttle:api-pos-read', 'can:sales.pos']);
+        // Explicit disconnect — clears the connected-device state so the desktop
+        // POS stops showing a phantom "mobile connected" after the user leaves.
+        Route::post('/scan/unpair', [ScanController::class, 'unpair'])
+            ->middleware(['throttle:api-pos-read', 'can:sales.pos']);
 
         // Daily Pricing — pricing.update permission.
         Route::get('/pricing/today', [PricingController::class, 'today'])

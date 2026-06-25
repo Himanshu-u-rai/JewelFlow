@@ -183,6 +183,64 @@ class ScanController extends Controller
         ]);
     }
 
+    /**
+     * POST /api/mobile/scan/unpair
+     * Explicit disconnect from the scanner side. Clears the connected-device
+     * columns so the desktop POS poll (`mobile_connected => (bool) mobile_connected_at`)
+     * stops reporting a phantom connection once the user leaves the scan screen.
+     * Idempotent: unpairing an already-disconnected or expired session is a 200.
+     */
+    public function unpair(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token'  => 'required|string|size:48',
+            'reason' => 'nullable|string|max:64',
+        ]);
+
+        // Not scoped to active() — an expiring session must still be unpairable.
+        $session = ScanSession::where('token', $validated['token'])
+            ->where('shop_id', $request->user()->shop_id)
+            ->first();
+
+        if (! $session) {
+            return response()->json([
+                'message' => 'Invalid scan session.',
+            ], 404);
+        }
+
+        $wasConnected = $session->mobile_connected_at !== null;
+
+        $session->forceFill([
+            'mobile_connected_at' => null,
+            'connected_user_id'   => null,
+            'device_install_id'   => null,
+            'unpaired_at'         => now(),
+            'unpaired_reason'     => $validated['reason'] ?? 'mobile_disconnect',
+        ])->save();
+
+        $this->logAuditSafely(
+            $request,
+            action: 'mobile_scan_unpaired',
+            modelType: 'ScanSession',
+            modelId: (int) $session->id,
+            description: 'Mobile scanner disconnected from POS session.',
+            data: [
+                'source' => 'mobile_app',
+                'session_id' => $session->id,
+                'token_prefix' => substr($session->token, 0, 8),
+                'reason' => $validated['reason'] ?? 'mobile_disconnect',
+                'was_connected' => $wasConnected,
+            ],
+        );
+
+        return response()->json([
+            'session_id'       => $session->id,
+            'mobile_connected' => false,
+            'unpaired_at'      => $session->unpaired_at->toIso8601String(),
+            'message'          => 'Disconnected from POS scan session.',
+        ]);
+    }
+
     private function logAuditSafely(
         Request $request,
         string $action,
