@@ -13,5 +13,6 @@ class BootstrapData extends Data
         public ShopSummaryData $shop,
         public CapabilitiesData $capabilities,
         public AppConfigData $config,
+        public PricingStatusData $pricing,
     ) {}
 }

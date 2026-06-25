@@ -4,18 +4,23 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Data\Mobile\AppConfigData;
 use App\Data\Mobile\BootstrapData;
+use App\Data\Mobile\PricingStatusData;
 use App\Data\Mobile\ShopSummaryData;
 use App\Data\Mobile\UserSummaryData;
 use App\Http\Controllers\Controller;
 use App\Models\Shop;
 use App\Services\Mobile\CapabilityResolver;
+use App\Services\ShopPricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 class BootstrapController extends Controller
 {
-    public function __construct(private readonly CapabilityResolver $resolver) {}
+    public function __construct(
+        private readonly CapabilityResolver $resolver,
+        private readonly ShopPricingService $pricing,
+    ) {}
 
     public function show(Request $request): BootstrapData
     {
@@ -50,6 +55,30 @@ class BootstrapController extends Controller
                 api_version: (string) config('mobile.api_version', 'mobile-v1'),
                 environment: (string) config('app.env', 'production'),
             ),
+            pricing: $this->pricingStatus($shop),
+        );
+    }
+
+    /**
+     * Rate-readiness for the mobile daily-rate gate. Safe for ALL roles —
+     * exposes only whether today's rates are set (plus the rate values), never
+     * KPIs or report data. Mobile uses this so staff/cashier are not falsely
+     * blocked just because they lack access to the reports-gated /dashboard.
+     */
+    private function pricingStatus(?Shop $shop): PricingStatusData
+    {
+        $dailyRate = $shop ? $this->pricing->currentDailyRate($shop) : null;
+        $isRetailer = ($shop?->shop_type ?? 'retailer') === 'retailer';
+        $ratesSetToday = $dailyRate !== null;
+
+        return new PricingStatusData(
+            // Non-retailer shops are not gated on daily rates, so they are
+            // always "ready". Retailer shops are ready only once rates are set.
+            pricing_ready: ! $isRetailer || $ratesSetToday,
+            rates_set_today: $ratesSetToday,
+            gold_24k_rate_per_gram: $dailyRate ? (float) $dailyRate->gold_24k_rate_per_gram : null,
+            silver_999_rate_per_gram: $dailyRate ? (float) $dailyRate->silver_999_rate_per_gram : null,
+            business_date: $dailyRate?->business_date?->toDateString(),
         );
     }
 
