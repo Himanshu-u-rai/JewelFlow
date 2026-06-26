@@ -30,6 +30,8 @@
             <button class="w-full rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium py-2">Login</button>
         </form>
 
+        <a href="{{ route('admin.password.request') }}" class="block mt-3 text-sm text-slate-400 hover:text-slate-200 text-center">Forgot your password?</a>
+
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;">
             @if(!$hasSuperAdmin)
                 <a href="{{ route('admin.register') }}"

@@ -7,7 +7,9 @@ use App\Http\Controllers\Admin\ComplianceAlertAdminController;
 use App\Http\Controllers\Admin\TwoFactorController;
 use App\Http\Controllers\Admin\BillingManagementController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\EmailVerificationController;
 use App\Http\Controllers\Admin\FeatureFlagController;
+use App\Http\Controllers\Admin\PasswordResetController;
 use App\Http\Controllers\Admin\FraudFlagController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\PlatformAdminManagementController;
@@ -38,13 +40,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/login', [AuthController::class, 'login'])->name('login.store');
         Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
         Route::post('/register', [AuthController::class, 'register'])->name('register.store');
+
+        // Self-service password recovery (verified email only; generic responses).
+        Route::get('/forgot-password', [PasswordResetController::class, 'showLinkRequest'])->name('password.request');
+        Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])->name('password.email');
+        Route::get('/reset-password/{token}', [PasswordResetController::class, 'showReset'])->name('password.reset');
+        Route::post('/reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
     });
 
     // 2FA challenge — no full admin auth yet, but must have pending session token
     Route::get('/2fa',  [AuthController::class, 'show2fa'])->name('2fa.show');
     Route::post('/2fa', [AuthController::class, 'verify2fa'])->name('2fa.verify');
 
-    Route::middleware(['admin'])->group(function () {
+    Route::middleware(['admin', 'admin.password.fresh'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -52,6 +60,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/2fa/manage',  [TwoFactorController::class, 'showEnroll'])->name('2fa.enroll');
         Route::post('/2fa/enroll', [TwoFactorController::class, 'confirmEnroll'])->name('2fa.enroll.confirm');
         Route::post('/2fa/disable',[TwoFactorController::class, 'disable'])->name('2fa.disable');
+
+        // Verify own email (required for self-service password recovery).
+        Route::get('/verify-email', [EmailVerificationController::class, 'show'])->name('verify-email');
+        Route::post('/verify-email/send', [EmailVerificationController::class, 'send'])->name('verify-email.send');
+        Route::post('/verify-email/verify', [EmailVerificationController::class, 'verify'])->name('verify-email.verify');
 
         // Read-only views accessible to all platform admins
         // Static paths must come before {shop}/{user} wildcard routes

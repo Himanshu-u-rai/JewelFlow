@@ -22,5 +22,8 @@ class DatabaseSeeder extends Seeder
         $this->call(PlatformProductSeeder::class);
         $this->call(PlanSeeder::class);
         $this->call(CustomerSeeder::class);
+        // Non-prod only: onboarding's actor. Without it, local/CI payment
+        // callbacks abort at systemAdmin() and the owner is stuck on payment.
+        $this->call(PlatformSuperAdminSeeder::class);
     }
 }

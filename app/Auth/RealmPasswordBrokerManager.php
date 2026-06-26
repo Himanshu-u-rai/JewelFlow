@@ -17,6 +17,14 @@ class RealmPasswordBrokerManager extends PasswordBrokerManager
 {
     protected function createTokenRepository(array $config)
     {
+        // Realm-scoping applies ONLY to the realm-aware 'users' broker. Other
+        // brokers (e.g. platform_admins) have no realm column/attribute, so use
+        // the framework-default repository for them.
+        $usersTable = $this->app['config']['auth.passwords.users.table'] ?? 'password_reset_tokens';
+        if (($config['table'] ?? null) !== $usersTable) {
+            return parent::createTokenRepository($config);
+        }
+
         $key = $this->app['config']['app.key'];
 
         if (str_starts_with($key, 'base64:')) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsurePlatformAdminPasswordFresh;
 use App\Models\Platform\PlatformAdmin;
 use App\Services\PlatformAuditService;
 use App\Services\TotpService;
@@ -67,6 +68,7 @@ class AuthController extends Controller
 
         Auth::guard('platform_admin')->loginUsingId($admin->id, $remember);
         $request->session()->regenerate();
+        $request->session()->put(EnsurePlatformAdminPasswordFresh::SESSION_KEY, $admin->password_changed_at?->getTimestamp() ?? 0);
         $admin->forceFill(['last_login_at' => now()])->save();
 
         return redirect()->route('admin.dashboard');
@@ -201,6 +203,7 @@ class AuthController extends Controller
 
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
+        $request->session()->put(EnsurePlatformAdminPasswordFresh::SESSION_KEY, $admin->password_changed_at?->getTimestamp() ?? 0);
         $admin->forceFill(['last_login_at' => now()])->save();
 
         return redirect()->route('admin.dashboard');

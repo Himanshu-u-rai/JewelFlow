@@ -2,12 +2,16 @@
 
 namespace App\Models\Platform;
 
+use App\Notifications\PlatformAdminResetPassword;
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use LogicException;
 
-class PlatformAdmin extends Authenticatable
+class PlatformAdmin extends Authenticatable implements CanResetPasswordContract
 {
+    use CanResetPassword;
     use Notifiable;
 
     protected $table = 'platform_admins';
@@ -33,8 +37,25 @@ class PlatformAdmin extends Authenticatable
             'two_factor_enabled' => 'boolean',
             'last_login_at' => 'datetime',
             'password_changed_at' => 'datetime',
+            'email_verified_at' => 'datetime',
             'permissions' => 'array',
         ];
+    }
+
+    public function hasVerifiedEmail(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
+
+    public function markEmailAsVerified(): void
+    {
+        $this->forceFill(['email_verified_at' => now()])->save();
+    }
+
+    /** Email the reset link via our own platform-admin route, not the shop route. */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new PlatformAdminResetPassword($token));
     }
 
     protected static function booted(): void
