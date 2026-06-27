@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\BackupStatusController;
 use App\Http\Controllers\Admin\ComplianceAlertAdminController;
 use App\Http\Controllers\Admin\TwoFactorController;
 use App\Http\Controllers\Admin\BillingManagementController;
+use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmailVerificationController;
 use App\Http\Controllers\Admin\FeatureFlagController;
@@ -72,6 +73,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Recovery codes (MFA lockout fallback) — shown once; regenerate invalidates old.
         Route::get('/recovery-codes', [RecoveryCodeController::class, 'show'])->name('recovery-codes.show');
         Route::post('/recovery-codes', [RecoveryCodeController::class, 'regenerate'])->name('recovery-codes.regenerate');
+
+        // Personal account: verified email/mobile change (current password + MFA-gated + OTP).
+        Route::get('/account', [AccountController::class, 'show'])->name('account.show');
+        Route::post('/account/email', [AccountController::class, 'requestEmailChange'])->name('account.email.request');
+        Route::post('/account/email/verify', [AccountController::class, 'verifyEmailChange'])->name('account.email.verify');
+        Route::post('/account/mobile', [AccountController::class, 'requestMobileChange'])->name('account.mobile.request');
+        Route::post('/account/mobile/verify', [AccountController::class, 'verifyMobileChange'])->name('account.mobile.verify');
 
         // 2FA management — any authenticated admin can manage their own 2FA
         Route::get('/2fa/manage',  [TwoFactorController::class, 'showEnroll'])->name('2fa.enroll');
