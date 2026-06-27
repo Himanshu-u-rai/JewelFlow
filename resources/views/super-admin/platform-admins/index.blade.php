@@ -83,8 +83,10 @@
     </div>
 
     {{-- ── Admin Table ──────────────────────────────────────────────────── --}}
-    <div class="admin-panel overflow-hidden">
-        <div class="admin-table-wrap">
+    {{-- overflow:visible so the row "Password ▾" reset dropdown isn't clipped under the table.
+         (admin-table-wrap's overflow-x:auto would otherwise clip it vertically too.) --}}
+    <div class="admin-panel">
+        <div class="admin-table-wrap" style="overflow: visible;">
         <table class="w-full text-sm admin-table">
             <thead class="bg-slate-800/80 text-slate-300">
                 <tr>
