@@ -41,11 +41,13 @@
 
         <details class="mt-5">
             <summary class="text-sm text-slate-400 hover:text-slate-200 cursor-pointer">Use a recovery code instead</summary>
-            <form method="POST" action="{{ route('admin.mfa.verify') }}" class="mt-3 space-y-3">
+            {{-- Native submit (data-turbo="false"): the form sits inside <details> and Turbo was
+                 swallowing the click, so the POST never reached the controller. --}}
+            <form method="POST" action="{{ route('admin.mfa.verify') }}" class="mt-3 space-y-3" data-turbo="false">
                 @csrf
                 <input type="text" name="recovery_code" placeholder="XXXXX-XXXXX" autocomplete="off"
                        class="w-full rounded-md border border-slate-700 bg-slate-800 text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
-                <button class="w-full rounded-md bg-slate-700 hover:bg-slate-600 text-white font-medium py-2">Use recovery code</button>
+                <button type="submit" class="w-full rounded-md bg-slate-700 hover:bg-slate-600 text-white font-medium py-2">Use recovery code</button>
             </form>
         </details>
 
