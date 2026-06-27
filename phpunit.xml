@@ -26,7 +26,10 @@
         <env name="DB_CONNECTION" value="pgsql"/>
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="5432"/>
-        <env name="DB_DATABASE" value="jewelflow_test"/>
+        <!-- Isolated test DB — NEVER the local dev DB (jewelflow_test). RefreshDatabase
+             runs migrate:fresh, so pointing this at the dev DB wipes local data.
+             Create once: sudo -u postgres createdb -O jewelflow jewelflow_testing -->
+        <env name="DB_DATABASE" value="jewelflow_testing"/>
         <env name="DB_USERNAME" value="jewelflow"/>
         <env name="DB_PASSWORD" value="StrongPassword123"/>
         <env name="MAIL_MAILER" value="array"/>
