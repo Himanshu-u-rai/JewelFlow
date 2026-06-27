@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Middleware\EnsurePlatformAdminPasswordFresh;
+use App\Http\Middleware\EnsurePlatformAdminMfa;
 use App\Models\Platform\PlatformAdmin;
 use App\Services\PlatformAuditService;
-use App\Services\TotpService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,61 +16,9 @@ use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    private const SESSION_2FA_PENDING_ID = 'admin_2fa_pending_id';
-
     public function __construct(
         private PlatformAuditService $audit,
-        private TotpService $totp,
     ) {
-    }
-
-    // ── 2FA challenge (shown after password validates when 2FA is enabled) ────
-
-    public function show2fa(): View
-    {
-        if (!session()->has(self::SESSION_2FA_PENDING_ID)) {
-            abort(403);
-        }
-        return view('super-admin.auth.2fa');
-    }
-
-    public function verify2fa(Request $request): RedirectResponse
-    {
-        $pendingId = session(self::SESSION_2FA_PENDING_ID);
-        if (!$pendingId) {
-            return redirect()->route('admin.login');
-        }
-
-        $admin = PlatformAdmin::find($pendingId);
-        if (!$admin || !$admin->is_active) {
-            session()->forget(self::SESSION_2FA_PENDING_ID);
-            return redirect()->route('admin.login');
-        }
-
-        $throttleKey = '2fa_verify|' . $admin->id . '|' . $request->ip();
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $seconds = RateLimiter::availableIn($throttleKey);
-            $this->audit->logFailedAdminLogin($admin->mobile_number, '2fa_rate_limited', $request);
-            return back()->withErrors(['otp' => "Too many attempts. Try again in {$seconds} seconds."]);
-        }
-
-        $otp = preg_replace('/\D/', '', (string) $request->input('otp', ''));
-        if (!$this->totp->verify((string) $admin->two_factor_secret, $otp)) {
-            RateLimiter::hit($throttleKey);
-            $this->audit->logFailedAdminLogin($admin->mobile_number, '2fa_invalid_otp', $request);
-            return back()->withErrors(['otp' => 'Invalid authentication code. Please try again.']);
-        }
-
-        RateLimiter::clear($throttleKey);
-        $remember = (bool) session()->pull('admin_2fa_remember', false);
-        session()->forget(self::SESSION_2FA_PENDING_ID);
-
-        Auth::guard('platform_admin')->loginUsingId($admin->id, $remember);
-        $request->session()->regenerate();
-        $request->session()->put(EnsurePlatformAdminPasswordFresh::SESSION_KEY, $admin->password_changed_at?->getTimestamp() ?? 0);
-        $admin->forceFill(['last_login_at' => now()])->save();
-
-        return redirect()->route('admin.dashboard');
     }
 
     public function showLogin(): View
@@ -190,29 +137,27 @@ class AuthController extends Controller
             ])->onlyInput('mobile_number');
         }
 
-        // If 2FA is enabled, log the admin back out, store pending ID, redirect to challenge
-        if ($admin->two_factor_enabled && $admin->two_factor_secret) {
-            Auth::guard('platform_admin')->logout();
-            RateLimiter::clear($throttleKey);
-            session()->put(self::SESSION_2FA_PENDING_ID, $admin->id);
-            if ($request->boolean('remember')) {
-                session()->put('admin_2fa_remember', true);
-            }
-            return redirect()->route('admin.2fa.show');
+        // Password is correct and the account is active, but the session is NOT
+        // trusted yet (Phase 2): the admin must clear the MFA challenge before
+        // any protected route. Stay authenticated, stamp the challenge start,
+        // and route to the email-verification gate or the MFA challenge. The
+        // MFA-passed marker and password-fresh stamp are set only on MFA success.
+        RateLimiter::clear($throttleKey);
+        $request->session()->put(EnsurePlatformAdminMfa::SESSION_STARTED, now()->getTimestamp());
+
+        if (! $admin->hasVerifiedEmail()) {
+            return redirect()->route('admin.verify-email');
         }
 
-        RateLimiter::clear($throttleKey);
-        $request->session()->regenerate();
-        $request->session()->put(EnsurePlatformAdminPasswordFresh::SESSION_KEY, $admin->password_changed_at?->getTimestamp() ?? 0);
-        $admin->forceFill(['last_login_at' => now()])->save();
-
-        return redirect()->route('admin.dashboard');
+        return redirect()->route('admin.mfa.show');
     }
 
     public function logout(Request $request): RedirectResponse
     {
         Auth::guard('platform_admin')->logout();
-        $request->session()->regenerate();
+        // invalidate (not just regenerate) so the MFA-passed marker and any
+        // challenge state are flushed, not carried into the next session.
+        $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login');

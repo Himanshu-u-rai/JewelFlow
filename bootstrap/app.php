@@ -85,6 +85,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'admin' => \App\Http\Middleware\EnsurePlatformAdmin::class,
             'admin.password.fresh' => \App\Http\Middleware\EnsurePlatformAdminPasswordFresh::class,
+            'admin.mfa' => \App\Http\Middleware\EnsurePlatformAdminMfa::class,
             'platform.role' => \App\Http\Middleware\EnsurePlatformRole::class,
             'tenant' => \App\Http\Middleware\EnsureTenantUser::class,
             'subscription.active' => \App\Http\Middleware\EnsureSubscriptionIsActive::class,

@@ -9,7 +9,9 @@ use App\Http\Controllers\Admin\BillingManagementController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmailVerificationController;
 use App\Http\Controllers\Admin\FeatureFlagController;
+use App\Http\Controllers\Admin\MfaChallengeController;
 use App\Http\Controllers\Admin\PasswordResetController;
+use App\Http\Controllers\Admin\RecoveryCodeController;
 use App\Http\Controllers\Admin\FraudFlagController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\PlatformAdminManagementController;
@@ -48,23 +50,33 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
     });
 
-    // 2FA challenge — no full admin auth yet, but must have pending session token
-    Route::get('/2fa',  [AuthController::class, 'show2fa'])->name('2fa.show');
-    Route::post('/2fa', [AuthController::class, 'verify2fa'])->name('2fa.verify');
-
-    Route::middleware(['admin', 'admin.password.fresh'])->group(function () {
+    // Authenticated by password but NOT yet MFA-cleared. The email-verification
+    // gate and the MFA challenge live here (no admin.mfa middleware, or the
+    // redirect to them would loop). Logout must stay reachable too.
+    Route::middleware(['admin'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+        Route::get('/verify-email', [EmailVerificationController::class, 'show'])->name('verify-email');
+        Route::post('/verify-email/send', [EmailVerificationController::class, 'send'])->name('verify-email.send');
+        Route::post('/verify-email/verify', [EmailVerificationController::class, 'verify'])->name('verify-email.verify');
+
+        Route::get('/mfa', [MfaChallengeController::class, 'show'])->name('mfa.show');
+        Route::post('/mfa', [MfaChallengeController::class, 'verify'])->name('mfa.verify');
+        Route::post('/mfa/resend', [MfaChallengeController::class, 'resend'])->name('mfa.resend');
+    });
+
+    // Fully trusted: password + verified email + MFA cleared this session.
+    Route::middleware(['admin', 'admin.password.fresh', 'admin.mfa'])->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+        // Recovery codes (MFA lockout fallback) — shown once; regenerate invalidates old.
+        Route::get('/recovery-codes', [RecoveryCodeController::class, 'show'])->name('recovery-codes.show');
+        Route::post('/recovery-codes', [RecoveryCodeController::class, 'regenerate'])->name('recovery-codes.regenerate');
 
         // 2FA management — any authenticated admin can manage their own 2FA
         Route::get('/2fa/manage',  [TwoFactorController::class, 'showEnroll'])->name('2fa.enroll');
         Route::post('/2fa/enroll', [TwoFactorController::class, 'confirmEnroll'])->name('2fa.enroll.confirm');
         Route::post('/2fa/disable',[TwoFactorController::class, 'disable'])->name('2fa.disable');
-
-        // Verify own email (required for self-service password recovery).
-        Route::get('/verify-email', [EmailVerificationController::class, 'show'])->name('verify-email');
-        Route::post('/verify-email/send', [EmailVerificationController::class, 'send'])->name('verify-email.send');
-        Route::post('/verify-email/verify', [EmailVerificationController::class, 'verify'])->name('verify-email.verify');
 
         // Read-only views accessible to all platform admins
         // Static paths must come before {shop}/{user} wildcard routes
