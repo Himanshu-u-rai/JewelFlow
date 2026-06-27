@@ -27,12 +27,11 @@
             <a href="{{ route('admin.dashboard') }}" class="block mt-5 w-full text-center rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium py-2">I've saved them — continue</a>
         @else
             <p class="mt-4 text-sm text-slate-300">You have <strong>{{ $remaining }}</strong> unused recovery code{{ $remaining === 1 ? '' : 's' }}.</p>
-            {{-- Turbo intercepts the submit, so a native onsubmit confirm silently cancels it.
-                 Use Turbo's own confirm, and only for the destructive regenerate (no codes = nothing to confirm). --}}
-            <form method="POST" action="{{ route('admin.recovery-codes.regenerate') }}" class="mt-4"
-                  @if ($remaining > 0) data-turbo-confirm="Regenerating invalidates all current recovery codes. Continue?" @endif>
+            {{-- Confirm only the destructive regenerate. Emit the attribute as ONE expression so
+                 the form tag's closing ">" is always present (an inline @if…@endif here dropped it). --}}
+            <form method="POST" action="{{ route('admin.recovery-codes.regenerate') }}" class="mt-4" {!! $remaining > 0 ? 'data-turbo-confirm="Regenerating replaces your current recovery codes. Continue?"' : '' !!}>
                 @csrf
-                <button class="w-full rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium py-2">
+                <button type="submit" class="w-full rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium py-2">
                     {{ $remaining > 0 ? 'Regenerate codes' : 'Generate recovery codes' }}
                 </button>
             </form>
