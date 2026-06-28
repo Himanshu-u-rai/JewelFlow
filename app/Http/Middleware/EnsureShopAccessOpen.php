@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\Auth;
  * `dashboard` and `mobile.bootstrap` are exempt: the web dashboard must render
  * the "shop closed" notice (redirecting to it is the block action, so it can't
  * be behind the lock), and the mobile app must still load to show the state.
+ * The mobile shop-access endpoints are exempt too so the owner can reopen and
+ * any role can read status while the shop is closed (PATCH stays owner-only via
+ * the controller).
  */
 class EnsureShopAccessOpen
 {
@@ -25,7 +28,12 @@ class EnsureShopAccessOpen
     {
         $user = Auth::user();
 
-        if ($user?->isOwner() || $request->routeIs('dashboard', 'mobile.bootstrap')) {
+        if ($user?->isOwner() || $request->routeIs(
+            'dashboard',
+            'mobile.bootstrap',
+            'mobile.shop-access.show',
+            'mobile.shop-access.update',
+        )) {
             return $next($request);
         }
 

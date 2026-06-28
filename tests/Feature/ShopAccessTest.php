@@ -437,7 +437,158 @@ class ShopAccessTest extends TestCase
         $this->assertTrue((bool) $this->prefs($shop->id)->shop_access_enabled, 'non-owner must not close shop');
     }
 
-    // ── 25. feature stays out of Dhiran ─────────────────────────────────────────
+    // ── 26. bootstrap carries shop_access when open ─────────────────────────────
+
+    public function test_bootstrap_includes_shop_access_when_open(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->ensurePrefs($shop->id); // open
+        Sanctum::actingAs($owner);
+
+        $this->getJson('/api/mobile/bootstrap')
+            ->assertOk()
+            ->assertJsonPath('shop_access.is_open', true)
+            ->assertJsonPath('shop_access.shop_access_enabled', true)
+            ->assertJsonPath('shop_access.closed_by_owner', false)
+            ->assertJsonPath('shop_access.message', null)
+            ->assertJsonPath('shop_access.can_current_user_access', true);
+    }
+
+    // ── 27. bootstrap carries shop_access when closed (non-owner) ────────────────
+
+    public function test_bootstrap_shop_access_closed_for_non_owner(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $this->setShopAccess($shop->id, false);
+        $cashier = $this->makeUser($shop, 'cashier');
+        Sanctum::actingAs($cashier);
+
+        $this->getJson('/api/mobile/bootstrap')
+            ->assertOk()
+            ->assertJsonPath('shop_access.is_open', false)
+            ->assertJsonPath('shop_access.closed_by_owner', true)
+            ->assertJsonPath('shop_access.message', 'Shop is currently closed by the owner.')
+            ->assertJsonPath('shop_access.can_current_user_access', false);
+    }
+
+    // ── 28. owner keeps can_current_user_access even when closed ─────────────────
+
+    public function test_bootstrap_owner_can_access_when_closed(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->setShopAccess($shop->id, false);
+        Sanctum::actingAs($owner->fresh());
+
+        $this->getJson('/api/mobile/bootstrap')
+            ->assertOk()
+            ->assertJsonPath('shop_access.is_open', false)
+            ->assertJsonPath('shop_access.can_current_user_access', true);
+    }
+
+    // ── 29. GET /api/mobile/shop/access (open) ───────────────────────────────────
+
+    public function test_mobile_shop_access_get_when_open(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->ensurePrefs($shop->id);
+        Sanctum::actingAs($owner);
+
+        $this->getJson('/api/mobile/shop/access')
+            ->assertOk()
+            ->assertExactJson([
+                'shop_access_enabled'     => true,
+                'status'                  => 'open',
+                'message'                 => null,
+                'can_current_user_access' => true,
+            ]);
+    }
+
+    // ── 30. GET reachable + correct for non-owner while closed ──────────────────
+
+    public function test_mobile_shop_access_get_when_closed(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $this->setShopAccess($shop->id, false);
+        $cashier = $this->makeUser($shop, 'cashier');
+        Sanctum::actingAs($cashier);
+
+        $this->getJson('/api/mobile/shop/access')
+            ->assertOk()
+            ->assertExactJson([
+                'shop_access_enabled'     => false,
+                'status'                  => 'closed',
+                'message'                 => 'Shop is currently closed by the owner.',
+                'can_current_user_access' => false,
+            ]);
+    }
+
+    // ── 31. owner closes via PATCH ──────────────────────────────────────────────
+
+    public function test_mobile_owner_can_close(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->ensurePrefs($shop->id);
+        Sanctum::actingAs($owner);
+
+        $this->patchJson('/api/mobile/shop/access', ['shop_access_enabled' => false])
+            ->assertOk()
+            ->assertJson(['shop_access_enabled' => false, 'status' => 'closed', 'can_current_user_access' => true]);
+
+        $this->assertFalse((bool) $this->prefs($shop->id)->shop_access_enabled);
+    }
+
+    // ── 32. owner reopens via PATCH (while closed — endpoint stays reachable) ────
+
+    public function test_mobile_owner_can_reopen_while_closed(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->setShopAccess($shop->id, false);
+        Sanctum::actingAs($owner->fresh());
+
+        $this->patchJson('/api/mobile/shop/access', ['shop_access_enabled' => true])
+            ->assertOk()
+            ->assertJson(['shop_access_enabled' => true, 'status' => 'open']);
+
+        $this->assertTrue((bool) $this->prefs($shop->id)->shop_access_enabled);
+    }
+
+    // ── 33. non-owner PATCH is forbidden ────────────────────────────────────────
+
+    public function test_mobile_non_owner_cannot_update(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $this->ensurePrefs($shop->id); // open
+        $manager = $this->makeUser($shop, 'manager');
+        Sanctum::actingAs($manager);
+
+        $this->patchJson('/api/mobile/shop/access', ['shop_access_enabled' => false])
+            ->assertStatus(403)
+            ->assertExactJson([
+                'error' => 'forbidden',
+                'message' => 'Only the shop owner can change shop access.',
+            ]);
+
+        $this->assertTrue((bool) $this->prefs($shop->id)->shop_access_enabled, 'non-owner must not close shop');
+    }
+
+    // ── 34. PATCH flips only shop_access_enabled, never other preferences ────────
+
+    public function test_mobile_patch_preserves_quick_bill(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        ShopPreferences::withoutGlobalScopes()->firstOrNew(['shop_id' => $shop->id])
+            ->forceFill(['shop_id' => $shop->id, 'quick_bill_enabled' => true, 'shop_access_enabled' => true])
+            ->save();
+        Sanctum::actingAs($owner);
+
+        $this->patchJson('/api/mobile/shop/access', ['shop_access_enabled' => false])->assertOk();
+
+        $fresh = $this->prefs($shop->id);
+        $this->assertFalse((bool) $fresh->shop_access_enabled);
+        $this->assertTrue((bool) $fresh->quick_bill_enabled, 'mobile toggle must not wipe quick_bill_enabled');
+    }
+
+    // ── 35. feature stays out of Dhiran ─────────────────────────────────────────
 
     public function test_middleware_does_not_touch_dhiran(): void
     {

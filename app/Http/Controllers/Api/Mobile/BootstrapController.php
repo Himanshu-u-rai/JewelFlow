@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Data\Mobile\AppConfigData;
 use App\Data\Mobile\BootstrapData;
 use App\Data\Mobile\PricingStatusData;
+use App\Data\Mobile\ShopAccessData;
 use App\Data\Mobile\ShopSummaryData;
 use App\Data\Mobile\UserSummaryData;
 use App\Http\Controllers\Controller;
@@ -56,6 +57,7 @@ class BootstrapController extends Controller
                 environment: (string) config('app.env', 'production'),
             ),
             pricing: $this->pricingStatus($shop),
+            shop_access: ShopAccessData::forShopUser($shop, $user),
         );
     }
 

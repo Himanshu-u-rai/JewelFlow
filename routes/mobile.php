@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Mobile\StockController;
 use App\Http\Controllers\Api\Mobile\RepairController;
 use App\Http\Controllers\Api\Mobile\InvoiceController;
 use App\Http\Controllers\Api\Mobile\ScanController;
+use App\Http\Controllers\Api\Mobile\ShopAccessController;
 use App\Http\Controllers\Api\Mobile\PosController;
 use App\Http\Controllers\Api\Mobile\QuickBillController;
 use App\Http\Controllers\Api\Mobile\CatalogController;
@@ -32,6 +33,17 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         // Available to every authenticated mobile user (the mobile app boot-loads it).
         Route::get('/bootstrap', [BootstrapController::class, 'show'])
             ->name('mobile.bootstrap');
+
+        // Shop Access (Close/Reopen Shop). Route names are exempted in
+        // EnsureShopAccessOpen so GET works for any role and the owner can reopen
+        // while the shop is closed. Owner-only enforcement for PATCH is in the
+        // controller (manager/cashier → 403 forbidden).
+        Route::get('/shop/access', [ShopAccessController::class, 'show'])
+            ->middleware('throttle:api-pos-read')
+            ->name('mobile.shop-access.show');
+        Route::patch('/shop/access', [ShopAccessController::class, 'update'])
+            ->middleware('throttle:api-pos-sale')
+            ->name('mobile.shop-access.update');
 
         // Dashboard — minimal read-only summary. Use reports.view since this surfaces KPIs.
         Route::get('/dashboard', [DashboardController::class, 'index'])
