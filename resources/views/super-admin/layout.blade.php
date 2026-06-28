@@ -36,6 +36,7 @@
                 <a href="{{ route('admin.feature-flags.index') }}" class="px-3 py-1.5 rounded-md text-sm {{ request()->routeIs('admin.feature-flags.*') ? 'bg-slate-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300' }}">Feature Flags</a>
                 <a href="{{ route('admin.compliance-alerts.index') }}" class="px-3 py-1.5 rounded-md text-sm {{ request()->routeIs('admin.compliance-alerts.*') ? 'bg-slate-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300' }}">Compliance</a>
                 <a href="{{ route('admin.revenue.index') }}" class="px-3 py-1.5 rounded-md text-sm {{ request()->routeIs('admin.revenue.*') ? 'bg-slate-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300' }}">Revenue</a>
+                <a href="{{ route('admin.account.show') }}" class="px-3 py-1.5 rounded-md text-sm {{ request()->routeIs('admin.account.*') ? 'bg-slate-700 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300' }}">Account</a>
                 <a href="{{ route('admin.2fa.enroll') }}"
                    class="px-3 py-1.5 rounded-md text-sm {{ auth('platform_admin')->user()?->two_factor_enabled ? 'bg-slate-800 hover:bg-slate-700 text-green-400' : 'bg-amber-900 hover:bg-amber-800 text-amber-300' }}"
                    title="{{ auth('platform_admin')->user()?->two_factor_enabled ? '2FA enabled' : 'Enable 2FA (recommended)' }}">
