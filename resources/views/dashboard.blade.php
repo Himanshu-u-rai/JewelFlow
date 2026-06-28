@@ -975,60 +975,77 @@
             flex-wrap: wrap;
         }
 
-        /* Compact owner-only Close/Reopen Shop switch in the shop card. */
+        /* Compact owner-only Close/Reopen Shop switch — codex orange tone. */
         .dash-access-form { margin-top: 10px; }
         .dash-access-toggle {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 7px 10px;
+            gap: 10px;
+            padding: 9px 12px;
             border: 1px solid var(--dash-line);
-            border-radius: 10px;
+            border-radius: 12px;
             background: #ffffff;
             cursor: pointer;
+            transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+        }
+        .dash-access-toggle:hover {
+            border-color: var(--dash-gold);
+            box-shadow: 0 1px 3px rgba(217, 119, 6, .12);
         }
         .dash-access-label {
             font-size: 11px;
             font-weight: 700;
+            letter-spacing: 0.02em;
             color: var(--dash-action);
         }
         .dash-access-state {
             margin-left: auto;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.06em;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
         }
-        .dash-access-state.is-open { color: #0f766e; }
-        .dash-access-state.is-closed { color: #b91c1c; }
+        .dash-access-state.is-open {
+            color: var(--dash-gold-deep);
+            background: rgba(245, 158, 11, .14);
+        }
+        .dash-access-state.is-closed {
+            color: #b91c1c;
+            background: rgba(185, 28, 28, .10);
+        }
+        /* Polished thumb switch (46x26), orange gradient when on. */
         .dash-access-switch {
             appearance: none;
             -webkit-appearance: none;
             position: relative;
-            width: 36px;
-            height: 20px;
+            width: 46px;
+            height: 26px;
             flex-shrink: 0;
             border-radius: 999px;
             background: #cbd5e1;
             cursor: pointer;
             outline: none;
-            transition: background-color 200ms ease;
+            transition: background 220ms ease;
         }
         .dash-access-switch::before {
             content: "";
             position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 16px;
-            height: 16px;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             background: #ffffff;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, .3);
-            transition: transform 200ms ease;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, .35);
+            transition: transform 260ms cubic-bezier(.26, 1.6, .46, .9);
         }
-        .dash-access-switch:checked { background: #0f766e; }
-        .dash-access-switch:checked::before { transform: translateX(16px); }
-        .dash-access-switch:focus-visible { box-shadow: 0 0 0 3px rgba(15, 118, 110, .25); }
+        .dash-access-switch:checked {
+            background: linear-gradient(135deg, var(--dash-gold) 0%, var(--dash-gold-deep) 100%);
+        }
+        .dash-access-switch:checked::before { transform: translateX(20px); }
+        .dash-access-switch:focus-visible { box-shadow: 0 0 0 3px rgba(245, 158, 11, .30); }
 
         .dash-kpi-label {
             display: flex;
