@@ -655,33 +655,36 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/invoice/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->middleware('can:sales.view')->name('invoices.print');
 
     // ======= QUICK BILL GENERATOR (sales.* permissions) =======
-    Route::get('/quick-bills', [QuickBillController::class, 'index'])
-        ->middleware('can:sales.view')
-        ->name('quick-bills.index');
-    Route::get('/quick-bills/create', [QuickBillController::class, 'create'])
-        ->middleware('can:sales.create')
-        ->name('quick-bills.create');
-    Route::post('/quick-bills', [QuickBillController::class, 'store'])
-        ->middleware('can:sales.create')
-        ->name('quick-bills.store');
-    Route::get('/quick-bills/{quickBill}', [QuickBillController::class, 'show'])
-        ->middleware('can:sales.view')
-        ->name('quick-bills.show');
-    Route::get('/quick-bills/{quickBill}/edit', [QuickBillController::class, 'edit'])
-        ->middleware('can:sales.create')
-        ->name('quick-bills.edit');
-    Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
-        ->middleware('can:sales.create')
-        ->name('quick-bills.update');
-    Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
-        ->middleware('can:sales.void')
-        ->name('quick-bills.void');
-    Route::get('/quick-bills/{quickBill}/print', [QuickBillController::class, 'print'])
-        ->middleware('can:sales.view')
-        ->name('quick-bills.print');
-    Route::get('/quick-bills/{quickBill}/print/original', [QuickBillController::class, 'printOriginal'])
-        ->middleware('can:sales.view')
-        ->name('quick-bills.print-original');
+    // quickbill.enabled blocks the whole feature when the owner toggles it off.
+    Route::middleware('quickbill.enabled')->group(function () {
+        Route::get('/quick-bills', [QuickBillController::class, 'index'])
+            ->middleware('can:sales.view')
+            ->name('quick-bills.index');
+        Route::get('/quick-bills/create', [QuickBillController::class, 'create'])
+            ->middleware('can:sales.create')
+            ->name('quick-bills.create');
+        Route::post('/quick-bills', [QuickBillController::class, 'store'])
+            ->middleware('can:sales.create')
+            ->name('quick-bills.store');
+        Route::get('/quick-bills/{quickBill}', [QuickBillController::class, 'show'])
+            ->middleware('can:sales.view')
+            ->name('quick-bills.show');
+        Route::get('/quick-bills/{quickBill}/edit', [QuickBillController::class, 'edit'])
+            ->middleware('can:sales.create')
+            ->name('quick-bills.edit');
+        Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
+            ->middleware('can:sales.create')
+            ->name('quick-bills.update');
+        Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
+            ->middleware('can:sales.void')
+            ->name('quick-bills.void');
+        Route::get('/quick-bills/{quickBill}/print', [QuickBillController::class, 'print'])
+            ->middleware('can:sales.view')
+            ->name('quick-bills.print');
+        Route::get('/quick-bills/{quickBill}/print/original', [QuickBillController::class, 'printOriginal'])
+            ->middleware('can:sales.view')
+            ->name('quick-bills.print-original');
+    });
 
     // ======= CASH BOOK (cash.view / cash.create permissions) =======
     Route::get('/cashbook', [\App\Http\Controllers\CashBookController::class, 'index'])->middleware('can:cash.view')->name('cashbook.index');

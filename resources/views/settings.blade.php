@@ -2763,6 +2763,21 @@
                         </div>
                     </div>
 
+                    @if(auth()->user()->isOwner())
+                    <div class="section-divider"></div>
+                    <div class="section-label">{{ __('Quick Bill') }}</div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">{{ __('Quick Bill') }}</label>
+                            <select name="quick_bill_enabled" class="field-input">
+                                <option value="1" {{ ($preferences->quick_bill_enabled ?? true) ? 'selected' : '' }}>{{ __('Enabled') }}</option>
+                                <option value="0" {{ !($preferences->quick_bill_enabled ?? true) ? 'selected' : '' }}>{{ __('Disabled') }}</option>
+                            </select>
+                            <span class="field-hint">{{ __('Turning this off hides Quick Bill and blocks access, but does not delete past Quick Bill records.') }}</span>
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="settings-section-top">
                         <h3 class="settings-section-title">{{ __('Loyalty Points') }}</h3>
                         <p class="settings-section-subtitle">{{ __('Configure how customers earn and lose points') }}</p>

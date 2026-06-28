@@ -148,19 +148,22 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware(['throttle:api-pos-sale', 'can:sales.create'])
             ->whereNumber('invoice');
 
-        // Quick Bills.
-        Route::get('/quick-bills', [QuickBillController::class, 'index'])
-            ->middleware(['throttle:api-pos-read', 'can:sales.view']);
-        Route::get('/quick-bills/{quickBill}', [QuickBillController::class, 'show'])
-            ->middleware(['throttle:api-pos-read', 'can:sales.view']);
-        Route::get('/quick-bills/{quickBill}/template', [QuickBillController::class, 'template'])
-            ->middleware(['throttle:api-pos-read', 'can:sales.view']);
-        Route::post('/quick-bills', [QuickBillController::class, 'store'])
-            ->middleware(['throttle:api-pos-sale', 'can:sales.create']);
-        Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
-            ->middleware(['throttle:api-pos-sale', 'can:sales.create']);
-        Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
-            ->middleware(['throttle:api-pos-sale', 'can:sales.void']);
+        // Quick Bills. quickbill.enabled returns JSON 403 {error:quick_bill_disabled}
+        // when the owner has turned the feature off for the shop.
+        Route::middleware('quickbill.enabled')->group(function () {
+            Route::get('/quick-bills', [QuickBillController::class, 'index'])
+                ->middleware(['throttle:api-pos-read', 'can:sales.view']);
+            Route::get('/quick-bills/{quickBill}', [QuickBillController::class, 'show'])
+                ->middleware(['throttle:api-pos-read', 'can:sales.view']);
+            Route::get('/quick-bills/{quickBill}/template', [QuickBillController::class, 'template'])
+                ->middleware(['throttle:api-pos-read', 'can:sales.view']);
+            Route::post('/quick-bills', [QuickBillController::class, 'store'])
+                ->middleware(['throttle:api-pos-sale', 'can:sales.create']);
+            Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])
+                ->middleware(['throttle:api-pos-sale', 'can:sales.create']);
+            Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
+                ->middleware(['throttle:api-pos-sale', 'can:sales.void']);
+        });
 
         // Catalog Sharing — view = catalog.manage (catalog is owner/manager only by default).
         Route::get('/catalog/items', [CatalogController::class, 'items'])

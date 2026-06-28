@@ -22,6 +22,9 @@ class CapabilityResolver
     {
         $planFeatures = $this->planFeatures($shop);
 
+        // Owner-controlled per-shop toggle. Default true (no row / null = enabled).
+        $quickBillEnabled = $shop->preferences?->quick_bill_enabled ?? true;
+
         return new CapabilitiesData(
             items:        $this->gate($planFeatures, 'inventory', $user, 'inventory.view'),
             stock:        $this->gate($planFeatures, 'inventory', $user, 'inventory.view'),
@@ -29,7 +32,7 @@ class CapabilityResolver
             suppliers:    $this->gate($planFeatures, 'vendors', $user, null, true),
             purchases:    $this->gate($planFeatures, null, $user, null, true),
             pos:          $this->gate($planFeatures, 'pos', $user, 'sales.pos'),
-            quick_bill:   $this->gate($planFeatures, null, $user, 'sales.pos', true),
+            quick_bill:   $quickBillEnabled && $this->gate($planFeatures, null, $user, 'sales.pos', true),
             invoice:      $this->gate($planFeatures, 'invoices', $user, 'sales.view'),
             repairs:      $this->gate($planFeatures, 'repairs', $user, 'repairs.view'),
             expenses:     $this->gate($planFeatures, null, $user, 'cash.view', true),

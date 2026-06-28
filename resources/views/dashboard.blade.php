@@ -3501,7 +3501,9 @@
             ['label' => 'Customers', 'sub' => 'Customer directory', 'url' => route('customers.index'), 'keywords' => 'customer crm contacts'],
             ['label' => 'Invoices', 'sub' => 'Sales invoices', 'url' => route('invoices.index'), 'keywords' => 'invoice sales billing'],
             ['label' => 'Jewellery Stock', 'sub' => 'Inventory list', 'url' => route('inventory.items.index'), 'keywords' => 'items stock inventory product'],
-            ['label' => 'Quick Bills', 'sub' => 'Fast billing register', 'url' => route('quick-bills.index'), 'keywords' => 'quick bill register'],
+            ...((auth()->user()?->shop?->preferences?->quick_bill_enabled ?? true)
+                ? [['label' => 'Quick Bills', 'sub' => 'Fast billing register', 'url' => route('quick-bills.index'), 'keywords' => 'quick bill register']]
+                : []),
             ['label' => 'Cash Book', 'sub' => 'Cashbook entries', 'url' => route('cashbook.index'), 'keywords' => 'cashbook cash ledger'],
             ['label' => 'Repairs', 'sub' => 'Repair workflow', 'url' => route('repairs.index'), 'keywords' => 'repair service jobs'],
             ['label' => 'Categories', 'sub' => 'Category master list', 'url' => route('categories.index'), 'keywords' => 'category product master'],

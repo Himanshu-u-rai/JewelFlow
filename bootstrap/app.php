@@ -88,6 +88,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.mfa' => \App\Http\Middleware\EnsurePlatformAdminMfa::class,
             'platform.role' => \App\Http\Middleware\EnsurePlatformRole::class,
             'tenant' => \App\Http\Middleware\EnsureTenantUser::class,
+            'quickbill.enabled' => \App\Http\Middleware\EnsureQuickBillEnabled::class,
             'subscription.active' => \App\Http\Middleware\EnsureSubscriptionIsActive::class,
             'account.active' => \App\Http\Middleware\EnsureAccountIsActive::class,
             'edition' => \App\Http\Middleware\EnsureShopEdition::class,

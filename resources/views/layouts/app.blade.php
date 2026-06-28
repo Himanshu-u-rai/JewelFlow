@@ -301,10 +301,12 @@
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
                             {{ __('Sales Counter') }}
                         </a>
+                        @if($authShop?->preferences?->quick_bill_enabled ?? true)
                         <a href="{{ route('quick-bills.index') }}" class="nav-link {{ request()->routeIs('quick-bills.*') ? 'active' : '' }}">
                             <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h8l4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M9 9h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg></span>
                             {{ __('Quick Bills') }}
                         </a>
+                        @endif
                         @endif
                     </div>
 
