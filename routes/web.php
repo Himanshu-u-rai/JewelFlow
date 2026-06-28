@@ -604,6 +604,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/settings/shop', [SettingsController::class, 'updateShop'])->middleware('can:settings.edit')->name('settings.update.shop');
     Route::patch('/settings/billing', [SettingsController::class, 'updateBilling'])->middleware('can:settings.edit')->name('settings.update.billing');
     Route::patch('/settings/preferences', [SettingsController::class, 'updatePreferences'])->middleware('can:settings.edit')->name('settings.update.preferences');
+    // Owner-only Close/Reopen Shop quick toggle (dashboard shop card). Owner check is in the controller.
+    Route::patch('/settings/shop-access', [SettingsController::class, 'updateShopAccess'])->name('settings.update.shop-access');
     Route::patch('/settings/return-policy', [SettingsController::class, 'updateReturnPolicy'])->middleware('can:settings.edit')->name('settings.update.return-policy');
     Route::patch('/settings/materials', [SettingsController::class, 'updateMaterials'])->middleware('can:settings.edit')->name('settings.update.materials');
     Route::patch('/settings/gst', [SettingsController::class, 'updateGst'])->middleware('can:settings.edit')->name('settings.update.gst');

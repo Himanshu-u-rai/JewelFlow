@@ -832,6 +832,28 @@ class SettingsController extends Controller
     }
 
     /**
+     * Owner-only quick toggle for shop access (Close / Reopen shop) from the
+     * dashboard. Isolated from updatePreferences() because that method rewrites
+     * every preference column on save — a partial submit here would clobber
+     * Quick Bill, auto-logout, compliance, etc. This touches only the one flag.
+     */
+    public function updateShopAccess(Request $request)
+    {
+        if (! Auth::user()->isOwner()) {
+            abort(403);
+        }
+
+        $shop = Auth::user()->shop;
+        $preferences = $shop->preferences ?? new ShopPreferences(['shop_id' => $shop->id]);
+        $preferences->shop_access_enabled = $request->boolean('shop_access_enabled');
+        $preferences->save();
+
+        return back()->with('success', $preferences->shop_access_enabled
+            ? 'Shop reopened. Staff can use the app again.'
+            : 'Shop closed. Only the owner can use the app now.');
+    }
+
+    /**
      * Update the shop's return / exchange policy.
      *
      * Isolated from updatePreferences() so this surface is reversible. Persists

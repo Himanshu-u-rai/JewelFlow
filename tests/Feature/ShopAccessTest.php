@@ -389,7 +389,55 @@ class ShopAccessTest extends TestCase
         $this->assertDatabaseMissing('scan_events', ['scan_session_id' => $session->id, 'barcode' => 'NO-1']);
     }
 
-    // ── 21. feature stays out of Dhiran ─────────────────────────────────────────
+    // ── 22. dashboard quick-toggle: owner closes via the dedicated endpoint ──────
+
+    public function test_owner_can_close_shop_via_dashboard_toggle(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        $this->ensurePrefs($shop->id); // open
+
+        $this->actingAs($owner->fresh())
+            ->patch(route('settings.update.shop-access'), ['shop_access_enabled' => '0'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertFalse((bool) $this->prefs($shop->id)->shop_access_enabled);
+    }
+
+    // ── 23. dashboard toggle must NOT clobber other preferences ──────────────────
+
+    public function test_dashboard_toggle_preserves_other_preferences(): void
+    {
+        [$owner, $shop] = $this->createManufacturerTenant();
+        // Quick Bill explicitly ON before closing the shop from the dashboard.
+        ShopPreferences::withoutGlobalScopes()->firstOrNew(['shop_id' => $shop->id])
+            ->forceFill(['shop_id' => $shop->id, 'quick_bill_enabled' => true, 'shop_access_enabled' => true])
+            ->save();
+
+        $this->actingAs($owner->fresh())
+            ->patch(route('settings.update.shop-access'), ['shop_access_enabled' => '0'])
+            ->assertRedirect();
+
+        $fresh = $this->prefs($shop->id);
+        $this->assertFalse((bool) $fresh->shop_access_enabled);
+        $this->assertTrue((bool) $fresh->quick_bill_enabled, 'dashboard toggle must not wipe quick_bill_enabled');
+    }
+
+    // ── 24. non-owner cannot use the dashboard quick-toggle ──────────────────────
+
+    public function test_non_owner_cannot_use_dashboard_toggle(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $this->ensurePrefs($shop->id); // open
+        $manager = $this->makeUser($shop, 'manager', ['settings.edit']);
+
+        $this->actingAs($manager)
+            ->patch(route('settings.update.shop-access'), ['shop_access_enabled' => '0'])
+            ->assertForbidden();
+
+        $this->assertTrue((bool) $this->prefs($shop->id)->shop_access_enabled, 'non-owner must not close shop');
+    }
+
+    // ── 25. feature stays out of Dhiran ─────────────────────────────────────────
 
     public function test_middleware_does_not_touch_dhiran(): void
     {

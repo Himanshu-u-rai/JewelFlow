@@ -975,6 +975,61 @@
             flex-wrap: wrap;
         }
 
+        /* Compact owner-only Close/Reopen Shop switch in the shop card. */
+        .dash-access-form { margin-top: 10px; }
+        .dash-access-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border: 1px solid var(--dash-line);
+            border-radius: 10px;
+            background: #ffffff;
+            cursor: pointer;
+        }
+        .dash-access-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--dash-action);
+        }
+        .dash-access-state {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .dash-access-state.is-open { color: #0f766e; }
+        .dash-access-state.is-closed { color: #b91c1c; }
+        .dash-access-switch {
+            appearance: none;
+            -webkit-appearance: none;
+            position: relative;
+            width: 36px;
+            height: 20px;
+            flex-shrink: 0;
+            border-radius: 999px;
+            background: #cbd5e1;
+            cursor: pointer;
+            outline: none;
+            transition: background-color 200ms ease;
+        }
+        .dash-access-switch::before {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, .3);
+            transition: transform 200ms ease;
+        }
+        .dash-access-switch:checked { background: #0f766e; }
+        .dash-access-switch:checked::before { transform: translateX(16px); }
+        .dash-access-switch:focus-visible { box-shadow: 0 0 0 3px rgba(15, 118, 110, .25); }
+
         .dash-kpi-label {
             display: flex;
             align-items: center;
@@ -4256,6 +4311,22 @@
                         <p class="dash-meta" style="font-size: 11px;"><strong>Location</strong>{{ $shop?->city }}{{ $shop?->state ? ', ' . $shop->state : '' }}</p>
                     @endif
                 </div>
+
+                @if(auth()->user()->isOwner())
+                    @php $shopOpen = $shop?->preferences?->shop_access_enabled ?? true; @endphp
+                    <form method="POST" action="{{ route('settings.update.shop-access') }}" class="dash-access-form">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="shop_access_enabled" value="0">
+                        <label class="dash-access-toggle" title="Closing blocks staff from web, mobile, POS. Owner access stays. No data is deleted.">
+                            <span class="dash-access-label">Shop Access</span>
+                            <span class="dash-access-state {{ $shopOpen ? 'is-open' : 'is-closed' }}">{{ $shopOpen ? 'Open' : 'Closed' }}</span>
+                            <input type="checkbox" name="shop_access_enabled" value="1" class="dash-access-switch"
+                                {{ $shopOpen ? 'checked' : '' }}
+                                onchange="if(!this.checked && !confirm('Close the shop? Staff will be locked out of the app until you reopen.')){this.checked=true;return;} this.form.submit();">
+                        </label>
+                    </form>
+                @endif
 
                 <div class="dash-shop-actions" style="gap: 6px;">
                     @can('settings.view')
