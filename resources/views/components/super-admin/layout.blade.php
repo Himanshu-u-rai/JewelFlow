@@ -56,6 +56,9 @@
         } elseif (request()->routeIs('admin.settings.*')) {
             $title = 'Platform Settings';
             $subtitle = 'Control platform-wide behaviour and availability for all tenants.';
+        } elseif (request()->routeIs('admin.account.*')) {
+            $title = 'Account Security';
+            $subtitle = 'Change your sign-in email and mobile number.';
         }
     @endphp
 
@@ -137,6 +140,12 @@
                     </a>
                 @endif
             </nav>
+            <div class="px-3 pb-2">
+                <a href="{{ route('admin.account.show') }}" class="admin-nav-link {{ request()->routeIs('admin.account.*') ? 'is-active' : '' }}">
+                    <span>Account</span>
+                    <span class="admin-nav-suffix">Security</span>
+                </a>
+            </div>
             <div class="px-4 pb-5">
                 <form method="POST" action="{{ route('admin.logout') }}">
                     @csrf
