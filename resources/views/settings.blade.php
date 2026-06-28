@@ -2769,10 +2769,13 @@
                     <div class="form-row">
                         <div class="field">
                             <label class="field-label">{{ __('Quick Bill') }}</label>
-                            <select name="quick_bill_enabled" class="field-input">
-                                <option value="1" {{ ($preferences->quick_bill_enabled ?? true) ? 'selected' : '' }}>{{ __('Enabled') }}</option>
-                                <option value="0" {{ !($preferences->quick_bill_enabled ?? true) ? 'selected' : '' }}>{{ __('Disabled') }}</option>
-                            </select>
+                            <label class="settings-toggle-label">
+                                <input type="hidden" name="quick_bill_enabled" value="0">
+                                <input type="checkbox" name="quick_bill_enabled" value="1"
+                                    {{ ($preferences->quick_bill_enabled ?? true) ? 'checked' : '' }}
+                                    class="settings-toggle-input-lg">
+                                <span class="settings-toggle-text">{{ __('Enable Quick Bill for this shop') }}</span>
+                            </label>
                             <span class="field-hint">{{ __('Turning this off hides Quick Bill and blocks access, but does not delete past Quick Bill records.') }}</span>
                         </div>
                     </div>
