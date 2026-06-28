@@ -797,15 +797,18 @@ class SettingsController extends Controller
             'max_manual_discount_percent'  => 'nullable|numeric|min:0|max:100',
             'round_off_nearest'            => 'nullable|integer|in:1,5,10',
             'quick_bill_enabled'           => 'nullable|boolean',
+            'shop_access_enabled'          => 'nullable|boolean',
         ]);
 
         // Quick Bill toggle is owner-only. Non-owner forms never render the field,
         // so its absence must NOT disable the feature — drop it and keep the stored
         // value. Owners get the submitted boolean (absent checkbox/select = off).
+        // Shop Access (Close Shop) is owner-only for the same reason.
         if (Auth::user()->isOwner()) {
             $validated['quick_bill_enabled'] = $request->boolean('quick_bill_enabled');
+            $validated['shop_access_enabled'] = $request->boolean('shop_access_enabled');
         } else {
-            unset($validated['quick_bill_enabled']);
+            unset($validated['quick_bill_enabled'], $validated['shop_access_enabled']);
         }
 
         // Defaults

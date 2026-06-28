@@ -174,7 +174,7 @@ Route::middleware(['auth', 'tenant', 'account.active', 'realm:dhiran'])
 | AUTHENTICATED + MUST HAVE A SHOP
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 'shop.exists'])->group(function () {
+Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'shopaccess.open'])->group(function () {
 
     Route::post('/announcements/{announcement}/dismiss', [\App\Http\Controllers\AnnouncementDismissController::class, 'dismiss'])->name('announcements.dismiss');
 

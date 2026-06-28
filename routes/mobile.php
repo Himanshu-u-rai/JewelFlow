@@ -21,7 +21,7 @@ Route::post('/auth/login', [AuthController::class, 'login'])
     ->middleware('throttle:5,1');
 
 // --- Authenticated ---
-Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'rate.shop:600,1'])
+Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.active', 'shop.exists', 'rate.shop:600,1', 'shopaccess.open'])
     ->group(function () {
 
         // Auth — self-management for the authenticated user; no role/permission gate.

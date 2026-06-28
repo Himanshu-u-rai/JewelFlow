@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\ScanEvent;
 use App\Models\ScanSession;
+use App\Models\ShopPreferences;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -216,6 +217,24 @@ class ScanSessionController extends Controller
     }
 
     /**
+     * Is shop access closed by the owner for this shop? The public scan endpoints
+     * run unauthenticated (no TenantContext), so bypass the shop scope and read
+     * the flag directly. A missing row or null column = open; only an explicit
+     * false closes. An old signed scan URL therefore stops working the moment the
+     * owner closes the shop.
+     *
+     * ponytail: blocks ALL signed scan sessions while closed — owner-session
+     * exception deferred because ScanSession has no reliable owner (created_by is
+     * never populated). Owner can still scan via the authenticated web POS.
+     */
+    private function shopAccessClosed(int $shopId): bool
+    {
+        return ShopPreferences::withoutGlobalScopes()
+            ->where('shop_id', $shopId)
+            ->value('shop_access_enabled') === false;
+    }
+
+    /**
      * PUBLIC: Mobile phone opens this page (no auth required).
      */
     public function mobile(string $token)
@@ -226,7 +245,8 @@ class ScanSessionController extends Controller
             abort(404, 'Invalid scan session.');
         }
 
-        $expired = !$session->isActive();
+        // Closed shop reads as expired so the scanner page disables itself.
+        $expired = !$session->isActive() || $this->shopAccessClosed($session->shop_id);
 
         // Mark mobile as connected (first time only)
         if (!$expired && !$session->mobile_connected_at) {
@@ -250,6 +270,15 @@ class ScanSessionController extends Controller
 
         if (!$session || !$session->isActive()) {
             return response()->json(['error' => 'Session expired or invalid.'], 410);
+        }
+
+        // Owner closed the shop: stop accepting barcode input from any old signed
+        // scan URL/session for this shop. Owner uses the authenticated web POS.
+        if ($this->shopAccessClosed($session->shop_id)) {
+            return response()->json([
+                'error' => 'shop_closed',
+                'message' => 'Shop is currently closed by the owner.',
+            ], 403);
         }
 
         // Debounce: ignore same barcode scanned within last 2 seconds.

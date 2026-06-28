@@ -20,6 +20,7 @@ class ShopPreferences extends Model
         'pricing_timezone',
         'low_stock_threshold',
         'quick_bill_enabled',
+        'shop_access_enabled',
         'loyalty_points_per_hundred',
         'loyalty_point_value',
         'loyalty_expiry_months',
@@ -62,6 +63,7 @@ class ShopPreferences extends Model
     protected $casts = [
         'low_stock_threshold'        => 'integer',
         'quick_bill_enabled'         => 'boolean',
+        'shop_access_enabled'        => 'boolean',
         'loyalty_points_per_hundred' => 'integer',
         'loyalty_point_value'        => 'decimal:2',
         'loyalty_expiry_months'      => 'integer',

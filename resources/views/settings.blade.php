@@ -2779,6 +2779,25 @@
                             <span class="field-hint">{{ __('Turning this off hides Quick Bill and blocks access, but does not delete past Quick Bill records.') }}</span>
                         </div>
                     </div>
+
+                    <div class="section-divider"></div>
+                    <div class="section-label">{{ __('Shop Access') }}</div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label class="field-label">
+                                {{ __('Current status') }}:
+                                <strong>{{ ($preferences->shop_access_enabled ?? true) ? __('Open') : __('Closed') }}</strong>
+                            </label>
+                            <label class="settings-toggle-label">
+                                <input type="hidden" name="shop_access_enabled" value="0">
+                                <input type="checkbox" name="shop_access_enabled" value="1"
+                                    {{ ($preferences->shop_access_enabled ?? true) ? 'checked' : '' }}
+                                    class="settings-toggle-input-lg">
+                                <span class="settings-toggle-text">{{ __('Shop is open (staff can use the app)') }}</span>
+                            </label>
+                            <span class="field-hint">{{ __('Closing the shop blocks manager/staff/cashier from web, mobile, POS, and operational actions. Owner access remains available. No data is deleted.') }}</span>
+                        </div>
+                    </div>
                     @endif
 
                     <div class="settings-section-top">
