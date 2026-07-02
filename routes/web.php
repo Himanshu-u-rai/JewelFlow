@@ -254,6 +254,32 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware('can:imports.manage')
         ->name('imports.cancel');
 
+    // ======= EXISTING-SHOP ONBOARDING (opening balances; owner-only, re-checked in controller) =======
+    Route::get('/onboarding', [\App\Http\Controllers\OnboardingController::class, 'index'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.index');
+    Route::post('/onboarding', [\App\Http\Controllers\OnboardingController::class, 'store'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.store');
+    Route::post('/onboarding/{onboarding}/lock', [\App\Http\Controllers\OnboardingController::class, 'lock'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.lock');
+    Route::post('/onboarding/{onboarding}/cancel', [\App\Http\Controllers\OnboardingController::class, 'cancel'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.cancel');
+    Route::post('/onboarding/{onboarding}/entries', [\App\Http\Controllers\OnboardingController::class, 'addEntry'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.entries.store');
+    Route::delete('/onboarding/{onboarding}/entries/{entry}', [\App\Http\Controllers\OnboardingController::class, 'deleteEntry'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.entries.destroy');
+    Route::post('/onboarding/{onboarding}/customers/import', [\App\Http\Controllers\OnboardingController::class, 'importCustomers'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.customers.import');
+    Route::get('/onboarding-suppliers', [\App\Http\Controllers\OnboardingController::class, 'suppliers'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.suppliers');
+
     // ======= PRODUCT MASTER (inventory.view to read; catalog.manage to mutate) =======
     Route::get('/categories', [\App\Http\Controllers\CategoryController::class, 'index'])->middleware('can:inventory.view')->name('categories.index');
     // Categories are created/edited inline on the index page (store/update/destroy
