@@ -459,6 +459,12 @@
                         <h2 class="text-lg font-semibold text-gray-900">Customer Stats</h2>
                         <div class="mt-3 space-y-2 text-sm">
                             <div class="flex items-center justify-between"><span class="text-gray-500">Total Spent</span><span class="font-semibold">₹{{ number_format($totalSpent, 2) }}</span></div>
+                            @if(($openingBalance ?? 0) != 0)
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-500">Opening Balance</span>
+                                <span class="font-semibold">₹{{ number_format(abs($openingBalance), 2) }} {{ $openingBalance > 0 ? 'Dr' : 'Cr' }}</span>
+                            </div>
+                            @endif
                             <div class="flex items-center justify-between"><span class="text-gray-500">Member Since</span><span class="font-semibold">{{ $customer->created_at->format('M Y') }}</span></div>
                         </div>
                     </div>

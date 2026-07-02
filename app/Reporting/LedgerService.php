@@ -154,10 +154,14 @@ class LedgerService
     {
         [$start, $end] = $period->bounds();
 
-        // Opening = net cash (in − out) before the period start.
+        // Opening = net cash (in − out) before the period start. Opening-balance
+        // rows (is_opening) always count as opening even if their as-of date
+        // lands inside the report window — so a report spanning go-live never
+        // mistakes seeded opening for period income, and the closing identity
+        // (opening + in − out) still conserves every rupee.
         $opening = round((float) DB::table('cash_transactions')
             ->where('shop_id', $shopId)
-            ->where('created_at', '<', $start)
+            ->where(fn ($q) => $q->where('created_at', '<', $start)->orWhereRaw('is_opening IS TRUE'))
             ->selectRaw("COALESCE(SUM(CASE WHEN type = 'in' THEN amount ELSE -amount END), 0) as net")
             ->value('net'), 2);
 
@@ -165,6 +169,7 @@ class LedgerService
             ->leftJoin('users as u', 'u.id', '=', 'c.user_id')
             ->where('c.shop_id', $shopId)
             ->whereBetween('c.created_at', [$start, $end])
+            ->whereRaw('c.is_opening IS NOT TRUE') // opening never a period movement
             ->orderBy('c.created_at')->orderBy('c.id')
             ->select(
                 'c.created_at as occurred_at', 'c.type', 'c.amount', 'c.payment_mode',
@@ -226,18 +231,20 @@ class LedgerService
         [$start, $end] = $period->bounds();
         $modeExpr = "COALESCE(NULLIF(TRIM(payment_mode), ''), 'cash')";
 
-        // Opening per mode = net (in − out) before the period start.
+        // Opening per mode = net (in − out) before the period start. is_opening
+        // rows always count as opening (see cashFlow()).
         $opening = DB::table('cash_transactions')
             ->where('shop_id', $shopId)
-            ->where('created_at', '<', $start)
+            ->where(fn ($q) => $q->where('created_at', '<', $start)->orWhereRaw('is_opening IS TRUE'))
             ->selectRaw("$modeExpr as mode, COALESCE(SUM(CASE WHEN type = 'in' THEN amount ELSE -amount END), 0) as net")
             ->groupBy(DB::raw($modeExpr))
             ->pluck('net', 'mode');
 
-        // In / out per mode within the period.
+        // In / out per mode within the period — opening excluded from movement.
         $within = DB::table('cash_transactions')
             ->where('shop_id', $shopId)
             ->whereBetween('created_at', [$start, $end])
+            ->whereRaw('is_opening IS NOT TRUE')
             ->selectRaw("$modeExpr as mode")
             ->selectRaw("COALESCE(SUM(CASE WHEN type = 'in'  THEN amount ELSE 0 END), 0) as money_in")
             ->selectRaw("COALESCE(SUM(CASE WHEN type = 'out' THEN amount ELSE 0 END), 0) as money_out")

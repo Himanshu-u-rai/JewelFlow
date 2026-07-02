@@ -62,6 +62,7 @@ class ValidateReportTotals extends Command
             $failures += $this->validateMetalLiability((int) $shopId, $receivables);
             $failures += $this->validateInventory((int) $shopId, $period, $inventory);
             $failures += $this->validateCashFlow((int) $shopId, $period, $ledger);
+            $failures += $this->validateOpeningMetal((int) $shopId);
             $failures += $this->validateClosing((int) $shopId, $period, $closing);
             $failures += $this->validateDailySummary((int) $shopId, $period, $gst);
             $failures += $this->validatePnl((int) $shopId, $period, $profit);
@@ -537,11 +538,12 @@ class ValidateReportTotals extends Command
             "independent={$independentClosing} service={$cf->closing}"
         );
 
-        // CASH-3 — period in/out totals reconcile to source data.
+        // CASH-3 — period in/out totals reconcile to source data. Opening rows
+        // (is_opening) are movement-excluded by the service, so mirror that here.
         $independentIn = round((float) DB::table('cash_transactions')->where('shop_id', $shopId)
-            ->whereBetween('created_at', [$start, $end])->where('type', 'in')->sum('amount'), 2);
+            ->whereBetween('created_at', [$start, $end])->whereRaw('is_opening IS NOT TRUE')->where('type', 'in')->sum('amount'), 2);
         $independentOut = round((float) DB::table('cash_transactions')->where('shop_id', $shopId)
-            ->whereBetween('created_at', [$start, $end])->where('type', 'out')->sum('amount'), 2);
+            ->whereBetween('created_at', [$start, $end])->whereRaw('is_opening IS NOT TRUE')->where('type', 'out')->sum('amount'), 2);
         $failures += $this->assert(
             $shopId,
             'CASH-3 period in/out == cash_transactions in/out (independent)',
@@ -549,7 +551,52 @@ class ValidateReportTotals extends Command
             "in: svc={$cf->cashIn} indep={$independentIn} · out: svc={$cf->cashOut} indep={$independentOut}"
         );
 
+        // CASH-4 — opening balances audit: the reported opening equals the net of
+        // all pre-period cash PLUS every is_opening seed row (which always counts
+        // as opening, never as period income). Proves opening seeding surfaces as
+        // opening and nowhere else.
+        $independentOpening = round((float) DB::table('cash_transactions')
+            ->where('shop_id', $shopId)
+            ->where(fn ($q) => $q->where('created_at', '<', $start)->orWhereRaw('is_opening IS TRUE'))
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'in' THEN amount ELSE -amount END), 0) as net")
+            ->value('net'), 2);
+        $failures += $this->assert(
+            $shopId,
+            'CASH-4 opening == pre-period + opening-seed net (independent)',
+            abs($independentOpening - $cf->opening) <= self::TOLERANCE,
+            "service={$cf->opening} independent={$independentOpening}"
+        );
+
         return $failures;
+    }
+
+    /**
+     * Opening-metal seeding audit (onboarding). Every opening metal movement
+     * (is_opening) must load exactly the fine weight recorded on its destination
+     * lot — proves the lock posted matching lot+movement pairs and no opening
+     * grams leaked or doubled. No-op (0 == 0) on shops that never onboarded.
+     */
+    private function validateOpeningMetal(int $shopId): int
+    {
+        $movementFine = round((float) DB::table('metal_movements')
+            ->where('shop_id', $shopId)
+            ->whereRaw('is_opening IS TRUE')
+            ->sum('fine_weight'), 4);
+
+        $lotTotal = round((float) DB::table('metal_lots')
+            ->where('shop_id', $shopId)
+            ->whereIn('id', function ($q) use ($shopId) {
+                $q->select('to_lot_id')->from('metal_movements')
+                    ->where('shop_id', $shopId)->whereRaw('is_opening IS TRUE')->whereNotNull('to_lot_id');
+            })
+            ->sum('fine_weight_total'), 4);
+
+        return $this->assert(
+            $shopId,
+            'METAL-5 opening movement fine == opening lot total fine',
+            abs($movementFine - $lotTotal) <= self::TOLERANCE,
+            "movements={$movementFine} lots={$lotTotal}"
+        );
     }
 
     /**

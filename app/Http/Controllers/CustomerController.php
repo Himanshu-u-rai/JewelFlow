@@ -295,9 +295,17 @@ class CustomerController extends Controller
         // Whether the customer can be safely deleted.
         $hasRepairs = $customer->repairs()->exists();
 
+        // Opening money balance seeded at existing-shop onboarding (never a fake
+        // invoice, so it never touched sales/GST). Net: positive = customer owes
+        // the shop (receivable), negative = shop owes the customer (payable).
+        $openingBalance = (float) \App\Models\CustomerOpeningBalance::where('shop_id', $shopId)
+            ->where('customer_id', $customer->id)
+            ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'receivable' THEN amount ELSE -amount END), 0) as net")
+            ->value('net');
+
         return view('customers.show', compact(
             'customer', 'isRetailer', 'goldBalance', 'transactions',
-            'loyaltyTransactions', 'invoices', 'totalSpent', 'hasRepairs'
+            'loyaltyTransactions', 'invoices', 'totalSpent', 'hasRepairs', 'openingBalance'
         ));
     }
 
