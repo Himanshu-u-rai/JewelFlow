@@ -12,6 +12,10 @@ class CashTransaction extends Model
 
     protected $guarded = ['*'];
 
+    protected $casts = [
+        'is_opening' => 'boolean',
+    ];
+
     /**
      * Known MANUAL-entry reasons, by direction. Single source of truth shared by
      * the web cashbook form, the web controller, and the mobile API so all three

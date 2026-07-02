@@ -12,6 +12,10 @@ class MetalMovement extends Model
 
     protected $guarded = ['*'];
 
+    protected $casts = [
+        'is_opening' => 'boolean',
+    ];
+
     public static function record(array $attributes): self
     {
         $model = new self();

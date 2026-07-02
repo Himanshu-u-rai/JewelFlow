@@ -25,6 +25,8 @@ class StoreCreditMovement extends Model
     public const SOURCE_MANUAL_ADJUSTMENT  = 'manual_adjustment';
     public const SOURCE_EXPIRY             = 'expiry';
     public const SOURCE_REVERSAL           = 'reversal';
+    /** Opening store credit seeded at existing-shop onboarding lock. */
+    public const SOURCE_OPENING_ADVANCE    = 'opening_advance';
 
     protected $fillable = [
         'shop_id', 'customer_id',
