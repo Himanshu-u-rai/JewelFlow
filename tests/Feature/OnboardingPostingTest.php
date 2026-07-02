@@ -173,4 +173,21 @@ class OnboardingPostingTest extends TestCase
 
         $this->assertSame(0, OnboardingEntry::withoutTenant()->count());
     }
+
+    public function test_cannot_stage_stock_item_with_stone_heavier_than_gross(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        $this->actingAs($user)->post(route('onboarding.store'), ['start_date' => '2026-08-01']);
+        $batch = OnboardingBatch::withoutTenant()->firstOrFail();
+
+        // stone > gross would make net_metal_weight (gross - stone) negative.
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.entries.store', $batch), [
+            'kind' => OnboardingEntry::KIND_STOCK_ITEM, 'metal_type' => 'gold',
+            'gross_weight' => 5, 'stone_weight' => 6, 'purity' => 22, 'cost_price' => 40000,
+        ])->assertSessionHasErrors('stone_weight');
+
+        $this->assertSame(0, OnboardingEntry::withoutTenant()->count());
+    }
 }

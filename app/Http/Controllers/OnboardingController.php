@@ -351,7 +351,9 @@ class OnboardingController extends Controller
             OnboardingEntry::KIND_STOCK_ITEM => [
                 'metal_type'     => ['required', Rule::in($metals)],
                 'gross_weight'   => ['required', 'numeric', 'gt:0'],
-                'stone_weight'   => ['nullable', 'numeric', 'gte:0'],
+                // stone must fit within gross, else net_metal_weight (gross-stone)
+                // goes negative and poisons the opening-stock fine-weight snapshot.
+                'stone_weight'   => ['nullable', 'numeric', 'gte:0', 'lte:gross_weight'],
                 'purity'         => ['required', 'numeric', 'gt:0'],
                 'making_charges' => ['nullable', 'numeric', 'gte:0'],
                 'stone_charges'  => ['nullable', 'numeric', 'gte:0'],
