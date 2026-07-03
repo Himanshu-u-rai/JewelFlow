@@ -58,6 +58,8 @@ class ShopPreferences extends Model
         'return_settlement_mode',
         'exchange_rate_basis_locked',
         'return_policy_configured_at',
+        // Opening-balance onboarding: set when owner chooses "Start Clean".
+        'opening_setup_skipped_at',
     ];
 
     protected $casts = [
@@ -88,6 +90,7 @@ class ShopPreferences extends Model
         'exchange_window_days'         => 'integer',
         'exchange_rate_basis_locked'   => 'boolean',
         'return_policy_configured_at'  => 'datetime',
+        'opening_setup_skipped_at'     => 'datetime',
     ];
 
     protected $attributes = [
