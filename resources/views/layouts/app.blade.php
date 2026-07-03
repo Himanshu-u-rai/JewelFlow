@@ -70,7 +70,7 @@
                 border-radius: 999px; padding: 5px 11px;
             }
             .rate-modal__badge svg { width: 13px; height: 13px; }
-            .rate-modal__title { margin-top: 12px; font-size: 21px; font-weight: 800; color: var(--rm-ink); letter-spacing: -0.4px; }
+            .rate-modal__title { margin-top: 12px; font-size: 21px; font-weight: 700; color: var(--rm-ink); letter-spacing: 0; }
             .rate-modal__desc { margin-top: 7px; font-size: 13.5px; line-height: 1.5; color: var(--rm-muted); }
             .rate-modal__date {
                 margin-top: 14px; display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;

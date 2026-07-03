@@ -154,7 +154,7 @@
         background: rgba(239, 246, 255, 0.92);
         color: #35557a;
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
     }
@@ -190,7 +190,7 @@
 
     .pricing-settings .pricing-overview-label {
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
         color: #6b7b90;
@@ -225,7 +225,7 @@
     .pricing-settings .field-label {
         margin-bottom: 7px;
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: #607089;
@@ -358,7 +358,7 @@
         border-bottom: 1px solid rgba(148, 163, 184, 0.24);
         color: #66768d;
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: 0.09em;
         text-transform: uppercase;
     }
@@ -378,7 +378,7 @@
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 700;
         letter-spacing: 0.04em;
         text-transform: uppercase;
     }
@@ -624,6 +624,66 @@
 
         .pricing-settings .pricing-table-card table {
             min-width: 680px;
+        }
+    }
+
+    .settings-shell .pricing-settings {
+        --pricing-ink: #1f2430;
+        --pricing-muted: #64748b;
+        --pricing-border: #e2e8f0;
+        --pricing-border-strong: #cbd5e1;
+        --pricing-panel-tint: #f8fafc;
+        --pricing-accent: #b45309;
+        --pricing-accent-hover: #92400e;
+    }
+
+    .settings-shell .pricing-settings :is(.pricing-status-card, .pricing-panel, .pricing-table-card, .pricing-filter-card, .pricing-alert, .pricing-profile-form, .pricing-profile-edit-card, .pricing-snapshot-card) {
+        border-color: var(--pricing-border) !important;
+        border-radius: 14px !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .pricing-settings :is(.section-label, .pricing-state-pill) {
+        letter-spacing: 0 !important;
+        text-transform: none !important;
+    }
+
+    .settings-shell .pricing-settings .section-label {
+        border-color: #f3dcb6 !important;
+        background: #fff7ed !important;
+        color: #92400e !important;
+    }
+
+    .settings-shell .pricing-settings :is(.field-input, select.field-input) {
+        border-color: var(--pricing-border-strong) !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .pricing-settings :is(.field-input, select.field-input):focus {
+        border-color: var(--pricing-accent) !important;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, .18) !important;
+    }
+
+    .settings-shell .pricing-settings :is(.btn-primary, .pricing-toolbar-button) {
+        border-color: var(--pricing-accent) !important;
+        background: var(--pricing-accent) !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .pricing-settings :is(.btn-primary, .pricing-toolbar-button):hover {
+        border-color: var(--pricing-accent-hover) !important;
+        background: var(--pricing-accent-hover) !important;
+    }
+
+    .settings-shell .pricing-settings .pricing-overview-value.is-ready {
+        color: var(--pricing-accent) !important;
+    }
+
+    @media (max-width: 520px) {
+        .settings-shell .pricing-settings :is(.pricing-panel, .pricing-filter-card, .pricing-status-card, .pricing-profile-edit-card) {
+            padding: 14px !important;
         }
     }
 </style>

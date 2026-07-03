@@ -441,7 +441,7 @@
         .gst-snap-label { margin: 0 0 6px; color: var(--gst-muted); font-size: 12px; font-weight: 500; }
         .gst-snap-value {
             margin: 0; color: var(--gst-ink); font-size: 20px; font-weight: 700;
-            line-height: 1.15; letter-spacing: -.01em; font-variant-numeric: tabular-nums;
+            line-height: 1.15; letter-spacing: 0; font-variant-numeric: tabular-nums;
         }
         .gst-snap-value--accent { color: var(--gst-accent-deep); }
 
@@ -466,7 +466,7 @@
             background: #fff; box-shadow: var(--gst-shadow); overflow: hidden; min-width: 0;
         }
         .gst-panel-head { padding: 18px 20px; border-bottom: 1px solid var(--gst-border-soft); }
-        .gst-panel-title { margin: 0; color: var(--gst-ink); font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+        .gst-panel-title { margin: 0; color: var(--gst-ink); font-size: 15px; font-weight: 600; letter-spacing: 0; }
         .gst-panel-title--sm { font-size: 13.5px; }
         .gst-panel-copy { margin: 4px 0 0; color: var(--gst-muted); font-size: 12px; line-height: 1.5; }
         .gst-panel-body { padding: 16px 20px; }
@@ -495,7 +495,7 @@
         .gst-foot-label { color: var(--gst-ink); font-weight: 700; font-size: 12px; }
 
         .gst-num { font-variant-numeric: tabular-nums; }
-        .gst-strong { color: var(--gst-ink); font-weight: 650; }
+        .gst-strong { color: var(--gst-ink); font-weight: 600; }
         .gst-accent { color: var(--gst-accent-deep); }
         .gst-neg { color: var(--gst-neg); }
         .gst-muted { color: var(--gst-muted); }
@@ -504,7 +504,7 @@
         .gst-rate-pill {
             display: inline-flex; align-items: center; padding: 3px 9px;
             border-radius: 6px; background: rgba(13,148,136,.08); color: #0f766e;
-            font-size: 11.5px; font-weight: 650; font-variant-numeric: tabular-nums;
+            font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums;
         }
 
         /* Sidebar key/value lists */
@@ -525,7 +525,7 @@
         .gst-liability-label { margin: 0; color: var(--gst-muted); font-size: 12px; font-weight: 500; }
         .gst-liability-value {
             margin: 6px 0 12px; color: var(--gst-accent-deep);
-            font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+            font-size: 26px; font-weight: 700; letter-spacing: 0; font-variant-numeric: tabular-nums;
         }
 
         /* Filing note (+ embedded quick jump) — full border, no side stripe */
@@ -535,7 +535,7 @@
         }
         .gst-note-top { display: flex; align-items: center; gap: 9px; }
         .gst-note-icon { width: 17px; height: 17px; flex-shrink: 0; color: #b45309; }
-        .gst-note-title { margin: 0; color: #92400e; font-size: 12.5px; font-weight: 650; }
+        .gst-note-title { margin: 0; color: #92400e; font-size: 12.5px; font-weight: 600; }
         .gst-note-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
         .gst-note-list li { color: #9a6a1c; font-size: 12px; line-height: 1.5; position: relative; padding-left: 14px; }
         .gst-note-list li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 4px; height: 4px; border-radius: 999px; background: #c2872f; }

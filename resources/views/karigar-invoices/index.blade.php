@@ -15,20 +15,20 @@
             gap: 8px;
             min-height: 38px;
             border-radius: 12px;
-            border: 1px solid #0f766e;
-            background: #0f766e;
+            border: 1px solid #b45309;
+            background: #b45309;
             padding: 9px 14px;
             color: #ffffff;
             font-size: 13px;
-            font-weight: 900;
-            box-shadow: 0 12px 24px rgba(15, 118, 110, .18);
+            font-weight: 700;
+            box-shadow: none;
         }
 
         .ki-card {
             border: 1px solid #dbe3ee;
-            border-radius: 20px;
+            border-radius: 14px;
             background: #ffffff;
-            box-shadow: 0 14px 28px rgba(15, 23, 42, .06);
+            box-shadow: none;
         }
 
         .ki-top-grid {
@@ -39,19 +39,19 @@
 
         .ki-stat {
             border: 1px solid #e2e8f0;
-            border-radius: 16px;
+            border-radius: 12px;
             background: #ffffff;
             padding: 14px;
-            box-shadow: 0 10px 20px rgba(15, 23, 42, .04);
+            box-shadow: none;
         }
 
         .ki-stat span {
             display: block;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
-            letter-spacing: .08em;
-            text-transform: uppercase;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
         }
 
         .ki-stat strong {
@@ -59,7 +59,7 @@
             margin-top: 5px;
             color: #0f172a;
             font-size: 22px;
-            font-weight: 950;
+            font-weight: 700;
             line-height: 1.1;
         }
 
@@ -68,11 +68,14 @@
             grid-template-columns: minmax(180px, 220px) minmax(220px, 1fr) auto;
             gap: 12px;
             align-items: end;
-            padding: 16px;
+            padding: 0;
             position: relative;
-            z-index: 2200;
-            isolation: isolate;
+            z-index: 20;
+            isolation: auto;
             overflow: visible;
+            border: 0;
+            background: transparent;
+            box-shadow: none;
         }
 
         .ki-label {
@@ -80,9 +83,9 @@
             margin-bottom: 6px;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
-            letter-spacing: .08em;
-            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0;
+            text-transform: none;
         }
 
         .ki-control {
@@ -96,8 +99,8 @@
         }
 
         .ki-control:focus {
-            border-color: #0f766e;
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+            border-color: #b45309;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, .16);
         }
 
         .ki-filter-select {
@@ -123,8 +126,8 @@
 
         .ki-filter-trigger:focus {
             outline: none;
-            border-color: #0f766e;
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+            border-color: #b45309;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, .16);
         }
 
         .ki-filter-placeholder {
@@ -141,7 +144,7 @@
             border: 1px solid #dbe3ee;
             border-radius: 14px;
             background: #ffffff;
-            box-shadow: 0 18px 36px rgba(15, 23, 42, .16);
+            box-shadow: none;
         }
 
         .ki-filter-menu[data-open-up="true"] {
@@ -162,14 +165,14 @@
             padding: 9px 10px;
             color: #0f172a;
             font-size: 14px;
-            font-weight: 800;
+            font-weight: 600;
             text-align: left;
         }
 
         .ki-filter-option:hover,
         .ki-filter-option-selected {
-            background: #f0fdfa;
-            color: #0f766e;
+            background: #fff7ed;
+            color: #b45309;
         }
 
         .ki-filter-button {
@@ -178,13 +181,13 @@
             justify-content: center;
             min-height: 42px;
             border-radius: 13px;
-            border: 1px solid #111827;
-            background: #111827;
+            border: 1px solid #b45309;
+            background: #b45309;
             padding: 10px 16px;
             color: #ffffff;
             font-size: 14px;
-            font-weight: 900;
-            box-shadow: 0 12px 24px rgba(15, 23, 42, .16);
+            font-weight: 700;
+            box-shadow: none;
         }
 
         .ki-head {
@@ -200,7 +203,7 @@
             margin: 0;
             color: #0f172a;
             font-size: 14px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .ki-copy {
@@ -220,7 +223,7 @@
             padding: 6px 11px;
             color: #475569;
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -232,9 +235,9 @@
             background: #f8fafc;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
-            letter-spacing: .08em;
-            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0;
+            text-transform: none;
         }
 
         .ki-status {
@@ -244,7 +247,7 @@
             border-radius: 999px;
             padding: 4px 9px;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             text-transform: capitalize;
         }
 
@@ -257,7 +260,7 @@
             border-radius: 16px;
             background: #ffffff;
             padding: 14px;
-            box-shadow: 0 8px 18px rgba(15, 23, 42, .05);
+            box-shadow: none;
         }
 
         .ki-mobile-grid {
@@ -270,7 +273,7 @@
             margin-bottom: 4px;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 500;
         }
 
         .ki-register {
@@ -279,17 +282,55 @@
             overflow: visible;
         }
 
+        .ki-mobile-filter {
+            display: none;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 14px;
+        }
+
+        .ki-mobile-filter summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            list-style: none;
+            cursor: pointer;
+            border: 1px solid #dbe3ee;
+            border-radius: 12px;
+            background: #ffffff;
+            padding: 12px 14px;
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .ki-mobile-filter summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .ki-mobile-filter-panel {
+            display: grid;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
         @media (max-width: 980px) {
             .ki-top-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             .ki-filter {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+            }
+        }
+
+        @media (max-width: 1023px) {
+            .ki-filter--desktop {
+                display: none;
             }
 
-            .ki-filter-button {
-                width: 100%;
+            .ki-mobile-filter {
+                display: block;
             }
         }
 
@@ -310,55 +351,6 @@
 
             .ki-stat strong {
                 font-size: 17px;
-            }
-
-            .ki-card {
-                border-radius: 16px;
-            }
-
-            .ki-filter {
-                grid-template-columns: 1fr;
-                padding: 14px;
-            }
-
-            .ki-filter-trigger,
-            .ki-filter-button {
-                min-height: 48px;
-                border-radius: 12px;
-                font-size: 15px;
-            }
-
-            .ki-filter-menu {
-                position: fixed;
-                top: auto;
-                right: 14px;
-                bottom: 16px;
-                left: 14px;
-                max-height: 55vh;
-                border: 1.5px solid #0f766e;
-                border-radius: 16px;
-                box-shadow: 0 18px 36px rgba(15, 23, 42, .24), 0 0 0 4px rgba(15, 118, 110, .08);
-            }
-
-            .ki-filter-list {
-                max-height: 55vh;
-                padding: 8px;
-            }
-
-            .ki-filter-option {
-                border: 1px solid #e2e8f0;
-                margin-bottom: 7px;
-                background: #ffffff;
-            }
-
-            .ki-filter-option:last-child {
-                margin-bottom: 0;
-            }
-
-            .ki-filter-option:hover,
-            .ki-filter-option-selected {
-                border-color: #0f766e;
-                background: #f0fdfa;
             }
 
             .ki-head {
@@ -407,32 +399,52 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner ki-shell space-y-5">
+    <div class="content-inner ki-shell karigar-invoices-index-page space-y-5">
 
         @unless(auth()->user()->can('karigar_invoice.manage'))
             @include('partials.view-only-banner', ['permission' => 'karigar_invoice.manage', 'message' => 'karigar invoices'])
         @endunless
 
-        <section class="ki-top-grid">
-            <div class="ki-stat">
-                <span>Total Results</span>
-                <strong>{{ $invoices->total() }}</strong>
+        <section class="jobwork-kpi-grid">
+            <div class="jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--gold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                </span>
+                <div>
+                    <p>Total invoices</p>
+                    <strong>{{ $invoices->total() }}</strong>
+                </div>
             </div>
-            <div class="ki-stat">
-                <span>This Page Value</span>
-                <strong>₹{{ number_format($pageTotal, 2) }}</strong>
+            <div class="jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--slate">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+                </span>
+                <div>
+                    <p>This page value</p>
+                    <strong>₹{{ number_format($pageTotal, 0) }}</strong>
+                </div>
             </div>
-            <div class="ki-stat">
-                <span>Paid / Partial</span>
-                <strong>{{ $paidCount }} / {{ $partialCount }}</strong>
+            <div class="jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--green">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </span>
+                <div>
+                    <p>Paid / partial</p>
+                    <strong>{{ $paidCount }} / {{ $partialCount }}</strong>
+                </div>
             </div>
-            <div class="ki-stat">
-                <span>Unpaid</span>
-                <strong>{{ $unpaidCount }}</strong>
+            <div class="jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--rose">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                </span>
+                <div>
+                    <p>Unpaid</p>
+                    <strong>{{ $unpaidCount }}</strong>
+                </div>
             </div>
         </section>
 
-        <form method="GET" class="ki-card ki-filter"
+        <form method="GET" class="ki-filter ki-filter--desktop"
               x-data="{
                   paymentOpen: false,
                   paymentMenuStyle: '',
@@ -560,6 +572,34 @@
                 <span class="ki-count">{{ $invoices->total() }} {{ Str::plural('invoice', $invoices->total()) }}</span>
             </div>
 
+            <details class="ki-mobile-filter">
+                <summary>
+                    <span>Filter invoices</span>
+                    <span class="text-xs font-semibold text-slate-500">{{ $filterStatus ? ($statusLabels[$filterStatus] ?? ucfirst($filterStatus)) : 'All statuses' }}</span>
+                </summary>
+                <form method="GET" class="ki-mobile-filter-panel">
+                    <div>
+                        <label class="ki-label" for="mobile-payment-status">Payment Status</label>
+                        <select id="mobile-payment-status" name="payment_status" class="ki-control">
+                            <option value="">All statuses</option>
+                            @foreach($statusLabels as $value => $label)
+                                <option value="{{ $value }}" @selected(($filterStatus ?? '') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="ki-label" for="mobile-karigar-id">Karigar</label>
+                        <select id="mobile-karigar-id" name="karigar_id" class="ki-control">
+                            <option value="">All karigars</option>
+                            @foreach($karigars as $k)
+                                <option value="{{ $k->id }}" @selected((string) ($filterKarigar ?? '') === (string) $k->id)>{{ $k->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="ki-filter-button">Apply Filter</button>
+                </form>
+            </details>
+
             @if($invoices->isEmpty())
                 <div class="py-16 text-center text-slate-400">
                     <p class="text-sm">No karigar invoices match.</p>
@@ -583,13 +623,13 @@
                         <tbody class="divide-y divide-slate-100">
                             @foreach($invoices as $inv)
                                 <tr class="cursor-pointer hover:bg-slate-50" onclick="window.location='{{ route('karigar-invoices.show', $inv) }}'">
-                                    <td class="px-4 py-3"><a href="{{ route('karigar-invoices.show', $inv) }}" class="font-mono font-bold text-teal-700 hover:underline">{{ $inv->karigar_invoice_number }}</a></td>
+                                    <td class="px-4 py-3"><a href="{{ route('karigar-invoices.show', $inv) }}" class="font-semibold text-amber-700 hover:underline">{{ $inv->karigar_invoice_number }}</a></td>
                                     <td class="px-4 py-3 text-slate-700">{{ $inv->karigar?->name }}</td>
-                                    <td class="px-4 py-3 text-xs font-black uppercase text-slate-600">{{ str_replace('_', ' ', $inv->mode) }}</td>
+                                    <td class="px-4 py-3 text-sm font-medium capitalize text-slate-600">{{ str_replace('_', ' ', $inv->mode) }}</td>
                                     <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ $inv->karigar_invoice_date->format('d M Y') }}</td>
                                     <td class="px-4 py-3">
                                         @if($inv->jobOrder)
-                                            <a href="{{ route('job-orders.show', $inv->jobOrder) }}" class="font-mono text-xs font-bold text-teal-700 hover:underline">{{ $inv->jobOrder->job_order_number }}</a>
+                                            <a href="{{ route('job-orders.show', $inv->jobOrder) }}" class="text-xs font-semibold text-amber-700 hover:underline">{{ $inv->jobOrder->job_order_number }}</a>
                                         @else
                                             <span class="text-xs text-slate-400">—</span>
                                         @endif
@@ -621,7 +661,7 @@
                                  onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location='{{ route('karigar-invoices.show', $inv) }}'; }">
                             <div class="mb-3 flex items-start justify-between gap-3">
                                 <div>
-                                    <a href="{{ route('karigar-invoices.show', $inv) }}" class="font-mono text-sm font-black text-teal-700">{{ $inv->karigar_invoice_number }}</a>
+                                    <a href="{{ route('karigar-invoices.show', $inv) }}" class="text-sm font-semibold text-amber-700">{{ $inv->karigar_invoice_number }}</a>
                                     <p class="mt-1 text-xs text-slate-500">{{ $inv->karigar?->name }} · {{ $inv->karigar_invoice_date->format('d M Y') }}</p>
                                 </div>
                                 <span class="ki-status {{ $inv->payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : ($inv->payment_status === 'partial' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800') }}">{{ $inv->payment_status }}</span>
@@ -630,20 +670,20 @@
                             <div class="ki-mobile-grid text-sm">
                                 <div>
                                     <p class="ki-mobile-label">Mode</p>
-                                    <p class="font-bold uppercase text-slate-700">{{ str_replace('_', ' ', $inv->mode) }}</p>
+                                    <p class="font-medium capitalize text-slate-700">{{ str_replace('_', ' ', $inv->mode) }}</p>
                                 </div>
                                 <div>
                                     <p class="ki-mobile-label">Net Weight</p>
-                                    <p class="font-mono font-bold text-slate-800">{{ number_format($inv->total_net_weight, 3) }}g</p>
+                                    <p class="font-semibold text-slate-800">{{ number_format($inv->total_net_weight, 3) }}g</p>
                                 </div>
                                 <div>
                                     <p class="ki-mobile-label">Total</p>
-                                    <p class="font-mono font-black text-amber-700">₹{{ number_format($inv->total_after_tax, 2) }}</p>
+                                    <p class="font-semibold text-amber-700">₹{{ number_format($inv->total_after_tax, 2) }}</p>
                                 </div>
                                 <div>
                                     <p class="ki-mobile-label">Job Order</p>
                                     @if($inv->jobOrder)
-                                        <a href="{{ route('job-orders.show', $inv->jobOrder) }}" onclick="event.stopPropagation()" class="font-mono text-xs font-bold text-teal-700">{{ $inv->jobOrder->job_order_number }}</a>
+                                        <a href="{{ route('job-orders.show', $inv->jobOrder) }}" onclick="event.stopPropagation()" class="text-xs font-semibold text-amber-700">{{ $inv->jobOrder->job_order_number }}</a>
                                     @else
                                         <span class="text-slate-400">—</span>
                                     @endif

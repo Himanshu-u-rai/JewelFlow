@@ -110,14 +110,14 @@
             padding: 16px 20px; margin-bottom: 20px;
             box-shadow: 0 1px 2px rgba(28,25,23,.04), 0 14px 30px -20px rgba(28,25,23,.18);
         }
-        .xp-backup-title { margin: 0; font-size: 15.5px; font-weight: 700; color: var(--xp-ink); letter-spacing: -.01em; }
+        .xp-backup-title { margin: 0; font-size: 15.5px; font-weight: 700; color: var(--xp-ink); letter-spacing: 0; }
         .xp-backup-desc { margin: 4px 0 0; font-size: 13px; color: var(--xp-muted); line-height: 1.5; max-width: 52ch; }
         .xp-backup-form { margin: 0; }
         .xp-backup-btn {
             display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
             min-height: 42px; padding: 0 18px;
             border: 1px solid var(--xp-gold); border-radius: 11px;
-            background: var(--xp-gold); color: #fff; font-size: 13.5px; font-weight: 650; cursor: pointer;
+            background: var(--xp-gold); color: #fff; font-size: 13.5px; font-weight: 600; cursor: pointer;
             transition: background-color .15s var(--xp-ease), transform .15s var(--xp-ease);
         }
         .xp-backup-btn:hover { background: #92400e; }
@@ -149,7 +149,7 @@
         }
         .xp-card:active { transform: translateY(0); }
         .xp-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .xp-card-title { margin: 0; font-size: 14.5px; font-weight: 650; color: var(--xp-ink); letter-spacing: -.01em; }
+        .xp-card-title { margin: 0; font-size: 14.5px; font-weight: 600; color: var(--xp-ink); letter-spacing: 0; }
         .xp-card-arrow { color: #c9a06a; display: inline-flex; transition: transform .16s var(--xp-ease), color .16s var(--xp-ease); }
         .xp-card:hover .xp-card-arrow { color: var(--xp-gold); transform: translateX(3px); }
         .xp-card-desc { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--xp-muted); flex: 1; }
@@ -191,7 +191,7 @@
             }
             .export-page-header .page-title {
                 font-size: 16px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.2;
                 white-space: nowrap;
                 overflow: hidden;

@@ -6,12 +6,12 @@
             font-weight: 500;
         }
 
-        .pending-stock-page :where(.font-black, .font-extrabold, .font-bold) {
-            font-weight: 650 !important;
+        .pending-stock-page :where(.font-bold) {
+            font-weight: 600 !important;
         }
 
         .pending-stock-header :where(h1, .page-title) {
-            font-weight: 650;
+            font-weight: 600;
             letter-spacing: 0;
         }
 
@@ -107,7 +107,7 @@
             display: block;
             color: #475569;
             font-size: 11px;
-            font-weight: 650;
+            font-weight: 600;
             letter-spacing: 0.04em;
             line-height: 1.2;
             text-transform: uppercase;
@@ -120,7 +120,7 @@
             margin-top: 6px;
             color: #111827;
             font-size: 21px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1;
             letter-spacing: 0;
         }
@@ -172,7 +172,7 @@
         .pending-stock-panel-title {
             color: #111827;
             font-size: 14px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.25;
             margin: 0;
         }
@@ -221,7 +221,7 @@
             border: 1px solid #cbd5e1;
             color: #475569;
             font-size: 11px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1;
         }
 
@@ -245,7 +245,7 @@
         .pending-stock-help-title {
             color: #111827;
             font-size: 13px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.25;
             margin-bottom: 5px;
         }
@@ -272,7 +272,7 @@
 
         .pending-stock-table th {
             padding: 11px 16px;
-            font-weight: 650;
+            font-weight: 600;
             white-space: nowrap;
         }
 
@@ -285,7 +285,7 @@
 
         .pending-stock-strong {
             color: #111827;
-            font-weight: 650;
+            font-weight: 600;
         }
 
         .pending-stock-muted {
@@ -398,7 +398,7 @@
         .pending-stock-empty-title {
             color: #111827;
             font-size: 16px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.25;
             margin: 0;
         }

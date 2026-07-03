@@ -57,6 +57,14 @@
     }
 
     .ki-form-shell {
+        --ki-gold: #b45309;
+        --ki-gold-hover: #92400e;
+        --ki-line-soft: #e2e8f0;
+        --ki-line: #cbd5e1;
+        --ki-ink: #1f2430;
+        --ki-text: #4a4334;
+        --ki-muted: #64748b;
+        --ki-focus: rgba(245, 158, 11, .2);
         max-width: 1280px;
     }
 
@@ -68,15 +76,15 @@
     }
 
     .ki-card {
-        border: 1px solid #dbe3ee;
-        border-radius: 20px;
+        border: 1px solid var(--ki-line-soft);
+        border-radius: 14px;
         background: #ffffff;
-        box-shadow: 0 14px 28px rgba(15, 23, 42, .06);
+        box-shadow: none;
     }
 
     .ki-section {
         padding: 18px;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid var(--ki-line-soft);
     }
 
     .ki-section:last-child {
@@ -93,15 +101,17 @@
 
     .ki-title {
         margin: 0;
-        color: #0f172a;
-        font-size: 15px;
-        font-weight: 900;
+        color: var(--ki-ink);
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: 0;
     }
 
     .ki-copy {
         margin-top: 3px;
-        color: #64748b;
-        font-size: 12px;
+        color: var(--ki-muted);
+        font-size: 13px;
+        font-weight: 400;
         line-height: 1.45;
     }
 
@@ -118,24 +128,26 @@
     .ki-label {
         display: block;
         margin-bottom: 6px;
-        color: #334155;
-        font-size: 12px;
-        font-weight: 800;
+        color: var(--ki-muted);
+        font-size: 11.5px;
+        font-weight: 500;
     }
 
     .ki-control {
         width: 100%;
-        min-height: 44px;
-        border-radius: 13px;
-        border-color: #cbd5e1;
-        background: #f8fafc;
-        color: #0f172a;
+        min-height: 40px;
+        border: 1px solid var(--ki-line);
+        border-radius: 10px;
+        background: #ffffff;
+        color: var(--ki-ink);
         font-size: 14px;
+        font-weight: 400;
+        box-shadow: none;
     }
 
     .ki-control:focus {
-        border-color: #0f766e;
-        box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+        border-color: var(--ki-gold);
+        box-shadow: 0 0 0 3px var(--ki-focus);
     }
 
     .ki-combobox {
@@ -148,20 +160,22 @@
         justify-content: space-between;
         gap: 12px;
         width: 100%;
-        min-height: 44px;
-        border: 1px solid #cbd5e1;
-        border-radius: 13px;
-        background: #f8fafc;
+        min-height: 40px;
+        border: 1px solid var(--ki-line);
+        border-radius: 10px;
+        background: #ffffff;
         padding: 10px 12px;
-        color: #0f172a;
+        color: var(--ki-ink);
         font-size: 14px;
+        font-weight: 400;
         text-align: left;
+        box-shadow: none;
     }
 
     .ki-combobox-trigger:focus {
         outline: none;
-        border-color: #0f766e;
-        box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+        border-color: var(--ki-gold);
+        box-shadow: 0 0 0 3px var(--ki-focus);
     }
 
     .ki-combobox-placeholder {
@@ -175,10 +189,10 @@
         left: 0;
         right: 0;
         overflow: hidden;
-        border: 1px solid #dbe3ee;
-        border-radius: 14px;
+        border: 1px solid var(--ki-line-soft);
+        border-radius: 12px;
         background: #ffffff;
-        box-shadow: 0 18px 36px rgba(15, 23, 42, .16);
+        box-shadow: none;
     }
 
     .ki-combobox-list {
@@ -192,22 +206,22 @@
         width: 100%;
         border-radius: 10px;
         padding: 10px 11px;
-        color: #0f172a;
+        color: var(--ki-ink);
         font-size: 14px;
-        font-weight: 800;
+        font-weight: 500;
         text-align: left;
     }
 
     .ki-combobox-option:hover,
     .ki-combobox-option-selected {
-        background: #f0fdfa;
-        color: #0f766e;
+        background: #fff7ed;
+        color: var(--ki-gold);
     }
 
     .ki-line-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        background: #f8fafc;
+        border: 1px solid var(--ki-line-soft);
+        border-radius: 12px;
+        background: #ffffff;
         padding: 14px;
     }
 
@@ -223,14 +237,14 @@
         justify-content: center;
         gap: 6px;
         min-height: 34px;
-        border: 1px solid #dbe3ee;
+        border: 1px solid #f3dcb6;
         border-radius: 999px;
-        background: #f8fafc;
+        background: #fff7ed;
         padding: 7px 12px;
-        color: #0f172a;
+        color: var(--ki-gold-hover);
         font-size: 12px;
-        font-weight: 900;
-        box-shadow: 0 8px 16px rgba(15, 23, 42, .05);
+        font-weight: 700;
+        box-shadow: none;
     }
 
     .ki-remove-line {
@@ -244,7 +258,7 @@
         padding: 8px 12px;
         color: #be123c;
         font-size: 12px;
-        font-weight: 900;
+        font-weight: 700;
     }
 
     .ki-summary {
@@ -280,23 +294,23 @@
     }
 
     .ki-summary-label {
-        color: #64748b;
+        color: var(--ki-muted);
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 500;
     }
 
     .ki-summary-value {
-        color: #0f172a;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        color: var(--ki-ink);
         font-size: 15px;
-        font-weight: 900;
+        font-weight: 700;
         text-align: right;
+        font-variant-numeric: tabular-nums;
     }
 
     .ki-advance-box {
-        border: 1px solid #bfdbfe;
-        border-radius: 16px;
-        background: #eff6ff;
+        border: 1px solid var(--ki-line-soft);
+        border-radius: 12px;
+        background: #f8fafc;
         padding: 14px;
     }
 
@@ -312,14 +326,25 @@
         align-items: center;
         justify-content: center;
         min-height: 42px;
-        border-radius: 13px;
-        border: 1px solid #0f766e;
-        background: #0f766e;
+        border-radius: 10px;
+        border: 1px solid var(--ki-gold);
+        background: var(--ki-gold);
         padding: 10px 16px;
         color: #ffffff;
         font-size: 14px;
-        font-weight: 900;
-        box-shadow: 0 12px 24px rgba(15, 118, 110, .18);
+        font-weight: 700;
+        box-shadow: none;
+    }
+
+    .ki-submit:hover {
+        border-color: var(--ki-gold-hover);
+        background: var(--ki-gold-hover);
+    }
+
+    .ki-cancel:hover {
+        border-color: #f3dcb6;
+        background: #fff7ed;
+        color: var(--ki-gold-hover);
     }
 
     .ki-cancel {
@@ -327,13 +352,13 @@
         align-items: center;
         justify-content: center;
         min-height: 42px;
-        border-radius: 13px;
-        border: 1px solid #dbe3ee;
+        border-radius: 10px;
+        border: 1px solid var(--ki-line);
         background: #ffffff;
         padding: 10px 15px;
         color: #475569;
         font-size: 14px;
-        font-weight: 800;
+        font-weight: 700;
     }
 
     @media (max-width: 1120px) {
@@ -392,16 +417,16 @@
             font-size: 11px;
         }
 
-        .ki-combobox-menu {
-            position: fixed;
-            top: auto;
-            right: 14px;
-            bottom: 16px;
-            left: 14px;
-            max-height: 55vh;
-            border: 1.5px solid #0f766e;
-            border-radius: 16px;
-            box-shadow: 0 18px 36px rgba(15, 23, 42, .24), 0 0 0 4px rgba(15, 118, 110, .08);
+            .ki-combobox-menu {
+                position: fixed;
+                top: auto;
+                right: 14px;
+                bottom: 16px;
+                left: 14px;
+                max-height: 55vh;
+                border: 1px solid var(--ki-line-soft);
+                border-radius: 16px;
+                box-shadow: none;
         }
 
         .ki-combobox-list {
@@ -421,9 +446,9 @@
 
         .ki-combobox-option:hover,
         .ki-combobox-option-selected {
-            border-color: #0f766e;
-            background: #f0fdfa;
-        }
+                border-color: #f3dcb6;
+                background: #fff7ed;
+            }
 
         .ki-summary-body {
             display: grid;
@@ -542,7 +567,7 @@
                         <input type="text" name="state_code" maxlength="5" value="{{ $invoice->state_code ?? '24' }}" class="ki-control font-mono">
                     </label>
 
-                    <label class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
                         <input type="checkbox" name="is_interstate" value="1" {{ ($invoice->is_interstate ?? false) ? 'checked' : '' }} x-model="isInterstate" class="rounded border-gray-300">
                         <span class="text-xs font-semibold text-gray-700">Inter-state invoice. Use IGST instead of CGST + SGST.</span>
                     </label>
@@ -590,7 +615,7 @@
                         <span class="ki-label">Upload Original Invoice (PDF/JPG/PNG)</span>
                         <input type="file" name="invoice_file" accept=".pdf,.jpg,.jpeg,.png" class="ki-control bg-white p-2">
                         @if($isEdit && $invoice->invoice_file_path)
-                            <p class="mt-1 text-[11px] text-gray-500">Current: <a href="{{ asset('storage/' . $invoice->invoice_file_path) }}" target="_blank" class="text-teal-700 underline">view</a>. Uploading replaces it.</p>
+                            <p class="mt-1 text-[11px] text-gray-500">Current: <a href="{{ asset('storage/' . $invoice->invoice_file_path) }}" target="_blank" class="text-amber-700 underline">view</a>. Uploading replaces it.</p>
                         @endif
                     </label>
                 </div>
@@ -664,7 +689,7 @@
                                 </label>
                                 <div class="ki-field-full flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
                                     <span class="text-xs font-bold text-amber-700">Line Total</span>
-                                    <span class="font-mono font-black text-amber-800" x-text="formatRupees(lineTotal(line))"></span>
+                                    <span class="font-semibold text-amber-800" x-text="formatRupees(lineTotal(line))"></span>
                                 </div>
                                 <button type="button" x-show="lines.length > 1" @click="removeLine(idx)" class="ki-remove-line">Remove line</button>
                             </div>
@@ -676,24 +701,24 @@
             @if(! $isEdit)
             <section x-show="karigarAdvances.length > 0" x-cloak class="ki-section">
                 <div class="ki-advance-box">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-blue-700 mb-2">
+                    <div class="mb-2 text-xs font-semibold text-slate-600">
                         Advances Already Given
-                        <span class="text-blue-500 font-normal normal-case ml-1">select payments to apply to this invoice</span>
+                        <span class="ml-1 font-normal text-slate-500">select payments to apply to this invoice</span>
                     </div>
                     <div class="space-y-2">
                         <template x-for="adv in karigarAdvances" :key="adv.id">
-                            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm hover:border-blue-400">
-                                <input type="checkbox" :name="'advance_payment_ids[]'" :value="adv.id" :checked="checkedAdvanceIds.includes(adv.id)" @change="toggleAdvance(adv.id)" class="rounded border-gray-300 text-blue-600">
-                                <span class="font-mono font-semibold text-blue-800" x-text="formatRupees(adv.amount)"></span>
+                            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:border-amber-300">
+                                <input type="checkbox" :name="'advance_payment_ids[]'" :value="adv.id" :checked="checkedAdvanceIds.includes(adv.id)" @change="toggleAdvance(adv.id)" class="rounded border-gray-300 text-amber-600">
+                                <span class="font-semibold text-slate-800" x-text="formatRupees(adv.amount)"></span>
                                 <span class="text-xs text-gray-500" x-text="adv.paid_on"></span>
-                                <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-semibold uppercase text-gray-600" x-text="adv.mode"></span>
+                                <span class="rounded bg-amber-50 px-1.5 py-0.5 text-xs font-semibold capitalize text-amber-700" x-text="adv.mode"></span>
                                 <span class="text-xs text-gray-400" x-text="adv.reference || ''"></span>
                             </label>
                         </template>
                     </div>
-                    <div class="mt-2 text-xs text-blue-600">
-                        Total selected: <span class="font-mono font-semibold" x-text="formatRupees(selectedAdvanceTotal)"></span>
-                        &nbsp;·&nbsp; Remaining due: <span class="font-mono font-semibold" x-text="formatRupees(Math.max(0, grandTotal - selectedAdvanceTotal))"></span>
+                    <div class="mt-2 text-xs text-slate-600">
+                        Total selected: <span class="font-semibold" x-text="formatRupees(selectedAdvanceTotal)"></span>
+                        &nbsp;·&nbsp; Remaining due: <span class="font-semibold" x-text="formatRupees(Math.max(0, grandTotal - selectedAdvanceTotal))"></span>
                     </div>
                 </div>
             </section>

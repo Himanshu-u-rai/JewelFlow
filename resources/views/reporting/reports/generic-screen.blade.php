@@ -1113,7 +1113,7 @@
                 display: block;
                 color: var(--cr-ink);
                 font-size: 21px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.15;
                 font-variant-numeric: tabular-nums;
                 overflow-wrap: normal;
@@ -1145,9 +1145,9 @@
                 margin: 0;
                 color: var(--cr-ink);
                 font-size: 17px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.2;
-                letter-spacing: -0.12px;
+                letter-spacing: 0;
             }
             .cash-report-toolbar-head p,
             .cash-report-section-head p {
@@ -1415,7 +1415,7 @@
             }
             .cash-report-table tfoot td {
                 background: var(--cr-surface-muted);
-                font-weight: 650;
+                font-weight: 600;
             }
             .cash-report-table .text-right {
                 text-align: right;
@@ -1513,7 +1513,7 @@
             .cash-report-money {
                 display: inline-block;
                 font-size: 14.5px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.2;
                 white-space: nowrap;
             }
@@ -1740,7 +1740,7 @@
                     margin: 0;
                     color: var(--cr-ink);
                     font-size: 15px;
-                    font-weight: 650;
+                    font-weight: 600;
                 }
                 .cash-report-filter-sheet-head span {
                     display: block;
@@ -1921,7 +1921,7 @@
                 margin: 0;
                 color: var(--clr-ink);
                 font-size: 17px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.2;
                 letter-spacing: 0;
             }
@@ -2060,7 +2060,7 @@
                 display: block;
                 color: var(--clr-ink);
                 font-size: 21px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.15;
                 font-variant-numeric: tabular-nums;
                 overflow-wrap: normal;
@@ -2126,7 +2126,7 @@
             .closing-report-row-value {
                 color: var(--clr-ink);
                 font-size: 15px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.2;
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
@@ -2485,7 +2485,7 @@
                 display: block;
                 color: var(--gr-ink);
                 font-size: 21px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.15;
                 font-variant-numeric: tabular-nums;
                 overflow-wrap: normal;
@@ -2520,7 +2520,7 @@
                 margin: 0;
                 color: var(--gr-ink);
                 font-size: 17px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.2;
                 letter-spacing: 0;
             }
@@ -2669,7 +2669,7 @@
             .gst-report-table tfoot td {
                 border-top: 1px solid var(--gr-border-soft);
                 background: var(--gr-muted-surface);
-                font-weight: 650;
+                font-weight: 600;
             }
             .gst-report-table .text-right { text-align: right; }
             .gst-report-table .text-left { text-align: left; }
@@ -2684,7 +2684,7 @@
                 background: #fdf6ec;
                 color: #8a4b0f;
                 font-size: 12.5px;
-                font-weight: 650;
+                font-weight: 600;
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
             }
@@ -2704,7 +2704,7 @@
             .gst-report-total-label {
                 color: #334155;
                 font-size: 12.5px;
-                font-weight: 650;
+                font-weight: 600;
             }
             .gst-report-empty {
                 padding: 42px 20px;
@@ -2743,7 +2743,7 @@
             .gst-report-mobile-card-head strong {
                 color: var(--gr-ink);
                 font-size: 14px;
-                font-weight: 650;
+                font-weight: 600;
                 font-variant-numeric: tabular-nums;
                 white-space: nowrap;
             }
@@ -3066,7 +3066,7 @@
                 margin: 0;
                 color: var(--rr-ink);
                 font-size: 17px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.2;
                 letter-spacing: 0;
             }
@@ -3341,7 +3341,7 @@
             .report-register-table tfoot td {
                 border-top: 1px solid var(--rr-border-soft);
                 background: var(--rr-muted-surface);
-                font-weight: 650;
+                font-weight: 600;
             }
             .report-register-table .text-right { text-align: right; }
             .report-register-table .text-left { text-align: left; }
@@ -3385,7 +3385,7 @@
             .report-register-mobile-card-head strong {
                 color: var(--rr-ink);
                 font-size: 14px;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.25;
                 overflow-wrap: anywhere;
             }
@@ -3398,7 +3398,7 @@
                 flex: 0 1 auto;
                 color: #8a4b0f !important;
                 font-size: 13px !important;
-                font-weight: 650;
+                font-weight: 600;
                 line-height: 1.25;
                 text-align: right;
                 font-variant-numeric: tabular-nums;
@@ -3566,7 +3566,7 @@
                     margin: 0;
                     color: var(--rr-ink);
                     font-size: 15px;
-                    font-weight: 650;
+                    font-weight: 600;
                 }
                 .report-register-filter-sheet-head span {
                     display: block;

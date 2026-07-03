@@ -1,22 +1,24 @@
 @php
     $hasFilters = request()->hasAny(['search', 'status']);
     $vendorTotal = method_exists($vendors, 'total') ? $vendors->total() : $vendors->count();
+    $vendorStartIndex = method_exists($vendors, 'firstItem') && $vendors->firstItem() ? $vendors->firstItem() - 1 : 0;
 @endphp
 
 <x-app-layout>
     <style>
         .vendors-index-page {
-            --vendors-border: #d8e1ef;
-            --vendors-border-strong: #c7d4e6;
+            --vendors-border: #e2e8f0;
+            --vendors-border-strong: #cbd5e1;
             --vendors-surface: #ffffff;
-            --vendors-surface-soft: #f6f8fc;
-            --vendors-text: #16213d;
-            --vendors-text-soft: #60708f;
-            --vendors-accent: #f59e0b;
-            --vendors-accent-soft: rgba(245, 158, 11, 0.12);
+            --vendors-surface-soft: #f8fafc;
+            --vendors-text: #0f172a;
+            --vendors-text-soft: #64748b;
+            --vendors-accent: #b45309;
+            --vendors-accent-hover: #92400e;
+            --vendors-accent-soft: #fff7ed;
             --vendors-success: #12926a;
             --vendors-success-soft: rgba(18, 146, 106, 0.12);
-            --vendors-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
+            --vendors-shadow: none;
         }
 
         .vendors-index-page .vendors-stats-grid {
@@ -31,7 +33,7 @@
         .vendors-index-page .vendors-list-card,
         .vendors-index-page .vendor-mobile-card {
             border: 1px solid var(--vendors-border);
-            border-radius: 24px;
+            border-radius: 16px;
             background: var(--vendors-surface);
             box-shadow: var(--vendors-shadow);
         }
@@ -49,15 +51,16 @@
             justify-content: center;
             width: 48px;
             height: 48px;
-            border-radius: 16px;
-            border: 1px solid var(--vendors-border);
-            background: linear-gradient(180deg, #fffaf1 0%, #fff 100%);
-            color: #d97706;
+            border-radius: 12px;
+            border: 1px solid #f3dcb6;
+            background: #fff7ed;
+            color: var(--vendors-accent);
             flex-shrink: 0;
         }
 
         .vendors-index-page .vendors-stat-icon--success {
-            background: linear-gradient(180deg, #f0fdf7 0%, #fff 100%);
+            border-color: #bbf7d0;
+            background: #f0fdf4;
             color: var(--vendors-success);
         }
 
@@ -140,7 +143,7 @@
         .vendors-index-page .vendors-meta-pill--accent {
             border-color: rgba(245, 158, 11, 0.22);
             background: var(--vendors-accent-soft);
-            color: #b45309;
+            color: var(--vendors-accent);
         }
 
         .vendors-index-page .vendors-filter-form {
@@ -183,8 +186,8 @@
         .vendors-index-page .vendors-status-select {
             width: 100%;
             min-height: 48px;
-            border-radius: 18px;
-            border: 1px solid #ccd7e7;
+            border-radius: 12px;
+            border: 1px solid var(--vendors-border-strong);
             background: #fbfcfe;
             color: var(--vendors-text);
             font-size: 14px;
@@ -210,14 +213,14 @@
         .vendors-index-page .vendors-status-select:focus {
             border-color: rgba(245, 158, 11, 0.45);
             background: #fff;
-            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
             outline: none;
         }
 
         .vendors-index-page .vendors-status-field .ui-filter-select-trigger {
             min-height: 48px;
-            border-radius: 18px;
-            border-color: #ccd7e7;
+            border-radius: 12px;
+            border-color: var(--vendors-border-strong);
             background: #fbfcfe;
             padding: 0 14px;
             font-size: 14px;
@@ -231,7 +234,7 @@
         .vendors-index-page .vendors-status-field .ui-filter-select-trigger.is-open,
         .vendors-index-page .vendors-status-field .ui-filter-select-trigger:focus-visible {
             border-color: rgba(245, 158, 11, 0.45);
-            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
             background: #fff;
         }
 
@@ -251,8 +254,8 @@
         }
 
         .vendors-index-page .vendors-status-field .ui-filter-select-option.is-selected {
-            background: #fff3d6;
-            color: #9a5b06;
+            background: #fff7ed;
+            color: var(--vendors-accent);
         }
 
         .vendors-index-page .vendors-actions {
@@ -269,28 +272,29 @@
             gap: 8px;
             min-height: 48px;
             padding: 0 16px;
-            border-radius: 18px;
+            border-radius: 12px;
             border: 1px solid var(--vendors-border);
             font-size: 14px;
             font-weight: 700;
             text-decoration: none;
-            transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
             white-space: nowrap;
         }
 
         .vendors-index-page .vendors-btn:hover {
-            transform: translateY(-1px);
+            transform: none;
         }
 
         .vendors-index-page .vendors-btn--primary {
-            border-color: #0f172a;
-            background: #0f172a;
+            border-color: var(--vendors-accent);
+            background: var(--vendors-accent);
             color: #fff;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            box-shadow: none;
         }
 
         .vendors-index-page .vendors-btn--primary:hover {
-            background: #1e293b;
+            border-color: var(--vendors-accent-hover);
+            background: var(--vendors-accent-hover);
         }
 
         .vendors-index-page .vendors-btn--ghost {
@@ -299,7 +303,9 @@
         }
 
         .vendors-index-page .vendors-btn--ghost:hover {
-            background: var(--vendors-surface-soft);
+            border-color: #f3dcb6;
+            background: #fff7ed;
+            color: var(--vendors-accent-hover);
         }
 
         .vendors-index-page .vendors-list-card {
@@ -308,11 +314,20 @@
 
         .vendors-index-page .vendors-list-head {
             display: flex;
-            align-items: center;
+            align-items: flex-end;
             justify-content: space-between;
-            gap: 12px;
+            gap: 16px;
             padding: 22px 24px 18px;
             border-bottom: 1px solid var(--vendors-border);
+        }
+
+        .vendors-index-page .vendors-list-titleblock {
+            min-width: 0;
+        }
+
+        .vendors-index-page .vendors-list-head .vendors-filter-form {
+            width: min(100%, 760px);
+            flex: 1 1 620px;
         }
 
         .vendors-index-page .vendors-list-title {
@@ -326,6 +341,15 @@
             margin: 6px 0 0;
             color: var(--vendors-text-soft);
             font-size: 14px;
+        }
+
+        .vendors-index-page .vendors-inline-filter-note {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+            color: #92400e;
+            font-weight: 600;
+            white-space: nowrap;
         }
 
         .vendors-index-page .vendors-count-badge {
@@ -351,7 +375,7 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            min-width: 760px;
+            min-width: 820px;
         }
 
         .vendors-index-page .vendors-table thead th {
@@ -380,7 +404,14 @@
         }
 
         .vendors-index-page .vendors-table tbody tr:hover {
-            background: #fbfcff;
+            background: #fffaf3;
+        }
+
+        .vendors-index-page .vendors-index-cell {
+            width: 62px;
+            color: var(--vendors-text-soft);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
         }
 
         .vendors-index-page .vendors-name {
@@ -480,14 +511,29 @@
         .vendors-index-page .vendor-mobile-name {
             display: inline-block;
             color: var(--vendors-text);
-            font-size: 16px;
+            font-size: 17px;
             font-weight: 700;
             line-height: 1.3;
             text-decoration: none;
         }
 
+        .vendors-index-page .vendor-mobile-heading {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .vendors-index-page .vendor-mobile-index {
+            color: var(--vendors-accent);
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
         .vendors-index-page .vendor-mobile-name:hover {
-            color: #0f172a;
+            color: var(--vendors-accent-hover);
         }
 
         .vendors-index-page .vendor-mobile-location {
@@ -505,7 +551,7 @@
 
         .vendors-index-page .vendor-mobile-grid > div {
             border: 1px solid #e8eef7;
-            border-radius: 16px;
+            border-radius: 12px;
             background: #fbfcff;
             padding: 12px;
         }
@@ -563,6 +609,16 @@
         }
 
         @media (max-width: 1024px) {
+            .vendors-index-page .vendors-list-head {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .vendors-index-page .vendors-list-head .vendors-filter-form {
+                width: 100%;
+                flex-basis: auto;
+            }
+
             .vendors-index-page .vendors-filter-form {
                 grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) auto;
             }
@@ -594,28 +650,30 @@
             }
 
             .vendors-index-page .vendors-stats-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 12px;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
             }
 
             .vendors-index-page .vendors-stats-grid .vendors-stat-card:last-child {
-                grid-column: 1 / -1;
+                grid-column: auto;
             }
 
             .vendors-index-page .vendors-stat-card {
-                padding: 14px;
-                gap: 12px;
-                border-radius: 20px;
-            }
-
-            .vendors-index-page .vendors-stat-icon {
-                width: 42px;
-                height: 42px;
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 10px;
+                gap: 8px;
                 border-radius: 14px;
             }
 
+            .vendors-index-page .vendors-stat-icon {
+                width: 30px;
+                height: 30px;
+                border-radius: 10px;
+            }
+
             .vendors-index-page .vendors-stat-value {
-                font-size: 24px;
+                font-size: 20px;
             }
 
             .vendors-index-page .vendors-stat-note {
@@ -654,8 +712,8 @@
             }
 
             .vendors-index-page .vendors-filter-form {
-                grid-template-columns: minmax(0, 1fr) auto;
-                gap: 10px;
+                grid-template-columns: minmax(0, 1fr) max-content;
+                gap: 8px;
             }
 
             .vendors-index-page .vendors-search-field {
@@ -664,6 +722,7 @@
 
             .vendors-index-page .vendors-status-field {
                 grid-column: 1 / 2;
+                min-width: 0;
             }
 
             .vendors-index-page .vendors-actions {
@@ -702,7 +761,7 @@
             }
 
             .vendors-index-page .vendors-status-field .ui-filter-select-trigger {
-                min-width: 116px;
+                min-width: 0;
                 padding: 0 11px;
                 gap: 8px;
             }
@@ -713,12 +772,12 @@
                 justify-self: end;
                 gap: 6px;
                 justify-content: flex-end;
-                flex-wrap: wrap;
+                flex-wrap: nowrap;
             }
 
             .vendors-index-page .vendors-btn {
                 gap: 6px;
-                padding: 0 12px;
+                padding: 0 10px;
             }
 
             .vendors-index-page .vendors-btn svg {
@@ -740,6 +799,11 @@
 
             .vendors-index-page .vendors-list-copy {
                 font-size: 13px;
+            }
+
+            .vendors-index-page .vendor-mobile-name {
+                font-size: 18px;
+                line-height: 1.25;
             }
 
             .vendors-index-page .vendors-count-badge {
@@ -786,7 +850,7 @@
             }
 
             .vendors-index-page .vendors-status-field .ui-filter-select-trigger {
-                min-width: 108px;
+                min-width: 0;
                 padding: 0 10px;
             }
 
@@ -800,6 +864,37 @@
 
             .vendors-index-page .vendor-mobile-grid {
                 grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .vendors-index-page .vendors-stats-grid {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 6px !important;
+            }
+
+            .vendors-index-page .vendors-stats-grid .vendors-stat-card,
+            .vendors-index-page .vendors-stats-grid .vendors-stat-card:last-child {
+                grid-column: auto !important;
+                min-width: 0 !important;
+                padding: 8px !important;
+            }
+
+            .vendors-index-page .vendors-stat-icon {
+                width: 28px !important;
+                height: 28px !important;
+                flex: 0 0 28px !important;
+            }
+
+            .vendors-index-page .vendors-stat-label {
+                font-size: 10.5px !important;
+                line-height: 1.15 !important;
+            }
+
+            .vendors-index-page .vendors-stat-value {
+                font-size: clamp(17px, 5vw, 21px) !important;
+                line-height: 1.05 !important;
             }
         }
     </style>
@@ -865,73 +960,62 @@
             </div>
         </div>
 
-        <section class="vendors-toolbar-card ui-filter-enhanced-wrap">
-            <div class="vendors-toolbar-head">
-                <div>
-                    <p class="vendors-toolbar-kicker">Directory</p>
-                    <h2 class="vendors-toolbar-title">Vendor Directory</h2>
-                </div>
-                <div class="vendors-toolbar-meta">
-                    <span class="vendors-meta-pill">{{ number_format($vendorTotal) }} records</span>
-                    @if($hasFilters)
-                        <span class="vendors-meta-pill vendors-meta-pill--accent">Filtered view</span>
-                    @endif
-                </div>
-            </div>
-
-            <form method="GET" action="{{ route('vendors.index') }}" class="vendors-filter-form" data-enhance-selects="true" data-enhance-selects-variant="standard">
-                <div class="vendors-search-field">
-                    <label class="vendors-field-label" for="vendors-search">Search</label>
-                    <div class="vendors-search-wrap">
-                        <span class="vendors-search-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <circle cx="11" cy="11" r="8" />
-                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            </svg>
-                        </span>
-                        <input
-                            id="vendors-search"
-                            type="text"
-                            name="search"
-                            value="{{ request('search') }}"
-                            placeholder="Search vendor or GST"
-                            class="vendors-search-input"
-                            data-suggest="vendors"
-                            autocomplete="off"
-                        >
-                    </div>
-                </div>
-
-                <div class="vendors-status-field">
-                    <label class="vendors-field-label" for="vendors-status">Status</label>
-                    <select id="vendors-status" name="status" class="vendors-status-select">
-                        <option value="">All status</option>
-                        <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
-                        <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
-                    </select>
-                </div>
-
-                <div class="vendors-actions">
-                    <button type="submit" class="vendors-btn vendors-btn--primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-                        </svg>
-                        Filter
-                    </button>
-                    @if($hasFilters)
-                        <a href="{{ route('vendors.index') }}" class="vendors-btn vendors-btn--ghost">Clear</a>
-                    @endif
-                </div>
-            </form>
-        </section>
-
-        <section class="vendors-list-card">
+        <section class="vendors-list-card ui-filter-enhanced-wrap">
             <div class="vendors-list-head">
-                <div>
-                    <h3 class="vendors-list-title">All Vendors</h3>
-                    <p class="vendors-list-copy">Contacts, registration details, and quick actions in one place.</p>
+                <div class="vendors-list-titleblock">
+                    <h3 class="vendors-list-title">Vendor Directory</h3>
+                    <p class="vendors-list-copy">
+                        {{ number_format($vendorTotal) }} total vendors
+                        @if($hasFilters)
+                            <span class="vendors-inline-filter-note">Filtered view</span>
+                        @endif
+                    </p>
                 </div>
-                <span class="vendors-count-badge">{{ number_format($vendorTotal) }} total</span>
+
+                <form method="GET" action="{{ route('vendors.index') }}" class="vendors-filter-form" data-enhance-selects="true" data-enhance-selects-variant="standard">
+                    <div class="vendors-search-field">
+                        <label class="vendors-field-label" for="vendors-search">Search</label>
+                        <div class="vendors-search-wrap">
+                            <span class="vendors-search-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                            </span>
+                            <input
+                                id="vendors-search"
+                                type="text"
+                                name="search"
+                                value="{{ request('search') }}"
+                                placeholder="Search vendor or GST"
+                                class="vendors-search-input"
+                                data-suggest="vendors"
+                                autocomplete="off"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="vendors-status-field">
+                        <label class="vendors-field-label" for="vendors-status">Status</label>
+                        <select id="vendors-status" name="status" class="vendors-status-select">
+                            <option value="">All status</option>
+                            <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
+                            <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                        </select>
+                    </div>
+
+                    <div class="vendors-actions">
+                        <button type="submit" class="vendors-btn vendors-btn--primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
+                            </svg>
+                            Filter
+                        </button>
+                        @if($hasFilters)
+                            <a href="{{ route('vendors.index') }}" class="vendors-btn vendors-btn--ghost">Clear</a>
+                        @endif
+                    </div>
+                </form>
             </div>
 
             @if($vendors->count())
@@ -939,6 +1023,7 @@
                     <table class="vendors-table">
                         <thead>
                             <tr>
+                                <th class="text-left vendors-index-cell">#</th>
                                 <th class="text-left">Vendor</th>
                                 <th class="text-left">Contact</th>
                                 <th class="text-left">GST</th>
@@ -949,6 +1034,7 @@
                         <tbody>
                             @foreach($vendors as $vendor)
                                 <tr>
+                                    <td class="vendors-index-cell">{{ $vendorStartIndex + $loop->iteration }}</td>
                                     <td>
                                         <p class="vendors-name">{{ $vendor->name }}</p>
                                         <p class="vendors-subtext">{{ $vendor->city ? $vendor->city . ($vendor->state ? ', ' . $vendor->state : '') : 'Location not added' }}</p>
@@ -993,7 +1079,10 @@
                         <article class="vendor-mobile-card">
                             <div class="vendor-mobile-top">
                                 <div>
-                                    <a href="{{ route('vendors.show', $vendor) }}" class="vendor-mobile-name">{{ $vendor->name }}</a>
+                                    <div class="vendor-mobile-heading">
+                                        <span class="vendor-mobile-index">#{{ $vendorStartIndex + $loop->iteration }}</span>
+                                        <a href="{{ route('vendors.show', $vendor) }}" class="vendor-mobile-name">{{ $vendor->name }}</a>
+                                    </div>
                                     <p class="vendor-mobile-location">{{ $vendor->city ? $vendor->city . ($vendor->state ? ', ' . $vendor->state : '') : 'Location not added' }}</p>
                                 </div>
                                 <span class="vendors-status-badge {{ $vendor->is_active ? 'vendors-status-badge--active' : 'vendors-status-badge--inactive' }}">

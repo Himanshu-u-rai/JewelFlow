@@ -103,7 +103,7 @@
             color: #0f172a;
             font-size: 22px;
             font-weight: 700;
-            letter-spacing: -.03em;
+            letter-spacing: 0;
         }
 
         .vault-summary-note {
@@ -143,7 +143,7 @@
             font-size: 22px;
             line-height: 1.1;
             font-weight: 700;
-            letter-spacing: -.03em;
+            letter-spacing: 0;
         }
 
         .vault-section-head {
@@ -1093,7 +1093,7 @@
                                     <div class="vault-purity-top">
                                         <div>
                                             <p class="vault-label capitalize">{{ $row['metal_type'] ?? 'Metal' }}</p>
-                                            <h3 class="text-2xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-sm font-bold text-amber-700">fine</span></h3>
+                                            <h3 class="text-2xl font-bold text-slate-950">{{ $purityLabel }}<span class="ml-1 text-sm font-bold text-amber-700">fine</span></h3>
                                             <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                         </div>
                                         <div class="vault-purity-chip {{ strtolower($row['metal_type'] ?? '') === 'gold' ? '' : (strtolower($row['metal_type'] ?? '') === 'silver' ? 'is-silver' : 'is-alt') }}">{{ $purityLabel }}</div>
@@ -1129,7 +1129,7 @@
                                         <div class="vault-purity-top">
                                             <div>
                                                 <p class="vault-label capitalize">{{ $row['metal_type'] ?? 'Other' }}</p>
-                                                <h3 class="text-2xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-sm font-bold text-slate-500">fine</span></h3>
+                                                <h3 class="text-2xl font-bold text-slate-950">{{ $purityLabel }}<span class="ml-1 text-sm font-bold text-slate-500">fine</span></h3>
                                                 <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                             </div>
                                             <div class="vault-purity-chip {{ strtolower($row['metal_type'] ?? '') === 'gold' ? '' : (strtolower($row['metal_type'] ?? '') === 'silver' ? 'is-silver' : 'is-alt') }}">{{ $purityLabel }}</div>
@@ -1309,7 +1309,7 @@
                                     <article class="vault-mobile-card is-clickable {{ $isEmpty ? 'opacity-60' : '' }}" onclick="window.location='{{ route('vault.lots.show', $lot) }}'">
                                         <div class="mb-3 flex items-start justify-between gap-3">
                                             <div>
-                                                <a href="{{ route('vault.lots.show', $lot) }}" class="font-mono text-sm font-black text-amber-700">#{{ $lot->lot_number }}</a>
+                                                <a href="{{ route('vault.lots.show', $lot) }}" class="font-mono text-sm font-bold text-amber-700">#{{ $lot->lot_number }}</a>
                                                 <p class="vault-mobile-kicker capitalize">{{ str_replace('_', ' ', $lot->source) }}{{ $lot->vendor ? ' · ' . $lot->vendor->name : '' }}</p>
                                             </div>
                                             @if($isEmpty)
@@ -1433,7 +1433,7 @@
                                     <article class="vault-mobile-card is-clickable" onclick="window.location='{{ route('job-orders.show', $jo) }}'">
                                         <div class="mb-3 flex items-start justify-between gap-3">
                                             <div>
-                                                <a href="{{ route('job-orders.show', $jo) }}" class="font-mono text-sm font-black text-teal-700">{{ $jo->job_order_number }}</a>
+                                                <a href="{{ route('job-orders.show', $jo) }}" class="font-mono text-sm font-bold text-teal-700">{{ $jo->job_order_number }}</a>
                                                 <p class="vault-mobile-kicker">{{ $jo->karigar?->name ?? 'No karigar' }}</p>
                                             </div>
                                             <span class="rounded-full px-2 py-0.5 text-[11px] font-bold {{ $jo->status === 'partial_return' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800' }}">{{ str_replace('_', ' ', $jo->status) }}</span>
@@ -1494,7 +1494,7 @@
                                     @foreach($recentMovements as $mv)
                                         <tr class="hover:bg-slate-50">
                                             <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ $mv->created_at->format('d M, H:i') }}</td>
-                                            <td class="px-4 py-3"><span class="text-[11px] font-black uppercase text-slate-700">{{ str_replace('_', ' ', $mv->type) }}</span></td>
+                                            <td class="px-4 py-3"><span class="text-[11px] font-bold uppercase text-slate-700">{{ str_replace('_', ' ', $mv->type) }}</span></td>
                                             <td class="px-4 py-3 font-mono text-xs text-slate-600">{{ $mv->from_lot_id ?? '—' }}</td>
                                             <td class="px-4 py-3 font-mono text-xs text-slate-600">{{ $mv->to_lot_id ?? '—' }}</td>
                                             <td class="px-4 py-3 text-right font-mono font-bold">{{ number_format($mv->fine_weight, 3) }}g</td>
@@ -1544,10 +1544,10 @@
                                     <article class="vault-mobile-card">
                                         <div class="mb-3 flex items-start justify-between gap-3">
                                             <div>
-                                                <p class="text-[11px] font-black uppercase text-slate-700">{{ str_replace('_', ' ', $mv->type) }}</p>
+                                                <p class="text-[11px] font-bold uppercase text-slate-700">{{ str_replace('_', ' ', $mv->type) }}</p>
                                                 <p class="vault-mobile-kicker">{{ $mv->created_at->format('d M, H:i') }}</p>
                                             </div>
-                                            <p class="font-mono text-sm font-black text-amber-700">{{ number_format($mv->fine_weight, 3) }}g</p>
+                                            <p class="font-mono text-sm font-bold text-amber-700">{{ number_format($mv->fine_weight, 3) }}g</p>
                                         </div>
                                         <div class="vault-mobile-grid">
                                             <div>
@@ -1629,7 +1629,7 @@
                                     <div class="vault-purity-top">
                                         <div>
                                             <p class="vault-label capitalize">{{ $row['metal_type'] ?? 'Metal' }}</p>
-                                            <h3 class="text-xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-xs font-bold text-amber-700">fine</span></h3>
+                                            <h3 class="text-xl font-bold text-slate-950">{{ $purityLabel }}<span class="ml-1 text-xs font-bold text-amber-700">fine</span></h3>
                                             <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                         </div>
                                         <div class="vault-purity-chip {{ strtolower($row['metal_type'] ?? '') === 'gold' ? '' : (strtolower($row['metal_type'] ?? '') === 'silver' ? 'is-silver' : 'is-alt') }}">{{ $purityLabel }}</div>
@@ -1656,7 +1656,7 @@
                                     <div class="vault-purity-top">
                                         <div>
                                             <p class="vault-label capitalize">{{ $row['metal_type'] ?? 'Other' }}</p>
-                                            <h3 class="text-xl font-black text-slate-950">{{ $purityLabel }}<span class="ml-1 text-xs font-bold text-slate-500">fine</span></h3>
+                                            <h3 class="text-xl font-bold text-slate-950">{{ $purityLabel }}<span class="ml-1 text-xs font-bold text-slate-500">fine</span></h3>
                                             <p class="mt-1 text-xs font-semibold text-slate-500">{{ $row['lots_count'] }} {{ Str::plural('lot', $row['lots_count']) }} linked</p>
                                         </div>
                                         <div class="vault-purity-chip {{ strtolower($row['metal_type'] ?? '') === 'gold' ? '' : (strtolower($row['metal_type'] ?? '') === 'silver' ? 'is-silver' : 'is-alt') }}">{{ $purityLabel }}</div>

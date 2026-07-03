@@ -303,7 +303,7 @@
             margin: 0;
             color: var(--rx-ink);
             font-size: 17px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.2;
         }
         .report-export-card-head p {
@@ -322,7 +322,7 @@
             background: #fdf6ec;
             color: #8a4b0f;
             font-size: 11px;
-            font-weight: 650;
+            font-weight: 600;
             letter-spacing: .02em;
         }
         .report-export-fields {
@@ -436,7 +436,7 @@
         .report-export-toggle strong {
             color: var(--rx-ink);
             font-size: 13px;
-            font-weight: 650;
+            font-weight: 600;
         }
         .report-export-toggle small {
             margin-top: 2px;

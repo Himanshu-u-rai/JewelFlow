@@ -246,8 +246,8 @@
             margin: 0;
             color: var(--qb-ink);
             font-size: 17px;
-            font-weight: 800;
-            letter-spacing: -0.3px;
+            font-weight: 700;
+            letter-spacing: 0;
             line-height: 1.25;
         }
 
@@ -591,8 +591,8 @@
 
         .qb-summary-total-value {
             font-size: 22px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
+            font-weight: 700;
+            letter-spacing: 0;
             line-height: 1.15;
             font-variant-numeric: tabular-nums;
             text-align: right;

@@ -42,7 +42,7 @@
 
         .brand { display: flex; align-items: center; gap: 10px; }
         .brand svg { width: 28px; height: 28px; }
-        .brand-name { font-size: 20px; font-weight: 800; color: #1f2430; letter-spacing: -0.3px; }
+        .brand-name { font-size: 20px; font-weight: 700; color: #1f2430; letter-spacing: 0; }
         .brand-name span { color: var(--gold-600); }
 
         /* Log out as a proper subtle button, not a bare link. */
@@ -83,7 +83,7 @@
         }
 
         .heading { text-align: center; margin-bottom: 32px; position: relative; z-index: 1; }
-        .heading h2 { font-size: 27px; font-weight: 800; margin: 0 0 8px; color: #1f2430; letter-spacing: -0.4px; }
+        .heading h2 { font-size: 27px; font-weight: 700; margin: 0 0 8px; color: #1f2430; letter-spacing: 0; }
         .heading p { font-size: 15px; color: #6b7280; margin: 0 auto; max-width: 520px; line-height: 1.5; }
         .heading .hint { margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--gold-700); }
 

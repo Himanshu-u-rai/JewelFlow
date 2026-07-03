@@ -945,8 +945,8 @@
             font-size: 22px;
             line-height: 1.05;
             color: var(--dash-ink);
-            font-weight: 800;
-            letter-spacing: -0.01em;
+            font-weight: 700;
+            letter-spacing: 0;
         }
 
         .dash-meta {
@@ -1003,7 +1003,7 @@
             padding: 2px 8px;
             border-radius: 999px;
             font-size: 9px;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
@@ -1071,9 +1071,9 @@
             margin-top: 8px;
             font-size: 30px;
             line-height: 1;
-            font-weight: 800;
+            font-weight: 700;
             color: var(--dash-ink);
-            letter-spacing: -0.02em;
+            letter-spacing: 0;
         }
 
         .dash-kpi-sub {
@@ -1218,7 +1218,7 @@
             align-items: center;
             justify-content: center;
             font-size: 11px;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: 0;
             line-height: 1;
             border: 1px solid transparent;
@@ -1504,9 +1504,9 @@
         .dash-mini-value {
             font-size: 22px;
             line-height: 1.05;
-            font-weight: 800;
+            font-weight: 700;
             color: var(--jf-ink, #101828);
-            letter-spacing: -0.01em;
+            letter-spacing: 0;
             margin: 0;
             display: block;
         }
@@ -1564,8 +1564,8 @@
             gap: 7px;
             font-size: 16px;
             color: #9a6200;
-            font-weight: 800;
-            letter-spacing: -0.01em;
+            font-weight: 700;
+            letter-spacing: 0;
         }
 
         .dash-reorder-link {
@@ -1619,7 +1619,7 @@
 
         .dash-reorder-item-meta strong {
             color: #b42318;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         .dash-reorder-more {
@@ -1672,8 +1672,8 @@
             margin: 0;
             font-size: 18px;
             color: #0f172a;
-            font-weight: 800;
-            letter-spacing: -0.02em;
+            font-weight: 700;
+            letter-spacing: 0;
         }
 
         .dash-chart-sub {
@@ -1734,6 +1734,10 @@
             color: #475569;
             font-weight: 700;
             border-radius: 9999px;
+        }
+
+        .dash-chip strong {
+            font-weight: 600;
         }
 
         .dash-chart-shell {
@@ -1808,7 +1812,7 @@
             font-size: 11px;
             line-height: 1;
             color: #1f2937;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         .dash-rail {
@@ -1886,7 +1890,7 @@
             font-size: 10px;
             line-height: 1;
             font-weight: 700;
-            letter-spacing: -0.01em;
+            letter-spacing: 0;
         }
 
         .dash-finance-values .rev {
@@ -1963,7 +1967,7 @@
         .dash-monthly-title {
             margin: 0;
             font-size: 16px;
-            font-weight: 800;
+            font-weight: 700;
             color: #0f172a;
         }
 
@@ -2064,7 +2068,7 @@
             margin-top: 2px;
             font-size: 12px;
             color: #0f172a;
-            font-weight: 800;
+            font-weight: 700;
             line-height: 1.1;
             white-space: nowrap;
             overflow: hidden;
@@ -2094,7 +2098,7 @@
             margin: 0;
             font-size: 16px;
             color: #111827;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         .dash-quick-sub {
@@ -2293,8 +2297,8 @@
             margin: 0;
             font-size: 16px;
             color: #111827;
-            font-weight: 800;
-            letter-spacing: -0.01em;
+            font-weight: 700;
+            letter-spacing: 0;
         }
 
         .dash-list-link {
@@ -2326,7 +2330,7 @@
             background: #f8fafc;
             font-size: 10px;
             color: #64748b;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
@@ -2422,7 +2426,7 @@
             font-size: 13px;
             line-height: 1.2;
             color: #0f172a;
-            font-weight: 800;
+            font-weight: 700;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -2473,7 +2477,7 @@
             border: 1px solid transparent;
             font-size: 10px;
             line-height: 1;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: 0.02em;
             text-transform: uppercase;
         }
@@ -2525,7 +2529,7 @@
             color: #ffffff;
             border: 1px solid #ffffff;
             font-size: 9px;
-            font-weight: 800;
+            font-weight: 700;
             line-height: 1;
             display: inline-flex;
             align-items: center;
@@ -2535,8 +2539,8 @@
         .dash-amount {
             font-size: 14px;
             color: #0f5132;
-            font-weight: 800;
-            letter-spacing: -0.01em;
+            font-weight: 700;
+            letter-spacing: 0;
             white-space: nowrap;
         }
 
@@ -2818,7 +2822,7 @@
             .dash-header .page-title {
                 font-size: 21px;
                 line-height: 1.05;
-                letter-spacing: -0.03em;
+                letter-spacing: 0;
             }
 
             .dash-header .page-subtitle {

@@ -56,8 +56,8 @@
             margin: 0;
             color: var(--import-ink);
             font-size: 18px;
-            font-weight: 650;
-            letter-spacing: -0.01em;
+            font-weight: 600;
+            letter-spacing: 0;
             line-height: 1.25;
         }
 
@@ -125,7 +125,7 @@
             margin: 0 0 8px;
             color: var(--import-ink);
             font-size: 13px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.25;
         }
 
@@ -158,7 +158,7 @@
             background: var(--import-gold-soft);
             color: var(--import-gold-dark);
             font-size: 11px;
-            font-weight: 650;
+            font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
 
@@ -175,7 +175,7 @@
 
         .import-tag {
             font-size: 11px;
-            font-weight: 650;
+            font-weight: 600;
             letter-spacing: 0.04em;
             text-transform: uppercase;
             border-radius: 8px;
@@ -276,7 +276,7 @@
             background: #111827;
             color: #fff;
             padding: 9px 13px;
-            font-weight: 650;
+            font-weight: 600;
             cursor: pointer;
         }
 
@@ -315,7 +315,7 @@
             padding: 10px 12px;
             color: var(--import-ink);
             font-size: 13px;
-            font-weight: 650;
+            font-weight: 600;
             list-style: none;
         }
 
@@ -411,8 +411,8 @@
             margin: 0;
             color: var(--import-ink);
             font-size: 18px;
-            font-weight: 650;
-            letter-spacing: -0.01em;
+            font-weight: 600;
+            letter-spacing: 0;
         }
 
         .import-history-subtitle {
@@ -443,7 +443,7 @@
         .import-mobile-ref {
             color: var(--import-ink);
             font-size: 14px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.25;
         }
 
@@ -480,7 +480,7 @@
             margin-top: 3px;
             color: var(--import-ink);
             font-size: 15px;
-            font-weight: 650;
+            font-weight: 600;
             font-variant-numeric: tabular-nums;
             line-height: 1.15;
             overflow-wrap: anywhere;
@@ -502,7 +502,7 @@
 
         .imports-page thead th {
             color: #475569;
-            font-weight: 650;
+            font-weight: 600;
             letter-spacing: .05em;
             background: #f8fafc;
         }

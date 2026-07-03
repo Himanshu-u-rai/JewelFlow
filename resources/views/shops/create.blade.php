@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Your Shop | JewelFlow</title>
+    <title>Create Your Shop | JewelFlows</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Fonts -->
@@ -18,13 +18,13 @@
                so the setup form reads as professional software, not a card. */
             --gold:#d97706; --gold-deep:#b45309; --gold-soft:#f59e0b;
 
-            --page:#f4f5f7;             /* cool light gray page */
+            --page:#f8f3e8;
             --card:#ffffff;
-            --ink:#1e2530;             /* slate ink */
-            --ink-soft:#475467;        /* secondary slate */
-            --muted:#667085;           /* tertiary / hints */
-            --line:#e6e8ec;            /* neutral hairline */
-            --field-line:#d3d8e0;
+            --ink:#221f1a;
+            --ink-soft:#5f5548;
+            --muted:#756b5d;
+            --line:#eadcc8;
+            --field-line:#ded1bd;
             --field-bg:#ffffff;
 
             --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -32,7 +32,9 @@
 
         body {
             font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-            background: var(--page);
+            background:
+                radial-gradient(90% 48% at 50% -12%, rgba(245, 158, 11, 0.16), transparent 62%),
+                linear-gradient(180deg, #fbf8f1 0%, var(--page) 100%);
             min-height: 100vh;
             color: var(--ink);
             -webkit-font-smoothing: antialiased;
@@ -51,54 +53,58 @@
         }
         .header-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
         .header-brand { display: flex; align-items: center; gap: 9px; }
-        .header-brand-mark { width: 28px; height: 28px; flex: 0 0 auto; }
-        .header-brand-text { font-size: 18px; font-weight: 800; color: var(--ink); letter-spacing: -0.3px; }
-        .header-brand-text span { color: var(--gold); }
+        .header-brand-mark { display: none; }
+        .header-brand-text { font-size: 20px; font-weight: 800; color: var(--ink); letter-spacing: 0; }
+        .header-brand-text span {
+            background: linear-gradient(135deg, var(--gold-soft) 0%, var(--gold-deep) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
         /* Change-business-type as a real button, set apart from the form so it
            cannot be mistaken for the submit action. */
         .header-back {
             display: inline-flex; align-items: center; gap: 6px;
-            font: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft);
+            font: inherit; font-size: 13px; font-weight: 700; color: var(--ink-soft);
             text-decoration: none; cursor: pointer; white-space: nowrap;
-            background: #fff; border: 1px solid var(--field-line); border-radius: 9px;
-            padding: 8px 13px;
-            transition: background .16s ease, border-color .16s ease, color .16s ease, transform .12s var(--ease-out);
+            background: transparent; border: 0; border-bottom: 1px solid transparent; border-radius: 0;
+            padding: 8px 1px;
+            transition: border-color .16s ease, color .16s ease;
         }
         .header-back svg { width: 14px; height: 14px; flex: 0 0 auto; transition: transform .18s var(--ease-out); }
         @media (hover: hover) and (pointer: fine) {
-            .header-back:hover { background: #f9fafb; border-color: #c4cad3; color: var(--ink); transform: translateY(-1px); }
+            .header-back:hover { border-color: var(--gold-deep); color: var(--gold-deep); }
             /* The chevron nudges back, hinting the direction this takes you. */
             .header-back:hover svg { transform: translateX(-2px); }
         }
-        .header-back:active { transform: scale(0.97); }
 
         .shop-chip {
             display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
             font-size: 11.5px; font-weight: 700; letter-spacing: .03em;
             color: var(--gold-deep);
-            background: #fdf6ec; border: 1px solid #f3dcb6; border-radius: 8px;
+            background: #fff8ec; border: 1px solid #ead2aa; border-radius: 999px;
             padding: 6px 11px; text-transform: uppercase;
         }
         .shop-chip svg { flex: 0 0 auto; }
 
         /* ---------- Layout ---------- */
-        .container { max-width: 880px; margin: 0 auto; padding: 28px 20px 48px; }
-
-        .page-head { margin-bottom: 22px; }
-        .page-head h2 {
-            font-size: clamp(22px, 3vw, 28px); font-weight: 800; color: var(--ink);
-            letter-spacing: -0.5px; text-wrap: balance;
+        .container {
+            max-width: 980px; margin: 0 auto; padding: 28px 24px 46px;
         }
-        .page-head p { font-size: 14px; color: var(--muted); margin-top: 5px; }
 
         /* ---------- Section cards ---------- */
-        .form-stack { display: grid; gap: 16px; }
+        .form-stack {
+            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-flow: dense;
+            gap: 16px;
+        }
+        .form-stack .fcard:nth-child(2) { grid-column: 1 / -1; }
 
         .fcard {
-            background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-            padding: 20px 22px;
-            box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.04);
+            background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+            padding: 18px;
+            box-shadow: 0 18px 48px rgba(72, 51, 22, 0.06);
             transition: box-shadow .2s var(--ease-out), border-color .2s ease;
         }
         /* Barely-there lift when the pointer is over a card, so each section
@@ -111,17 +117,17 @@
         }
 
         .fcard-head {
-            display: flex; align-items: center; gap: 12px;
-            padding-bottom: 14px; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 10px;
+            padding-bottom: 12px; margin-bottom: 14px;
             border-bottom: 1px solid var(--line);
         }
         .fcard-icon {
-            width: 36px; height: 36px; flex: 0 0 auto; border-radius: 9px;
+            width: 32px; height: 32px; flex: 0 0 auto; border-radius: 9px;
             display: grid; place-items: center;
             color: var(--gold-deep); background: #fdf6ec; border: 1px solid #f3dcb6;
         }
-        .fcard-icon svg { width: 18px; height: 18px; }
-        .fcard-titles b { display: block; font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.2px; }
+        .fcard-icon svg { width: 17px; height: 17px; }
+        .fcard-titles b { display: block; font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: 0; }
         .fcard-titles span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
 
         /* Responsive field grid: fields reflow automatically with no manual
@@ -129,8 +135,8 @@
            without inline overrides fighting the media query. */
         .frow {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 13px;
         }
         /* A field that should always take the full row (e.g. address line). */
         .frow .span-all { grid-column: 1 / -1; }
@@ -143,7 +149,7 @@
         label .opt { color: var(--muted); font-weight: 500; font-size: 11.5px; }
 
         input, select, textarea {
-            width: 100%; padding: 10px 12px;
+            width: 100%; padding: 9px 11px;
             border: 1px solid var(--field-line); border-radius: 9px;
             font: inherit; font-size: 14.5px; color: var(--ink);
             background: var(--field-bg);
@@ -191,14 +197,14 @@
         .locked-field {
             display: flex; align-items: center; gap: 8px;
             padding: 10px 12px; border: 1px solid var(--field-line); border-radius: 9px;
-            background: #f4f5f7; color: var(--ink-soft); font-size: 14.5px;
+            background: #fbf8f1; color: var(--ink-soft); font-size: 14.5px;
         }
         .locked-field svg { width: 15px; height: 15px; color: var(--muted); flex: 0 0 auto; }
 
         /* ---------- Errors ---------- */
         .errors {
             background: #fef3f2; border: 1px solid #fecdca; color: #b42318;
-            padding: 14px 16px; border-radius: 12px; margin-bottom: 18px; font-size: 13px;
+            padding: 14px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 13px;
         }
         .errors ul { list-style: none; margin: 0; padding: 0; }
         .errors li { padding: 3px 0; }
@@ -207,37 +213,62 @@
         /* ---------- Actions ---------- */
         .form-actions {
             display: flex; justify-content: flex-end; align-items: center;
-            margin-top: 18px; padding: 2px;
+            margin-top: 14px; padding: 2px;
         }
         .btn-primary {
-            padding: 12px 28px; background: var(--gold-deep); color: #fff;
-            border: none; border-radius: 10px; font: inherit; font-size: 14.5px; font-weight: 700;
-            cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 8px 20px -10px rgba(180,83,9,0.5);
+            min-height: 52px;
+            padding: 12px 28px; background: #16130f; color: #fff;
+            border: 1px solid #16130f; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 700;
+            cursor: pointer; box-shadow: 0 14px 26px -20px rgba(22, 19, 15, 0.9);
             transition: background .16s ease, transform .12s var(--ease-out), box-shadow .16s ease;
         }
-        .btn-primary:hover { background: #92400e; box-shadow: 0 1px 2px rgba(16,24,40,0.08), 0 12px 24px -10px rgba(180,83,9,0.55); }
+        .btn-primary:hover { background: #2b2118; border-color: #2b2118; box-shadow: 0 16px 28px -18px rgba(22, 19, 15, 0.85); }
         .btn-primary:active { transform: scale(0.98); }
 
         /* ---------- Responsive ---------- */
         @media (max-width: 600px) {
-            /* One tidy row, no wrapping. The back button collapses to an
-               icon-only control so the logo and edition chip still fit. */
-            .header { padding: 10px 14px; gap: 10px; flex-wrap: nowrap; }
-            .header-left { gap: 10px; flex: 0 1 auto; min-width: 0; }
+            .header {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                row-gap: 6px;
+                column-gap: 12px;
+                padding: 10px 14px;
+            }
+            .header-left { display: contents; }
+            .header-brand { grid-column: 1; grid-row: 1; min-width: 0; }
             .header-brand-text { font-size: 16px; }
             .header-brand-mark { width: 26px; height: 26px; }
-            .header-back { padding: 8px; gap: 0; }
-            .header-back svg { width: 16px; height: 16px; }
-            .header-back-label { display: none; }   /* icon-only on mobile (aria-label keeps it accessible) */
-            .shop-chip { font-size: 10.5px; padding: 5px 9px; gap: 5px; }
+            .header-back {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                justify-self: start;
+                padding: 3px 0 1px;
+                gap: 6px;
+            }
+            .header-back svg { width: 15px; height: 15px; }
+            .header-back-label { display: inline; }
+            .shop-chip {
+                grid-column: 2;
+                grid-row: 1;
+                align-self: center;
+                font-size: 10.5px;
+                padding: 5px 9px;
+                gap: 5px;
+            }
 
-            .container { padding: 20px 16px 40px; }
+            .container { padding: 20px 14px 40px; }
             .fcard { padding: 18px 16px; border-radius: 13px; }
             .fcard-head { gap: 10px; }
             /* Single column on phones; one rule, nothing to override. */
             .frow { grid-template-columns: 1fr; gap: 14px; }
             .form-actions { margin-top: 16px; }
             .btn-primary { width: 100%; text-align: center; }
+        }
+
+        @media (max-width: 980px) {
+            .container { max-width: 760px; }
+            .form-stack { grid-template-columns: 1fr; }
+            .form-stack .fcard:nth-child(2) { grid-column: auto; }
         }
 
         /* Very small phones: the edition chip drops its label-heavy padding;
@@ -255,17 +286,16 @@
             from { opacity: 0; transform: translateY(12px); }
             to   { opacity: 1; transform: translateY(0); }
         }
-        .page-head, .fcard, .form-actions {
+        .fcard, .form-actions {
             opacity: 0; animation: sc-rise 0.5s var(--ease-out) forwards;
         }
-        .page-head            { animation-delay: 0.02s; }
         .fcard:nth-of-type(1) { animation-delay: 0.09s; }
         .fcard:nth-of-type(2) { animation-delay: 0.15s; }
         .fcard:nth-of-type(3) { animation-delay: 0.21s; }
         .form-actions         { animation-delay: 0.27s; }
 
         @media (prefers-reduced-motion: reduce) {
-            .page-head, .fcard, .form-actions { opacity: 1; animation: none; }
+            .fcard, .form-actions { opacity: 1; animation: none; }
             .btn-primary, .header-back, .header-back svg,
             .fcard, .field-select-wrap > svg, input, select, textarea { transition: none; }
             /* No spinning loader under reduced motion: keep it as a static dot. */
@@ -289,7 +319,7 @@
                     </linearGradient>
                 </defs>
             </svg>
-            <div class="header-brand-text">Jewel<span>Flow</span></div>
+            <div class="header-brand-text">Jewel<span>Flows</span></div>
         </div>
         <a href="{{ route('shops.choose-type') }}" class="header-back" aria-label="Change business type">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -305,17 +335,6 @@
 </header>
 
 <div class="container">
-    <div class="page-head">
-        <h2>Set up your shop</h2>
-        <p>
-            @if($shopType === 'retailer')
-                A few details and your retail shop is ready to go.
-            @else
-                A few details and your manufacturing shop is ready to go.
-            @endif
-        </p>
-    </div>
-
     @if ($errors->any())
         <div class="errors">
             <ul>
@@ -356,11 +375,10 @@
                                placeholder="10-digit number">
                     </div>
                     <div class="field">
-                        <label>GST number <span class="opt">(optional)</span></label>
+                        <label>GST number</label>
                         <input type="text" name="gst_number" id="gst_number" value="{{ old('gst_number') }}"
                                maxlength="15" autocapitalize="characters" spellcheck="false"
                                placeholder="e.g. 24AAACC1206D1ZM">
-                        <div class="field-hint">15 characters. Leave blank if none.</div>
                     </div>
 
                     @if($shopType === 'manufacturer')
@@ -407,7 +425,7 @@
                         <input type="text" name="pincode" id="pincode" value="{{ old('pincode') }}" required
                                inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6"
                                placeholder="6-digit">
-                        <div class="field-hint" id="pincode_hint"><span class="hint-spinner" aria-hidden="true"></span><span id="pincode_hint_text">Fills your city &amp; state for you.</span></div>
+                        <div class="field-hint" id="pincode_hint"><span class="hint-spinner" aria-hidden="true"></span><span id="pincode_hint_text"></span></div>
                     </div>
                     <div class="field">
                         <label>City <span class="req">*</span></label>
@@ -483,7 +501,7 @@
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="btn-primary">Create my shop →</button>
+            <button type="submit" class="btn-primary">Create my shop</button>
         </div>
     </form>
 </div>

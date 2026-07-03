@@ -33,7 +33,7 @@
         }
         .scanner-logo {
             font-size: 16px;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: 0.04em;
         }
         .scanner-logo span { color: #fca311; }
@@ -219,7 +219,7 @@
             padding: 14px 32px;
             background: #fca311;
             color: #0f172a;
-            font-weight: 800;
+            font-weight: 700;
             font-size: 15px;
             border: none;
             border-radius: 10px;

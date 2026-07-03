@@ -111,7 +111,7 @@
         }
 
         .reports-hub-header .page-title {
-            font-weight: 650;
+            font-weight: 600;
             letter-spacing: 0;
         }
 
@@ -154,7 +154,7 @@
             margin: 0;
             color: var(--rh-ink);
             font-size: 14px;
-            font-weight: 650;
+            font-weight: 600;
             letter-spacing: 0;
         }
 
@@ -208,7 +208,7 @@
             margin: 0;
             color: var(--rh-ink);
             font-size: 13.5px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.3;
             letter-spacing: 0;
         }

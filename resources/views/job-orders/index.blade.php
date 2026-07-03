@@ -31,8 +31,8 @@
 
         .jo-filter-trigger:focus {
             outline: none;
-            border-color: #0f766e;
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+            border-color: #b45309;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, .16);
         }
 
         .jo-filter-placeholder {
@@ -49,7 +49,7 @@
             border: 1px solid #dbe3ee;
             border-radius: 14px;
             background: #ffffff;
-            box-shadow: 0 18px 36px rgba(15, 23, 42, .16);
+            box-shadow: 0 16px 28px rgba(15, 23, 42, .10);
         }
 
         .jo-filter-menu[data-open-up="true"] {
@@ -70,14 +70,14 @@
             padding: 9px 10px;
             color: #0f172a;
             font-size: 14px;
-            font-weight: 800;
+            font-weight: 700;
             text-align: left;
         }
 
         .jo-filter-option:hover,
         .jo-filter-option-selected {
-            background: #f0fdfa;
-            color: #0f766e;
+            background: #fff7ed;
+            color: #b45309;
         }
 
         .jo-filter-card {
@@ -108,13 +108,13 @@
             background: #ffffff;
             padding: 14px 16px;
             text-align: left;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, .06);
+            box-shadow: none;
         }
 
         .jo-mobile-filter-trigger:focus {
             outline: none;
-            border-color: #0f766e;
-            box-shadow: 0 0 0 4px rgba(15, 118, 110, .12);
+            border-color: #b45309;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, .14);
         }
 
         .jo-mobile-filter-trigger-copy {
@@ -124,7 +124,7 @@
         .jo-mobile-filter-kicker {
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: .08em;
             text-transform: uppercase;
         }
@@ -133,7 +133,7 @@
             margin-top: 4px;
             color: #0f172a;
             font-size: 14px;
-            font-weight: 800;
+            font-weight: 700;
             line-height: 1.45;
         }
 
@@ -156,7 +156,7 @@
             background: #fffbeb;
             color: #92400e;
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .jo-mobile-filter-open-btn {
@@ -170,7 +170,7 @@
             padding: 0 14px;
             color: #0f172a;
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -231,7 +231,7 @@
         .jo-mobile-filter-title {
             color: #0f172a;
             font-size: 17px;
-            font-weight: 900;
+            font-weight: 700;
             line-height: 1.2;
         }
 
@@ -272,7 +272,7 @@
         .jo-mobile-filter-label {
             color: #475569;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: .08em;
             text-transform: uppercase;
         }
@@ -294,15 +294,15 @@
             padding: 10px 12px;
             color: #0f172a;
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 700;
             text-align: center;
         }
 
         .jo-mobile-status-option.is-active {
-            border-color: #0f766e;
-            background: #f0fdfa;
-            color: #0f766e;
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, .08);
+            border-color: #b45309;
+            background: #fff7ed;
+            color: #92400e;
+            box-shadow: none;
         }
 
         .jo-mobile-native-select,
@@ -338,7 +338,7 @@
             min-height: 48px;
             border-radius: 14px;
             font-size: 14px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .jo-mobile-filter-clear {
@@ -348,27 +348,33 @@
         }
 
         .jo-mobile-filter-apply {
-            border: 1px solid #0f766e;
-            background: #0f766e;
+            border: 1px solid #b45309;
+            background: #b45309;
             color: #ffffff;
-            box-shadow: 0 12px 24px rgba(15, 118, 110, .2);
+            box-shadow: none;
         }
 
         .jo-filter-field {
             display: flex;
             flex-direction: column;
-            min-width: 150px;
+            min-width: 0;
         }
 
         .jo-date-control {
             width: 100%;
-            height: 34px;
+            min-height: 42px;
+            border-radius: 12px;
+            border-color: #cbd5e1;
+            background: #fbfcfe;
+            padding-inline: 12px;
         }
 
         .jo-table-card {
             position: relative;
             z-index: 1;
-            overflow: visible;
+            overflow: hidden;
+            border-radius: 16px;
+            box-shadow: none;
         }
 
         .jo-table-wrap {
@@ -389,7 +395,7 @@
             border-radius: 16px;
             background: #ffffff;
             padding: 14px;
-            box-shadow: 0 8px 18px rgba(15, 23, 42, .05);
+            box-shadow: none;
         }
 
         .jo-mobile-grid {
@@ -402,10 +408,45 @@
             margin-bottom: 4px;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
-        @media (max-width: 680px) {
+        .jo-filter-card--desktop {
+            display: grid;
+            grid-template-columns: minmax(150px, 190px) minmax(180px, 240px) repeat(2, minmax(140px, 170px)) auto;
+            gap: 12px;
+            align-items: end;
+            border-radius: 16px;
+            box-shadow: none;
+        }
+
+        .jo-filter-card--desktop .btn {
+            min-height: 42px;
+            border-radius: 12px;
+        }
+
+        .jo-filter-card--desktop label {
+            margin-bottom: 7px;
+        }
+
+        .jo-filter-select {
+            min-width: 0;
+        }
+
+        .jo-filter-trigger {
+            min-height: 42px;
+            border-color: #cbd5e1;
+            border-radius: 12px;
+            background: #fbfcfe;
+            font-weight: 600;
+        }
+
+        .jo-table a,
+        .jo-mobile-card a {
+            color: #b45309;
+        }
+
+        @media (max-width: 1023px) {
             .jo-filter-card--desktop {
                 display: none;
             }
@@ -444,7 +485,7 @@
     <x-page-header title="Job Orders" subtitle="Bullion issued to karigars">
         <x-slot:actions>
             @can('job_order.manage')
-            <a href="{{ route('job-orders.create') }}" class="btn btn-success btn-sm">
+            <a href="{{ route('job-orders.create') }}" class="btn btn-primary btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Issue Bullion
             </a>
@@ -452,11 +493,58 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner">
+    <div class="content-inner job-orders-index-page">
 
         @unless(auth()->user()->can('job_order.manage'))
             @include('partials.view-only-banner', ['permission' => 'job_order.manage', 'message' => 'job orders'])
         @endunless
+
+        @php
+            $orderRows = method_exists($orders, 'getCollection') ? $orders->getCollection() : collect($orders);
+            $orderTotal = method_exists($orders, 'total') ? $orders->total() : $orderRows->count();
+            $openOrders = $orderRows->whereIn('status', ['issued', 'partial_return'])->count();
+            $completedOrders = $orderRows->where('status', 'completed')->count();
+            $flaggedOrders = $orderRows->filter(fn ($order) => ! empty($order->discrepancy_flags))->count();
+        @endphp
+
+        <div class="jobwork-kpi-grid">
+            <section class="jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--gold" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 6h4"/><path d="M5 8h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8Z"/><path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </span>
+                <div>
+                    <p>Job Orders</p>
+                    <strong>{{ number_format($orderTotal) }}</strong>
+                </div>
+            </section>
+            <section class="jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--slate" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <div>
+                    <p>Open on Page</p>
+                    <strong>{{ number_format($openOrders) }}</strong>
+                </div>
+            </section>
+            <section class="jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--green" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                </span>
+                <div>
+                    <p>Completed</p>
+                    <strong>{{ number_format($completedOrders) }}</strong>
+                </div>
+            </section>
+            <section class="jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--rose" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                </span>
+                <div>
+                    <p>Flagged</p>
+                    <strong>{{ number_format($flaggedOrders) }}</strong>
+                </div>
+            </section>
+        </div>
 
         <div x-data="{
                   statusOpen: false,
@@ -540,7 +628,7 @@
                       return parts.length ? parts.join(' • ') : 'All job orders';
                   },
                   closeTenantDrawerIfNeeded() {
-                      if (window.innerWidth > 680) {
+                      if (window.innerWidth > 1023) {
                           return;
                       }
 
@@ -594,7 +682,7 @@
                           return;
                       }
 
-                      if (window.innerWidth <= 680) {
+                      if (window.innerWidth <= 1023) {
                           const drawer = document.querySelector('[data-mobile-drawer=\'tenant\']');
                           if (drawer?.classList.contains('mobile-open')) {
                               document.querySelector('[data-mobile-menu-toggle=\'tenant\']')?.click();
@@ -607,7 +695,7 @@
                   positionDropdown(which, trigger) {
                       const styleKey = which + 'MenuStyle';
                       const menu = trigger?.parentElement?.querySelector('.jo-filter-menu');
-                      if (!menu || window.innerWidth <= 680) {
+                      if (!menu || window.innerWidth <= 1023) {
                           this[styleKey] = '';
                           if (menu) {
                               menu.dataset.openUp = 'false';
@@ -643,7 +731,8 @@
               }"
               x-init="initMobileDrawerWatcher()"
               @keydown.escape.window="closeDropdowns(); closeMobileFilters()"
-              @resize.window="closeDropdowns(); if (window.innerWidth > 680) closeMobileFilters()">
+              @turbo:before-cache.window="closeDropdowns(); closeMobileFilters()"
+              @resize.window="closeDropdowns(); if (window.innerWidth > 1023) closeMobileFilters()">
             <div class="jo-mobile-filter-trigger-shell" x-cloak>
                 <button type="button" class="jo-mobile-filter-trigger" @click="openMobileFilters()" :aria-expanded="mobileFilterOpen.toString()">
                     <div class="jo-mobile-filter-trigger-copy">
@@ -721,66 +810,72 @@
                 </form>
             </div>
 
-            <form method="GET" class="jo-filter-card jo-filter-card--desktop bg-white border border-gray-200 rounded-xl p-4 mb-4 flex flex-wrap items-end gap-3">
-            <div class="jo-filter-field">
-                <label class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Status</label>
-                <div class="jo-filter-select" @click.outside="statusOpen = false; statusMenuStyle = ''">
-                    <input type="hidden" name="status" x-model="status">
-                    <button type="button" class="jo-filter-trigger" @click="toggleDropdown('status', $el)" :aria-expanded="statusOpen.toString()">
-                        <span :class="statusName ? '' : 'jo-filter-placeholder'" x-text="statusName || 'All statuses'">All statuses</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </button>
-                    <div class="jo-filter-menu" x-show="statusOpen" :style="statusMenuStyle" x-transition.origin.top x-cloak>
-                        <div class="jo-filter-list">
-                            <button type="button" class="jo-filter-option" @click="setStatus('', 'All statuses')">All statuses</button>
-                            @foreach($statusLabels as $value => $label)
-                                <button type="button"
-                                        class="jo-filter-option"
-                                        :class="status === '{{ $value }}' ? 'jo-filter-option-selected' : ''"
-                                        @click="setStatus('{{ $value }}', @js($label))">{{ $label }}</button>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="jo-filter-field">
-                <label class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Karigar</label>
-                <div class="jo-filter-select" @click.outside="karigarOpen = false; karigarMenuStyle = ''">
-                    <input type="hidden" name="karigar_id" x-model="karigarId">
-                    <button type="button" class="jo-filter-trigger" @click="toggleDropdown('karigar', $el)" :aria-expanded="karigarOpen.toString()">
-                        <span :class="karigarName ? '' : 'jo-filter-placeholder'" x-text="karigarName || 'All karigars'">All karigars</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </button>
-                    <div class="jo-filter-menu" x-show="karigarOpen" :style="karigarMenuStyle" x-transition.origin.top x-cloak>
-                        <div class="jo-filter-list">
-                            <button type="button" class="jo-filter-option" @click="setKarigar('', 'All karigars')">All karigars</button>
-                            @foreach($karigars as $k)
-                                <button type="button"
-                                        class="jo-filter-option"
-                                        :class="karigarId === '{{ $k->id }}' ? 'jo-filter-option-selected' : ''"
-                                        @click="setKarigar('{{ $k->id }}', @js($k->name))">{{ $k->name }}</button>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="jo-filter-field">
-                <label class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">From</label>
-                <input type="date" name="from" x-model="fromDate" class="jo-date-control rounded-md border-gray-300 text-sm">
-            </div>
-            <div class="jo-filter-field">
-                <label class="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">To</label>
-                <input type="date" name="to" x-model="toDate" class="jo-date-control rounded-md border-gray-300 text-sm">
-            </div>
-            <button type="submit" class="btn btn-secondary btn-sm" style="height:34px;">Filter</button>
-            </form>
-
             <div class="jo-table-card bg-white rounded-xl border border-gray-200 shadow-sm">
+                <div class="jobwork-register-head">
+                    <div class="jobwork-register-titleblock">
+                        <h2>Job Order Register</h2>
+                        <p>{{ number_format($orderTotal) }} total job order{{ $orderTotal === 1 ? '' : 's' }}</p>
+                    </div>
+
+                    <form method="GET" class="jo-filter-card jo-filter-card--desktop">
+                        <div class="jo-filter-field">
+                            <label>Status</label>
+                            <div class="jo-filter-select" @click.outside="statusOpen = false; statusMenuStyle = ''">
+                                <input type="hidden" name="status" x-model="status">
+                                <button type="button" class="jo-filter-trigger" @click="toggleDropdown('status', $el)" :aria-expanded="statusOpen.toString()">
+                                    <span :class="statusName ? '' : 'jo-filter-placeholder'" x-text="statusName || 'All statuses'">All statuses</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                </button>
+                                <div class="jo-filter-menu" x-show="statusOpen" :style="statusMenuStyle" x-transition.origin.top x-cloak>
+                                    <div class="jo-filter-list">
+                                        <button type="button" class="jo-filter-option" @click="setStatus('', 'All statuses')">All statuses</button>
+                                        @foreach($statusLabels as $value => $label)
+                                            <button type="button"
+                                                    class="jo-filter-option"
+                                                    :class="status === '{{ $value }}' ? 'jo-filter-option-selected' : ''"
+                                                    @click="setStatus('{{ $value }}', @js($label))">{{ $label }}</button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="jo-filter-field">
+                            <label>Karigar</label>
+                            <div class="jo-filter-select" @click.outside="karigarOpen = false; karigarMenuStyle = ''">
+                                <input type="hidden" name="karigar_id" x-model="karigarId">
+                                <button type="button" class="jo-filter-trigger" @click="toggleDropdown('karigar', $el)" :aria-expanded="karigarOpen.toString()">
+                                    <span :class="karigarName ? '' : 'jo-filter-placeholder'" x-text="karigarName || 'All karigars'">All karigars</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                </button>
+                                <div class="jo-filter-menu" x-show="karigarOpen" :style="karigarMenuStyle" x-transition.origin.top x-cloak>
+                                    <div class="jo-filter-list">
+                                        <button type="button" class="jo-filter-option" @click="setKarigar('', 'All karigars')">All karigars</button>
+                                        @foreach($karigars as $k)
+                                            <button type="button"
+                                                    class="jo-filter-option"
+                                                    :class="karigarId === '{{ $k->id }}' ? 'jo-filter-option-selected' : ''"
+                                                    @click="setKarigar('{{ $k->id }}', @js($k->name))">{{ $k->name }}</button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="jo-filter-field">
+                            <label>From</label>
+                            <input type="date" name="from" x-model="fromDate" class="jo-date-control rounded-md border-gray-300 text-sm">
+                        </div>
+                        <div class="jo-filter-field">
+                            <label>To</label>
+                            <input type="date" name="to" x-model="toDate" class="jo-date-control rounded-md border-gray-300 text-sm">
+                        </div>
+                        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+                    </form>
+                </div>
             @if($orders->isEmpty())
                 <div class="py-16 text-center text-gray-400">
                     <p class="text-sm mb-3">No job orders match your filter.</p>
                     @can('job_order.manage')
-                    <a href="{{ route('job-orders.create') }}" class="text-teal-700 underline text-sm">Issue your first job order</a>
+                    <a href="{{ route('job-orders.create') }}" class="text-amber-700 underline text-sm">Issue your first job order</a>
                     @endcan
                 </div>
             @else
@@ -802,7 +897,7 @@
                             @foreach($orders as $jo)
                                 <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='{{ route('job-orders.show', $jo) }}'"  >
                                     <td class="px-4 py-3">
-                                        <a href="{{ route('job-orders.show', $jo) }}" class="text-teal-700 font-mono hover:underline">{{ $jo->job_order_number }}</a>
+                                        <a href="{{ route('job-orders.show', $jo) }}" class="text-amber-700 font-mono hover:underline">{{ $jo->job_order_number }}</a>
                                         <div class="text-[10px] text-gray-400">DC: {{ $jo->challan_number }}</div>
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">{{ $jo->karigar?->name }}</td>
@@ -828,7 +923,7 @@
                         <article class="jo-mobile-card">
                             <div class="mb-3 flex items-start justify-between gap-3">
                                 <div>
-                                    <a href="{{ route('job-orders.show', $jo) }}" class="font-mono text-sm font-black text-teal-700">{{ $jo->job_order_number }}</a>
+                                    <a href="{{ route('job-orders.show', $jo) }}" class="font-mono text-sm font-bold text-amber-700">{{ $jo->job_order_number }}</a>
                                     <p class="mt-1 text-xs text-slate-500">DC: {{ $jo->challan_number }}</p>
                                 </div>
                                 <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold {{ $jo->status === 'completed' ? 'bg-emerald-100 text-emerald-800' : ($jo->status === 'cancelled' ? 'bg-gray-200 text-gray-600' : ($jo->status === 'partial_return' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800')) }}">{{ str_replace('_', ' ', $jo->status) }}</span>

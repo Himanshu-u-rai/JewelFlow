@@ -106,6 +106,14 @@
             letter-spacing: 0;
         }
 
+        .brand-text span,
+        .hero-brand-name span {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         .brand-mark {
             width: 34px;
             height: 34px;
@@ -1825,7 +1833,7 @@
                             <path d="M6 9.5h12M9.2 9.5 12 21l2.8-11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                         </svg>
                     </span>
-                    JewelFlows
+                    <span class="brand-text">Jewel<span>Flows</span></span>
                 </a>
 
                 <div class="nav-actions">
@@ -1880,7 +1888,7 @@
                                         </svg>
                                     </span>
                                     <div class="hero-brand-text">
-                                        <div class="hero-brand-name">JewelFlows</div>
+                                        <div class="hero-brand-name">Jewel<span>Flows</span></div>
                                         <div class="hero-brand-note">Jewellery Business Operating System</div>
                                     </div>
                                 </div>
@@ -2083,7 +2091,7 @@
                             <path d="M6 9.5 12 3l6 6.5L12 21 6 9.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                         </svg>
                     </span>
-                    JewelFlows
+                    <span class="brand-text">Jewel<span>Flows</span></span>
                 </div>
                 <ul class="footer-links">
                     <li><a href="{{ route('login') }}">Login</a></li>

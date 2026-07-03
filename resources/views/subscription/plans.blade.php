@@ -69,15 +69,16 @@
       background: linear-gradient(180deg, #fffdf6 0%, #fff8ea 100%);
       box-shadow: 0 0 0 3px rgba(245,158,11,0.18), 0 14px 30px -14px rgba(180,83,9,0.34);
     }
-    .md-opt-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .md-opt-main { min-width: 0; }
+    .md-opt-title { font-size: 17px; font-weight: 700; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; line-height: 1.15; }
     .md-opt-badge {
-      font-size: 10px; font-weight: 700; letter-spacing: .02em;
+      font-size: 11px; font-weight: 700; letter-spacing: .02em;
       color: var(--md-gold-deep); background: rgba(245,158,11,0.14);
-      padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 999px; text-transform: uppercase; white-space: nowrap;
     }
-    .md-opt-sub { font-size: 12px; color: var(--md-muted); margin-top: 3px; }
-    .md-opt-price { font-size: 18px; font-weight: 800; color: var(--md-ink); white-space: nowrap; }
-    .md-opt-price span { font-size: 12px; font-weight: 600; color: var(--md-muted); }
+    .md-opt-sub { font-size: 13.5px; line-height: 1.35; color: var(--md-muted); margin-top: 5px; }
+    .md-opt-price { font-size: 24px; font-weight: 700; color: var(--md-ink); white-space: nowrap; letter-spacing: 0; }
+    .md-opt-price span { font-size: 13.5px; font-weight: 700; color: var(--md-muted); letter-spacing: 0; }
     .md-opt-trial .md-opt-price { color: var(--md-gold-deep); }
 
     /* Right detail. The detail column stretches to the rail height; the active
@@ -104,7 +105,7 @@
     @keyframes md-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
     .md-pane-name { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--md-muted); }
-    .md-pane-price { font-size: 40px; font-weight: 800; color: var(--md-ink); letter-spacing: -1px; margin-top: 4px; }
+    .md-pane-price { font-size: 40px; font-weight: 700; color: var(--md-ink); letter-spacing: 0; margin-top: 4px; }
     .md-pane-per { font-size: 15px; font-weight: 600; color: var(--md-muted); letter-spacing: 0; margin-left: 4px; }
     .md-pane-sub { font-size: 13px; color: var(--md-muted); margin-top: 2px; }
 
@@ -185,18 +186,7 @@
   {{-- Header --}}
   <div class="header">
     <div class="header-brand">
-      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" class="header-brand-mark">
-        <path d="M8 13L16 4L24 13L16 28Z" fill="url(#dg)"/>
-        <path d="M8 13L16 4L24 13" stroke="#d97706" stroke-width="1.2" stroke-linejoin="round"/>
-        <line x1="8" y1="13" x2="24" y2="13" stroke="#f59e0b" stroke-width="0.8" opacity="0.6"/>
-        <defs>
-          <linearGradient id="dg" x1="16" y1="4" x2="16" y2="28" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#fcd34d"/>
-            <stop offset="1" stop-color="#f59e0b"/>
-          </linearGradient>
-        </defs>
-      </svg>
-      <div class="header-brand-text">Jewel<span>Flow</span></div>
+      <div class="header-brand-text">Jewel<span>Flows</span></div>
     </div>
     <div class="header-step" style="display:flex;align-items:center;">
       {{-- Always allow an escape: a user without a plan must still be able to
@@ -280,7 +270,14 @@
   <div>
     <div class="plans-container plans-md">
       <div class="plans-back-link-wrap">
-        <a href="{{ route('shops.choose-type') }}" class="back-btn">← Change business type</a>
+        <a href="{{ route('shops.choose-type') }}" class="back-btn">
+          <span class="back-btn__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M15 18 9 12l6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span>Change business type</span>
+        </a>
       </div>
 
       {{-- Master / detail: stacked options on the left, full detail on the right. --}}

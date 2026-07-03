@@ -1,15 +1,16 @@
 <x-app-layout>
     <style>
         .vendors-edit-page {
-            --vendors-edit-border: #d8e1ef;
-            --vendors-edit-border-strong: #c8d5e7;
+            --vendors-edit-border: #e2e8f0;
+            --vendors-edit-border-strong: #cbd5e1;
             --vendors-edit-surface: #ffffff;
-            --vendors-edit-surface-soft: #f7f9fc;
-            --vendors-edit-text: #16213d;
+            --vendors-edit-surface-soft: #f8fafc;
+            --vendors-edit-text: #0f172a;
             --vendors-edit-text-soft: #64748b;
-            --vendors-edit-accent: #0d9488;
-            --vendors-edit-accent-soft: rgba(13, 148, 136, 0.1);
-            --vendors-edit-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+            --vendors-edit-accent: #b45309;
+            --vendors-edit-accent-hover: #92400e;
+            --vendors-edit-accent-soft: #fff7ed;
+            --vendors-edit-shadow: none;
         }
 
         .vendors-edit-page .vendors-edit-shell {
@@ -20,7 +21,7 @@
         .vendors-edit-page .vendors-edit-intro,
         .vendors-edit-page .vendors-edit-card {
             border: 1px solid var(--vendors-edit-border);
-            border-radius: 24px;
+            border-radius: 16px;
             background: var(--vendors-edit-surface);
             box-shadow: var(--vendors-edit-shadow);
         }
@@ -66,9 +67,9 @@
             min-height: 36px;
             padding: 0 14px;
             border-radius: 999px;
-            border: 1px solid rgba(13, 148, 136, 0.16);
+            border: 1px solid #f3dcb6;
             background: var(--vendors-edit-accent-soft);
-            color: #0f766e;
+            color: var(--vendors-edit-accent);
             font-size: 12px;
             font-weight: 700;
             white-space: nowrap;
@@ -116,8 +117,8 @@
 
         .vendors-edit-page .vendors-edit-section {
             min-width: 0;
-            border: 1px solid #e7edf6;
-            border-radius: 22px;
+            border: 1px solid var(--vendors-edit-border);
+            border-radius: 14px;
             background: #fbfcfe;
             padding: 22px;
         }
@@ -185,7 +186,7 @@
         .vendors-edit-page .vendors-edit-textarea {
             display: block;
             width: 100%;
-            border-radius: 16px;
+            border-radius: 12px;
             border: 1px solid var(--vendors-edit-border-strong);
             background: var(--vendors-edit-surface-soft);
             color: var(--vendors-edit-text);
@@ -214,9 +215,9 @@
         .vendors-edit-page .vendors-edit-input:focus,
         .vendors-edit-page .vendors-edit-textarea:focus {
             outline: none;
-            border-color: rgba(13, 148, 136, 0.45);
+            border-color: rgba(245, 158, 11, 0.58);
             background: #fff;
-            box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
         }
 
         .vendors-edit-page .vendors-edit-input.is-error,
@@ -239,8 +240,8 @@
             justify-content: space-between;
             gap: 18px;
             padding: 16px 18px;
-            border: 1px solid #e7edf6;
-            border-radius: 18px;
+            border: 1px solid var(--vendors-edit-border);
+            border-radius: 14px;
             background: #fff;
         }
 
@@ -275,7 +276,7 @@
         }
 
         .vendors-edit-page .vendors-edit-status-toggle input[type="checkbox"]:focus {
-            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
         }
 
         .vendors-edit-page .vendors-edit-status-label {
@@ -298,17 +299,17 @@
             justify-content: center;
             min-height: 46px;
             padding: 0 18px;
-            border-radius: 16px;
+            border-radius: 12px;
             border: 1px solid var(--vendors-edit-border);
             font-size: 14px;
             font-weight: 700;
             text-decoration: none;
-            transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
             white-space: nowrap;
         }
 
         .vendors-edit-page .vendors-edit-btn:hover {
-            transform: translateY(-1px);
+            transform: none;
         }
 
         .vendors-edit-page .vendors-edit-btn--ghost {
@@ -317,19 +318,21 @@
         }
 
         .vendors-edit-page .vendors-edit-btn--ghost:hover {
-            background: var(--vendors-edit-surface-soft);
+            border-color: #f3dcb6;
+            background: #fff7ed;
+            color: var(--vendors-edit-accent-hover);
         }
 
         .vendors-edit-page .vendors-edit-btn--primary {
             border-color: var(--vendors-edit-accent);
             background: var(--vendors-edit-accent);
             color: #fff;
-            box-shadow: 0 12px 24px rgba(13, 148, 136, 0.16);
+            box-shadow: none;
         }
 
         .vendors-edit-page .vendors-edit-btn--primary:hover {
-            background: #0f766e;
-            border-color: #0f766e;
+            background: var(--vendors-edit-accent-hover);
+            border-color: var(--vendors-edit-accent-hover);
         }
 
         @media (max-width: 1100px) {

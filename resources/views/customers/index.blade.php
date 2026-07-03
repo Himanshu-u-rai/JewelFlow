@@ -185,33 +185,33 @@
                                 $initials = trim($first . $last) !== '' ? $first . $last : 'CU';
                                 $searchText = strtolower(trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '') . ' ' . ($customer->mobile ?? '')));
                             @endphp
-                            <tr class="hover:bg-slate-50/70 transition-colors" data-search="{{ $searchText }}">
+                            <tr class="customers-table-row hover:bg-slate-50/70 transition-colors" data-search="{{ $searchText }}">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-amber-100 text-amber-700 font-semibold text-sm">
+                                        <div class="customers-table-avatar w-10 h-10 inline-flex items-center justify-center rounded-xl bg-amber-100 text-amber-700 font-semibold text-sm">
                                             {{ $initials }}
                                         </div>
-                                        <div>
-                                            <div class="text-sm font-semibold text-slate-900">
+                                        <div class="customers-table-identity">
+                                            <div class="customers-table-name text-sm font-semibold text-slate-900">
                                                 {{ trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) }}
                                             </div>
                                             @if($customer->email)
-                                                <div class="text-xs text-slate-500">{{ $customer->email }}</div>
+                                                <div class="customers-table-meta text-xs text-slate-500">{{ $customer->email }}</div>
                                             @endif
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-slate-900">{{ $customer->mobile }}</div>
+                                    <div class="customers-table-contact text-sm text-slate-900">{{ $customer->mobile }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right">
                                     @if(!$isRetailer)
-                                        <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">
+                                        <span class="customers-table-pill customers-table-pill--gold inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">
                                             {{ number_format((float) ($customer->gold_transactions_sum_fine_gold ?? 0), 3) }} g
                                         </span>
                                     @else
                                         @php $purchaseCount = $customer->invoices_count; @endphp
-                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800">
+                                        <span class="customers-table-pill customers-table-pill--success inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800">
                                             {{ $purchaseCount }} {{ Str::plural('invoice', $purchaseCount) }}
                                         </span>
                                     @endif
@@ -231,21 +231,48 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-12 text-center text-slate-500">
-                                    <p class="text-lg font-semibold mb-1 text-slate-700">No customers found</p>
-                                    <p class="text-sm">
-                                        @if($searchActive)
-                                            Try another search or <a href="{{ route('customers.index') }}" class="text-amber-700 hover:text-amber-800 font-semibold underline">show all customers</a>.
-                                        @else
-                                            Add your first customer to get started.
-                                        @endif
-                                    </p>
+                                <td colspan="4" class="customers-empty-cell px-6 py-12 text-center text-slate-500">
+                                    <div class="customers-empty-state">
+                                        <span class="customers-empty-icon" aria-hidden="true">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                                <circle cx="9.5" cy="7" r="4"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 8v6M22 11h-6"/>
+                                            </svg>
+                                        </span>
+                                        <div>
+                                            <p class="customers-empty-title">No customers found</p>
+                                            <p class="customers-empty-copy">
+                                                @if($searchActive)
+                                                    Try another name or mobile number, or clear the search to return to the full directory.
+                                                @else
+                                                    Add a customer profile to start tracking purchases, balances, loyalty, and follow-ups.
+                                                @endif
+                                            </p>
+                                        </div>
+                                        <div class="customers-empty-actions">
+                                            @if($searchActive)
+                                                <a href="{{ route('customers.index') }}" class="customers-empty-secondary">
+                                                    Clear Search
+                                                </a>
+                                            @else
+                                                @can('customers.create')
+                                                    <a href="{{ route('customers.create') }}" class="customers-empty-primary">
+                                                        Add Customer
+                                                    </a>
+                                                @endcan
+                                            @endif
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         @endforelse
                         <tr data-no-match-row style="display:none;">
                             <td colspan="4" class="px-6 py-8 text-center text-slate-500 text-sm">
-                                No customers match your search on this page. Press Enter to search all records.
+                                <div class="customers-inline-empty">
+                                    <strong>No customers match this page search.</strong>
+                                    <span>Press Enter to search all customer records.</span>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
@@ -291,7 +318,18 @@
                 @empty
                     <div class="customers-mobile-empty">
                         <strong>No customers found</strong>
-                        <span>{{ $searchActive ? 'Try another search or clear the filter.' : 'Add your first customer to get started.' }}</span>
+                        <span>{{ $searchActive ? 'Try another name or mobile number, or clear the search.' : 'Add a customer profile to start tracking purchases and follow-ups.' }}</span>
+                        @if($searchActive)
+                            <a href="{{ route('customers.index') }}" class="customers-empty-secondary">
+                                Clear Search
+                            </a>
+                        @else
+                            @can('customers.create')
+                                <a href="{{ route('customers.create') }}" class="customers-empty-primary">
+                                    Add Customer
+                                </a>
+                            @endcan
+                        @endif
                     </div>
                 @endforelse
             </div>

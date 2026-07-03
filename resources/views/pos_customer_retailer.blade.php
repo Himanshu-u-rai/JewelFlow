@@ -780,7 +780,7 @@
     }
     .items-mobile-total-value {
         font-size: 14px;
-        font-weight: 800;
+        font-weight: 700;
         color: var(--accent);
         white-space: nowrap;
     }
@@ -857,7 +857,7 @@
         border-top: 2px solid #f2d29c;
     }
     .summary-total-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-    .summary-total-val { font-size: 28px; font-weight: 800; color: #14213d; }
+    .summary-total-val { font-size: 28px; font-weight: 700; color: #14213d; }
 
     /* ─── Payment cards ───────────────────────────────── */
     .pay-mode-grid {
