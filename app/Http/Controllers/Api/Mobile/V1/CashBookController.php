@@ -33,6 +33,31 @@ class CashBookController extends Controller
     private const MODES = ['cash', 'upi', 'bank', 'card', 'wallet', 'other'];
 
     /**
+     * Mobile Cash Book access rule (stricter than the web `can:cash.*` gate):
+     * only an owner or a manager may reach it, and the manager must additionally
+     * hold the relevant permission. A cashier/staff member is denied even if
+     * their seeded role happens to carry cash.view / cash.create — Cash Book is
+     * not a shop-floor surface on mobile.
+     *
+     * Owners are NOT short-circuited past the permission check: an owner whose
+     * role has the permission revoked is still denied, matching the web gate.
+     *
+     * Denials abort(403) with a stable message; the mobile v1 exception handler
+     * reshapes it into the canonical { errors: [{ code: 'permission_denied' }] }
+     * envelope — distinct from shop_closed / quick_bill_disabled / 401.
+     */
+    private function authorizeCashbook(Request $request, string $permission): void
+    {
+        $user = $request->user();
+
+        $allowed = $user
+            && ($user->isOwner() || $user->isManager())
+            && $user->hasPermission($permission);
+
+        abort_unless($allowed, 403, 'You do not have permission to access Cash Book.');
+    }
+
+    /**
      * GET /api/mobile/v1/cashbook
      *
      * Per-mode money on hand over the date window (defaults to current month),
@@ -40,6 +65,8 @@ class CashBookController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $this->authorizeCashbook($request, 'cash.view');
+
         $shopId = (int) $request->user()->shop_id;
 
         $fromDate = $this->validDate($request->input('from_date'));
@@ -112,6 +139,8 @@ class CashBookController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $this->authorizeCashbook($request, 'cash.create');
+
         $validated = $request->validate([
             'type'         => 'required|in:in,out',
             'amount'       => 'required|numeric|min:0.01',
@@ -163,6 +192,8 @@ class CashBookController extends Controller
      */
     public function drawerContext(Request $request): JsonResponse
     {
+        $this->authorizeCashbook($request, 'cash.view');
+
         $shopId = (int) $request->user()->shop_id;
 
         $expected = round((float) $this->ledger
@@ -191,6 +222,8 @@ class CashBookController extends Controller
      */
     public function storeDrawerCheck(Request $request): JsonResponse
     {
+        $this->authorizeCashbook($request, 'cash.create');
+
         $validated = $request->validate([
             'counted_cash' => 'required|numeric|min:0|max:99999999.99',
             'note'         => 'nullable|string|max:500',

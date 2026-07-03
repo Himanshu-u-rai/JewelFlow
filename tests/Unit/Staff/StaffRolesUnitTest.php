@@ -58,8 +58,10 @@ class StaffRolesUnitTest extends TestCase
         $roles = app(TenantRoleService::class)->ensureDefaultsForShop($shop->id);
         $staffPerms = $roles['staff']->permissions()->pluck('name');
 
-        // Staff must never hold management permissions.
-        foreach (['staff.manage', 'staff.view', 'settings.edit', 'reports.export'] as $forbidden) {
+        // Staff must never hold management permissions, nor Cash Book access:
+        // Cash Book is an owner/manager surface on mobile, so cash.view/cash.create
+        // are excluded from the default staff template.
+        foreach (['staff.manage', 'staff.view', 'settings.edit', 'reports.export', 'cash.view', 'cash.create'] as $forbidden) {
             $this->assertFalse($staffPerms->contains($forbidden), "staff must NOT hold {$forbidden}");
         }
         $this->assertGreaterThan(0, $staffPerms->count(), 'staff still has its operational whitelist');

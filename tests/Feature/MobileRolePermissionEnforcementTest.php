@@ -118,6 +118,15 @@ class MobileRolePermissionEnforcementTest extends TestCase
             'api/mobile/v1/sessions/unlock',
             'api/mobile/v1/sessions',
             'api/mobile/v1/sessions/{session}',
+            // Cash Book mutations are gated in-controller by
+            // CashBookController::authorizeCashbook, which is STRICTER than a
+            // route can:cash.create gate (it also denies staff/cashier who hold
+            // the permission) and yields one stable permission_denied message. A
+            // route-level gate would run first and emit a different message, so
+            // enforcement lives in the controller — allowlisted like the sessions
+            // routes above.
+            'api/mobile/v1/cashbook',
+            'api/mobile/v1/cashbook/drawer-check',
         ];
 
         $ungated = [];

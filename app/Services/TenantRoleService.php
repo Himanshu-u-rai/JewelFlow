@@ -60,7 +60,10 @@ class TenantRoleService
                 'returns.view', 'returns.create',
                 'customers.view', 'customers.create', 'customers.edit',
                 'repairs.view', 'repairs.create', 'repairs.edit',
-                'cash.view',
+                // Cash Book is not a shop-floor surface: staff/cashier get no
+                // cash.view/cash.create by default. The mobile Cash Book gate
+                // (CashBookController::authorizeCashbook) also denies staff even
+                // if the permission is granted, so this keeps template + gate aligned.
                 'vendors.view',
                 'karigar.view',
                 'job_order.view',

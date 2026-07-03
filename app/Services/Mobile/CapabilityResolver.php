@@ -42,8 +42,8 @@ class CapabilityResolver
             schemes:      $this->gate($planFeatures, 'schemes', $user, null),
             loyalty:      $this->gate($planFeatures, 'loyalty', $user, null),
             installments: $this->gate($planFeatures, 'installments', $user, null),
-            cashbook:        $this->gate($planFeatures, null, $user, 'cash.view', true),
-            cashbook_create: $this->gate($planFeatures, null, $user, 'cash.create', true),
+            cashbook:        $this->cashbookGate($user, 'cash.view'),
+            cashbook_create: $this->cashbookGate($user, 'cash.create'),
         );
     }
 
@@ -85,6 +85,20 @@ class CapabilityResolver
         }
 
         return $this->userAllows($user, $permission);
+    }
+
+    /**
+     * Mobile Cash Book capability gate — mirrors CashBookController::authorizeCashbook
+     * exactly (single source of truth for the product rule). Only an owner or a
+     * manager qualifies, and they must additionally hold the permission. A
+     * cashier/staff member is denied even if their seeded role carries the
+     * permission; an owner with the permission revoked is denied too. Plan-feature
+     * independent — Cash Book is always-on per plan.
+     */
+    private function cashbookGate(User $user, string $permission): bool
+    {
+        return ($user->isOwner() || $user->isManager())
+            && $user->hasPermission($permission);
     }
 
     /**
