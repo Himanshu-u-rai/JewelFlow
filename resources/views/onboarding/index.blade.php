@@ -1,6 +1,7 @@
 <x-app-layout>
     {{-- ponytail: single-page wizard. Every opening "step" is a section with an
-         add-form; staged rows post into canonical ledgers only at Lock. --}}
+         add-form; staged rows post into canonical ledgers only at Lock. The front
+         screen is a small state machine: landing → migrate → resume → locked. --}}
     @php
         // ponytail: class-name vars — `use` imports are illegal inside @php (it
         // compiles into a function body). $Var::CONST is valid PHP.
@@ -27,13 +28,14 @@
 
     @php
         $card = 'border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:20px;';
-        $btn = 'padding:8px 16px;background:#0F766E;color:#fff;border:none;border-radius:8px;cursor:pointer;';
+        $btn = 'padding:8px 16px;background:#0F766E;color:#fff;border:none;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block;';
+        $btnGhost = 'padding:8px 16px;background:#fff;color:#0F766E;border:1px solid #0F766E;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block;';
         $inp = 'padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin:2px;';
         $lbl = 'font-weight:600;font-size:15px;margin-bottom:8px;display:block;';
     @endphp
 
     <div style="max-width:820px;margin:0 auto;padding:24px;">
-        <h1 style="font-size:20px;font-weight:700;margin-bottom:16px;">Existing-shop onboarding</h1>
+        <h1 style="font-size:20px;font-weight:700;margin-bottom:16px;">Set up your opening balances</h1>
 
         @if (session('success'))
             <div style="padding:10px 14px;background:#ecfdf5;color:#065f46;border-radius:8px;margin-bottom:16px;">{{ session('success') }}</div>
@@ -42,17 +44,131 @@
             <div style="padding:10px 14px;background:#fef2f2;color:#991b1b;border-radius:8px;margin-bottom:16px;">{{ $errors->first() }}</div>
         @endif
 
-        @if (! $batch)
-            {{-- Step 1: pick go-live date --}}
+        {{-- ═══ LANDING: decision between Start Clean and Migrate ═══ --}}
+        @if ($state === 'landing')
+            @if ($cancelledNotice)
+                <div style="padding:10px 14px;background:#fffbeb;color:#92400e;border-radius:8px;margin-bottom:16px;">
+                    Previous opening setup was cancelled. You can start again if needed.
+                </div>
+            @endif
+
+            <p style="color:#475569;font-size:14px;margin-bottom:8px;">
+                Already running your shop before JewelFlow? Enter what you have on hand today — cash, stock,
+                vault metal, customer dues, supplier and karigar balances — so your reports start from the right numbers.
+            </p>
+            <p style="color:#475569;font-size:14px;margin-bottom:20px;">
+                Starting fresh? You can skip this and begin using JewelFlow normally.
+            </p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div style="{{ $card }}">
+                    <label style="{{ $lbl }}">Start Clean</label>
+                    <p style="color:#64748b;font-size:13px;margin-bottom:16px;">My shop starts fresh in JewelFlow. No past balances to enter.</p>
+                    <form method="POST" action="{{ route('onboarding.start-clean') }}" onsubmit="return confirm('Start clean with no opening balances?');">
+                        @csrf
+                        <button type="submit" style="{{ $btnGhost }}">Start clean</button>
+                    </form>
+                </div>
+                <div style="{{ $card }}background:#f0fdfa;">
+                    <label style="{{ $lbl }}">Migrate Existing Shop</label>
+                    <p style="color:#64748b;font-size:13px;margin-bottom:16px;">My shop was already running. I want to enter opening balances.</p>
+                    <a href="{{ route('onboarding.index', ['step' => 'migrate']) }}" style="{{ $btn }}">Begin migration</a>
+                </div>
+            </div>
+
+        {{-- ═══ STARTED CLEAN ═══ --}}
+        @elseif ($state === 'clean')
+            <div style="{{ $card }}background:#f8fafc;">
+                <label style="{{ $lbl }}">Started clean</label>
+                <p style="color:#475569;font-size:14px;margin-bottom:12px;">
+                    This shop is set to start fresh with no opening balances. Use JewelFlow normally —
+                    add stock, customers, and sales as they happen.
+                </p>
+                <p style="color:#64748b;font-size:13px;margin-bottom:16px;">
+                    Changed your mind and want to enter pre-JewelFlow balances instead?
+                </p>
+                <a href="{{ route('onboarding.index', ['step' => 'migrate']) }}" style="{{ $btnGhost }}">Begin migration</a>
+            </div>
+
+        {{-- ═══ MIGRATE: go-live date + preparation checklist ═══ --}}
+        @elseif ($state === 'migrate')
+            @if ($hasLiveSales)
+                <div style="padding:12px 14px;background:#fef2f2;color:#991b1b;border-radius:8px;margin-bottom:16px;font-size:13px;">
+                    <strong>This shop already has live transactions in JewelFlow.</strong>
+                    Opening balances are meant for pre-JewelFlow data. Continue only if you are entering
+                    balances from before your JewelFlow go-live date.
+                </div>
+            @endif
+
+            <div style="{{ $card }}">
+                <label style="{{ $lbl }}">Have these ready before you start</label>
+                <ul style="color:#475569;font-size:13px;line-height:1.8;margin:0;padding-left:18px;">
+                    <li>Cash / bank / UPI / card balances as of go-live</li>
+                    <li>Customer list</li>
+                    <li>Customer dues, advances, gold balances</li>
+                    <li>Finished stock</li>
+                    <li>Vault / loose bullion</li>
+                    <li>Supplier payables</li>
+                    <li>Karigar money and held gold</li>
+                </ul>
+            </div>
+
             <form method="POST" action="{{ route('onboarding.store') }}" style="{{ $card }}">
                 @csrf
-                <label style="{{ $lbl }}">Step 1 — JewelFlow go-live date</label>
+                <label style="{{ $lbl }}">Pick your JewelFlow go-live date</label>
                 <input type="date" name="start_date" required style="{{ $inp }}">
-                <p style="color:#64748b;font-size:13px;margin-top:8px;">Opening balances are recorded as of the day before this date, so they never pollute live sales/GST/profit reports.</p>
-                <button type="submit" style="{{ $btn }}margin-top:12px;">Start onboarding</button>
+                <p style="color:#64748b;font-size:13px;margin-top:8px;">
+                    Opening balances are recorded as of the day before this date, so they never show up as
+                    sales, GST, or profit. Choose the date you start billing live in JewelFlow.
+                </p>
+                <div style="display:flex;gap:12px;margin-top:12px;">
+                    <button type="submit" style="{{ $btn }}">Start migration</button>
+                    <a href="{{ route('onboarding.index') }}" style="{{ $btnGhost }}">Back</a>
+                </div>
             </form>
-        @else
+
+            <p style="color:#92400e;font-size:13px;">
+                This does not create fake sales or purchases. Opening balances stay separate from live trading.
+                After you lock, entries are final — later fixes are made as adjustment entries.
+            </p>
+
+        {{-- ═══ LOCKED: post-lock summary ═══ --}}
+        @elseif ($state === 'locked')
+            <div style="{{ $card }}background:#ecfdf5;">
+                <label style="{{ $lbl }}color:#065f46;">Opening balances locked</label>
+                <p style="font-size:14px;color:#065f46;margin-bottom:6px;">
+                    <strong>Posted as of:</strong> {{ $lockedLatest->as_of_date->toDateString() }}
+                    &nbsp;|&nbsp; <strong>Live use starts from:</strong> {{ $lockedLatest->start_date->toDateString() }}
+                </p>
+                <p style="color:#475569;font-size:13px;margin-bottom:12px;">
+                    These opening balances now appear as your starting position in Cash Book, Vault,
+                    customer balances, supplier balances, and karigar balances. Live sales, GST, and profit
+                    begin from the go-live date.
+                </p>
+
+                @php $snap = $lockedLatest->totals_snapshot; @endphp
+                @if (is_array($snap) && count($snap))
+                    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px;">
+                        @foreach ($snap as $k => $v)
+                            @if (is_scalar($v))
+                                <tr><td style="padding:3px;color:#475569;">{{ ucwords(str_replace('_', ' ', (string) $k)) }}</td><td style="text-align:right;">{{ $v }}</td></tr>
+                            @endif
+                        @endforeach
+                    </table>
+                @endif
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                <a href="{{ route('onboarding.suppliers') }}" style="{{ $btnGhost }}">Supplier opening summary</a>
+                <a href="{{ route('dashboard') }}" style="{{ $btnGhost }}">Go to dashboard</a>
+                <a href="{{ route('cashbook.index') }}" style="{{ $btnGhost }}">Go to cash book</a>
+                <a href="{{ route('vault.index') }}" style="{{ $btnGhost }}">Go to vault</a>
+            </div>
+
+        {{-- ═══ RESUME: migration in progress — the staging wizard ═══ --}}
+        @elseif ($state === 'resume')
             <div style="{{ $card }}background:#f8fafc;">
+                <p style="font-weight:600;margin-bottom:4px;">Opening balance setup in progress — resume your migration</p>
                 <p><strong>Status:</strong> {{ ucfirst($batch->status) }}
                    &nbsp;|&nbsp; <strong>Go-live:</strong> {{ $batch->start_date->toDateString() }}
                    &nbsp;|&nbsp; <strong>Opening as-of:</strong> {{ $batch->as_of_date->toDateString() }}</p>
@@ -229,19 +345,9 @@
                 </div>
             @else
                 <div style="{{ $card }}">
-                    <p style="color:#065f46;">This batch is {{ $batch->status }} — opening balances are posted and read-only.</p>
+                    <p style="color:#065f46;">This batch is {{ $batch->status }} — opening balances are being posted.</p>
                 </div>
             @endif
-        @endif
-
-        @if ($locked->isNotEmpty())
-            <h2 style="font-size:16px;font-weight:600;margin:24px 0 12px;">Locked batches</h2>
-            <ul style="font-size:14px;">
-                @foreach ($locked as $l)
-                    <li>Start {{ $l->start_date->toDateString() }} — locked {{ optional($l->locked_at)->toDateTimeString() }}</li>
-                @endforeach
-            </ul>
-            <p style="margin-top:12px;"><a href="{{ route('onboarding.suppliers') }}" style="color:#0F766E;">View supplier opening outstanding &rarr;</a></p>
         @endif
     </div>
 </x-app-layout>

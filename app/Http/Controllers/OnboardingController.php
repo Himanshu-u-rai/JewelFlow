@@ -33,10 +33,13 @@ class OnboardingController extends Controller
         abort_unless(auth()->user()?->isOwner(), 403);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $this->assertOwner();
 
+        $shopId = (int) auth()->user()->shop_id;
+
+        // An editable/posting batch takes precedence — it's a migration in flight.
         $batch = OnboardingBatch::whereNotIn('status', OnboardingBatch::TERMINAL)
             ->latest('id')
             ->first();
@@ -44,6 +47,34 @@ class OnboardingController extends Controller
         $locked = OnboardingBatch::where('status', OnboardingBatch::STATUS_LOCKED)
             ->latest('locked_at')
             ->get();
+        $lockedLatest = $locked->first();
+
+        $latest = OnboardingBatch::latest('id')->first();
+        $prefs  = \App\Models\ShopPreferences::where('shop_id', $shopId)->first();
+        $startedClean = (bool) ($prefs?->opening_setup_skipped_at);
+
+        // Front-screen state machine. Batch existence wins over the clean flag, so
+        // an owner who started clean can still choose to migrate later.
+        if ($batch) {
+            $state = 'resume';
+        } elseif ($lockedLatest) {
+            $state = 'locked';
+        } elseif ($request->query('step') === 'migrate') {
+            $state = 'migrate';
+        } elseif ($startedClean) {
+            $state = 'clean';
+        } else {
+            $state = 'landing';
+        }
+
+        // Warn (never block) if the shop already has live sales — opening balances
+        // are for pre-JewelFlow data only.
+        $hasLiveSales = \App\Models\Invoice::where('status', \App\Models\Invoice::STATUS_FINALIZED)->exists();
+
+        // Show a one-time note if the previous batch was cancelled.
+        $cancelledNotice = $state === 'landing'
+            && $latest
+            && $latest->status === OnboardingBatch::STATUS_CANCELLED;
 
         // Reference data + staged rows only matter while a batch is being built.
         $entries = collect();
@@ -54,14 +85,51 @@ class OnboardingController extends Controller
 
         if ($batch) {
             $entries = $batch->entries()->latest('id')->get()->groupBy('kind');
-            $shopId = (int) auth()->user()->shop_id;
             $customers = Customer::orderBy('first_name')->get(['id', 'first_name', 'last_name', 'mobile']);
             $vendors = \App\Models\Vendor::orderBy('name')->get(['id', 'name']);
             $karigars = \App\Models\Karigar::orderBy('name')->get(['id', 'name']);
             $metals = MetalRegistry::validationListForShop($shopId);
         }
 
-        return view('onboarding.index', compact('batch', 'locked', 'entries', 'customers', 'vendors', 'karigars', 'metals'));
+        return view('onboarding.index', compact(
+            'state', 'batch', 'locked', 'lockedLatest', 'startedClean',
+            'cancelledNotice', 'hasLiveSales',
+            'entries', 'customers', 'vendors', 'karigars', 'metals'
+        ));
+    }
+
+    /**
+     * Owner records "Start Clean" — the shop begins fresh with no opening
+     * balances. Stores a flag so the dashboard prompt stops nagging. Does not
+     * touch any data or block normal app usage; the owner can still migrate later.
+     */
+    public function startClean(Request $request)
+    {
+        $this->assertOwner();
+
+        $shopId = (int) auth()->user()->shop_id;
+
+        // Never override a migration already in flight or completed.
+        if (OnboardingBatch::whereNotIn('status', OnboardingBatch::TERMINAL)->exists()
+            || OnboardingBatch::where('status', OnboardingBatch::STATUS_LOCKED)->exists()) {
+            return back()->withErrors(['start' => 'An onboarding batch already exists.']);
+        }
+
+        \App\Models\ShopPreferences::updateOrCreate(
+            ['shop_id' => $shopId],
+            ['opening_setup_skipped_at' => now()]
+        );
+
+        AuditLog::create([
+            'shop_id'     => $shopId,
+            'user_id'     => auth()->id(),
+            'action'      => 'onboarding_started_clean',
+            'model_type'  => 'ShopPreferences',
+            'model_id'    => $shopId,
+            'description' => 'Owner chose to start clean (no opening balances).',
+        ]);
+
+        return redirect()->route('onboarding.index')->with('success', 'Starting clean — no opening balances to enter.');
     }
 
     public function store(Request $request)
@@ -92,6 +160,10 @@ class OnboardingController extends Controller
             'status'     => OnboardingBatch::STATUS_DRAFT,
             'created_by' => $userId,
         ]);
+
+        // Choosing to migrate supersedes any prior "start clean" choice.
+        \App\Models\ShopPreferences::where('shop_id', $shopId)
+            ->update(['opening_setup_skipped_at' => null]);
 
         AuditLog::create([
             'shop_id'     => $shopId,

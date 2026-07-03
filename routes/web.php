@@ -261,6 +261,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/onboarding', [\App\Http\Controllers\OnboardingController::class, 'store'])
         ->middleware('can:imports.manage')
         ->name('onboarding.store');
+    Route::post('/onboarding/start-clean', [\App\Http\Controllers\OnboardingController::class, 'startClean'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.start-clean');
     Route::post('/onboarding/{onboarding}/lock', [\App\Http\Controllers\OnboardingController::class, 'lock'])
         ->middleware('can:imports.manage')
         ->name('onboarding.lock');
