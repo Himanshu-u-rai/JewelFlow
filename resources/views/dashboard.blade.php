@@ -4027,6 +4027,17 @@
         {{-- Admin-editable offers/deals banner (platform announcements, type=banner). --}}
         <x-promo-banner realm="erp" />
 
+        {{-- First-run opening-balance prompt (owner-only; see DashboardController). --}}
+        @if ($showOnboardingPrompt ?? false)
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 18px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;">
+                <div>
+                    <div style="font-weight:700;color:#0f766e;">Coming from an existing shop?</div>
+                    <div style="font-size:13px;color:#475569;">Set up your opening balances — cash, stock, vault metal, customer dues, supplier and karigar balances — before you start billing live.</div>
+                </div>
+                <a href="{{ route('onboarding.index') }}" style="padding:8px 16px;background:#0F766E;color:#fff;border-radius:8px;text-decoration:none;white-space:nowrap;">Set up now</a>
+            </div>
+        @endif
+
         @if($showDhiranPromo)
             <x-cross-promo-card
                 key="dhiran"

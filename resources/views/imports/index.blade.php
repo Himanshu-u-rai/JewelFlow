@@ -642,6 +642,24 @@
     <div class="content-inner space-y-6 ops-treatment-page imports-page">
         @php $isRetailer = auth()->user()->shop?->isRetailer(); @endphp
 
+        @if (auth()->user()->isOwner())
+        {{-- Opening balances / existing-shop migration. Owner-only entry point. --}}
+        <div class="import-card import-card--wide">
+            <div class="import-title-row">
+                <div>
+                    <div class="import-heading-line">
+                        <h2 class="import-heading">Opening Balances / Migrate Existing Shop</h2>
+                    </div>
+                    <p class="import-desc">Set up starting cash, stock, vault metal, customer dues, supplier and karigar balances before live billing.</p>
+                </div>
+                <span class="import-tag tag-safe">Owner</span>
+            </div>
+            <div class="mt-3">
+                <a href="{{ route('onboarding.index') }}" class="btn btn-dark">Open setup</a>
+            </div>
+        </div>
+        @endif
+
         <div class="import-grid {{ $isRetailer ? 'import-grid--single' : '' }}">
             @if($isRetailer)
             {{-- ========== STOCK IMPORT (Retailers) ========== --}}
