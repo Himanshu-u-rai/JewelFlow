@@ -87,8 +87,12 @@ class CashBookController extends Controller
         // Stats — 2 aggregate queries instead of 4.
         $today = now()->toDateString();
 
+        // Opening-balance rows must not inflate the income stat cards: they are a
+        // starting position, not a day/month movement. (The "Money on Hand" figure
+        // above still counts them, correctly, via LedgerService as opening.)
         $todayStats = CashTransaction::where('shop_id', $shopId)
             ->whereDate('created_at', $today)
+            ->whereRaw('is_opening IS NOT TRUE')
             ->selectRaw("
                 SUM(CASE WHEN type = 'in'  THEN amount ELSE 0 END) as today_in,
                 SUM(CASE WHEN type = 'out' THEN amount ELSE 0 END) as today_out
@@ -98,6 +102,7 @@ class CashBookController extends Controller
         $monthStats = CashTransaction::where('shop_id', $shopId)
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
+            ->whereRaw('is_opening IS NOT TRUE')
             ->selectRaw("
                 SUM(CASE WHEN type = 'in'  THEN amount ELSE 0 END) as month_in,
                 SUM(CASE WHEN type = 'out' THEN amount ELSE 0 END) as month_out

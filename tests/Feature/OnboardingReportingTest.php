@@ -67,6 +67,44 @@ class OnboardingReportingTest extends TestCase
         $this->assertEquals(107000, $cf->closing, 'Closing identity: opening + in − out.');
     }
 
+    public function test_opening_cash_excluded_from_day_book_and_cash_book_stat_cards(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        $this->actingAs($user)->post(route('onboarding.store'), ['start_date' => '2026-08-01']);
+        $batch = OnboardingBatch::withoutTenant()->firstOrFail();
+
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.entries.store', $batch), [
+            'kind' => OnboardingEntry::KIND_CASH, 'payment_mode' => 'cash', 'amount' => 100000,
+        ])->assertSessionHasNoErrors();
+
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.lock', $batch));
+
+        // Day Book over a window that spans the as-of date must not count opening
+        // as a period event.
+        $period = ReportPeriod::range('2026-07-31', '2026-08-31');
+        $db = TenantContext::runFor($shop->id, fn () => app(LedgerService::class)->dayBook($shop->id, $period));
+        $this->assertEquals(0, $db->cashIn, 'Opening cash is a starting position, not a Day Book event.');
+
+        // Cash Book stat cards: an opening row dated to today must not inflate the
+        // today/month income cards. One opening + one live receipt, both dated now.
+        TenantContext::set($shop->id);
+        CashTransaction::record([
+            'shop_id' => $shop->id, 'user_id' => $user->id, 'type' => 'in', 'amount' => 250000,
+            'source_type' => 'opening_balance', 'payment_mode' => 'cash', 'is_opening' => true,
+        ]);
+        CashTransaction::record([
+            'shop_id' => $shop->id, 'user_id' => $user->id, 'type' => 'in', 'amount' => 7000,
+            'source_type' => 'sale', 'payment_mode' => 'cash',
+        ]);
+
+        $stats = $this->actingAs($user)->get(route('cashbook.index'))->assertOk()->viewData('stats');
+        $this->assertEquals(7000, $stats['today_in'], 'Opening cash must not inflate today income.');
+        $this->assertEquals(7000, $stats['month_in'], 'Opening cash must not inflate month income.');
+    }
+
     public function test_wizard_and_supplier_views_render(): void
     {
         [$user, $shop] = $this->createManufacturerTenant();

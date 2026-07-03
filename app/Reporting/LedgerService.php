@@ -75,10 +75,13 @@ class LedgerService
             $events->push($this->event($c->occurred_at, 'Invoice Cancelled', $c->reference, '', (float) $c->amount, 'debit', 'invoice_cancel'));
         }
 
-        // Cash transactions (the cash ledger).
+        // Cash transactions (the cash ledger). Opening-balance rows are a starting
+        // position, never a period event — exclude them so back-dated opening cash
+        // can't surface as day-book income.
         $cash = DB::table('cash_transactions')
             ->where('shop_id', $shopId)
             ->whereBetween('created_at', [$start, $end])
+            ->whereRaw('is_opening IS NOT TRUE')
             ->select('created_at as occurred_at', 'type', 'amount', 'payment_mode', 'source_type', 'description', 'invoice_id')
             ->get();
         $cashIn = 0.0;
