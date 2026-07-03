@@ -155,11 +155,14 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             ->name('mobile.v1.reference_prices.index');
 
         // ─── Cash Book (Phase 4) — read endpoints ──────────────────────
+        // Access is enforced solely by CashBookController::authorizeCashbook,
+        // which is stricter than a plain `can:cash.view` Gate: it also denies
+        // staff/cashier who happen to carry cash.view, and yields one stable
+        // permission_denied message. A route-level can: gate here would run first
+        // and emit a different (generic) message for the same denial.
         Route::get('/cashbook', [CashBookController::class, 'index'])
-            ->middleware('can:cash.view')
             ->name('mobile.v1.cashbook.index');
         Route::get('/cashbook/drawer-check', [CashBookController::class, 'drawerContext'])
-            ->middleware('can:cash.view')
             ->name('mobile.v1.cashbook.drawer_context');
 
         // ─── Mutation routes (idempotency-protected) ───────────────────
@@ -167,10 +170,8 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
 
             // Cash Book (Phase 4) — manual entry + drawer check
             Route::post('/cashbook', [CashBookController::class, 'store'])
-                ->middleware('can:cash.create')
                 ->name('mobile.v1.cashbook.store');
             Route::post('/cashbook/drawer-check', [CashBookController::class, 'storeDrawerCheck'])
-                ->middleware('can:cash.create')
                 ->name('mobile.v1.cashbook.drawer_check');
 
             // M7 — session mutations

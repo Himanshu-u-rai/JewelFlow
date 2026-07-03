@@ -35,6 +35,34 @@ class CashBookApiTest extends TestCase
         }
     }
 
+    /**
+     * Build a user on a named tenant role ('manager' / 'staff') with exactly the
+     * given permissions. isOwner/isManager/isStaff resolve off role->name, so the
+     * name drives the mobile Cash Book gate; perms let us prove that a staff role
+     * carrying cash.view is still denied.
+     */
+    private function userWithRole(\App\Models\Shop $shop, string $roleName, array $perms = []): \App\Models\User
+    {
+        $role = new \App\Models\Role();
+        $role->forceFill([
+            'name'         => $roleName,
+            'display_name' => ucfirst($roleName),
+            'shop_id'      => $shop->id,
+        ]);
+        $role->save();
+
+        if ($perms) {
+            $ids = \App\Models\Permission::query()->whereIn('name', $perms)->pluck('id');
+            $role->permissions()->sync($ids);
+        }
+
+        return \App\Models\User::factory()->create([
+            'shop_id' => $shop->id,
+            'role_id' => $role->id,
+            'is_active' => true,
+        ]);
+    }
+
     private function idem(string $tag = ''): array
     {
         return ['X-Idempotency-Key' => 'cb-' . $tag . '-' . uniqid()];
@@ -201,5 +229,104 @@ class CashBookApiTest extends TestCase
         // Shop A has no cash; must not see shop B's 5000.
         $this->assertEqualsWithDelta(0, $res->json('data.money_on_hand.cash.closing'), 0.01);
         $this->assertSame([], $res->json('data.ledger'));
+    }
+
+    // ── Role-based access (mobile Cash Book product rule) ────────────────────
+
+    /** #1 Owner with cash.view can read Cash Book. */
+    public function test_owner_with_cash_view_can_get_cashbook(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant(); // owner, all perms
+        Sanctum::actingAs($user);
+        TenantContext::set((int) $shop->id);
+
+        $this->getJson('/api/mobile/v1/cashbook')->assertOk();
+    }
+
+    /** #2 Manager with cash.view can read Cash Book. */
+    public function test_manager_with_cash_view_can_get_cashbook(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $manager  = $this->userWithRole($shop, 'manager', ['cash.view']);
+        Sanctum::actingAs($manager);
+        TenantContext::set((int) $shop->id);
+
+        $this->getJson('/api/mobile/v1/cashbook')->assertOk();
+    }
+
+    /** #3 Manager without cash.view is denied with permission_denied. */
+    public function test_manager_without_cash_view_is_denied(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $manager  = $this->userWithRole($shop, 'manager', []); // no cash perms
+        Sanctum::actingAs($manager);
+        TenantContext::set((int) $shop->id);
+
+        $res = $this->getJson('/api/mobile/v1/cashbook');
+        $res->assertStatus(403);
+        $this->assertSame('permission_denied', $res->json('errors.0.code'));
+    }
+
+    /** #4 Cashier/staff without cash.view is denied. */
+    public function test_staff_without_cash_view_is_denied(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $staff    = $this->userWithRole($shop, 'staff', []);
+        Sanctum::actingAs($staff);
+        TenantContext::set((int) $shop->id);
+
+        $res = $this->getJson('/api/mobile/v1/cashbook');
+        $res->assertStatus(403);
+        $this->assertSame('permission_denied', $res->json('errors.0.code'));
+    }
+
+    /** #5 Staff artificially granted cash.view is STILL denied (role, not perm, gates). */
+    public function test_staff_with_cash_view_is_still_denied(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $staff    = $this->userWithRole($shop, 'staff', ['cash.view', 'cash.create']);
+        Sanctum::actingAs($staff);
+        TenantContext::set((int) $shop->id);
+
+        $res = $this->getJson('/api/mobile/v1/cashbook');
+        $res->assertStatus(403);
+        $this->assertSame('permission_denied', $res->json('errors.0.code'));
+
+        // And the same for a write attempt.
+        $post = $this->withHeaders($this->idem('staff'))->postJson('/api/mobile/v1/cashbook', [
+            'type' => 'in', 'amount' => 100, 'source_type' => 'other_income',
+        ]);
+        $post->assertStatus(403);
+        $this->assertSame('permission_denied', $post->json('errors.0.code'));
+    }
+
+    /** #6 Manager with cash.view but no cash.create can GET but not POST. */
+    public function test_manager_with_view_but_no_create_can_get_but_not_post(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $manager  = $this->userWithRole($shop, 'manager', ['cash.view']);
+        Sanctum::actingAs($manager);
+        TenantContext::set((int) $shop->id);
+
+        $this->getJson('/api/mobile/v1/cashbook')->assertOk();
+
+        $post = $this->withHeaders($this->idem('nocreate'))->postJson('/api/mobile/v1/cashbook', [
+            'type' => 'in', 'amount' => 100, 'source_type' => 'other_income',
+        ]);
+        $post->assertStatus(403);
+        $this->assertSame('permission_denied', $post->json('errors.0.code'));
+    }
+
+    /** #7 Manager with cash.create can POST a manual entry. */
+    public function test_manager_with_cash_create_can_post(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $manager  = $this->userWithRole($shop, 'manager', ['cash.view', 'cash.create']);
+        Sanctum::actingAs($manager);
+        TenantContext::set((int) $shop->id);
+
+        $this->withHeaders($this->idem('mgrcreate'))->postJson('/api/mobile/v1/cashbook', [
+            'type' => 'in', 'amount' => 250, 'source_type' => 'other_income',
+        ])->assertStatus(201);
     }
 }

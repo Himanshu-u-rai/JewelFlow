@@ -122,8 +122,44 @@ class CapabilityResolverTest extends TestCase
         $this->assertTrue($caps->dashboard, 'dashboard is always-on');
         $this->assertTrue($caps->scanner, 'scanner is always-on');
         $this->assertTrue($caps->purchases, 'purchases is always-on');
-        $this->assertTrue($caps->cashbook, 'cashbook is always-on (permission satisfied)');
         $this->assertTrue($caps->catalog, 'catalog defaults to true when plan has no catalog keys');
+        // Cash Book is NOT purely always-on: it is role+permission gated. A staff
+        // user with cash.view is still denied (see the dedicated matrix test).
+        $this->assertFalse($caps->cashbook, 'cashbook is denied for staff even with cash.view');
+    }
+
+    /**
+     * (#8) Cash Book capability follows the mobile product rule, not plan/perm
+     * alone: only owner/manager holding the matching cash permission get it;
+     * a cashier/staff member is denied even if the role carries the permission.
+     */
+    public function test_cashbook_capability_reflects_role_and_permission(): void
+    {
+        $resolver = new CapabilityResolver();
+
+        // Owner with cash.view + cash.create → both true.
+        [$shop, $user] = $this->buildTenant([], ['cash.view', 'cash.create'], 'owner');
+        $caps = $resolver->resolve($shop, $user);
+        $this->assertTrue($caps->cashbook);
+        $this->assertTrue($caps->cashbook_create);
+
+        // Manager with cash.view only → view true, create false.
+        [$shop, $user] = $this->buildTenant([], ['cash.view'], 'manager');
+        $caps = $resolver->resolve($shop, $user);
+        $this->assertTrue($caps->cashbook);
+        $this->assertFalse($caps->cashbook_create);
+
+        // Manager without cash.view → both false.
+        [$shop, $user] = $this->buildTenant([], [], 'manager');
+        $caps = $resolver->resolve($shop, $user);
+        $this->assertFalse($caps->cashbook);
+        $this->assertFalse($caps->cashbook_create);
+
+        // Staff WITH cash.view + cash.create → STILL both false (role gates).
+        [$shop, $user] = $this->buildTenant([], ['cash.view', 'cash.create'], 'staff');
+        $caps = $resolver->resolve($shop, $user);
+        $this->assertFalse($caps->cashbook, 'staff denied even with permission');
+        $this->assertFalse($caps->cashbook_create, 'staff denied even with permission');
     }
 
     /**
