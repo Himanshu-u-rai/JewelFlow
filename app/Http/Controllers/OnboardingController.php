@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\OnboardingBatch;
 use App\Models\OnboardingEntry;
+use App\Services\InvoiceAccountingService;
 use App\Services\MetalRegistry;
 use App\Services\OnboardingPostingService;
 use Illuminate\Http\Request;
@@ -116,34 +117,61 @@ class OnboardingController extends Controller
         $userId = auth()->id();
         $shopId = (int) auth()->user()->shop_id;
 
-        // Atomic idempotency claim: only the update that flips a still-editable
-        // batch to "posting" proceeds. A concurrent/duplicate lock updates 0 rows.
-        $claimed = OnboardingBatch::whereKey($onboarding->id)
-            ->whereIn('status', OnboardingBatch::EDITABLE)
-            ->update(['status' => OnboardingBatch::STATUS_POSTING]);
+        // The whole claim → post → finalize runs in ONE transaction with a row
+        // lock. That is what keeps the batch from ever sticking in "posting": if
+        // posting throws, the rollback reverts the status change together with
+        // every ledger row, so the batch returns to its prior editable state and
+        // can be corrected and retried (or cancelled).
+        try {
+            $result = DB::transaction(function () use ($onboarding, $userId, $shopId, $posting) {
+                // Atomic idempotency claim: a concurrent/duplicate lock blocks on
+                // this row lock, then re-reads a non-editable status and no-ops.
+                $fresh = OnboardingBatch::whereKey($onboarding->id)->lockForUpdate()->first();
+                if (! $fresh || ! $fresh->isEditable()) {
+                    return false;
+                }
 
-        if ($claimed === 0) {
-            return back()->withErrors(['lock' => 'This batch can no longer be locked.']);
+                // Opening rows are back-dated to the as-of date. If the shop has a
+                // financial lock covering that date, refuse cleanly — never write
+                // ledger rows behind a closed period. The rollback keeps the batch
+                // editable and retryable.
+                InvoiceAccountingService::assertShopLockForDate($shopId, $fresh->as_of_date->toDateString());
+
+                // Set locked_by first: the posting service reads it to stamp
+                // user_id on every posted ledger row.
+                $fresh->forceFill([
+                    'status'    => OnboardingBatch::STATUS_POSTING,
+                    'locked_by' => $userId,
+                    'locked_at' => now(),
+                ])->save();
+
+                $snapshot = $posting->post($fresh);
+
+                $fresh->forceFill([
+                    'status'          => OnboardingBatch::STATUS_LOCKED,
+                    'totals_snapshot' => $snapshot,
+                ])->save();
+
+                return true;
+            });
+        } catch (\Throwable $e) {
+            // Transaction rolled back: no status change, no partial ledger rows.
+            // Audit the failure so a stuck lock attempt is always traceable.
+            AuditLog::create([
+                'shop_id'     => $shopId,
+                'user_id'     => $userId,
+                'action'      => 'onboarding_batch_lock_failed',
+                'model_type'  => 'OnboardingBatch',
+                'model_id'    => $onboarding->id,
+                'description' => 'Onboarding lock failed: ' . $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['lock' => 'Locking failed — no opening rows were saved. ' . $e->getMessage() . ' Edit and try again.']);
         }
 
-        DB::transaction(function () use ($onboarding, $userId, $posting) {
-            // Set locked_by first: the posting service reads it to stamp user_id
-            // on every posted ledger row.
-            $onboarding->forceFill([
-                'locked_by' => $userId,
-                'locked_at' => now(),
-            ])->save();
-
-            // Post all staged entries into the canonical ledgers, then snapshot
-            // the reconciled totals. One transaction — the atomic claim above
-            // makes this idempotent (no double-post).
-            $snapshot = $posting->post($onboarding);
-
-            $onboarding->forceFill([
-                'status'          => OnboardingBatch::STATUS_LOCKED,
-                'totals_snapshot' => $snapshot,
-            ])->save();
-        });
+        if ($result === false) {
+            return back()->withErrors(['lock' => 'This batch can no longer be locked.']);
+        }
 
         AuditLog::create([
             'shop_id'     => $shopId,
@@ -213,7 +241,7 @@ class OnboardingController extends Controller
         $kind   = (string) $request->input('kind');
         abort_unless(in_array($kind, OnboardingEntry::KINDS, true), 422, 'Unknown opening kind.');
 
-        $payload = $request->validate($this->entryRules($kind, $shopId));
+        $payload = $request->validate($this->entryRules($kind, $shopId, (string) $request->input('metal_type', '')));
 
         OnboardingEntry::create([
             'shop_id'             => $shopId,
@@ -297,12 +325,22 @@ class OnboardingController extends Controller
      * entry referencing another tenant's customer/vendor/karigar; metal is
      * limited to the shop's enabled metals.
      */
-    private function entryRules(string $kind, int $shopId): array
+    private function entryRules(string $kind, int $shopId, string $metalType = ''): array
     {
         $metals   = MetalRegistry::validationListForShop($shopId);
         $customer = Rule::exists('customers', 'id')->where('shop_id', $shopId);
         $vendor   = Rule::exists('vendors', 'id')->where('shop_id', $shopId);
         $karigar  = Rule::exists('karigars', 'id')->where('shop_id', $shopId);
+
+        // Vault/karigar metal must be an accounting-truth metal (gold/silver): only
+        // those carry a fine-weight-bearing purity that the vault/reconciliation
+        // pools understand. Platinum/copper are piece-priced and out of scope here.
+        $accountingMetals = array_values(array_intersect($metals, MetalRegistry::accountingTruthMetals()));
+
+        // Per-metal purity cap = the system's existing authority (gold 24, else
+        // 999). 999 is also the ceiling of metal_lots.purity / items.purity
+        // decimal(5,2), so this doubles as an overflow guard.
+        $purityMax = \App\Models\Repair::maxPurityFor($metalType);
 
         return match ($kind) {
             OnboardingEntry::KIND_CASH => [
@@ -310,15 +348,15 @@ class OnboardingController extends Controller
                 'amount'       => ['required', 'numeric', 'gt:0'],
             ],
             OnboardingEntry::KIND_VAULT_METAL => [
-                'metal_type'         => ['required', Rule::in($metals)],
-                'purity'             => ['required', 'numeric', 'gt:0'],
+                'metal_type'         => ['required', Rule::in($accountingMetals)],
+                'purity'             => ['required', 'numeric', 'gt:0', 'max:' . $purityMax],
                 'fine_weight'        => ['required', 'numeric', 'gt:0'],
                 'cost_per_fine_gram' => ['nullable', 'numeric', 'gte:0'],
             ],
             OnboardingEntry::KIND_KARIGAR_GOLD => [
                 'karigar_id'         => ['required', $karigar],
-                'metal_type'         => ['required', Rule::in($metals)],
-                'purity'             => ['required', 'numeric', 'gt:0'],
+                'metal_type'         => ['required', Rule::in($accountingMetals)],
+                'purity'             => ['required', 'numeric', 'gt:0', 'max:' . $purityMax],
                 'fine_weight'        => ['required', 'numeric', 'gt:0'],
                 'cost_per_fine_gram' => ['nullable', 'numeric', 'gte:0'],
             ],
@@ -354,7 +392,8 @@ class OnboardingController extends Controller
                 // stone must fit within gross, else net_metal_weight (gross-stone)
                 // goes negative and poisons the opening-stock fine-weight snapshot.
                 'stone_weight'   => ['nullable', 'numeric', 'gte:0', 'lte:gross_weight'],
-                'purity'         => ['required', 'numeric', 'gt:0'],
+                // Same per-metal cap as vault/karigar — guards items.purity decimal(5,2).
+                'purity'         => ['required', 'numeric', 'gt:0', 'max:' . $purityMax],
                 'making_charges' => ['nullable', 'numeric', 'gte:0'],
                 'stone_charges'  => ['nullable', 'numeric', 'gte:0'],
                 'cost_price'     => ['nullable', 'numeric', 'gte:0'],

@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\CashTransaction;
 use App\Models\OnboardingBatch;
+use App\Models\OnboardingEntry;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\OnboardingPostingService;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
@@ -110,6 +114,86 @@ class OnboardingBatchTest extends TestCase
             ->post(route('onboarding.store'), ['start_date' => '2026-09-01'])
             ->assertRedirect(route('onboarding.index'));
         $this->assertSame(2, $this->batches()->count());
+    }
+
+    public function test_lock_failure_does_not_leave_batch_stuck_or_write_partial_rows(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        $this->actingAs($user)->post(route('onboarding.store'), ['start_date' => '2026-08-01']);
+        $batch = $this->batches()->firstOrFail();
+
+        // A posting service that writes ONE real ledger row, then throws — so the
+        // test proves the enclosing transaction rolls the partial write back and
+        // never leaves the batch stuck in "posting".
+        $this->app->bind(OnboardingPostingService::class, fn () => new class extends OnboardingPostingService {
+            public function post(OnboardingBatch $batch): array
+            {
+                CashTransaction::record([
+                    'shop_id'      => $batch->shop_id,
+                    'user_id'      => $batch->locked_by ?? $batch->created_by,
+                    'type'         => 'in',
+                    'amount'       => 999,
+                    'source_type'  => 'opening_balance',
+                    'payment_mode' => 'cash',
+                    'description'  => 'partial write',
+                    'is_opening'   => true,
+                ]);
+
+                throw new \RuntimeException('simulated posting failure');
+            }
+        });
+
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.lock', $batch))->assertSessionHasErrors('lock');
+
+        // Not stuck: reverted to editable, never "posting"/"locked".
+        $batch = $this->batches()->find($batch->id);
+        $this->assertSame(OnboardingBatch::STATUS_DRAFT, $batch->status);
+        $this->assertTrue($batch->isEditable());
+        $this->assertNull($batch->locked_at);
+
+        // No partial ledger rows survived the rollback.
+        $this->assertSame(0, CashTransaction::withoutTenant()->count());
+
+        // Failure audited; no success audit written.
+        $this->assertSame(1, AuditLog::withoutTenant()->where('action', 'onboarding_batch_lock_failed')->count());
+        $this->assertSame(0, AuditLog::withoutTenant()->where('action', 'onboarding_batch_locked')->count());
+
+        // Owner can still cancel the recovered batch (proves not stuck).
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.cancel', $batch))->assertRedirect(route('onboarding.index'));
+        $this->assertSame(OnboardingBatch::STATUS_CANCELLED, $this->batches()->find($batch->id)->status);
+    }
+
+    public function test_lock_is_blocked_when_as_of_date_is_financially_locked(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        // start 2026-08-01 → as-of 2026-07-31.
+        $this->actingAs($user)->post(route('onboarding.store'), ['start_date' => '2026-08-01']);
+        $batch = $this->batches()->firstOrFail();
+
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.entries.store', $batch), [
+            'kind' => OnboardingEntry::KIND_CASH, 'payment_mode' => 'cash', 'amount' => 5000,
+        ])->assertSessionHasNoErrors();
+
+        // Close the period through the as-of date: opening posts back-date into it.
+        DB::table('shop_rules')->updateOrInsert(
+            ['shop_id' => $shop->id],
+            ['financial_lock_date' => '2026-07-31']
+        );
+
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.lock', $batch))->assertSessionHasErrors('lock');
+
+        // Nothing posted behind the closed period; batch recoverable; failure audited.
+        $batch = $this->batches()->find($batch->id);
+        $this->assertSame(OnboardingBatch::STATUS_DRAFT, $batch->status);
+        $this->assertTrue($batch->isEditable());
+        $this->assertSame(0, CashTransaction::withoutTenant()->count());
+        $this->assertSame(1, AuditLog::withoutTenant()->where('action', 'onboarding_batch_lock_failed')->count());
     }
 
     public function test_non_owner_is_forbidden_even_with_imports_permission(): void
