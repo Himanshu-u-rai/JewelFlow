@@ -29,6 +29,18 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Refuse to narrow the CHECK while opening_advance rows exist: the ALTER
+        // would fail against them anyway (leaving a half-applied rollback), and
+        // silently deleting/rewriting posted store-credit rows would corrupt
+        // customers' wallet balances. Reverse the owning onboarding batches first.
+        if (DB::table('store_credit_movements')->where('source_type', 'opening_advance')->exists()) {
+            throw new \RuntimeException(
+                'Cannot roll back: store_credit_movements rows with source_type=opening_advance '
+                . 'exist. Removing it from the CHECK would orphan posted opening advances. '
+                . 'Reverse the onboarding batches that created them, then retry.'
+            );
+        }
+
         $this->setSources(array_values(array_diff(self::SOURCES, ['opening_advance'])));
     }
 

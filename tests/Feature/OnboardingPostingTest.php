@@ -14,8 +14,10 @@ use App\Models\OnboardingEntry;
 use App\Models\StoreCreditMovement;
 use App\Models\SupplierOpeningBalance;
 use App\Models\Vendor;
+use App\Services\MetalRegistry;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
@@ -172,6 +174,83 @@ class OnboardingPostingTest extends TestCase
         ])->assertSessionHasErrors('customer_id');
 
         $this->assertSame(0, OnboardingEntry::withoutTenant()->count());
+    }
+
+    public function test_vault_and_karigar_enforce_metal_tier_and_purity_scale(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        $karigar = new Karigar();
+        $karigar->forceFill(['shop_id' => $shop->id, 'name' => 'Ravi', 'is_active' => true]);
+        $karigar->save();
+
+        // Enable gold+silver (Tier 1) AND platinum (Tier 2, purity is NOT
+        // accounting truth). Once ANY shop_enabled_metals row exists the empty
+        // fallback stops applying, so gold/silver must be seeded explicitly too.
+        // Platinum is an accepted shop metal but still barred from the
+        // fine-weight-bearing vault/karigar pools.
+        // Postgres rejects PHP true→1 on a boolean column; use a raw SQL literal
+        // (project-wide pattern — see MetalRegistry::enabledMetalsForShop).
+        foreach (['gold', 'silver', 'platinum'] as $metal) {
+            DB::table('shop_enabled_metals')->updateOrInsert(
+                ['shop_id' => $shop->id, 'metal_type' => $metal],
+                ['enabled' => DB::raw('true')]
+            );
+        }
+        MetalRegistry::clearShopCache($shop->id);
+
+        $this->actingAs($user)->post(route('onboarding.store'), ['start_date' => '2026-08-01']);
+        $batch = OnboardingBatch::withoutTenant()->firstOrFail();
+
+        $post = function (array $data) use ($user, $shop, $batch) {
+            TenantContext::set($shop->id);
+            return $this->actingAs($user)->post(route('onboarding.entries.store', $batch), $data);
+        };
+
+        // Gold purity is karat-scaled (max 24) — 25 is rejected.
+        $post(['kind' => OnboardingEntry::KIND_VAULT_METAL, 'metal_type' => 'gold', 'purity' => 25, 'fine_weight' => 10])
+            ->assertSessionHasErrors('purity');
+
+        // Silver purity is millesimal — 999 accepted.
+        $post(['kind' => OnboardingEntry::KIND_VAULT_METAL, 'metal_type' => 'silver', 'purity' => 999, 'fine_weight' => 10])
+            ->assertSessionHasNoErrors();
+
+        // Silver 1000 would overflow metal_lots.purity decimal(5,2) — rejected.
+        $post(['kind' => OnboardingEntry::KIND_VAULT_METAL, 'metal_type' => 'silver', 'purity' => 1000, 'fine_weight' => 10])
+            ->assertSessionHasErrors('purity');
+
+        // Platinum is enabled but non-accounting → barred from vault AND karigar.
+        $post(['kind' => OnboardingEntry::KIND_VAULT_METAL, 'metal_type' => 'platinum', 'purity' => 950, 'fine_weight' => 10])
+            ->assertSessionHasErrors('metal_type');
+        $post(['kind' => OnboardingEntry::KIND_KARIGAR_GOLD, 'karigar_id' => $karigar->id, 'metal_type' => 'platinum', 'purity' => 950, 'fine_weight' => 10])
+            ->assertSessionHasErrors('metal_type');
+
+        // Only the valid silver-999 vault row survived.
+        $this->assertSame(1, OnboardingEntry::withoutTenant()->count());
+    }
+
+    public function test_migration_down_refuses_to_orphan_posted_opening_advances(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $customer = $this->createCustomer($shop->id);
+
+        // A posted opening advance exists — narrowing the CHECK would orphan it.
+        DB::table('store_credit_movements')->insert([
+            'shop_id'     => $shop->id,
+            'customer_id' => $customer->id,
+            'amount'      => 5000,
+            'source_type' => 'opening_advance',
+            'user_id'     => $user->id,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        $migration = require database_path(
+            'migrations/2026_09_01_010500_add_opening_advance_to_store_credit_source_check.php'
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $migration->down();
     }
 
     public function test_cannot_stage_stock_item_with_stone_heavier_than_gross(): void
