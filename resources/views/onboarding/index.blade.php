@@ -46,6 +46,10 @@
 
         {{-- ═══ LANDING: decision between Start Clean and Migrate ═══ --}}
         @if ($state === 'landing')
+            <div style="padding:14px 16px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;margin-bottom:16px;">
+                <p style="font-weight:700;color:#0f766e;margin-bottom:4px;">Before using JewelFlow, choose how your shop should start.</p>
+                <p style="color:#475569;font-size:13px;">This is a one-time setup step. It decides whether your reports begin from zero or from your existing shop balances.</p>
+            </div>
             @if ($cancelledNotice)
                 <div style="padding:10px 14px;background:#fffbeb;color:#92400e;border-radius:8px;margin-bottom:16px;">
                     Previous opening setup was cancelled. You can start again if needed.
@@ -169,6 +173,7 @@
         @elseif ($state === 'resume')
             <div style="{{ $card }}background:#f8fafc;">
                 <p style="font-weight:600;margin-bottom:4px;">Opening balance setup in progress — resume your migration</p>
+                <p style="color:#0f766e;font-size:13px;margin-bottom:8px;">Live billing will unlock after you lock opening balances.</p>
                 <p><strong>Status:</strong> {{ ucfirst($batch->status) }}
                    &nbsp;|&nbsp; <strong>Go-live:</strong> {{ $batch->start_date->toDateString() }}
                    &nbsp;|&nbsp; <strong>Opening as-of:</strong> {{ $batch->as_of_date->toDateString() }}</p>

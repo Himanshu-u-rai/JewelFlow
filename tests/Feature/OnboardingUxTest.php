@@ -33,7 +33,11 @@ class OnboardingUxTest extends TestCase
 
     public function test_owner_sees_landing_with_both_choices(): void
     {
-        [$user] = $this->createManufacturerTenant();
+        [$user, $shop] = $this->createManufacturerTenant();
+        // The tenant helper marks shops started_fresh so the mandatory setup gate
+        // never blocks the suite; clear it here to exercise the landing decision.
+        ShopPreferences::withoutTenant()->where('shop_id', $shop->id)
+            ->update(['opening_setup_skipped_at' => null]);
 
         $this->actingAs($user)->get(route('onboarding.index'))
             ->assertOk()
@@ -107,16 +111,18 @@ class OnboardingUxTest extends TestCase
             ->assertSee('Migrate Existing Shop');
     }
 
-    public function test_dashboard_prompt_shows_for_fresh_owner(): void
+    public function test_fresh_owner_is_redirected_to_onboarding_from_dashboard(): void
     {
+        // The soft dashboard prompt is now superseded by the mandatory
+        // EnsureOpeningSetupCompleted gate: a fresh owner never reaches the
+        // dashboard — they are redirected to /onboarding to make the decision.
         [$user, $shop] = $this->createManufacturerTenant();
+        ShopPreferences::withoutTenant()->where('shop_id', $shop->id)
+            ->update(['opening_setup_skipped_at' => null]);
 
-        $prompt = TenantContext::runFor($shop->id, fn () => $this->actingAs($user)
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($user)
             ->get(self::ERP . '/dashboard')
-            ->assertOk()
-            ->viewData('showOnboardingPrompt'));
-
-        $this->assertTrue($prompt, 'A fresh owner shop must see the opening-balance prompt.');
+            ->assertRedirect(route('onboarding.index')));
     }
 
     public function test_dashboard_prompt_hidden_after_start_clean(): void
