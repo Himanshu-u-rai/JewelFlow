@@ -90,6 +90,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => \App\Http\Middleware\EnsureTenantUser::class,
             'quickbill.enabled' => \App\Http\Middleware\EnsureQuickBillEnabled::class,
             'shopaccess.open' => \App\Http\Middleware\EnsureShopAccessOpen::class,
+            'opening.setup' => \App\Http\Middleware\EnsureOpeningSetupCompleted::class,
             'subscription.active' => \App\Http\Middleware\EnsureSubscriptionIsActive::class,
             'account.active' => \App\Http\Middleware\EnsureAccountIsActive::class,
             'edition' => \App\Http\Middleware\EnsureShopEdition::class,
