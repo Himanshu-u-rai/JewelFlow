@@ -128,6 +128,23 @@ trait CreatesTestTenant
     }
 
     /**
+     * Mark a shop as having completed the opening-setup decision (Start Fresh).
+     *
+     * Every helper tenant here stands in for an already-operational shop, so it
+     * defaults to started_fresh — otherwise the mandatory EnsureOpeningSetupCompleted
+     * gate would block every existing feature test at the dashboard/transactional
+     * routes. Gate-specific tests skip this stamp (or null it) to reach the
+     * setup_required/migration states on purpose.
+     */
+    protected function markShopOpeningSetupComplete(int $shopId): void
+    {
+        // forceFill: shop_id is guarded, and there is no tenant context in the
+        // test/console path to auto-populate it, so mass-assignment would drop it.
+        $prefs = \App\Models\ShopPreferences::withoutTenant()->firstOrNew(['shop_id' => $shopId]);
+        $prefs->forceFill(['shop_id' => $shopId, 'opening_setup_skipped_at' => now()])->save();
+    }
+
+    /**
      * Create a complete manufacturer tenant: shop, role, user, subscription, billing settings.
      */
     protected function createManufacturerTenant(): array
@@ -139,6 +156,7 @@ trait CreatesTestTenant
         $user = $this->createOwnerUser($shop, $role);
         $this->createSubscription($shop->id, $admin, $plan);
         $this->createBillingSettings($shop->id);
+        $this->markShopOpeningSetupComplete($shop->id);
 
         return [$user, $shop];
     }
@@ -155,6 +173,7 @@ trait CreatesTestTenant
         $user = $this->createOwnerUser($shop, $role);
         $this->createSubscription($shop->id, $admin, $plan);
         $this->createBillingSettings($shop->id);
+        $this->markShopOpeningSetupComplete($shop->id);
 
         return [$user, $shop];
     }
