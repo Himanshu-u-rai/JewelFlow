@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\OnboardingBatch;
+use App\Models\OnboardingEntry;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\ShopPreferences;
@@ -92,6 +93,11 @@ class OnboardingUxTest extends TestCase
 
         $this->actingAs($user)->post(route('onboarding.store'), ['start_date' => '2026-08-01']);
         $batch = OnboardingBatch::withoutTenant()->firstOrFail();
+
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.entries.store', $batch), [
+            'kind' => OnboardingEntry::KIND_CASH, 'payment_mode' => 'cash', 'amount' => 5000,
+        ])->assertSessionHasNoErrors();
 
         TenantContext::set($shop->id);
         $this->actingAs($user)->post(route('onboarding.lock', $batch));

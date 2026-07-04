@@ -100,6 +100,10 @@ class OnboardingPostingService
             return;
         }
 
+        // The ledger has no per-account column; the specific bank/UPI/wallet the
+        // owner picked survives as a label in the description for traceability.
+        $label = trim((string) ($p['account_label'] ?? ''));
+
         $this->insertBackdated(new CashTransaction(), [
             'shop_id'        => $shopId,
             'user_id'        => $userId,
@@ -107,7 +111,7 @@ class OnboardingPostingService
             'amount'         => $amount,
             'source_type'    => 'opening_balance',
             'payment_mode'   => $mode,
-            'description'    => 'Opening balance',
+            'description'    => $label !== '' ? "Opening balance — {$label}" : 'Opening balance',
             'is_opening'     => true,
             'reference_type' => self::REF_TYPE,
             'reference_id'   => $batchId,
@@ -140,7 +144,7 @@ class OnboardingPostingService
             'fine_weight_remaining' => $fine,
             'cost_per_fine_gram'    => round((float) ($p['cost_per_fine_gram'] ?? 0), 2),
             'karigar_id'            => $karigarId ?: null,
-            'notes'                 => 'Opening balance',
+            'notes'                 => trim((string) ($p['notes'] ?? '')) ?: 'Opening balance',
             'created_at'            => $asOf,
             'updated_at'            => $asOf,
         ]);
@@ -305,6 +309,7 @@ class OnboardingPostingService
             'cost_price'              => round((float) ($p['cost_price'] ?? 0), 2),
             'selling_price'           => round((float) ($p['selling_price'] ?? 0), 2) ?: null,
             'huid'                    => $p['huid'] ?? null,
+            'hallmark_date'           => $p['hallmark_date'] ?? null,
             'metal_lot_id'            => null, // separate pool — never debits vault
             'source'                  => 'opening_stock',
             'status'                  => 'in_stock',

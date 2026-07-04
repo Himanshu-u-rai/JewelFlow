@@ -82,6 +82,11 @@ class OnboardingBatchTest extends TestCase
         $batch = $this->batches()->firstOrFail();
 
         TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.entries.store', $batch), [
+            'kind' => OnboardingEntry::KIND_CASH, 'payment_mode' => 'cash', 'amount' => 5000,
+        ])->assertSessionHasNoErrors();
+
+        TenantContext::set($shop->id);
         $this->actingAs($user)->post(route('onboarding.lock', $batch))->assertRedirect(route('onboarding.index'));
 
         $batch = $this->batches()->find($batch->id);
@@ -96,6 +101,22 @@ class OnboardingBatchTest extends TestCase
         $batch = $this->batches()->find($batch->id);
         $this->assertEquals($lockedAt, $batch->locked_at);
         $this->assertSame(1, AuditLog::withoutTenant()->where('action', 'onboarding_batch_locked')->count());
+    }
+
+    public function test_empty_batch_cannot_be_locked(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+
+        $this->actingAs($user)->post(route('onboarding.store'), ['start_date' => '2026-08-01']);
+        $batch = $this->batches()->firstOrFail();
+
+        // No entries staged → lock is refused, batch stays editable.
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.lock', $batch))->assertSessionHasErrors('lock');
+
+        $batch = $this->batches()->find($batch->id);
+        $this->assertSame(OnboardingBatch::STATUS_DRAFT, $batch->status);
+        $this->assertTrue($batch->isEditable());
     }
 
     public function test_cancel_frees_the_active_slot(): void
@@ -122,6 +143,11 @@ class OnboardingBatchTest extends TestCase
 
         $this->actingAs($user)->post(route('onboarding.store'), ['start_date' => '2026-08-01']);
         $batch = $this->batches()->firstOrFail();
+
+        TenantContext::set($shop->id);
+        $this->actingAs($user)->post(route('onboarding.entries.store', $batch), [
+            'kind' => OnboardingEntry::KIND_CASH, 'payment_mode' => 'cash', 'amount' => 5000,
+        ])->assertSessionHasNoErrors();
 
         // A posting service that writes ONE real ledger row, then throws — so the
         // test proves the enclosing transaction rolls the partial write back and

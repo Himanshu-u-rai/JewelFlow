@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\OnboardingBatch;
 use App\Models\OnboardingEntry;
+use App\Models\ShopPaymentMethod;
 use App\Services\InvoiceAccountingService;
 use App\Services\MetalRegistry;
 use App\Services\OnboardingPostingService;
@@ -24,6 +25,11 @@ use Illuminate\Validation\Rule;
  */
 class OnboardingController extends Controller
 {
+    /**
+     * One-step-per-page wizard order (?step=). Missing/unknown → first step.
+     */
+    private const WIZARD_STEPS = ['customers', 'cash', 'stock', 'vault', 'balances', 'suppliers', 'review'];
+
     /**
      * Owner-only. Middleware gates the capability; this is defense-in-depth,
      * matching how BulkImportController re-checks ownership in-method.
@@ -81,20 +87,41 @@ class OnboardingController extends Controller
         $customers = collect();
         $vendors = collect();
         $karigars = collect();
+        $paymentMethods = collect();
+        $purityProfiles = collect();
         $metals = [];
+        $accountingMetals = [];
 
         if ($batch) {
             $entries = $batch->entries()->latest('id')->get()->groupBy('kind');
-            $customers = Customer::orderBy('first_name')->get(['id', 'first_name', 'last_name', 'mobile']);
+            $customers = Customer::orderBy('first_name')->get(['id', 'first_name', 'last_name', 'mobile', 'email', 'address']);
             $vendors = \App\Models\Vendor::orderBy('name')->get(['id', 'name']);
             $karigars = \App\Models\Karigar::orderBy('name')->get(['id', 'name']);
+            $paymentMethods = ShopPaymentMethod::orderBy('sort_order')->get()->groupBy('type');
+            $purityProfiles = app(\App\Services\ShopPricingService::class)
+                ->activePurityProfiles($shopId)
+                ->sortBy('sort_order')
+                ->groupBy('metal_type');
             $metals = MetalRegistry::validationListForShop($shopId);
+            // Karigar-held gold / vault bullion accept only accounting-truth metals
+            // (matches entryRules); expose the narrowed set to the wizard dropdowns.
+            $accountingMetals = array_values(array_intersect($metals, MetalRegistry::accountingTruthMetals()));
+        }
+
+        // Wizard is one step per page while a batch is being built. The step is
+        // URL-driven (?step=), so resume returns wherever the owner navigated —
+        // no schema/progress column needed. Unknown/missing step → the first one.
+        $step = null;
+        if ($state === 'resume' && $batch->isEditable()) {
+            $step = in_array($request->query('step'), self::WIZARD_STEPS, true)
+                ? $request->query('step')
+                : self::WIZARD_STEPS[0];
         }
 
         return view('onboarding.index', compact(
             'state', 'batch', 'locked', 'lockedLatest', 'startedClean',
-            'cancelledNotice', 'hasLiveSales',
-            'entries', 'customers', 'vendors', 'karigars', 'metals'
+            'cancelledNotice', 'hasLiveSales', 'step',
+            'entries', 'customers', 'vendors', 'karigars', 'paymentMethods', 'purityProfiles', 'metals', 'accountingMetals'
         ));
     }
 
@@ -185,6 +212,11 @@ class OnboardingController extends Controller
     {
         $this->assertOwner();
         abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+
+        // Nothing to post → keep the batch editable, don't burn the lock.
+        if (! $onboarding->entries()->exists()) {
+            return back()->withErrors(['lock' => 'Add at least one opening balance before locking.']);
+        }
 
         $userId = auth()->id();
         $shopId = (int) auth()->user()->shop_id;
@@ -393,6 +425,693 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Add one customer manually from the Step 2 form. Same directory + dedupe
+     * rule as the CSV import; a duplicate mobile is a hard error so the owner
+     * notices rather than silently losing the row.
+     */
+    public function storeCustomer(Request $request, OnboardingBatch $onboarding)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $data = $request->validate([
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name'  => ['nullable', 'string', 'max:100'],
+            'mobile'     => ['required', 'string', 'max:20'],
+            'email'      => ['nullable', 'email', 'max:150'],
+            'address'    => ['nullable', 'string', 'max:500'],
+        ]);
+
+        if (Customer::where('mobile', $data['mobile'])->exists()) {
+            return back()->withErrors(['mobile' => 'A customer with this mobile already exists.'])->withInput();
+        }
+
+        Customer::create($data);
+
+        return back()->with('success', 'Customer added.');
+    }
+
+    /**
+     * Create a supplier (vendor) directly in the directory from the Suppliers step.
+     * Deduped by name within the shop (name is the vendor's natural key + how the
+     * opening-balance CSV resolves them).
+     */
+    public function storeVendor(Request $request, OnboardingBatch $onboarding)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $data = $request->validate([
+            'name'           => ['required', 'string', 'max:150'],
+            'contact_person' => ['nullable', 'string', 'max:150'],
+            'mobile'         => ['nullable', 'string', 'max:20'],
+            'email'          => ['nullable', 'email', 'max:150'],
+            'address'        => ['nullable', 'string', 'max:500'],
+            'gst_number'     => ['nullable', 'string', 'max:20'],
+        ]);
+
+        if (\App\Models\Vendor::where('name', $data['name'])->exists()) {
+            return back()->withErrors(['name' => 'A supplier with this name already exists.'])->withInput();
+        }
+
+        \App\Models\Vendor::create($data);
+
+        return back()->with('success', 'Supplier added.');
+    }
+
+    /**
+     * Create a karigar directly in the directory from the Suppliers step.
+     * Deduped by name within the shop (how the opening-balance CSV resolves them).
+     */
+    public function storeKarigar(Request $request, OnboardingBatch $onboarding)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $data = $request->validate([
+            'name'           => ['required', 'string', 'max:150'],
+            'shop_name'      => ['nullable', 'string', 'max:150'],
+            'mobile'         => ['nullable', 'string', 'max:20'],
+            'contact_person' => ['nullable', 'string', 'max:150'],
+        ]);
+
+        if (\App\Models\Karigar::where('name', $data['name'])->exists()) {
+            return back()->withErrors(['name' => 'A karigar with this name already exists.'])->withInput();
+        }
+
+        \App\Models\Karigar::create($data);
+
+        return back()->with('success', 'Karigar added.');
+    }
+
+    /**
+     * Edit one customer inline from the Step 2 table. Same fields + dedupe as
+     * add (mobile must stay unique, excluding this row). Redirects back to the
+     * wizard, unlike the full customers.update which returns to the directory.
+     */
+    public function updateCustomer(Request $request, OnboardingBatch $onboarding, Customer $customer)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_if($customer->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $data = $request->validate([
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name'  => ['nullable', 'string', 'max:100'],
+            'mobile'     => ['required', 'string', 'max:20'],
+            'email'      => ['nullable', 'email', 'max:150'],
+            'address'    => ['nullable', 'string', 'max:500'],
+        ]);
+
+        if (Customer::where('mobile', $data['mobile'])->where('id', '!=', $customer->id)->exists()) {
+            return back()->withErrors(['mobile' => 'Another customer already uses this mobile.'])->withInput();
+        }
+
+        $customer->update($data);
+
+        return back()->with('success', 'Customer updated.');
+    }
+
+    /**
+     * Delete one customer from the Step 2 table. Blocks deletion if the customer
+     * is referenced by a staged opening balance (would orphan the entry) or by
+     * real history (invoices / gold / repairs) — same history guard as
+     * CustomerController::destroy, but staying inside the wizard.
+     */
+    public function destroyCustomer(OnboardingBatch $onboarding, Customer $customer)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_if($customer->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $stagedForCustomer = $onboarding->entries()
+            ->get()
+            ->contains(fn ($e) => (int) ($e->payload['customer_id'] ?? 0) === $customer->id);
+
+        if ($stagedForCustomer) {
+            return back()->withErrors(['customer' => 'This customer has staged opening balances. Remove those first (Customer balances step).']);
+        }
+
+        if (\App\Models\Invoice::where('customer_id', $customer->id)->exists()
+            || \App\Models\CustomerGoldTransaction::where('customer_id', $customer->id)->exists()
+            || $customer->repairs()->exists()) {
+            return back()->withErrors(['customer' => 'Cannot delete a customer with invoices, gold transactions, or repairs.']);
+        }
+
+        $customer->delete();
+
+        return back()->with('success', 'Customer removed.');
+    }
+
+    /**
+     * Sample CSV so the owner can build a valid customer import file. Mirrors
+     * BulkImportController::downloadTemplate — header row + two example rows,
+     * values with commas quoted.
+     */
+    public function customerTemplate()
+    {
+        $this->assertOwner();
+
+        $headers = ['first_name', 'last_name', 'mobile', 'email', 'address'];
+        $samples = [
+            ['Ramesh', 'Kumar', '9876543210', 'ramesh@example.com', '12 MG Road, Jaipur'],
+            ['Sita', 'Devi', '9812345678', '', 'Near Temple, Udaipur'],
+        ];
+
+        $lines = [implode(',', $headers)];
+        foreach ($samples as $s) {
+            $lines[] = implode(',', array_map(
+                fn ($v) => str_contains((string) $v, ',') ? '"' . $v . '"' : (string) $v,
+                $s
+            ));
+        }
+
+        return response(implode("\n", $lines) . "\n", 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="opening-customers-template.csv"',
+            'Cache-Control'       => 'no-store, no-cache',
+        ]);
+    }
+
+    /**
+     * Stage one opening cash/bank balance from the Step 3 form. `source` is
+     * either 'cash' (drawer) or a ShopPaymentMethod id (bank/upi/wallet). The
+     * ledger only stores payment_mode, so the specific account is resolved
+     * server-side to its mode + a display label kept in the staged payload (the
+     * label also enriches the posted ledger description). Accounts are created
+     * via the real Settings route, so they appear in Settings too.
+     */
+    public function storeCashOpening(Request $request, OnboardingBatch $onboarding)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $data = $request->validate([
+            'source' => ['required', 'string'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        OnboardingEntry::create([
+            'shop_id'             => (int) auth()->user()->shop_id,
+            'onboarding_batch_id' => $onboarding->id,
+            'kind'                => OnboardingEntry::KIND_CASH,
+            'payload'             => array_merge($this->resolveCashSource($data['source']), [
+                'amount' => round((float) $data['amount'], 2),
+            ]),
+            'created_by'          => auth()->id(),
+        ]);
+
+        return back()->with('success', 'Opening balance added.');
+    }
+
+    public function updateCashOpening(Request $request, OnboardingBatch $onboarding, OnboardingEntry $entry)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_if($entry->onboarding_batch_id !== $onboarding->id, 404);
+        abort_if($entry->kind !== OnboardingEntry::KIND_CASH, 404);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $data = $request->validate([
+            'source' => ['required', 'string'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $entry->update([
+            'payload' => array_merge($this->resolveCashSource($data['source']), [
+                'amount' => round((float) $data['amount'], 2),
+            ]),
+        ]);
+
+        return back()->with('success', 'Opening balance updated.');
+    }
+
+    /**
+     * Edit a staged finished-stock item. Same entryRules as the add form.
+     */
+    public function updateStock(Request $request, OnboardingBatch $onboarding, OnboardingEntry $entry)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_if($entry->onboarding_batch_id !== $onboarding->id, 404);
+        abort_if($entry->kind !== OnboardingEntry::KIND_STOCK_ITEM, 404);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $shopId  = (int) auth()->user()->shop_id;
+        $payload = $request->validate(
+            $this->entryRules(OnboardingEntry::KIND_STOCK_ITEM, $shopId, (string) $request->input('metal_type', ''))
+        );
+
+        $entry->update(['payload' => $payload]);
+
+        return back()->with('success', 'Opening item updated.');
+    }
+
+    /**
+     * Edit a staged vault bullion lot. Same entryRules as the add form.
+     */
+    public function updateVault(Request $request, OnboardingBatch $onboarding, OnboardingEntry $entry)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_if($entry->onboarding_batch_id !== $onboarding->id, 404);
+        abort_if($entry->kind !== OnboardingEntry::KIND_VAULT_METAL, 404);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $shopId  = (int) auth()->user()->shop_id;
+        $payload = $request->validate(
+            $this->entryRules(OnboardingEntry::KIND_VAULT_METAL, $shopId, (string) $request->input('metal_type', ''))
+        );
+
+        $entry->update(['payload' => $payload]);
+
+        return back()->with('success', 'Vault lot updated.');
+    }
+
+    /**
+     * Edit a staged customer opening balance (receivable/payable/advance/gold).
+     * Validates against the same entryRules keyed by the entry's own kind.
+     */
+    public function updateBalance(Request $request, OnboardingBatch $onboarding, OnboardingEntry $entry)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_if($entry->onboarding_batch_id !== $onboarding->id, 404);
+        abort_unless(in_array($entry->kind, [
+            OnboardingEntry::KIND_CUSTOMER_RECEIVABLE,
+            OnboardingEntry::KIND_CUSTOMER_PAYABLE,
+            OnboardingEntry::KIND_CUSTOMER_ADVANCE,
+            OnboardingEntry::KIND_CUSTOMER_GOLD,
+        ], true), 404);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $shopId  = (int) auth()->user()->shop_id;
+        $payload = $request->validate($this->entryRules($entry->kind, $shopId));
+
+        $entry->update(['payload' => $payload]);
+
+        return back()->with('success', 'Customer balance updated.');
+    }
+
+    /**
+     * Bulk-stage opening cash rows from CSV. Header: payment_mode,amount.
+     * payment_mode is a generic mode (cash/bank/upi/wallet) — no specific
+     * account link (use the form for that). Mirrors importCustomers.
+     */
+    public function importCash(Request $request, OnboardingBatch $onboarding)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:5120']]);
+
+        $handle = fopen($request->file('file')->getRealPath(), 'r');
+        if ($handle === false) {
+            return back()->withErrors(['file' => 'Could not read the uploaded file.']);
+        }
+
+        $header = fgetcsv($handle);
+        if ($header === false) {
+            fclose($handle);
+            return back()->withErrors(['file' => 'The file is empty.']);
+        }
+        $header = array_map(fn ($h) => strtolower(trim((string) $h)), $header);
+
+        $modes   = ['cash', 'bank', 'upi', 'wallet'];
+        $created = 0;
+        $skipped = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) === 1 && trim((string) $row[0]) === '') {
+                continue;
+            }
+            $data   = array_combine($header, array_pad(array_slice($row, 0, count($header)), count($header), null));
+            $mode   = strtolower(trim((string) ($data['payment_mode'] ?? '')));
+            $amount = round((float) ($data['amount'] ?? 0), 2);
+
+            if (! in_array($mode, $modes, true) || $amount <= 0) {
+                $skipped++;
+                continue;
+            }
+
+            OnboardingEntry::create([
+                'shop_id'             => (int) auth()->user()->shop_id,
+                'onboarding_batch_id' => $onboarding->id,
+                'kind'                => OnboardingEntry::KIND_CASH,
+                'payload'             => [
+                    'payment_mode'      => $mode,
+                    'account_label'     => $mode === 'cash' ? 'Cash in drawer' : ucfirst($mode),
+                    'payment_method_id' => null,
+                    'amount'            => $amount,
+                ],
+                'created_by'          => auth()->id(),
+            ]);
+            $created++;
+        }
+        fclose($handle);
+
+        return back()->with('success', "Imported {$created} balance(s); skipped {$skipped}.");
+    }
+
+    public function cashTemplate()
+    {
+        $this->assertOwner();
+
+        $csv = "payment_mode,amount\ncash,50000\nbank,120000\nupi,8000\nwallet,1500\n";
+
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="opening-cash-template.csv"',
+            'Cache-Control'       => 'no-store, no-cache',
+        ]);
+    }
+
+    /**
+     * Bulk-stage opening finished-stock items from CSV. Each valid row is staged
+     * as a KIND_STOCK_ITEM entry (posted to items at lock). Rows failing the same
+     * entryRules used by the manual form are skipped, not fatal (row mode).
+     * Header: metal_type,gross_weight,stone_weight,purity,making_charges,stone_charges,cost_price,selling_price,barcode,design,category,sub_category,huid.
+     */
+    public function importStock(Request $request, OnboardingBatch $onboarding)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+
+        $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:5120']]);
+
+        $handle = fopen($request->file('file')->getRealPath(), 'r');
+        if ($handle === false) {
+            return back()->withErrors(['file' => 'Could not read the uploaded file.']);
+        }
+
+        $header = fgetcsv($handle);
+        if ($header === false) {
+            fclose($handle);
+            return back()->withErrors(['file' => 'The file is empty.']);
+        }
+        $header = array_map(fn ($h) => strtolower(trim((string) $h)), $header);
+
+        $shopId  = (int) auth()->user()->shop_id;
+        $fields  = ['metal_type', 'gross_weight', 'stone_weight', 'purity', 'making_charges', 'stone_charges', 'cost_price', 'selling_price', 'barcode', 'design', 'category', 'sub_category', 'huid', 'hallmark_date'];
+        $created = 0;
+        $skipped = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) === 1 && trim((string) $row[0]) === '') {
+                continue;
+            }
+            $raw  = array_combine($header, array_pad(array_slice($row, 0, count($header)), count($header), null));
+            $data = [];
+            foreach ($fields as $f) {
+                $val = isset($raw[$f]) ? trim((string) $raw[$f]) : '';
+                $data[$f] = $val === '' ? null : $val;
+            }
+
+            $rules     = $this->entryRules(OnboardingEntry::KIND_STOCK_ITEM, $shopId, (string) ($data['metal_type'] ?? ''));
+            $validator = \Illuminate\Support\Facades\Validator::make($data, $rules);
+            if ($validator->fails()) {
+                $skipped++;
+                continue;
+            }
+
+            OnboardingEntry::create([
+                'shop_id'             => $shopId,
+                'onboarding_batch_id' => $onboarding->id,
+                'kind'                => OnboardingEntry::KIND_STOCK_ITEM,
+                'payload'             => $validator->validated(),
+                'created_by'          => auth()->id(),
+            ]);
+            $created++;
+        }
+        fclose($handle);
+
+        return back()->with('success', "Imported {$created} item(s); skipped {$skipped}.");
+    }
+
+    public function stockTemplate()
+    {
+        $this->assertOwner();
+
+        $csv = "metal_type,gross_weight,stone_weight,purity,making_charges,stone_charges,cost_price,selling_price,barcode,design,category,sub_category,huid,hallmark_date\n"
+            . "gold,10.500,0.500,22,1200,0,45000,52000,BC1001,Antique Ring,Rings,Ladies,HUID123456,2025-06-15\n"
+            . "silver,25.000,0,999,300,0,2000,2600,BC1002,Payal,Anklets,Ladies,,\n";
+
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="opening-stock-template.csv"',
+            'Cache-Control'       => 'no-store, no-cache',
+        ]);
+    }
+
+    /**
+     * Shared CSV loop for the staging importers. Reads the header, streams each
+     * non-empty row (as a lowercased-key assoc array) to $onRow, which returns
+     * true when it stages a row and false when it skips one. Redirects back with
+     * an "Imported X {noun}; skipped Y." summary. Owner/batch guards stay in the
+     * caller (they differ per route).
+     */
+    private function importCsv(Request $request, string $noun, \Closure $onRow)
+    {
+        $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:5120']]);
+
+        $handle = fopen($request->file('file')->getRealPath(), 'r');
+        if ($handle === false) {
+            return back()->withErrors(['file' => 'Could not read the uploaded file.']);
+        }
+
+        $header = fgetcsv($handle);
+        if ($header === false) {
+            fclose($handle);
+            return back()->withErrors(['file' => 'The file is empty.']);
+        }
+        $header = array_map(fn ($h) => strtolower(trim((string) $h)), $header);
+
+        $created = 0;
+        $skipped = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) === 1 && trim((string) $row[0]) === '') {
+                continue;
+            }
+            $assoc = array_combine($header, array_pad(array_slice($row, 0, count($header)), count($header), null));
+            $assoc = array_map(fn ($v) => is_string($v) && trim($v) === '' ? null : $v, $assoc);
+            $onRow($assoc) ? $created++ : $skipped++;
+        }
+        fclose($handle);
+
+        return back()->with('success', "Imported {$created} {$noun}; skipped {$skipped}.");
+    }
+
+    /**
+     * Stage one CSV row as an OnboardingEntry after validating $payload against
+     * the same entryRules the manual form uses. Returns false (skip) on failure.
+     */
+    private function stageValidatedRow(int $shopId, OnboardingBatch $onboarding, string $kind, array $payload, string $metalType = ''): bool
+    {
+        $validator = \Illuminate\Support\Facades\Validator::make(
+            $payload,
+            $this->entryRules($kind, $shopId, $metalType)
+        );
+        if ($validator->fails()) {
+            return false;
+        }
+
+        OnboardingEntry::create([
+            'shop_id'             => $shopId,
+            'onboarding_batch_id' => $onboarding->id,
+            'kind'                => $kind,
+            'payload'             => $validator->validated(),
+            'created_by'          => auth()->id(),
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Vault CSV. Header: metal_type,purity,fine_weight,cost_per_fine_gram.
+     */
+    public function importVault(Request $request, OnboardingBatch $onboarding)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+        $shopId = (int) auth()->user()->shop_id;
+
+        return $this->importCsv($request, 'lot(s)', function (array $r) use ($shopId, $onboarding) {
+            return $this->stageValidatedRow($shopId, $onboarding, OnboardingEntry::KIND_VAULT_METAL, [
+                'metal_type'         => $r['metal_type'] ?? null,
+                'purity'             => $r['purity'] ?? null,
+                'fine_weight'        => $r['fine_weight'] ?? null,
+                'cost_per_fine_gram' => $r['cost_per_fine_gram'] ?? null,
+                'notes'              => $r['notes'] ?? null,
+            ], (string) ($r['metal_type'] ?? ''));
+        });
+    }
+
+    public function vaultTemplate()
+    {
+        $this->assertOwner();
+        $csv = "metal_type,purity,fine_weight,cost_per_fine_gram,notes\ngold,24,50.000,6800,Pure gold bar\nsilver,999,1000.000,90,Silver bar\n";
+
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="opening-vault-template.csv"',
+            'Cache-Control'       => 'no-store, no-cache',
+        ]);
+    }
+
+    /**
+     * Customer balances CSV. Header: mobile,type,amount. type =
+     * receivable|payable|advance|gold (gold → amount is fine grams). Customer must
+     * already exist (resolved by mobile within the shop); unknown mobile → skip.
+     */
+    public function importBalances(Request $request, OnboardingBatch $onboarding)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+        $shopId = (int) auth()->user()->shop_id;
+
+        $kinds = [
+            'receivable' => OnboardingEntry::KIND_CUSTOMER_RECEIVABLE,
+            'payable'    => OnboardingEntry::KIND_CUSTOMER_PAYABLE,
+            'advance'    => OnboardingEntry::KIND_CUSTOMER_ADVANCE,
+            'gold'       => OnboardingEntry::KIND_CUSTOMER_GOLD,
+        ];
+
+        return $this->importCsv($request, 'balance(s)', function (array $r) use ($shopId, $onboarding, $kinds) {
+            $type = strtolower(trim((string) ($r['type'] ?? '')));
+            if (! isset($kinds[$type])) {
+                return false;
+            }
+            $customer = Customer::where('mobile', trim((string) ($r['mobile'] ?? '')))->first();
+            if (! $customer) {
+                return false;
+            }
+
+            $payload = $type === 'gold'
+                ? ['customer_id' => $customer->id, 'fine_gold' => $r['amount'] ?? null]
+                : ['customer_id' => $customer->id, 'amount' => $r['amount'] ?? null];
+
+            return $this->stageValidatedRow($shopId, $onboarding, $kinds[$type], $payload);
+        });
+    }
+
+    public function balancesTemplate()
+    {
+        $this->assertOwner();
+        $csv = "mobile,type,amount\n9876543210,receivable,15000\n9876500000,advance,5000\n9876511111,gold,12.500\n";
+
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="opening-customer-balances-template.csv"',
+            'Cache-Control'       => 'no-store, no-cache',
+        ]);
+    }
+
+    /**
+     * Suppliers & karigars CSV. Header:
+     * type,name,amount,metal_type,purity,fine_weight. type =
+     * supplier_payable|supplier_receivable|karigar_money|karigar_gold. name
+     * resolves against vendors (supplier_*) or karigars (karigar_*); metal columns
+     * apply only to karigar_gold. Unknown type or unresolved name → skip.
+     */
+    public function importSuppliers(Request $request, OnboardingBatch $onboarding)
+    {
+        $this->assertOwner();
+        abort_if($onboarding->shop_id !== auth()->user()->shop_id, 403);
+        abort_unless($onboarding->isEditable(), 422, 'This batch is locked.');
+        $shopId = (int) auth()->user()->shop_id;
+
+        return $this->importCsv($request, 'row(s)', function (array $r) use ($shopId, $onboarding) {
+            $type = strtolower(trim((string) ($r['type'] ?? '')));
+            $name = trim((string) ($r['name'] ?? ''));
+            if ($name === '') {
+                return false;
+            }
+
+            if ($type === 'supplier_payable' || $type === 'supplier_receivable') {
+                $vendor = \App\Models\Vendor::where('name', $name)->first();
+                if (! $vendor) {
+                    return false;
+                }
+                $kind = $type === 'supplier_payable'
+                    ? OnboardingEntry::KIND_SUPPLIER_PAYABLE
+                    : OnboardingEntry::KIND_SUPPLIER_RECEIVABLE;
+
+                return $this->stageValidatedRow($shopId, $onboarding, $kind, [
+                    'vendor_id' => $vendor->id,
+                    'amount'    => $r['amount'] ?? null,
+                ]);
+            }
+
+            if ($type === 'karigar_money' || $type === 'karigar_gold') {
+                $karigar = \App\Models\Karigar::where('name', $name)->first();
+                if (! $karigar) {
+                    return false;
+                }
+                if ($type === 'karigar_money') {
+                    return $this->stageValidatedRow($shopId, $onboarding, OnboardingEntry::KIND_KARIGAR_MONEY, [
+                        'karigar_id' => $karigar->id,
+                        'amount'     => $r['amount'] ?? null,
+                    ]);
+                }
+
+                return $this->stageValidatedRow($shopId, $onboarding, OnboardingEntry::KIND_KARIGAR_GOLD, [
+                    'karigar_id'  => $karigar->id,
+                    'metal_type'  => $r['metal_type'] ?? null,
+                    'purity'      => $r['purity'] ?? null,
+                    'fine_weight' => $r['fine_weight'] ?? null,
+                ], (string) ($r['metal_type'] ?? ''));
+            }
+
+            return false;
+        });
+    }
+
+    public function suppliersTemplate()
+    {
+        $this->assertOwner();
+        $csv = "type,name,amount,metal_type,purity,fine_weight\n"
+            . "supplier_payable,Acme Bullion,250000,,,\n"
+            . "supplier_receivable,Star Gems,12000,,,\n"
+            . "karigar_money,Ramesh Soni,8000,,,\n"
+            . "karigar_gold,Ramesh Soni,,gold,22,45.000\n";
+
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="opening-suppliers-template.csv"',
+            'Cache-Control'       => 'no-store, no-cache',
+        ]);
+    }
+
+    /**
+     * Resolve a Step 3 `source` (either 'cash' or a ShopPaymentMethod id) to the
+     * ledger payment_mode + a display label + the linked method id. The
+     * ShopPaymentMethod lookup is shop-scoped by BelongsToShop.
+     */
+    private function resolveCashSource(string $source): array
+    {
+        if ($source === 'cash') {
+            return ['payment_mode' => 'cash', 'account_label' => 'Cash in drawer', 'payment_method_id' => null];
+        }
+
+        $method = ShopPaymentMethod::find($source);
+        abort_unless($method, 422, 'Unknown payment account.');
+
+        return [
+            'payment_mode'      => $method->type,
+            'account_label'     => $method->account_label,
+            'payment_method_id' => $method->id,
+        ];
+    }
+
+    /**
      * Per-kind payload validation. Shop-scoped exists() rules stop a staged
      * entry referencing another tenant's customer/vendor/karigar; metal is
      * limited to the shop's enabled metals.
@@ -424,6 +1143,7 @@ class OnboardingController extends Controller
                 'purity'             => ['required', 'numeric', 'gt:0', 'max:' . $purityMax],
                 'fine_weight'        => ['required', 'numeric', 'gt:0'],
                 'cost_per_fine_gram' => ['nullable', 'numeric', 'gte:0'],
+                'notes'              => ['nullable', 'string', 'max:255'],
             ],
             OnboardingEntry::KIND_KARIGAR_GOLD => [
                 'karigar_id'         => ['required', $karigar],
@@ -474,7 +1194,11 @@ class OnboardingController extends Controller
                 'design'         => ['nullable', 'string', 'max:255'],
                 'category'       => ['nullable', 'string', 'max:100'],
                 'sub_category'   => ['nullable', 'string', 'max:100'],
-                'huid'           => ['nullable', 'string', 'max:50'],
+                // huid column is string(30) + unique(shop_id,huid): reject an
+                // over-length or already-taken code here, not at lock (a dup would
+                // otherwise crash the whole batch post inside its transaction).
+                'huid'           => ['nullable', 'string', 'max:30', Rule::unique('items', 'huid')->where('shop_id', $shopId)],
+                'hallmark_date'  => ['nullable', 'date'],
             ],
             default => [],
         };

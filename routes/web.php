@@ -279,6 +279,69 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/onboarding/{onboarding}/customers/import', [\App\Http\Controllers\OnboardingController::class, 'importCustomers'])
         ->middleware('can:imports.manage')
         ->name('onboarding.customers.import');
+    Route::post('/onboarding/{onboarding}/customers', [\App\Http\Controllers\OnboardingController::class, 'storeCustomer'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.customers.store');
+    Route::put('/onboarding/{onboarding}/customers/{customer}', [\App\Http\Controllers\OnboardingController::class, 'updateCustomer'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.customers.update');
+    Route::delete('/onboarding/{onboarding}/customers/{customer}', [\App\Http\Controllers\OnboardingController::class, 'destroyCustomer'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.customers.destroy');
+    Route::get('/onboarding-customers-template', [\App\Http\Controllers\OnboardingController::class, 'customerTemplate'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.customers.template');
+    Route::post('/onboarding/{onboarding}/cash', [\App\Http\Controllers\OnboardingController::class, 'storeCashOpening'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.cash.store');
+    Route::put('/onboarding/{onboarding}/cash/{entry}', [\App\Http\Controllers\OnboardingController::class, 'updateCashOpening'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.cash.update');
+    Route::post('/onboarding/{onboarding}/cash/import', [\App\Http\Controllers\OnboardingController::class, 'importCash'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.cash.import');
+    Route::get('/onboarding-cash-template', [\App\Http\Controllers\OnboardingController::class, 'cashTemplate'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.cash.template');
+    Route::put('/onboarding/{onboarding}/stock/{entry}', [\App\Http\Controllers\OnboardingController::class, 'updateStock'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.stock.update');
+    Route::post('/onboarding/{onboarding}/stock/import', [\App\Http\Controllers\OnboardingController::class, 'importStock'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.stock.import');
+    Route::get('/onboarding-stock-template', [\App\Http\Controllers\OnboardingController::class, 'stockTemplate'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.stock.template');
+    Route::put('/onboarding/{onboarding}/vault/{entry}', [\App\Http\Controllers\OnboardingController::class, 'updateVault'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.vault.update');
+    Route::post('/onboarding/{onboarding}/vault/import', [\App\Http\Controllers\OnboardingController::class, 'importVault'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.vault.import');
+    Route::get('/onboarding-vault-template', [\App\Http\Controllers\OnboardingController::class, 'vaultTemplate'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.vault.template');
+    Route::put('/onboarding/{onboarding}/balances/{entry}', [\App\Http\Controllers\OnboardingController::class, 'updateBalance'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.balances.update');
+    Route::post('/onboarding/{onboarding}/vendor', [\App\Http\Controllers\OnboardingController::class, 'storeVendor'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.vendor.store');
+    Route::post('/onboarding/{onboarding}/karigar', [\App\Http\Controllers\OnboardingController::class, 'storeKarigar'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.karigar.store');
+    Route::post('/onboarding/{onboarding}/balances/import', [\App\Http\Controllers\OnboardingController::class, 'importBalances'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.balances.import');
+    Route::get('/onboarding-balances-template', [\App\Http\Controllers\OnboardingController::class, 'balancesTemplate'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.balances.template');
+    Route::post('/onboarding/{onboarding}/suppliers/import', [\App\Http\Controllers\OnboardingController::class, 'importSuppliers'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.suppliers.import');
+    Route::get('/onboarding-suppliers-template', [\App\Http\Controllers\OnboardingController::class, 'suppliersTemplate'])
+        ->middleware('can:imports.manage')
+        ->name('onboarding.suppliers.template');
     Route::get('/onboarding-suppliers', [\App\Http\Controllers\OnboardingController::class, 'suppliers'])
         ->middleware('can:imports.manage')
         ->name('onboarding.suppliers');
