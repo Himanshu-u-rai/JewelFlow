@@ -104,7 +104,11 @@ class ShopAccessTest extends TestCase
     {
         [, $shop] = $this->createManufacturerTenant();
 
-        $this->assertFalse(ShopPreferences::withoutGlobalScopes()->where('shop_id', $shop->id)->exists());
+        // The onboarding gate now seeds a shop_preferences row (opening_setup_skipped_at),
+        // so "defaults open" no longer means "no row" — it means the row never carries an
+        // explicit closure. shop_access_enabled stays null/true until the owner closes.
+        $this->assertNotSame(false, ShopPreferences::withoutGlobalScopes()
+            ->where('shop_id', $shop->id)->value('shop_access_enabled'));
         $this->assertTrue(($this->ensurePrefs($shop->id)->shop_access_enabled ?? true));
         $this->assertTrue((bool) $this->prefs($shop->id)->shop_access_enabled);
     }

@@ -127,6 +127,12 @@ class MobileRolePermissionEnforcementTest extends TestCase
             // routes above.
             'api/mobile/v1/cashbook',
             'api/mobile/v1/cashbook/drawer-check',
+            // Shop Access close/reopen is owner-only and enforced inside
+            // ShopAccessController::update() (first statement: if (! isOwner())
+            // return 403). A normal permission gate would be WEAKER because
+            // manager permissions are configurable — closing/reopening the shop
+            // must never be grantable through a role permission.
+            'api/mobile/shop/access',
         ];
 
         $ungated = [];
