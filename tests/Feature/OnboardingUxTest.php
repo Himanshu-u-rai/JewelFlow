@@ -6,6 +6,7 @@ use App\Models\OnboardingBatch;
 use App\Models\OnboardingEntry;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\ShopDailyMetalRate;
 use App\Models\ShopPreferences;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -143,5 +144,105 @@ class OnboardingUxTest extends TestCase
             ->viewData('showOnboardingPrompt'));
 
         $this->assertFalse($prompt, 'Start Clean must suppress the dashboard prompt.');
+    }
+
+    // ── Retailer daily-rate modal must not deadlock a fresh shop ─────────────
+    //
+    // Regression: a fresh retailer shop showed the owner-only "Enter Today's
+    // Metal Rates" modal (full-viewport, no close) on /onboarding, but its save
+    // route sits behind the opening-setup gate — so the owner could neither save
+    // rates nor reach Start Fresh/Migrate underneath. Rate prompt now only shows
+    // once opening setup is resolved (ShopOpeningSetupState::isLiveAllowed).
+
+    /** The rate modal is identified by id="rate-modal-title" (unique to the live
+     * markup — the always-present CSS uses .rate-modal__title). */
+    private const MODAL_MARKER = 'id="rate-modal-title"';
+
+    private function freshRetailer(): array
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        ShopPreferences::withoutTenant()->where('shop_id', $shop->id)
+            ->update(['opening_setup_skipped_at' => null]);
+
+        return [$user, $shop];
+    }
+
+    /** 1. Fresh retailer owner reaches /onboarding with the rate modal suppressed. */
+    public function test_fresh_retailer_owner_sees_onboarding_without_rate_modal(): void
+    {
+        [$user] = $this->freshRetailer();
+
+        $this->actingAs($user)->get(route('onboarding.index'))
+            ->assertOk()
+            ->assertSee('Start Clean')
+            ->assertSee('Migrate Existing Shop')
+            ->assertDontSee(self::MODAL_MARKER, false);
+    }
+
+    /** 2. Fresh retailer owner can choose Start Fresh without setting daily rates. */
+    public function test_fresh_retailer_owner_can_start_fresh_without_rates(): void
+    {
+        [$user, $shop] = $this->freshRetailer();
+
+        $this->actingAs($user)->post(route('onboarding.start-clean'))
+            ->assertRedirect(route('onboarding.index'));
+
+        $this->assertNotNull(
+            ShopPreferences::withoutTenant()->where('shop_id', $shop->id)->value('opening_setup_skipped_at')
+        );
+    }
+
+    /** 3. After Start Fresh the dashboard unlocks and now surfaces the rate prompt. */
+    public function test_after_start_fresh_dashboard_unlocks_and_shows_rate_prompt(): void
+    {
+        [$user, $shop] = $this->freshRetailer();
+
+        $this->actingAs($user)->post(route('onboarding.start-clean'));
+
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($user)
+            ->get(self::ERP . '/dashboard')
+            ->assertOk()
+            ->assertSee(self::MODAL_MARKER, false));
+    }
+
+    /** 4. Daily-rate save works once opening setup is resolved (no longer gated). */
+    public function test_daily_rate_save_works_after_start_fresh(): void
+    {
+        [$user, $shop] = $this->freshRetailer();
+
+        $this->actingAs($user)->post(route('onboarding.start-clean'));
+
+        $this->actingAs($user)->post(route('settings.pricing.save-rates'), [
+            'gold_24k_rate_per_gram' => 7200,
+            'silver_999_rate_per_kg' => 92000,
+        ])->assertRedirect(route('settings.edit', ['tab' => 'pricing']));
+
+        $this->assertNotNull(
+            ShopDailyMetalRate::withoutTenant()->where('shop_id', $shop->id)->first()
+        );
+    }
+
+    /** 5. Retailer staff are still blocked by the opening-setup gate when unresolved. */
+    public function test_fresh_retailer_staff_still_blocked_by_setup_gate(): void
+    {
+        [, $shop] = $this->freshRetailer();
+
+        $role = new Role();
+        $role->forceFill(['name' => 'staff', 'display_name' => 'Staff', 'shop_id' => $shop->id])->save();
+        $role->permissions()->sync(Permission::where('name', 'cash.view')->pluck('id'));
+        $staff = User::factory()->create(['shop_id' => $shop->id, 'role_id' => $role->id, 'is_active' => true]);
+
+        $this->actingAs($staff)->get(route('cashbook.index'))
+            ->assertStatus(403)
+            ->assertSee('Shop setup pending');
+    }
+
+    /** 6. The opening-setup gate still blocks normal ERP routes while unresolved. */
+    public function test_fresh_retailer_owner_still_blocked_from_transactional_route(): void
+    {
+        [$user] = $this->freshRetailer();
+
+        $this->actingAs($user)->get(route('cashbook.index'))
+            ->assertRedirect(route('onboarding.index'));
     }
 }

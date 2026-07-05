@@ -40,6 +40,7 @@ use App\Models\CatalogPage;
 use App\Policies\CatalogPagePolicy;
 use App\Models\Platform\PlatformSetting;
 use App\Services\AdminImpersonationService;
+use App\Services\ShopOpeningSetupState;
 use App\Services\ShopPricingService;
 use App\Services\ReorderAlertService;
 use App\Services\TenantHealthService;
@@ -245,8 +246,14 @@ class AppServiceProvider extends ServiceProvider
                 $reorderAlertCount = app(ReorderAlertService::class)->alertCount($user->shop_id);
 
                 $pricing = app(ShopPricingService::class);
+                // Opening-setup decision comes before the daily-rate gate: the
+                // rate modal blocks the whole UI and its save route sits behind
+                // EnsureOpeningSetupCompleted, so showing it before Start
+                // Fresh/Migrate is chosen deadlocks a fresh shop. Only prompt for
+                // rates once the shop is live-allowed.
+                $liveAllowed = ShopOpeningSetupState::forShop((int) $user->shop_id)->isLiveAllowed();
                 $pricingShellState = [
-                    'show_owner_modal' => $user->isOwner() && ! $pricing->hasCurrentDailyRates($user->shop),
+                    'show_owner_modal' => $liveAllowed && $user->isOwner() && ! $pricing->hasCurrentDailyRates($user->shop),
                     'business_date' => $pricing->businessDateString($user->shop),
                     'timezone' => $pricing->pricingTimezone($user->shop),
                     'today_rate' => $pricing->currentDailyRate($user->shop),
