@@ -122,6 +122,16 @@ class RefundPolicyMathTest extends TestCase
         $this->assertEqualsWithDelta(20140.0, $r['total'], 0.005);
     }
 
+    public function test_wear_loss_pct_reduces_refund(): void
+    {
+        // 10% wear on the full refundable subtotal (nothing else retained).
+        $r = $this->refund($this->policy(true, true, true, 10, 0));
+        // floor(24700 * 0.90) = 22230; + 1200 GST = 23430.
+        $this->assertEqualsWithDelta(23430.0, $r['total'], 0.005, '10% wear loss on 24700 + GST');
+        $this->assertEqualsWithDelta(2470.0, $r['breakdown']['wear_loss_amount'], 0.005);
+        $this->assertEqualsWithDelta(10.0, $r['breakdown']['wear_loss_pct'], 0.005);
+    }
+
     // ── hallmark itemisation (now wired) ──────────────────────────────────────
 
     public function test_retaining_hallmark_charges_reduces_refund(): void
