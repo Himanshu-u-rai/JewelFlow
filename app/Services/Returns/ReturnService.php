@@ -110,6 +110,11 @@ class ReturnService
 
         // Sanity: if selections covers every line and they're all restocked,
         // delegate to the full-return path for header-accurate CN totals.
+        // Exception: an exchange ($forExchange) must NOT delegate — createFullReturn
+        // has no forExchange awareness and would unconditionally fire compensating
+        // cash-out, double-counting against the exchange's own net settlement. The
+        // partial path below already honors $forExchange (skips return-side cash)
+        // and issues the same CreditNoteService::issue header, so keep it here.
         $allLineIds = InvoiceItem::where('invoice_id', $invoice->id)
             ->whereNull('returned_at')
             ->pluck('id')
@@ -118,7 +123,7 @@ class ReturnService
         $selIds = array_map('intval', array_keys($selections));
         sort($selIds);
         $allRestock = collect($selections)->every(fn ($s) => ($s['disposition'] ?? 'restocked') === 'restocked');
-        if ($selIds === $allLineIds && $allRestock) {
+        if ($selIds === $allLineIds && $allRestock && !$forExchange) {
             return $this->createFullReturn($invoice, $reason, $userId, false, $refundSettlement);
         }
 
