@@ -308,6 +308,10 @@ class PricingEngine
             $lineTotals[$item->id] = (float) $item->selling_price;
         }
         $apportioned = InvoiceAccountingService::apportionGstToLines($lineTotals, $gst);
+        // Same largest-remainder split for the invoice-level discount, so each
+        // line carries its share (allocated_discount). Without this the return
+        // path refunds line_total gross and over-refunds by the discount.
+        $apportionedDiscount = InvoiceAccountingService::apportionGstToLines($lineTotals, $totalDiscount);
 
         $preRound = round($subtotal + $gst - $totalDiscount, 2);
         [$method, $nearest, $adjustment] = $this->applyRounding($preRound, $prefs);
@@ -321,6 +325,7 @@ class PricingEngine
                 'item_id'    => (int) $item->id,
                 'line_total' => (float) $item->selling_price,
                 'gst_amount' => (float) ($apportioned[$item->id] ?? 0.0),
+                'discount_amount' => (float) ($apportionedDiscount[$item->id] ?? 0.0),
                 'weight'     => (float) ($item->net_metal_weight ?? 0),
                 'rate'       => (float) $item->selling_price,
                 'making'     => (float) ($item->making_charges ?? 0),

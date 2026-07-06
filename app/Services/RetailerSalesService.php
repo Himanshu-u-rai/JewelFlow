@@ -115,8 +115,10 @@ class RetailerSalesService
             // largest-remainder helper, so SUM(line.gst_amount) == invoice.gst
             // is preserved by construction.
             $apportioned = [];
+            $apportionedDiscount = [];
             foreach ($breakdown->lines as $line) {
                 $apportioned[(int) $line['item_id']] = (float) ($line['gst_amount'] ?? 0);
+                $apportionedDiscount[(int) $line['item_id']] = (float) ($line['discount_amount'] ?? 0);
             }
 
             // Invoice lines — one per item
@@ -138,6 +140,9 @@ class RetailerSalesService
                     'line_total'     => $item->selling_price,
                     'gst_rate'       => $gstRate,
                     'gst_amount'     => $apportioned[$item->id] ?? 0,
+                    // Line's share of the invoice-level discount, so returns
+                    // refund the net (paid) amount, not the gross line_total.
+                    'allocated_discount' => $apportionedDiscount[$item->id] ?? 0,
                 ]);
             }
 
