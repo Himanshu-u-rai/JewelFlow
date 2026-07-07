@@ -3382,7 +3382,10 @@ function retailerPos() {
         },
 
         paymentTotal() {
-            return this.payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+            // Round each row and the sum: raw float addition leaves ₹0.01
+            // residues (e.g. 0.1 + 0.2) that block "Complete Sale" or show a
+            // phantom remaining balance on split payments.
+            return this.round2(this.payments.reduce((s, p) => s + this.round2(p.amount), 0));
         },
 
         hasEmiMode() {
@@ -3390,7 +3393,7 @@ function retailerPos() {
         },
 
         remaining() {
-            return this.total - this.paymentTotal() - this.appliedRedemptionAmount();
+            return this.round2(this.total - this.paymentTotal() - this.appliedRedemptionAmount());
         },
 
         excess() {
