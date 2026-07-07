@@ -1,8 +1,13 @@
 {{-- Dhiran-branded registration. Same shared route('register') (realm is set
      from the dhiran.* host) + the realm-aware guest layout (branding = Dhiran). --}}
 <x-guest-layout>
-    <h2 class="text-xl font-bold text-center text-slate-900 mb-1">Create your Dhiran account</h2>
-    <p class="text-center text-sm text-slate-500 mb-6">Set up your gold-loan business in a minute.</p>
+    @once
+        @vite(['resources/css/dhiran.css'])
+    @endonce
+
+    <div class="dh-auth-panel">
+    <h2 class="dh-auth-title">Create your Dhiran account</h2>
+    <p class="dh-auth-copy">Set up your pledge-loan business with a dedicated Dhiran workspace.</p>
 
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
@@ -35,7 +40,7 @@
                 required
                 autocomplete="new-password"
                 placeholder="Create a strong password" />
-            <p class="mt-1 text-xs text-slate-500">{{ __('At least 10 characters, with a capital letter, a small letter, a number, and a symbol.') }}</p>
+            <p class="dh-auth-helper">{{ __('At least 10 characters, with a capital letter, a small letter, a number, and a symbol.') }}</p>
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
@@ -59,9 +64,10 @@
 
         <p class="text-center text-sm text-slate-500 mt-6">
             {{ __('Already have a Dhiran account?') }}
-            <a class="font-semibold text-amber-700 hover:text-amber-800 transition" href="{{ route('login') }}">
+            <a class="dh-auth-link" href="{{ route('login') }}">
                 {{ __('Sign in') }}
             </a>
         </p>
     </form>
+    </div>
 </x-guest-layout>

@@ -1,49 +1,4 @@
 <x-dhiran-layout title="Loan Detail">
-    <style>
-        .dhiran-show-root {
-            --ds-ink: #0f172a;
-            --ds-muted: #64748b;
-            --ds-border: #e2e8f0;
-            --ds-gold: #d98b00;
-            --ds-shadow: 0 10px 24px rgba(20, 40, 75, 0.08);
-        }
-        .ds-fin-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-        .ds-fin-card {
-            background: #fff;
-            border: 1px solid var(--ds-border);
-            border-radius: 14px;
-            padding: 14px;
-            box-shadow: var(--ds-shadow);
-        }
-        .ds-fin-label {
-            font-size: 11px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 0.18em;
-            color: var(--ds-muted); margin-bottom: 4px;
-        }
-        .ds-fin-value {
-            font-size: 20px; font-weight: 700; color: var(--ds-ink);
-        }
-        .ds-info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 12px;
-        }
-        .ds-info-item-label {
-            font-size: 11px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 0.1em;
-            color: var(--ds-muted);
-        }
-        .ds-info-item-value {
-            font-size: 14px; font-weight: 600; color: var(--ds-ink);
-            margin-top: 2px;
-        }
-    </style>
-
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Loan {{ $loan->loan_number }}</h1>
@@ -112,7 +67,7 @@
                 <form method="POST" action="{{ route('dhiran.forfeit', $loan) }}" class="inline" data-turbo-frame="_top"
                       onsubmit="return confirm('Execute forfeiture for {{ $loan->loan_number }}? This permanently forfeits all pledged items and writes off the outstanding balance. This cannot be undone.');">
                     @csrf
-                    <button type="submit" class="btn btn-sm" style="background:#b91c1c;color:#fff;border-color:#b91c1c;">
+                    <button type="submit" class="btn btn-danger btn-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         Execute Forfeit
                     </button>
@@ -182,12 +137,12 @@
                 <form method="POST" action="{{ route('dhiran.activate-loan', $loan) }}" data-turbo-frame="_top"
                       onsubmit="return confirm('Activate this loan? Interest will start accruing.');">
                     @csrf
-                    <button type="submit" class="btn btn-dark btn-sm" style="background:#059669;border-color:#059669;">
+                    <button type="submit" class="btn btn-success btn-sm">
                         Activate Loan
                     </button>
                 </form>
             @else
-                <button type="button" class="btn btn-sm" disabled style="opacity:.55;cursor:not-allowed;">Activate Loan</button>
+                <button type="button" class="btn btn-sm" disabled>Activate Loan</button>
                 <p class="text-xs text-amber-800/80 mt-2">Upload both required documents in the Evidence &amp; Documents section below to enable activation.</p>
             @endif
             @endcan
@@ -264,7 +219,7 @@
                 <div class="ds-fin-label">Outstanding Penalty</div>
                 <div class="ds-fin-value text-rose-600">{{ $currencySymbol ?? '₹' }}{{ number_format($loan->outstanding_penalty ?? 0, 2) }}</div>
             </div>
-            <div class="ds-fin-card" style="border-color: var(--ds-gold);">
+            <div class="ds-fin-card ds-fin-card-primary">
                 <div class="ds-fin-label">Total Outstanding</div>
                 <div class="ds-fin-value">{{ $currencySymbol ?? '₹' }}{{ number_format($loan->total_outstanding ?? 0, 2) }}</div>
             </div>
@@ -423,13 +378,13 @@
                 <p class="text-sm text-red-600 mb-2">{{ $errors->first('file') }}</p>
             @endif
             <form method="POST" action="{{ route('dhiran.attachments.store') }}" enctype="multipart/form-data" data-turbo-frame="_top"
-                  class="flex flex-col sm:flex-row sm:items-end gap-3 border-t border-slate-100 pt-4">
+                  class="dh-upload-form border-t border-slate-100 pt-4">
                 @csrf
                 <input type="hidden" name="owner_type" value="dhiran_loan">
                 <input type="hidden" name="owner_id" value="{{ $loan->id }}">
                 <div class="flex-1">
                     <label class="block text-xs font-medium text-slate-600 mb-1">Document type</label>
-                    <select name="document_type" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <select name="document_type" required class="dh-form-control dh-native-select">
                         <option value="item_photo">Pledged item photo</option>
                         <option value="id_proof_front">ID proof (front)</option>
                         <option value="id_proof_back">ID proof (back)</option>
@@ -444,7 +399,7 @@
                 <div class="flex-1">
                     <label class="block text-xs font-medium text-slate-600 mb-1">File <span class="text-slate-400">(JPG/PNG/PDF, max 8 MB)</span></label>
                     <input type="file" name="file" required accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
-                           class="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-white file:text-xs">
+                           class="dh-file-input">
                 </div>
                 <button type="submit" class="btn btn-dark btn-sm shrink-0">Upload</button>
             </form>
@@ -461,25 +416,25 @@
     </div>
 
     {{-- Pay Interest Modal --}}
-    <dialog id="payInterestModal" class="rounded-2xl border border-slate-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/40">
-        <div class="p-6">
+    <dialog id="payInterestModal" class="dh-dialog">
+        <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Pay Interest</h3>
             <form method="POST" action="{{ route('dhiran.pay-interest', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Amount</label>
                     <input type="number" step="0.01" name="amount" required placeholder="0.00"
-                           class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                           class="dh-form-control">
                 </div>
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Payment Method</label>
-                    <select name="method" class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                    <select name="method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
                         <option value="bank">Bank Transfer</option>
                     </select>
                 </div>
-                <div class="flex justify-end gap-3">
+                <div class="dh-dialog-footer">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('payInterestModal').close()">Cancel</button>
                     <button type="submit" class="btn btn-dark btn-sm">Pay Interest</button>
                 </div>
@@ -488,25 +443,25 @@
     </dialog>
 
     {{-- Repay Modal --}}
-    <dialog id="repayModal" class="rounded-2xl border border-slate-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/40">
-        <div class="p-6">
+    <dialog id="repayModal" class="dh-dialog">
+        <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Repay Loan</h3>
             <form method="POST" action="{{ route('dhiran.repay', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Amount</label>
                     <input type="number" step="0.01" name="amount" required placeholder="0.00"
-                           class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                           class="dh-form-control">
                 </div>
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Payment Method</label>
-                    <select name="method" class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                    <select name="method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
                         <option value="bank">Bank Transfer</option>
                     </select>
                 </div>
-                <div class="flex justify-end gap-3">
+                <div class="dh-dialog-footer">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('repayModal').close()">Cancel</button>
                     <button type="submit" class="btn btn-dark btn-sm">Submit Payment</button>
                 </div>
@@ -515,14 +470,14 @@
     </dialog>
 
     {{-- Release Item Modal --}}
-    <dialog id="releaseItemModal" class="rounded-2xl border border-slate-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/40">
-        <div class="p-6">
+    <dialog id="releaseItemModal" class="dh-dialog">
+        <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Release Pledged Item</h3>
             <form method="POST" action="{{ route('dhiran.release-item', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Select Item</label>
-                    <select name="item_id" required class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                    <select name="item_id" required class="dh-form-control dh-native-select">
                         <option value="">Choose item...</option>
                         @foreach($loan->items ?? [] as $item)
                             @if(($item->status ?? 'pledged') === 'pledged')
@@ -531,7 +486,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="flex justify-end gap-3">
+                <div class="dh-dialog-footer">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('releaseItemModal').close()">Cancel</button>
                     <button type="submit" class="btn btn-dark btn-sm">Release Item</button>
                 </div>
@@ -540,21 +495,21 @@
     </dialog>
 
     {{-- Pre-Close Modal --}}
-    <dialog id="precloseModal" class="rounded-2xl border border-slate-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/40">
-        <div class="p-6">
+    <dialog id="precloseModal" class="dh-dialog">
+        <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Pre-Close Loan</h3>
             <p class="text-sm text-slate-600 mb-4">This will close the loan and release all pledged items. Total outstanding: <strong>{{ $currencySymbol ?? '₹' }}{{ number_format($loan->total_outstanding ?? 0, 2) }}</strong></p>
             <form method="POST" action="{{ route('dhiran.pre-close', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Payment Method</label>
-                    <select name="method" class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                    <select name="method" class="dh-form-control dh-native-select">
                         <option value="cash">Cash</option>
                         <option value="upi">UPI</option>
                         <option value="bank">Bank Transfer</option>
                     </select>
                 </div>
-                <div class="flex justify-end gap-3">
+                <div class="dh-dialog-footer">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('precloseModal').close()">Cancel</button>
                     <button type="submit" class="btn btn-dark btn-sm">Pre-Close Loan</button>
                 </div>
@@ -563,22 +518,22 @@
     </dialog>
 
     {{-- Renew Modal --}}
-    <dialog id="renewModal" class="rounded-2xl border border-slate-200 shadow-xl p-0 w-full max-w-md backdrop:bg-black/40">
-        <div class="p-6">
+    <dialog id="renewModal" class="dh-dialog">
+        <div class="dh-dialog-body">
             <h3 class="text-lg font-semibold text-slate-900 mb-4">Renew Loan</h3>
             <form method="POST" action="{{ route('dhiran.renew', $loan) }}" data-turbo-frame="_top">
                 @csrf
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">New Tenure (Months)</label>
                     <input type="number" name="tenure_months" required min="1" value="{{ $loan->tenure_months }}"
-                           class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                           class="dh-form-control">
                 </div>
                 <div class="mb-4">
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">New Interest Rate (%/month)</label>
                     <input type="number" step="0.01" name="interest_rate_monthly" required value="{{ $loan->interest_rate_monthly }}"
-                           class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                           class="dh-form-control">
                 </div>
-                <div class="flex justify-end gap-3">
+                <div class="dh-dialog-footer">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('renewModal').close()">Cancel</button>
                     <button type="submit" class="btn btn-dark btn-sm">Renew Loan</button>
                 </div>

@@ -1,8 +1,13 @@
 {{-- Dhiran-branded login. Posts to the shared route('login') (the LoginRequest
      scopes auth to the dhiran realm by host) + the realm-aware guest layout. --}}
 <x-guest-layout>
-    <h2 class="text-xl font-bold text-center text-slate-900 mb-1">Welcome back</h2>
-    <p class="text-center text-sm text-slate-500 mb-6">Sign in to manage your gold-loan business.</p>
+    @once
+        @vite(['resources/css/dhiran.css'])
+    @endonce
+
+    <div class="dh-auth-panel">
+    <h2 class="dh-auth-title">Welcome back</h2>
+    <p class="dh-auth-copy">Sign in to manage your Dhiran pledge-loan service.</p>
 
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
@@ -45,7 +50,7 @@
             </label>
 
             @if (Route::has('password.request'))
-                <a class="text-sm font-medium text-amber-700 hover:text-amber-800 transition" href="{{ route('password.request') }}">
+                <a class="dh-auth-link text-sm" href="{{ route('password.request') }}">
                     {{ __('Forgot your password?') }}
                 </a>
             @endif
@@ -59,9 +64,10 @@
 
         <p class="text-center text-sm text-slate-500 mt-6">
             {{ __("Don't have a Dhiran account?") }}
-            <a class="font-semibold text-amber-700 hover:text-amber-800 transition" href="{{ route('register') }}">
+            <a class="dh-auth-link" href="{{ route('register') }}">
                 {{ __('Register') }}
             </a>
         </p>
     </form>
+    </div>
 </x-guest-layout>

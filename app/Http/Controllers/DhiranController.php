@@ -116,7 +116,7 @@ class DhiranController extends Controller
         $customers = Customer::where('shop_id', $shopId)
             ->orderBy('first_name')
             ->orderBy('last_name')
-            ->get(['id', 'first_name', 'last_name', 'mobile']);
+            ->get(['id', 'first_name', 'last_name', 'mobile', 'address', 'pan', 'id_number', 'state_code']);
 
         // Preselect a borrower when arriving from the borrower profile / list
         // (?customer_id=). Only honoured if that customer belongs to this shop.
@@ -161,9 +161,13 @@ class DhiranController extends Controller
                 'duplicate' => true,
                 'message'   => 'A borrower with this mobile already exists in your shop — selected it.',
                 'customer'  => [
-                    'id'     => $existing->id,
-                    'name'   => trim($existing->first_name . ' ' . ($existing->last_name ?? '')),
-                    'mobile' => $existing->mobile,
+                    'id'         => $existing->id,
+                    'name'       => trim($existing->first_name . ' ' . ($existing->last_name ?? '')),
+                    'mobile'     => $existing->mobile,
+                    'address'    => $existing->address,
+                    'pan'        => $existing->pan,
+                    'id_number'  => $existing->id_number,
+                    'state_code' => $existing->state_code,
                 ],
             ]);
         }
@@ -188,9 +192,13 @@ class DhiranController extends Controller
         return response()->json([
             'ok'       => true,
             'customer' => [
-                'id'     => $customer->id,
-                'name'   => trim($customer->first_name . ' ' . ($customer->last_name ?? '')),
-                'mobile' => $customer->mobile,
+                'id'         => $customer->id,
+                'name'       => trim($customer->first_name . ' ' . ($customer->last_name ?? '')),
+                'mobile'     => $customer->mobile,
+                'address'    => $customer->address,
+                'pan'        => $customer->pan,
+                'id_number'  => $customer->id_number,
+                'state_code' => $customer->state_code,
             ],
         ], 201);
     }

@@ -7,6 +7,8 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/css/super-admin.css',
+                'resources/css/dhiran.css',
+                'resources/css/dhiran-documents.css',
                 'resources/js/app.js',
                 'resources/css/catalog.css',
                 'resources/js/catalog.js',

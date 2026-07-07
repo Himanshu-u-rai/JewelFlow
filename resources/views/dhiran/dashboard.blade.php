@@ -1,70 +1,13 @@
 <x-dhiran-layout title="Dhiran Dashboard">
-    <style>
-        .dhiran-dash {
-            --dd-ink: #0f172a;
-            --dd-muted: #64748b;
-            --dd-gold: #f4a300;
-            --dd-gold-deep: #d98b00;
-            --dd-line: #d7dee8;
-            --dd-card: #ffffff;
-            --dd-shadow: 0 10px 24px rgba(20, 40, 75, 0.08);
-            padding-top: 18px;
-        }
-        .dd-kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        .dd-kpi-card {
-            background: var(--dd-card);
-            border: 1px solid var(--dd-line);
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: var(--dd-shadow);
-        }
-        .dd-kpi-inner {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .dd-kpi-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
-            flex-shrink: 0;
-        }
-        .dd-kpi-icon svg { width: 20px; height: 20px; }
-        .dd-kpi-label {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.18em;
-            color: var(--dd-muted);
-        }
-        .dd-kpi-value {
-            font-size: 24px;
-            font-weight: 600;
-            color: var(--dd-ink);
-        }
-        .dd-quick-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 24px;
-        }
-    </style>
-
     <x-dhiran.page-header>
         <div>
-            <h1 class="page-title">Dhiran &mdash; Pledge Loans</h1>
+            <h1 class="page-title dh-dashboard-mobile-title">
+                Dhiran<span> &mdash; Pledge Loans</span>
+            </h1>
             <p class="text-sm text-gray-500 mt-1">Overview of all pledge loan activity</p>
         </div>
         <div class="page-actions">
-            <a href="{{ route('dhiran.create') }}" class="btn btn-dark btn-sm">
+            <a href="{{ route('dhiran.create') }}" class="btn btn-dark btn-sm" data-dh-mobile-pin="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 New Loan
             </a>
@@ -154,10 +97,6 @@
 
         {{-- Quick Actions --}}
         <div class="dd-quick-actions">
-            <a href="{{ route('dhiran.create') }}" class="btn btn-dark btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                New Loan
-            </a>
             <a href="{{ route('dhiran.loans') }}" class="btn btn-secondary btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 View All Loans

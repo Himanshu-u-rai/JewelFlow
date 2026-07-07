@@ -1,34 +1,4 @@
 <x-dhiran-layout title="Reports">
-    <style>
-        .dhiran-reports-root {
-            --dr-ink: #0f172a;
-            --dr-muted: #64748b;
-            --dr-border: #e2e8f0;
-            --dr-accent: #d98b00;
-            --dr-shadow: 0 10px 24px rgba(20, 40, 75, 0.08);
-        }
-        .dr-report-card {
-            background: #fff;
-            border: 1px solid var(--dr-border);
-            border-radius: 14px;
-            padding: 20px;
-            box-shadow: var(--dr-shadow);
-            transition: border-color 0.15s, box-shadow 0.15s;
-        }
-        .dr-report-card:hover {
-            border-color: var(--dr-accent);
-            box-shadow: 0 12px 28px rgba(20, 40, 75, 0.12);
-        }
-        .dr-report-icon {
-            display: flex; align-items: center; justify-content: center;
-            width: 42px; height: 42px; border-radius: 12px;
-            margin-bottom: 12px;
-        }
-        .dr-report-icon svg { width: 20px; height: 20px; }
-        .dr-report-title { font-size: 14px; font-weight: 700; color: var(--dr-ink); margin-bottom: 4px; }
-        .dr-report-desc { font-size: 12px; color: var(--dr-muted); line-height: 1.5; margin-bottom: 12px; }
-    </style>
-
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Dhiran Reports</h1>
@@ -45,21 +15,21 @@
     <div class="content-inner dhiran-reports-root">
 
         {{-- Date Range Filter --}}
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-6">
-            <form method="GET" action="{{ route('dhiran.reports.index') }}" class="flex flex-wrap items-end gap-4">
-                <div>
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">From Date</label>
+        <div class="dh-filter-card">
+            <form method="GET" action="{{ route('dhiran.reports.index') }}" class="dh-filter-row">
+                <div class="dh-filter-field">
+                    <label class="dh-label-upper block mb-2">From Date</label>
                     <input type="date" name="from_date" value="{{ request('from_date', now()->startOfMonth()->toDateString()) }}"
-                           class="rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                           class="dh-form-control">
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">To Date</label>
+                <div class="dh-filter-field">
+                    <label class="dh-label-upper block mb-2">To Date</label>
                     <input type="date" name="to_date" value="{{ request('to_date', now()->toDateString()) }}"
-                           class="rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                           class="dh-form-control">
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Report Type</label>
-                    <select name="type" class="rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none" style="appearance:none;-webkit-appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;">
+                <div class="dh-filter-field">
+                    <label class="dh-label-upper block mb-2">Report Type</label>
+                    <select name="type" class="dh-form-control dh-native-select">
                         <option value="active" {{ request('type', 'active') === 'active' ? 'selected' : '' }}>Active Loans</option>
                         <option value="overdue" {{ request('type') === 'overdue' ? 'selected' : '' }}>Overdue Loans</option>
                         <option value="interest" {{ request('type') === 'interest' ? 'selected' : '' }}>Interest Collection</option>
@@ -68,7 +38,9 @@
                         <option value="profitability" {{ request('type') === 'profitability' ? 'selected' : '' }}>Profitability</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary btn-sm">Generate Report</button>
+                <div class="dh-filter-actions">
+                    <button type="submit" class="btn btn-primary btn-sm">Generate Report</button>
+                </div>
             </form>
         </div>
 

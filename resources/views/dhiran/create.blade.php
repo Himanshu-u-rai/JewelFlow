@@ -1,167 +1,4 @@
 <x-dhiran-layout title="New Loan">
-    <style>
-        :root {
-            --dh-ink: #0f172a;
-            --dh-ink-soft: #334155;
-            --dh-muted: #64748b;
-            --dh-border: #e2e8f0;
-            --dh-bg: #f8fafc;
-            --dh-accent: #d98b00;
-        }
-        .dh-label {
-            display: flex; align-items: center; gap: 6px;
-            font-size: 12px; font-weight: 600;
-            color: var(--dh-ink-soft); margin-bottom: 6px;
-        }
-        .dh-label svg { width: 14px; height: 14px; color: var(--dh-muted); flex-shrink: 0; }
-        .dh-input, .dh-select, .dh-textarea {
-            width: 100%; padding: 10px 12px; font-size: 13px; font-weight: 500;
-            border: 1.5px solid var(--dh-border); border-radius: 10px;
-            background: var(--dh-bg); color: var(--dh-ink);
-            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-        }
-        .dh-input:focus, .dh-select:focus, .dh-textarea:focus {
-            outline: none; border-color: var(--dh-accent); background: #fff;
-            box-shadow: 0 0 0 3px rgba(217, 139, 0, 0.12);
-        }
-        .dh-input::placeholder, .dh-textarea::placeholder { color: #9ca3af; font-weight: 400; }
-        .dh-select {
-            appearance: none; -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 12px center;
-            padding-right: 36px; cursor: pointer;
-        }
-        .dh-textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
-        .dh-cost-wrap { position: relative; }
-        .dh-cost-wrap .dh-cost-symbol {
-            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-            font-size: 13px; font-weight: 600; color: var(--dh-muted);
-        }
-        .dh-cost-wrap .dh-input { padding-left: 28px; }
-        .dh-section-title {
-            font-size: 14px; font-weight: 700; color: var(--dh-ink);
-            display: flex; align-items: center; gap: 8px;
-            margin-bottom: 16px; padding-bottom: 8px;
-            border-bottom: 1px solid var(--dh-border);
-        }
-        .dh-section-title svg { width: 16px; height: 16px; color: var(--dh-accent); }
-        .dh-item-row {
-            background: #f8fafc;
-            border: 1px solid var(--dh-border);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            position: relative;
-        }
-        .dh-item-remove {
-            position: absolute; top: 8px; right: 8px;
-            width: 28px; height: 28px;
-            display: flex; align-items: center; justify-content: center;
-            border: 1px solid #fecaca; border-radius: 8px;
-            background: #fef2f2; color: #dc2626; cursor: pointer;
-            transition: background 0.15s;
-        }
-        .dh-item-remove:hover { background: #fee2e2; }
-        .dh-item-remove svg { width: 14px; height: 14px; }
-        .dh-add-item-btn {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 16px; font-size: 12px; font-weight: 600;
-            border: 1.5px dashed var(--dh-border); border-radius: 10px;
-            background: transparent; color: var(--dh-accent); cursor: pointer;
-            transition: border-color 0.15s, background 0.15s;
-        }
-        .dh-add-item-btn:hover { border-color: var(--dh-accent); background: #fffbeb; }
-        .dh-add-item-btn svg { width: 14px; height: 14px; }
-        .dh-calc-field {
-            background: #fffbeb; border-color: #fde68a;
-        }
-        .dh-summary-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 0; font-size: 13px;
-        }
-        .dh-summary-label { color: var(--dh-muted); font-weight: 500; }
-        .dh-summary-value { color: var(--dh-ink); font-weight: 700; }
-
-        /* Customer dropdown */
-        .dh-dd-wrap { position: relative; z-index: 2; }
-        .dh-dd-wrap.dd-open { z-index: 34; }
-        .dh-dd-trigger {
-            width: 100%; padding: 10px 36px 10px 12px; font-size: 13px; font-weight: 500;
-            border: 1.5px solid var(--dh-border); border-radius: 10px;
-            background: var(--dh-bg); color: var(--dh-ink); cursor: pointer;
-            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-            text-align: left; position: relative;
-        }
-        .dh-dd-trigger:focus { outline: none; border-color: var(--dh-accent); background: #fff; box-shadow: 0 0 0 3px rgba(217,139,0,.12); }
-        .dh-dd-trigger.open { border-color: var(--dh-accent); background: #fff; box-shadow: 0 0 0 3px rgba(217,139,0,.12); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-        .dh-dd-trigger::after {
-            content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-            width: 16px; height: 16px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: center; transition: transform .15s;
-        }
-        .dh-dd-trigger.open::after { transform: translateY(-50%) rotate(180deg); }
-        .dh-dd-placeholder { color: #9ca3af; font-weight: 400; }
-        .dh-dd-panel {
-            display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 18;
-            background: #fff; border: 1.5px solid var(--dh-accent); border-top: none;
-            border-radius: 0 0 10px 10px;
-            box-shadow: 0 8px 24px rgba(0,0,0,.1); max-height: 220px; overflow: hidden;
-        }
-        .dh-dd-panel.open { display: block; }
-        .dh-dd-search {
-            width: 100%; padding: 8px 12px 8px 34px; font-size: 12px; font-weight: 400;
-            border: none; border-bottom: 1px solid #f1f5f9; background: #f8fafc;
-            color: var(--dh-ink); outline: none;
-        }
-        .dh-dd-search::placeholder { color: #9ca3af; }
-        .dh-dd-search-icon { position: absolute; left: 12px; top: 8px; color: var(--dh-muted); }
-        .dh-dd-list { max-height: 170px; overflow-y: auto; }
-        .dh-dd-opt {
-            padding: 8px 12px; cursor: pointer; transition: background .1s;
-            border-bottom: 1px solid #f8fafc;
-        }
-        .dh-dd-opt:last-child { border-bottom: none; }
-        .dh-dd-opt:hover, .dh-dd-opt.active { background: #fffbeb; }
-        .dh-dd-opt-name { font-size: 13px; font-weight: 600; color: var(--dh-ink); }
-        .dh-dd-opt-sub { font-size: 11px; color: var(--dh-muted); margin-top: 1px; }
-        .dh-dd-empty { padding: 14px; text-align: center; color: var(--dh-muted); font-size: 12px; }
-
-        /* Inline "add new borrower" affordance + form. */
-        [x-cloak] { display: none !important; }
-        .dh-dd-add {
-            display: flex; align-items: center; gap: 7px;
-            width: 100%; padding: 10px 12px;
-            border: none; border-top: 1px solid var(--dh-line);
-            background: #fffdf7; color: var(--dh-gold-deep, #d98b00);
-            font-size: 12.5px; font-weight: 700; cursor: pointer;
-        }
-        .dh-dd-add:hover { background: #fff7e6; }
-        .dh-borrower-form {
-            padding: 12px;
-            border-top: 1px solid var(--dh-line);
-            background: #fff;
-        }
-        .dh-borrower-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-        }
-        .dh-borrower-input {
-            width: 100%; padding: 8px 10px;
-            border: 1px solid var(--dh-line); border-radius: 8px;
-            font-size: 12.5px; background: #fff;
-        }
-        .dh-borrower-input:focus { outline: none; border-color: var(--dh-accent, #d98b00); box-shadow: 0 0 0 3px rgba(217,139,0,.12); }
-        .dh-borrower-input--wide { grid-column: 1 / -1; }
-        .dh-borrower-error { margin: 8px 0 0; color: #b91c1c; font-size: 12px; font-weight: 600; }
-        .dh-borrower-save {
-            margin-top: 10px; width: 100%;
-            padding: 9px 12px; border: none; border-radius: 9px;
-            background: linear-gradient(135deg, var(--dh-gold, #f4a300), var(--dh-gold-deep, #d98b00));
-            color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
-        }
-        .dh-borrower-save:disabled { opacity: .6; cursor: not-allowed; }
-    </style>
-
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">New Pledge Loan</h1>
@@ -175,9 +12,12 @@
         </div>
     </x-dhiran.page-header>
 
-    <div class="content-inner" x-data="dhiranCreateForm()">
+    <div class="content-inner"
+         x-data="dhiranCreateForm()"
+         x-effect="document.body.classList.toggle('dh-modal-open', newBorrowerOpen)"
+         @turbo:before-cache.window="document.body.classList.remove('dh-modal-open')">
 
-        <form method="POST" action="{{ route('dhiran.store') }}" class="max-w-4xl mx-auto space-y-6" @submit="prepareSubmit" data-turbo-frame="_top">
+        <form method="POST" action="{{ route('dhiran.store') }}" class="dhiran-create-form max-w-4xl mx-auto space-y-6" @submit="prepareSubmit" data-turbo-frame="_top">
             @csrf
 
             {{-- Customer Section --}}
@@ -187,104 +27,161 @@
                     Customer Details
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="dh-label">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                            Customer *
-                        </label>
-                        <input type="hidden" name="customer_id" x-model="customer_id">
-                        <div class="dh-dd-wrap" :class="{ 'dd-open': customerDropdownOpen }">
-                            <button type="button" class="dh-dd-trigger" :class="{ open: customerDropdownOpen }" @click="customerDropdownOpen = !customerDropdownOpen">
-                                <span x-show="!customer_id" class="dh-dd-placeholder">Select Customer</span>
-                                <span x-show="customer_id" x-text="customerDisplayName" style="font-weight:600;color:var(--dh-ink)"></span>
-                            </button>
-                            <div class="dh-dd-panel" :class="{ open: customerDropdownOpen }">
-                                <div style="position:relative">
-                                    <span class="dh-dd-search-icon"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
-                                    <input type="text" class="dh-dd-search" placeholder="Search customer..." x-model="customerSearch" @click.stop>
+                <div class="dh-customer-stack">
+                    <div class="dh-customer-search-row" @click.outside="customerDropdownOpen = false">
+                        <div class="dh-customer-search-box">
+                            <label class="dh-label">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                Customer *
+                            </label>
+                            <input type="hidden" name="customer_id" x-model="customer_id">
+                            <div class="dh-dd-wrap" :class="{ 'dd-open': customerDropdownOpen }">
+                                <div class="dh-customer-search-control" :class="{ open: customerDropdownOpen }">
+                                    <span class="dh-customer-search-icon"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+                                    <input type="search"
+                                           class="dh-customer-search-input"
+                                           placeholder="Search borrower by name, mobile, PAN, or ID"
+                                           x-model="customerSearch"
+                                           @focus="customerDropdownOpen = true"
+                                           @input="handleCustomerSearchInput()">
                                 </div>
-                                <div class="dh-dd-list">
-                                    <template x-for="c in filteredCustomers" :key="c.id">
-                                        <div class="dh-dd-opt" @click="selectCustomer(c.id, c.name, c.mobile)">
-                                            <div class="dh-dd-opt-name" x-text="c.name"></div>
-                                            <div class="dh-dd-opt-sub" x-text="c.mobile"></div>
+                                <div class="dh-dd-panel dh-customer-results-panel" :class="{ open: customerDropdownOpen }">
+                                    <div class="dh-dd-list">
+                                        <template x-for="c in filteredCustomers" :key="c.id">
+                                            <button type="button" class="dh-dd-opt" @click="selectCustomer(c)">
+                                                <span class="dh-dd-opt-name" x-text="c.name"></span>
+                                                <span class="dh-dd-opt-sub" x-text="[c.mobile, c.pan, c.address].filter(Boolean).join(' · ') || 'No profile details added'"></span>
+                                            </button>
+                                        </template>
+                                        <div x-show="filteredCustomers.length === 0" class="dh-dd-opt dh-dd-opt-muted">
+                                            No borrowers found.
                                         </div>
-                                    </template>
-                                    <div x-show="filteredCustomers.length === 0" class="dh-dd-opt" style="cursor:default;color:var(--dh-muted)">
-                                        No borrowers found.
                                     </div>
-                                </div>
-                                <button type="button" class="dh-dd-add" @click.stop="newBorrowerOpen = !newBorrowerOpen">
-                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                    <span x-text="newBorrowerOpen ? 'Cancel new borrower' : 'Add new borrower'"></span>
-                                </button>
-
-                                {{-- Inline new-borrower form (Dhiran-scoped create). --}}
-                                <div class="dh-borrower-form" x-show="newBorrowerOpen" @click.stop x-cloak>
-                                    <div class="dh-borrower-grid">
-                                        <input type="text" class="dh-borrower-input" placeholder="First name *" x-model="nb.first_name">
-                                        <input type="text" class="dh-borrower-input" placeholder="Last name" x-model="nb.last_name">
-                                        <input type="tel" class="dh-borrower-input" placeholder="Mobile (10 digits) *" maxlength="10" x-model="nb.mobile">
-                                        <input type="text" class="dh-borrower-input" placeholder="PAN (optional)" x-model="nb.pan">
-                                        <input type="text" class="dh-borrower-input" placeholder="ID number (optional)" x-model="nb.id_number">
-                                        <input type="text" class="dh-borrower-input" placeholder="State code (optional)" x-model="nb.state_code">
-                                        <input type="text" class="dh-borrower-input dh-borrower-input--wide" placeholder="Address (optional)" x-model="nb.address">
-                                    </div>
-                                    <p class="dh-borrower-error" x-show="nbError" x-text="nbError"></p>
-                                    <button type="button" class="dh-borrower-save" @click="saveBorrower()" :disabled="nbSaving">
-                                        <span x-text="nbSaving ? 'Saving…' : 'Save borrower'"></span>
-                                    </button>
                                 </div>
                             </div>
+                            @error('customer_id')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
                         </div>
-                        @error('customer_id')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
+
+                        <button type="button" class="btn btn-dark btn-sm dh-customer-add-btn" @click="openNewBorrower()" aria-label="Add new borrower" title="Add new borrower">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span>Add New Borrower</span>
+                        </button>
                     </div>
 
-                    <div>
-                        <label for="gold_rate_on_date" class="dh-label">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                            Gold rate today (per gram)
-                        </label>
-                        <div class="dh-cost-wrap">
-                            <span class="dh-cost-symbol">{{ $currencySymbol ?? '₹' }}</span>
-                            <input type="number" step="0.01" name="gold_rate_on_date" id="gold_rate_on_date"
-                                   x-model.number="goldRateOnDate"
-                                   value="{{ old('gold_rate_on_date') }}"
-                                   placeholder="Optional reference rate" class="dh-input">
+                    <div class="dh-customer-details-layout">
+                    <div class="dh-selected-customer-card" x-show="selectedCustomer" x-cloak>
+                        <div class="dh-selected-customer-head">
+                            <div class="dh-selected-customer-avatar" x-text="selectedCustomerInitials"></div>
+                            <div>
+                                <p class="dh-selected-customer-name" x-text="selectedCustomer && selectedCustomer.name ? selectedCustomer.name : 'Borrower'"></p>
+                                <p class="dh-selected-customer-sub">Selected borrower profile</p>
+                            </div>
                         </div>
-                        @error('gold_rate_on_date')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
+
+                        <dl class="dh-selected-customer-grid">
+                            <div>
+                                <dt>Mobile</dt>
+                                <dd x-text="selectedCustomer && selectedCustomer.mobile ? selectedCustomer.mobile : 'Not added'"></dd>
+                            </div>
+                            <div>
+                                <dt>PAN</dt>
+                                <dd x-text="selectedCustomer && selectedCustomer.pan ? selectedCustomer.pan : 'Not added'"></dd>
+                            </div>
+                            <div>
+                                <dt>ID number</dt>
+                                <dd x-text="selectedCustomer && selectedCustomer.id_number ? selectedCustomer.id_number : 'Not added'"></dd>
+                            </div>
+                            <div>
+                                <dt>State code</dt>
+                                <dd x-text="selectedCustomer && selectedCustomer.state_code ? selectedCustomer.state_code : 'Not added'"></dd>
+                            </div>
+                            <div class="dh-selected-customer-address">
+                                <dt>Address</dt>
+                                <dd x-text="selectedCustomer && selectedCustomer.address ? selectedCustomer.address : 'Not added'"></dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <div class="dh-selected-customer-empty" x-show="!selectedCustomer" x-cloak>
+                        <p>Select an existing borrower or add a new borrower to see their profile details here.</p>
+                    </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
-                        <label for="aadhaar" class="dh-label">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
-                            Aadhaar Number
-                        </label>
-                        <input type="text" name="aadhaar" id="aadhaar"
-                               value="{{ old('aadhaar') }}" placeholder="XXXX XXXX XXXX"
-                               class="dh-input" maxlength="14">
-                        @error('aadhaar')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
+                <input type="hidden" name="pan" x-model="loanPan">
+                <input type="hidden" name="aadhaar" x-model="loanAadhaar">
+                @error('pan')
+                    <p class="mt-3 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+                @error('aadhaar')
+                    <p class="mt-3 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="dh-borrower-modal"
+                 x-show="newBorrowerOpen"
+                 x-cloak
+                 x-transition.opacity
+                 @keydown.escape.window="newBorrowerOpen = false"
+                 @keydown.enter.prevent.stop="if (!$event.target.matches('textarea')) saveBorrower()"
+                 @click.self="newBorrowerOpen = false"
+                 @wheel.self.prevent
+                 @touchmove.self.prevent
+                 role="dialog"
+                 aria-modal="true"
+                 aria-labelledby="dh-borrower-modal-title">
+                <div class="dh-borrower-modal-card" @click.stop>
+                    <div class="dh-borrower-modal-head">
+                        <div>
+                            <h2 id="dh-borrower-modal-title">Add New Borrower</h2>
+                            <p>Create a borrower profile and select it for this pledge loan.</p>
+                        </div>
+                        <button type="button" class="dh-borrower-modal-close" @click="newBorrowerOpen = false" aria-label="Close borrower form">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
                     </div>
-                    <div>
-                        <label for="pan" class="dh-label">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
-                            PAN (optional)
-                        </label>
-                        <input type="text" name="pan" id="pan"
-                               value="{{ old('pan') }}" placeholder="ABCDE1234F"
-                               class="dh-input" maxlength="10">
-                        @error('pan')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
+
+                    <div class="dh-borrower-modal-body">
+                        <div class="dh-borrower-grid">
+                            <label class="dh-borrower-modal-field">
+                                <span>First name *</span>
+                                <input type="text" class="dh-borrower-input" placeholder="First name" x-model="nb.first_name">
+                            </label>
+                            <label class="dh-borrower-modal-field">
+                                <span>Last name</span>
+                                <input type="text" class="dh-borrower-input" placeholder="Last name" x-model="nb.last_name">
+                            </label>
+                            <label class="dh-borrower-modal-field">
+                                <span>Mobile number *</span>
+                                <input type="tel" class="dh-borrower-input" placeholder="10-digit mobile number" maxlength="10" x-model="nb.mobile">
+                            </label>
+                            <label class="dh-borrower-modal-field">
+                                <span>PAN</span>
+                                <input type="text" class="dh-borrower-input" placeholder="ABCDE1234F" maxlength="10" x-model="nb.pan" @input="nb.pan = nb.pan.toUpperCase()">
+                            </label>
+                            <label class="dh-borrower-modal-field">
+                                <span>ID number</span>
+                                <input type="text" class="dh-borrower-input" placeholder="ID number" x-model="nb.id_number">
+                            </label>
+                            <label class="dh-borrower-modal-field">
+                                <span>State code</span>
+                                <input type="text" class="dh-borrower-input" placeholder="State code" x-model="nb.state_code">
+                            </label>
+                            <label class="dh-borrower-modal-field dh-borrower-input--wide">
+                                <span>Address</span>
+                                <textarea class="dh-borrower-input dh-borrower-modal-address" placeholder="Borrower address" rows="3" x-model="nb.address"></textarea>
+                            </label>
+                        </div>
+                        <p class="dh-borrower-error" x-show="nbError" x-text="nbError"></p>
+                    </div>
+
+                    <div class="dh-borrower-modal-foot">
+                        <button type="button" class="btn btn-secondary btn-sm" @click="newBorrowerOpen = false">Cancel</button>
+                        <button type="button" class="dh-borrower-save" @click="saveBorrower()" :disabled="nbSaving">
+                            <span x-text="nbSaving ? 'Saving…' : 'Save borrower'"></span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -423,7 +320,7 @@
                     Loan Parameters
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                     <div>
                         <label for="principal_amount" class="dh-label">Principal Amount *</label>
                         <div class="dh-cost-wrap">
@@ -434,6 +331,19 @@
                                    placeholder="0.00" class="dh-input" required>
                         </div>
                         @error('principal_amount')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="gold_rate_on_date" class="dh-label">Gold rate today (per gram)</label>
+                        <div class="dh-cost-wrap">
+                            <span class="dh-cost-symbol">{{ $currencySymbol ?? '₹' }}</span>
+                            <input type="number" step="0.01" name="gold_rate_on_date" id="gold_rate_on_date"
+                                   x-model.number="goldRateOnDate"
+                                   value="{{ old('gold_rate_on_date') }}"
+                                   placeholder="Reference rate" class="dh-input">
+                        </div>
+                        @error('gold_rate_on_date')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -553,11 +463,18 @@
                     'id'     => $c->id,
                     'name'   => trim($c->first_name . ' ' . ($c->last_name ?? '')),
                     'mobile' => $c->mobile ?? '',
+                    'address' => $c->address ?? '',
+                    'pan'    => $c->pan ?? '',
+                    'id_number' => $c->id_number ?? '',
+                    'state_code' => $c->state_code ?? '',
                 ])->values()) }},
+                selectedCustomer: null,
                 newBorrowerOpen: false,
                 nbSaving: false,
                 nbError: '',
                 nb: { first_name: '', last_name: '', mobile: '', pan: '', id_number: '', state_code: '', address: '' },
+                loanPan: {{ Illuminate\Support\Js::from(old('pan', '')) }},
+                loanAadhaar: {{ Illuminate\Support\Js::from(old('aadhaar', '')) }},
                 goldRateOnDate: {{ old('gold_rate_on_date', 0) }},
                 principal_amount: {{ old('principal_amount', 0) }},
                 interest_rate_monthly: {{ old('interest_rate_monthly', $defaults['interest_rate_monthly'] ?? 1.5) }},
@@ -591,22 +508,52 @@
                     // profile/list), show their name in the picker on load.
                     if (this.customer_id) {
                         const c = this.customers.find(x => String(x.id) === String(this.customer_id));
-                        if (c) this.customerDisplayName = c.name + (c.mobile ? ' (' + c.mobile + ')' : '');
+                        if (c) this.selectCustomer(c, true);
                     }
+                },
+
+                get selectedCustomerInitials() {
+                    const name = (this.selectedCustomer && this.selectedCustomer.name ? this.selectedCustomer.name : '').trim();
+                    if (!name) return 'B';
+                    return name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
                 },
 
                 get filteredCustomers() {
                     const q = (this.customerSearch || '').toLowerCase();
                     if (!q) return this.customers;
                     return this.customers.filter(c =>
-                        (c.name + ' ' + (c.mobile || '')).toLowerCase().includes(q));
+                        [c.name, c.mobile, c.address, c.pan, c.id_number].join(' ').toLowerCase().includes(q));
                 },
 
-                selectCustomer(id, name, mobile) {
-                    this.customer_id = id;
-                    this.customerDisplayName = name + (mobile ? ' (' + mobile + ')' : '');
+                handleCustomerSearchInput() {
+                    this.customerDropdownOpen = true;
+                    if (this.selectedCustomer && this.customerSearch.trim() !== (this.selectedCustomer.name || '')) {
+                        this.selectedCustomer = null;
+                        this.customer_id = '';
+                        this.customerDisplayName = '';
+                        this.loanPan = '';
+                        this.loanAadhaar = '';
+                    }
+                },
+
+                openNewBorrower() {
                     this.customerDropdownOpen = false;
-                    this.customerSearch = '';
+                    this.newBorrowerOpen = true;
+                },
+
+                aadhaarCandidate(customer) {
+                    const id = (customer && customer.id_number ? customer.id_number : '').trim();
+                    return /^[0-9Xx\- ]{4,20}$/.test(id) ? id : '';
+                },
+
+                selectCustomer(customer, keepExistingKyc = false) {
+                    this.selectedCustomer = customer;
+                    this.customer_id = customer.id;
+                    this.customerDisplayName = customer.name + (customer.mobile ? ' (' + customer.mobile + ')' : '');
+                    this.customerSearch = customer.name || '';
+                    if (!keepExistingKyc || !this.loanPan) this.loanPan = customer.pan || '';
+                    if (!keepExistingKyc || !this.loanAadhaar) this.loanAadhaar = this.aadhaarCandidate(customer);
+                    this.customerDropdownOpen = false;
                 },
 
                 async saveBorrower() {
@@ -629,11 +576,24 @@
                             this.nbError = (out.errors ? Object.values(out.errors)[0][0] : out.message) || 'Could not save borrower.';
                             return;
                         }
-                        // Add to the list if new; always select it.
-                        if (!this.customers.some(c => c.id === out.customer.id)) {
-                            this.customers.unshift(out.customer);
+                        const savedCustomer = {
+                            id: out.customer.id,
+                            name: out.customer.name,
+                            mobile: out.customer.mobile || '',
+                            address: out.customer.address || '',
+                            pan: out.customer.pan || '',
+                            id_number: out.customer.id_number || '',
+                            state_code: out.customer.state_code || '',
+                        };
+
+                        // Add to the list if new; update it if the mobile matched an existing borrower.
+                        const existingIndex = this.customers.findIndex(c => c.id === savedCustomer.id);
+                        if (existingIndex === -1) {
+                            this.customers.unshift(savedCustomer);
+                        } else {
+                            this.customers.splice(existingIndex, 1, { ...this.customers[existingIndex], ...savedCustomer });
                         }
-                        this.selectCustomer(out.customer.id, out.customer.name, out.customer.mobile);
+                        this.selectCustomer(savedCustomer);
                         this.newBorrowerOpen = false;
                         this.nb = { first_name: '', last_name: '', mobile: '', pan: '', id_number: '', state_code: '', address: '' };
                     } catch (e) {

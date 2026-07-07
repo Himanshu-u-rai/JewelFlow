@@ -13,20 +13,6 @@
             <p class="text-sm text-gray-500 mt-1">Interest and penalty collections breakdown</p>
         </div>
         <div class="page-actions">
-            <form method="GET" action="{{ route('dhiran.reports.interest') }}" class="flex flex-wrap gap-3 items-end">
-                <div>
-                    <label class="text-xs text-gray-500 font-medium block mb-1">From</label>
-                    <input type="date" name="from" value="{{ $fromDate }}" class="rounded-lg border-gray-200 bg-white shadow-sm text-sm h-10 px-3 focus:border-amber-500 focus:ring-amber-500">
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 font-medium block mb-1">To</label>
-                    <input type="date" name="to" value="{{ $toDate }}" class="rounded-lg border-gray-200 bg-white shadow-sm text-sm h-10 px-3 focus:border-amber-500 focus:ring-amber-500">
-                </div>
-                <button type="submit" class="btn btn-success btn-sm">View</button>
-                @if(request()->hasAny(['from', 'to']))
-                    <a href="{{ route('dhiran.reports.interest') }}" class="btn btn-secondary btn-sm">Clear</a>
-                @endif
-            </form>
             <button type="button" onclick="window.print()" class="btn btn-secondary btn-sm" title="Print">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Print
@@ -35,6 +21,25 @@
     </x-dhiran.page-header>
 
     <div class="content-inner">
+        <div class="dh-filter-card">
+            <form method="GET" action="{{ route('dhiran.reports.interest') }}" class="dh-filter-row">
+                <div class="dh-filter-field">
+                    <label class="dh-label-upper block mb-2">From</label>
+                    <input type="date" name="from" value="{{ $fromDate }}" class="dh-form-control">
+                </div>
+                <div class="dh-filter-field">
+                    <label class="dh-label-upper block mb-2">To</label>
+                    <input type="date" name="to" value="{{ $toDate }}" class="dh-form-control">
+                </div>
+                <div class="dh-filter-actions">
+                    <button type="submit" class="btn btn-primary btn-sm">View</button>
+                    @if(request()->hasAny(['from', 'to']))
+                        <a href="{{ route('dhiran.reports.interest') }}" class="btn btn-secondary btn-sm">Clear</a>
+                    @endif
+                </div>
+            </form>
+        </div>
+
         {{-- Summary Cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">

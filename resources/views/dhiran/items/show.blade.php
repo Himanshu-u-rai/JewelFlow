@@ -105,13 +105,13 @@
                     @endif
 
                     @can('dhiran.create')
-                        <form method="POST" action="{{ route('dhiran.attachments.store') }}" enctype="multipart/form-data" data-turbo-frame="_top" class="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-end gap-3">
+                        <form method="POST" action="{{ route('dhiran.attachments.store') }}" enctype="multipart/form-data" data-turbo-frame="_top" class="dh-upload-form mt-5 pt-5 border-t border-slate-100">
                             @csrf
                             <input type="hidden" name="owner_type" value="dhiran_loan_item">
                             <input type="hidden" name="owner_id" value="{{ $item->id }}">
                             <div>
                                 <label class="block text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-1">Document type</label>
-                                <select name="document_type" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                                <select name="document_type" class="dh-form-control dh-native-select">
                                     <option value="item_photo">Item photo</option>
                                     <option value="valuation_proof">Valuation proof</option>
                                     <option value="loan_document">Loan document</option>
@@ -119,7 +119,7 @@
                             </div>
                             <div>
                                 <label class="block text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-1">File <span class="text-slate-300 normal-case tracking-normal">(JPG/PNG/PDF, max 8 MB)</span></label>
-                                <input type="file" name="file" accept=".jpg,.jpeg,.png,.pdf" class="text-sm">
+                                <input type="file" name="file" accept=".jpg,.jpeg,.png,.pdf" class="dh-file-input">
                             </div>
                             <button type="submit" class="btn btn-dark btn-sm">Upload</button>
                         </form>

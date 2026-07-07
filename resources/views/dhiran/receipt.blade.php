@@ -4,208 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pledge Receipt &mdash; {{ $loan->loan_number }}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 12px;
-            color: #0f172a;
-            background: #fff;
-            line-height: 1.5;
-        }
-        .receipt-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 24px;
-        }
-
-        /* Header */
-        .receipt-header {
-            text-align: center;
-            border-bottom: 2px solid #0f172a;
-            padding-bottom: 16px;
-            margin-bottom: 20px;
-        }
-        .receipt-shop-name {
-            font-size: 22px;
-            font-weight: 800;
-            color: #0f172a;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .receipt-shop-address {
-            font-size: 11px;
-            color: #475569;
-            margin-top: 4px;
-        }
-        .receipt-shop-phone {
-            font-size: 11px;
-            color: #475569;
-        }
-        .receipt-title {
-            font-size: 16px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            margin-top: 12px;
-            color: #0f172a;
-        }
-
-        /* Loan Details Grid */
-        .receipt-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px 24px;
-            margin-bottom: 20px;
-            font-size: 12px;
-        }
-        .receipt-detail-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-        }
-        .receipt-detail-label {
-            font-weight: 600;
-            color: #475569;
-        }
-        .receipt-detail-value {
-            font-weight: 600;
-            color: #0f172a;
-            text-align: right;
-        }
-
-        /* Items Table */
-        .receipt-items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            font-size: 11px;
-        }
-        .receipt-items-table th {
-            background: #f1f5f9;
-            padding: 8px 10px;
-            text-align: left;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #475569;
-            border-bottom: 1px solid #cbd5e1;
-        }
-        .receipt-items-table td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #e2e8f0;
-            color: #0f172a;
-        }
-        .receipt-items-table .text-right { text-align: right; }
-        .receipt-items-table .text-center { text-align: center; }
-        .receipt-items-table tfoot td {
-            font-weight: 700;
-            border-top: 2px solid #cbd5e1;
-            border-bottom: none;
-        }
-
-        /* Summary */
-        .receipt-summary {
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 14px 18px;
-            margin-bottom: 20px;
-        }
-        .receipt-summary-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 4px 0;
-            font-size: 12px;
-        }
-        .receipt-summary-row.total {
-            border-top: 1px solid #cbd5e1;
-            margin-top: 6px;
-            padding-top: 8px;
-            font-size: 14px;
-            font-weight: 800;
-        }
-
-        /* Terms */
-        .receipt-terms {
-            margin-bottom: 24px;
-        }
-        .receipt-terms-title {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #475569;
-            margin-bottom: 6px;
-        }
-        .receipt-terms-content {
-            font-size: 10px;
-            color: #64748b;
-            line-height: 1.6;
-            white-space: pre-line;
-        }
-
-        /* Signatures */
-        .receipt-signatures {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-top: 48px;
-            padding-top: 16px;
-        }
-        .receipt-sig-line {
-            border-top: 1px solid #0f172a;
-            padding-top: 6px;
-            text-align: center;
-            font-size: 11px;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        /* Footer */
-        .receipt-footer {
-            text-align: center;
-            margin-top: 24px;
-            padding-top: 12px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 10px;
-            color: #94a3b8;
-        }
-
-        /* Print overrides */
-        @media print {
-            body { background: #fff; }
-            .receipt-container { padding: 0; max-width: 100%; }
-            .receipt-no-print { display: none !important; }
-            @page { margin: 16mm; }
-        }
-
-        /* Screen-only print button */
-        .receipt-print-bar {
-            text-align: center;
-            padding: 16px;
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            margin-bottom: 24px;
-        }
-        .receipt-print-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 24px;
-            border: none;
-            border-radius: 10px;
-            background: #0f172a;
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .receipt-print-btn:hover { background: #1e293b; }
-        .receipt-print-btn svg { width: 16px; height: 16px; }
-    </style>
+    @vite(['resources/css/dhiran-documents.css'])
 </head>
-<body>
+<body class="dh-doc-body dh-doc-pledge-receipt">
     <div class="receipt-print-bar receipt-no-print">
         <button type="button" class="receipt-print-btn" onclick="window.print()">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
@@ -216,7 +17,7 @@
     <div class="receipt-container">
         {{-- Shop Header --}}
         <div class="receipt-header">
-            <div class="receipt-shop-name">{{ $shop->name ?? 'JewelFlow' }}</div>
+            <div class="receipt-shop-name">{{ $shop->name ?? 'Dhiran' }}</div>
             <div class="receipt-shop-address">{{ $shop->address ?? '' }}</div>
             <div class="receipt-shop-phone">
                 @if($shop->phone ?? false)Phone: {{ $shop->phone }}@endif
@@ -299,9 +100,9 @@
                         <td>{{ $index + 1 }}</td>
                         <td>
                             {{ $item->description }}
-                            <br><span style="font-size:9px;color:#64748b;">{{ ucfirst($item->metal_type ?? 'gold') }}</span>
+                            <br><span class="dh-doc-item-meta">{{ ucfirst($item->metal_type ?? 'gold') }}</span>
                             @if($item->huid)
-                                <span style="font-size:9px;color:#64748b;"> · HUID: {{ $item->huid }}</span>
+                                <span class="dh-doc-item-meta"> · HUID: {{ $item->huid }}</span>
                             @endif
                         </td>
                         <td class="text-right">{{ number_format($item->gross_weight, 3) }}</td>
@@ -358,11 +159,11 @@
         <div class="receipt-signatures">
             <div class="receipt-sig-line">
                 Pledger's Signature<br>
-                <span style="font-weight:400;font-size:10px;">{{ $loan->customer->name ?? '' }}</span>
+                <span class="dh-doc-sign-meta">{{ $loan->customer->name ?? '' }}</span>
             </div>
             <div class="receipt-sig-line">
                 Authorized Signatory<br>
-                <span style="font-weight:400;font-size:10px;">{{ $shop->name ?? 'JewelFlow' }}</span>
+                <span class="dh-doc-sign-meta">{{ $shop->name ?? 'Dhiran' }}</span>
             </div>
         </div>
 

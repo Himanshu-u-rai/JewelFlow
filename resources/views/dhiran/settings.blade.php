@@ -1,50 +1,4 @@
 <x-dhiran-layout title="Dhiran Settings">
-    <style>
-        .dhiran-settings-root {
-            --dset-ink: #0f172a;
-            --dset-ink-soft: #334155;
-            --dset-muted: #64748b;
-            --dset-border: #e2e8f0;
-            --dset-bg: #f8fafc;
-            --dset-accent: #d98b00;
-        }
-        .dset-label {
-            display: flex; align-items: center; gap: 6px;
-            font-size: 12px; font-weight: 600;
-            color: var(--dset-ink-soft); margin-bottom: 6px;
-        }
-        .dset-input, .dset-select {
-            width: 100%; padding: 10px 12px; font-size: 13px; font-weight: 500;
-            border: 1.5px solid var(--dset-border); border-radius: 10px;
-            background: var(--dset-bg); color: var(--dset-ink);
-            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-        }
-        .dset-input:focus, .dset-select:focus {
-            outline: none; border-color: var(--dset-accent); background: #fff;
-            box-shadow: 0 0 0 3px rgba(217, 139, 0, 0.12);
-        }
-        .dset-input::placeholder { color: #9ca3af; font-weight: 400; }
-        .dset-select {
-            appearance: none; -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 12px center;
-            padding-right: 36px; cursor: pointer;
-        }
-        .dset-section {
-            margin-bottom: 32px;
-        }
-        .dset-section-title {
-            font-size: 14px; font-weight: 700; color: var(--dset-ink);
-            display: flex; align-items: center; gap: 8px;
-            margin-bottom: 16px; padding-bottom: 8px;
-            border-bottom: 1px solid var(--dset-border);
-        }
-        .dset-section-title svg { width: 16px; height: 16px; color: var(--dset-accent); }
-        .dset-hint {
-            font-size: 11px; color: var(--dset-muted); margin-top: 4px;
-        }
-    </style>
-
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">Dhiran Settings</h1>
@@ -259,12 +213,12 @@
                     </div>
                     <div>
                         <label class="dset-label">Terms & Conditions (printed on receipt)</label>
-                        <textarea name="terms_and_conditions" rows="4" class="dset-input" style="resize:vertical;min-height:72px;line-height:1.5;">{{ old('terms_and_conditions', $settings['terms_and_conditions'] ?? '') }}</textarea>
+                        <textarea name="terms_and_conditions" rows="4" class="dset-input dset-textarea">{{ old('terms_and_conditions', $settings['terms_and_conditions'] ?? '') }}</textarea>
                     </div>
                 </div>
 
                 {{-- Notifications --}}
-                <div class="dset-section" style="margin-bottom:0;">
+                <div class="dset-section dset-section-last">
                     <div class="dset-section-title">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                         Notifications
