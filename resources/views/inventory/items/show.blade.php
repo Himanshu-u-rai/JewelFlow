@@ -125,7 +125,10 @@
             $sourcePurchaseLabel = $item->stock_purchase_id
                 ? ($item->stockPurchase?->purchase_number ?? "PUR-{$item->stock_purchase_id}")
                 : 'Not linked';
-            $invoiceLabel = $item->invoice?->invoice_number ?: 'Not linked';
+            // Items have no invoice_id column; the sale linkage lives on
+            // invoice_items (latest line wins after a return + resale cycle).
+            $saleInvoice = $item->latestInvoiceItem?->invoice;
+            $invoiceLabel = $saleInvoice?->invoice_number ?: 'Not linked';
             $soldDateLabel = ($item->status == 'sold')
                 ? ($item->sold_at ? $item->sold_at->format('d M Y') : $updatedDateLabel)
                 : 'Not sold';
@@ -349,8 +352,8 @@
                                 </div>
                                 <div>
                                     <span>Invoice</span>
-                                    @if($item->status == 'sold' && $item->invoice)
-                                        <a href="{{ route('invoices.show', $item->invoice) }}">{{ $invoiceLabel }}</a>
+                                    @if($item->status == 'sold' && $saleInvoice)
+                                        <a href="{{ route('invoices.show', $saleInvoice) }}">{{ $invoiceLabel }}</a>
                                     @else
                                         <strong>{{ $invoiceLabel }}</strong>
                                     @endif
@@ -729,12 +732,12 @@
             <div class="col-span-12 sm:col-span-6 lg:col-span-4 bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4">
                 <h2 class="text-sm font-semibold text-gray-900">Sale</h2>
 
-                @if($item->status == 'sold' && $item->invoice)
+                @if($item->status == 'sold' && $item->latestInvoiceItem?->invoice)
                     <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="rounded-lg bg-blue-50 border border-blue-100 p-3">
                             <div class="text-[11px] text-blue-700">Invoice</div>
-                            <a href="{{ route('invoices.show', $item->invoice) }}" class="text-sm font-semibold text-blue-800 hover:underline">
-                                {{ $item->invoice->invoice_number }}
+                            <a href="{{ route('invoices.show', $item->latestInvoiceItem->invoice) }}" class="text-sm font-semibold text-blue-800 hover:underline">
+                                {{ $item->latestInvoiceItem->invoice->invoice_number }}
                             </a>
                         </div>
                         <div class="rounded-lg bg-blue-50 border border-blue-100 p-3">

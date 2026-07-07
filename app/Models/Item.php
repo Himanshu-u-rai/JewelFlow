@@ -120,6 +120,22 @@ class Item extends Model
         return $this->belongsTo(JobOrder::class, 'job_order_id');
     }
 
+    public function invoiceItems()
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
+
+    /**
+     * The invoice line that most recently sold this item. Items carry no
+     * invoice_id column — the sale linkage lives on invoice_items — so the
+     * item page resolves its invoice through here (latest wins after a
+     * return + resale cycle).
+     */
+    public function latestInvoiceItem()
+    {
+        return $this->hasOne(InvoiceItem::class)->latestOfMany();
+    }
+
     public function scopeInStock($query)
     {
         return $query->where('status', 'in_stock');
