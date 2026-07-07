@@ -542,6 +542,7 @@ class DhiranController extends Controller
 
     public function close(Request $request, DhiranLoan $loan)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless($loan->status === 'active', 422, 'Loan is not active.');
 
         try {
@@ -699,6 +700,7 @@ class DhiranController extends Controller
 
     public function paymentReceipt(DhiranLoan $loan, DhiranPayment $payment)
     {
+        abort_unless((int) $loan->shop_id === (int) auth()->user()->shop_id, 404);
         abort_unless((int) $payment->dhiran_loan_id === (int) $loan->id, 404);
 
         $loan->load('customer');

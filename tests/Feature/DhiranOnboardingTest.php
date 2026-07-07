@@ -46,10 +46,15 @@ class DhiranOnboardingTest extends TestCase
     private function dhiranUser(array $attrs = []): User
     {
         return User::create(array_merge([
-            'mobile_number' => '9390000000',
-            'password'      => bcrypt('x'),
-            'realm'         => 'dhiran',
-            'is_active'     => true,
+            'mobile_number'      => '9390000000',
+            'password'           => bcrypt('x'),
+            'realm'              => 'dhiran',
+            'is_active'          => true,
+            // dhiran.email-verified (EnsureDhiranEmailVerified) redirects any
+            // dhiran-realm user with a null email_verified_at to /dhiran/verify-email.
+            // This fixture is verified by default so onboarding-flow tests exercise
+            // onboarding, not the separate email-verification gate.
+            'email_verified_at'  => now(),
         ], $attrs));
     }
 

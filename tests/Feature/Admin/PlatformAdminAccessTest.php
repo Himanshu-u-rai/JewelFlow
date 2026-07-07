@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Middleware\EnsurePlatformAdminMfa;
 use App\Models\Platform\PlatformAdmin;
 use App\Models\Platform\PlatformAuditLog;
 use App\Models\Platform\PlatformImpersonationSession;
@@ -40,7 +41,23 @@ class PlatformAdminAccessTest extends TestCase
             'mobile_number' => '9' . random_int(100000000, 999999999),
             'password' => Hash::make('password'),
             'role' => $role, 'is_active' => $active,
+            // admin.mfa (EnsurePlatformAdminMfa) redirects to verify-email for any
+            // admin with a null email_verified_at — fixture is verified by default.
+            'email_verified_at' => now(),
         ]);
+    }
+
+    /**
+     * Every "fully trusted" admin.* route sits behind the admin.mfa middleware,
+     * which requires BOTH a verified email (see admin() above) and a session
+     * marker proving the MFA challenge was cleared this session. actingAs()
+     * only satisfies the guard, not that marker — routes under that group need
+     * this helper instead of a bare actingAs($admin, 'platform_admin').
+     */
+    private function actingAsAdmin(PlatformAdmin $admin): self
+    {
+        return $this->actingAs($admin, 'platform_admin')
+            ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true]);
     }
 
     // ── Login / logout flow ────────────────────────────────────────────────
@@ -50,7 +67,7 @@ class PlatformAdminAccessTest extends TestCase
         $this->get('/admin/login')->assertOk();
     }
 
-    public function test_valid_admin_login_reaches_dashboard(): void
+    public function test_valid_admin_login_reaches_mfa_challenge(): void
     {
         $admin = $this->admin();
 
@@ -58,7 +75,11 @@ class PlatformAdminAccessTest extends TestCase
             'mobile_number' => $admin->mobile_number, 'password' => 'password',
         ]);
 
-        $res->assertRedirect(route('admin.dashboard'));
+        // Password-only auth no longer reaches the dashboard directly — the
+        // admin.mfa gate (EnsurePlatformAdminMfa) sits in front of it. See
+        // PlatformAdminMfaTest::test_verified_password_redirects_to_mfa_not_dashboard,
+        // which already pins this as the current, intentional behaviour.
+        $res->assertRedirect(route('admin.mfa.show'));
         $this->assertTrue(auth('platform_admin')->check());
     }
 
@@ -86,7 +107,7 @@ class PlatformAdminAccessTest extends TestCase
     public function test_admin_dashboard_renders_for_authed_admin(): void
     {
         $admin = $this->admin();
-        $this->actingAs($admin, 'platform_admin')->get(route('admin.dashboard'))->assertOk();
+        $this->actingAsAdmin($admin)->get(route('admin.dashboard'))->assertOk();
     }
 
     public function test_guest_admin_page_redirects_to_admin_login(): void
@@ -122,14 +143,14 @@ class PlatformAdminAccessTest extends TestCase
     {
         $support = $this->admin('support');
 
-        $res = $this->actingAs($support, 'platform_admin')->get(route('admin.security.index'));
+        $res = $this->actingAsAdmin($support)->get(route('admin.security.index'));
         $res->assertForbidden(); // platform.role:super_admin
     }
 
     public function test_super_admin_reaches_super_admin_route(): void
     {
         $admin = $this->admin('super_admin');
-        $this->actingAs($admin, 'platform_admin')->get(route('admin.security.index'))->assertOk();
+        $this->actingAsAdmin($admin)->get(route('admin.security.index'))->assertOk();
     }
 
     // ── Impersonation lifecycle / audit / scope ────────────────────────────
@@ -165,7 +186,7 @@ class PlatformAdminAccessTest extends TestCase
         [$owner, $shop] = $this->createManufacturerTenant();
 
         // Route is inside platform.role:super_admin → a support admin is 403/blocked.
-        $res = $this->actingAs($support, 'platform_admin')
+        $res = $this->actingAsAdmin($support)
             ->post(route('admin.shops.impersonate', $shop));
 
         $this->assertContains($res->getStatusCode(), [403, 302]);
@@ -194,7 +215,7 @@ class PlatformAdminAccessTest extends TestCase
         [, $shopA] = $this->createManufacturerTenant();
         [, $shopB] = $this->createManufacturerTenant();
 
-        $this->actingAs($admin, 'platform_admin')
+        $this->actingAsAdmin($admin)
             ->patch(route('admin.shops.status', $shopA), ['access_mode' => 'suspended', 'reason' => 'test']);
 
         // Only shop A changed; shop B untouched.
