@@ -417,7 +417,7 @@ class ReturnsController extends Controller
         $goldPendingRecovery = ReturnedItemDisposition::where('shop_id', $shopId)
             ->where('disposition', 'sent_to_melt')
             ->whereHas('item', fn($q) => $q->where('status', '!=', 'melted'))
-            ->with(['item:id,barcode,design,category,net_metal_weight,purity,gross_weight,status', 'returnLineItem.returnOrder'])
+            ->with(['item:id,barcode,design,category,metal_type,net_metal_weight,purity,gross_weight,status', 'returnLineItem.returnOrder'])
             ->oldest()
             ->get();
 
@@ -441,8 +441,10 @@ class ReturnsController extends Controller
         $goldPendingValue = $goldPendingRecovery->sum(function ($disp) use ($goldRatePerGram) {
             $item = $disp->item;
             if (!$item || !$item->net_metal_weight || !$item->purity) return 0;
-            $mult = \App\Services\MetalRegistry::fineWeightMultiplier((string) $item->metal_type, (float) $item->purity);
-            if ($mult === null) return 0; // display only — non-accounting metals contribute no gold value
+            // Display-only gold estimate: only gold items are priced at the gold rate.
+            if (\App\Services\MetalRegistry::normalize((string) ($item->metal_type ?: 'unknown')) !== 'gold') return 0;
+            $mult = \App\Services\MetalRegistry::fineWeightMultiplier('gold', (float) $item->purity);
+            if ($mult === null) return 0;
             $fineWeight = (float) $item->net_metal_weight * $mult;
             return round($fineWeight * $goldRatePerGram, 2);
         });

@@ -176,6 +176,32 @@ class ReturnsAccessAndLifecycleTest extends TestCase
         TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)->get(self::ERP . '/returns/' . $order->id))->assertOk();
     }
 
+    /**
+     * Regression: the control-center melt queue eager-load omitted metal_type,
+     * so MetalRegistry::normalize('') threw a LogicException (500) as soon as
+     * any sent_to_melt disposition existed.
+     */
+    public function test_control_center_renders_with_melt_queue_and_loads_metal_type(): void
+    {
+        [$owner, $shop, $invoice, $line] = $this->soldInvoice();
+        $this->configureReturnPolicy($shop);
+
+        $payload = $this->returnPayload($line);
+        $payload['lines'][0]['disposition'] = \App\Models\ReturnedItemDisposition::DISPOSITION_SENT_TO_MELT;
+
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->post(self::ERP . '/invoices/' . $invoice->id . '/returns', $payload))
+            ->assertRedirect();
+
+        $res = TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->get(self::ERP . '/returns/control-center'));
+        $res->assertOk();
+
+        $queue = $res->viewData('goldPendingRecovery');
+        $this->assertCount(1, $queue, 'melt queue shows the pending item');
+        $this->assertSame('gold', $queue->first()->item->metal_type, 'metal_type is eager-loaded for the melt queue');
+    }
+
     // ── Tenant isolation ───────────────────────────────────────────────────
 
     public function test_cannot_create_return_for_another_shops_invoice(): void
