@@ -72,10 +72,11 @@ class ReturnsController extends Controller
             ReturnLineItem::CONDITION_NON_SELLABLE => 'Non-sellable',
         ];
 
+        // sent_to_rework retired (M11) and rejected by store() — don't offer it
+        // here, or the cashier hits "disposition is invalid" on submit.
         $dispositions = [
             ReturnedItemDisposition::DISPOSITION_RESTOCKED       => 'Restock — back on sale',
             ReturnedItemDisposition::DISPOSITION_SENT_TO_MELT    => 'Send to melt — gold returns to lot',
-            ReturnedItemDisposition::DISPOSITION_SENT_TO_REWORK  => 'Send for rework (parked)',
             ReturnedItemDisposition::DISPOSITION_WRITTEN_OFF     => 'Write off — non-sellable',
         ];
 
