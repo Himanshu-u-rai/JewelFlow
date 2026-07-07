@@ -118,10 +118,11 @@ class ExchangeController extends Controller
             \App\Models\ReturnLineItem::CONDITION_DAMAGED      => 'Damaged',
             \App\Models\ReturnLineItem::CONDITION_NON_SELLABLE => 'Non-sellable',
         ];
+        // sent_to_rework retired (M11) — keep exchange dispositions aligned
+        // with ReturnsController so both flows offer the same live options.
         $dispositions = [
             \App\Models\ReturnedItemDisposition::DISPOSITION_RESTOCKED      => 'Restock — back on sale',
             \App\Models\ReturnedItemDisposition::DISPOSITION_SENT_TO_MELT   => 'Send to melt',
-            \App\Models\ReturnedItemDisposition::DISPOSITION_SENT_TO_REWORK => 'Send for rework',
             \App\Models\ReturnedItemDisposition::DISPOSITION_WRITTEN_OFF    => 'Write off',
         ];
 
@@ -158,7 +159,6 @@ class ExchangeController extends Controller
             'lines.*.disposition'     => ['required', Rule::in([
                 \App\Models\ReturnedItemDisposition::DISPOSITION_RESTOCKED,
                 \App\Models\ReturnedItemDisposition::DISPOSITION_SENT_TO_MELT,
-                \App\Models\ReturnedItemDisposition::DISPOSITION_SENT_TO_REWORK,
                 \App\Models\ReturnedItemDisposition::DISPOSITION_WRITTEN_OFF,
             ])],
             'lines.*.override_making_charges'   => 'nullable|boolean',
