@@ -95,18 +95,6 @@
             </div>
         </div>
 
-        {{-- Quick Actions --}}
-        <div class="dd-quick-actions">
-            <a href="{{ route('dhiran.loans') }}" class="btn btn-secondary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                View All Loans
-            </a>
-            <a href="{{ route('dhiran.reports.index') }}" class="btn btn-secondary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Reports
-            </a>
-        </div>
-
         {{-- Recent Loans Table --}}
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div class="p-4 border-b border-slate-200">
