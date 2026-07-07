@@ -744,6 +744,27 @@
         </script>
         @endif
         <script>
+        // ── Logout hygiene: clear POS drafts from localStorage ──────────────
+        // POS cart/customer/scan drafts are keyed per user+shop, but they live
+        // in the browser. On shared counter terminals a later login to the
+        // same account would resurrect a stale cart, so wipe them the moment
+        // any logout form (sidebar modal or idle auto-logout) submits.
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (!form || ((form.getAttribute('action') || '').indexOf('logout') === -1)) return;
+            [window.sessionStorage, window.localStorage].forEach(function (store) {
+                try {
+                    Object.keys(store)
+                        .filter(function (k) {
+                            return k.indexOf('pos_cart_') === 0
+                                || k.indexOf('pos_customer_') === 0
+                                || k.indexOf('pos_scan_state_') === 0;
+                        })
+                        .forEach(function (k) { store.removeItem(k); });
+                } catch (_) {}
+            });
+        }, true);
+
         // ── Browser default fixes ────────────────────────────────────────────
 
         // 1. Mouse wheel: don't increment number inputs
