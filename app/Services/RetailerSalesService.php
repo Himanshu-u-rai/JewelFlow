@@ -304,6 +304,60 @@ class RetailerSalesService
                 }
             }
 
+            // ── Old-gold/old-silver excess → customer store credit ──
+            // When the customer's old metal is worth more than the bill, apply
+            // metal value up to the invoice total and store the excess on the
+            // customer's wallet. The full metal weight/value stays on the
+            // old_gold/old_silver payment rows (weekly lot, metal movements and
+            // the Old-Metal Exchange report all record the full exchange); a
+            // negative wallet "change" row brings Σ(payments) back to exactly
+            // the invoice total, so payment reconciliation still ties. No
+            // CashTransaction is written — no cash left the drawer.
+            $excess = round($paymentTotal - (float) $invoice->total, 2);
+            if ($excess > 0.01) {
+                $metalPaid = round(collect($payments)
+                    ->filter(fn ($p) => in_array($p['mode'] ?? null, ['old_gold', 'old_silver']))
+                    ->sum(fn ($p) => round((float) ($p['amount'] ?? 0), 2)), 2);
+
+                // Only metal value may overshoot the bill. A cash/UPI/bank
+                // overpayment is still an entry mistake — reject as before.
+                if ($excess - $metalPaid > 0.01) {
+                    throw new \Exception("Payment total (₹{$paymentTotal}) does not match invoice total (₹{$invoice->total})");
+                }
+
+                if ($customerId <= 0) {
+                    throw ValidationException::withMessages([
+                        'payments' => 'Old-gold excess requires a customer so credit can be stored.',
+                    ]);
+                }
+
+                // Wallet "change" row: the excess portion of the metal value is
+                // not payment for this invoice — it is credit going back to the
+                // customer. Negative amount keeps the invoice's collected total
+                // reconciling exactly to invoice.total.
+                InvoicePayment::record([
+                    'invoice_id' => $invoice->id,
+                    'shop_id'    => $shopId,
+                    'mode'       => InvoicePayment::MODE_WALLET,
+                    'amount'     => -1 * $excess,
+                    'note'       => 'Old-gold excess stored as customer credit',
+                ]);
+
+                \App\Models\StoreCreditMovement::create([
+                    'shop_id'             => $shopId,
+                    'customer_id'         => $customerId,
+                    'amount'              => $excess,
+                    'source_type'         => \App\Models\StoreCreditMovement::SOURCE_OLD_GOLD_EXCESS,
+                    'source_id'           => $invoice->id,
+                    'expires_at'          => null,
+                    'notes'               => "Old-metal value above invoice {$invoice->invoice_number} total, stored as credit.",
+                    'user_id'             => auth()->id(),
+                    'approved_by_user_id' => null,
+                ]);
+
+                $paymentTotal = round($paymentTotal - $excess, 2);
+            }
+
             // Validate payment total covers invoice total (0.01 tolerance for floating point noise)
             if (abs($paymentTotal - (float) $invoice->total) > 0.01) {
                 throw new \Exception("Payment total (₹{$paymentTotal}) does not match invoice total (₹{$invoice->total})");

@@ -2139,7 +2139,7 @@
                         <div class="excess-alert">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="excess-alert-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                             <div>
-                                <div class="excess-alert-label">Return to Customer</div>
+                                <div class="excess-alert-label" x-text="excessStoredAsCredit() ? 'Stored as Customer Store Credit' : 'Overpaid — reduce payment amount'"></div>
                                 <div class="excess-alert-value">₹<span x-text="excess().toLocaleString('en-IN', {minimumFractionDigits:2})"></span></div>
                             </div>
                         </div>
@@ -3401,6 +3401,20 @@ function retailerPos() {
             return r < 0 ? Math.abs(r) : 0;
         },
 
+        metalPaymentTotal() {
+            return this.round2(this.payments
+                .filter(p => p.mode === 'old_gold' || p.mode === 'old_silver')
+                .reduce((s, p) => s + this.round2(p.amount), 0));
+        },
+
+        // Overpayment is only allowed when it comes from old-metal value —
+        // the server stores that excess as customer store credit. A cash/UPI
+        // overshoot is an entry mistake and blocks the sale.
+        excessStoredAsCredit() {
+            const ex = this.excess();
+            return ex > 0.01 && ex - this.metalPaymentTotal() <= 0.01;
+        },
+
         /* ── Sale ────────────────────────────────── */
         accountRequired(pay) {
             return ['upi', 'bank', 'wallet'].includes(pay.mode) && methodsForType && this.methodsForType(pay.mode).length > 0;
@@ -3430,6 +3444,8 @@ function retailerPos() {
                 const hasOnlyEmi = this.payments.length === 1 && this.payments[0].mode === 'emi';
                 return hasOnlyEmi && this.appliedRedemptionAmount() <= 0;
             }
+
+            if (this.excess() > 0.01 && !this.excessStoredAsCredit()) return false;
 
             return this.remaining() <= 0.01;
         },

@@ -27,6 +27,8 @@ class StoreCreditMovement extends Model
     public const SOURCE_REVERSAL           = 'reversal';
     /** Opening store credit seeded at existing-shop onboarding lock. */
     public const SOURCE_OPENING_ADVANCE    = 'opening_advance';
+    /** Old-gold/old-silver value above the invoice total, stored as credit at sale time. */
+    public const SOURCE_OLD_GOLD_EXCESS    = 'old_gold_excess';
 
     protected $fillable = [
         'shop_id', 'customer_id',
