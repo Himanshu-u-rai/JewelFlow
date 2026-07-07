@@ -159,7 +159,7 @@
             font-size: 28px;
             font-weight: 700;
             line-height: 1.12;
-            letter-spacing: -0.02em;
+            letter-spacing: 0;
             text-wrap: balance;
         }
 
@@ -229,9 +229,9 @@
             margin: 0;
             color: var(--sub-ink);
             font-size: 19px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.2;
-            letter-spacing: -0.01em;
+            letter-spacing: 0;
             font-variant-numeric: tabular-nums;
         }
 
@@ -323,7 +323,7 @@
             font-size: 16px;
             font-weight: 600;
             line-height: 1.25;
-            letter-spacing: -0.01em;
+            letter-spacing: 0;
         }
 
         .sub-status-page .sub-card-copy {
@@ -552,7 +552,7 @@
             font-weight: 600;
             color: var(--sub-ink);
             margin: 0 0 5px;
-            letter-spacing: -0.01em;
+            letter-spacing: 0;
         }
         .sub-status-page .sub-billing-copy {
             font-size: 13px;

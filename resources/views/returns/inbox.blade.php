@@ -117,7 +117,7 @@
         font-size: 20px;
         font-weight: 700;
         line-height: 1.15;
-        letter-spacing: -.01em;
+        letter-spacing: 0;
         font-variant-numeric: tabular-nums;
         margin: 0;
     }
@@ -172,7 +172,7 @@
         background: var(--ri-accent-deep);
         color: #ffffff;
         font-size: 13px;
-        font-weight: 650;
+        font-weight: 600;
         cursor: pointer;
         transition: background-color .15s var(--ri-ease), transform .15s var(--ri-ease);
     }
@@ -210,7 +210,7 @@
         margin: 0;
         color: var(--ri-ink);
         font-size: 14px;
-        font-weight: 650;
+        font-weight: 600;
     }
 
     .ri-section-count {
@@ -269,7 +269,7 @@
     }
 
     .ri-invoice-link {
-        font-weight: 650;
+        font-weight: 600;
         color: var(--ri-accent-deep);
         text-decoration: none;
     }
@@ -293,7 +293,7 @@
         padding: 3px 10px;
         border-radius: 999px;
         font-size: 11.5px;
-        font-weight: 650;
+        font-weight: 600;
         white-space: nowrap;
     }
     .ri-status::before {
@@ -336,7 +336,7 @@
         background: #16a34a;
         color: #ffffff;
         font-size: 12px;
-        font-weight: 650;
+        font-weight: 600;
         cursor: pointer;
         transition: background-color .14s var(--ri-ease);
     }
@@ -352,7 +352,7 @@
         background: #fef2f2;
         color: #991b1b;
         font-size: 12px;
-        font-weight: 650;
+        font-weight: 600;
         text-decoration: none;
         transition: background-color .14s var(--ri-ease);
     }
@@ -379,7 +379,7 @@
         margin: 0;
         color: var(--ri-ink);
         font-size: 15px;
-        font-weight: 650;
+        font-weight: 600;
     }
 
     .ri-empty-copy {
@@ -469,7 +469,7 @@
     .content-header.returns-index-header .page-title {
         color: #111827;
         font-size: 22px;
-        font-weight: 620;
+        font-weight: 600;
         line-height: 1.2;
         letter-spacing: 0;
     }
@@ -540,7 +540,7 @@
     .ri-mobile-grid dt {
         color: #64748b;
         font-size: 11px;
-        font-weight: 620;
+        font-weight: 600;
         line-height: 1.2;
         letter-spacing: 0.03em;
         text-transform: uppercase;
@@ -549,7 +549,7 @@
     .ri-kpi-value {
         color: #111827;
         font-size: 19px;
-        font-weight: 620;
+        font-weight: 600;
         letter-spacing: 0;
     }
 
@@ -689,7 +689,7 @@
     .ri-section-title {
         color: #111827;
         font-size: 17px;
-        font-weight: 620;
+        font-weight: 600;
         line-height: 1.25;
     }
 
@@ -750,7 +750,7 @@
 
     .ri-refund-amount {
         color: #047857;
-        font-weight: 620;
+        font-weight: 600;
     }
 
     .ri-status {
@@ -919,7 +919,7 @@
 
         .ri-filter-toggle strong {
             font-size: 14px;
-            font-weight: 620;
+            font-weight: 600;
         }
 
         .ri-filter-toggle span {
@@ -946,7 +946,7 @@
             border-radius: 9px;
             color: #334155;
             font-size: 15px;
-            font-weight: 650;
+            font-weight: 600;
             flex: 0 0 auto;
         }
 
@@ -1013,7 +1013,7 @@
         .ri-mobile-grid dd {
             color: #111827;
             font-size: 13px;
-            font-weight: 560;
+            font-weight: 500;
             overflow-wrap: anywhere;
         }
 
@@ -1028,7 +1028,7 @@
         .ri-mobile-grid > div:first-child dd {
             color: #047857;
             font-size: 18px;
-            font-weight: 620;
+            font-weight: 600;
         }
 
         .ri-mobile-actions {
@@ -1093,8 +1093,8 @@
     .returns-index-page .returns-kpi-card .ri-kpi-value {
         color: var(--cust-ink) !important;
         font-size: 21px !important;
-        font-weight: 650 !important;
-        letter-spacing: -0.2px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0 !important;
         line-height: 1.1 !important;
     }
 
@@ -1427,7 +1427,7 @@
             color: var(--cust-gold);
             font-size: 11px;
             font-style: normal;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1;
         }
 
@@ -1486,7 +1486,7 @@
         .returns-index-page .returns-filter-sheet-head strong {
             color: var(--cust-ink);
             font-size: 16px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.2;
         }
 

@@ -1293,6 +1293,236 @@
         }
     }
 
+    /* Settings responsive/theme pass: scoped, UI-only, no form behavior changes. */
+    .settings-shell {
+        --settings-gold: #b45309;
+        --settings-gold-hover: #92400e;
+        --settings-gold-soft: #fff7ed;
+        --settings-border: #e2e8f0;
+        --settings-border-strong: #cbd5e1;
+        --settings-ink: #1f2430;
+        --settings-muted: #64748b;
+        --settings-focus: rgba(245, 158, 11, .18);
+        color: var(--settings-ink);
+    }
+
+    .settings-shell .settings-layout {
+        gap: 16px;
+    }
+
+    .settings-shell .settings-nav,
+    .settings-shell .settings-content,
+    .settings-shell :is(.role-card, .staff-card, .pm-section, .pm-card, .pm-summary-card, .cw-card, .sub-card, .sub-hero, .sub-billing-card, .pricing-panel, .pricing-status-card, .pricing-table-card, .pricing-filter-card) {
+        border-color: var(--settings-border) !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .settings-nav {
+        border-width: 1px;
+        border-color: var(--settings-border) !important;
+        border-radius: 14px;
+        box-shadow: none !important;
+        scrollbar-color: rgba(180, 83, 9, .35) transparent;
+    }
+
+    .content-inner.settings-shell .settings-nav {
+        box-shadow: none !important;
+    }
+
+    .settings-shell .settings-nav::-webkit-scrollbar-thumb {
+        background: rgba(180, 83, 9, .34);
+        background-clip: padding-box;
+    }
+
+    .settings-shell .settings-nav:hover::-webkit-scrollbar-thumb {
+        background: rgba(180, 83, 9, .52);
+        background-clip: padding-box;
+    }
+
+    .settings-shell .settings-nav .nav-item {
+        color: var(--settings-muted);
+        font-weight: 600;
+    }
+
+    .settings-shell .settings-nav .nav-item:hover {
+        background: var(--settings-gold-soft);
+        color: var(--settings-gold-hover);
+    }
+
+    .settings-shell .settings-nav .nav-item.active {
+        background: var(--settings-gold) !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .settings-nav .nav-icon {
+        background: #f8fafc;
+        color: var(--settings-muted);
+    }
+
+    .settings-shell .settings-nav .nav-item.active .nav-icon {
+        background: rgba(255, 255, 255, .2);
+        color: #ffffff;
+    }
+
+    .settings-shell .settings-header::after {
+        background: var(--settings-gold);
+    }
+
+    .settings-shell :is(.section-label, .perm-group-title, .pm-eyebrow, .pm-form-title) {
+        border-color: #f3dcb6 !important;
+        background: #fff7ed !important;
+        color: var(--settings-gold-hover) !important;
+        letter-spacing: 0 !important;
+        text-transform: none !important;
+    }
+
+    .settings-shell :is(.field-input, .pm-form-input, .pm-form-select, .pricing-settings .field-input, .pricing-settings select.field-input) {
+        border-color: var(--settings-border-strong) !important;
+        background: #ffffff !important;
+        color: var(--settings-ink) !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell :is(.field-input, .pm-form-input, .pm-form-select, .pricing-settings .field-input, .pricing-settings select.field-input):focus {
+        border-color: var(--settings-gold) !important;
+        box-shadow: 0 0 0 3px var(--settings-focus) !important;
+    }
+
+    .settings-shell :is(.btn-primary, .btn-sm, .role-save-btn, .btn-add, .logo-browse-btn, .pm-btn-save, .pm-btn-add, .pricing-settings .btn-primary, .sub-status-page .sub-btn.primary) {
+        border-color: var(--settings-gold) !important;
+        background: var(--settings-gold) !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell :is(.btn-primary, .btn-sm, .role-save-btn, .btn-add, .logo-browse-btn, .pm-btn-save, .pm-btn-add, .pricing-settings .btn-primary, .sub-status-page .sub-btn.primary):hover {
+        border-color: var(--settings-gold-hover) !important;
+        background: var(--settings-gold-hover) !important;
+        transform: none !important;
+    }
+
+    .settings-shell :is(.settings-toggle-input-lg, .settings-toggle-input-md, .pm-toggle.pm-toggle-on) {
+        background: var(--settings-gold) !important;
+    }
+
+    .settings-shell :is(.settings-toggle-input-lg, .settings-toggle-input-md):focus-visible {
+        box-shadow: 0 0 0 3px var(--settings-focus) !important;
+    }
+
+    .settings-shell :is(.cw-cat-chip.selected, .cw-hero-style-opt.selected) {
+        border-color: #f3dcb6 !important;
+        background: #fff7ed !important;
+        color: var(--settings-gold-hover) !important;
+    }
+
+    .settings-shell :is(.cw-url-banner, .pm-form) {
+        border-color: #f3dcb6 !important;
+        background: #fffaf0 !important;
+    }
+
+    .settings-shell :is(.cw-url-banner a, .cw-add-btn:hover, .staff-actions a:hover, .pricing-overview-value.is-ready, .sub-status-page .sub-health-pill, .sub-status-page .sub-dot) {
+        color: var(--settings-gold) !important;
+    }
+
+    .settings-shell .logo-upload-wrap {
+        background: #ffffff !important;
+        border-color: var(--settings-border-strong) !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .logo-upload-wrap:hover,
+    .settings-shell .logo-upload-wrap.is-dragover {
+        border-color: #f3dcb6 !important;
+        background: #fffaf0 !important;
+    }
+
+    .settings-shell :is(.sub-status-page, .pricing-settings) {
+        --sub-accent: var(--settings-gold);
+        --sub-accent-deep: var(--settings-gold-hover);
+        --sub-accent-soft: #fff7ed;
+    }
+
+    @media (max-width: 900px) {
+        .settings-shell .settings-layout {
+            height: auto !important;
+            min-height: 0 !important;
+            grid-template-columns: 1fr !important;
+        }
+
+        .settings-shell .settings-nav {
+            margin-top: 0 !important;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            border-radius: 12px;
+        }
+
+        .settings-shell .settings-content {
+            padding: 18px !important;
+            overflow: visible !important;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .settings-shell {
+            padding: 8px 10px 16px !important;
+        }
+
+        .settings-shell .settings-layout {
+            gap: 10px !important;
+        }
+
+        .settings-shell .settings-nav {
+            padding: 7px !important;
+            gap: 6px;
+        }
+
+        .settings-shell .settings-nav .nav-item {
+            min-height: 38px;
+            padding: 8px 10px;
+            border-radius: 999px;
+        }
+
+        .settings-shell .settings-nav .nav-icon {
+            width: 22px;
+            height: 22px;
+        }
+
+        .settings-shell .settings-content {
+            padding: 14px !important;
+            border-radius: 14px;
+        }
+
+        .settings-shell .settings-title {
+            font-size: 18px;
+        }
+
+        .settings-shell .settings-header {
+            margin-bottom: 16px;
+        }
+
+        .settings-shell :is(.form-footer, .role-foot) {
+            justify-content: stretch;
+        }
+
+        .settings-shell :is(.form-footer .btn-primary, .role-save-btn, .btn-add) {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .settings-shell :is(.logo-delete-btn, .cw-copy-btn) {
+            min-height: 34px;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-shell .staff-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
     /* ──────────────────────────────────────────────────────────────
        Plan & Billing tab — ported verbatim from subscription/status.blade.php
        so the `sub-*` styled cards render identically inside the Settings tab.
@@ -1359,7 +1589,7 @@
         font-size: 28px;
         font-weight: 700;
         line-height: 1.12;
-        letter-spacing: -0.02em;
+        letter-spacing: 0;
         text-wrap: balance;
     }
 
@@ -1426,9 +1656,9 @@
         margin: 0;
         color: var(--sub-ink);
         font-size: 19px;
-        font-weight: 650;
+        font-weight: 600;
         line-height: 1.2;
-        letter-spacing: -0.01em;
+        letter-spacing: 0;
         font-variant-numeric: tabular-nums;
     }
 
@@ -1517,7 +1747,7 @@
         font-size: 16px;
         font-weight: 600;
         line-height: 1.25;
-        letter-spacing: -0.01em;
+        letter-spacing: 0;
     }
 
     .sub-status-page .sub-card-copy {
@@ -1737,7 +1967,7 @@
         font-weight: 600;
         color: var(--sub-ink);
         margin: 0 0 5px;
-        letter-spacing: -0.01em;
+        letter-spacing: 0;
     }
     .sub-status-page .sub-billing-copy {
         font-size: 13px;
@@ -1878,6 +2108,40 @@
             text-align: center;
             padding: 28px 16px !important;
         }
+    }
+
+    .settings-shell .sub-status-page {
+        --sub-accent: var(--settings-gold);
+        --sub-accent-deep: var(--settings-gold-hover);
+        --sub-accent-soft: #fff7ed;
+    }
+
+    .settings-shell :is(.text-teal-600, .text-teal-700) {
+        color: var(--settings-gold) !important;
+    }
+
+    .settings-shell .hover\:text-teal-800:hover {
+        color: var(--settings-gold-hover) !important;
+    }
+
+    .settings-shell :is(.bg-teal-50, .bg-teal-100) {
+        background: var(--settings-gold-soft) !important;
+    }
+
+    .settings-shell .bg-teal-700 {
+        background: var(--settings-gold) !important;
+    }
+
+    .settings-shell .hover\:bg-teal-800:hover {
+        background: var(--settings-gold-hover) !important;
+    }
+
+    .settings-shell .focus\:border-teal-600:focus {
+        border-color: var(--settings-gold) !important;
+    }
+
+    .settings-shell .focus\:ring-teal-600:focus {
+        --tw-ring-color: rgba(245, 158, 11, .35) !important;
     }
 </style>
 
@@ -3957,10 +4221,22 @@
                     .buy-service-btn:active:not(:disabled) { transform: scale(0.98); }
                     .buy-service-btn:disabled { opacity: .65; cursor: not-allowed; }
                     .buy-service-btn:focus-visible {
-                        outline: 2px solid #0f766e;
+                        outline: 2px solid #b45309;
                         outline-offset: 2px;
                     }
-                    .buy-cycle-tab { transition: color .16s ease-out, background-color .16s ease-out; }
+                    .buy-cycle-tab {
+                        min-height: 32px;
+                        transition: color .16s ease-out, background-color .16s ease-out;
+                    }
+                    .settings-shell .buy-service-btn {
+                        background-color: #b45309 !important;
+                    }
+                    @media (hover: hover) and (pointer: fine) {
+                        .settings-shell .buy-service-btn:hover:not(:disabled) {
+                            background-color: #92400e !important;
+                            box-shadow: none;
+                        }
+                    }
                     @media (prefers-reduced-motion: reduce) {
                         .buy-service-btn, .buy-cycle-tab { transition: none; }
                         .buy-service-btn:active:not(:disabled) { transform: none; }
@@ -4708,13 +4984,45 @@
 </div>
 @push('scripts')
 <script>
-// Update active nav state when switching tabs via Turbo Frame
-document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(link => {
-    link.addEventListener('click', () => {
-        document.querySelectorAll('.settings-nav .nav-item').forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
+(() => {
+    const syncActiveSettingsNav = () => {
+        const active = document.querySelector('.settings-nav .nav-item.active');
+        if (!active || !window.matchMedia('(max-width: 900px)').matches) {
+            return;
+        }
+
+        active.scrollIntoView({ block: 'nearest', inline: 'center' });
+    };
+
+    const bindSettingsNav = () => {
+        document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(link => {
+            if (link.dataset.settingsNavBound === '1') {
+                return;
+            }
+
+            link.dataset.settingsNavBound = '1';
+            link.addEventListener('click', () => {
+                document.querySelectorAll('.settings-nav .nav-item').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                requestAnimationFrame(syncActiveSettingsNav);
+            });
+        });
+    };
+
+    bindSettingsNav();
+    syncActiveSettingsNav();
+
+    document.addEventListener('turbo:load', () => {
+        bindSettingsNav();
+        syncActiveSettingsNav();
     });
-});
+
+    document.addEventListener('turbo:frame-load', event => {
+        if (event.target?.id === 'settings-content') {
+            requestAnimationFrame(syncActiveSettingsNav);
+        }
+    });
+})();
 </script>
 <script>
 (() => {
@@ -4729,14 +5037,15 @@ document.querySelectorAll('.settings-nav .nav-item[data-turbo-frame]').forEach(l
     const deleteBtn = document.getElementById('shop-logo-delete-btn');
     const deleteLabel = document.getElementById('shop-logo-delete-label');
     const deleteNote = document.getElementById('shop-logo-delete-note');
-    const initialPreviewSrc = (preview.getAttribute('src') || '').trim();
-    const initialFileName = (fileName.textContent || '').trim();
-    const initialDeletePending = removeInput ? removeInput.value === '1' : false;
     const maxFileBytes = 2 * 1024 * 1024;
 
     if (!dropzone || !browseBtn || !input || !preview || !placeholder || !stateText || !fileName) {
         return;
     }
+
+    const initialPreviewSrc = (preview.getAttribute('src') || '').trim();
+    const initialFileName = (fileName.textContent || '').trim();
+    const initialDeletePending = removeInput ? removeInput.value === '1' : false;
 
     const showPlaceholder = (status = 'Not uploaded') => {
         preview.style.display = 'none';

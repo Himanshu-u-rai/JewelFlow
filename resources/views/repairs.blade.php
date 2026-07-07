@@ -23,7 +23,7 @@
             --app-card-shadow-hover: none;
         }
         .repairs-page-header .page-title {
-            font-weight: 650;
+            font-weight: 600;
             letter-spacing: 0;
         }
         .repairs-page-header .page-subtitle {
@@ -38,7 +38,7 @@
             color: #ffffff !important;
             padding-inline: 14px !important;
             font-size: 13px !important;
-            font-weight: 650 !important;
+            font-weight: 600 !important;
             transition: background-color 160ms ease, transform 120ms ease;
         }
         .repairs-report-btn:hover { background: var(--r-accent-dark) !important; }
@@ -207,7 +207,7 @@
             padding: 7px 8px 5px;
             color: #be123c;
             font-size: 11px;
-            font-weight: 560;
+            font-weight: 500;
             line-height: 1.35;
         }
         .r-dd-quick-add-error.hidden { display: none; }
@@ -249,13 +249,13 @@
         .repairs-kpi-title {
             color: #64748b !important;
             font-size: 11px !important;
-            font-weight: 650 !important;
+            font-weight: 600 !important;
             letter-spacing: .04em !important;
         }
         .repairs-kpi-value {
             color: var(--r-ink) !important;
             font-size: clamp(22px, 2vw, 28px) !important;
-            font-weight: 650 !important;
+            font-weight: 600 !important;
             line-height: 1 !important;
             font-variant-numeric: tabular-nums;
         }
@@ -289,7 +289,7 @@
             gap: 8px;
             color: var(--r-ink);
             font-size: 17px;
-            font-weight: 650;
+            font-weight: 600;
             letter-spacing: 0;
         }
         .repairs-card-title svg {
@@ -315,7 +315,7 @@
         }
         .repairs-data-table thead th {
             color: #475569 !important;
-            font-weight: 650 !important;
+            font-weight: 600 !important;
             letter-spacing: .05em !important;
             background: #f8fafc !important;
             border-bottom: 1px solid var(--r-border-soft);
@@ -336,7 +336,7 @@
             color: #334155;
             padding: 0 10px;
             font-size: 12px;
-            font-weight: 650;
+            font-weight: 600;
             white-space: nowrap;
         }
         .repairs-chip--gold {
@@ -357,7 +357,7 @@
         .repairs-action-row .btn,
         .repairs-mobile-actions .btn {
             border-radius: 9px !important;
-            font-weight: 650 !important;
+            font-weight: 600 !important;
         }
         .repairs-action-row .btn-primary,
         .repairs-mobile-actions .btn-primary {
@@ -385,7 +385,7 @@
             color: #334155;
             padding: 0 28px 0 10px;
             font-size: 12px;
-            font-weight: 650;
+            font-weight: 600;
         }
         .repairs-status-select:focus {
             border-color: var(--r-accent);
@@ -418,7 +418,7 @@
         .repairs-mobile-title {
             color: var(--r-ink);
             font-size: 14px;
-            font-weight: 650;
+            font-weight: 600;
         }
         .repairs-mobile-sub {
             color: var(--r-muted);
@@ -456,7 +456,7 @@
         }
         .repairs-delivered-filter a {
             color: #334155;
-            font-weight: 650;
+            font-weight: 600;
         }
         #deliverModal {
             background: rgba(15, 23, 42, .42) !important;

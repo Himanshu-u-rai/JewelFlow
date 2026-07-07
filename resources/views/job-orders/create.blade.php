@@ -17,9 +17,9 @@
 
         .job-card {
             border: 1px solid #dbe3ee;
-            border-radius: 20px;
+            border-radius: 16px;
             background: #ffffff;
-            box-shadow: 0 14px 28px rgba(15, 23, 42, .06);
+            box-shadow: none;
         }
 
         .job-section {
@@ -43,7 +43,7 @@
             margin: 0;
             color: #0f172a;
             font-size: 15px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .job-copy {
@@ -58,7 +58,7 @@
             margin-bottom: 6px;
             color: #334155;
             font-size: 12px;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         .job-control {
@@ -72,8 +72,8 @@
         }
 
         .job-control:focus {
-            border-color: #0f766e;
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+            border-color: #b45309;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, .16);
         }
 
         .job-field-grid {
@@ -108,8 +108,8 @@
 
         .job-combobox-trigger:focus {
             outline: none;
-            border-color: #0f766e;
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+            border-color: #b45309;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, .16);
         }
 
         .job-combobox-placeholder {
@@ -126,7 +126,7 @@
             border: 1px solid #dbe3ee;
             border-radius: 14px;
             background: #ffffff;
-            box-shadow: 0 18px 36px rgba(15, 23, 42, .16);
+            box-shadow: 0 16px 28px rgba(15, 23, 42, .10);
         }
 
         .job-combobox-menu-up {
@@ -147,14 +147,14 @@
             padding: 10px 11px;
             color: #0f172a;
             font-size: 14px;
-            font-weight: 800;
+            font-weight: 700;
             text-align: left;
         }
 
         .job-combobox-option:hover,
         .job-combobox-option-selected {
-            background: #f0fdfa;
-            color: #0f766e;
+            background: #fff7ed;
+            color: #b45309;
         }
 
         .job-combobox-meta {
@@ -189,9 +189,13 @@
             background: #f0fdf4;
             border: 1px solid #bbf7d0;
             font-size: 11px;
-            font-weight: 800;
+            font-weight: 700;
             color: #166534;
             flex-wrap: wrap;
+        }
+
+        .job-lot-avail strong {
+            font-weight: 600;
         }
 
         .job-lot-avail-warn {
@@ -244,8 +248,8 @@
             padding: 7px 12px;
             color: #0f172a;
             font-size: 12px;
-            font-weight: 900;
-            box-shadow: 0 8px 16px rgba(15, 23, 42, .05);
+            font-weight: 700;
+            box-shadow: none;
         }
 
         .job-remove-line {
@@ -259,7 +263,7 @@
             background: #fff1f2;
             color: #be123c;
             font-size: 18px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .job-preview {
@@ -297,21 +301,21 @@
         .job-preview-label {
             color: #64748b;
             font-size: 12px;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         .job-preview-value {
             color: #0f172a;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
             font-size: 15px;
-            font-weight: 900;
+            font-weight: 600 !important;
             text-align: right;
         }
 
         .job-advance-panel {
-            border: 1px solid #bfdbfe;
+            border: 1px solid #f3dcb6;
             border-radius: 16px;
-            background: #eff6ff;
+            background: #fff7ed;
             padding: 14px;
         }
 
@@ -324,7 +328,7 @@
         }
         .job-held-title {
             font-size: 11px;
-            font-weight: 800;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: .04em;
             color: #92400e;
@@ -407,13 +411,18 @@
             gap: 8px;
             min-height: 42px;
             border-radius: 13px;
-            border: 1px solid #0f766e;
-            background: #0f766e;
+            border: 1px solid #b45309;
+            background: #b45309;
             padding: 10px 16px;
             color: #ffffff;
             font-size: 14px;
-            font-weight: 900;
-            box-shadow: 0 12px 24px rgba(15, 118, 110, .18);
+            font-weight: 700;
+            box-shadow: none;
+        }
+
+        .job-submit:hover {
+            background: #92400e;
+            border-color: #92400e;
         }
 
         .job-cancel {
@@ -427,7 +436,7 @@
             padding: 10px 15px;
             color: #475569;
             font-size: 14px;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         @media (max-width: 1120px) {
@@ -495,9 +504,9 @@
                 bottom: 16px;
                 left: 14px;
                 max-height: 55vh;
-                border: 1.5px solid #0f766e;
+                border: 1.5px solid #b45309;
                 border-radius: 16px;
-                box-shadow: 0 18px 36px rgba(15, 23, 42, .24), 0 0 0 4px rgba(15, 118, 110, .08);
+                box-shadow: 0 18px 36px rgba(15, 23, 42, .18);
             }
 
             .job-combobox-menu-up {
@@ -522,8 +531,8 @@
 
             .job-combobox-option:hover,
             .job-combobox-option-selected {
-                border-color: #0f766e;
-                background: #f0fdfa;
+                border-color: #b45309;
+                background: #fff7ed;
             }
 
             .job-label {
@@ -596,7 +605,7 @@
 
     <div class="content-inner job-create-shell">
 
-        <form method="POST" action="{{ route('job-orders.store') }}" x-data="jobOrderForm()" @keydown.escape.window="closeDropdowns()"
+        <form method="POST" action="{{ route('job-orders.store') }}" x-data="jobOrderForm()" @keydown.escape.window="closeDropdowns()" @turbo:before-cache.window="closeDropdowns()"
               @if($selectedKarigar)
                   x-init="onKarigarSelect('{{ $selectedKarigar->id }}', @js($selectedKarigar->name . ($selectedKarigar->gst_number ? ' - ' . $selectedKarigar->gst_number : '')), {{ (float) ($selectedKarigar->default_wastage_percent ?? 2) }})"
               @endif>
@@ -1028,12 +1037,7 @@
                         </div>
                         <div class="job-preview-row">
                             <span class="job-preview-label">Metal Source</span>
-                            <span class="job-preview-value" x-text="{
-                                vault: 'Shop vault',
-                                karigar_held: \"Karigar's balance\",
-                                customer_advance: \"Customer's gold\",
-                                none: 'Labour only',
-                            }[metalSource]">Shop vault</span>
+                            <span class="job-preview-value" x-text="metalSourceLabel">Shop vault</span>
                         </div>
                     </div>
                 </aside>
@@ -1079,6 +1083,14 @@
                     return this.lines.reduce((s, l) => s + (parseFloat(l.fine_weight) || 0), 0);
                 },
                 get expectedReturn() { return this.totalFine * (1 - (parseFloat(this.allowedWastage) || 0) / 100); },
+                get metalSourceLabel() {
+                    return {
+                        vault: 'Shop vault',
+                        karigar_held: 'Karigar balance',
+                        customer_advance: 'Customer gold',
+                        none: 'Labour only',
+                    }[this.metalSource] || 'Shop vault';
+                },
                 addLine() { this.lines.push({ metal_lot_id: '', lotName: '', lotOpen: false, gross_weight: '', fine_weight: '', purity: this.purity, lotAvailable: 0 }); },
                 removeLine(i) { this.lines.splice(i, 1); },
                 closeDropdowns() {

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-page-header title="Add Karigar Invoice" />
 
-    <div class="content-inner">
+    <div class="content-inner karigar-invoice-form-page">
 
         <form method="POST" action="{{ route('karigar-invoices.store') }}" enctype="multipart/form-data" class="ki-form-shell">
             @csrf

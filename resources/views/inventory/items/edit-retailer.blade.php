@@ -21,14 +21,14 @@
         $primaryImagePath = $itemGallery[0] ?? null;
     @endphp
 
-    <x-page-header>
+    <x-page-header class="inventory-items-create-header inventory-items-create-header--retailer">
         <div>
             <h1 class="page-title">Edit Item</h1>
             <p class="text-sm text-gray-500 mt-1">Update retailer stock details using today&apos;s pricing rules</p>
         </div>
         <div class="page-actions">
             <a href="{{ route('inventory.items.show', $item) }}"
-               class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
+               class="inventory-items-create-back-btn inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
@@ -37,9 +37,9 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner">
+    <div class="content-inner inventory-item-create-dropdowns inventory-item-create-page inventory-item-edit-page inventory-item-create-page--retailer">
         @if($errors->any())
-            <div class="mb-6 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            <div class="item-create-error-summary">
                 <ul class="list-disc list-inside">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -48,79 +48,90 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('inventory.items.update', $item) }}" class="space-y-6" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('inventory.items.update', $item) }}" class="item-create-form" id="editItemForm" enctype="multipart/form-data" data-enhance-selects="true" data-enhance-selects-variant="standard">
             @csrf
             @method('PUT')
 
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-                <div class="xl:col-span-2 space-y-6">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                        <div class="grid grid-cols-12 items-start gap-3 sm:flex sm:flex-row sm:gap-6">
-                            <div class="flex-shrink-0 flex justify-center sm:justify-start">
-                                <div class="relative" id="imageContainer">
+            <div class="item-create-layout">
+                <div class="item-create-main">
+                    <section class="item-create-panel item-edit-overview-panel">
+                        <div class="item-edit-overview">
+                            <div class="item-edit-overview-media">
+                                <div class="item-edit-preview-box" id="imageContainer">
                                     @if($primaryImagePath)
                                         <img id="imagePreview" src="{{ asset('storage/' . preg_replace('/^storage\\//', '', ltrim($primaryImagePath, '/'))) }}" alt="{{ $item->design }}"
-                                             class="rounded-xl object-cover bg-gray-100 shadow-sm w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36">
-                                        <div id="imagePlaceholder" class="rounded-xl bg-gray-100 flex items-center justify-center shadow-sm w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 hidden">
+                                             class="item-edit-preview-image">
+                                        <div id="imagePlaceholder" class="item-edit-preview-placeholder hidden">
                                             <span class="text-gray-400 text-xs">No image</span>
                                         </div>
                                     @else
-                                        <div id="imagePlaceholder" class="rounded-xl bg-gray-100 flex items-center justify-center shadow-sm w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36">
+                                        <div id="imagePlaceholder" class="item-edit-preview-placeholder">
                                             <span class="text-gray-400 text-xs">No image</span>
                                         </div>
-                                        <img id="imagePreview" src="" alt="Item image preview" class="rounded-xl object-cover bg-gray-100 shadow-sm hidden w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36">
+                                        <img id="imagePreview" src="" alt="Item image preview" class="item-edit-preview-image hidden">
                                     @endif
                                 </div>
                             </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-start justify-between gap-2 mb-3">
+                            <div class="item-edit-overview-body">
+                                <div class="item-edit-title-row">
                                     <div class="min-w-0">
-                                        <h2 class="text-base sm:text-2xl font-bold text-gray-900 truncate">{{ $item->design ?: 'No Design Name' }}</h2>
-                                        <p class="text-gray-500 text-xs sm:text-sm truncate">{{ $item->category }}{{ $item->sub_category ? ' / ' . $item->sub_category : '' }}</p>
+                                        <p class="item-create-kicker">Editing Stock Item</p>
+                                        <h2>{{ $item->design ?: 'No Design Name' }}</h2>
+                                        <p>{{ $item->category }}{{ $item->sub_category ? ' / ' . $item->sub_category : '' }}</p>
                                     </div>
-                                    <span class="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-sm font-medium bg-green-100 text-green-800">
+                                    <span class="item-edit-status-chip">
                                         In Stock
                                     </span>
                                 </div>
-                                <div class="font-mono text-sm sm:text-lg font-semibold text-amber-600 bg-amber-50 px-2.5 sm:px-4 py-1 sm:py-2 rounded-lg inline-block mb-3">
+                                <div class="item-edit-barcode-chip">
                                     {{ $item->barcode }}
                                 </div>
-                                <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3 text-xs sm:text-sm">
-                                    <span class="bg-slate-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-slate-700 font-semibold" id="previewMetalChip">{{ ucfirst($item->metal_type ?? 'gold') }}</span>
-                                    <span class="bg-yellow-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-yellow-700 font-semibold" id="previewPurityChip">{{ $item->purity_label }}</span>
-                                    <span class="bg-gray-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-gray-700 font-semibold">{{ number_format($item->gross_weight, 3) }}g</span>
-                                    <span class="col-span-2 sm:col-span-1 bg-green-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-green-700 font-semibold" id="previewSellingChip">₹{{ number_format($item->selling_price, 2) }}</span>
+                                <div class="item-edit-chip-row">
+                                    <span id="previewMetalChip">{{ ucfirst($item->metal_type ?? 'gold') }}</span>
+                                    <span id="previewPurityChip">{{ $item->purity_label }}</span>
+                                    <span>{{ number_format($item->gross_weight, 3) }}g</span>
+                                    <span id="previewSellingChip">₹{{ number_format($item->selling_price, 2) }}</span>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Item Details</h2>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <section class="item-create-panel item-create-panel--identity">
+                        <div class="item-create-panel-head">
+                            <span class="item-create-panel-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7V5a1 1 0 0 1 1-1h2M4 17v2a1 1 0 0 0 1 1h2M17 4h2a1 1 0 0 1 1 1v2M17 20h2a1 1 0 0 0 1-1v-2M7 12h10M7 9h10M7 15h6"/>
+                                </svg>
+                            </span>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <p class="item-create-kicker">Item Identity</p>
+                                <h2>Barcode, category, and images</h2>
+                            </div>
+                        </div>
+
+                        <div class="item-create-grid item-create-grid--identity">
+                            <div class="item-create-field item-create-field--barcode">
+                                <label class="item-create-label">
                                     Barcode <span class="text-red-500">*</span>
                                 </label>
                                 <input type="text" name="barcode" required
                                        value="{{ old('barcode', $item->barcode) }}"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 font-mono">
+                                       class="item-create-input item-create-input--mono">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Design / Item Name</label>
+                            <div class="item-create-field item-create-field--design">
+                                <label class="item-create-label">Design / Item Name</label>
                                 <input type="text" name="design" value="{{ old('design', $item->design) }}"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="e.g., Flower Ring, Traditional Necklace">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <div class="item-create-field item-create-field--category">
+                                <label class="item-create-label">
                                     Category <span class="text-red-500">*</span>
                                 </label>
                                 <select name="category" id="category" required
-                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                        class="item-create-input">
                                     <option value="">Select Category</option>
                                     @foreach($categories as $cat)
                                         <option value="{{ $cat->name }}" data-category-id="{{ $cat->id }}" @selected(old('category', $item->category) == $cat->name)>
@@ -134,16 +145,16 @@
                                 </select>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Sub Category</label>
+                            <div class="item-create-field item-create-field--sub-category">
+                                <label class="item-create-label">Sub Category</label>
                                 <select name="sub_category" id="sub_category" data-initial-value="{{ old('sub_category', $item->sub_category) }}"
-                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                        class="item-create-input">
                                     <option value="">Select sub category</option>
                                 </select>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <div class="item-create-field item-create-field--metal">
+                                <label class="item-create-label">
                                     Metal Type <span class="text-red-500">*</span>
                                 </label>
                                 @php
@@ -157,7 +168,7 @@
                                     $currentMetal = old('metal_type', $item->metal_type ?? 'gold');
                                 @endphp
                                 <select name="metal_type" id="metal_type" required
-                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                        class="item-create-input">
                                     <option value="">Select metal</option>
                                     @foreach($pickerMetals as $metalOption)
                                         <option value="{{ $metalOption }}" @selected($currentMetal === $metalOption)>
@@ -167,10 +178,10 @@
                                 </select>
                             </div>
 
-                            <div class="sm:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Item Images</label>
+                            <div class="item-create-field item-create-field--upload item-edit-image-field">
+                                <label class="item-create-label">Item Images</label>
                                 @if(count($itemGallery))
-                                    <div class="item-gallery-existing-grid">
+                                    <div class="item-gallery-existing-grid item-edit-existing-grid">
                                         @foreach($itemGallery as $galleryIndex => $galleryPath)
                                             <label class="item-gallery-existing-tile">
                                                 <img src="{{ asset('storage/' . preg_replace('/^storage\\//', '', ltrim($galleryPath, '/'))) }}" alt="Existing item image {{ $galleryIndex + 1 }}">
@@ -181,110 +192,134 @@
                                         @endforeach
                                     </div>
                                 @else
-                                    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                                    <div class="item-edit-empty-gallery">
                                         No images uploaded yet.
                                     </div>
                                 @endif
-                                <div class="mt-3 flex items-center gap-4">
-                                    <label class="flex-1 flex items-center justify-center px-4 py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 hover:border-amber-400 transition-colors">
-                                        <input type="file" name="images[]" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp,image/avif,image/bmp" multiple class="hidden" id="imageFileInput">
-                                        <div class="text-center">
-                                            <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                <div class="item-create-upload-layout item-edit-upload-layout">
+                                    <label for="imageFileInput" class="item-create-upload-zone">
+                                        <input type="file" name="images[]" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp,image/avif,image/bmp" multiple class="sr-only" id="imageFileInput">
+                                        <span class="item-create-upload-icon" aria-hidden="true">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 16.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2.5"/>
                                             </svg>
-                                            <p class="mt-1 text-sm text-gray-600"><span class="font-medium text-amber-600">Click to upload</span> more images</p>
-                                            <p class="text-xs text-gray-500">Up to 4 total images. 5MB each.</p>
-                                        </div>
+                                        </span>
+                                        <span>
+                                            <strong>Add item photos</strong>
+                                            <small>Up to 4 total images, 5MB each</small>
+                                        </span>
                                     </label>
-                                </div>
-                                <div id="uploadPreviewWrap" class="mt-3 hidden">
-                                    <p id="selectedFileName" class="text-sm text-amber-600 mb-2"></p>
-                                    <div id="uploadPreviewGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+                                    <div class="item-create-upload-preview">
+                                        <div id="uploadPreviewPlaceholder" class="item-create-image-placeholder">
+                                            No new images selected
+                                        </div>
+                                        <div id="uploadPreviewGrid" class="hidden item-create-preview-grid"></div>
+                                        <p id="selectedFileName" class="item-create-hint hidden"></p>
+                                    </div>
                                 </div>
                                 @error('images')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="item-create-error">{{ $message }}</p>
                                 @enderror
                                 @error('images.*')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="item-create-error">{{ $message }}</p>
                                 @enderror
                                 @error('remove_images')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="item-create-error">{{ $message }}</p>
                                 @enderror
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Weight &amp; Purity</h2>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-6">
+                    <section class="item-create-panel item-create-panel--weights">
+                        <div class="item-create-panel-head">
+                            <span class="item-create-panel-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18M5 7h14M6 7l-3 6h6L6 7Zm12 0-3 6h6l-3-6Z"/>
+                                </svg>
+                            </span>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <p class="item-create-kicker">Weight &amp; Rate</p>
+                                <h2>Metal weight and purity</h2>
+                            </div>
+                        </div>
+
+                        <div class="item-create-grid item-create-grid--weight">
+                            <div class="item-create-field">
+                                <label class="item-create-label">
                                     Gross Weight (g) <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number" name="gross_weight" id="gross_weight" required
                                        value="{{ old('gross_weight', $item->gross_weight) }}"
                                        step="0.001" min="0"
                                        oninput="updateNetWeight(); refreshRetailerPricing();"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                       class="item-create-input">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Stone Weight (g)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Stone Weight (g)</label>
                                 <input type="number" name="stone_weight" id="stone_weight"
                                        value="{{ old('stone_weight', $item->stone_weight ?? 0) }}"
                                        step="0.001" min="0"
                                        oninput="updateNetWeight(); refreshRetailerPricing();"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                       class="item-create-input">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Net Metal (g)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Net Metal Weight (g)</label>
                                 <input type="text" id="net_weight_display" readonly
-                                       class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700"
+                                       class="item-create-input item-create-input--readonly"
                                        value="{{ number_format($item->net_metal_weight, 3) }}">
                             </div>
 
-                            <div id="purity_field_wrap">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <div class="item-create-field" id="purity_field_wrap">
+                                <label class="item-create-label">
                                     <span id="purity_field_label">Purity Profile</span> <span id="purity_required_star" class="text-red-500">*</span>
                                 </label>
                                 <select name="purity" id="purity" required data-initial-value="{{ old('purity', rtrim(rtrim(number_format((float) $item->purity, 3, '.', ''), '0'), '.')) }}"
-                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                        class="item-create-input">
                                     <option value="">Select purity</option>
                                 </select>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Today&apos;s Rate / g</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Live Rate / g</label>
                                 <input type="text" id="resolved_rate_display" readonly
-                                       class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700"
-                                       value="Unavailable">
+                                       class="item-create-input item-create-input--readonly item-create-input--money"
+                                       value="Select purity">
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-1">Pricing</h2>
-                        <p class="text-xs text-gray-500 mb-4 sm:mb-6">Metal cost is recalculated from today&apos;s rates on save. Adjust charges — the total becomes the selling price / MRP.</p>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <section class="item-create-panel item-create-panel--pricing">
+                        <div class="item-create-panel-head">
+                            <span class="item-create-panel-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/>
+                                </svg>
+                            </span>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Metal Cost (₹)</label>
+                                <p class="item-create-kicker">Pricing</p>
+                                <h2>Charges and selling price</h2>
+                            </div>
+                        </div>
+
+                        <div class="item-create-grid item-create-grid--pricing">
+                            <div class="item-create-field">
+                                <label class="item-create-label">Metal Cost (₹)</label>
                                 <input type="number" name="cost_price" id="cost_price" readonly
                                        value="{{ old('cost_price', $item->cost_price) }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700">
-                                <p class="mt-1 text-xs text-gray-500">Net weight × today&apos;s resolved rate.</p>
+                                       class="item-create-input item-create-input--readonly item-create-input--money">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2" id="making_charges_label">Making Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label" id="making_charges_label">Making Charges (₹)</label>
                                 @if(config('features.making_charge_modes'))
                                 @php $mcType = old('making_charge_type', $item->making_charge_type ?? 'fixed'); @endphp
-                                <div class="flex gap-2">
+                                <div class="item-create-split-control">
                                     <select id="making_charge_type" name="making_charge_type"
-                                            class="w-2/5 rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                            class="item-create-input">
                                         <option value="fixed" @selected($mcType === 'fixed' || $mcType === null)>Fixed (₹)</option>
                                         <option value="percentage" @selected($mcType === 'percentage')>% of metal</option>
                                         <option value="per_gram" @selected($mcType === 'per_gram')>₹ / gram</option>
@@ -292,80 +327,89 @@
                                     <input type="number" name="making_charges" id="making_charges"
                                            value="{{ old('making_charges', ($item->making_charge_type ? $item->making_charge_value : $item->making_charges)) }}"
                                            step="0.01" min="0"
-                                           class="w-3/5 rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                           class="item-create-input"
                                            placeholder="0.00">
                                 </div>
                                 <input type="hidden" name="making_charge_value" id="making_charge_value" value="{{ old('making_charge_value', ($item->making_charge_value ?? $item->making_charges)) }}">
-                                <p class="mt-1 text-xs text-gray-500" id="making_resolved_hint"></p>
+                                <p class="item-create-hint" id="making_resolved_hint"></p>
                                 @else
                                 <input type="number" name="making_charges" id="making_charges"
                                        value="{{ old('making_charges', $item->making_charges) }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                                 @endif
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Stone Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Stone Charges (₹)</label>
                                 <input type="number" name="stone_charges" id="stone_charges"
                                        value="{{ old('stone_charges', $item->stone_charges) }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Hallmark Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Hallmark Charges (₹)</label>
                                 <input type="number" name="hallmark_charges" id="hallmark_charges"
                                        value="{{ old('hallmark_charges', $item->hallmark_charges ?? 0) }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Rhodium Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Rhodium Charges (₹)</label>
                                 <input type="number" name="rhodium_charges" id="rhodium_charges"
                                        value="{{ old('rhodium_charges', $item->rhodium_charges ?? 0) }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Other Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Other Charges (₹)</label>
                                 <input type="number" name="other_charges" id="other_charges"
                                        value="{{ old('other_charges', $item->other_charges ?? 0) }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                             </div>
 
-                            <div class="sm:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Selling Price / MRP (₹)</label>
+                            <div class="item-create-field item-create-field--total">
+                                <label class="item-create-label">Selling Price / MRP (₹)</label>
                                 <input type="number" id="selling_price_display" readonly
                                        value="{{ old('selling_price', $item->selling_price) }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg bg-amber-50 border-amber-200 text-amber-800 font-semibold text-base">
+                                       class="item-create-input item-create-input--readonly item-create-input--total">
                                 <input type="hidden" name="selling_price" id="selling_price" value="{{ old('selling_price', $item->selling_price) }}">
-                                <p class="mt-1 text-xs text-gray-500">Auto-calculated: Metal Cost + Making + Stone + Hallmark + Rhodium + Other.</p>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Vendor &amp; Hallmark</h2>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                    <section class="item-create-panel item-create-panel--supplier">
+                        <div class="item-create-panel-head">
+                            <span class="item-create-panel-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 11c1.657 0 3-1.567 3-3.5S17.657 4 16 4s-3 1.567-3 3.5 1.343 3.5 3 3.5ZM8 12c1.657 0 3-1.567 3-3.5S9.657 5 8 5 5 6.567 5 8.5 6.343 12 8 12Zm8 2c-2.21 0-4 1.343-4 3v1h8v-1c0-1.657-1.79-3-4-3ZM8 15c-2.21 0-4 1.343-4 3v1h6"/>
+                                </svg>
+                            </span>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Vendor / Karigar</label>
+                                <p class="item-create-kicker">Source Details</p>
+                                <h2>Vendor, karigar, and hallmark</h2>
+                            </div>
+                        </div>
+
+                        <div class="item-create-grid item-create-grid--supplier">
+                            <div class="item-create-field">
+                                <label class="item-create-label">Vendor / Karigar</label>
                                 @php
                                     $initialSupplierValue = '';
                                     if (old('karigar_id', $item->karigar_id)) $initialSupplierValue = 'karigar:' . old('karigar_id', $item->karigar_id);
                                     elseif (old('vendor_id', $item->vendor_id)) $initialSupplierValue = 'vendor:' . old('vendor_id', $item->vendor_id);
                                 @endphp
-                                <select id="supplier_picker" class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                <select id="supplier_picker" class="item-create-input">
                                     <option value="">— None —</option>
                                     @if($vendors->isNotEmpty())
                                         <optgroup label="Vendors">
@@ -386,101 +430,106 @@
                                 <input type="hidden" name="vendor_id" id="vendor_id" value="{{ old('vendor_id', $item->vendor_id) }}">
                                 <input type="hidden" name="karigar_id" id="karigar_id" value="{{ old('karigar_id', $item->karigar_id) }}">
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">HUID Number</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">HUID Number</label>
                                 <input type="text" name="huid" value="{{ old('huid', $item->huid) }}"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input item-create-input--mono"
                                        placeholder="e.g., A1B2C3D4E5F6"
                                        maxlength="30">
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Hallmark Date</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Hallmark Date</label>
                                 <input type="date" name="hallmark_date" value="{{ old('hallmark_date', $item->hallmark_date?->format('Y-m-d')) }}"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                       class="item-create-input">
                             </div>
                         </div>
-                    </div>
+                    </section>
 
                 </div>
 
-                <div class="xl:col-span-1">
-                    <div class="xl:sticky xl:top-6 space-y-4 sm:space-y-6">
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                            <h2 class="text-lg font-semibold text-gray-900 mb-4">Price Summary</h2>
-                            <dl class="space-y-3 text-sm">
-                                <div class="flex justify-between gap-4">
+                <aside class="item-create-aside">
+                    <div class="item-create-summary-stack">
+                        <div class="item-create-summary-card">
+                            <div class="item-create-summary-head">
+                                <div>
+                                    <p class="item-create-kicker">Live Summary</p>
+                                    <h2>Updated price</h2>
+                                </div>
+                                <span class="item-create-summary-chip">Edit</span>
+                            </div>
+                            <dl class="item-create-summary-list">
+                                <div>
                                     <dt class="text-gray-500">Metal</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryMetal">{{ ucfirst($item->metal_type ?? 'gold') }}</dd>
+                                    <dd id="summaryMetal">{{ ucfirst($item->metal_type ?? 'gold') }}</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
+                                <div>
                                     <dt class="text-gray-500">Purity</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryPurity">{{ $item->purity_label }}</dd>
+                                    <dd id="summaryPurity">{{ $item->purity_label }}</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
+                                <div>
                                     <dt class="text-gray-500">Rate / g</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryRate">—</dd>
+                                    <dd id="summaryRate">—</dd>
                                 </div>
                                 <hr class="border-gray-200">
-                                <div class="flex justify-between gap-4">
+                                <div>
                                     <dt class="text-gray-500">Metal Cost</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryCost">₹{{ number_format($item->cost_price, 2) }}</dd>
+                                    <dd id="summaryCost">₹{{ number_format($item->cost_price, 2) }}</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
+                                <div>
                                     <dt class="text-gray-500">Making</dt>
-                                    <dd class="text-gray-700" id="summaryMaking">₹{{ number_format($item->making_charges, 2) }}</dd>
+                                    <dd id="summaryMaking">₹{{ number_format($item->making_charges, 2) }}</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
+                                <div>
                                     <dt class="text-gray-500">Stone</dt>
-                                    <dd class="text-gray-700" id="summaryStone">₹{{ number_format($item->stone_charges, 2) }}</dd>
+                                    <dd id="summaryStone">₹{{ number_format($item->stone_charges, 2) }}</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
+                                <div>
                                     <dt class="text-gray-500">Hallmark</dt>
-                                    <dd class="text-gray-700" id="summaryHallmark">₹{{ number_format($item->hallmark_charges ?? 0, 2) }}</dd>
+                                    <dd id="summaryHallmark">₹{{ number_format($item->hallmark_charges ?? 0, 2) }}</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
+                                <div>
                                     <dt class="text-gray-500">Rhodium</dt>
-                                    <dd class="text-gray-700" id="summaryRhodium">₹{{ number_format($item->rhodium_charges ?? 0, 2) }}</dd>
+                                    <dd id="summaryRhodium">₹{{ number_format($item->rhodium_charges ?? 0, 2) }}</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
+                                <div>
                                     <dt class="text-gray-500">Other</dt>
-                                    <dd class="text-gray-700" id="summaryOther">₹{{ number_format($item->other_charges ?? 0, 2) }}</dd>
+                                    <dd id="summaryOther">₹{{ number_format($item->other_charges ?? 0, 2) }}</dd>
                                 </div>
                                 <hr class="border-gray-200">
-                                <div class="flex justify-between items-center gap-4">
+                                <div class="item-create-summary-total">
                                     <dt class="text-gray-600 font-medium">Selling Price / MRP</dt>
-                                    <dd class="font-bold text-amber-600 text-base" id="summarySelling">₹{{ number_format($item->selling_price, 2) }}</dd>
+                                    <dd id="summarySelling">₹{{ number_format($item->selling_price, 2) }}</dd>
                                 </div>
                             </dl>
                         </div>
 
-                        <div class="flex flex-col gap-3">
+                        <div class="item-create-action-card">
                             <button type="submit"
-                                    class="w-full px-6 py-3 rounded-xl text-white font-semibold text-base shadow-lg transition-all hover:shadow-xl flex items-center justify-center gap-2"
-                                    style="background: #0d9488;">
+                                    class="item-create-submit-btn">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
                                 Save Changes
                             </button>
                             <a href="{{ route('inventory.items.show', $item) }}"
-                               class="w-full px-6 py-2.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors font-medium text-center">
+                               class="item-create-cancel-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Cancel
                             </a>
                         </div>
 
-                        <p class="text-xs text-gray-400 text-center">
+                        <p class="item-edit-updated-note">
                             Last updated: {{ $item->updated_at->format('d M Y, h:i A') }}
                         </p>
                     </div>
-                </div>
+                </aside>
             </div>
         </form>
     </div>
 
     <script>
-        const purityProfiles = @json($profileOptions);
-        const resolvedRates = @json($resolvedRates);
-        const categoriesData = @json($categoriesData);
+        var purityProfiles = @json($profileOptions);
+        var resolvedRates = @json($resolvedRates);
+        var categoriesData = @json($categoriesData);
 
         function normalizePurityValue(value) {
             const number = Number.parseFloat(value);
@@ -492,7 +541,7 @@
         }
 
         function formatCurrency(value) {
-            return '₹' + Number(value || 0).toLocaleString('en-IN', {
+            return '₹ ' + Number(value || 0).toLocaleString('en-IN', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
             });
@@ -616,7 +665,7 @@
 
             const selling = rate > 0 ? Math.round((metalCost + making + stoneCharges + hallmark + rhodium + other) * 100) / 100 : 0;
 
-            document.getElementById('resolved_rate_display').value = rate > 0 ? formatCurrency(rate) : 'Unavailable';
+            document.getElementById('resolved_rate_display').value = rate > 0 ? formatCurrency(rate) : (purity ? 'Rate unavailable' : 'Select purity');
             document.getElementById('cost_price').value = rate > 0 ? metalCost.toFixed(2) : '';
             document.getElementById('selling_price').value = selling.toFixed(2);
             document.getElementById('selling_price_display').value = selling > 0 ? selling.toFixed(2) : '';
@@ -642,116 +691,152 @@
             }
         }
 
-        function setRemoveImageState(shouldRemove) {
-            const removeInput = document.getElementById('removeImage');
-            const removeButton = document.getElementById('removeImageButton');
-            const removeButtonLabel = document.getElementById('removeImageButtonLabel');
-            const preview = document.getElementById('imagePreview');
-            const placeholder = document.getElementById('imagePlaceholder');
-
-            if (!removeInput || !removeButton || !removeButtonLabel) {
-                return;
-            }
-
-            removeInput.value = shouldRemove ? '1' : '0';
-            removeButton.dataset.removeImageState = shouldRemove ? '1' : '0';
-            removeButtonLabel.textContent = shouldRemove ? 'Undo image removal' : 'Delete current image';
-            removeButton.classList.toggle('bg-red-600', shouldRemove);
-            removeButton.classList.toggle('border-red-600', shouldRemove);
-            removeButton.classList.toggle('text-white', shouldRemove);
-            removeButton.classList.toggle('hover:bg-red-700', shouldRemove);
-            removeButton.classList.toggle('border-red-200', !shouldRemove);
-            removeButton.classList.toggle('text-red-600', !shouldRemove);
-            removeButton.classList.toggle('hover:bg-red-50', !shouldRemove);
-
-            if (!preview) {
-                return;
-            }
-
-            if (shouldRemove) {
-                preview.classList.add('hidden');
-                placeholder?.classList.remove('hidden');
-                return;
-            }
-
-            if (preview.src) {
-                preview.classList.remove('hidden');
-                placeholder?.classList.add('hidden');
-            }
-        }
-
-        document.getElementById('imageFileInput')?.addEventListener('change', function (event) {
-            const MAX_FILES = 4;
-            const MAX_BYTES = 5 * 1024 * 1024; // 5 MB per image — matches the server limit
-            const allFiles = Array.from(event.target.files || []);
-            if (!allFiles.length) {
-                return;
-            }
-            const tooBig = allFiles.filter(function (f) { return f.size > MAX_BYTES; });
-            if (tooBig.length) {
-                alert('Some images are larger than 5 MB and can\'t be uploaded:\n• '
-                    + tooBig.map(function (f) { return f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB)'; }).join('\n• ')
-                    + '\n\nPlease choose images under 5 MB each.');
-                event.target.value = '';
-                return;
-            }
-            if (allFiles.length > MAX_FILES) {
-                alert('You can add up to ' + MAX_FILES + ' images. Only the first ' + MAX_FILES + ' will be used.');
-            }
-            const files = allFiles.slice(0, MAX_FILES);
-
-            const preview = document.getElementById('imagePreview');
-            const placeholder = document.getElementById('imagePlaceholder');
-            const fileName = document.getElementById('selectedFileName');
-            const uploadWrap = document.getElementById('uploadPreviewWrap');
-            const uploadPreviewGrid = document.getElementById('uploadPreviewGrid');
-
-            fileName.textContent = files.length === 1 ? 'Selected: ' + files[0].name : 'Selected: ' + files.length + ' images';
-            uploadPreviewGrid.innerHTML = '';
-
-            files.forEach(function (file, index) {
-                const reader = new FileReader();
-                reader.onload = function (loadEvent) {
-                    if (index === 0 && preview) {
-                        preview.src = loadEvent.target.result;
-                        preview.classList.remove('hidden');
-                        if (placeholder) {
-                            placeholder.classList.add('hidden');
-                        }
-                    }
-
-                    const tile = document.createElement('div');
-                    tile.className = 'item-gallery-preview-tile';
-                    tile.innerHTML = '<img src="' + loadEvent.target.result + '" alt="Selected item image ' + (index + 1) + '"><span>' + (index === 0 ? 'First new image' : 'New image ' + (index + 1)) + '</span>';
-                    uploadPreviewGrid.appendChild(tile);
-                };
-                reader.readAsDataURL(file);
-            });
-
-            uploadWrap.classList.remove('hidden');
-            setRemoveImageState(false);
-        });
-
-        const removeButton = document.getElementById('removeImageButton');
-        if (removeButton) {
-            removeButton.addEventListener('click', function () {
-                const shouldRemove = removeButton.dataset.removeImageState !== '1';
-                setRemoveImageState(shouldRemove);
-            });
-        }
-
         function initializeRetailerEditPage() {
-            const form = document.querySelector('form[action*="/inventory/items/"]');
+            const form = document.getElementById('editItemForm');
             if (!form || form.dataset.retailerEditBooted === '1') {
                 return;
             }
             form.dataset.retailerEditBooted = '1';
+
+            if (form._retailerEditAbortController) {
+                form._retailerEditAbortController.abort();
+            }
+            const editAbortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const editListenerOptions = editAbortController ? { signal: editAbortController.signal } : undefined;
+            form._retailerEditAbortController = editAbortController;
+
+            const imageInput = document.getElementById('imageFileInput');
+            if (imageInput && imageInput.dataset.galleryPreviewBound !== '1') {
+                let selectedImageFiles = [];
+                let imagePreviewRenderToken = 0;
+                const preview = document.getElementById('imagePreview');
+                const placeholder = document.getElementById('imagePlaceholder');
+                const fileName = document.getElementById('selectedFileName');
+                const uploadPreviewGrid = document.getElementById('uploadPreviewGrid');
+                const uploadPreviewPlaceholder = document.getElementById('uploadPreviewPlaceholder');
+
+                const syncImageInputFiles = function () {
+                    const dataTransfer = new DataTransfer();
+                    selectedImageFiles.forEach(function (file) {
+                        dataTransfer.items.add(file);
+                    });
+                    imageInput.files = dataTransfer.files;
+                };
+
+                const renderUploadPreviews = function () {
+                    const renderToken = ++imagePreviewRenderToken;
+                    uploadPreviewGrid.innerHTML = '';
+
+                    if (!selectedImageFiles.length) {
+                        uploadPreviewGrid.classList.add('hidden');
+                        uploadPreviewPlaceholder?.classList.remove('hidden');
+                        fileName?.classList.add('hidden');
+                        return;
+                    }
+
+                    if (fileName) {
+                        fileName.textContent = selectedImageFiles.length === 1
+                            ? 'Selected: ' + selectedImageFiles[0].name
+                            : 'Selected: ' + selectedImageFiles.length + ' images';
+                        fileName.classList.remove('hidden');
+                    }
+
+                    selectedImageFiles.forEach(function (file, index) {
+                        const reader = new FileReader();
+                        reader.onload = function (loadEvent) {
+                            if (renderToken !== imagePreviewRenderToken) {
+                                return;
+                            }
+
+                            if (index === 0 && preview) {
+                                preview.src = loadEvent.target.result;
+                                preview.classList.remove('hidden');
+                                placeholder?.classList.add('hidden');
+                            }
+
+                            const tile = document.createElement('div');
+                            tile.className = 'item-gallery-preview-tile';
+
+                            const image = document.createElement('img');
+                            image.src = loadEvent.target.result;
+                            image.alt = 'Selected item image ' + (index + 1);
+
+                            const badge = document.createElement('span');
+                            badge.textContent = index === 0 ? 'First new image' : 'New image ' + (index + 1);
+
+                            const removeButton = document.createElement('button');
+                            removeButton.type = 'button';
+                            removeButton.className = 'item-gallery-remove-btn';
+                            removeButton.dataset.removeImageIndex = String(index);
+                            removeButton.setAttribute('aria-label', 'Remove selected image ' + (index + 1));
+                            removeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" d="M18 6 6 18M6 6l12 12"/></svg>';
+
+                            tile.appendChild(image);
+                            tile.appendChild(badge);
+                            tile.appendChild(removeButton);
+                            uploadPreviewGrid.appendChild(tile);
+                        };
+                        reader.readAsDataURL(file);
+                    });
+
+                    uploadPreviewPlaceholder?.classList.add('hidden');
+                    uploadPreviewGrid.classList.remove('hidden');
+                };
+
+                imageInput.addEventListener('change', function (event) {
+                    const MAX_FILES = 4;
+                    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB per image — matches the server limit
+                    const allFiles = Array.from(event.target.files || []);
+                    const tooBig = allFiles.filter(function (f) { return f.size > MAX_BYTES; });
+                    if (tooBig.length) {
+                        alert('Some images are larger than 5 MB and can\'t be uploaded:\n• '
+                            + tooBig.map(function (f) { return f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB)'; }).join('\n• ')
+                            + '\n\nPlease choose images under 5 MB each.');
+                        selectedImageFiles = [];
+                        event.target.value = '';
+                        renderUploadPreviews();
+                        return;
+                    }
+                    if (allFiles.length > MAX_FILES) {
+                        alert('You can add up to ' + MAX_FILES + ' images. Only the first ' + MAX_FILES + ' will be used.');
+                    }
+                    selectedImageFiles = allFiles.slice(0, MAX_FILES);
+                    syncImageInputFiles();
+                    renderUploadPreviews();
+                }, editListenerOptions);
+
+                uploadPreviewGrid.addEventListener('click', function (event) {
+                    const removeButton = event.target.closest('[data-remove-image-index]');
+                    if (!removeButton) {
+                        return;
+                    }
+
+                    const removeIndex = Number.parseInt(removeButton.dataset.removeImageIndex, 10);
+                    if (!Number.isInteger(removeIndex)) {
+                        return;
+                    }
+
+                    selectedImageFiles.splice(removeIndex, 1);
+                    syncImageInputFiles();
+                    renderUploadPreviews();
+                }, editListenerOptions);
+
+                imageInput.dataset.galleryPreviewBound = '1';
+            }
+
+            form.querySelectorAll('.item-gallery-existing-tile input[type="checkbox"]').forEach((checkbox) => {
+                checkbox.addEventListener('change', function () {
+                    this.closest('.item-gallery-existing-tile')?.classList.toggle('is-marked-remove', this.checked);
+                }, editListenerOptions);
+                checkbox.closest('.item-gallery-existing-tile')?.classList.toggle('is-marked-remove', checkbox.checked);
+            });
 
             const watchedIds = [
                 'metal_type',
                 'purity',
                 'gross_weight',
                 'stone_weight',
+                'making_charge_type',
                 'making_charges',
                 'stone_charges',
                 'hallmark_charges',
@@ -762,7 +847,7 @@
             document.getElementById('metal_type')?.addEventListener('change', function () {
                 populatePurityOptions();
                 refreshRetailerPricing();
-            });
+            }, editListenerOptions);
 
             // Intercept purity selection — open modal if custom is chosen
             document.getElementById('purity')?.addEventListener('change', function () {
@@ -773,15 +858,15 @@
                 } else {
                     refreshRetailerPricing();
                 }
-            });
+            }, editListenerOptions);
 
             watchedIds.forEach((id) => {
                 if (id === 'purity') return; // handled above
-                document.getElementById(id)?.addEventListener('input', refreshRetailerPricing);
-                document.getElementById(id)?.addEventListener('change', refreshRetailerPricing);
+                document.getElementById(id)?.addEventListener('input', refreshRetailerPricing, editListenerOptions);
+                document.getElementById(id)?.addEventListener('change', refreshRetailerPricing, editListenerOptions);
             });
 
-            document.getElementById('category')?.addEventListener('change', handleCategoryChange);
+            document.getElementById('category')?.addEventListener('change', handleCategoryChange, editListenerOptions);
 
             document.getElementById('sub_category')?.addEventListener('change', function () {
                 if (this.value === '__new_sub_category__') {
@@ -789,7 +874,7 @@
                     refreshEditDropdown(this);
                     openNewSubCategoryModal();
                 }
-            });
+            }, editListenerOptions);
 
             document.getElementById('supplier_picker')?.addEventListener('change', function () {
                 if (this.value === '__new_supplier__') {
@@ -799,12 +884,19 @@
                     return;
                 }
                 syncSupplierHiddenFields(this.value);
-            });
+            }, editListenerOptions);
 
             handleCategoryChange();
             populatePurityOptions();
             updateNetWeight();
             refreshRetailerPricing();
+
+            requestAnimationFrame(() => {
+                ['purity', 'sub_category', 'supplier_picker'].forEach((id) => {
+                    const el = document.getElementById(id);
+                    if (el) refreshEditDropdown(el);
+                });
+            });
         }
 
         // Run immediately for this page render.
@@ -817,6 +909,57 @@
         }
         window.__retailerEditTurboInitHandler = initializeRetailerEditPage;
         document.addEventListener('turbo:load', window.__retailerEditTurboInitHandler);
+
+        function cleanupRetailerEditPageBeforeCache() {
+            const form = document.getElementById('editItemForm');
+            if (!form) {
+                return;
+            }
+
+            if (form._retailerEditAbortController) {
+                form._retailerEditAbortController.abort();
+                delete form._retailerEditAbortController;
+            }
+
+            delete form.dataset.retailerEditBooted;
+
+            const imageInput = document.getElementById('imageFileInput');
+            if (imageInput) {
+                delete imageInput.dataset.galleryPreviewBound;
+            }
+
+            form.querySelectorAll('.ui-filter-select-host').forEach((host) => {
+                const select = host.querySelector('select');
+                if (!select || !host.parentNode) {
+                    return;
+                }
+
+                const cleanSelect = select.cloneNode(true);
+                cleanSelect.value = select.value;
+                Array.from(cleanSelect.options).forEach((option) => {
+                    option.selected = option.value === cleanSelect.value;
+                    if (option.selected) {
+                        option.setAttribute('selected', 'selected');
+                    } else {
+                        option.removeAttribute('selected');
+                    }
+                });
+                cleanSelect.classList.remove('ui-filter-native-select');
+
+                host.parentNode.insertBefore(cleanSelect, host);
+                host.remove();
+            });
+
+            document.querySelectorAll('.item-create-modal').forEach((modal) => {
+                modal.style.display = 'none';
+            });
+        }
+
+        if (window.__retailerEditBeforeCacheHandler) {
+            document.removeEventListener('turbo:before-cache', window.__retailerEditBeforeCacheHandler);
+        }
+        window.__retailerEditBeforeCacheHandler = cleanupRetailerEditPageBeforeCache;
+        document.addEventListener('turbo:before-cache', window.__retailerEditBeforeCacheHandler);
 
         // ── Supplier picker helpers ────────────────────────────────────────────
 
@@ -856,13 +999,11 @@
             document.getElementById('newSupplierModal').dataset.supplierType = type;
             const vendorTab = document.getElementById('supplierTabVendor');
             const karigarTab = document.getElementById('supplierTabKarigar');
+            vendorTab.classList.toggle('is-active', type === 'vendor');
+            karigarTab.classList.toggle('is-active', type === 'karigar');
             if (type === 'vendor') {
-                vendorTab.style.background = '#0d9488'; vendorTab.style.color = '#fff';
-                karigarTab.style.background = ''; karigarTab.style.color = '#4b5563';
                 document.getElementById('newSupplierInput').placeholder = 'e.g. Mehta Jewellers, Rajesh Traders';
             } else {
-                karigarTab.style.background = '#0d9488'; karigarTab.style.color = '#fff';
-                vendorTab.style.background = ''; vendorTab.style.color = '#4b5563';
                 document.getElementById('newSupplierInput').placeholder = 'e.g. Ramesh Kumar, Krishna Ornaments';
             }
         }
@@ -1256,49 +1397,46 @@
     </script>
 
     {{-- New supplier modal (vendor or karigar) --}}
-    <div id="newSupplierModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4" data-supplier-type="vendor">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSupplierBackdrop"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+    <div id="newSupplierModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4" data-supplier-type="vendor">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSupplierBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-semibold text-gray-900">Add New Vendor / Karigar</h3>
-                    <p class="text-sm text-gray-500 mt-1">Choose the type, enter a name, and it will be saved to your shop. Full details can be added later.</p>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Vendor / Karigar</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">Choose the type, enter a name, and it will be saved to your shop. Full details can be added later.</p>
                 </div>
             </div>
-            <div class="flex rounded-xl overflow-hidden border border-gray-200 text-sm font-medium">
+            <div class="item-create-modal-tabs flex rounded-xl overflow-hidden border border-gray-200 text-sm font-medium">
                 <button type="button" id="supplierTabVendor"
-                        class="flex-1 px-4 py-2 transition-colors"
-                        style="background:#0d9488; color:#fff;">
+                        class="item-create-modal-tab is-active flex-1 px-4 py-2 transition-colors">
                     Vendor
                 </button>
                 <button type="button" id="supplierTabKarigar"
-                        class="flex-1 px-4 py-2 border-l border-gray-200 transition-colors hover:bg-gray-50"
-                        style="color:#4b5563;">
+                        class="item-create-modal-tab flex-1 px-4 py-2 border-l border-gray-200 transition-colors hover:bg-gray-50">
                     Karigar
                 </button>
             </div>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
                     <input type="text" id="newSupplierInput" maxlength="255"
-                           class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. Mehta Jewellers, Rajesh Traders">
                 </div>
-                <div id="newSupplierError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+                <div id="newSupplierError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
             </div>
-            <div class="flex gap-3 pt-1">
+            <div class="item-create-modal-actions flex gap-3 pt-1">
                 <button type="button" id="newSupplierCancel"
-                        class="flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
                 <button type="button" id="newSupplierConfirm"
-                        class="flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors"
-                        style="background:#0d9488;" onmouseover="this.style.background='#0f766e'" onmouseout="this.style.background='#0d9488'">
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
                     Add &amp; Use
                 </button>
             </div>
@@ -1306,36 +1444,36 @@
     </div>
 
     {{-- New category modal --}}
-    <div id="newCategoryModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="newCategoryBackdrop"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+    <div id="newCategoryModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newCategoryBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-semibold text-gray-900">Add New Category</h3>
-                    <p class="text-sm text-gray-500 mt-1">This category will be saved to your shop and available for all future items.</p>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Category</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This category will be saved to your shop and available for all future items.</p>
                 </div>
             </div>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Category Name <span class="text-red-500">*</span></label>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Category Name <span class="text-red-500">*</span></label>
                     <input type="text" id="newCategoryInput" maxlength="255"
-                           class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. Necklace, Bangles, Earrings">
                 </div>
-                <div id="newCategoryError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+                <div id="newCategoryError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
             </div>
-            <div class="flex gap-3 pt-1">
+            <div class="item-create-modal-actions flex gap-3 pt-1">
                 <button type="button" id="newCategoryCancel"
-                        class="flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
                 <button type="button" id="newCategoryConfirm"
-                        class="flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors" style="background:#0d9488;" onmouseover="this.style.background='#0f766e'" onmouseout="this.style.background='#0d9488'">
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
                     Add &amp; Use This Category
                 </button>
             </div>
@@ -1343,41 +1481,41 @@
     </div>
 
     {{-- New sub-category modal --}}
-    <div id="newSubCategoryModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSubCategoryBackdrop"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+    <div id="newSubCategoryModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSubCategoryBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-semibold text-gray-900">Add New Sub-Category</h3>
-                    <p class="text-sm text-gray-500 mt-1">This sub-category will be added under the selected category.</p>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Sub-Category</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This sub-category will be added under the selected category.</p>
                 </div>
             </div>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
                     <input type="text" id="newSubCategoryParentDisplay" readonly
-                           class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
+                           class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Sub-Category Name <span class="text-red-500">*</span></label>
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Sub-Category Name <span class="text-red-500">*</span></label>
                     <input type="text" id="newSubCategoryInput" maxlength="255"
-                           class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. Studs, Jhumkas, Hoops">
                 </div>
-                <div id="newSubCategoryError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+                <div id="newSubCategoryError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
             </div>
-            <div class="flex gap-3 pt-1">
+            <div class="item-create-modal-actions flex gap-3 pt-1">
                 <button type="button" id="newSubCategoryCancel"
-                        class="flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
                 <button type="button" id="newSubCategoryConfirm"
-                        class="flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors" style="background:#0d9488;" onmouseover="this.style.background='#0f766e'" onmouseout="this.style.background='#0d9488'">
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
                     Add &amp; Use This Sub-Category
                 </button>
             </div>
@@ -1385,51 +1523,51 @@
     </div>
 
     {{-- Custom purity modal --}}
-    <div id="customPurityModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="customPurityBackdrop"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+    <div id="customPurityModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="customPurityBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-semibold text-gray-900">Add New Purity</h3>
-                    <p class="text-sm text-gray-500 mt-1">This purity is not in your pricing table. Adding it will create a new profile and auto-calculate today's rate from your saved base rates.</p>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Purity</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This purity is not in your pricing table. Adding it will create a new profile and auto-calculate today's rate from your saved base rates.</p>
                 </div>
             </div>
 
-            <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+            <div class="item-create-modal-note bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
                 New purity profiles added here will appear in <strong>Settings → Pricing</strong> and will be included in all future daily reprice runs.
             </div>
 
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Metal Type</label>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Metal Type</label>
                     <input type="text" id="customPurityMetalDisplay" readonly
-                           class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
+                           class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">
                         Purity Value <span class="text-red-500">*</span>
                         <span class="text-xs font-normal text-gray-400" id="customPurityHint"></span>
                     </label>
                     <input type="number" id="customPurityInput" step="0.001" min="0.001"
-                           class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. 20">
                     <p class="mt-1 text-xs text-gray-400" id="customPuritySubhint"></p>
                 </div>
-                <div id="customPurityError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+                <div id="customPurityError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
             </div>
 
-            <div class="flex gap-3 pt-1">
+            <div class="item-create-modal-actions flex gap-3 pt-1">
                 <button type="button" id="customPurityCancel"
-                        class="flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
                 <button type="button" id="customPurityConfirm"
-                        class="flex-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">
                     Add &amp; Use This Purity
                 </button>
             </div>

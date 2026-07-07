@@ -18,7 +18,7 @@
         ]);
     @endphp
 
-    <x-page-header class="inventory-items-create-header">
+    <x-page-header class="inventory-items-create-header inventory-items-create-header--retailer">
         <div>
             <h1 class="page-title">Add New Item</h1>
             <p class="text-sm text-gray-500 mt-1">Create retailer stock using today&apos;s saved metal rates</p>
@@ -34,9 +34,9 @@
         </div>
     </x-page-header>
 
-    <div class="content-inner inventory-item-create-dropdowns">
+    <div class="content-inner inventory-item-create-dropdowns inventory-item-create-page inventory-item-create-page--retailer">
         @if($errors->any())
-            <div class="mb-6 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            <div class="item-create-error-summary">
                 <ul class="list-disc list-inside">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -45,45 +45,55 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('inventory.items.store') }}" class="space-y-6" id="createItemForm" enctype="multipart/form-data" data-enhance-selects="true" data-enhance-selects-variant="standard">
+        <form method="POST" action="{{ route('inventory.items.store') }}" class="item-create-form" id="createItemForm" enctype="multipart/form-data" data-enhance-selects="true" data-enhance-selects-variant="standard">
             @csrf
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-6">Item Details</h2>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="item-create-layout">
+                <div class="item-create-main">
+                    <section class="item-create-panel item-create-panel--identity">
+                        <div class="item-create-panel-head">
+                            <span class="item-create-panel-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7V5a1 1 0 0 1 1-1h2M4 17v2a1 1 0 0 0 1 1h2M17 4h2a1 1 0 0 1 1 1v2M17 20h2a1 1 0 0 0 1-1v-2M7 12h10M7 9h10M7 15h6"/>
+                                </svg>
+                            </span>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <p class="item-create-kicker">Item Identity</p>
+                                <h2>Barcode, category, and images</h2>
+                            </div>
+                        </div>
+
+                        <div class="item-create-grid item-create-grid--identity">
+                            <div class="item-create-field item-create-field--barcode">
+                                <label class="item-create-label">
                                     Barcode <span class="text-red-500">*</span>
                                 </label>
-                                <div class="flex gap-2">
+                                <div class="item-create-input-row">
                                     <input type="text" name="barcode" id="barcode" required
                                            value="{{ old('barcode') }}"
-                                           class="flex-1 rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                           class="item-create-input item-create-input--mono"
                                            placeholder="Enter or scan barcode">
                                     <button type="button" onclick="generateBarcode()"
-                                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium whitespace-nowrap">
+                                            class="item-create-inline-action">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline -mt-0.5 mr-1"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Generate
                                     </button>
                                 </div>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Design / Item Name</label>
+                            <div class="item-create-field item-create-field--design">
+                                <label class="item-create-label">Design / Item Name</label>
                                 <input type="text" name="design" id="design"
                                        value="{{ old('design') }}"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="e.g., Flower Ring, Traditional Necklace">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <div class="item-create-field item-create-field--category">
+                                <label class="item-create-label">
                                     Category <span class="text-red-500">*</span>
                                 </label>
                                 <select name="category" id="category" required onchange="handleCategoryChange()"
-                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                        class="item-create-input">
                                     <option value="">Select Category</option>
                                     @foreach($categories as $cat)
                                         <option value="{{ $cat->name }}" data-category-id="{{ $cat->id }}" {{ old('category') == $cat->name ? 'selected' : '' }}>
@@ -94,8 +104,8 @@
                                 </select>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Sub Category</label>
+                            <div class="item-create-field item-create-field--sub-category">
+                                <label class="item-create-label">Sub Category</label>
                                 @php
                                     $initialCategory = old('category', '');
                                     $initialSubCategory = old('sub_category', '');
@@ -106,7 +116,7 @@
                                 @endphp
                                 <select name="sub_category" id="sub_category"
                                         data-initial-value="{{ $initialSubCategory }}"
-                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                        class="item-create-input">
                                     <option value="">Select sub category</option>
                                     @foreach($initialSubCategories as $subName)
                                         <option value="{{ $subName }}" @selected($initialSubCategory === $subName)>{{ $subName }}</option>
@@ -117,8 +127,8 @@
                                 </select>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <div class="item-create-field item-create-field--metal">
+                                <label class="item-create-label">
                                     Metal Type <span class="text-red-500">*</span>
                                 </label>
                                 @php
@@ -127,7 +137,7 @@
                                     $defaultMetal = in_array('gold', $pickerMetals, true) ? 'gold' : ($pickerMetals[0] ?? '');
                                 @endphp
                                 <select name="metal_type" id="metal_type" required
-                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                        class="item-create-input">
                                     <option value="">Select metal</option>
                                     @foreach($pickerMetals as $metalOption)
                                         <option value="{{ $metalOption }}" @selected(old('metal_type', $defaultMetal) === $metalOption)>
@@ -137,66 +147,89 @@
                                 </select>
                             </div>
 
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Item Images</label>
-                                <input type="file" name="images[]" id="images" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp,image/avif,image/bmp"
-                                       multiple
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
-                                <p class="mt-1 text-xs text-gray-500">Optional. Select up to 4 images. JPG, PNG, GIF, WEBP, AVIF, or BMP up to 5MB each.</p>
-                                <div class="mt-3">
-                                    <div id="imagePreviewPlaceholder" class="rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-xs" style="width: 120px; height: 120px;">
-                                        No images selected
+                            <div class="item-create-field item-create-field--upload">
+                                <label class="item-create-label">Item Images</label>
+                                <div class="item-create-upload-layout">
+                                    <label for="images" class="item-create-upload-zone">
+                                        <input type="file" name="images[]" id="images" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp,image/avif,image/bmp"
+                                               multiple
+                                               class="sr-only">
+                                        <span class="item-create-upload-icon" aria-hidden="true">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 16.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2.5"/>
+                                            </svg>
+                                        </span>
+                                        <span>
+                                            <strong>Upload item photos</strong>
+                                            <small>Up to 4 images, 5MB each</small>
+                                        </span>
+                                    </label>
+                                    <div class="item-create-upload-preview">
+                                        <div id="imagePreviewPlaceholder" class="item-create-image-placeholder">
+                                            No images selected
+                                        </div>
+                                        <div id="imagePreviewGrid" class="hidden item-create-preview-grid"></div>
                                     </div>
-                                    <div id="imagePreviewGrid" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
                                 </div>
                                 @error('images')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="item-create-error">{{ $message }}</p>
                                 @enderror
                                 @error('images.*')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="item-create-error">{{ $message }}</p>
                                 @enderror
                                 @error('image')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="item-create-error">{{ $message }}</p>
                                 @enderror
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-6">Weight &amp; Purity</h2>
-
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <section class="item-create-panel item-create-panel--weights">
+                        <div class="item-create-panel-head">
+                            <span class="item-create-panel-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18M5 7h14M6 7l-3 6h6L6 7Zm12 0-3 6h6l-3-6Z"/>
+                                </svg>
+                            </span>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <p class="item-create-kicker">Weight &amp; Rate</p>
+                                <h2>Metal weight and purity</h2>
+                            </div>
+                        </div>
+
+                        <div class="item-create-grid item-create-grid--weight">
+                            <div class="item-create-field">
+                                <label class="item-create-label">
                                     Gross Weight (g) <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number" name="gross_weight" id="gross_weight" required
                                        value="{{ old('gross_weight') }}"
                                        step="0.001" min="0"
                                        oninput="updateNetWeight(); refreshRetailerPricing();"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.000">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Stone Weight (g)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Stone Weight (g)</label>
                                 <input type="number" name="stone_weight" id="stone_weight"
                                        value="{{ old('stone_weight', '0') }}"
                                        step="0.001" min="0"
                                        oninput="updateNetWeight(); refreshRetailerPricing();"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.000">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Net Metal Weight (g)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Net Metal Weight (g)</label>
                                 <input type="text" id="net_weight_display" readonly
-                                       class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700"
+                                       class="item-create-input item-create-input--readonly"
                                        value="0.000">
                             </div>
 
-                            <div id="purity_field_wrap">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <div class="item-create-field" id="purity_field_wrap">
+                                <label class="item-create-label">
                                     <span id="purity_field_label">Purity Profile</span> <span id="purity_required_star" class="text-red-500">*</span>
                                 </label>
                                 @php
@@ -205,7 +238,7 @@
                                     $initialProfiles = $profileOptions[$initialMetal] ?? collect();
                                 @endphp
                                 <select name="purity" id="purity" required data-initial-value="{{ $initialPurity }}"
-                                        class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                        class="item-create-input">
                                     <option value="">Select purity</option>
                                     @foreach($initialProfiles as $profile)
                                         <option value="{{ $profile['value'] }}" @selected($initialPurity === $profile['value'])>{{ $profile['label'] }}</option>
@@ -216,37 +249,45 @@
                                 </select>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Today&apos;s Rate / g</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Live Rate / g</label>
                                 <input type="text" id="resolved_rate_display" readonly
-                                       class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700"
-                                       value="Unavailable">
+                                       class="item-create-input item-create-input--readonly item-create-input--money"
+                                       value="Select purity">
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-1">Pricing</h2>
-                        <p class="text-xs text-gray-500 mb-6">Metal cost is calculated from today&apos;s rates. Enter the applicable charges — the total becomes the selling price / MRP.</p>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <section class="item-create-panel item-create-panel--pricing">
+                        <div class="item-create-panel-head">
+                            <span class="item-create-panel-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/>
+                                </svg>
+                            </span>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Metal Cost (₹)</label>
+                                <p class="item-create-kicker">Pricing</p>
+                                <h2>Charges and selling price</h2>
+                            </div>
+                        </div>
+
+                        <div class="item-create-grid item-create-grid--pricing">
+                            <div class="item-create-field">
+                                <label class="item-create-label">Metal Cost (₹)</label>
                                 <input type="number" name="cost_price" id="cost_price" readonly
                                        value="{{ old('cost_price') }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700"
+                                       class="item-create-input item-create-input--readonly item-create-input--money"
                                        placeholder="Calculated from today&apos;s rates">
-                                <p class="mt-1 text-xs text-gray-500">Net weight × today&apos;s resolved rate. Auto-updates daily.</p>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2" id="making_charges_label">Making Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label" id="making_charges_label">Making Charges (₹)</label>
                                 @if(config('features.making_charge_modes'))
                                 {{-- One cohesive control: mode picker + value side by side. --}}
-                                <div class="flex gap-2">
+                                <div class="item-create-split-control">
                                     <select id="making_charge_type" name="making_charge_type"
-                                            class="w-2/5 rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                            class="item-create-input">
                                         <option value="fixed" @selected(old('making_charge_type', 'fixed') === 'fixed')>Fixed (₹)</option>
                                         <option value="percentage" @selected(old('making_charge_type') === 'percentage')>% of metal</option>
                                         <option value="per_gram" @selected(old('making_charge_type') === 'per_gram')>₹ / gram</option>
@@ -254,75 +295,84 @@
                                     <input type="number" name="making_charges" id="making_charges"
                                            value="{{ old('making_charges', '0') }}"
                                            step="0.01" min="0"
-                                           class="w-3/5 rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                           class="item-create-input"
                                            placeholder="0.00">
                                 </div>
                                 <input type="hidden" name="making_charge_value" id="making_charge_value" value="{{ old('making_charge_value', old('making_charges', '0')) }}">
-                                <p class="mt-1 text-xs text-gray-500" id="making_resolved_hint"></p>
+                                <p class="item-create-hint" id="making_resolved_hint"></p>
                                 @else
                                 <input type="number" name="making_charges" id="making_charges"
                                        value="{{ old('making_charges', '0') }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                                 @endif
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Stone Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Stone Charges (₹)</label>
                                 <input type="number" name="stone_charges" id="stone_charges"
                                        value="{{ old('stone_charges', '0') }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Hallmark Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Hallmark Charges (₹)</label>
                                 <input type="number" name="hallmark_charges" id="hallmark_charges"
                                        value="{{ old('hallmark_charges', '0') }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Rhodium Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Rhodium Charges (₹)</label>
                                 <input type="number" name="rhodium_charges" id="rhodium_charges"
                                        value="{{ old('rhodium_charges', '0') }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Other Charges (₹)</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Other Charges (₹)</label>
                                 <input type="number" name="other_charges" id="other_charges"
                                        value="{{ old('other_charges', '0') }}"
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input"
                                        placeholder="0.00">
                             </div>
 
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Selling Price / MRP (₹)</label>
+                            <div class="item-create-field item-create-field--total">
+                                <label class="item-create-label">Selling Price / MRP (₹)</label>
                                 <input type="number" id="selling_price_display" readonly
                                        step="0.01" min="0"
-                                       class="w-full rounded-lg bg-amber-50 border-amber-200 text-amber-800 font-semibold text-base"
+                                       class="item-create-input item-create-input--readonly item-create-input--total"
                                        placeholder="Sum of all charges above">
                                 <input type="hidden" name="selling_price" id="selling_price" value="{{ old('selling_price', '0') }}">
-                                <p class="mt-1 text-xs text-gray-500">Auto-calculated: Metal Cost + Making + Stone + Hallmark + Rhodium + Other.</p>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-6">Vendor &amp; Hallmark</h2>
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <section class="item-create-panel item-create-panel--supplier">
+                        <div class="item-create-panel-head">
+                            <span class="item-create-panel-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 11a4 4 0 1 0-8 0M3 21a7 7 0 0 1 18 0M18 8h3m-1.5-1.5v3"/>
+                                </svg>
+                            </span>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Vendor / Karigar</label>
-                                <select id="supplier_picker" class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                <p class="item-create-kicker">Source Details</p>
+                                <h2>Vendor and hallmark</h2>
+                            </div>
+                        </div>
+
+                        <div class="item-create-grid item-create-grid--supplier">
+                            <div class="item-create-field">
+                                <label class="item-create-label">Vendor / Karigar</label>
+                                <select id="supplier_picker" class="item-create-input">
                                     <option value="">— None —</option>
                                     @if($vendors->isNotEmpty())
                                         <optgroup label="Vendors">
@@ -343,140 +393,146 @@
                                 <input type="hidden" name="vendor_id" id="vendor_id" value="{{ old('vendor_id') }}">
                                 <input type="hidden" name="karigar_id" id="karigar_id" value="{{ old('karigar_id') }}">
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">HUID Number</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">HUID Number</label>
                                 <input type="text" name="huid" value="{{ old('huid') }}"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500"
+                                       class="item-create-input item-create-input--mono"
                                        placeholder="e.g., A1B2C3D4E5F6"
                                        maxlength="30">
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Hallmark Date</label>
+                            <div class="item-create-field">
+                                <label class="item-create-label">Hallmark Date</label>
                                 <input type="date" name="hallmark_date" value="{{ old('hallmark_date') }}"
-                                       class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500">
+                                       class="item-create-input">
                             </div>
                         </div>
-                    </div>
+                    </section>
 
                 </div>
 
-                <div class="lg:col-span-1">
-                    <div class="sticky top-6 space-y-6">
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h2 class="text-lg font-semibold text-gray-900 mb-4">Summary</h2>
+                <aside class="item-create-aside">
+                    <div class="item-create-summary-stack">
+                        <div class="item-create-summary-card">
+                            <div class="item-create-summary-head">
+                                <div>
+                                    <p class="item-create-kicker">Live Summary</p>
+                                    <h2>Stock preview</h2>
+                                </div>
+                                <span class="item-create-summary-chip">Draft</span>
+                            </div>
 
-                            <dl class="space-y-3 text-sm">
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Metal</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryMetal">—</dd>
+                            <dl class="item-create-summary-list">
+                                <div>
+                                    <dt>Metal</dt>
+                                    <dd id="summaryMetal">—</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Gross / Net</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryGross">—</dd>
+                                <div>
+                                    <dt>Gross / Net</dt>
+                                    <dd id="summaryGross">—</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Purity</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryPurity">—</dd>
+                                <div>
+                                    <dt>Purity</dt>
+                                    <dd id="summaryPurity">—</dd>
                                 </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Rate / g</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryRate">—</dd>
-                                </div>
-
-                                <hr class="border-gray-200">
-
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Metal Cost</dt>
-                                    <dd class="font-medium text-gray-900" id="summaryCost">₹ 0.00</dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Making</dt>
-                                    <dd class="text-gray-700" id="summaryMaking">₹ 0.00</dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Stone</dt>
-                                    <dd class="text-gray-700" id="summaryStone">₹ 0.00</dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Hallmark</dt>
-                                    <dd class="text-gray-700" id="summaryHallmark">₹ 0.00</dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Rhodium</dt>
-                                    <dd class="text-gray-700" id="summaryRhodium">₹ 0.00</dd>
-                                </div>
-                                <div class="flex justify-between gap-4">
-                                    <dt class="text-gray-500">Other</dt>
-                                    <dd class="text-gray-700" id="summaryOther">₹ 0.00</dd>
+                                <div>
+                                    <dt>Rate / g</dt>
+                                    <dd id="summaryRate">—</dd>
                                 </div>
 
-                                <hr class="border-gray-200">
+                                <hr>
 
-                                <div class="flex justify-between items-center gap-4">
-                                    <dt class="text-gray-600 font-medium">Selling Price / MRP</dt>
-                                    <dd class="font-bold text-amber-600 text-base" id="summarySelling">₹ 0.00</dd>
+                                <div>
+                                    <dt>Metal Cost</dt>
+                                    <dd id="summaryCost">₹ 0.00</dd>
+                                </div>
+                                <div>
+                                    <dt>Making</dt>
+                                    <dd id="summaryMaking">₹ 0.00</dd>
+                                </div>
+                                <div>
+                                    <dt>Stone</dt>
+                                    <dd id="summaryStone">₹ 0.00</dd>
+                                </div>
+                                <div>
+                                    <dt>Hallmark</dt>
+                                    <dd id="summaryHallmark">₹ 0.00</dd>
+                                </div>
+                                <div>
+                                    <dt>Rhodium</dt>
+                                    <dd id="summaryRhodium">₹ 0.00</dd>
+                                </div>
+                                <div>
+                                    <dt>Other</dt>
+                                    <dd id="summaryOther">₹ 0.00</dd>
+                                </div>
+
+                                <div class="item-create-summary-total">
+                                    <dt>Selling Price / MRP</dt>
+                                    <dd id="summarySelling">₹ 0.00</dd>
                                 </div>
                             </dl>
                         </div>
 
-                        <button type="submit" id="submitBtn"
-                                class="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-semibold text-base shadow-lg transition-all hover:shadow-xl"
-                                style="background: #0d9488;">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                            </svg>
-                            Add Item to Stock
-                        </button>
+                        <div class="item-create-action-card">
+                            <button type="submit" id="submitBtn"
+                                    class="item-create-submit-btn">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                                Add Item to Stock
+                            </button>
+                            <a href="{{ route('inventory.items.index') }}" class="item-create-cancel-btn">
+                                Cancel
+                            </a>
+                        </div>
                     </div>
-                </div>
+                </aside>
             </div>
         </form>
     </div>
 
     {{-- New supplier modal (vendor or karigar) --}}
-    <div id="newSupplierModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4" data-supplier-type="vendor">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSupplierBackdrop"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+    <div id="newSupplierModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4" data-supplier-type="vendor">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSupplierBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-semibold text-gray-900">Add New Vendor / Karigar</h3>
-                    <p class="text-sm text-gray-500 mt-1">Choose the type, enter a name, and it will be saved to your shop. Full details can be added later.</p>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Vendor / Karigar</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">Choose the type, enter a name, and it will be saved to your shop. Full details can be added later.</p>
                 </div>
             </div>
             {{-- Type toggle --}}
-            <div class="flex rounded-xl overflow-hidden border border-gray-200 text-sm font-medium">
+            <div class="item-create-modal-tabs flex rounded-xl overflow-hidden border border-gray-200 text-sm font-medium">
                 <button type="button" id="supplierTabVendor"
-                        class="flex-1 px-4 py-2 transition-colors"
-                        style="background:#0d9488; color:#fff;">
+                        class="item-create-modal-tab is-active flex-1 px-4 py-2 transition-colors">
                     Vendor
                 </button>
                 <button type="button" id="supplierTabKarigar"
-                        class="flex-1 px-4 py-2 border-l border-gray-200 text-gray-600 transition-colors hover:bg-gray-50">
+                        class="item-create-modal-tab flex-1 px-4 py-2 border-l border-gray-200 text-gray-600 transition-colors hover:bg-gray-50">
                     Karigar
                 </button>
             </div>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
                     <input type="text" id="newSupplierInput" maxlength="255"
-                           class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. Mehta Jewellers, Rajesh Traders">
                 </div>
-                <div id="newSupplierError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+                <div id="newSupplierError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
             </div>
-            <div class="flex gap-3 pt-1">
+            <div class="item-create-modal-actions flex gap-3 pt-1">
                 <button type="button" id="newSupplierCancel"
-                        class="flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
                 <button type="button" id="newSupplierConfirm"
-                        class="flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors"
-                        style="background:#0d9488;" onmouseover="this.style.background='#0f766e'" onmouseout="this.style.background='#0d9488'">
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
                     Add &amp; Use
                 </button>
             </div>
@@ -484,36 +540,36 @@
     </div>
 
     {{-- New category modal --}}
-    <div id="newCategoryModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="newCategoryBackdrop"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+    <div id="newCategoryModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newCategoryBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-semibold text-gray-900">Add New Category</h3>
-                    <p class="text-sm text-gray-500 mt-1">This category will be saved to your shop and available for all future items.</p>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Category</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This category will be saved to your shop and available for all future items.</p>
                 </div>
             </div>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Category Name <span class="text-red-500">*</span></label>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Category Name <span class="text-red-500">*</span></label>
                     <input type="text" id="newCategoryInput" maxlength="255"
-                           class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. Necklace, Bangles, Earrings">
                 </div>
-                <div id="newCategoryError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+                <div id="newCategoryError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
             </div>
-            <div class="flex gap-3 pt-1">
+            <div class="item-create-modal-actions flex gap-3 pt-1">
                 <button type="button" id="newCategoryCancel"
-                        class="flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
                 <button type="button" id="newCategoryConfirm"
-                        class="flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors" style="background:#0d9488;" onmouseover="this.style.background='#0f766e'" onmouseout="this.style.background='#0d9488'">
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
                     Add &amp; Use This Category
                 </button>
             </div>
@@ -521,41 +577,41 @@
     </div>
 
     {{-- New sub-category modal --}}
-    <div id="newSubCategoryModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSubCategoryBackdrop"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+    <div id="newSubCategoryModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="newSubCategoryBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-semibold text-gray-900">Add New Sub-Category</h3>
-                    <p class="text-sm text-gray-500 mt-1">This sub-category will be added under the selected category.</p>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Sub-Category</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This sub-category will be added under the selected category.</p>
                 </div>
             </div>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
                     <input type="text" id="newSubCategoryParentDisplay" readonly
-                           class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
+                           class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Sub-Category Name <span class="text-red-500">*</span></label>
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Sub-Category Name <span class="text-red-500">*</span></label>
                     <input type="text" id="newSubCategoryInput" maxlength="255"
-                           class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. Studs, Jhumkas, Hoops">
                 </div>
-                <div id="newSubCategoryError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+                <div id="newSubCategoryError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
             </div>
-            <div class="flex gap-3 pt-1">
+            <div class="item-create-modal-actions flex gap-3 pt-1">
                 <button type="button" id="newSubCategoryCancel"
-                        class="flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
                 <button type="button" id="newSubCategoryConfirm"
-                        class="flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors" style="background:#0d9488;" onmouseover="this.style.background='#0f766e'" onmouseout="this.style.background='#0d9488'">
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors">
                     Add &amp; Use This Sub-Category
                 </button>
             </div>
@@ -563,51 +619,51 @@
     </div>
 
     {{-- Custom purity modal --}}
-    <div id="customPurityModal" style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="customPurityBackdrop"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+    <div id="customPurityModal" style="display:none;" class="item-create-modal fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="item-create-modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" id="customPurityBackdrop"></div>
+        <div class="item-create-modal-dialog relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div class="item-create-modal-head flex items-start gap-3">
+                <div class="item-create-modal-icon flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                     <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-semibold text-gray-900">Add New Purity</h3>
-                    <p class="text-sm text-gray-500 mt-1">This purity is not in your pricing table. Adding it will create a new profile and auto-calculate today's rate from your saved base rates.</p>
+                    <h3 class="item-create-modal-title text-base font-semibold text-gray-900">Add New Purity</h3>
+                    <p class="item-create-modal-copy text-sm text-gray-500 mt-1">This purity is not in your pricing table. Adding it will create a new profile and auto-calculate today's rate from your saved base rates.</p>
                 </div>
             </div>
 
-            <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+            <div class="item-create-modal-note bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
                 New purity profiles added here will appear in <strong>Settings → Pricing</strong> and will be included in all future daily reprice runs.
             </div>
 
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Metal Type</label>
+            <div class="item-create-modal-body space-y-3">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">Metal Type</label>
                     <input type="text" id="customPurityMetalDisplay" readonly
-                           class="w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
+                           class="item-create-modal-input item-create-modal-input--readonly w-full rounded-lg bg-gray-50 border-gray-300 text-gray-700 text-sm px-3 py-2">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                <div class="item-create-modal-field">
+                    <label class="item-create-modal-label block text-sm font-medium text-gray-700 mb-1">
                         Purity Value <span class="text-red-500">*</span>
                         <span class="text-xs font-normal text-gray-400" id="customPurityHint"></span>
                     </label>
                     <input type="number" id="customPurityInput" step="0.001" min="0.001"
-                           class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
+                           class="item-create-modal-input w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 text-sm px-3 py-2"
                            placeholder="e.g. 20">
                     <p class="mt-1 text-xs text-gray-400" id="customPuritySubhint"></p>
                 </div>
-                <div id="customPurityError" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+                <div id="customPurityError" class="item-create-modal-error hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
             </div>
 
-            <div class="flex gap-3 pt-1">
+            <div class="item-create-modal-actions flex gap-3 pt-1">
                 <button type="button" id="customPurityCancel"
-                        class="flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--secondary flex-1 px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
                 <button type="button" id="customPurityConfirm"
-                        class="flex-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">
+                        class="item-create-modal-btn item-create-modal-btn--primary flex-1 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors">
                     Add &amp; Use This Purity
                 </button>
             </div>
@@ -615,10 +671,10 @@
     </div>
 
     <script>
-        const purityProfiles = @json($profileOptions);
-        const resolvedRates = @json($resolvedRates);
-        const categoriesData = @json($categoriesData);
-        const initialSubCategory = @json(old('sub_category'));
+        var purityProfiles = @json($profileOptions);
+        var resolvedRates = @json($resolvedRates);
+        var categoriesData = @json($categoriesData);
+        var initialSubCategory = @json(old('sub_category'));
 
         function updateNetWeight() {
             const gross = Number.parseFloat(document.getElementById('gross_weight').value) || 0;
@@ -765,7 +821,7 @@
 
             const selling = rate > 0 ? Math.round((metalCost + making + stoneCharges + hallmark + rhodium + other) * 100) / 100 : 0;
 
-            document.getElementById('resolved_rate_display').value = rate > 0 ? formatCurrency(rate) : 'Unavailable';
+            document.getElementById('resolved_rate_display').value = rate > 0 ? formatCurrency(rate) : (purity ? 'Rate unavailable' : 'Select purity');
             document.getElementById('cost_price').value = rate > 0 ? metalCost.toFixed(2) : '';
             document.getElementById('selling_price').value = selling.toFixed(2);
             document.getElementById('selling_price_display').value = selling > 0 ? selling.toFixed(2) : '';
@@ -791,6 +847,65 @@
 
             const imageInput = document.getElementById('images');
             if (imageInput && imageInput.dataset.galleryPreviewBound !== '1') {
+                let selectedImageFiles = [];
+                let imagePreviewRenderToken = 0;
+                const previewGrid = document.getElementById('imagePreviewGrid');
+                const placeholder = document.getElementById('imagePreviewPlaceholder');
+
+                const syncImageInputFiles = function () {
+                    const dataTransfer = new DataTransfer();
+                    selectedImageFiles.forEach(function (file) {
+                        dataTransfer.items.add(file);
+                    });
+                    imageInput.files = dataTransfer.files;
+                };
+
+                const renderImagePreviews = function () {
+                    const renderToken = ++imagePreviewRenderToken;
+                    previewGrid.innerHTML = '';
+
+                    if (!selectedImageFiles.length) {
+                        previewGrid.classList.add('hidden');
+                        placeholder.classList.remove('hidden');
+                        return;
+                    }
+
+                    selectedImageFiles.forEach(function (file, index) {
+                        const reader = new FileReader();
+                        reader.onload = function (loadEvent) {
+                            if (renderToken !== imagePreviewRenderToken) {
+                                return;
+                            }
+
+                            const tile = document.createElement('div');
+                            tile.className = 'item-gallery-preview-tile';
+
+                            const image = document.createElement('img');
+                            image.src = loadEvent.target.result;
+                            image.alt = 'Selected item image ' + (index + 1);
+
+                            const badge = document.createElement('span');
+                            badge.textContent = index === 0 ? 'Primary' : 'Image ' + (index + 1);
+
+                            const removeButton = document.createElement('button');
+                            removeButton.type = 'button';
+                            removeButton.className = 'item-gallery-remove-btn';
+                            removeButton.dataset.removeImageIndex = String(index);
+                            removeButton.setAttribute('aria-label', 'Remove selected image ' + (index + 1));
+                            removeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" d="M18 6 6 18M6 6l12 12"/></svg>';
+
+                            tile.appendChild(image);
+                            tile.appendChild(badge);
+                            tile.appendChild(removeButton);
+                            previewGrid.appendChild(tile);
+                        };
+                        reader.readAsDataURL(file);
+                    });
+
+                    previewGrid.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                };
+
                 imageInput.addEventListener('change', function (event) {
                     const MAX_FILES = 4;
                     const MAX_BYTES = 5 * 1024 * 1024; // 5 MB per image — matches the server limit
@@ -800,37 +915,33 @@
                         alert('Some images are larger than 5 MB and can\'t be uploaded:\n• '
                             + tooBig.map(function (f) { return f.name + ' (' + (f.size / 1048576).toFixed(1) + ' MB)'; }).join('\n• ')
                             + '\n\nPlease choose images under 5 MB each.');
+                        selectedImageFiles = [];
                         event.target.value = '';
+                        renderImagePreviews();
                         return;
                     }
                     if (allFiles.length > MAX_FILES) {
                         alert('You can add up to ' + MAX_FILES + ' images. Only the first ' + MAX_FILES + ' will be used.');
                     }
-                    const files = allFiles.slice(0, MAX_FILES);
-                    const previewGrid = document.getElementById('imagePreviewGrid');
-                    const placeholder = document.getElementById('imagePreviewPlaceholder');
+                    selectedImageFiles = allFiles.slice(0, MAX_FILES);
+                    syncImageInputFiles();
+                    renderImagePreviews();
+                });
 
-                    previewGrid.innerHTML = '';
-
-                    if (!files.length) {
-                        previewGrid.classList.add('hidden');
-                        placeholder.classList.remove('hidden');
+                previewGrid.addEventListener('click', function (event) {
+                    const removeButton = event.target.closest('[data-remove-image-index]');
+                    if (!removeButton) {
                         return;
                     }
 
-                    files.forEach(function (file, index) {
-                        const reader = new FileReader();
-                        reader.onload = function (loadEvent) {
-                            const tile = document.createElement('div');
-                            tile.className = 'item-gallery-preview-tile';
-                            tile.innerHTML = '<img src="' + loadEvent.target.result + '" alt="Selected item image ' + (index + 1) + '"><span>' + (index === 0 ? 'Primary' : 'Image ' + (index + 1)) + '</span>';
-                            previewGrid.appendChild(tile);
-                        };
-                        reader.readAsDataURL(file);
-                    });
+                    const removeIndex = Number.parseInt(removeButton.dataset.removeImageIndex, 10);
+                    if (!Number.isInteger(removeIndex)) {
+                        return;
+                    }
 
-                    previewGrid.classList.remove('hidden');
-                    placeholder.classList.add('hidden');
+                    selectedImageFiles.splice(removeIndex, 1);
+                    syncImageInputFiles();
+                    renderImagePreviews();
                 });
                 imageInput.dataset.galleryPreviewBound = '1';
             }
@@ -926,6 +1037,52 @@
         window.__retailerCreateTurboInitHandler = initializeRetailerCreatePage;
         document.addEventListener('turbo:load', window.__retailerCreateTurboInitHandler);
 
+        function cleanupRetailerCreatePageBeforeCache() {
+            const form = document.getElementById('createItemForm');
+            if (!form) {
+                return;
+            }
+
+            delete form.dataset.retailerCreateBooted;
+
+            const imageInput = document.getElementById('images');
+            if (imageInput) {
+                delete imageInput.dataset.galleryPreviewBound;
+            }
+
+            form.querySelectorAll('.ui-filter-select-host').forEach((host) => {
+                const select = host.querySelector('select');
+                if (!select || !host.parentNode) {
+                    return;
+                }
+
+                const cleanSelect = select.cloneNode(true);
+                cleanSelect.value = select.value;
+                Array.from(cleanSelect.options).forEach((option) => {
+                    option.selected = option.value === cleanSelect.value;
+                    if (option.selected) {
+                        option.setAttribute('selected', 'selected');
+                    } else {
+                        option.removeAttribute('selected');
+                    }
+                });
+                cleanSelect.classList.remove('ui-filter-native-select');
+
+                host.parentNode.insertBefore(cleanSelect, host);
+                host.remove();
+            });
+
+            document.querySelectorAll('.item-create-modal').forEach((modal) => {
+                modal.style.display = 'none';
+            });
+        }
+
+        if (window.__retailerCreateBeforeCacheHandler) {
+            document.removeEventListener('turbo:before-cache', window.__retailerCreateBeforeCacheHandler);
+        }
+        window.__retailerCreateBeforeCacheHandler = cleanupRetailerCreatePageBeforeCache;
+        document.addEventListener('turbo:before-cache', window.__retailerCreateBeforeCacheHandler);
+
         // ── Supplier picker helpers ────────────────────────────────────────────
 
         function syncSupplierHiddenFields(value) {
@@ -965,17 +1122,11 @@
             document.getElementById('newSupplierModal').dataset.supplierType = type;
             const vendorTab = document.getElementById('supplierTabVendor');
             const karigarTab = document.getElementById('supplierTabKarigar');
+            vendorTab.classList.toggle('is-active', type === 'vendor');
+            karigarTab.classList.toggle('is-active', type === 'karigar');
             if (type === 'vendor') {
-                vendorTab.style.background = '#0d9488'; vendorTab.style.color = '#fff';
-                karigarTab.style.background = ''; karigarTab.style.color = '';
-                karigarTab.classList.add('border-gray-300', 'text-gray-600');
-                karigarTab.classList.remove('border-transparent');
                 document.getElementById('newSupplierInput').placeholder = 'e.g. Mehta Jewellers, Rajesh Traders';
             } else {
-                karigarTab.style.background = '#0d9488'; karigarTab.style.color = '#fff';
-                vendorTab.style.background = ''; vendorTab.style.color = '';
-                vendorTab.classList.add('border-gray-300', 'text-gray-600');
-                vendorTab.classList.remove('border-transparent');
                 document.getElementById('newSupplierInput').placeholder = 'e.g. Ramesh Kumar, Krishna Ornaments';
             }
         }

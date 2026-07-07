@@ -561,7 +561,7 @@
             font-size: 17px;
             font-weight: 700;
             line-height: 1.2;
-            letter-spacing: -0.15px;
+            letter-spacing: 0;
         }
         .cb-moh-range,
         .cb-register-copy,
@@ -625,9 +625,9 @@
             margin: 0;
             color: var(--cb-ink);
             font-size: 22px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.1;
-            letter-spacing: -0.25px;
+            letter-spacing: 0;
             font-variant-numeric: tabular-nums;
             overflow-wrap: anywhere;
         }
@@ -669,7 +669,7 @@
             min-width: 0;
             color: var(--cb-ink);
             font-size: 11.5px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.15;
             text-align: right;
             overflow-wrap: anywhere;
@@ -790,7 +790,7 @@
         .cb-drawer-expected-value {
             color: var(--cb-ink);
             font-size: 18px;
-            font-weight: 650;
+            font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
         .cb-drawer-field {
@@ -833,7 +833,7 @@
             font-variant-numeric: tabular-nums;
         }
         .cb-drawer-history-date { color: var(--cb-muted); }
-        .cb-drawer-history-diff { font-weight: 650; }
+        .cb-drawer-history-diff { font-weight: 600; }
         .cb-drawer-history-diff.is-ok,
         .cb-drawer-history-diff.is-over { color: var(--cb-pos); }
         .cb-drawer-history-diff.is-short { color: var(--cb-neg); }
@@ -973,7 +973,7 @@
             margin: 0;
             color: var(--cb-ink);
             font-size: 22px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.15;
             letter-spacing: 0;
             font-variant-numeric: tabular-nums;
@@ -1205,7 +1205,7 @@
         }
         .cb-amount {
             font-size: 14px;
-            font-weight: 650;
+            font-weight: 600;
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
@@ -1230,7 +1230,7 @@
             margin: 0;
             color: var(--cb-ink);
             font-size: 15px;
-            font-weight: 650;
+            font-weight: 600;
         }
         .cb-empty-copy {
             margin: 0;
@@ -1588,7 +1588,7 @@
                 margin: 0;
                 color: var(--cb-ink);
                 font-size: 15px;
-                font-weight: 650;
+                font-weight: 600;
             }
             .cb-filter-sheet-head span {
                 display: block;

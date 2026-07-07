@@ -25,7 +25,7 @@
         .content-header.returns-control-header .page-title {
             color: #111827;
             font-size: 22px;
-            font-weight: 620;
+            font-weight: 600;
             letter-spacing: 0;
         }
 
@@ -112,7 +112,7 @@
         .returns-control-page .rc-kpi-value {
             color: var(--rc-ink);
             font-size: 22px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.1;
             font-variant-numeric: tabular-nums;
         }
@@ -151,8 +151,8 @@
             margin: 0;
             color: var(--rc-ink);
             font-size: 17px;
-            font-weight: 650;
-            letter-spacing: -0.1px;
+            font-weight: 600;
+            letter-spacing: 0;
             line-height: 1.2;
         }
 
@@ -192,7 +192,7 @@
             min-width: 0;
             color: var(--rc-ink);
             font-size: 14px;
-            font-weight: 650;
+            font-weight: 600;
             word-spacing: 0.08em;
             line-height: 1.2;
         }
@@ -217,7 +217,7 @@
             padding: 0 7px;
             color: var(--rc-gold);
             font-size: 12px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1;
         }
 
@@ -336,7 +336,7 @@
         .returns-control-page .rc-queue .ui-state-title {
             margin-top: 10px;
             font-size: 15px;
-            font-weight: 650;
+            font-weight: 600;
         }
 
         .returns-control-page .rc-queue .ui-state-description {

@@ -754,7 +754,7 @@
 
     .summary-total-value {
         font-size: 26px;
-        font-weight: 800;
+        font-weight: 700;
         color: #fca311;
     }
 

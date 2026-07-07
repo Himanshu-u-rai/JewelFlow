@@ -126,6 +126,48 @@
         .cw-url-banner { flex-direction: column; align-items: flex-start; }
         .cw-url-banner .cw-copy-btn { margin-left: 0; }
     }
+
+    .settings-shell .cw-card {
+        border-color: #e2e8f0 !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .cw-url-banner,
+    .settings-shell .cw-cat-chip.selected,
+    .settings-shell .cw-hero-style-opt.selected {
+        border-color: #f3dcb6 !important;
+        background: #fffaf0 !important;
+        color: #92400e !important;
+    }
+
+    .settings-shell .cw-url-banner strong,
+    .settings-shell .cw-url-banner a,
+    .settings-shell .cw-add-btn:hover {
+        color: #b45309 !important;
+    }
+
+    .settings-shell .cw-copy-btn {
+        border-color: #f3dcb6 !important;
+        color: #92400e !important;
+    }
+
+    @media (max-width: 520px) {
+        .settings-shell .cw-card {
+            padding: 14px !important;
+        }
+
+        .settings-shell .cw-page-actions {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        .settings-shell .cw-btn-sm,
+        .settings-shell .cw-page-actions form,
+        .settings-shell .cw-page-actions button {
+            width: 100%;
+            justify-content: center;
+        }
+    }
 </style>
 
 <div class="settings-header">

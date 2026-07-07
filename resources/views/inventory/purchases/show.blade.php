@@ -22,7 +22,7 @@
         .purchase-show-title {
             margin: 0;
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 700;
             color: #0f172a;
             letter-spacing: 0;
             text-transform: none;

@@ -40,7 +40,7 @@
         .sp-mobile-filter-kicker {
             color: #64748b;
             font-size: 11px;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: .08em;
             text-transform: uppercase;
         }
@@ -75,7 +75,7 @@
             background: #fffbeb;
             color: #92400e;
             font-size: 12px;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         .sp-mobile-filter-open-btn {
@@ -150,7 +150,7 @@
         .sp-mobile-filter-title {
             color: #0f172a;
             font-size: 17px;
-            font-weight: 800;
+            font-weight: 700;
             line-height: 1.25;
         }
 
@@ -191,7 +191,7 @@
         .sp-mobile-filter-label {
             color: #475569;
             font-size: 11px;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: .08em;
             text-transform: uppercase;
         }
@@ -231,7 +231,7 @@
             min-height: 46px;
             border-radius: 12px;
             font-size: 14px;
-            font-weight: 800;
+            font-weight: 700;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -332,6 +332,493 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .sp-page-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 40px;
+            border-radius: 12px;
+            border: 1px solid #b45309 !important;
+            background: #b45309 !important;
+            padding: 0 16px;
+            color: #ffffff !important;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: none !important;
+            transition: background .16s ease, border-color .16s ease, transform .12s ease;
+        }
+
+        .page-actions > a.sp-page-action {
+            border-color: #b45309 !important;
+            border-radius: 12px !important;
+            background-color: #b45309 !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow: none !important;
+        }
+
+        .sp-page-action:hover,
+        .page-actions > a.sp-page-action:hover {
+            border-color: #92400e !important;
+            background: #92400e !important;
+            background-color: #92400e !important;
+            color: #ffffff !important;
+        }
+
+        .inventory-purchases-page {
+            --sp-ink: #0f172a;
+            --sp-muted: #64748b;
+            --sp-soft: #f8fafc;
+            --sp-line: #dbe3ee;
+            --sp-line-soft: #e7edf5;
+            --sp-gold: #b45309;
+            --sp-gold-deep: #92400e;
+            --sp-gold-soft: #fff7ed;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .inventory-purchases-page .sp-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 0;
+        }
+
+        .inventory-purchases-page .sp-kpi-card {
+            min-height: 82px;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            background: #ffffff;
+            padding: 13px 15px;
+            box-shadow: none;
+        }
+
+        .inventory-purchases-page .sp-kpi-inner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .inventory-purchases-page .sp-kpi-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            flex: 0 0 36px;
+            border-radius: 10px;
+            border: 1px solid #fed7aa;
+            background: #fff7ed;
+            color: var(--sp-gold);
+        }
+
+        .inventory-purchases-page .sp-kpi-card--month .sp-kpi-icon {
+            border-color: #bbf7d0;
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .inventory-purchases-page .sp-kpi-card--items .sp-kpi-icon {
+            border-color: #bfdbfe;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .inventory-purchases-page .sp-kpi-card--drafts .sp-kpi-icon {
+            border-color: #fed7aa;
+            background: #fff7ed;
+            color: #ea580c;
+        }
+
+        .inventory-purchases-page .sp-kpi-label {
+            margin: 0;
+            color: #64748b;
+            font-size: 11.5px;
+            font-weight: 500;
+            letter-spacing: 0;
+            line-height: 1.2;
+            text-transform: none;
+        }
+
+        .inventory-purchases-page .sp-kpi-value {
+            margin-top: 4px;
+            color: var(--sp-ink);
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .inventory-purchases-page .sp-filter-inline {
+            margin-bottom: 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px !important;
+            background: #ffffff;
+            padding: 15px 18px;
+            box-shadow: none !important;
+        }
+
+        .inventory-purchases-page .sp-filter-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .inventory-purchases-page .sp-filter-kicker {
+            margin: 0 0 3px;
+            color: var(--sp-gold);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .inventory-purchases-page .sp-filter-title,
+        .inventory-purchases-page .sp-register-title {
+            margin: 0;
+            color: var(--sp-ink);
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 0;
+            line-height: 1.2;
+        }
+
+        .inventory-purchases-page .sp-filter-copy,
+        .inventory-purchases-page .sp-register-copy {
+            margin-top: 4px;
+            color: var(--sp-muted);
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .inventory-purchases-page .sp-filter-inline form {
+            display: grid;
+            grid-template-columns: minmax(260px, 1.5fr) minmax(130px, .7fr) minmax(160px, .85fr) minmax(132px, .7fr) minmax(132px, .7fr) auto;
+            align-items: end;
+            gap: 12px;
+        }
+
+        .inventory-purchases-page .sp-filter-field {
+            min-width: 0;
+        }
+
+        .inventory-purchases-page .sp-filter-field label {
+            color: #4a4334;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        .inventory-purchases-page .sp-filter-inline input,
+        .inventory-purchases-page .sp-filter-inline select {
+            min-height: 40px;
+            border-color: #cbd5e1;
+            border-radius: 10px;
+            background-color: #ffffff;
+            font-weight: 400;
+            box-shadow: none;
+        }
+
+        .inventory-purchases-page .sp-filter-inline input:focus,
+        .inventory-purchases-page .sp-filter-inline select:focus,
+        .sp-mobile-search:focus,
+        .sp-mobile-native-select:focus,
+        .sp-mobile-date-input:focus {
+            border-color: #f59e0b;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, .16);
+        }
+
+        .inventory-purchases-page .sp-filter-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: max-content;
+        }
+
+        .inventory-purchases-page .sp-filter-apply,
+        .inventory-purchases-page .sp-filter-clear,
+        .inventory-purchases-page .sp-row-action,
+        .inventory-purchases-page .sp-empty-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            border-radius: 10px;
+            padding: 0 14px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: background .16s ease, border-color .16s ease, color .16s ease, transform .12s ease;
+        }
+
+        .inventory-purchases-page .sp-filter-apply,
+        .inventory-purchases-page .sp-empty-action {
+            border: 1px solid var(--sp-ink);
+            background: var(--sp-ink);
+            color: #ffffff;
+        }
+
+        .inventory-purchases-page .sp-empty-action {
+            border-color: var(--sp-gold);
+            background: var(--sp-gold);
+        }
+
+        .inventory-purchases-page .sp-filter-clear,
+        .inventory-purchases-page .sp-row-action {
+            border: 1px solid var(--sp-line);
+            background: #ffffff;
+            color: #334155;
+        }
+
+        .inventory-purchases-page .sp-row-action--edit {
+            border-color: #f3dcb6;
+            background: #fff7ed;
+            color: var(--sp-gold-deep);
+        }
+
+        .inventory-purchases-page .sp-row-action--delete {
+            border-color: #fecaca;
+            background: #fff1f2;
+            color: #be123c;
+        }
+
+        .inventory-purchases-page .sp-filter-apply:hover,
+        .inventory-purchases-page .sp-empty-action:hover,
+        .inventory-purchases-page .sp-filter-clear:hover,
+        .inventory-purchases-page .sp-row-action:hover {
+            transform: translateY(-1px);
+        }
+
+        .inventory-purchases-page .sp-register-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px !important;
+            background: #ffffff;
+            box-shadow: none !important;
+            overflow: hidden;
+        }
+
+        .inventory-purchases-page .sp-register-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 15px 18px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .inventory-purchases-page .sp-register-table thead {
+            background: #f8fafc;
+        }
+
+        .inventory-purchases-page .sp-register-table th {
+            border-bottom: 1px solid var(--sp-line-soft);
+            color: #52637a;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .12em;
+        }
+
+        .inventory-purchases-page .sp-register-table td {
+            vertical-align: middle;
+        }
+
+        .inventory-purchases-page .sp-register-table tbody tr:hover {
+            background: #fffaf0;
+        }
+
+        .inventory-purchases-page .sp-purchase-link {
+            color: var(--sp-gold-deep);
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .inventory-purchases-page .sp-purchase-link:hover {
+            text-decoration: underline;
+        }
+
+        .inventory-purchases-page .sp-status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 24px;
+            border-radius: 999px;
+            padding: 0 10px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .inventory-purchases-page .sp-status-pill--draft {
+            border: 1px solid #fed7aa;
+            background: #fff7ed;
+            color: #c2410c;
+        }
+
+        .inventory-purchases-page .sp-status-pill--stocked {
+            border: 1px solid #bbf7d0;
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .inventory-purchases-page .sp-status-pill--confirmed {
+            border: 1px solid #bfdbfe;
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .inventory-purchases-page .sp-empty-state {
+            padding: clamp(36px, 7vw, 64px) 20px;
+            text-align: center;
+        }
+
+        .inventory-purchases-page .sp-empty-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            margin-bottom: 13px;
+            border: 1px solid #fed7aa;
+            border-radius: 14px;
+            background: #fff7ed;
+            color: var(--sp-gold);
+        }
+
+        .inventory-purchases-page .sp-empty-title {
+            color: var(--sp-ink);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .inventory-purchases-page .sp-empty-copy {
+            margin-top: 5px;
+            color: #7a8aa0;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .inventory-purchases-page .sp-mobile-card {
+            border-color: #e2e8f0;
+            border-radius: 14px;
+            box-shadow: none;
+        }
+
+        .sp-mobile-filter-trigger {
+            border-color: #e2e8f0;
+            border-radius: 14px;
+            box-shadow: none;
+        }
+
+        .sp-mobile-filter-apply {
+            border-color: #b45309;
+            background: #b45309;
+            box-shadow: none;
+        }
+
+        @media (max-width: 1180px) {
+            .inventory-purchases-page .sp-filter-inline form {
+                grid-template-columns: minmax(240px, 1fr) repeat(2, minmax(140px, .65fr)) repeat(2, minmax(132px, .6fr));
+            }
+
+            .inventory-purchases-page .sp-filter-actions {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 860px) {
+            .inventory-purchases-page .sp-kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 680px) {
+            .sp-page-action {
+                min-height: 36px;
+                padding: 0 12px;
+                border-radius: 11px;
+                font-size: 12px;
+            }
+
+            .inventory-purchases-page {
+                gap: 14px;
+            }
+
+            .inventory-purchases-page .sp-kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .inventory-purchases-page .sp-kpi-card {
+                min-height: 86px;
+                border-radius: 14px;
+                padding: 12px;
+            }
+
+            .inventory-purchases-page .sp-kpi-inner {
+                flex-direction: row;
+                align-items: center;
+                gap: 9px;
+            }
+
+            .inventory-purchases-page .sp-kpi-icon {
+                width: 32px;
+                height: 32px;
+                flex: 0 0 32px;
+                border-radius: 10px;
+            }
+
+            .inventory-purchases-page .sp-kpi-label {
+                font-size: 10.5px;
+                line-height: 1.15;
+            }
+
+            .inventory-purchases-page .sp-kpi-value {
+                margin-top: 7px;
+                max-width: 100%;
+                font-size: clamp(18px, 4.9vw, 22px);
+                line-height: 1.05;
+                overflow-wrap: anywhere;
+                word-break: break-word;
+            }
+
+            .inventory-purchases-page .sp-register-card {
+                border-radius: 14px;
+            }
+
+            .inventory-purchases-page .sp-filter-head,
+            .inventory-purchases-page .sp-register-head {
+                padding: 0;
+                display: block;
+            }
+
+            .inventory-purchases-page .sp-filter-head {
+                margin-bottom: 12px;
+            }
+
+            .inventory-purchases-page .sp-register-head {
+                padding: 14px;
+            }
+
+            .inventory-purchases-page .sp-empty-state {
+                padding: 44px 16px;
+            }
+
+            .inventory-purchases-page .sp-empty-icon {
+                width: 44px;
+                height: 44px;
+            }
+        }
     </style>
 
     @php
@@ -356,8 +843,8 @@
     <x-page-header title="Stock Purchases" subtitle="Record and manage incoming stock from suppliers">
         <x-slot:actions>
             @can('inventory.create')
-            <a href="{{ route('inventory.purchases.create') }}" class="btn btn-success btn-sm">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="{{ route('inventory.purchases.create') }}" class="sp-page-action">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
                 New Purchase
@@ -366,7 +853,7 @@
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner"
+    <div class="content-inner inventory-purchases-page"
          x-data="{
              search: @js((string) request('search', '')),
              status: @js((string) request('status', '')),
@@ -482,48 +969,48 @@
          @keydown.escape.window="closeMobileFilters()"
          @resize.window="if (window.innerWidth > 680) closeMobileFilters()">
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
-            <div class="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
-                <div class="flex items-center gap-2.5 sm:gap-3">
-                    <div class="bg-amber-100 text-amber-700 rounded-lg p-2 sm:p-2.5">
+        <div class="sp-kpi-grid">
+            <div class="sp-kpi-card sp-kpi-card--total">
+                <div class="sp-kpi-inner">
+                    <div class="sp-kpi-icon">
                         <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-[10px] sm:text-[11px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-slate-500">Total Purchases</p>
-                        <p class="text-lg sm:text-2xl font-semibold text-slate-900 leading-tight">{{ number_format($stats->total_confirmed ?? 0) }}</p>
+                        <p class="sp-kpi-label">Total Purchases</p>
+                        <p class="sp-kpi-value">{{ number_format($stats->total_confirmed ?? 0) }}</p>
                     </div>
                 </div>
             </div>
-            <div class="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
-                <div class="flex items-center gap-2.5 sm:gap-3">
-                    <div class="bg-emerald-100 text-emerald-700 rounded-lg p-2 sm:p-2.5">
+            <div class="sp-kpi-card sp-kpi-card--month">
+                <div class="sp-kpi-inner">
+                    <div class="sp-kpi-icon">
                         <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-[10px] sm:text-[11px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-slate-500">This Month</p>
-                        <p class="text-lg sm:text-2xl font-semibold text-slate-900 leading-tight">₹{{ number_format($stats->month_amount ?? 0, 0) }}</p>
+                        <p class="sp-kpi-label">This Month</p>
+                        <p class="sp-kpi-value">₹{{ number_format($stats->month_amount ?? 0, 0) }}</p>
                     </div>
                 </div>
             </div>
-            <div class="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
-                <div class="flex items-center gap-2.5 sm:gap-3">
-                    <div class="bg-blue-100 text-blue-700 rounded-lg p-2 sm:p-2.5">
+            <div class="sp-kpi-card sp-kpi-card--items">
+                <div class="sp-kpi-inner">
+                    <div class="sp-kpi-icon">
                         <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-[10px] sm:text-[11px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-slate-500">Items This Month</p>
-                        <p class="text-lg sm:text-2xl font-semibold text-slate-900 leading-tight">{{ number_format($monthItems ?? 0) }}</p>
+                        <p class="sp-kpi-label">Items This Month</p>
+                        <p class="sp-kpi-value">{{ number_format($monthItems ?? 0) }}</p>
                     </div>
                 </div>
             </div>
-            <div class="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
-                <div class="flex items-center gap-2.5 sm:gap-3">
-                    <div class="bg-orange-100 text-orange-700 rounded-lg p-2 sm:p-2.5">
+            <div class="sp-kpi-card sp-kpi-card--drafts">
+                <div class="sp-kpi-inner">
+                    <div class="sp-kpi-icon">
                         <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-[10px] sm:text-[11px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-slate-500">Drafts Pending</p>
-                        <p class="text-lg sm:text-2xl font-semibold text-slate-900 leading-tight">{{ number_format($stats->drafts_pending ?? 0) }}</p>
+                        <p class="sp-kpi-label">Drafts Pending</p>
+                        <p class="sp-kpi-value">{{ number_format($stats->drafts_pending ?? 0) }}</p>
                     </div>
                 </div>
             </div>
@@ -610,7 +1097,14 @@
             </form>
         </div>
 
-        <div class="sp-filter-inline sp-filter-inline--desktop rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-sm mb-5 sm:mb-6">
+        <div class="sp-filter-inline sp-filter-inline--desktop">
+            <div class="sp-filter-head">
+                <div>
+                    <p class="sp-filter-kicker">Purchase Lens</p>
+                    <h2 class="sp-filter-title">Filter stock purchases</h2>
+                    <p class="sp-filter-copy">{{ $hasActiveFilters ? 'Filters are applied to the purchase register below.' : 'Search supplier entries by invoice, date, status, or purchase number.' }}</p>
+                </div>
+            </div>
             <form method="GET" action="{{ route('inventory.purchases.index') }}" class="flex flex-wrap items-end gap-3">
                 <div class="sp-filter-field sp-filter-search flex-1 min-w-[210px] lg:min-w-[260px]">
                     <label class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">Search</label>
@@ -652,23 +1146,31 @@
                     <input type="date" name="date_to" x-model="toDate" class="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:ring-amber-500">
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Apply</button>
+                <div class="sp-filter-actions">
+                    <button type="submit" class="sp-filter-apply">Apply</button>
                     @if($hasActiveFilters)
-                        <a href="{{ route('inventory.purchases.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Clear</a>
+                        <a href="{{ route('inventory.purchases.index') }}" class="sp-filter-clear">Clear</a>
                     @endif
                 </div>
             </form>
         </div>
 
-        <div class="sp-register-card rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="sp-register-card">
+            <div class="sp-register-head">
+                <div>
+                    <h2 class="sp-register-title">Purchase Register</h2>
+                    <p class="sp-register-copy">{{ number_format($purchases->total()) }} {{ Str::plural('entry', $purchases->total()) }}</p>
+                </div>
+            </div>
             @if($purchases->isEmpty())
-                <div class="px-5 py-12 text-center text-slate-400">
-                    <svg class="mx-auto mb-3 h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <p class="text-sm font-medium text-slate-500">No purchases found</p>
-                    <p class="mt-1 text-xs text-slate-400">Create your first stock purchase to get started</p>
+                <div class="sp-empty-state">
+                    <span class="sp-empty-icon">
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </span>
+                    <p class="sp-empty-title">{{ $hasActiveFilters ? 'No purchases match these filters' : 'No stock purchases recorded yet' }}</p>
+                    <p class="sp-empty-copy">{{ $hasActiveFilters ? 'Clear or adjust filters to see purchase entries.' : 'Create a purchase entry when supplier stock arrives.' }}</p>
                     @can('inventory.create')
-                    <a href="{{ route('inventory.purchases.create') }}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">New Purchase</a>
+                    <a href="{{ route('inventory.purchases.create') }}" class="sp-empty-action mt-4">New Purchase</a>
                     @endcan
                 </div>
             @else
@@ -690,7 +1192,7 @@
                             @foreach($purchases as $purchase)
                                 <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="px-3.5 py-3">
-                                        <a href="{{ route('inventory.purchases.show', $purchase) }}" class="font-mono text-sm font-semibold text-amber-600 hover:underline">{{ $purchase->purchase_number }}</a>
+                                        <a href="{{ route('inventory.purchases.show', $purchase) }}" class="sp-purchase-link font-mono text-sm">{{ $purchase->purchase_number }}</a>
                                     </td>
                                     <td class="px-3.5 py-3 text-sm text-slate-700">{{ $purchase->supplier_label }}</td>
                                     <td class="px-3.5 py-3 text-sm text-slate-500">{{ $purchase->invoice_number ?: '—' }}</td>
@@ -699,25 +1201,25 @@
                                     <td class="px-3.5 py-3 text-right text-sm font-semibold text-slate-900 whitespace-nowrap">₹{{ number_format($purchase->total_amount, 2) }}</td>
                                     <td class="px-3.5 py-3 text-center">
                                         @if($purchase->isDraft())
-                                            <span class="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">Draft</span>
+                                            <span class="sp-status-pill sp-status-pill--draft">Draft</span>
                                         @elseif($purchase->isStocked())
-                                            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">Stocked</span>
+                                            <span class="sp-status-pill sp-status-pill--stocked">Stocked</span>
                                         @else
-                                            <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">Confirmed</span>
+                                            <span class="sp-status-pill sp-status-pill--confirmed">Confirmed</span>
                                         @endif
                                     </td>
                                     <td class="px-3.5 py-3 text-right">
                                         <div class="flex items-center justify-end gap-2">
-                                            <a href="{{ route('inventory.purchases.show', $purchase) }}" class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">View</a>
+                                            <a href="{{ route('inventory.purchases.show', $purchase) }}" class="sp-row-action">View</a>
                                             @if($purchase->isDraft())
                                                 @can('inventory.edit')
-                                                <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100">Edit</a>
+                                                <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="sp-row-action sp-row-action--edit">Edit</a>
                                                 @endcan
                                                 @can('inventory.delete')
                                                 <form method="POST" action="{{ route('inventory.purchases.destroy', $purchase) }}" onsubmit="return confirm('Delete this draft purchase?')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100">Delete</button>
+                                                    <button type="submit" class="sp-row-action sp-row-action--delete">Delete</button>
                                                 </form>
                                                 @endcan
                                             @endif
@@ -734,15 +1236,15 @@
                         <article class="sp-mobile-card">
                             <div class="mb-3 flex items-start justify-between gap-3">
                                 <div>
-                                    <a href="{{ route('inventory.purchases.show', $purchase) }}" class="font-mono text-sm font-semibold text-amber-600">{{ $purchase->purchase_number }}</a>
+                                    <a href="{{ route('inventory.purchases.show', $purchase) }}" class="sp-purchase-link font-mono text-sm">{{ $purchase->purchase_number }}</a>
                                     <p class="mt-1 text-xs text-slate-500">{{ $purchase->supplier_label }}</p>
                                 </div>
                                 @if($purchase->isDraft())
-                                    <span class="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-700">Draft</span>
+                                    <span class="sp-status-pill sp-status-pill--draft">Draft</span>
                                 @elseif($purchase->isStocked())
-                                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Stocked</span>
+                                    <span class="sp-status-pill sp-status-pill--stocked">Stocked</span>
                                 @else
-                                    <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">Confirmed</span>
+                                    <span class="sp-status-pill sp-status-pill--confirmed">Confirmed</span>
                                 @endif
                             </div>
 
@@ -767,16 +1269,16 @@
 
                             <div class="mt-3 border-t border-slate-100 pt-3">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <a href="{{ route('inventory.purchases.show', $purchase) }}" class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700">View</a>
+                                    <a href="{{ route('inventory.purchases.show', $purchase) }}" class="sp-row-action">View</a>
                                     @if($purchase->isDraft())
                                         @can('inventory.edit')
-                                        <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700">Edit</a>
+                                        <a href="{{ route('inventory.purchases.edit', $purchase) }}" class="sp-row-action sp-row-action--edit">Edit</a>
                                         @endcan
                                         @can('inventory.delete')
                                         <form method="POST" action="{{ route('inventory.purchases.destroy', $purchase) }}" onsubmit="return confirm('Delete this draft purchase?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600">Delete</button>
+                                            <button type="submit" class="sp-row-action sp-row-action--delete">Delete</button>
                                         </form>
                                         @endcan
                                     @endif

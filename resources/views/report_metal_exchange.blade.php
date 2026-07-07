@@ -53,7 +53,7 @@
             margin: 0 0 3px;
             color: #0f766e;
             font-size: 10px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: 0.1em;
             text-transform: uppercase;
         }
@@ -62,8 +62,8 @@
             margin: 0;
             color: var(--mxr-ink);
             font-size: 17px;
-            font-weight: 950;
-            letter-spacing: -0.03em;
+            font-weight: 700;
+            letter-spacing: 0;
         }
 
         .mxr-copy {
@@ -84,7 +84,7 @@
             padding: 3px 8px;
             color: #475569;
             font-size: 10px;
-            font-weight: 900;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -129,7 +129,7 @@
             background: #0f172a;
             color: #ffffff;
             padding: 0 18px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .mxr-summary-grid {
@@ -194,8 +194,8 @@
             margin: 0;
             color: var(--mxr-ink);
             font-size: 15px;
-            font-weight: 950;
-            letter-spacing: -0.02em;
+            font-weight: 700;
+            letter-spacing: 0;
         }
 
         .mxr-summary-subtitle {
@@ -216,7 +216,7 @@
             padding: 6px 10px;
             color: #475569;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -237,7 +237,7 @@
             display: block;
             color: var(--mxr-muted);
             font-size: 10px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
@@ -247,8 +247,8 @@
             margin-top: 5px;
             color: var(--mxr-ink);
             font-size: 18px;
-            font-weight: 950;
-            letter-spacing: -0.04em;
+            font-weight: 700;
+            letter-spacing: 0;
             line-height: 1.1;
         }
 
@@ -256,7 +256,7 @@
             margin-left: 3px;
             color: var(--mxr-muted);
             font-size: 0.62em;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         .mxr-register-card {
@@ -279,8 +279,8 @@
             margin: 0;
             color: var(--mxr-ink);
             font-size: 16px;
-            font-weight: 950;
-            letter-spacing: -0.02em;
+            font-weight: 700;
+            letter-spacing: 0;
         }
 
         .mxr-register-head p {
@@ -308,7 +308,7 @@
             padding: 6px 10px;
             color: #475569;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -347,7 +347,7 @@
             padding: 12px 14px;
             color: var(--mxr-muted);
             font-size: 10px;
-            font-weight: 950;
+            font-weight: 700;
             letter-spacing: 0.08em;
             text-align: left;
             text-transform: uppercase;
@@ -368,7 +368,7 @@
         .mxr-table tfoot {
             background: #f8fafc;
             color: var(--mxr-ink);
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .mxr-table tfoot td {
@@ -392,7 +392,7 @@
         .mxr-customer-cell strong {
             display: block;
             color: #1e293b;
-            font-weight: 850;
+            font-weight: 700;
         }
 
         .mxr-date-cell span,
@@ -406,7 +406,7 @@
 
         .mxr-invoice-link {
             color: #0f766e;
-            font-weight: 900;
+            font-weight: 700;
             text-decoration: none;
         }
 
@@ -422,7 +422,7 @@
             border-radius: 999px;
             padding: 5px 9px;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             line-height: 1;
         }
 
@@ -438,17 +438,17 @@
 
         .mxr-fine.is-gold {
             color: #b45309;
-            font-weight: 950;
+            font-weight: 700;
         }
 
         .mxr-fine.is-silver {
             color: #475569;
-            font-weight: 950;
+            font-weight: 700;
         }
 
         .mxr-value {
             color: var(--mxr-ink);
-            font-weight: 950;
+            font-weight: 700;
         }
 
         .mxr-mobile-list {
@@ -488,7 +488,7 @@
         .mxr-mobile-label {
             color: #94a3b8;
             font-size: 10px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
@@ -497,7 +497,7 @@
             margin-top: 4px;
             color: var(--mxr-ink);
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         @media (max-width: 980px) {
@@ -650,12 +650,12 @@
             {{-- Tab switcher --}}
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <a href="{{ route('report.metal-exchange', ['view' => 'transactions', 'from' => $from, 'to' => $to]) }}"
-                   style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight:800;text-decoration:none;border:1px solid {{ $view === 'transactions' ? '#0f172a' : '#dbe3ee' }};background:{{ $view === 'transactions' ? '#0f172a' : '#fff' }};color:{{ $view === 'transactions' ? '#fff' : '#475569' }};">
+                   style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight: 700;text-decoration:none;border:1px solid {{ $view === 'transactions' ? '#0f172a' : '#dbe3ee' }};background:{{ $view === 'transactions' ? '#0f172a' : '#fff' }};color:{{ $view === 'transactions' ? '#fff' : '#475569' }};">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                     Transactions
                 </a>
                 <a href="{{ route('report.metal-exchange', ['view' => 'lots', 'from' => $from, 'to' => $to]) }}"
-                   style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight:800;text-decoration:none;border:1px solid {{ $view === 'lots' ? '#0f172a' : '#dbe3ee' }};background:{{ $view === 'lots' ? '#0f172a' : '#fff' }};color:{{ $view === 'lots' ? '#fff' : '#475569' }};">
+                   style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:10px;font-size:13px;font-weight: 700;text-decoration:none;border:1px solid {{ $view === 'lots' ? '#0f172a' : '#dbe3ee' }};background:{{ $view === 'lots' ? '#0f172a' : '#fff' }};color:{{ $view === 'lots' ? '#fff' : '#475569' }};">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
                     Weekly Lots
                 </a>
@@ -690,10 +690,10 @@
             <section class="mxr-card" style="padding:20px 20px 8px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
                     <div>
-                        <h2 style="margin:0;font-size:15px;font-weight:950;color:#0f172a;letter-spacing:-0.02em;">Weekly Lot Batches</h2>
+                        <h2 style="margin:0;font-size:15px;font-weight: 700;color:#0f172a;letter-spacing: 0;">Weekly Lot Batches</h2>
                         <p style="margin:2px 0 0;font-size:12px;color:#64748b;font-weight:600;">Old gold and silver grouped by ISO calendar week (Mon–Sun). Each lot tracks the aggregate fine weight until dispatched.</p>
                     </div>
-                    <span style="font-size:11px;font-weight:800;color:#475569;white-space:nowrap;">{{ $weeklyLots->total() }} lot{{ $weeklyLots->total() == 1 ? '' : 's' }}</span>
+                    <span style="font-size:11px;font-weight: 700;color:#475569;white-space:nowrap;">{{ $weeklyLots->total() }} lot{{ $weeklyLots->total() == 1 ? '' : 's' }}</span>
                 </div>
 
                 @if($weeklyLots->isEmpty())
@@ -723,16 +723,16 @@
                             </span>
                             <div style="flex:1 1 0;min-width:0;">
                                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                                    <span style="font-size:13px;font-weight:900;color:#0f172a;">{{ $lotLabel }}</span>
-                                    <span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;{{ $isGoldLot ? 'background:#fef3c7;color:#92400e' : 'background:#f1f5f9;color:#475569' }}">
+                                    <span style="font-size:13px;font-weight: 700;color:#0f172a;">{{ $lotLabel }}</span>
+                                    <span style="font-size:11px;font-weight: 700;padding:2px 8px;border-radius:999px;{{ $isGoldLot ? 'background:#fef3c7;color:#92400e' : 'background:#f1f5f9;color:#475569' }}">
                                         {{ $isGoldLot ? 'Gold' : 'Silver' }}
                                     </span>
                                     @if($lot->is_dispatched)
-                                        <span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#dcfce7;color:#166534;">
+                                        <span style="font-size:11px;font-weight: 700;padding:2px 8px;border-radius:999px;background:#dcfce7;color:#166534;">
                                             Dispatched {{ $lot->dispatched_at?->format('d M Y') }}
                                         </span>
                                     @else
-                                        <span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#fef9c3;color:#854d0e;">Open</span>
+                                        <span style="font-size:11px;font-weight: 700;padding:2px 8px;border-radius:999px;background:#fef9c3;color:#854d0e;">Open</span>
                                     @endif
                                 </div>
                                 <div style="display:flex;gap:16px;margin-top:4px;flex-wrap:wrap;">
@@ -757,7 +757,7 @@
                             <div x-data="{ showDispatch: false }" style="padding:12px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
                                 <div x-show="!showDispatch">
                                     <button @click="showDispatch = true"
-                                            style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-size:12px;font-weight:800;border:1px solid #0f172a;background:#0f172a;color:#fff;cursor:pointer;">
+                                            style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-size:12px;font-weight: 700;border:1px solid #0f172a;background:#0f172a;color:#fff;cursor:pointer;">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                                         Mark as Dispatched
                                     </button>
@@ -766,14 +766,14 @@
                                     <form method="POST" action="{{ route('old-metal-lots.dispatch', $lot) }}" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
                                         @csrf
                                         <div style="flex:1 1 240px;">
-                                            <label style="display:block;font-size:11px;font-weight:800;color:#475569;margin-bottom:4px;">Dispatch notes (required)</label>
+                                            <label style="display:block;font-size:11px;font-weight: 700;color:#475569;margin-bottom:4px;">Dispatch notes (required)</label>
                                             <textarea name="dispatch_notes" rows="2" required minlength="4" maxlength="500"
                                                       placeholder="e.g. Sent to Mehul Refinery — 42.5g fine gold"
                                                       style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:9px;font-size:12px;resize:vertical;"></textarea>
                                         </div>
                                         <div style="display:flex;gap:6px;">
-                                            <button type="submit" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight:800;border:1px solid #16a34a;background:#16a34a;color:#fff;cursor:pointer;">Confirm</button>
-                                            <button type="button" @click="showDispatch = false" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight:800;border:1px solid #dbe3ee;background:#fff;color:#475569;cursor:pointer;">Cancel</button>
+                                            <button type="submit" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight: 700;border:1px solid #16a34a;background:#16a34a;color:#fff;cursor:pointer;">Confirm</button>
+                                            <button type="button" @click="showDispatch = false" style="padding:8px 14px;border-radius:9px;font-size:12px;font-weight: 700;border:1px solid #dbe3ee;background:#fff;color:#475569;cursor:pointer;">Cancel</button>
                                         </div>
                                     </form>
                                 </div>
@@ -793,14 +793,14 @@
                                 <table style="width:100%;border-collapse:collapse;font-size:12px;">
                                     <thead>
                                         <tr style="background:#f8fafc;">
-                                            <th style="padding:8px 12px;text-align:left;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Date</th>
-                                            <th style="padding:8px 12px;text-align:left;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Invoice</th>
-                                            <th style="padding:8px 12px;text-align:left;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Customer</th>
-                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Gross (g)</th>
-                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Purity</th>
-                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Fine (g)</th>
-                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Rate ₹/g</th>
-                                            <th style="padding:8px 12px;text-align:right;font-weight:800;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Value</th>
+                                            <th style="padding:8px 12px;text-align:left;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Date</th>
+                                            <th style="padding:8px 12px;text-align:left;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Invoice</th>
+                                            <th style="padding:8px 12px;text-align:left;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Customer</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Gross (g)</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Purity</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Fine (g)</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Rate ₹/g</th>
+                                            <th style="padding:8px 12px;text-align:right;font-weight: 700;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;">Value</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -818,20 +818,20 @@
                                             <td style="padding:8px 12px;color:#0f172a;font-weight:700;">{{ $pmtCustomer?->name ?? '—' }}</td>
                                             <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;">{{ number_format($pmt->metal_gross_weight, 3) }}</td>
                                             <td style="padding:8px 12px;text-align:right;">{{ $pmt->metal_purity }}{{ $pmt->mode === 'old_gold' ? 'K' : '‰' }}</td>
-                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;{{ $isGoldLot ? 'color:#b45309' : 'color:#475569' }}">{{ number_format($pmt->metal_fine_weight, 3) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight: 700;{{ $isGoldLot ? 'color:#b45309' : 'color:#475569' }}">{{ number_format($pmt->metal_fine_weight, 3) }}</td>
                                             <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;">₹{{ number_format($pmt->metal_rate_per_gram, 0) }}</td>
-                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;">₹{{ number_format($pmt->amount, 0) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight: 700;">₹{{ number_format($pmt->amount, 0) }}</td>
                                         </tr>
                                         @endforeach
                                     </tbody>
                                     <tfoot>
                                         <tr style="background:#f8fafc;">
-                                            <td colspan="3" style="padding:8px 12px;font-weight:800;color:#475569;">Totals</td>
-                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;">{{ number_format($lot->payments->sum('metal_gross_weight'), 3) }}</td>
+                                            <td colspan="3" style="padding:8px 12px;font-weight: 700;color:#475569;">Totals</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight: 700;">{{ number_format($lot->payments->sum('metal_gross_weight'), 3) }}</td>
                                             <td></td>
-                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;{{ $isGoldLot ? 'color:#b45309' : 'color:#475569' }}">{{ number_format($lot->payments->sum('metal_fine_weight'), 3) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight: 700;{{ $isGoldLot ? 'color:#b45309' : 'color:#475569' }}">{{ number_format($lot->payments->sum('metal_fine_weight'), 3) }}</td>
                                             <td></td>
-                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:800;">₹{{ number_format($lot->payments->sum('amount'), 0) }}</td>
+                                            <td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight: 700;">₹{{ number_format($lot->payments->sum('amount'), 0) }}</td>
                                         </tr>
                                     </tfoot>
                                 </table>

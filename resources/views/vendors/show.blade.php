@@ -6,16 +6,17 @@
 <x-app-layout>
     <style>
         .vendors-show-page {
-            --vendors-show-border: #d8e1ef;
-            --vendors-show-border-strong: #c8d5e7;
+            --vendors-show-border: #e2e8f0;
+            --vendors-show-border-strong: #cbd5e1;
             --vendors-show-surface: #ffffff;
-            --vendors-show-surface-soft: #f7f9fc;
-            --vendors-show-text: #16213d;
+            --vendors-show-surface-soft: #f8fafc;
+            --vendors-show-text: #0f172a;
             --vendors-show-text-soft: #64748b;
-            --vendors-show-accent: #0f766e;
-            --vendors-show-accent-soft: rgba(15, 118, 110, 0.1);
-            --vendors-show-warm-soft: rgba(245, 158, 11, 0.12);
-            --vendors-show-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+            --vendors-show-accent: #b45309;
+            --vendors-show-accent-hover: #92400e;
+            --vendors-show-accent-soft: #fff7ed;
+            --vendors-show-warm-soft: #fff7ed;
+            --vendors-show-shadow: none;
         }
 
         .vendors-show-page .vendors-show-shell {
@@ -29,7 +30,7 @@
         .vendors-show-page .vendors-show-items-card,
         .vendors-show-page .vendors-show-item-mobile {
             border: 1px solid var(--vendors-show-border);
-            border-radius: 24px;
+            border-radius: 16px;
             background: var(--vendors-show-surface);
             box-shadow: var(--vendors-show-shadow);
         }
@@ -87,9 +88,9 @@
         }
 
         .vendors-show-page .vendors-show-pill--active {
-            border-color: rgba(15, 118, 110, 0.16);
-            background: var(--vendors-show-accent-soft);
-            color: var(--vendors-show-accent);
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+            color: #15803d;
         }
 
         .vendors-show-page .vendors-show-pill--inactive {
@@ -104,8 +105,8 @@
         }
 
         .vendors-show-page .vendors-show-meta-card {
-            border: 1px solid #e7edf6;
-            border-radius: 18px;
+            border: 1px solid var(--vendors-show-border);
+            border-radius: 12px;
             background: #fbfcfe;
             padding: 14px;
             min-width: 0;
@@ -209,7 +210,7 @@
             border-radius: 999px;
             border: 1px solid rgba(245, 158, 11, 0.2);
             background: var(--vendors-show-warm-soft);
-            color: #b45309;
+            color: var(--vendors-show-accent);
             font-size: 12px;
             font-weight: 700;
             white-space: nowrap;
@@ -251,7 +252,7 @@
         }
 
         .vendors-show-page .vendors-show-table tbody tr:hover {
-            background: #fbfcfe;
+            background: #fffaf3;
         }
 
         .vendors-show-page .vendors-show-text-mono {
@@ -303,7 +304,7 @@
 
         .vendors-show-page .vendors-show-item-grid > div {
             border: 1px solid #e7edf6;
-            border-radius: 16px;
+            border-radius: 12px;
             background: #fbfcfe;
             padding: 12px;
             min-width: 0;
