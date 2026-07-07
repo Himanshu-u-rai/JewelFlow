@@ -25,7 +25,7 @@
         }
         .receipt-shop-name {
             font-size: 22px;
-            font-weight: 800;
+            font-weight: 700;
             color: #0f172a;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -120,7 +120,7 @@
             margin-top: 6px;
             padding-top: 8px;
             font-size: 14px;
-            font-weight: 800;
+            font-weight: 700;
         }
 
         /* Terms */
@@ -219,7 +219,7 @@
         }
 
         body {
-            font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg);
             margin: 0;
             padding: 26px 16px;
@@ -262,10 +262,10 @@
 
         .brand-mark svg { width: 14px; height: 14px; }
 
-        .shop-name { margin: 10px 0 0; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+        .shop-name { margin: 10px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
         .shop-meta { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
 
-        .receipt-title { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; text-align: right; }
+        .receipt-title { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -0.02em; text-align: right; }
         .receipt-sub { margin-top: 6px; font-size: 12px; color: var(--muted); text-align: right; }
 
         .receipt-pill {
@@ -415,7 +415,7 @@
         }
 
         body {
-            font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg);
             margin: 0;
             padding: 26px 16px;
@@ -464,7 +464,7 @@
         .shop-name {
             margin: 10px 0 0;
             font-size: 18px;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: -0.01em;
         }
 
@@ -477,7 +477,7 @@
         .receipt-title {
             margin: 0;
             font-size: 21px;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: -0.02em;
             text-align: right;
         }
@@ -764,7 +764,7 @@
         }
 
         body {
-            font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg);
             margin: 0;
             padding: 26px 16px;
@@ -807,10 +807,10 @@
 
         .brand-mark svg { width: 14px; height: 14px; }
 
-        .shop-name { margin: 10px 0 0; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+        .shop-name { margin: 10px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
         .shop-meta { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
 
-        .receipt-title { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; text-align: right; color: var(--danger); }
+        .receipt-title { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -0.02em; text-align: right; color: var(--danger); }
         .receipt-sub { margin-top: 6px; font-size: 12px; color: var(--muted); text-align: right; }
 
         .receipt-pill {
@@ -998,14 +998,14 @@
     background: #fff8e8;
     color: #9a6200;
     font-size: 12px;
-    font-weight: 750;
+    font-weight: 700;
 }
 .brand-mark svg { width: 14px; height: 14px; }
 .receipt-shop-name,
 .shop-name {
     margin: 10px 0 0;
     font-size: 20px;
-    font-weight: 800;
+    font-weight: 700;
     color: var(--dh-doc-ink);
     letter-spacing: -0.01em;
 }
@@ -1019,7 +1019,7 @@
 .receipt-title {
     margin: 0;
     font-size: 20px;
-    font-weight: 800;
+    font-weight: 700;
     color: var(--dh-doc-ink);
 }
 .receipt-body { padding: 20px; }
@@ -1027,7 +1027,7 @@
 .receipt-block { padding: 16px 20px; border-bottom: 1px solid var(--dh-doc-line); }
 .receipt-section-title {
     font-size: 11px;
-    font-weight: 750;
+    font-weight: 700;
     letter-spacing: .12em;
     text-transform: uppercase;
     color: var(--dh-doc-muted);
@@ -1048,17 +1048,17 @@
 }
 .receipt-detail-label,
 .balance-label {
-    font-weight: 650;
+    font-weight: 600;
     color: #475569;
 }
 .receipt-detail-value,
 .balance-value {
-    font-weight: 650;
+    font-weight: 600;
     color: var(--dh-doc-ink);
     text-align: right;
 }
 .dh-doc-balance-total { background: var(--dh-doc-soft); }
-.dh-doc-strong { font-weight: 750; }
+.dh-doc-strong { font-weight: 700; }
 .dh-doc-item-meta { font-size: 9px; color: var(--dh-doc-muted); }
 .dh-doc-sign-meta { font-weight: 400; font-size: 10px; }
 
@@ -1077,7 +1077,7 @@
     padding: 8px 10px;
     text-align: left;
     font-size: 10px;
-    font-weight: 750;
+    font-weight: 700;
     text-transform: uppercase;
     color: #475569;
     border: 1px solid var(--dh-doc-line);
@@ -1121,6 +1121,41 @@
     color: #fff;
     border-color: var(--dh-doc-brand);
     z-index: 10;
+}
+
+/* Shared print-preview typography. Legal documents stay compact, but use the
+   same Dhiran font and normal web weights instead of mixed legacy rules. */
+.dh-doc-body,
+.dh-doc-body body {
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.5;
+    font-weight: 400;
+    letter-spacing: 0;
+}
+
+.dh-doc-body :is(.receipt-shop-name, .shop-name, .receipt-title) {
+    font-size: 20px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.dh-doc-body :is(.receipt-section-title, .detail-label, .meta-box-label, th) {
+    font-size: 11px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.dh-doc-body :is(td, p, .detail-text, .receipt-detail-row, .balance-row, .ledger-row) {
+    font-size: 12px;
+    line-height: 1.5;
+    font-weight: 400;
+}
+
+.dh-doc-body :is(strong, .receipt-detail-label, .receipt-detail-value, .balance-label, .balance-value, .dh-doc-strong) {
+    font-weight: 600;
 }
 
 @media (max-width: 640px) {

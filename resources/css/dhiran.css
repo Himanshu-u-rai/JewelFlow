@@ -46,9 +46,9 @@
             border-radius: 10px;
             background: linear-gradient(135deg, var(--dh-gold), var(--dh-gold-deep));
             display: flex; align-items: center; justify-content: center;
-            color: #fff; font-weight: 800; font-size: 17px;
+            color: #fff; font-weight: 700; font-size: 17px;
         }
-        .dh-brand-name { font-weight: 800; font-size: 17px; letter-spacing: -0.01em; }
+        .dh-brand-name { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
         .dh-brand-sub { font-size: 11px; color: var(--dh-muted); margin-top: 1px; }
         .dh-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
         .dh-nav-link {
@@ -324,7 +324,7 @@
             width: 100%; padding: 10px 12px;
             border: none; border-top: 1px solid var(--dh-line);
             background: #fffdf7; color: var(--dh-gold-deep, #d98b00);
-            font-size: 12.5px; font-weight: 700; cursor: pointer;
+            font-size: 12px; font-weight: 700; cursor: pointer;
         }
         .dh-dd-add:hover { background: #fff7e6; }
         .dh-borrower-form {
@@ -338,7 +338,7 @@
         .dh-borrower-input {
             width: 100%; padding: 8px 10px;
             border: 1px solid var(--dh-line); border-radius: 8px;
-            font-size: 12.5px; background: #fff;
+            font-size: 12px; background: #fff;
         }
         .dh-borrower-input:focus { outline: none; border-color: var(--dh-accent, #d98b00); box-shadow: 0 0 0 3px rgba(217,139,0,.12); }
         .dh-borrower-input--wide { grid-column: 1 / -1; }
@@ -477,8 +477,8 @@
             color: var(--da-gold-deep);
         }
         .da-hero-title {
-            font-size: clamp(22px, 3vw, 30px);
-            font-weight: 800;
+            font-size: 24px;
+            font-weight: 700;
             color: var(--da-ink);
             margin-bottom: 8px;
         }
@@ -588,7 +588,7 @@
 
         .dob-wrap { max-width: 560px; margin: 12px auto 0; }
         .dob-head { text-align: center; margin-bottom: 24px; }
-        .dob-head h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; }
+        .dob-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
         .dob-head p { color: var(--dh-muted); font-size: 15px; margin: 0; }
         .dob-card {
             background: #fff;
@@ -636,7 +636,7 @@
 
         .dop-wrap { max-width: 480px; margin: 12px auto 0; }
         .dop-head { text-align: center; margin-bottom: 26px; }
-        .dop-head h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; }
+        .dop-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
         .dop-head p { color: var(--dh-muted); font-size: 15px; margin: 0; }
         .dop-card {
             background: #fff;
@@ -659,9 +659,9 @@
             padding: 4px 10px; border-radius: 999px;
             margin-bottom: 12px;
         }
-        .dop-plan-name { font-size: 19px; font-weight: 800; margin: 0 0 4px; }
+        .dop-plan-name { font-size: 19px; font-weight: 700; margin: 0 0 4px; }
         .dop-price { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
-        .dop-price .amt { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; }
+        .dop-price .amt { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; }
         .dop-price .per { color: var(--dh-muted); font-size: 14px; font-weight: 600; }
         .dop-feat { list-style: none; padding: 22px 26px; margin: 0; display: flex; flex-direction: column; gap: 12px; }
         .dop-feat li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: #334155; }
@@ -763,7 +763,7 @@
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-weight: 800;
+    font-weight: 700;
     font-size: 17px;
     flex: 0 0 34px;
 }
@@ -782,7 +782,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.dh-brand-name { font-weight: 800; font-size: 17px; letter-spacing: -0.01em; }
+.dh-brand-name { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
 .dh-brand-sub { font-size: 11px; color: var(--dh-muted); margin-top: 1px; }
 .dh-sidebar-close {
     display: none;
@@ -910,7 +910,7 @@
     color: var(--dh-ink);
     font-size: 22px;
     line-height: 1.2;
-    font-weight: 750;
+    font-weight: 700;
     letter-spacing: -0.01em;
     max-width: 100%;
     overflow-wrap: anywhere;
@@ -969,7 +969,7 @@
     cursor: pointer;
     box-shadow: none;
 }
-.btn-sm { min-height: 38px; padding: 8px 12px; font-size: 12.5px; }
+.btn-sm { min-height: 38px; padding: 8px 12px; font-size: 12px; }
 .btn svg { flex-shrink: 0; }
 .dh-page-header .btn,
 .dh-page-header button,
@@ -1050,7 +1050,7 @@
     background: #fffdf8;
     color: var(--dh-ink) !important;
     font-size: 13px;
-    font-weight: 750;
+    font-weight: 700;
     line-height: 1.1;
     box-shadow: none !important;
     filter: none !important;
@@ -1186,7 +1186,7 @@
 .ds-fin-label,
 .ds-info-item-label {
     font-size: 11px;
-    font-weight: 650;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.10em;
     color: var(--dh-muted);
@@ -1224,7 +1224,7 @@
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 600;
     color: var(--dh-ink-soft);
     margin-bottom: 6px;
 }
@@ -1280,14 +1280,14 @@
     top: 50%;
     transform: translateY(-50%);
     font-size: 13px;
-    font-weight: 650;
+    font-weight: 600;
     color: var(--dh-muted);
 }
 .dh-cost-wrap .dh-input { padding-left: 28px; }
 .dh-section-title,
 .dset-section-title {
     font-size: 15px;
-    font-weight: 750;
+    font-weight: 700;
     color: var(--dh-ink);
     display: flex;
     align-items: center;
@@ -1344,7 +1344,7 @@
 }
 .dh-dd-trigger.open::after { transform: translateY(-50%) rotate(180deg); }
 .dh-dd-placeholder { color: #9ca3af; font-weight: 400; }
-.dh-dd-value { font-weight: 650; color: var(--dh-ink); }
+.dh-dd-value { font-weight: 600; color: var(--dh-ink); }
 .dh-dd-panel {
     display: none;
     position: absolute;
@@ -1411,7 +1411,7 @@
 .dh-dd-opt-sub {
     display: block;
 }
-.dh-dd-opt-name { font-size: 13px; font-weight: 650; color: var(--dh-ink); }
+.dh-dd-opt-name { font-size: 13px; font-weight: 600; color: var(--dh-ink); }
 .dh-dd-opt-sub { font-size: 11px; color: var(--dh-muted); margin-top: 1px; }
 .dh-dd-add {
     display: flex;
@@ -1423,8 +1423,8 @@
     border-top: 1px solid var(--dh-line);
     background: var(--dh-raised);
     color: var(--dh-gold-deep);
-    font-size: 12.5px;
-    font-weight: 750;
+    font-size: 12px;
+    font-weight: 700;
     cursor: pointer;
 }
 
@@ -1472,7 +1472,7 @@
     border-radius: 12px;
     background: var(--dh-field);
     color: var(--dh-ink);
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 500;
     line-height: 1.3;
     outline: none;
@@ -1481,7 +1481,7 @@
 
 .dh-customer-search-input::placeholder {
     color: #9aa4b2;
-    font-weight: 450;
+    font-weight: 400;
 }
 
 .dh-customer-search-input:focus,
@@ -1511,7 +1511,7 @@
     background: var(--dh-gold) !important;
     color: #fff !important;
     font-size: 13px;
-    font-weight: 750;
+    font-weight: 700;
     white-space: nowrap;
     cursor: pointer;
     box-shadow: 0 8px 18px rgba(217, 139, 0, 0.18);
@@ -1570,7 +1570,7 @@
     background: var(--dh-gold);
     color: #fff;
     font-size: 13px;
-    font-weight: 750;
+    font-weight: 700;
     letter-spacing: 0;
 }
 
@@ -1578,7 +1578,7 @@
     margin: 0;
     font-size: 15px;
     line-height: 1.25;
-    font-weight: 750;
+    font-weight: 700;
     color: var(--dh-ink);
 }
 
@@ -1598,7 +1598,7 @@
 
 .dh-selected-customer-grid dt {
     margin: 0 0 3px;
-    font-size: 10.5px;
+    font-size: 11px;
     line-height: 1.2;
     font-weight: 700;
     color: var(--dh-muted);
@@ -1612,7 +1612,7 @@
     overflow-wrap: anywhere;
     font-size: 13px;
     line-height: 1.35;
-    font-weight: 550;
+    font-weight: 500;
     color: var(--dh-ink);
 }
 
@@ -1627,12 +1627,12 @@
     padding: 8px 10px;
     border: 1px solid var(--dh-field-border);
     border-radius: 8px;
-    font-size: 12.5px;
+    font-size: 12px;
     background: var(--dh-field);
     box-shadow: inset 0 1px 2px rgba(92, 64, 28, 0.045);
 }
 .dh-borrower-input--wide { grid-column: 1 / -1; }
-.dh-borrower-error { margin: 8px 0 0; color: var(--dh-danger); font-size: 12px; font-weight: 650; }
+.dh-borrower-error { margin: 8px 0 0; color: var(--dh-danger); font-size: 12px; font-weight: 600; }
 .dh-borrower-save {
     margin-top: 10px;
     width: 100%;
@@ -1643,7 +1643,7 @@
     background: var(--dh-gold-deep);
     color: #fff;
     font-size: 13px;
-    font-weight: 750;
+    font-weight: 700;
     cursor: pointer;
 }
 .dh-borrower-save:disabled { opacity: .6; cursor: not-allowed; }
@@ -1697,7 +1697,7 @@ body.dh-modal-open {
     margin: 0;
     font-size: 18px;
     line-height: 1.2;
-    font-weight: 750;
+    font-weight: 700;
     color: var(--dh-ink);
 }
 
@@ -1739,7 +1739,7 @@ body.dh-modal-open {
 
 .dh-borrower-modal-field > span {
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 600;
     color: var(--dh-ink-soft);
 }
 
@@ -1793,7 +1793,7 @@ body.dh-modal-open {
     min-height: 40px;
     padding: 8px 16px;
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 600;
     border: 1.5px dashed var(--dh-line);
     border-radius: 10px;
     background: transparent;
@@ -1809,7 +1809,7 @@ body.dh-modal-open {
     font-size: 13px;
 }
 .dh-summary-label { color: var(--dh-muted); font-weight: 500; }
-.dh-summary-value { color: var(--dh-ink); font-weight: 750; }
+.dh-summary-value { color: var(--dh-ink); font-weight: 700; }
 
 .dh-table-card {
     border: 1px solid var(--dh-field-border);
@@ -1824,7 +1824,7 @@ body.dh-modal-open {
     padding: 12px 16px;
     text-align: left;
     font-size: 11px;
-    font-weight: 650;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--dh-muted);
@@ -1847,7 +1847,7 @@ body.dh-modal-open {
     box-shadow: var(--dh-shadow);
 }
 .dh-mobile-card + .dh-mobile-card { margin-top: 12px; }
-.dh-mobile-title { font-size: 14px; font-weight: 750; color: var(--dh-ink); }
+.dh-mobile-title { font-size: 14px; font-weight: 700; color: var(--dh-ink); }
 .dh-mobile-meta { font-size: 12px; color: var(--dh-muted); margin-top: 2px; }
 .dh-mobile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
 .dh-mobile-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--dh-muted); }
@@ -1862,13 +1862,13 @@ body.dh-modal-open {
 }
 .ds-fin-card { padding: 14px; }
 .ds-fin-card-primary { border-color: var(--dh-gold-deep); }
-.ds-fin-value { font-size: 20px; font-weight: 750; color: var(--dh-ink); }
+.ds-fin-value { font-size: 20px; font-weight: 700; color: var(--dh-ink); }
 .ds-info-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 12px;
 }
-.ds-info-item-value { font-size: 14px; font-weight: 650; color: var(--dh-ink); margin-top: 2px; }
+.ds-info-item-value { font-size: 14px; font-weight: 600; color: var(--dh-ink); margin-top: 2px; }
 
 .dh-upload-form {
     display: grid;
@@ -1946,7 +1946,7 @@ body:has(.dh-auth-panel) {
     box-shadow: none !important;
 }
 .dh-auth-panel .form-card { border-radius: 18px; }
-.dh-auth-title { font-size: 22px; line-height: 1.2; font-weight: 800; color: var(--dh-ink); text-align: center; margin: 0 0 6px; }
+.dh-auth-title { font-size: 22px; line-height: 1.2; font-weight: 700; color: var(--dh-ink); text-align: center; margin: 0 0 6px; }
 .dh-auth-copy { font-size: 14px; line-height: 1.55; color: var(--dh-muted); text-align: center; margin: 0 0 22px; }
 .dh-auth-link { font-weight: 700; color: var(--dh-gold-deep); text-decoration: none; }
 .dh-auth-helper { margin-top: 6px; font-size: 12px; line-height: 1.45; color: var(--dh-muted); }
@@ -1981,13 +1981,13 @@ body:has(.dh-auth-panel) {
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-weight: 800;
+    font-weight: 700;
     font-size: 18px;
 }
-.dh-verify-body .brand-name { font-weight: 800; font-size: 18px; letter-spacing: -0.01em; }
+.dh-verify-body .brand-name { font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
 .dh-verify-body h1 { font-size: 20px; margin: 8px 0 4px; }
-.dh-verify-body .sub { font-size: 13.5px; color: var(--dh-muted); line-height: 1.5; margin-bottom: 20px; }
-.dh-verify-body label { display: block; font-size: 12px; font-weight: 650; color: var(--dh-ink-soft); margin-bottom: 6px; }
+.dh-verify-body .sub { font-size: 14px; color: var(--dh-muted); line-height: 1.5; margin-bottom: 20px; }
+.dh-verify-body label { display: block; font-size: 12px; font-weight: 600; color: var(--dh-ink-soft); margin-bottom: 6px; }
 .dh-verify-body input {
     width: 100%;
     padding: 11px 13px;
@@ -2004,7 +2004,7 @@ body:has(.dh-auth-panel) {
     background: none;
     border: none;
     color: var(--dh-gold-deep);
-    font-weight: 650;
+    font-weight: 600;
     font-size: 13px;
     cursor: pointer;
     padding: 0;
@@ -2025,20 +2025,20 @@ body:has(.dh-auth-panel) {
     gap: 12px;
 }
 .dh-verify-body .foot form { margin: 0; }
-.dh-verify-body .foot button { background: none; border: none; color: var(--dh-muted); font-size: 12.5px; cursor: pointer; }
-.dh-verify-mobile { font-size: 12.5px; color: var(--dh-muted); }
+.dh-verify-body .foot button { background: none; border: none; color: var(--dh-muted); font-size: 12px; cursor: pointer; }
+.dh-verify-mobile { font-size: 12px; color: var(--dh-muted); }
 
 .da-hero,
 .dob-card,
 .dp-plan-card { padding: 22px; }
 .da-hero-title,
 .dob-title,
-.dp-title { color: var(--dh-ink); font-size: 24px; line-height: 1.2; font-weight: 800; margin: 0; }
+.dp-title { color: var(--dh-ink); font-size: 24px; line-height: 1.2; font-weight: 700; margin: 0; }
 .da-hero-copy,
 .dob-copy,
 .dp-copy,
 .da-feature-card-desc { color: var(--dh-muted); font-size: 14px; line-height: 1.6; }
-.dp-price { font-size: 32px; font-weight: 800; color: var(--dh-ink); }
+.dp-price { font-size: 32px; font-weight: 700; color: var(--dh-ink); }
 
 .dset-card,
 .dset-section { padding: 18px; }
@@ -2052,7 +2052,7 @@ body:has(.dh-auth-panel) {
     gap: 14px;
 }
 .dr-report-card { display: block; padding: 16px; color: inherit; text-decoration: none; }
-.dr-report-title { font-size: 15px; font-weight: 750; color: var(--dh-ink); }
+.dr-report-title { font-size: 15px; font-weight: 700; color: var(--dh-ink); }
 .dr-report-desc { font-size: 13px; line-height: 1.5; color: var(--dh-muted); margin-top: 4px; }
 
 .dh-app .shadow-sm { box-shadow: var(--dh-shadow) !important; }
@@ -2281,7 +2281,7 @@ body:has(.dh-auth-panel) {
         justify-content: center;
         padding: 7px 10px;
         border-radius: 9px;
-        font-size: 11.5px;
+        font-size: 12px;
         line-height: 1.05;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2313,7 +2313,7 @@ body:has(.dh-auth-panel) {
     }
     .page-actions .dh-header-pinned-action[data-dh-mobile-label]::after {
         content: attr(data-dh-mobile-label);
-        font-size: 11.5px;
+        font-size: 12px;
         line-height: 1.05;
     }
     .page-actions .dh-header-pinned-action[data-dh-mobile-label] svg {
@@ -2323,7 +2323,7 @@ body:has(.dh-auth-panel) {
         min-height: 34px;
         padding: 7px 10px;
         border-radius: 9px;
-        font-size: 11.5px;
+        font-size: 12px;
         line-height: 1.05;
     }
     .dh-app .btn-sm svg {
@@ -2384,7 +2384,7 @@ body:has(.dh-auth-panel) {
         height: 13px;
     }
     .dd-kpi-label {
-        font-size: 9.5px;
+        font-size: 10px;
         line-height: 1.15;
         letter-spacing: 0.08em;
         overflow-wrap: anywhere;
@@ -2530,7 +2530,7 @@ body:has(.dh-auth-panel) {
     .dh-badge {
         min-height: 25px;
         padding: 4px 8px;
-        font-size: 10.5px;
+        font-size: 11px;
     }
     .btn,
     .dh-btn { padding-left: 10px; padding-right: 10px; }
@@ -2564,12 +2564,12 @@ body:has(.dh-auth-panel) {
         font-size: 16px;
     }
     .dh-brand-name { font-size: 16px; }
-    .dh-brand-sub { font-size: 10.5px; }
+    .dh-brand-sub { font-size: 11px; }
     .dh-nav-link {
         min-height: 44px;
         padding: 10px;
         gap: 10px;
-        font-size: 13.5px;
+        font-size: 14px;
     }
     .dh-sidebar-close {
         width: 38px;
@@ -2754,6 +2754,137 @@ body:has(.dh-auth-panel) {
     .dh-app .dhiran-create-form > .flex.justify-end {
         margin-inline: -12px;
         padding-inline: 12px;
+    }
+}
+
+/* Dhiran typography normalization: keep page markup flexible, but make the
+   rendered type scale consistent across dashboard, loans, borrowers, reports,
+   settings, auth, and mobile cards. */
+.dh-app {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 400;
+    color: var(--dh-ink);
+    letter-spacing: 0;
+}
+
+.dh-app :is(input, select, textarea, button) {
+    font-family: inherit;
+}
+
+.dh-app :is(.page-title, h1) {
+    font-size: 22px;
+    line-height: 1.22;
+    font-weight: 700;
+    letter-spacing: 0;
+    color: var(--dh-ink);
+}
+
+.dh-app :is(h2, .dh-section-title, .dset-section-title, .dr-report-title, .dh-auth-title) {
+    font-size: 16px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--dh-ink);
+}
+
+.dh-app :is(h3, .dh-mobile-title, .dh-dd-opt-name, .dh-selected-customer-name) {
+    font-size: 14px;
+    line-height: 1.35;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--dh-ink);
+}
+
+.dh-app :is(p, td, dd, li, .dh-mobile-value, .dh-summary-value, .ds-info-item-value, .receipt-detail-value) {
+    font-size: 13px;
+    line-height: 1.45;
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
+.dh-app :is(.page-subtitle, .dh-page-header p, .dh-mobile-meta, .dh-auth-copy, .dh-auth-helper, .dr-report-desc, .dh-dd-opt-sub, .dh-selected-customer-sub, .dh-selected-customer-empty p, .dset-hint) {
+    font-size: 13px;
+    line-height: 1.45;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--dh-muted);
+}
+
+.dh-app :is(.dh-label, label, th, dt, .header-badge, .dh-badge, .dd-kpi-label, .dh-label-upper, .ds-fin-label, .ds-info-item-label, .dh-mobile-label) {
+    font-size: 12px;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--dh-muted);
+}
+
+.dh-app :is(.dh-input, .dh-select, .dh-textarea, .dh-form-control, .dset-input, .dset-select, .dset-textarea, .dh-dd-trigger, .dh-dd-search, .dh-customer-search-input, .dh-borrower-input) {
+    font-size: 14px;
+    line-height: 1.35;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--dh-ink);
+}
+
+.dh-app :is(.btn, .dh-btn, .dh-borrower-save, .dh-customer-add-btn, .dh-dd-add, .dh-add-item-btn, .dh-logout, .dh-auth-link, a) {
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+.dh-app :is(.dd-kpi-value, .ds-fin-value) {
+    font-size: 20px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.dh-app :is(.dh-table th, table th) {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.dh-app :is(.dh-table td, table td) {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--dh-ink-soft);
+}
+
+.dh-app :is(.font-medium, .font-semibold) { font-weight: 600 !important; }
+.dh-app :is(.font-bold, .font-extrabold, .font-black) { font-weight: 700 !important; }
+.dh-app .text-xs { font-size: 12px !important; line-height: 1.35 !important; }
+.dh-app .text-sm { font-size: 13px !important; line-height: 1.45 !important; }
+.dh-app .text-base { font-size: 14px !important; line-height: 1.45 !important; }
+.dh-app .text-lg { font-size: 16px !important; line-height: 1.35 !important; }
+.dh-app .text-xl { font-size: 18px !important; line-height: 1.25 !important; }
+.dh-app .text-2xl { font-size: 20px !important; line-height: 1.2 !important; }
+.dh-app [class*="text-[10px]"] { font-size: 11px !important; line-height: 1.35 !important; }
+.dh-app [class*="text-[11px]"] { font-size: 12px !important; line-height: 1.35 !important; }
+.dh-app [class*="tracking-["],
+.dh-app .tracking-wider,
+.dh-app .tracking-widest {
+    letter-spacing: 0.04em !important;
+}
+
+.dh-app :is(.font-mono, code) {
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+@media (max-width: 720px) {
+    .dh-app :is(.page-title, h1) {
+        font-size: 18px;
+        line-height: 1.2;
+    }
+
+    .dh-app :is(h2, .dh-section-title, .dset-section-title, .dr-report-title, .dh-auth-title) {
+        font-size: 15px;
+    }
+
+    .dh-app :is(.dd-kpi-value, .ds-fin-value) {
+        font-size: 18px;
     }
 }
 
