@@ -70,7 +70,7 @@
             border-top: 1px solid var(--vl-border-soft);
             color: var(--vl-ink);
             font-size: 12.5px;
-            font-weight: 650;
+            font-weight: 600;
         }
 
         .vault-lot-group--first {
@@ -149,7 +149,7 @@
             background: rgba(15, 118, 110, .05);
             color: var(--vl-accent-deep);
             font-size: 12.5px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1;
             text-decoration: none;
             transition: background-color .16s var(--vl-ease), border-color .16s var(--vl-ease), transform .16s var(--vl-ease);
@@ -243,7 +243,7 @@
             font-size: 30px;
             font-weight: 700;
             line-height: 1.05;
-            letter-spacing: -0.02em;
+            letter-spacing: 0;
             font-variant-numeric: tabular-nums;
         }
 
@@ -298,7 +298,7 @@
             padding: 10px 18px;
             color: #ffffff;
             font-size: 14px;
-            font-weight: 650;
+            font-weight: 600;
             box-shadow: 0 1px 2px rgba(15, 118, 110, .22);
             transition: background-color .16s var(--vl-ease), transform .16s var(--vl-ease);
         }

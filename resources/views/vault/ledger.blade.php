@@ -16,7 +16,7 @@
             padding: 9px 14px;
             color: #1f2a44;
             font-size: 13px;
-            font-weight: 900;
+            font-weight: 700;
             box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
         }
 
@@ -40,7 +40,7 @@
             margin-bottom: 6px;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: .08em;
             text-transform: uppercase;
         }
@@ -71,7 +71,7 @@
             padding: 10px 16px;
             color: #ffffff;
             font-size: 14px;
-            font-weight: 900;
+            font-weight: 700;
             box-shadow: 0 12px 24px rgba(15, 118, 110, .16);
         }
 
@@ -88,7 +88,7 @@
             margin: 0;
             color: #0f172a;
             font-size: 14px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         .vault-ledger-copy {
@@ -108,7 +108,7 @@
             padding: 6px 11px;
             color: #475569;
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -120,7 +120,7 @@
             background: #f8fafc;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             letter-spacing: .08em;
             text-transform: uppercase;
         }
@@ -132,7 +132,7 @@
             padding: 4px 8px;
             color: #334155;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
             text-transform: uppercase;
         }
 
@@ -158,7 +158,7 @@
             margin-bottom: 4px;
             color: #64748b;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 700;
         }
 
         @media (max-width: 860px) {
@@ -290,7 +290,7 @@
                                 <span class="vault-ledger-type">{{ str_replace('_', ' ', $mv->type) }}</span>
                                 <p class="mt-1 text-xs text-slate-500">{{ $mv->created_at->format('d M Y, H:i') }}</p>
                             </div>
-                            <p class="font-mono text-sm font-black text-amber-700">{{ number_format($mv->fine_weight, 3) }}g</p>
+                            <p class="font-mono text-sm font-bold text-amber-700">{{ number_format($mv->fine_weight, 3) }}g</p>
                         </div>
 
                         <div class="vault-ledger-mobile-grid text-sm">

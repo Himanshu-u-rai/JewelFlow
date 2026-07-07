@@ -32,7 +32,7 @@
         }
         .wa-hero-title {
             font-size: 1.22rem;
-            font-weight: 650;
+            font-weight: 600;
             color: var(--wa-ink);
             letter-spacing: 0;
         }
@@ -128,7 +128,7 @@
         .wa-field label {
             display: block;
             font-size: 12px;
-            font-weight: 650;
+            font-weight: 600;
             color: #334155;
             margin-bottom: 4px;
             text-transform: uppercase;
@@ -283,16 +283,16 @@
             display: grid;
             place-items: center;
             color: #64748b;
-            font-weight: 650;
+            font-weight: 600;
             font-size: 18px;
             letter-spacing: .08em;
         }
         .wa-name {
             font-size: 15px;
-            font-weight: 650;
+            font-weight: 600;
             color: #0f172a;
             line-height: 1.25;
-            letter-spacing: -.01em;
+            letter-spacing: 0;
         }
         .wa-code {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -344,11 +344,11 @@
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: .04em;
-            font-weight: 650;
+            font-weight: 600;
         }
         .wa-metric-value {
             margin-top: 2px;
-            font-weight: 650;
+            font-weight: 600;
             color: #0f172a;
             font-size: 13px;
         }
@@ -432,7 +432,7 @@
         }
         .wa-selection-count {
             font-size: 13px;
-            font-weight: 650;
+            font-weight: 600;
             color: #0f172a;
         }
         .wa-selection-note {
@@ -504,7 +504,7 @@
             border: 0;
             border-radius: 10px;
             padding: 9px 11px;
-            font-weight: 650;
+            font-weight: 600;
             font-size: 12px;
             cursor: pointer;
             display: inline-flex;
@@ -567,7 +567,7 @@
             background: #fff;
             color: #0f172a;
             font-size: 12px;
-            font-weight: 650;
+            font-weight: 600;
             padding: 11px 12px;
             cursor: pointer;
         }

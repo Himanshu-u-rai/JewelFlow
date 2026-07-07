@@ -1,11 +1,73 @@
 <x-app-layout>
+    <style>
+        .job-receive-page {
+            --job-accent: #b45309;
+            --job-border: #e2e8f0;
+            --job-border-strong: #cbd5e1;
+        }
+
+        .job-receive-page .shadow-sm {
+            box-shadow: none;
+        }
+
+        .job-receive-form {
+            border-color: var(--job-border);
+            border-radius: 16px;
+            box-shadow: none;
+        }
+
+        .job-receive-line-table {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .job-receive-line-table table {
+            min-width: 920px;
+        }
+
+        .job-receive-page input {
+            border-color: var(--job-border-strong);
+            border-radius: 12px;
+            min-height: 42px;
+        }
+
+        .job-receive-page input:focus {
+            border-color: var(--job-accent);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, .16);
+        }
+
+        @media (max-width: 640px) {
+            .job-receive-page {
+                padding-inline: 10px;
+            }
+
+            .job-receive-form {
+                padding: 14px;
+            }
+
+            .job-receive-total-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .job-receive-page .flex.items-center.gap-3 {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .job-receive-page .flex.items-center.gap-3 :is(.btn, a) {
+                width: 100%;
+            }
+        }
+    </style>
+
     <x-page-header :title="'Receive Items — ' . $jobOrder->job_order_number" :subtitle="'Karigar: ' . ($jobOrder->karigar?->name ?? '—')">
         <x-slot:actions>
             <a href="{{ route('job-orders.show', $jobOrder) }}" class="btn btn-secondary btn-sm">← Back</a>
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner">
+    <div class="content-inner job-receive-page">
 
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
@@ -16,7 +78,7 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('job-orders.receive.store', $jobOrder) }}" class="bg-white rounded-xl border border-gray-200 shadow-sm p-5"
+        <form method="POST" action="{{ route('job-orders.receive.store', $jobOrder) }}" class="job-receive-form bg-white rounded-xl border border-gray-200 shadow-sm p-5"
               x-data="receiveForm({{ (float) $jobOrder->purity }}, '{{ $jobOrder->metal_type }}')">
             @csrf
 
@@ -39,9 +101,10 @@
             <div class="border-t border-gray-200 pt-4">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-gray-800">Finished Items Received</h3>
-                    <button type="button" @click="addLine" class="text-xs text-teal-700 hover:underline">+ Add line</button>
+                    <button type="button" @click="addLine" class="text-xs text-amber-700 hover:underline">+ Add line</button>
                 </div>
 
+                <div class="job-receive-line-table">
                 <table class="w-full text-sm mb-3">
                     <thead>
                         <tr class="text-[10px] uppercase tracking-wide text-gray-500">
@@ -70,20 +133,21 @@
                         </template>
                     </tbody>
                 </table>
+                </div>
             </div>
 
-            <div class="bg-emerald-50 rounded-lg p-4 mb-5">
-                <div class="grid grid-cols-4 gap-4 text-sm">
-                    <div><div class="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold">Total Pcs</div><div class="font-mono font-bold" x-text="totalPieces">0</div></div>
-                    <div><div class="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold">Total Gross</div><div class="font-mono font-bold" x-text="totalGross.toFixed(3) + 'g'">0.000g</div></div>
-                    <div><div class="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold">Total Net</div><div class="font-mono font-bold" x-text="totalNet.toFixed(3) + 'g'">0.000g</div></div>
-                    <div><div class="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold">Total Fine (est.)</div><div class="font-mono font-bold" x-text="totalFine.toFixed(3) + 'g'">0.000g</div></div>
+            <div class="bg-amber-50 rounded-lg p-4 mb-5">
+                <div class="job-receive-total-grid grid grid-cols-4 gap-4 text-sm">
+                    <div><div class="text-[10px] uppercase tracking-wide text-amber-700 font-semibold">Total Pcs</div><div class="font-mono font-bold" x-text="totalPieces">0</div></div>
+                    <div><div class="text-[10px] uppercase tracking-wide text-amber-700 font-semibold">Total Gross</div><div class="font-mono font-bold" x-text="totalGross.toFixed(3) + 'g'">0.000g</div></div>
+                    <div><div class="text-[10px] uppercase tracking-wide text-amber-700 font-semibold">Total Net</div><div class="font-mono font-bold" x-text="totalNet.toFixed(3) + 'g'">0.000g</div></div>
+                    <div><div class="text-[10px] uppercase tracking-wide text-amber-700 font-semibold">Total Fine (est.)</div><div class="font-mono font-bold" x-text="totalFine.toFixed(3) + 'g'">0.000g</div></div>
                 </div>
                 <p class="text-[11px] text-amber-700 mt-2" x-show="exceedsTolerance">⚠ Wastage may exceed tolerance. The system will flag this; you can still submit and acknowledge later.</p>
             </div>
 
             <div class="flex items-center gap-3">
-                <button type="submit" class="btn btn-success btn-sm">Save Receipt</button>
+                <button type="submit" class="btn btn-primary btn-sm">Save Receipt</button>
                 <a href="{{ route('job-orders.show', $jobOrder) }}" class="text-sm text-gray-500">Cancel</a>
             </div>
         </form>

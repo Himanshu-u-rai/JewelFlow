@@ -2,7 +2,7 @@
     <x-page-header title="Karigars" subtitle="Job-work artisans linked to this shop">
         <x-slot:actions>
             @can('karigar.manage')
-            <a href="{{ route('karigars.create') }}" class="btn btn-success btn-sm">
+            <a href="{{ route('karigars.create') }}" class="btn btn-primary btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Add Karigar
             </a>
@@ -23,32 +23,48 @@
             $totalInvoices = (int) $karigars->sum('invoices_count');
         @endphp
 
-        <div class="karigars-kpi-grid">
-            <section class="karigars-kpi-card karigars-kpi-card--total">
-                <span class="karigars-kpi-label">Karigars</span>
-                <strong>{{ $karigars->count() }}</strong>
-                <p>Job-work partners on this shop</p>
+        <div class="karigars-kpi-grid jobwork-kpi-grid">
+            <section class="karigars-kpi-card jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--gold" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a3 3 0 0 0-2-2.83"/></svg>
+                </span>
+                <div>
+                    <span class="karigars-kpi-label">Karigars</span>
+                    <strong>{{ $karigars->count() }}</strong>
+                </div>
             </section>
-            <section class="karigars-kpi-card karigars-kpi-card--active">
-                <span class="karigars-kpi-label">Active</span>
-                <strong>{{ $activeKarigars }}</strong>
-                <p>{{ $inactiveKarigars }} disabled</p>
+            <section class="karigars-kpi-card jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--green" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                </span>
+                <div>
+                    <span class="karigars-kpi-label">Active</span>
+                    <strong>{{ $activeKarigars }}</strong>
+                </div>
             </section>
-            <section class="karigars-kpi-card karigars-kpi-card--jobs">
-                <span class="karigars-kpi-label">Job Orders</span>
-                <strong>{{ $totalJobOrders }}</strong>
-                <p>Issued across all karigars</p>
+            <section class="karigars-kpi-card jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--slate" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 6h4"/><path d="M5 8h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8Z"/><path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </span>
+                <div>
+                    <span class="karigars-kpi-label">Job Orders</span>
+                    <strong>{{ $totalJobOrders }}</strong>
+                </div>
             </section>
-            <section class="karigars-kpi-card karigars-kpi-card--invoices">
-                <span class="karigars-kpi-label">Invoices</span>
-                <strong>{{ $totalInvoices }}</strong>
-                <p>Received into the workflow</p>
+            <section class="karigars-kpi-card jobwork-kpi-card">
+                <span class="jobwork-kpi-icon jobwork-kpi-icon--rose" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15h6"/></svg>
+                </span>
+                <div>
+                    <span class="karigars-kpi-label">Invoices</span>
+                    <strong>{{ $totalInvoices }}</strong>
+                </div>
             </section>
         </div>
 
-        <div class="karigars-surface-card">
-            <div class="karigars-surface-head">
-                <div>
+        <div class="karigars-surface-card jobwork-register-card">
+            <div class="karigars-surface-head jobwork-register-head">
+                <div class="jobwork-register-titleblock">
                     <h2>Karigar Directory</h2>
                     <p>Manage artisan profiles, their activity, and status from one list.</p>
                 </div>

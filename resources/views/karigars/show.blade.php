@@ -1,12 +1,56 @@
 <x-app-layout>
+    <style>
+        .karigar-show-page {
+            --kg-border: #e2e8f0;
+        }
+
+        .karigar-show-page .shadow-sm {
+            box-shadow: none;
+        }
+
+        .karigar-show-page .rounded-xl {
+            border-radius: 16px;
+        }
+
+        .karigar-show-page :is(div, section):has(> table) {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .karigar-show-page table {
+            min-width: 680px;
+        }
+
+        @media (max-width: 640px) {
+            .karigar-show-page {
+                padding-inline: 10px;
+            }
+
+            .karigar-show-page table {
+                min-width: 620px;
+                font-size: 12px;
+            }
+
+            .karigar-show-page .text-3xl {
+                font-size: 24px;
+                overflow-wrap: anywhere;
+            }
+
+            .karigar-show-page .text-2xl {
+                font-size: 21px;
+                overflow-wrap: anywhere;
+            }
+        }
+    </style>
+
     <x-page-header :title="$karigar->name" :subtitle="collect([$karigar->shop_name, $karigar->gst_number ? 'GST ' . $karigar->gst_number : null])->filter()->implode(' · ') ?: null">
         <x-slot:actions>
             <a href="{{ route('karigars.edit', $karigar) }}" class="btn btn-secondary btn-sm">Edit</a>
-            <a href="{{ route('job-orders.create') }}?karigar={{ $karigar->id }}" class="btn btn-success btn-sm">Issue Bullion</a>
+            <a href="{{ route('job-orders.create') }}?karigar={{ $karigar->id }}" class="btn btn-primary btn-sm">Issue Bullion</a>
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner">
+    <div class="content-inner karigar-show-page">
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 lg:col-span-2">
@@ -90,7 +134,7 @@
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
             <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="text-sm font-semibold text-gray-800">Recent Job Orders</h3>
-                <a href="{{ route('job-orders.index') }}?karigar_id={{ $karigar->id }}" class="text-xs text-teal-700 hover:underline">View all</a>
+                <a href="{{ route('job-orders.index') }}?karigar_id={{ $karigar->id }}" class="text-xs text-amber-700 hover:underline">View all</a>
             </div>
             @if($karigar->jobOrders->isEmpty())
                 <div class="py-10 text-center text-gray-400 text-sm">No job orders yet.</div>
@@ -107,7 +151,7 @@
                     <tbody class="divide-y divide-gray-100">
                         @foreach($karigar->jobOrders as $jo)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-2"><a href="{{ route('job-orders.show', $jo) }}" class="text-teal-700 font-mono hover:underline">{{ $jo->job_order_number }}</a></td>
+                                <td class="px-4 py-2"><a href="{{ route('job-orders.show', $jo) }}" class="text-amber-700 font-mono hover:underline">{{ $jo->job_order_number }}</a></td>
                                 <td class="px-4 py-2 text-gray-500">{{ $jo->issue_date->format('d M Y') }}</td>
                                 <td class="px-4 py-2 text-right font-mono">{{ number_format($jo->issued_fine_weight, 3) }}g</td>
                                 <td class="px-4 py-2 text-center"><span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">{{ str_replace('_', ' ', $jo->status) }}</span></td>
@@ -137,7 +181,7 @@
                     <tbody class="divide-y divide-gray-100">
                         @foreach($karigar->invoices as $inv)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-2"><a href="{{ route('karigar-invoices.show', $inv) }}" class="text-teal-700 hover:underline font-mono">{{ $inv->karigar_invoice_number }}</a></td>
+                                <td class="px-4 py-2"><a href="{{ route('karigar-invoices.show', $inv) }}" class="text-amber-700 hover:underline font-mono">{{ $inv->karigar_invoice_number }}</a></td>
                                 <td class="px-4 py-2 text-gray-500">{{ $inv->karigar_invoice_date->format('d M Y') }}</td>
                                 <td class="px-4 py-2 text-right font-mono">₹{{ number_format($inv->total_after_tax, 2) }}</td>
                                 <td class="px-4 py-2 text-center"><span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $inv->payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : ($inv->payment_status === 'partial' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800') }}">{{ $inv->payment_status }}</span></td>

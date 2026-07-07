@@ -392,8 +392,7 @@
             letter-spacing: 0 !important;
         }
 
-        .qb-edit-page .font-bold,
-        .qb-edit-page .font-black {
+        .qb-edit-page .font-bold {
             font-weight: 600 !important;
         }
 
@@ -1038,7 +1037,7 @@
                             </div>
                             <div class="pt-3 flex items-center justify-between border-t border-slate-100">
                                 <span class="text-base font-bold text-slate-900">Grand Total</span>
-                                <span class="text-xl font-black text-slate-900" x-text="currency(totalAmount)"></span>
+                                <span class="text-xl font-bold text-slate-900" x-text="currency(totalAmount)"></span>
                             </div>
                         </div>
 

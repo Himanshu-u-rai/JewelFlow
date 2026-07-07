@@ -405,7 +405,7 @@
             font-size: 20px;
             font-weight: 700;
             line-height: 1.15;
-            letter-spacing: -.01em;
+            letter-spacing: 0;
             font-variant-numeric: tabular-nums;
         }
         .clr-snap-value--accent { color: var(--clr-accent-deep); }
@@ -440,8 +440,8 @@
             margin: 0;
             color: var(--clr-ink);
             font-size: 15px;
-            font-weight: 650;
-            letter-spacing: -.01em;
+            font-weight: 600;
+            letter-spacing: 0;
         }
         .clr-panel-copy {
             margin: 4px 0 0;
@@ -483,7 +483,7 @@
             flex-shrink: 0;
             color: var(--clr-ink);
             font-size: 15px;
-            font-weight: 650;
+            font-weight: 600;
             text-align: right;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
@@ -498,7 +498,7 @@
             margin: 0 0 12px;
             color: var(--clr-ink);
             font-size: 12.5px;
-            font-weight: 650;
+            font-weight: 600;
         }
         .clr-mode-grid {
             display: grid;
@@ -523,7 +523,7 @@
             margin: 0;
             color: var(--clr-ink);
             font-size: 15px;
-            font-weight: 650;
+            font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
 
@@ -549,8 +549,8 @@
             margin: 0;
             color: var(--clr-ink);
             font-size: 14px;
-            font-weight: 650;
-            letter-spacing: -.01em;
+            font-weight: 600;
+            letter-spacing: 0;
         }
         .clr-card-copy {
             margin: 4px 0 0;
@@ -588,7 +588,7 @@
             margin: 4px 0 0;
             color: var(--clr-ink);
             font-size: 15px;
-            font-weight: 650;
+            font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
         .clr-mini-sub {
@@ -606,7 +606,7 @@
             font-size: 30px;
             font-weight: 700;
             line-height: 1.05;
-            letter-spacing: -.02em;
+            letter-spacing: 0;
             font-variant-numeric: tabular-nums;
         }
         .clr-hero-stat .clr-card-copy { margin-top: 8px; }
@@ -622,7 +622,7 @@
         .clr-kv-value {
             color: var(--clr-ink);
             font-size: 15px;
-            font-weight: 650;
+            font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
 
@@ -698,7 +698,7 @@
             font-weight: 500;
             color: var(--clr-muted);
         }
-        .clr-trend-day--active { color: var(--clr-accent-deep); font-weight: 650; }
+        .clr-trend-day--active { color: var(--clr-accent-deep); font-weight: 600; }
 
         .clr-trend-stats {
             display: grid;

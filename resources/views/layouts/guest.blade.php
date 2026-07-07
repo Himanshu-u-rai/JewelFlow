@@ -158,9 +158,9 @@
 
         .left-brand {
             font-size: 34px;
-            font-weight: 800;
+            font-weight: 700;
             color: #fff;
-            letter-spacing: -0.6px;
+            letter-spacing: 0;
             margin: 0 0 10px;
         }
         /* Solid gold emphasis, not gradient-clip text */
@@ -285,9 +285,9 @@
 
         .form-header-brand h1 {
             font-size: 23px;
-            font-weight: 800;
+            font-weight: 700;
             color: var(--ink-900);
-            letter-spacing: -0.4px;
+            letter-spacing: 0;
             margin: 0;
         }
 

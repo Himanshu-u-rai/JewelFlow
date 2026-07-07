@@ -12,14 +12,14 @@
     .pm-eyebrow {
         margin: 0 0 6px;
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 700;
         color: #b45309;
         letter-spacing: 0.12em;
         text-transform: uppercase;
     }
     .pm-page-title {
         font-size: clamp(18px, 2vw, 24px);
-        font-weight: 800;
+        font-weight: 700;
         color: #0f172a;
         margin: 0 0 6px;
         line-height: 1.15;
@@ -46,7 +46,7 @@
     .pm-summary-label {
         display: block;
         font-size: 10px;
-        font-weight: 800;
+        font-weight: 700;
         color: #64748b;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -55,7 +55,7 @@
         display: block;
         margin-top: 4px;
         font-size: 20px;
-        font-weight: 900;
+        font-weight: 700;
         color: #10173a;
         line-height: 1;
     }
@@ -87,7 +87,7 @@
         align-items: center;
         gap: 8px;
         font-size: 14px;
-        font-weight: 800;
+        font-weight: 700;
         color: #0f172a;
     }
     .pm-type-mark {
@@ -127,7 +127,7 @@
     .pm-card-name {
         min-width: 0;
         font-size: 14px;
-        font-weight: 800;
+        font-weight: 700;
         color: #1e293b;
         overflow-wrap: anywhere;
     }
@@ -162,7 +162,7 @@
     }
     .pm-form-title {
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 700;
         color: #0f766e;
         margin: 0 0 12px;
         text-transform: uppercase;
@@ -182,7 +182,7 @@
     }
     .pm-form-label {
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 700;
         color: #475569;
     }
     .pm-form-input {
@@ -234,7 +234,7 @@
     .pm-btn-add {
         flex: 0 0 auto;
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 700;
         color: #0d9488;
         background: #f0fdfa;
         border: 1px solid #99f6e4;
@@ -247,7 +247,7 @@
     .pm-btn-add:hover { background: #ccfbf1; transform: translateY(-1px); }
     .pm-btn-save {
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 700;
         color: #fff;
         background: #0d9488;
         border: none;
@@ -259,7 +259,7 @@
     .pm-btn-save:hover { background: #0f766e; }
     .pm-btn-cancel {
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 700;
         color: #64748b;
         background: #f8fafc;
         border: 1px solid #e2e8f0;
@@ -336,6 +336,89 @@
             flex-direction: column;
         }
         .pm-btn-add { width: 100%; }
+    }
+
+    .settings-shell .pm-section,
+    .settings-shell .pm-card,
+    .settings-shell .pm-summary-card {
+        border-color: #e2e8f0 !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .pm-summary-card,
+    .settings-shell .pm-empty {
+        background: #f8fafc !important;
+    }
+
+    .settings-shell .pm-form {
+        border-color: #f3dcb6 !important;
+        background: #fffaf0 !important;
+    }
+
+    .settings-shell .pm-eyebrow,
+    .settings-shell .pm-form-title {
+        color: #92400e !important;
+        letter-spacing: 0 !important;
+        text-transform: none !important;
+    }
+
+    .settings-shell .pm-type-mark {
+        border-color: #f3dcb6 !important;
+        background: #fff7ed !important;
+        color: #b45309 !important;
+    }
+
+    .settings-shell .pm-form-input,
+    .settings-shell .pm-form-select {
+        border-color: #cbd5e1 !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .pm-form-input:focus,
+    .settings-shell .pm-form-select:focus {
+        border-color: #b45309 !important;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, .18) !important;
+    }
+
+    .settings-shell .pm-btn-save,
+    .settings-shell .pm-btn-add,
+    .settings-shell .pm-toggle.pm-toggle-on {
+        border-color: #b45309 !important;
+        background: #b45309 !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .settings-shell .pm-btn-save:hover,
+    .settings-shell .pm-btn-add:hover {
+        border-color: #92400e !important;
+        background: #92400e !important;
+        transform: none !important;
+    }
+
+    @media (max-width: 520px) {
+        .settings-shell .pm-page-head {
+            margin-bottom: 16px;
+        }
+
+        .settings-shell .pm-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .settings-shell .pm-section-header,
+        .settings-shell .pm-section-body,
+        .settings-shell .pm-card,
+        .settings-shell .pm-form,
+        .settings-shell .pm-edit-form {
+            padding: 12px;
+        }
+
+        .settings-shell .pm-method-actions {
+            justify-content: flex-start;
+            gap: 10px;
+        }
     }
 </style>
 

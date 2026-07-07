@@ -7,7 +7,7 @@
         <x-slot:actions>
             @can('catalog.manage')
             <button onclick="openAddCategoryModal()"
-                class="btn btn-success btn-sm categories-add-btn">
+                class="categories-add-btn inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
@@ -17,6 +17,12 @@
         </x-slot:actions>
     </x-page-header>
 
+    @php
+        $categoryCount = $categories->count();
+        $subCategoryCount = $categories->sum(fn ($category) => $category->subCategories->count());
+        $emptyCategoryCount = $categories->filter(fn ($category) => $category->subCategories->isEmpty())->count();
+    @endphp
+
     <div class="content-inner categories-index-page">
 
         @unless(auth()->user()->can('catalog.manage'))
@@ -24,23 +30,67 @@
         @endunless
 
         @if($categories->isEmpty())
-            <x-empty-state
-                :title="__('No Categories Yet')"
-                :description="__('Create your first category to organize your products')"
-            >
-                <x-slot:action>
-                    @can('catalog.manage')
-                    <button onclick="openAddCategoryModal()" class="btn btn-success btn-sm">
+            <div class="categories-empty-card rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+                <div class="categories-empty-icon mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10"/>
+                    </svg>
+                </div>
+                <h2 class="text-lg font-semibold text-slate-900">{{ __('No Categories Yet') }}</h2>
+                <p class="mx-auto mt-2 max-w-md text-sm text-slate-500">{{ __('Create your first category to organize jewellery stock and sub-categories.') }}</p>
+                @can('catalog.manage')
+                    <button onclick="openAddCategoryModal()" class="categories-primary-action mt-5 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
                         {{ __('Add First Category') }}
                     </button>
-                    @endcan
-                </x-slot:action>
-            </x-empty-state>
+                @endcan
+            </div>
         @else
-            <div id="categories-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 categories-grid">
+            <div class="categories-kpi-grid mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div class="categories-kpi-card rounded-2xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="categories-kpi-icon">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="categories-kpi-label">{{ __('Categories') }}</p>
+                            <p class="categories-kpi-value">{{ number_format($categoryCount) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="categories-kpi-card rounded-2xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="categories-kpi-icon">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="categories-kpi-label">{{ __('Sub-Categories') }}</p>
+                            <p class="categories-kpi-value">{{ number_format($subCategoryCount) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="categories-kpi-card rounded-2xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="categories-kpi-icon categories-kpi-icon--quiet">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M4.93 19h14.14a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.2 16a2 2 0 001.73 3z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="categories-kpi-label">{{ __('Need Setup') }}</p>
+                            <p class="categories-kpi-value">{{ number_format($emptyCategoryCount) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="categories-list" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 categories-grid">
                 @foreach($categories as $category)
                     @include('categories._category-card', ['category' => $category])
                 @endforeach
@@ -49,32 +99,33 @@
     </div>
 
     {{-- ==================== ADD CATEGORY MODAL ==================== --}}
-    <div id="addCategoryModal" class="fixed inset-0 z-50 hidden">
-        <div class="absolute inset-0 bg-black/50" onclick="closeAddCategoryModal()"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
-            <div class="bg-white rounded-2xl shadow-xl">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">{{ __('Add New Category') }}</h3>
+    <div id="addCategoryModal" class="categories-modal fixed inset-0 z-50 hidden">
+        <div class="categories-modal-overlay absolute inset-0 bg-slate-950/55" onclick="closeAddCategoryModal()"></div>
+        <div class="categories-modal-panel absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
+            <div class="categories-modal-card bg-white shadow-xl">
+                <div class="categories-modal-head border-b border-slate-200 px-6 py-4">
+                    <h3 class="text-lg font-semibold text-slate-900">{{ __('Add New Category') }}</h3>
+                    <p class="mt-1 text-sm text-slate-500">{{ __('Create a parent group for jewellery stock.') }}</p>
                 </div>
-                <form method="POST" action="{{ route('categories.store') }}" class="p-6" data-turbo-stream>
+                <form method="POST" action="{{ route('categories.store') }}" class="categories-modal-body p-6" data-turbo-stream>
                     @csrf
                     <input type="hidden" name="_intent" value="add_category">
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Category Name') }} <span class="text-red-500">*</span></label>
+                        <label class="categories-field-label">{{ __('Category Name') }} <span class="text-red-500">*</span></label>
                         <input type="text" name="name" value="{{ old('_intent') === 'add_category' ? old('name') : '' }}" required
-                               class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 @if($errors->has('name') && old('_intent') === 'add_category') border-red-500 @endif"
+                               class="categories-input @if($errors->has('name') && old('_intent') === 'add_category') border-red-500 @endif"
                                placeholder="{{ __('e.g., Rings, Necklaces, Bangles') }}">
                         @if($errors->has('name') && old('_intent') === 'add_category')
                             <p class="mt-1 text-sm text-red-600">{{ $errors->first('name') }}</p>
                         @endif
                     </div>
-                    <div class="flex justify-end gap-3">
+                    <div class="categories-modal-actions flex justify-end gap-3">
                         <button type="button" onclick="closeAddCategoryModal()"
-                                class="btn btn-secondary btn-sm">
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                             {{ __('Cancel') }}
                         </button>
                         <button type="submit"
-                                class="btn btn-success btn-sm">
+                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition">
                             {{ __('Add Category') }}
                         </button>
                     </div>
@@ -84,22 +135,22 @@
     </div>
 
     {{-- ==================== ADD SUB-CATEGORY MODAL ==================== --}}
-    <div id="addSubCategoryModal" class="fixed inset-0 z-50 hidden">
-        <div class="absolute inset-0 bg-black/50" onclick="closeAddSubCategoryModal()"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
-            <div class="bg-white rounded-2xl shadow-xl">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">{{ __('Add Sub-Category') }}</h3>
-                    <p class="text-sm text-gray-500 mt-1">{{ __('Adding to:') }} <span id="parentCategoryName" class="font-medium text-gray-700"></span></p>
+    <div id="addSubCategoryModal" class="categories-modal fixed inset-0 z-50 hidden">
+        <div class="categories-modal-overlay absolute inset-0 bg-slate-950/55" onclick="closeAddSubCategoryModal()"></div>
+        <div class="categories-modal-panel absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
+            <div class="categories-modal-card bg-white shadow-xl">
+                <div class="categories-modal-head border-b border-slate-200 px-6 py-4">
+                    <h3 class="text-lg font-semibold text-slate-900">{{ __('Add Sub-Category') }}</h3>
+                    <p class="text-sm text-slate-500 mt-1">{{ __('Adding to:') }} <span id="parentCategoryName" class="font-semibold text-slate-700"></span></p>
                 </div>
-                <form method="POST" action="{{ route('sub-categories.store') }}" class="p-6">
+                <form method="POST" action="{{ route('sub-categories.store') }}" class="categories-modal-body p-6">
                     @csrf
                     <input type="hidden" name="_intent" value="add_sub_category">
                     <input type="hidden" name="category_id" id="subCategoryCategoryId" value="{{ old('_intent') === 'add_sub_category' ? old('category_id') : '' }}">
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Sub-Category Name') }} <span class="text-red-500">*</span></label>
+                        <label class="categories-field-label">{{ __('Sub-Category Name') }} <span class="text-red-500">*</span></label>
                         <input type="text" name="name" value="{{ old('_intent') === 'add_sub_category' ? old('name') : '' }}" required
-                               class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 @if($errors->has('name') && old('_intent') === 'add_sub_category') border-red-500 @endif"
+                               class="categories-input @if($errors->has('name') && old('_intent') === 'add_sub_category') border-red-500 @endif"
                                placeholder="{{ __('e.g., Daily Wear, Bridal, Traditional') }}">
                         @if($errors->has('name') && old('_intent') === 'add_sub_category')
                             <p class="mt-1 text-sm text-red-600">{{ $errors->first('name') }}</p>
@@ -108,13 +159,13 @@
                             <p class="mt-1 text-sm text-red-600">{{ $errors->first('category_id') }}</p>
                         @endif
                     </div>
-                    <div class="flex justify-end gap-3">
+                    <div class="categories-modal-actions flex justify-end gap-3">
                         <button type="button" onclick="closeAddSubCategoryModal()"
-                                class="btn btn-secondary btn-sm">
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                             {{ __('Cancel') }}
                         </button>
                         <button type="submit"
-                                class="btn btn-success btn-sm">
+                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition">
                             {{ __('Add Sub-Category') }}
                         </button>
                     </div>
@@ -124,34 +175,35 @@
     </div>
 
     {{-- ==================== EDIT CATEGORY MODAL ==================== --}}
-    <div id="editCategoryModal" class="fixed inset-0 z-50 hidden">
-        <div class="absolute inset-0 bg-black/50" onclick="closeEditCategoryModal()"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
-            <div class="bg-white rounded-2xl shadow-xl">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">{{ __('Rename Category') }}</h3>
+    <div id="editCategoryModal" class="categories-modal fixed inset-0 z-50 hidden">
+        <div class="categories-modal-overlay absolute inset-0 bg-slate-950/55" onclick="closeEditCategoryModal()"></div>
+        <div class="categories-modal-panel absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
+            <div class="categories-modal-card bg-white shadow-xl">
+                <div class="categories-modal-head border-b border-slate-200 px-6 py-4">
+                    <h3 class="text-lg font-semibold text-slate-900">{{ __('Rename Category') }}</h3>
+                    <p class="mt-1 text-sm text-slate-500">{{ __('Update parent category name.') }}</p>
                 </div>
-                <form method="POST" id="editCategoryForm" class="p-6">
+                <form method="POST" id="editCategoryForm" class="categories-modal-body p-6">
                     @csrf
                     @method('PUT')
                     <input type="hidden" name="_intent" value="edit_category">
                     <input type="hidden" name="_edit_category_id" id="editCategoryIdInput" value="{{ old('_edit_category_id') }}">
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Category Name') }} <span class="text-red-500">*</span></label>
+                        <label class="categories-field-label">{{ __('Category Name') }} <span class="text-red-500">*</span></label>
                         <input type="text" name="name" id="editCategoryName"
                                value="{{ old('_intent') === 'edit_category' ? old('name') : '' }}" required
-                               class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 @if($errors->has('name') && old('_intent') === 'edit_category') border-red-500 @endif">
+                               class="categories-input @if($errors->has('name') && old('_intent') === 'edit_category') border-red-500 @endif">
                         @if($errors->has('name') && old('_intent') === 'edit_category')
                             <p class="mt-1 text-sm text-red-600">{{ $errors->first('name') }}</p>
                         @endif
                     </div>
-                    <div class="flex justify-end gap-3">
+                    <div class="categories-modal-actions flex justify-end gap-3">
                         <button type="button" onclick="closeEditCategoryModal()"
-                                class="btn btn-secondary btn-sm">
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                             {{ __('Cancel') }}
                         </button>
                         <button type="submit"
-                                class="btn btn-success btn-sm">
+                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition">
                             {{ __('Save Changes') }}
                         </button>
                     </div>
@@ -161,34 +213,35 @@
     </div>
 
     {{-- ==================== EDIT SUB-CATEGORY MODAL ==================== --}}
-    <div id="editSubCategoryModal" class="fixed inset-0 z-50 hidden">
-        <div class="absolute inset-0 bg-black/50" onclick="closeEditSubCategoryModal()"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
-            <div class="bg-white rounded-2xl shadow-xl">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">{{ __('Rename Sub-Category') }}</h3>
+    <div id="editSubCategoryModal" class="categories-modal fixed inset-0 z-50 hidden">
+        <div class="categories-modal-overlay absolute inset-0 bg-slate-950/55" onclick="closeEditSubCategoryModal()"></div>
+        <div class="categories-modal-panel absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
+            <div class="categories-modal-card bg-white shadow-xl">
+                <div class="categories-modal-head border-b border-slate-200 px-6 py-4">
+                    <h3 class="text-lg font-semibold text-slate-900">{{ __('Rename Sub-Category') }}</h3>
+                    <p class="mt-1 text-sm text-slate-500">{{ __('Update category detail name.') }}</p>
                 </div>
-                <form method="POST" id="editSubCategoryForm" class="p-6">
+                <form method="POST" id="editSubCategoryForm" class="categories-modal-body p-6">
                     @csrf
                     @method('PUT')
                     <input type="hidden" name="_intent" value="edit_sub_category">
                     <input type="hidden" name="_edit_sub_id" id="editSubIdInput" value="{{ old('_edit_sub_id') }}">
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Sub-Category Name') }} <span class="text-red-500">*</span></label>
+                        <label class="categories-field-label">{{ __('Sub-Category Name') }} <span class="text-red-500">*</span></label>
                         <input type="text" name="name" id="editSubCategoryName"
                                value="{{ old('_intent') === 'edit_sub_category' ? old('name') : '' }}" required
-                               class="w-full rounded-lg border-gray-300 focus:ring-amber-500 focus:border-amber-500 @if($errors->has('name') && old('_intent') === 'edit_sub_category') border-red-500 @endif">
+                               class="categories-input @if($errors->has('name') && old('_intent') === 'edit_sub_category') border-red-500 @endif">
                         @if($errors->has('name') && old('_intent') === 'edit_sub_category')
                             <p class="mt-1 text-sm text-red-600">{{ $errors->first('name') }}</p>
                         @endif
                     </div>
-                    <div class="flex justify-end gap-3">
+                    <div class="categories-modal-actions flex justify-end gap-3">
                         <button type="button" onclick="closeEditSubCategoryModal()"
-                                class="btn btn-secondary btn-sm">
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                             {{ __('Cancel') }}
                         </button>
                         <button type="submit"
-                                class="btn btn-success btn-sm">
+                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition">
                             {{ __('Save Changes') }}
                         </button>
                     </div>
@@ -201,12 +254,34 @@
         const categoryBaseUrl  = @js(url('categories'));
         const subBaseUrl       = @js(url('sub-categories'));
 
+        function showCategoryModal(id, focusSelector = 'input[name="name"]') {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            document.body.classList.add('categories-modal-open');
+            window.setTimeout(() => {
+                const input = modal.querySelector(focusSelector);
+                if (!input) return;
+                input.focus();
+                if (input.select) input.select();
+            }, 30);
+        }
+
+        function hideCategoryModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('hidden');
+            if (!document.querySelector('.categories-modal:not(.hidden)')) {
+                document.body.classList.remove('categories-modal-open');
+            }
+        }
+
         // ---- Add Category ----
         function openAddCategoryModal() {
-            document.getElementById('addCategoryModal').classList.remove('hidden');
+            showCategoryModal('addCategoryModal');
         }
         function closeAddCategoryModal() {
-            document.getElementById('addCategoryModal').classList.add('hidden');
+            hideCategoryModal('addCategoryModal');
         }
 
         // ---- Add Sub-Category ----
@@ -214,10 +289,10 @@
         function openAddSubCategoryModal(categoryId, categoryName) {
             document.getElementById('subCategoryCategoryId').value = categoryId;
             document.getElementById('parentCategoryName').textContent = categoryName;
-            document.getElementById('addSubCategoryModal').classList.remove('hidden');
+            showCategoryModal('addSubCategoryModal');
         }
         function closeAddSubCategoryModal() {
-            document.getElementById('addSubCategoryModal').classList.add('hidden');
+            hideCategoryModal('addSubCategoryModal');
         }
 
         // ---- Edit Category ----
@@ -225,11 +300,10 @@
             document.getElementById('editCategoryForm').action = categoryBaseUrl + '/' + id;
             document.getElementById('editCategoryIdInput').value = id;
             document.getElementById('editCategoryName').value = name;
-            document.getElementById('editCategoryModal').classList.remove('hidden');
-            document.getElementById('editCategoryName').focus();
+            showCategoryModal('editCategoryModal', '#editCategoryName');
         }
         function closeEditCategoryModal() {
-            document.getElementById('editCategoryModal').classList.add('hidden');
+            hideCategoryModal('editCategoryModal');
         }
 
         // ---- Edit Sub-Category ----
@@ -237,11 +311,10 @@
             document.getElementById('editSubCategoryForm').action = subBaseUrl + '/' + id;
             document.getElementById('editSubIdInput').value = id;
             document.getElementById('editSubCategoryName').value = name;
-            document.getElementById('editSubCategoryModal').classList.remove('hidden');
-            document.getElementById('editSubCategoryName').focus();
+            showCategoryModal('editSubCategoryModal', '#editSubCategoryName');
         }
         function closeEditSubCategoryModal() {
-            document.getElementById('editSubCategoryModal').classList.add('hidden');
+            hideCategoryModal('editSubCategoryModal');
         }
 
         // ---- Escape key closes any open modal ----
@@ -286,6 +359,7 @@
         function initCategoriesPage() {
             const page = document.querySelector('.categories-index-page');
             if (!page) return;
+            document.body.classList.remove('categories-modal-open');
 
             @php $intent = old('_intent'); @endphp
 

@@ -1,15 +1,16 @@
 <x-app-layout>
     <style>
         .vendors-create-page {
-            --vendors-create-border: #d8e1ef;
-            --vendors-create-border-strong: #c8d5e7;
+            --vendors-create-border: #e2e8f0;
+            --vendors-create-border-strong: #cbd5e1;
             --vendors-create-surface: #ffffff;
-            --vendors-create-surface-soft: #f7f9fc;
-            --vendors-create-text: #16213d;
+            --vendors-create-surface-soft: #f8fafc;
+            --vendors-create-text: #0f172a;
             --vendors-create-text-soft: #64748b;
-            --vendors-create-accent: #0d9488;
-            --vendors-create-accent-soft: rgba(13, 148, 136, 0.1);
-            --vendors-create-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+            --vendors-create-accent: #b45309;
+            --vendors-create-accent-hover: #92400e;
+            --vendors-create-accent-soft: #fff7ed;
+            --vendors-create-shadow: none;
         }
 
         .vendors-create-page .vendors-create-shell {
@@ -20,7 +21,7 @@
         .vendors-create-page .vendors-create-intro,
         .vendors-create-page .vendors-create-card {
             border: 1px solid var(--vendors-create-border);
-            border-radius: 24px;
+            border-radius: 16px;
             background: var(--vendors-create-surface);
             box-shadow: var(--vendors-create-shadow);
         }
@@ -66,9 +67,9 @@
             min-height: 36px;
             padding: 0 14px;
             border-radius: 999px;
-            border: 1px solid rgba(13, 148, 136, 0.16);
+            border: 1px solid #f3dcb6;
             background: var(--vendors-create-accent-soft);
-            color: #0f766e;
+            color: var(--vendors-create-accent);
             font-size: 12px;
             font-weight: 700;
             white-space: nowrap;
@@ -108,8 +109,8 @@
         }
 
         .vendors-create-page .vendors-create-section {
-            border: 1px solid #e7edf6;
-            border-radius: 22px;
+            border: 1px solid var(--vendors-create-border);
+            border-radius: 14px;
             background: #fbfcfe;
             padding: 22px;
             min-width: 0;
@@ -188,7 +189,7 @@
         .vendors-create-page .vendors-create-textarea {
             display: block;
             width: 100%;
-            border-radius: 16px;
+            border-radius: 12px;
             border: 1px solid var(--vendors-create-border-strong);
             background: var(--vendors-create-surface-soft);
             color: var(--vendors-create-text);
@@ -217,9 +218,9 @@
         .vendors-create-page .vendors-create-input:focus,
         .vendors-create-page .vendors-create-textarea:focus {
             outline: none;
-            border-color: rgba(13, 148, 136, 0.45);
+            border-color: rgba(245, 158, 11, 0.58);
             background: #fff;
-            box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
         }
 
         .vendors-create-page .vendors-create-input.is-error,
@@ -252,17 +253,17 @@
             justify-content: center;
             min-height: 46px;
             padding: 0 18px;
-            border-radius: 16px;
+            border-radius: 12px;
             border: 1px solid var(--vendors-create-border);
             font-size: 14px;
             font-weight: 700;
             text-decoration: none;
-            transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
             white-space: nowrap;
         }
 
         .vendors-create-page .vendors-create-btn:hover {
-            transform: translateY(-1px);
+            transform: none;
         }
 
         .vendors-create-page .vendors-create-btn--ghost {
@@ -271,19 +272,21 @@
         }
 
         .vendors-create-page .vendors-create-btn--ghost:hover {
-            background: var(--vendors-create-surface-soft);
+            border-color: #f3dcb6;
+            background: #fff7ed;
+            color: var(--vendors-create-accent-hover);
         }
 
         .vendors-create-page .vendors-create-btn--primary {
             border-color: var(--vendors-create-accent);
             background: var(--vendors-create-accent);
             color: #fff;
-            box-shadow: 0 12px 24px rgba(13, 148, 136, 0.16);
+            box-shadow: none;
         }
 
         .vendors-create-page .vendors-create-btn--primary:hover {
-            background: #0f766e;
-            border-color: #0f766e;
+            background: var(--vendors-create-accent-hover);
+            border-color: var(--vendors-create-accent-hover);
         }
 
         @media (max-width: 1100px) {

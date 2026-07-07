@@ -10,9 +10,9 @@
         --kf-ink: #0f172a;
         --kf-ink-2: #3d4861;
         --kf-muted: #6a7588;
-        --kf-accent: #0d9488;
-        --kf-accent-deep: #0f766e;
-        --kf-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 12px 28px -16px rgba(16, 24, 40, .16);
+        --kf-accent: #b45309;
+        --kf-accent-deep: #b45309;
+        --kf-shadow: none;
         --kf-ease: cubic-bezier(0.23, 1, 0.32, 1);
         max-width: 1180px;
     }
@@ -22,14 +22,6 @@
         border-radius: 16px;
         background: #ffffff;
         box-shadow: var(--kf-shadow);
-    }
-
-    @media (prefers-reduced-motion: no-preference) {
-        .kf-card { animation: kfRise .5s var(--kf-ease) both; }
-        @keyframes kfRise {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
     }
 
     .kf-form { padding: 24px 26px; }
@@ -51,7 +43,7 @@
         border-top: 1px solid var(--kf-border-soft);
         color: var(--kf-ink);
         font-size: 12.5px;
-        font-weight: 650;
+        font-weight: 600;
     }
 
     .kf-group--first {
@@ -76,7 +68,7 @@
         width: 100%;
         border: 1px solid var(--kf-border-strong);
         border-radius: 12px;
-        background: #f4f6fa;
+        background: #fbfcfe;
         color: var(--kf-ink);
         font-size: 14px;
         min-height: 44px;
@@ -95,7 +87,7 @@
     .kf-input:focus {
         border-color: var(--kf-accent-deep);
         background: #ffffff;
-        box-shadow: 0 0 0 3px rgba(15, 118, 110, .13);
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, .16);
         outline: none;
     }
 
@@ -132,13 +124,13 @@
         padding: 10px 18px;
         color: #ffffff;
         font-size: 14px;
-        font-weight: 650;
-        box-shadow: 0 1px 2px rgba(15, 118, 110, .22);
+        font-weight: 600;
+        box-shadow: none;
         cursor: pointer;
         transition: background-color .16s var(--kf-ease), transform .16s var(--kf-ease);
     }
 
-    .kf-submit:hover { background: #115e56; }
+    .kf-submit:hover { background: #92400e; }
     .kf-submit:active { transform: scale(.98); }
 
     .kf-cancel {

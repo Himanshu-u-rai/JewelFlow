@@ -4,29 +4,30 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Payment - JewelFlow</title>
+    <title>Payment - JewelFlows</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         :root {
-            --pay-bg: #f4f7fb;
+            --pay-bg: #f8f3e8;
             --pay-surface: #ffffff;
-            --pay-surface-soft: #eef3f9;
-            --pay-border: #d8e2ee;
-            --pay-ink: #1f2a37;
-            --pay-muted: #64748b;
-            --pay-accent: #0f766e;
-            --pay-accent-soft: #d9f3ee;
+            --pay-surface-soft: #fff8ec;
+            --pay-border: #eadcc8;
+            --pay-ink: #221f1a;
+            --pay-muted: #756b5d;
+            --pay-accent: #b45309;
+            --pay-accent-strong: #92400e;
+            --pay-accent-soft: #fff0cf;
             --pay-warning-bg: #fff7e6;
             --pay-warning-border: #f4c770;
             --pay-warning-ink: #a16207;
             --pay-danger-bg: #fff1f2;
             --pay-danger-border: #fca5a5;
             --pay-danger-ink: #b91c1c;
-            --pay-radius-lg: 20px;
-            --pay-radius-md: 14px;
-            --pay-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+            --pay-radius-lg: 10px;
+            --pay-radius-md: 8px;
+            --pay-shadow: 0 18px 48px rgba(72, 51, 22, 0.09);
         }
 
         * {
@@ -35,7 +36,9 @@
 
         .sub-pay-body {
             margin: 0;
-            background: var(--pay-bg);
+            background:
+                radial-gradient(90% 48% at 50% -12%, rgba(245, 158, 11, 0.18), transparent 62%),
+                linear-gradient(180deg, #fbf8f1 0%, var(--pay-bg) 100%);
             color: var(--pay-ink);
             font-family: 'Plus Jakarta Sans', sans-serif;
             min-height: 100vh;
@@ -72,7 +75,7 @@
             background: #fff9ee;
             color: #b45309;
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: 0.18em;
         }
 
@@ -80,7 +83,14 @@
             font-size: 18px;
             font-weight: 800;
             color: var(--pay-ink);
-            letter-spacing: 0.01em;
+            letter-spacing: 0;
+        }
+
+        .sub-pay-brand-title span {
+            background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .sub-pay-brand-subtitle {
@@ -95,6 +105,26 @@
             color: #475569;
             text-transform: uppercase;
             letter-spacing: 0.08em;
+        }
+
+        .sub-pay-logout {
+            min-height: 38px;
+            background: transparent;
+            border: 0;
+            border-bottom: 1px solid transparent;
+            border-radius: 0;
+            padding: 8px 2px;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            color: #6f6253;
+            cursor: pointer;
+            transition: border-color .16s ease, color .16s ease;
+        }
+
+        .sub-pay-logout:hover {
+            border-color: var(--pay-accent-strong);
+            color: var(--pay-accent-strong);
         }
 
         .sub-pay-shell {
@@ -119,12 +149,12 @@
             border: 1px solid var(--pay-border);
             border-radius: var(--pay-radius-lg);
             box-shadow: var(--pay-shadow);
-            padding: 26px;
+            padding: 28px;
         }
 
         .sub-pay-title {
             font-size: 18px;
-            font-weight: 800;
+            font-weight: 700;
             color: var(--pay-ink);
             margin-bottom: 16px;
         }
@@ -132,9 +162,15 @@
         .sub-pay-plan-name {
             font-size: 26px;
             line-height: 1.2;
-            font-weight: 800;
+            font-weight: 700;
             margin-bottom: 10px;
             color: #0f172a;
+        }
+
+        .sub-pay-plan-meta {
+            color: var(--pay-muted);
+            font-size: 13px;
+            line-height: 1.45;
         }
 
         .sub-pay-cycle-badge {
@@ -144,20 +180,37 @@
             padding: 6px 12px;
             border-radius: 999px;
             background: var(--pay-accent-soft);
-            color: #0f5e58;
+            color: var(--pay-accent-strong);
             font-size: 11px;
-            font-weight: 800;
+            font-weight: 600;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             margin-bottom: 16px;
         }
 
+        .sub-pay-amount-panel {
+            border: 1px solid #f0d7ab;
+            border-radius: var(--pay-radius-lg);
+            background: linear-gradient(180deg, #fffcf6 0%, #fff7e7 100%);
+            padding: 18px;
+            margin-top: 18px;
+        }
+
+        .sub-pay-amount-label {
+            color: var(--pay-muted);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
         .sub-pay-price {
             font-size: clamp(34px, 4vw, 44px);
-            font-weight: 800;
+            font-weight: 700;
             line-height: 1;
-            color: var(--pay-accent);
-            margin-bottom: 10px;
+            color: var(--pay-ink);
+            margin-bottom: 8px;
         }
 
         .sub-pay-caption {
@@ -179,6 +232,38 @@
             color: #475569;
         }
 
+        .sub-pay-details {
+            display: grid;
+            gap: 0;
+            margin: 18px 0 0;
+        }
+
+        .sub-pay-detail-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 13px 0;
+            border-bottom: 1px solid #f0e5d5;
+            font-size: 13.5px;
+            line-height: 1.4;
+        }
+
+        .sub-pay-detail-row:first-child {
+            border-top: 1px solid #f0e5d5;
+        }
+
+        .sub-pay-detail-row dt {
+            margin: 0;
+            color: var(--pay-muted);
+        }
+
+        .sub-pay-detail-row dd {
+            margin: 0;
+            color: var(--pay-ink);
+            font-weight: 600;
+            text-align: right;
+        }
+
         .sub-pay-trial-note {
             background: var(--pay-warning-bg);
             border: 1px solid var(--pay-warning-border);
@@ -190,44 +275,22 @@
             margin-bottom: 16px;
         }
 
-        .sub-pay-feature-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: grid;
-            gap: 8px;
+        .sub-pay-legal {
+            border: 1px solid #e8dccb;
+            border-radius: var(--pay-radius-md);
+            background: #fffdf8;
+            padding: 14px;
+            margin-top: 18px;
+            color: #5f5548;
+            font-size: 12.5px;
+            line-height: 1.65;
         }
 
-        .sub-pay-feature-list li {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-height: 32px;
-            border-radius: 10px;
-            padding: 6px 8px;
+        .sub-pay-legal strong {
+            display: block;
+            color: var(--pay-ink);
             font-size: 13px;
-            color: #334155;
-            background: #f8fbff;
-            border: 1px solid #ebf1f8;
-        }
-
-        .sub-pay-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 999px;
-            background: var(--pay-accent);
-            flex-shrink: 0;
-        }
-
-        .sub-pay-feature-list strong {
-            color: #0f172a;
-        }
-
-        .sub-pay-trust {
-            margin-top: 16px;
-            font-size: 12px;
-            color: #64748b;
-            line-height: 1.7;
+            margin-bottom: 4px;
         }
 
         .sub-pay-powered {
@@ -257,34 +320,25 @@
             color: #334155;
         }
 
-        .sub-pay-test-box {
-            background: var(--pay-warning-bg);
-            border: 1px solid var(--pay-warning-border);
-            color: var(--pay-warning-ink);
-            border-radius: var(--pay-radius-md);
-            padding: 12px 13px;
-            font-size: 13px;
-            line-height: 1.62;
-            margin-bottom: 16px;
-        }
-
         .sub-pay-cta {
             width: 100%;
-            min-height: 54px;
-            border-radius: 14px;
-            border: 1px solid #0d675f;
-            background: #0f766e;
+            min-height: 52px;
+            border-radius: 10px;
+            border: 1px solid #16130f;
+            background: #16130f;
             color: #ffffff;
-            font-size: 16px;
+            font-size: 15.5px;
             font-weight: 700;
-            letter-spacing: 0.01em;
+            letter-spacing: 0;
             cursor: pointer;
-            transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+            box-shadow: 0 14px 26px -20px rgba(22, 19, 15, 0.9);
+            transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
         }
 
         .sub-pay-cta:hover {
-            background: #0d665f;
-            box-shadow: 0 8px 18px rgba(15, 118, 110, 0.24);
+            background: #2b2118;
+            border-color: #2b2118;
+            box-shadow: 0 16px 28px -18px rgba(22, 19, 15, 0.85);
             transform: translateY(-1px);
         }
 
@@ -307,29 +361,35 @@
         }
 
         .sub-pay-change {
-            margin-top: 18px;
+            margin-top: 14px;
         }
 
         .sub-pay-change-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 38px;
-            padding: 8px 14px;
-            border-radius: 10px;
-            border: 1px solid #c9d6e6;
-            background: #f8fbff;
-            color: #1e3a5f;
+            min-height: 36px;
+            padding: 7px 2px;
+            border: 0;
+            border-bottom: 1px solid transparent;
+            background: transparent;
+            color: #6f6253;
             font-size: 13px;
             font-weight: 700;
             text-decoration: none;
-            transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+            transition: border-color 0.16s ease, color 0.16s ease;
         }
 
         .sub-pay-change-btn:hover {
-            background: #ecf4ff;
-            border-color: #b9cce2;
-            color: #0f2f54;
+            border-color: var(--pay-accent-strong);
+            color: var(--pay-accent-strong);
+        }
+
+        .sub-pay-logout:focus-visible,
+        .sub-pay-cta:focus-visible,
+        .sub-pay-change-btn:focus-visible {
+            outline: 3px solid rgba(245, 158, 11, 0.28);
+            outline-offset: 3px;
         }
 
         @media (max-width: 1023px) {
@@ -362,14 +422,15 @@
         @media (max-width: 640px) {
             .sub-pay-topbar-inner {
                 padding: 14px 12px;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
+                flex-direction: row;
+                align-items: center;
+                gap: 14px;
             }
 
             .sub-pay-step {
                 font-size: 11px;
                 letter-spacing: 0.05em;
+                margin-left: auto;
             }
 
             .sub-pay-brand-title {
@@ -378,14 +439,6 @@
 
             .sub-pay-card {
                 border-radius: 16px;
-            }
-
-            .sub-pay-change-btn {
-                width: 100%;
-            }
-
-            .sub-pay-feature-list li {
-                font-size: 12px;
             }
 
             .sub-pay-method-chip {
@@ -398,49 +451,84 @@
                 font-size: 15px;
             }
         }
+
+        @media (max-width: 360px) {
+            .sub-pay-card {
+                padding: 22px 18px;
+            }
+
+            .sub-pay-detail-row {
+                display: grid;
+                gap: 4px;
+            }
+
+            .sub-pay-detail-row dd {
+                text-align: left;
+            }
+        }
     </style>
 </head>
 <body class="sub-pay-body ops-treatment-page">
     <header class="sub-pay-topbar">
         <div class="sub-pay-topbar-inner">
             <div class="sub-pay-brand">
-                <div class="sub-pay-logo">JF</div>
                 <div>
-                    <div class="sub-pay-brand-title">JewelFlow</div>
-                    <div class="sub-pay-brand-subtitle">Subscription onboarding</div>
+                    <div class="sub-pay-brand-title">Jewel<span>Flows</span></div>
+                    <div class="sub-pay-brand-subtitle">Secure subscription checkout</div>
                 </div>
             </div>
             <div class="sub-pay-step" style="display:flex;align-items:center;gap:18px;">
-                <span>Step 3 of 3 - Payment</span>
                 {{-- Always allow an escape back to login. --}}
                 <form method="POST" action="{{ route('logout') }}" style="margin:0;">
                     @csrf
-                    <button type="submit" style="background:none;border:0;padding:0;font:inherit;font-weight:600;color:#b45309;cursor:pointer;text-decoration:underline;">{{ __('Log out') }}</button>
+                    <button type="submit" class="sub-pay-logout">{{ __('Log out') }}</button>
                 </form>
             </div>
         </div>
     </header>
 
     <main class="sub-pay-shell">
+        @php
+            $cycleLabel = $billingCycle === 'yearly' ? 'Annual' : 'Monthly';
+            $renewalDate = $billingCycle === 'yearly' ? now()->addYear()->format('d M Y') : now()->addMonth()->format('d M Y');
+            $shopTypeLabel = ucfirst((string) ($shopType ?? 'business'));
+        @endphp
         <div class="sub-pay-grid">
             <section class="sub-pay-card sub-pay-card-summary" aria-label="Order summary">
-                <div class="sub-pay-title">Order Summary</div>
+                <div class="sub-pay-title">Subscription invoice</div>
                 <div class="sub-pay-plan-name">{{ $plan->name }}</div>
-                <div class="sub-pay-cycle-badge">{{ $billingCycle === 'yearly' ? 'Annual' : 'Monthly' }}</div>
+                <div class="sub-pay-plan-meta">{{ $shopTypeLabel }} account access</div>
+                <div class="sub-pay-cycle-badge">{{ $cycleLabel }} billing</div>
 
-                <div class="sub-pay-price">₹{{ number_format($price, 0) }}</div>
-                @if($billingCycle === 'yearly')
-                    <p class="sub-pay-caption">Billed as ₹{{ number_format($price, 0) }}/year</p>
-                    <p class="sub-pay-caption">Equivalent to ₹{{ number_format($price / 12, 0) }}/month</p>
-                @else
-                    <p class="sub-pay-caption">Billed monthly</p>
-                @endif
+                <div class="sub-pay-amount-panel">
+                    <div class="sub-pay-amount-label">Amount payable</div>
+                    <div class="sub-pay-price">₹{{ number_format($price, 0) }}</div>
+                    @if($billingCycle === 'yearly')
+                        <p class="sub-pay-caption">₹{{ number_format($price, 0) }} billed once per year</p>
+                        <p class="sub-pay-caption">Equivalent to ₹{{ number_format($price / 12, 0) }}/month</p>
+                    @else
+                        <p class="sub-pay-caption">Billed monthly until cancelled</p>
+                    @endif
+                </div>
 
-                <div class="sub-pay-divider"></div>
-
-                <p class="sub-pay-renew">
-                    Renews: {{ $billingCycle === 'yearly' ? now()->addYear()->format('d M Y') : now()->addMonth()->format('d M Y') }}
-                </p>
+                <dl class="sub-pay-details">
+                    <div class="sub-pay-detail-row">
+                        <dt>Billing cycle</dt>
+                        <dd>{{ $cycleLabel }}</dd>
+                    </div>
+                    <div class="sub-pay-detail-row">
+                        <dt>Renews on</dt>
+                        <dd>{{ $renewalDate }}</dd>
+                    </div>
+                    <div class="sub-pay-detail-row">
+                        <dt>Plan activation</dt>
+                        <dd>After successful payment</dd>
+                    </div>
+                    <div class="sub-pay-detail-row">
+                        <dt>Payment processor</dt>
+                        <dd>Razorpay</dd>
+                    </div>
+                </dl>
 
                 @if(($plan->trial_days ?? 0) > 0)
                     <div class="sub-pay-trial-note">
@@ -448,39 +536,15 @@
                     </div>
                 @endif
 
-                @php
-                    $planFeatures = $plan->features ?? [];
-                    if (is_string($planFeatures)) {
-                        $planFeatures = json_decode($planFeatures, true) ?? [];
-                    }
-                @endphp
-                <ul class="sub-pay-feature-list">
-                    @foreach($planFeatures as $key => $value)
-                        @if((is_bool($value) && $value) || !is_bool($value))
-                            <li>
-                                <span class="sub-pay-dot" aria-hidden="true"></span>
-                                @if(!is_bool($value))
-                                    @if($key === 'max_items' && (int) $value === -1)
-                                        <strong>Unlimited</strong>&nbsp;Items
-                                    @else
-                                        Up to <strong>{{ $value }}</strong>&nbsp;{{ $featureLabels[$key] ?? $key }}
-                                    @endif
-                                @else
-                                    {{ $featureLabels[$key] ?? $key }}
-                                @endif
-                            </li>
-                        @endif
-                    @endforeach
-                </ul>
-
-                <div class="sub-pay-trust">
-                    256-bit SSL | Razorpay secured | PCI DSS Level 1
+                <div class="sub-pay-legal">
+                    <strong>Payment note</strong>
+                    Your subscription starts only after Razorpay confirms the payment. JewelFlows does not store card, UPI, or banking credentials.
                 </div>
             </section>
 
             <section class="sub-pay-card sub-pay-card-payment" aria-label="Payment section">
-                <div class="sub-pay-title">Complete Payment</div>
-                <div class="sub-pay-powered">Powered by Razorpay</div>
+                <div class="sub-pay-title">Pay securely</div>
+                <div class="sub-pay-powered">Complete checkout with Razorpay.</div>
 
                 <div class="sub-pay-methods" aria-label="Supported payment methods">
                     @foreach(['UPI', 'Cards', 'Net Banking', 'Wallets'] as $method)
@@ -488,17 +552,8 @@
                     @endforeach
                 </div>
 
-                @if($isTestMode)
-                    <div class="sub-pay-test-box">
-                        <strong>Test Mode Active</strong><br>
-                        Use card: 4111 1111 1111 1111<br>
-                        CVV: any 3 digits | Expiry: any future date<br>
-                        UPI: success@razorpay
-                    </div>
-                @endif
-
-                <button id="pay-btn" type="button" class="sub-pay-cta">
-                    Pay ₹{{ number_format($price, 0) }} →
+                <button id="pay-btn" type="button" class="sub-pay-cta" data-label="Pay ₹{{ number_format($price, 0) }}">
+                    Pay ₹{{ number_format($price, 0) }}
                 </button>
 
                 <div id="pay-error" class="sub-pay-error"></div>
@@ -511,7 +566,7 @@
                 </form>
 
                 <div class="sub-pay-change">
-                    <a href="{{ route('subscription.plans') }}" class="sub-pay-change-btn">← Change plan</a>
+                    <a href="{{ route('subscription.plans') }}" class="sub-pay-change-btn">Change plan</a>
                 </div>
             </section>
         </div>
@@ -522,8 +577,9 @@
         document.getElementById('pay-btn').addEventListener('click', async function () {
             const btn = this;
             const errorBox = document.getElementById('pay-error');
+            const payLabel = btn.dataset.label || 'Pay ₹{{ number_format($price, 0) }}';
             btn.disabled = true;
-            btn.textContent = 'Initiating secure payment...';
+            btn.textContent = 'Opening Razorpay...';
             errorBox.style.display = 'none';
 
             try {
@@ -548,7 +604,7 @@
                     amount: data.amount,
                     currency: data.currency,
                     order_id: data.order_id,
-                    name: 'JewelFlow',
+                    name: 'JewelFlows',
                     description: data.plan_name,
                     prefill: {
                         name: data.user_name,
@@ -565,7 +621,7 @@
                     modal: {
                         ondismiss: function () {
                             btn.disabled = false;
-                            btn.textContent = 'Pay ₹{{ number_format($price, 0) }} →';
+                            btn.textContent = payLabel;
                         }
                     }
                 };
@@ -576,7 +632,7 @@
                 errorBox.textContent = err.message;
                 errorBox.style.display = 'block';
                 btn.disabled = false;
-                btn.textContent = 'Pay ₹{{ number_format($price, 0) }} →';
+                btn.textContent = payLabel;
             }
         });
     </script>

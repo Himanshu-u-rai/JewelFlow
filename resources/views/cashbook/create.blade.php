@@ -240,9 +240,9 @@
             margin: 0;
             color: var(--cbf-ink);
             font-size: 18px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.2;
-            letter-spacing: -0.15px;
+            letter-spacing: 0;
         }
         .cbf-copy {
             margin: 4px 0 0;
@@ -446,7 +446,7 @@
             display: block;
             color: var(--cbf-ink);
             font-size: 14px;
-            font-weight: 650;
+            font-weight: 600;
             line-height: 1.15;
         }
         .cbf-type-sub {
