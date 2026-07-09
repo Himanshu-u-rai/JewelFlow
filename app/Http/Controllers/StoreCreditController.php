@@ -120,12 +120,16 @@ class StoreCreditController extends Controller
 
                 // 2. Record an InvoicePayment with mode='wallet' so the invoice's
                 //    outstanding balance reflects the application.
+                // NB: invoice_payments has no operator column — attribution lives
+                // on the invoice's user_id. Passing a nonexistent `received_by`
+                // key here threw a QueryException that the catch below swallowed
+                // into a soft error redirect, silently rolling back the whole
+                // redemption (the P1: 200 response, nothing applied).
                 InvoicePayment::record([
                     'shop_id'    => $shopId,
                     'invoice_id' => $invoice->id,
                     'mode'       => InvoicePayment::MODE_WALLET,
                     'amount'     => $amount,
-                    'received_by' => auth()->id(),
                     'note'       => 'Applied from store credit wallet',
                 ]);
             });
