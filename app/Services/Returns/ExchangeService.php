@@ -161,6 +161,38 @@ class ExchangeService
                 ]);
             }
 
+            // Settle the new invoice's PAYMENT LEDGER too — cashbook alone left the
+            // invoice showing Unpaid in Payment Reconciliation (collected = Σ
+            // invoice_payments). Split the settlement so Σ payments == invoice.total:
+            //   - exchange credit (MODE_OTHER): returned CN value applied to the new
+            //     sale, clamped to the invoice total (min → never over-pays on a refund).
+            //   - cash (MODE_CASH): only the customer-paid difference (0 when the shop
+            //     refunds). This matches the single net cash entry above — no double count,
+            //     no fake cash for the internal credit. Uses 'other' (not a new mode) to
+            //     avoid touching the invoice_payments.mode CHECK constraint.
+            $invTotal      = round((float) $newInvoice->total, 2);
+            $creditApplied = round(min((float) $cn->total, $invTotal), 2);
+            $cashPaid      = round($invTotal - $creditApplied, 2);
+
+            if ($creditApplied > 0.005) {
+                \App\Models\InvoicePayment::record([
+                    'shop_id'    => $originalInvoice->shop_id,
+                    'invoice_id' => $newInvoice->id,
+                    'mode'       => \App\Models\InvoicePayment::MODE_OTHER,
+                    'amount'     => $creditApplied,
+                    'note'       => "Exchange credit — CN {$cn->credit_note_number} applied to {$newInvoice->invoice_number}",
+                ]);
+            }
+            if ($cashPaid > 0.005) {
+                \App\Models\InvoicePayment::record([
+                    'shop_id'    => $originalInvoice->shop_id,
+                    'invoice_id' => $newInvoice->id,
+                    'mode'       => \App\Models\InvoicePayment::MODE_CASH,
+                    'amount'     => $cashPaid,
+                    'note'       => "Exchange #{$exchange->id}: customer paid difference",
+                ]);
+            }
+
             try {
                 AuditLog::create([
                     'shop_id'     => $exchange->shop_id,
