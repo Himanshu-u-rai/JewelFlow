@@ -13,6 +13,9 @@
 
 <form method="POST" action="{{ route('admin.login.store') }}" class="admin-auth-form">
             @csrf
+            @error('mobile_number')
+                <div role="alert" class="mt-4 rounded-md border border-rose-700 bg-rose-900/40 text-rose-200 text-sm px-3 py-2">{{ $message }}</div>
+            @enderror
             <div>
                 <label class="admin-auth-label">Mobile Number</label>
                 <input type="text" name="mobile_number" value="{{ old('mobile_number') }}" maxlength="10" required
