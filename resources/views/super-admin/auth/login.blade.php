@@ -4,42 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Admin Login</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/super-admin.css', 'resources/js/app.js'])
 </head>
-<body style="min-height:100vh;background:#0b1020;color:#e2e8f0;display:flex;align-items:center;justify-content:center;padding:16px;">
-    <div style="width:100%;max-width:420px;border:1px solid #1e293b;background:#0f172a;border-radius:12px;padding:24px;">
-        <h1 class="text-xl font-semibold">JewelFlow Super Admin</h1>
-        <p class="text-sm text-slate-400 mt-1">Platform control tower login</p>
+<body class="admin-auth-shell">
+    <div class="admin-auth-card">
+        <h1 class="admin-auth-title">JewelFlow Super Admin</h1>
+        <p class="admin-auth-copy">Platform control tower login</p>
 
-<form method="POST" action="{{ route('admin.login.store') }}" class="mt-5 space-y-4">
+<form method="POST" action="{{ route('admin.login.store') }}" class="admin-auth-form">
             @csrf
             <div>
-                <label class="block text-sm mb-1">Mobile Number</label>
+                <label class="admin-auth-label">Mobile Number</label>
                 <input type="text" name="mobile_number" value="{{ old('mobile_number') }}" maxlength="10" required
-                       class="w-full rounded-md border border-slate-700 bg-slate-800 text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                       class="admin-auth-input">
             </div>
             <div>
-                <label class="block text-sm mb-1">Password</label>
+                <label class="admin-auth-label">Password</label>
                 <input type="password" name="password" required
-                       class="w-full rounded-md border border-slate-700 bg-slate-800 text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                       class="admin-auth-input">
             </div>
             <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" name="remember" value="1" class="rounded border-slate-600 bg-slate-800 text-amber-500">
                 Remember me
             </label>
-            <button class="w-full rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium py-2">Login</button>
+            <button class="admin-btn admin-btn-primary w-full">Login</button>
         </form>
 
-        <a href="{{ route('admin.password.request') }}" class="block mt-3 text-sm text-slate-400 hover:text-slate-200 text-center">Forgot your password?</a>
+        <a href="{{ route('admin.password.request') }}" class="admin-auth-link block mt-4 text-center">Forgot your password?</a>
 
-        <div style="margin-top:16px;padding-top:12px;border-top:1px solid #1e293b;">
+        <div class="admin-auth-separator">
             @if(!$hasSuperAdmin)
-                <a href="{{ route('admin.register') }}"
-                   style="display:block;text-align:center;background:#334155;color:#fff;padding:10px;border-radius:8px;text-decoration:none;font-weight:600;">
+                <a href="{{ route('admin.register') }}" class="admin-btn admin-btn-secondary w-full">
                     Create Super Admin
                 </a>
             @else
-                <p style="font-size:12px;color:#94a3b8;text-align:center;">Super Admin already configured.</p>
+                <p class="admin-auth-copy text-center">Super Admin already configured.</p>
             @endif
         </div>
     </div>

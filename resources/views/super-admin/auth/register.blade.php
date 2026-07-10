@@ -4,55 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Super Admin</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/super-admin.css', 'resources/js/app.js'])
 </head>
-<body style="min-height:100vh;background:#0b1020;color:#e2e8f0;display:flex;align-items:center;justify-content:center;padding:16px;">
-    <div style="width:100%;max-width:520px;border:1px solid #1e293b;background:#0f172a;border-radius:12px;padding:24px;">
-        <h1 style="font-size:24px;font-weight:700;margin:0;">Create Super Admin</h1>
-        <p style="margin-top:6px;color:#94a3b8;font-size:14px;">Bootstrap platform control access</p>
+<body class="admin-auth-shell">
+    <div class="admin-auth-card admin-auth-card-lg">
+        <h1 class="admin-auth-title">Create Super Admin</h1>
+        <p class="admin-auth-copy">Bootstrap platform control access</p>
 
-<form method="POST" action="{{ route('admin.register.store') }}" style="margin-top:16px;display:grid;gap:12px;">
+<form method="POST" action="{{ route('admin.register.store') }}" class="admin-auth-form">
             @csrf
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="admin-auth-grid">
                 <div>
-                    <label style="display:block;font-size:13px;margin-bottom:4px;">First Name</label>
+                    <label class="admin-auth-label">First Name</label>
                     <input type="text" name="first_name" value="{{ old('first_name') }}" required
-                           style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1224;color:#e2e8f0;">
+                           class="admin-auth-input">
                 </div>
                 <div>
-                    <label style="display:block;font-size:13px;margin-bottom:4px;">Last Name</label>
+                    <label class="admin-auth-label">Last Name</label>
                     <input type="text" name="last_name" value="{{ old('last_name') }}" required
-                           style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1224;color:#e2e8f0;">
+                           class="admin-auth-input">
                 </div>
             </div>
             <div>
-                <label style="display:block;font-size:13px;margin-bottom:4px;">Mobile Number</label>
+                <label class="admin-auth-label">Mobile Number</label>
                 <input type="text" name="mobile_number" value="{{ old('mobile_number') }}" maxlength="10" required
-                       style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1224;color:#e2e8f0;">
+                       class="admin-auth-input">
             </div>
             <div>
-                <label style="display:block;font-size:13px;margin-bottom:4px;">Email (Optional)</label>
+                <label class="admin-auth-label">Email (Optional)</label>
                 <input type="email" name="email" value="{{ old('email') }}"
-                       style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1224;color:#e2e8f0;">
+                       class="admin-auth-input">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="admin-auth-grid">
                 <div>
-                    <label style="display:block;font-size:13px;margin-bottom:4px;">Password</label>
+                    <label class="admin-auth-label">Password</label>
                     <input type="password" name="password" required minlength="8"
-                           style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1224;color:#e2e8f0;">
+                           class="admin-auth-input">
                 </div>
                 <div>
-                    <label style="display:block;font-size:13px;margin-bottom:4px;">Confirm Password</label>
+                    <label class="admin-auth-label">Confirm Password</label>
                     <input type="password" name="password_confirmation" required minlength="8"
-                           style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1224;color:#e2e8f0;">
+                           class="admin-auth-input">
                 </div>
             </div>
-            <button style="margin-top:4px;background:#0f766e;color:#fff;padding:10px;border-radius:8px;border:none;font-weight:700;cursor:pointer;">
+            <button class="admin-btn admin-btn-primary w-full">
                 Create Super Admin
             </button>
-            <a href="{{ route('admin.login') }}" style="font-size:13px;color:#67e8f9;text-align:center;text-decoration:none;">Back to login</a>
+            <a href="{{ route('admin.login') }}" class="admin-auth-link text-center">Back to login</a>
         </form>
     </div>
 </body>
 </html>
-
