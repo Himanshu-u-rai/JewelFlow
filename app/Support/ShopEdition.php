@@ -54,6 +54,27 @@ class ShopEdition
     ];
 
     /**
+     * Human-readable display label for an edition / shop_type string.
+     *
+     * Exhaustive over every known edition. An unrecognised value is passed
+     * through Str::headline() (e.g. 'wholesaler' → 'Wholesaler'), never
+     * silently mapped to another type — so a new stored shop_type surfaces
+     * itself in the UI instead of masquerading as "Manufacturer".
+     */
+    public static function label(?string $edition): string
+    {
+        return match ($edition) {
+            self::RETAILER       => 'Retail',
+            self::MANUFACTURER   => 'Manufacturer',
+            self::DHIRAN         => 'Dhiran',
+            self::CRM            => 'CRM',
+            self::ANALYTICS      => 'Analytics',
+            self::MOBILE_PREMIUM => 'Mobile Premium',
+            default              => \Illuminate\Support\Str::headline((string) $edition) ?: 'Unknown',
+        };
+    }
+
+    /**
      * Primary edition of the current auth user's shop, for legacy call
      * sites that expect a single value. Prefers retailer/manufacturer
      * over dhiran since those are the "core" shop types.

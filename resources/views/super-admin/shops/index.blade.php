@@ -33,6 +33,7 @@
                     <option value="">All</option>
                     <option value="retailer" @selected(request('type') === 'retailer')>Retail</option>
                     <option value="manufacturer" @selected(request('type') === 'manufacturer')>Manufacturer</option>
+                    <option value="dhiran" @selected(request('type') === 'dhiran')>Dhiran</option>
                 </select>
             </div>
             <div>
@@ -93,7 +94,7 @@
                             </td>
                             <td class="px-4 py-3">{{ trim(($shop->owner_first_name ?? '') . ' ' . ($shop->owner_last_name ?? '')) ?: ($shop->owner_name ?? '-') }}</td>
                             <td class="px-4 py-3">{{ $shop->phone }}</td>
-                            <td class="px-4 py-3">{{ $shop->shop_type === 'retailer' ? 'Retail' : 'Manufacturer' }}</td>
+                            <td class="px-4 py-3">{{ \App\Support\ShopEdition::label($shop->shop_type) }}</td>
                             <td class="px-4 py-3">{{ $shop->users_count }}</td>
                             <td class="px-4 py-2">
                                 <span class="admin-badge {{ $shop->access_mode === 'suspended' ? 'admin-badge-rose' : ($shop->access_mode === 'read_only' ? 'admin-badge-amber' : 'admin-badge-emerald') }}">
