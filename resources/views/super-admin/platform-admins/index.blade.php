@@ -83,13 +83,13 @@
     </div>
 
     {{-- ── Admin Table ──────────────────────────────────────────────────── --}}
-    {{-- overflow:visible so the row "Password ▾" reset dropdown isn't clipped under the table.
-         (admin-table-wrap's overflow-x:auto would otherwise clip it vertically too.) --}}
-    <div class="admin-panel">
-        <div class="admin-table-wrap" style="overflow: visible;">
+    {{-- Visible overflow keeps row action menus usable. --}}
+    <div class="admin-panel admin-table-panel admin-table-panel-visible">
+        <div class="admin-table-wrap">
         <table class="w-full text-sm admin-table">
             <thead class="bg-slate-800/80 text-slate-300">
                 <tr>
+                    <th class="px-4 py-2 text-left w-16">#</th>
                     <th class="px-4 py-2 text-left">Name</th>
                     <th class="px-4 py-2 text-left">Mobile</th>
                     <th class="px-4 py-2 text-left">Email</th>
@@ -101,8 +101,12 @@
             </thead>
             <tbody>
                 @foreach($platformAdmins as $admin)
-                    @php $isSelf = auth('platform_admin')->id() === $admin->id; @endphp
+                    @php
+                        $isSelf = auth('platform_admin')->id() === $admin->id;
+                        $rowNumber = $platformAdmins->firstItem() + $loop->index;
+                    @endphp
                     <tr class="border-t border-slate-800 text-slate-200 align-top">
+                        <td class="px-4 py-3 admin-table-index">{{ $rowNumber }}</td>
                         <td class="px-4 py-3 font-medium">
                             {{ $admin->name }}
                             @if($isSelf)
@@ -214,30 +218,45 @@
                                 @endif
 
                                 {{-- Reset password --}}
-                                <details class="relative">
-                                    <summary class="admin-btn admin-btn-secondary admin-btn-xs list-none cursor-pointer">
-                                        Password ▾
-                                    </summary>
-                                    <div class="absolute right-0 top-full mt-1 z-20 w-64 rounded-md border border-slate-600 bg-slate-800 shadow-xl p-3">
-                                        <form method="POST" action="{{ route('admin.platform-admins.password', $admin) }}">
-                                            @csrf
-                                            @method('PATCH')
+                                <button type="button"
+                                        class="admin-btn admin-btn-secondary admin-btn-xs"
+                                        onclick="document.getElementById('reset-password-{{ $admin->id }}')?.showModal()">
+                                    Password
+                                </button>
+                                <dialog id="reset-password-{{ $admin->id }}" class="admin-modal">
+                                    <form method="POST" action="{{ route('admin.platform-admins.password', $admin) }}" class="admin-modal-card admin-modal-card-sm">
+                                        @csrf
+                                        @method('PATCH')
+                                        <div class="admin-modal-header">
+                                            <div>
+                                                <h3 class="admin-modal-title">Reset password</h3>
+                                                <p class="admin-modal-copy">{{ $admin->name }}</p>
+                                            </div>
+                                            <button type="button" class="admin-modal-close" onclick="this.closest('dialog').close()" aria-label="Close password reset">&times;</button>
+                                        </div>
+
+                                        <div class="admin-modal-body">
                                             <label class="block text-xs text-slate-400 mb-1">New Password</label>
                                             <input type="password" name="password" required minlength="8"
-                                                   class="admin-control w-full text-xs mb-2"
+                                                   class="admin-control w-full text-xs mb-3"
                                                    autocomplete="new-password" placeholder="Min 8 characters">
+                                            <label class="block text-xs text-slate-400 mb-1">Confirm Password</label>
                                             <input type="password" name="password_confirmation" required minlength="8"
-                                                   class="admin-control w-full text-xs mb-2"
+                                                   class="admin-control w-full text-xs mb-3"
                                                    autocomplete="new-password" placeholder="Confirm password">
-                                            <input type="text" name="reason" placeholder="Reason (optional)"
-                                                   class="admin-control w-full text-xs mb-2" maxlength="500">
-                                            <button type="submit" class="admin-btn admin-btn-primary admin-btn-xs w-full"
-                                                    onclick="return confirm('Reset password for {{ addslashes($admin->name) }}?')">
+                                            <label class="block text-xs text-slate-400 mb-1">Reason</label>
+                                            <input type="text" name="reason" placeholder="Optional, saved in audit log"
+                                                   class="admin-control w-full text-xs" maxlength="500">
+                                        </div>
+
+                                        <div class="admin-modal-actions">
+                                            <button type="button" class="admin-btn admin-btn-secondary" onclick="this.closest('dialog').close()">Cancel</button>
+                                            <button type="submit" class="admin-btn admin-btn-primary">
                                                 Reset Password
                                             </button>
-                                        </form>
-                                    </div>
-                                </details>
+                                        </div>
+                                    </form>
+                                </dialog>
 
                                 {{-- Delete (not self) --}}
                                 @if(!$isSelf)
@@ -246,7 +265,7 @@
                                           onsubmit="return confirm('Permanently delete {{ addslashes($admin->name) }}? This cannot be undone.')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="admin-btn admin-btn-xs text-rose-400 hover:text-rose-300 border border-rose-800 hover:border-rose-600 bg-transparent hover:bg-rose-900/20 transition-colors">
+                                        <button type="submit" class="admin-btn admin-btn-danger admin-btn-xs">
                                             Delete
                                         </button>
                                     </form>

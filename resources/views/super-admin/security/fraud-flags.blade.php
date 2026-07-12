@@ -33,7 +33,7 @@
         @endif
     </form>
 
-    <div class="admin-panel">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-panel-header">
             <div>
                 <h3 class="text-sm font-semibold text-white">Fraud Flags</h3>
@@ -44,9 +44,10 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm admin-table">
                 <thead>
                     <tr class="border-b border-slate-800 text-left">
+                        <th class="px-4 py-3 text-xs font-medium text-slate-400 w-16">#</th>
                         <th class="px-4 py-3 text-xs font-medium text-slate-400">Shop</th>
                         <th class="px-4 py-3 text-xs font-medium text-slate-400">Flag Type</th>
                         <th class="px-4 py-3 text-xs font-medium text-slate-400">Flag Data</th>
@@ -58,9 +59,10 @@
                 <tbody class="divide-y divide-slate-800">
                     @forelse($flags as $flag)
                         <tr class="hover:bg-slate-800/30">
+                            <td class="px-4 py-3 admin-table-index">{{ $flags->firstItem() + $loop->index }}</td>
                             <td class="px-4 py-3 text-white">
                                 @if($flag->shop)
-                                    <a href="{{ route('admin.shops.show', $flag->shop_id) }}" class="hover:text-sky-300 transition-colors">
+                                    <a href="{{ route('admin.shops.show', $flag->shop_id) }}" class="admin-inline-link">
                                         {{ $flag->shop->name }}
                                     </a>
                                     <div class="text-xs text-slate-400">#{{ $flag->shop_id }}</div>
@@ -140,7 +142,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-400 text-sm">
+                            <td colspan="7" class="px-4 py-8 text-center text-slate-400 text-sm">
                                 No fraud flags found matching the current filters.
                             </td>
                         </tr>

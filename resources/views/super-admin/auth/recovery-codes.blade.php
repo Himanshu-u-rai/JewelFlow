@@ -37,7 +37,7 @@
             </form>
             <p class="mt-2 text-xs text-slate-500">Regenerating immediately invalidates any old codes.</p>
             @if ($remaining > 0)
-                <a href="{{ route('admin.dashboard') }}" class="admin-auth-link block mt-4 text-center">← Back to dashboard</a>
+                <a href="{{ route('admin.dashboard') }}" class="admin-btn admin-btn-secondary w-full mt-4">Back to dashboard</a>
             @endif
         @endif
     </div>

@@ -66,11 +66,12 @@
         </form>
     </div>
 
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="overflow-x-auto">
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Invoice #</th>
                         <th class="px-4 py-2 text-left">Shop</th>
                         <th class="px-4 py-2 text-left">Plan</th>
@@ -86,10 +87,11 @@
                 <tbody>
                     @forelse($invoices as $inv)
                         <tr class="border-t border-slate-800 text-slate-200 hover:bg-slate-800/30 transition-colors">
+                            <td class="px-4 py-3 admin-table-index">{{ $invoices->firstItem() + $loop->index }}</td>
                             <td class="px-4 py-3 font-mono text-xs text-slate-300">{{ $inv->invoice_number }}</td>
                             <td class="px-4 py-3">
                                 @if($inv->shop)
-                                    <a href="{{ route('admin.shops.show', $inv->shop) }}" class="text-sky-400 hover:underline">
+                                    <a href="{{ route('admin.shops.show', $inv->shop) }}" class="admin-inline-link">
                                         {{ $inv->shop->name }}
                                     </a>
                                 @else
@@ -107,7 +109,7 @@
                             <td class="px-4 py-3 text-xs text-slate-400">{{ $inv->issued_at->format('d M Y') }}</td>
                             <td class="px-4 py-3">
                                 @if($inv->status === 'issued')
-                                    <span class="admin-badge admin-badge-emerald">Issued</span>
+                                    <span class="admin-badge admin-badge-emerald">Paid / Issued</span>
                                 @else
                                     <span class="admin-badge admin-badge-rose">Cancelled</span>
                                 @endif
@@ -115,7 +117,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-4 py-10 text-center text-slate-500">No invoices found.</td>
+                            <td colspan="11" class="px-4 py-10 text-center text-slate-500">No invoices found.</td>
                         </tr>
                     @endforelse
                 </tbody>

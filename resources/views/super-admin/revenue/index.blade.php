@@ -37,7 +37,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 
         {{-- ── MRR Trend (6 months) ─────────────────────────── --}}
-        <div class="lg:col-span-2 admin-panel overflow-hidden">
+        <div class="lg:col-span-2 admin-panel admin-table-panel">
             <div class="admin-panel-header">
                 <h3 class="font-semibold text-white">MRR Trend (Last 6 Months)</h3>
             </div>
@@ -45,6 +45,8 @@
                 <table class="w-full text-sm admin-table">
                     <thead class="bg-slate-800/80 text-slate-300">
                         <tr>
+                            <th class="px-4 py-2 text-left w-16">#</th>
+                            <th class="px-4 py-2 text-left">Metric</th>
                             @foreach($mrrTrend as $point)
                                 <th class="px-4 py-2 text-center font-medium">{{ $point['label'] }}</th>
                             @endforeach
@@ -52,6 +54,8 @@
                     </thead>
                     <tbody>
                         <tr class="text-slate-100">
+                            <td class="px-4 py-3 admin-table-index">1</td>
+                            <td class="px-4 py-3 font-semibold">MRR</td>
                             @foreach($mrrTrend as $point)
                                 <td class="px-4 py-3 text-center font-semibold">₹{{ number_format($point['mrr'], 0) }}</td>
                             @endforeach
@@ -97,7 +101,7 @@
     </div>
 
     {{-- ── Plan Breakdown ───────────────────────────────────── --}}
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-panel-header">
             <h3 class="font-semibold text-white">Plan Breakdown</h3>
         </div>
@@ -105,6 +109,7 @@
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Plan</th>
                         <th class="px-4 py-2 text-right">Active Subscriptions</th>
                         <th class="px-4 py-2 text-right">Monthly Revenue</th>
@@ -113,19 +118,21 @@
                 <tbody>
                     @forelse($planBreakdown as $plan)
                         <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="px-4 py-3 admin-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3 font-medium">{{ $plan->name }}</td>
                             <td class="px-4 py-3 text-right">{{ number_format($plan->count) }}</td>
                             <td class="px-4 py-3 text-right font-semibold text-white">₹{{ number_format($plan->revenue, 0) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="px-4 py-8 text-center text-slate-500">No active subscriptions found.</td>
+                            <td colspan="4" class="px-4 py-8 text-center text-slate-500">No active subscriptions found.</td>
                         </tr>
                     @endforelse
                 </tbody>
                 @if($planBreakdown->isNotEmpty())
                     <tfoot class="bg-slate-800/50">
                         <tr class="border-t border-slate-700">
+                            <td class="px-4 py-2"></td>
                             <td class="px-4 py-2 text-slate-300 font-semibold">Total</td>
                             <td class="px-4 py-2 text-right text-slate-300 font-semibold">{{ number_format($planBreakdown->sum('count')) }}</td>
                             <td class="px-4 py-2 text-right text-white font-semibold">₹{{ number_format($planBreakdown->sum('revenue'), 0) }}</td>
@@ -134,5 +141,6 @@
                 @endif
             </table>
         </div>
+        <div class="admin-table-footer">Showing {{ $planBreakdown->count() }} plan breakdown row{{ $planBreakdown->count() === 1 ? '' : 's' }}.</div>
     </div>
 </x-super-admin.layout>

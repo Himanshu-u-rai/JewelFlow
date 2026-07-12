@@ -46,11 +46,12 @@
         </form>
     </div>
 
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-table-wrap">
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Shop</th>
                         <th class="px-4 py-2 text-left">Customer</th>
                         <th class="px-4 py-2 text-left">Alert Type</th>
@@ -82,6 +83,7 @@
                             };
                         @endphp
                         <tr class="border-t border-slate-800 text-slate-200 {{ $resolved ? 'opacity-50' : '' }}">
+                            <td class="px-4 py-3 admin-table-index">{{ $alerts->firstItem() + $loop->index }}</td>
                             <td class="px-4 py-3 {{ $resolved ? 'line-through text-slate-500' : '' }}">
                                 {{ $alert->shop_name ?? "Shop #{$alert->shop_id}" }}
                             </td>
@@ -110,14 +112,14 @@
                             <td class="px-4 py-3">
                                 @if($alert->invoice_id)
                                     <a href="{{ route('admin.invoices.index', ['invoice_id' => $alert->invoice_id]) }}"
-                                       class="text-sky-400 hover:underline text-xs">#{{ $alert->invoice_id }}</a>
+                                       class="admin-inline-link text-xs">#{{ $alert->invoice_id }}</a>
                                 @else
                                     <span class="text-slate-600">—</span>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td class="px-4 py-8 text-center text-slate-500" colspan="8">No compliance alerts found.</td></tr>
+                        <tr><td class="px-4 py-8 text-center text-slate-500" colspan="9">No compliance alerts found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

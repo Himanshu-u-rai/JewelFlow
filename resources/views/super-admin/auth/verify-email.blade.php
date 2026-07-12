@@ -50,7 +50,7 @@
             </form>
         @endunless
 
-        <a href="{{ route('admin.dashboard') }}" class="admin-auth-link block mt-5">← Back to dashboard</a>
+        <a href="{{ route('admin.dashboard') }}" class="admin-btn admin-btn-secondary w-full mt-5">Back to dashboard</a>
     </div>
 </body>
 </html>

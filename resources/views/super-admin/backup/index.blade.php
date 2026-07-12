@@ -52,7 +52,7 @@
     </div>
 
     {{-- Backup Log Table --}}
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-panel-header">
             <h3 class="font-semibold text-white">Recent Backup Log</h3>
             <span class="text-xs text-slate-400">Last 20 entries</span>
@@ -61,6 +61,7 @@
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Type</th>
                         <th class="px-4 py-2 text-left">Status</th>
                         <th class="px-4 py-2 text-right">Size</th>
@@ -72,6 +73,7 @@
                 <tbody>
                     @forelse($logs as $log)
                         <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="px-4 py-3 admin-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3 capitalize text-slate-300">{{ $log->type ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 @if($log->status === 'success')
@@ -103,11 +105,12 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">No backup log entries yet.</td>
+                            <td colspan="7" class="px-4 py-8 text-center text-slate-500">No backup log entries yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        <div class="admin-table-footer">Showing latest {{ $logs->count() }} backup log entr{{ $logs->count() === 1 ? 'y' : 'ies' }}.</div>
     </div>
 </x-super-admin.layout>

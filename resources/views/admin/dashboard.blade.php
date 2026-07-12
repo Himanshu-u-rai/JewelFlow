@@ -24,8 +24,7 @@
     $shopsWithActiveScanSessions = $activeScanSessionsByShop->count();
 @endphp
 
-<div class="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6">
-    <div class="space-y-6">
+<div class="space-y-6">
         <section>
             <div class="flex items-center justify-between mb-4">
                 <div>
@@ -70,13 +69,13 @@
                     <x-admin.status-chip label="Cancelled" :value="($subscriptionCounts['cancelled'] ?? 0)" tone="slate" />
                 </div>
                 <div class="mt-4">
-                    <div class="h-2 rounded-full bg-slate-800 overflow-hidden flex">
-                        @foreach(['active' => 'bg-emerald-500','trial' => 'bg-sky-500','grace' => 'bg-amber-500','read_only' => 'bg-orange-500','expired' => 'bg-rose-500','cancelled' => 'bg-slate-500'] as $status => $color)
+                    <div class="admin-status-meter">
+                        @foreach(['active' => 'admin-meter-emerald','trial' => 'admin-meter-sky','grace' => 'admin-meter-amber','read_only' => 'admin-meter-orange','expired' => 'admin-meter-rose','cancelled' => 'admin-meter-slate'] as $status => $color)
                             @php
                                 $count = $subscriptionCounts[$status] ?? 0;
                                 $width = $subscriptionTotal > 0 ? ($count / $subscriptionTotal) * 100 : 0;
                             @endphp
-                            <div class="{{ $color }}" style="width: {{ $width }}%"></div>
+                            <div class="admin-meter-segment {{ $color }}" style="width: {{ $width }}%"></div>
                         @endforeach
                     </div>
                     <div class="mt-2 text-sm text-slate-400">Total subscriptions: {{ $subscriptionTotal }}</div>
@@ -160,6 +159,7 @@
             >
                 @forelse($suspendedShops as $shop)
                     <tr class="border-t border-slate-800 text-slate-200">
+                        <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                         <td class="px-4 py-2 font-medium">{{ $shop->name }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ $shop->owner_mobile ?? '—' }}</td>
                         <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?? '—' }}</td>
@@ -169,7 +169,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="px-4 py-4 text-center text-slate-400">No suspended shops.</td></tr>
+                    <tr><td colspan="6" class="px-4 py-4 text-center text-slate-400">No suspended shops.</td></tr>
                 @endforelse
             </x-admin.alert-table>
 
@@ -180,6 +180,7 @@
             >
                 @forelse($readOnlyShops as $shop)
                     <tr class="border-t border-slate-800 text-slate-200">
+                        <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                         <td class="px-4 py-2 font-medium">{{ $shop->name }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ $shop->owner_mobile ?? '—' }}</td>
                         <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?? '—' }}</td>
@@ -188,7 +189,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="px-4 py-4 text-center text-slate-400">No read-only shops.</td></tr>
+                    <tr><td colspan="5" class="px-4 py-4 text-center text-slate-400">No read-only shops.</td></tr>
                 @endforelse
             </x-admin.alert-table>
         </section>
@@ -208,6 +209,7 @@
                         $userCount = $recentUserCounts[$shop->id] ?? 0;
                     @endphp
                     <tr class="border-t border-slate-800 text-slate-200">
+                        <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                         <td class="px-4 py-2 font-medium">{{ $shop->name }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ $owner }}</td>
                         <td class="px-4 py-2">
@@ -246,27 +248,15 @@
                         $icon = $iconMap[$log->action] ?? '•';
                     @endphp
                     <tr class="border-t border-slate-800 text-slate-200">
+                        <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                         <td class="px-4 py-2">{{ $icon }} {{ $log->action }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ $log->actor?->name ?? 'System' }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ class_basename($log->target_type) }} #{{ $log->target_id }}</td>
                         <td class="px-4 py-2 text-sm text-slate-400">{{ $log->created_at?->format('d M Y, H:i') ?? '—' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="px-4 py-4 text-center text-slate-400">No recent activity.</td></tr>
+                    <tr><td colspan="5" class="px-4 py-4 text-center text-slate-400">No recent activity.</td></tr>
                 @endforelse
             </x-admin.activity-table>
         </section>
-    </div>
-
-    <aside class="space-y-4">
-        <div class="admin-panel p-4">
-            <h3 class="text-lg font-semibold text-white">Quick Controls</h3>
-            <div class="mt-4 space-y-2">
-                <a href="{{ route('admin.shops.index') }}" class="admin-btn admin-btn-secondary w-full justify-between">Open Shops <span>→</span></a>
-                <a href="{{ route('admin.users.index') }}" class="admin-btn admin-btn-secondary w-full justify-between">Open Users <span>→</span></a>
-                <a href="{{ route('admin.security.index') }}" class="admin-btn admin-btn-secondary w-full justify-between">View Security <span>→</span></a>
-                <a href="{{ route('admin.system.jobs.index') }}" class="admin-btn admin-btn-secondary w-full justify-between">View Jobs <span>→</span></a>
-            </div>
-        </div>
-    </aside>
 </div>

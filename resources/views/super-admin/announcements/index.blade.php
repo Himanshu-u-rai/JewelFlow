@@ -104,7 +104,7 @@
     </div>
 
     {{-- Announcements Table --}}
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-panel-header">
             <h3 class="font-semibold text-white">All Announcements</h3>
             <span class="text-xs text-slate-400">{{ $announcements->total() }} total</span>
@@ -113,6 +113,7 @@
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Title</th>
                         <th class="px-4 py-2 text-left">Type</th>
                         <th class="px-4 py-2 text-left">Target</th>
@@ -125,6 +126,7 @@
                 <tbody>
                     @forelse($announcements as $ann)
                         <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="px-4 py-3 admin-table-index">{{ $announcements->firstItem() + $loop->index }}</td>
                             <td class="px-4 py-3 font-medium max-w-xs truncate">{{ $ann->title }}</td>
                             <td class="px-4 py-3">
                                 @if($ann->type === 'critical')
@@ -183,7 +185,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-slate-500">No messages yet.</td>
+                            <td colspan="8" class="px-4 py-8 text-center text-slate-500">No messages yet.</td>
                         </tr>
                     @endforelse
                 </tbody>

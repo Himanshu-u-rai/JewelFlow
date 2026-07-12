@@ -52,7 +52,7 @@
     </div>
 
     {{-- Global Flags --}}
-    <div class="admin-panel overflow-hidden mb-6">
+    <div class="admin-panel admin-table-panel mb-6">
         <div class="px-4 py-3 border-b border-slate-800">
             <h4 class="text-sm font-semibold text-slate-300">Global Flags</h4>
         </div>
@@ -60,6 +60,7 @@
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Key</th>
                         <th class="px-4 py-2 text-left">Enabled</th>
                         <th class="px-4 py-2 text-left">Description</th>
@@ -70,6 +71,7 @@
                 <tbody>
                     @forelse($globalFlags as $flag)
                         <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="px-4 py-3 admin-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3 font-mono text-amber-300">{{ $flag->key }}</td>
                             <td class="px-4 py-3">
                                 @if($flag->enabled)
@@ -91,16 +93,17 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td class="px-4 py-6 text-center text-slate-500" colspan="5">No global flags configured.</td></tr>
+                        <tr><td class="px-4 py-6 text-center text-slate-500" colspan="6">No global flags configured.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        <div class="admin-table-footer">Showing {{ $globalFlags->count() }} global flag{{ $globalFlags->count() === 1 ? '' : 's' }}.</div>
     </div>
 
     {{-- Per-Shop Overrides --}}
     @if($shopOverrides->isNotEmpty())
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="px-4 py-3 border-b border-slate-800">
             <h4 class="text-sm font-semibold text-slate-300">Per-Shop Overrides</h4>
         </div>
@@ -108,6 +111,7 @@
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Key</th>
                         <th class="px-4 py-2 text-left">Shop ID</th>
                         <th class="px-4 py-2 text-left">Enabled</th>
@@ -117,9 +121,12 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php $overrideIndex = 0; @endphp
                     @foreach($shopOverrides as $key => $overrides)
                         @foreach($overrides as $flag)
+                            @php $overrideIndex++; @endphp
                             <tr class="border-t border-slate-800 text-slate-200">
+                                <td class="px-4 py-3 admin-table-index">{{ $overrideIndex }}</td>
                                 <td class="px-4 py-3 font-mono text-amber-300">{{ $flag->key }}</td>
                                 <td class="px-4 py-3 text-slate-300">{{ $flag->scope_id }}</td>
                                 <td class="px-4 py-3">
@@ -146,6 +153,7 @@
                 </tbody>
             </table>
         </div>
+        <div class="admin-table-footer">Showing {{ $shopOverrides->flatten(1)->count() }} shop override{{ $shopOverrides->flatten(1)->count() === 1 ? '' : 's' }}.</div>
     </div>
     @endif
 </x-super-admin.layout>

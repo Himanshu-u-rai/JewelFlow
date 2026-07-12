@@ -6,8 +6,8 @@
     <title>Super Admin — Set New Password</title>
     @vite(['resources/css/app.css', 'resources/css/super-admin.css', 'resources/js/app.js'])
 </head>
-<body class="admin-auth-shell">
-    <div class="admin-auth-card">
+<body class="admin-auth-shell admin-auth-reset-shell">
+    <div class="admin-auth-card admin-auth-reset-card">
         <h1 class="admin-auth-title">Set a new password</h1>
         <p class="admin-auth-copy">Minimum 12 characters with upper &amp; lower case, a number, and a symbol.</p>
 

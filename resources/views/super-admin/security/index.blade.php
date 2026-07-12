@@ -58,7 +58,7 @@
         </div>
     </div>
 
-    <div class="admin-panel">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-panel-header">
             <h3 class="text-sm font-semibold text-white">Recent Platform Audit Events</h3>
             <p class="text-xs text-slate-400">Latest security-related actions.</p>
@@ -67,6 +67,7 @@
             <table class="min-w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Action</th>
                         <th class="px-4 py-2 text-left">Target</th>
                         <th class="px-4 py-2 text-left">Timestamp</th>
@@ -76,16 +77,18 @@
                 <tbody>
                     @forelse($snapshot['recent_audit'] as $entry)
                         <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-2">{{ $entry->action }}</td>
                             <td class="px-4 py-2">{{ class_basename($entry->target_type) }} #{{ $entry->target_id }}</td>
                             <td class="px-4 py-2">{{ $entry->created_at }}</td>
                             <td class="px-4 py-2 text-xs text-slate-400">{{ $entry->reason ?? '-' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="px-4 py-4 text-center text-slate-400">No audit events found.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-4 text-center text-slate-400">No audit events found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        <div class="admin-table-footer">Showing latest {{ $snapshot['recent_audit']->count() }} audit event{{ $snapshot['recent_audit']->count() === 1 ? '' : 's' }}.</div>
     </div>
 </x-super-admin.layout>

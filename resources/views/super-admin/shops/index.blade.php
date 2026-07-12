@@ -49,7 +49,7 @@
     </div>
 
     {{-- Shop table --}}
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-table-wrap">
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
@@ -59,6 +59,7 @@
                                    :checked="allSelected" :indeterminate.prop="someSelected && !allSelected"
                                    class="rounded border-slate-600 bg-slate-700 text-indigo-500 cursor-pointer">
                         </th>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left text-slate-400 font-medium w-24">Code</th>
                         <th class="px-4 py-2 text-left">Shop</th>
                         <th class="px-4 py-2 text-left">Owner</th>
@@ -80,6 +81,7 @@
                                        class="rounded border-slate-600 bg-slate-700 text-indigo-500 cursor-pointer"
                                        value="{{ $shop->id }}">
                             </td>
+                            <td class="px-4 py-3 admin-table-index">{{ $shops->firstItem() + $loop->index }}</td>
                             <td class="px-4 py-3 text-slate-300 font-mono text-xs font-medium">{{ $shop->shop_code }}</td>
                             <td class="px-4 py-3 font-medium">
                                 {{ $shop->name }}
@@ -104,7 +106,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td class="px-4 py-8 text-center text-slate-500" colspan="9">No shops found.</td></tr>
+                        <tr><td class="px-4 py-8 text-center text-slate-500" colspan="10">No shops found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -19,7 +19,7 @@
         </div>
     </div>
 
-<div class="admin-panel overflow-hidden">
+<div class="admin-panel admin-table-panel">
         @if($requests->isEmpty())
             <div class="px-6 py-12 text-center text-slate-500 text-sm">
                 No {{ $status }} requests.
@@ -29,6 +29,7 @@
                 <table class="w-full text-sm admin-table">
                     <thead class="bg-slate-800/80 text-slate-300">
                         <tr>
+                            <th class="px-4 py-2 text-left w-16">#</th>
                             <th class="px-4 py-2 text-left">Shop</th>
                             <th class="px-4 py-2 text-left">Action</th>
                             <th class="px-4 py-2 text-left">Edition</th>
@@ -41,8 +42,9 @@
                     <tbody>
                         @foreach($requests as $req)
                             <tr class="border-t border-slate-800 text-slate-200 align-top">
+                                <td class="px-4 py-3 admin-table-index">{{ $requests->firstItem() + $loop->index }}</td>
                                 <td class="px-4 py-3">
-                                    <a href="{{ route('admin.shops.show', $req->shop_id) }}" class="text-sky-300 hover:text-sky-200">
+                                    <a href="{{ route('admin.shops.show', $req->shop_id) }}" class="admin-inline-link">
                                         {{ $req->shop?->name ?? '—' }}
                                     </a>
                                 </td>

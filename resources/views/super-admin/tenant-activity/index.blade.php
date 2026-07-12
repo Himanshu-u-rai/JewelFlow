@@ -18,7 +18,7 @@
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-        <div class="admin-panel">
+        <div class="admin-panel admin-table-panel">
             <div class="admin-panel-header">
                 <h3 class="text-sm font-semibold text-white">Top Active Shops (Today)</h3>
                 <p class="text-xs text-slate-400">Invoices, POS payments, items, imports, metal lots.</p>
@@ -27,6 +27,7 @@
                 <table class="min-w-full text-sm admin-table">
                     <thead class="bg-slate-800/80 text-slate-300">
                         <tr>
+                            <th class="px-4 py-2 text-left w-16">#</th>
                             <th class="px-4 py-2 text-left">Shop</th>
                             <th class="px-4 py-2 text-center">Invoices</th>
                             <th class="px-4 py-2 text-center">POS</th>
@@ -39,6 +40,7 @@
                     <tbody>
                         @forelse($snapshot['top_active'] as $row)
                             <tr class="border-t border-slate-800 text-slate-200">
+                                <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                                 <td class="px-4 py-2">
                                     <div class="font-medium">{{ $row['shop']->name }}</div>
                                     <div class="text-xs text-slate-400">{{ ucfirst($row['shop']->shop_type ?? 'retailer') }}</div>
@@ -51,11 +53,12 @@
                                 <td class="px-4 py-2 text-center text-amber-200 font-semibold">{{ $row['activity_score'] }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="px-4 py-4 text-center text-slate-400">No activity today.</td></tr>
+                            <tr><td colspan="8" class="px-4 py-4 text-center text-slate-400">No activity today.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+            <div class="admin-table-footer">Showing {{ $snapshot['top_active']->count() }} top active shop{{ $snapshot['top_active']->count() === 1 ? '' : 's' }}.</div>
         </div>
 
         <div class="space-y-6">
@@ -101,7 +104,7 @@
         </div>
     </div>
 
-    <div class="admin-panel">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-panel-header">
             <h3 class="text-sm font-semibold text-white">All Tenant Activity</h3>
             <p class="text-xs text-slate-400">Operational overview by shop.</p>
@@ -110,6 +113,7 @@
             <table class="min-w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Shop</th>
                         <th class="px-4 py-2 text-center">Active Users</th>
                         <th class="px-4 py-2 text-center">Invoices</th>
@@ -123,6 +127,7 @@
                 <tbody>
                     @foreach($snapshot['rows'] as $row)
                         <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-2">
                                 <div class="font-medium">{{ $row['shop']->name }}</div>
                                 <div class="text-xs text-slate-400">{{ ucfirst($row['shop']->shop_type ?? 'retailer') }}</div>
@@ -139,5 +144,6 @@
                 </tbody>
             </table>
         </div>
+        <div class="admin-table-footer">Showing {{ $snapshot['rows']->count() }} tenant activity row{{ $snapshot['rows']->count() === 1 ? '' : 's' }}.</div>
     </div>
 </x-super-admin.layout>

@@ -64,11 +64,12 @@
         </form>
     </div>
 
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="py-3.5 pl-4 pr-3 text-left w-16 sm:pl-6">#</th>
                         <th class="py-3.5 pl-4 pr-3 text-left sm:pl-6">Shop</th>
                         <th class="px-3 py-3.5 text-left">Plan</th>
                         <th class="px-3 py-3.5 text-left">Status</th>
@@ -86,9 +87,10 @@
                             if ($sub->status === 'expired' || $sub->status === 'grace' || $sub->status === 'suspended') $rowClass = 'bg-rose-950/30';
                         @endphp
                         <tr class="{{ $rowClass }} border-t border-slate-800 text-slate-200">
+                            <td class="whitespace-nowrap py-4 pl-4 pr-3 admin-table-index sm:pl-6">{{ $subscriptions->firstItem() + $loop->index }}</td>
                             <td class="whitespace-nowrap py-4 pl-4 pr-3 font-medium sm:pl-6">
                                 @if($sub->shop_id)
-                                    <a href="{{ route('admin.shops.show', ['shop' => $sub->shop_id]) }}" class="hover:text-amber-300 transition-colors">
+                                    <a href="{{ route('admin.shops.show', ['shop' => $sub->shop_id]) }}" class="admin-inline-link">
                                         {{ $sub->shop->name ?? 'N/A' }}
                                     </a>
                                 @else
@@ -116,7 +118,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-12 text-slate-400">No subscriptions found matching criteria.</td>
+                            <td colspan="8" class="text-center py-12 text-slate-400">No subscriptions found matching criteria.</td>
                         </tr>
                     @endforelse
                 </tbody>

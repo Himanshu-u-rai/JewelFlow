@@ -50,7 +50,7 @@
             <button class="admin-btn admin-btn-primary w-full">
                 Create Super Admin
             </button>
-            <a href="{{ route('admin.login') }}" class="admin-auth-link text-center">Back to login</a>
+            <a href="{{ route('admin.login') }}" class="admin-btn admin-btn-secondary w-full">Back to login</a>
         </form>
     </div>
 </body>

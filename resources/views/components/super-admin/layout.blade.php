@@ -138,10 +138,9 @@
                 @endif
             </nav>
             <div class="px-4 pb-5">
-                <form method="POST" action="{{ route('admin.logout') }}">
-                    @csrf
-                    <button class="admin-btn admin-btn-danger w-full">Logout</button>
-                </form>
+                <button type="button" class="admin-btn admin-btn-danger w-full" onclick="document.getElementById('admin-logout-dialog')?.showModal()">
+                    Logout
+                </button>
             </div>
         </aside>
         <div class="admin-sidebar-overlay" data-mobile-drawer-overlay="admin"></div>
@@ -160,6 +159,14 @@
                     <h2 class="admin-title">{{ $title }}</h2>
                     <p class="admin-subtitle">{{ $subtitle }}</p>
                 </div>
+                @if(request()->routeIs('admin.dashboard'))
+                    <nav class="admin-topbar-actions" aria-label="Quick controls">
+                        <a href="{{ route('admin.shops.index') }}" class="admin-btn admin-btn-secondary admin-btn-sm">Shops</a>
+                        <a href="{{ route('admin.users.index') }}" class="admin-btn admin-btn-secondary admin-btn-sm">Users</a>
+                        <a href="{{ route('admin.security.index') }}" class="admin-btn admin-btn-secondary admin-btn-sm">Security</a>
+                        <a href="{{ route('admin.system.jobs.index') }}" class="admin-btn admin-btn-primary admin-btn-sm">Jobs</a>
+                    </nav>
+                @endif
             </header>
 
             <div class="px-5 py-6 lg:px-8">
@@ -167,6 +174,29 @@
             </div>
         </main>
     </div>
+
+    <dialog id="admin-logout-dialog" class="admin-modal">
+        <form method="dialog" class="admin-modal-card">
+            <div class="admin-modal-header">
+                <div>
+                    <h3 class="admin-modal-title">Sign out?</h3>
+                    <p class="admin-modal-copy">You will leave the Super Admin console.</p>
+                </div>
+                <button type="submit" class="admin-modal-close" aria-label="Close logout confirmation">&times;</button>
+            </div>
+            <div class="admin-modal-actions">
+                <button type="submit" class="admin-btn admin-btn-secondary">Cancel</button>
+                <button type="submit"
+                        class="admin-btn admin-btn-danger"
+                        form="admin-logout-form">
+                    Logout
+                </button>
+            </div>
+        </form>
+    </dialog>
+    <form id="admin-logout-form" method="POST" action="{{ route('admin.logout') }}" class="hidden">
+        @csrf
+    </form>
 
     <div id="global-toast" class="global-toast" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true"></div>
 </body>

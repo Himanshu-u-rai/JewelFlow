@@ -7,11 +7,12 @@
         <a href="{{ route('admin.plans.create') }}" class="admin-btn admin-btn-primary">Add Plan</a>
     </div>
 
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-table-wrap">
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="py-3.5 pl-4 pr-3 text-left w-16 sm:pl-6">#</th>
                         <th class="py-3.5 pl-4 pr-3 text-left sm:pl-6">Plan</th>
                         <th class="px-3 py-3.5 text-left">Code</th>
                         <th class="px-3 py-3.5 text-left">Monthly Price</th>
@@ -31,6 +32,7 @@
                             $canDeactivate = !($plan->is_active && (int) $plan->active_subscriptions_count > 0);
                         @endphp
                         <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="whitespace-nowrap py-4 pl-4 pr-3 admin-table-index sm:pl-6">{{ $loop->iteration }}</td>
                             <td class="whitespace-nowrap py-4 pl-4 pr-3 font-medium sm:pl-6">{{ $plan->name }}</td>
                             <td class="whitespace-nowrap px-3 py-4 text-slate-400 font-mono">{{ $plan->code }}</td>
                             <td class="whitespace-nowrap px-3 py-4 text-slate-300">₹{{ number_format($plan->price_monthly) }}</td>
@@ -87,5 +89,6 @@
                 </tbody>
             </table>
         </div>
+        <div class="admin-table-footer">Showing {{ $plans->count() }} plan{{ $plans->count() === 1 ? '' : 's' }}.</div>
     </div>
 </x-super-admin.layout>

@@ -296,6 +296,7 @@
                     <table class="w-full text-xs admin-table">
                         <thead class="bg-slate-800/70 text-slate-300">
                             <tr>
+                                <th class="px-3 py-2 text-left w-14">#</th>
                                 <th class="px-3 py-2 text-left">Edition</th>
                                 <th class="px-3 py-2 text-left">Granted</th>
                                 <th class="px-3 py-2 text-left">Revoked</th>
@@ -305,6 +306,7 @@
                         <tbody>
                             @foreach($editionHistory as $entry)
                                 <tr class="border-t border-slate-800 text-slate-200">
+                                    <td class="px-3 py-2 admin-table-index">{{ $loop->iteration }}</td>
                                     <td class="px-3 py-2 font-medium">{{ ucfirst($entry->edition) }}</td>
                                     <td class="px-3 py-2">{{ optional($entry->activated_at)->format('d M Y, H:i') ?? '—' }}</td>
                                     <td class="px-3 py-2">
@@ -320,11 +322,12 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="admin-table-footer">Showing {{ $editionHistory->count() }} edition history row{{ $editionHistory->count() === 1 ? '' : 's' }}.</div>
             </div>
         @endif
     </div>
 
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="admin-panel-header">
             <h3 class="font-semibold text-white">Shop Users</h3>
         </div>
@@ -332,6 +335,7 @@
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Name</th>
                         <th class="px-4 py-2 text-left">Mobile</th>
                         <th class="px-4 py-2 text-left">Role</th>
@@ -351,6 +355,7 @@
                                     $userFullName = $ownerName;
                                 }
                             @endphp
+                            <td class="px-4 py-3 admin-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3">{{ $userFullName !== '' ? $userFullName : '-' }}</td>
                             <td class="px-4 py-3">{{ $user->mobile_number }}</td>
                             <td class="px-4 py-3">{{ $user->role?->display_name ?? '-' }}</td>
@@ -376,6 +381,7 @@
                 </tbody>
             </table>
         </div>
+        <div class="admin-table-footer">Showing {{ $shop->users->count() }} shop user{{ $shop->users->count() === 1 ? '' : 's' }}.</div>
     </div>
 
     {{-- ── Subscription Management ──────────────────────────── --}}
@@ -498,7 +504,7 @@
     </div>
 
     {{-- Billing & Invoices --}}
-    <div class="admin-panel overflow-hidden mt-6">
+    <div class="admin-panel admin-table-panel mt-6">
         <div class="admin-panel-header">
             <h3 class="font-semibold text-white">Billing & Invoices</h3>
             <span class="text-xs text-slate-400">Last 10 platform invoices</span>
@@ -507,6 +513,7 @@
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">Invoice #</th>
                         <th class="px-4 py-2 text-left">Plan</th>
                         <th class="px-4 py-2 text-left">Cycle</th>
@@ -522,6 +529,7 @@
                 <tbody>
                     @forelse($billingInvoices as $inv)
                         <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="px-4 py-3 admin-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3 font-mono text-xs">{{ $inv->invoice_number }}</td>
                             <td class="px-4 py-3">{{ $inv->plan?->name ?? '—' }}</td>
                             <td class="px-4 py-3 capitalize text-slate-400">{{ $inv->billing_cycle }}</td>
@@ -545,18 +553,19 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-4 py-8 text-center text-slate-500">No invoices generated yet.</td>
+                            <td colspan="11" class="px-4 py-8 text-center text-slate-500">No invoices generated yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-        @if($billingInvoices->count() === 10)
-            <div class="px-4 py-3 border-t border-slate-800 text-xs text-slate-500">
-                Showing latest 10 invoices. View all in
-                <a href="{{ route('admin.invoices.index', ['shop' => $shop->id]) }}" class="text-sky-400 hover:underline">Invoices</a>.
-            </div>
-        @endif
+        <div class="admin-table-footer">
+            Showing latest {{ $billingInvoices->count() }} platform invoice{{ $billingInvoices->count() === 1 ? '' : 's' }}.
+            @if($billingInvoices->count() === 10)
+                View all in
+                <a href="{{ route('admin.invoices.index', ['shop' => $shop->id]) }}" class="admin-inline-link">Invoices</a>.
+            @endif
+        </div>
     </div>
 
     {{-- ── Storage Usage ────────────────────────────────────── --}}
@@ -579,6 +588,7 @@
                     <table class="w-full text-xs admin-table">
                         <thead class="bg-slate-800/70 text-slate-300">
                             <tr>
+                                <th class="px-3 py-2 text-left w-14">#</th>
                                 <th class="px-3 py-2 text-left">Directory</th>
                                 <th class="px-3 py-2 text-right">Files</th>
                                 <th class="px-3 py-2 text-right">Size</th>
@@ -587,6 +597,7 @@
                         <tbody>
                             @foreach($storageStat->breakdown as $dir => $info)
                                 <tr class="border-t border-slate-800 text-slate-200">
+                                    <td class="px-3 py-2 admin-table-index">{{ $loop->iteration }}</td>
                                     <td class="px-3 py-2 font-mono">{{ $dir }}/{{ $shop->id }}</td>
                                     <td class="px-3 py-2 text-right">{{ number_format($info['files'] ?? 0) }}</td>
                                     <td class="px-3 py-2 text-right text-slate-400">
@@ -603,6 +614,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="admin-table-footer">Showing {{ count($storageStat->breakdown) }} storage director{{ count($storageStat->breakdown) === 1 ? 'y' : 'ies' }}.</div>
             @endif
 
             <p class="text-xs text-slate-500 mt-3">

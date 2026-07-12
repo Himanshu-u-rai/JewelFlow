@@ -32,11 +32,12 @@
         </form>
     </div>
 
-    <div class="admin-panel overflow-hidden">
+    <div class="admin-panel admin-table-panel">
         <div class="overflow-x-auto">
             <table class="w-full text-sm admin-table">
                 <thead class="bg-slate-800/80 text-slate-300">
                     <tr>
+                        <th class="px-4 py-2 text-left w-16">#</th>
                         <th class="px-4 py-2 text-left">User</th>
                         <th class="px-4 py-2 text-left">Mobile</th>
                         <th class="px-4 py-2 text-left">Scope</th>
@@ -48,6 +49,7 @@
                 <tbody>
                     @forelse($users as $user)
                         <tr class="border-t border-slate-800 text-slate-200">
+                            <td class="px-4 py-3 admin-table-index">{{ $users->firstItem() + $loop->index }}</td>
                             <td class="px-4 py-3">{{ $user->name ?? '—' }}</td>
                             <td class="px-4 py-3">{{ $user->mobile_number }}</td>
                             <td class="px-4 py-3">
@@ -64,7 +66,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td class="px-4 py-8 text-center text-slate-500" colspan="6">No users found.</td></tr>
+                        <tr><td class="px-4 py-8 text-center text-slate-500" colspan="7">No users found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

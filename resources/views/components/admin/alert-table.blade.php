@@ -4,7 +4,7 @@
     'headers' => [],
 ])
 
-<div class="admin-panel overflow-hidden">
+<div class="admin-panel admin-table-panel">
     <div class="admin-panel-header">
         <h3 class="text-lg font-semibold text-white">{{ $title }}</h3>
         @if($subtitle)
@@ -15,6 +15,7 @@
         <table class="admin-table min-w-full text-sm">
             <thead class="bg-slate-800/80 text-slate-300">
                 <tr>
+                    <th class="px-4 py-2 text-left w-16 font-semibold">#</th>
                     @foreach($headers as $header)
                         <th class="px-4 py-2 text-left font-semibold">{{ $header }}</th>
                     @endforeach
@@ -25,4 +26,5 @@
             </tbody>
         </table>
     </div>
+    <div class="admin-table-footer">Dashboard snapshot table.</div>
 </div>
