@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Platform Security" subtitle="Failed logins, impersonation, and enforcement signals.">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div class="admin-kpi admin-tone-rose">
             <div class="text-xs text-slate-400">Failed Admin Logins (24h)</div>

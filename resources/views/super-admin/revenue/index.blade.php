@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Revenue Analytics" subtitle="Platform subscription revenue and billing trends.">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
             <h2 class="text-xl font-semibold text-white">Revenue Analytics</h2>

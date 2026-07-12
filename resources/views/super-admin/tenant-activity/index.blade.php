@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Tenant Activity" subtitle="Operational metrics, spikes, and activity trends.">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div class="admin-kpi admin-tone-slate">
             <div class="text-xs text-slate-400">Date</div>

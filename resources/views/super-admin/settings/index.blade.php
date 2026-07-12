@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Platform Settings" subtitle="Control platform-wide behaviour and availability for all tenants.">
     <form method="POST" action="{{ route('admin.settings.update') }}">
         @csrf
         @method('PATCH')

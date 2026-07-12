@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Platform Announcements" subtitle="Broadcast notices to tenant shops.">
     <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl font-semibold text-white">Platform Announcements</h2>
     </div>

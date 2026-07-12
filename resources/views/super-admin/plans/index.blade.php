@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Plan Management" subtitle="Configure subscription products, billing cycles, and feature limits.">
     <div class="admin-toolbar mb-4">
         <div>
             <h3 class="text-lg font-semibold text-white">Subscription Plans</h3>

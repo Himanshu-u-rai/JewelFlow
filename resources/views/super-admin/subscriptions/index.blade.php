@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Subscriptions" subtitle="Monitor tenant subscriptions, billing state, and renewal health.">
     @php
         $allStatuses = ['active', 'trial', 'grace', 'read_only', 'expired', 'cancelled'];
         $statusTone = [

@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Shop Management" subtitle="Search, inspect, activate, and deactivate tenant shops.">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
             <h2 class="text-xl font-semibold text-white">{{ $shop->name }}</h2>

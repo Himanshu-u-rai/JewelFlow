@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Account Security" subtitle="Manage your sign-in email and mobile number.">
     <div class="mb-6">
         <h1 class="text-2xl font-semibold text-slate-100">Account security</h1>
         <p class="text-sm text-slate-400 mt-1">Change your sign-in email and mobile number. Both require your password and an emailed code.</p>

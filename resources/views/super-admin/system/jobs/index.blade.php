@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="System Jobs" subtitle="Queue health, failures, and retries.">
     {{-- Summary KPIs --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="admin-kpi admin-tone-slate">

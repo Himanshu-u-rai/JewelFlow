@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Edition Requests" subtitle="Review tenant edition upgrade requests.">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
             <h2 class="text-xl font-semibold text-white">Edition Requests</h2>

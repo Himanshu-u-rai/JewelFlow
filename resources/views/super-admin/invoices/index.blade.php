@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Platform Invoices" subtitle="All subscription billing invoices generated across all shops.">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h3 class="text-lg font-semibold text-white">Platform Invoices</h3>

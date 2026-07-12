@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Fraud Flags" subtitle="Suspicious activity signals detected across tenant shops.">
     {{-- Filter bar --}}
     <form method="GET" action="{{ route('admin.fraud-flags.index') }}" class="flex flex-wrap gap-3 mb-5">
         <div>

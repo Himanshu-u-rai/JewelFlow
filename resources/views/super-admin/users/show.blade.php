@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="User Management" subtitle="Control user status, scope, and password recovery.">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
             <h2 class="text-xl font-semibold text-white">{{ $user->name ?? 'User' }}</h2>

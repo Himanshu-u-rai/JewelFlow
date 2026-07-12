@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Shop Management" subtitle="Search, inspect, activate, and deactivate tenant shops.">
     <div x-data="shopBulk()" x-init="init()">
 
     <div class="admin-toolbar mb-4">

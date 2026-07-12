@@ -1,3 +1,7 @@
+@props([
+    'title' => 'Platform Dashboard',
+    'subtitle' => 'Monitor global tenant health and control access.',
+])
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,45 +24,6 @@
     @vite(['resources/css/app.css', 'resources/css/super-admin.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen antialiased admin-shell">
-    @php
-        $title = 'Platform Dashboard';
-        $subtitle = 'Monitor global tenant health and control access.';
-        if (request()->routeIs('admin.shops.*')) {
-            $title = 'Shop Management';
-            $subtitle = 'Search, inspect, activate, and deactivate tenant shops.';
-        } elseif (request()->routeIs('admin.users.*')) {
-            $title = 'User Management';
-            $subtitle = 'Control user status, scope, and password recovery.';
-        } elseif (request()->routeIs('admin.tenant-activity.*')) {
-            $title = 'Tenant Activity';
-            $subtitle = 'Operational metrics, spikes, and activity trends.';
-        } elseif (request()->routeIs('admin.fraud-flags.*')) {
-            $title = 'Fraud Flags';
-            $subtitle = 'Suspicious activity signals detected across tenant shops.';
-        } elseif (request()->routeIs('admin.security.*')) {
-            $title = 'Platform Security';
-            $subtitle = 'Failed logins, impersonation, and enforcement signals.';
-        } elseif (request()->routeIs('admin.system.jobs.*')) {
-            $title = 'System Jobs';
-            $subtitle = 'Queue health, failures, and retries.';
-        } elseif (request()->routeIs('admin.platform-admins.*')) {
-            $title = 'Platform Admins';
-            $subtitle = 'Manage platform administrator access.';
-        } elseif (request()->routeIs('admin.plans.*')) {
-            $title = 'Plan Management';
-            $subtitle = 'Configure subscription products, billing cycles, and feature limits.';
-        } elseif (request()->routeIs('admin.subscriptions.*')) {
-            $title = 'Subscriptions';
-            $subtitle = 'Monitor tenant subscriptions, billing state, and renewal health.';
-        } elseif (request()->routeIs('admin.invoices.*')) {
-            $title = 'Platform Invoices';
-            $subtitle = 'All subscription billing invoices generated across all shops.';
-        } elseif (request()->routeIs('admin.settings.*')) {
-            $title = 'Platform Settings';
-            $subtitle = 'Control platform-wide behaviour and availability for all tenants.';
-        }
-    @endphp
-
     <div class="admin-shell-frame">
         <aside id="admin-sidebar" class="admin-sidebar border-b backdrop-blur-lg lg:border-b-0 lg:border-r" data-mobile-drawer="admin">
             <div class="admin-sidebar-header p-5">

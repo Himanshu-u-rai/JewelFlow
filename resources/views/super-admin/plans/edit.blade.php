@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Plan Management" subtitle="Configure subscription products, billing cycles, and feature limits.">
     <div class="admin-form-shell">
         <div class="mb-4">
             <h3 class="text-lg font-semibold text-white">Edit Plan: {{ $plan->name }}</h3>

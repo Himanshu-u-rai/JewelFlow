@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Platform Admins" subtitle="Manage platform administrator access.">
     <div class="mb-4 flex items-center justify-between gap-3">
         <div>
             <h3 class="text-lg font-semibold text-white">Platform Admins</h3>

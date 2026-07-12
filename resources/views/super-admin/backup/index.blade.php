@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Backup Status" subtitle="Database backup health and recovery controls.">
     <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl font-semibold text-white">Backup Status</h2>
     </div>

@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Compliance Alerts" subtitle="KYC and regulatory signals across tenant shops.">
     <div class="admin-toolbar mb-4">
         <div>
             <h3 class="text-lg font-semibold text-white">Compliance Alerts</h3>

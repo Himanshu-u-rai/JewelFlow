@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="User Management" subtitle="Control user status, scope, and password recovery.">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h3 class="text-lg font-semibold text-white">All Users</h3>

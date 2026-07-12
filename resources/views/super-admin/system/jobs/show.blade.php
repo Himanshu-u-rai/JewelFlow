@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="System Jobs" subtitle="Queue health, failures, and retries.">
     <div class="mb-4">
         <a href="{{ route('admin.system.jobs.index') }}" class="admin-btn admin-btn-secondary">Back to Jobs</a>
     </div>

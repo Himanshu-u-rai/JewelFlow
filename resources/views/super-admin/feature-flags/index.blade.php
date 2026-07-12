@@ -1,4 +1,4 @@
-<x-super-admin.layout>
+<x-super-admin.layout title="Feature Flags" subtitle="Toggle platform capabilities per tenant or globally.">
     <div class="admin-toolbar mb-4">
         <div>
             <h3 class="text-lg font-semibold text-white">Feature Flags</h3>
