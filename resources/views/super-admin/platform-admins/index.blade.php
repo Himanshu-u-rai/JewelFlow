@@ -83,8 +83,10 @@
     </div>
 
     {{-- ── Admin Table ──────────────────────────────────────────────────── --}}
-    {{-- Visible overflow keeps row action menus usable. --}}
-    <div class="admin-panel admin-table-panel admin-table-panel-visible">
+    {{-- Standard scroll wrapper: overflow-x:auto lets wide rows pan on narrow
+         viewports. Row action menus expand inline (Role, Permissions) or in the
+         top-layer <dialog> (Password), so none rely on a visible-overflow panel. --}}
+    <div class="admin-panel admin-table-panel">
         <div class="admin-table-wrap">
         <table class="w-full text-sm admin-table">
             <thead class="bg-slate-800/80 text-slate-300">
@@ -194,11 +196,11 @@
 
                                 {{-- Change role (super admins only, can't demote self) --}}
                                 @if(!$isSelf)
-                                    <details class="relative">
+                                    <details>
                                         <summary class="admin-btn admin-btn-secondary admin-btn-xs list-none cursor-pointer">
                                             Role ▾
                                         </summary>
-                                        <div class="absolute right-0 top-full mt-1 z-20 w-52 rounded-md border border-slate-600 bg-slate-800 shadow-xl p-3">
+                                        <div class="mt-1 w-52 rounded-md border border-slate-600 bg-slate-800 shadow-xl p-3">
                                             <form method="POST" action="{{ route('admin.platform-admins.role', $admin) }}">
                                                 @csrf
                                                 @method('PATCH')

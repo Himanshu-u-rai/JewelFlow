@@ -218,19 +218,6 @@ body.admin-shell .admin-main {
     overflow-x: auto;
 }
 
-.admin-table-panel-visible,
-.admin-table-panel-visible > .admin-table-wrap {
-    overflow: visible;
-}
-
-.admin-table-panel-visible .admin-table thead th:first-child {
-    border-top-left-radius: 14px;
-}
-
-.admin-table-panel-visible .admin-table thead th:last-child {
-    border-top-right-radius: 14px;
-}
-
 .admin-kpi {
     padding: 16px;
 }
