@@ -1,8 +1,8 @@
 @php
     // Realm-aware branding: the same auth layout serves both products. On the
-    // dhiran.* host it renders as "Dhiran", otherwise "Jewelflow" (ERP).
+    // dhiran.* host it renders as "Dhiran", otherwise "Jewelflows" (ERP).
     $isDhiran = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN;
-    $brandName    = $isDhiran ? 'Dhiran' : 'Jewelflow';
+    $brandName    = $isDhiran ? 'Dhiran' : 'Jewelflows';
     $brandTagline = $isDhiran
         ? 'Gold-loan & pledge management made simple. Issue loans, track interest, and manage releases — all in one place.'
         : 'The complete jewellery business platform. Manage your inventory, sales, and customers in one place.';
@@ -512,7 +512,7 @@
             </div>
 
             <h2 class="left-brand">
-                @if($isDhiran)<span>{{ $brandName }}</span>@else Jewel<span>flow</span>@endif
+                @if($isDhiran)<span>{{ $brandName }}</span>@else Jewel<span>flows</span>@endif
             </h2>
             <p class="left-tagline">{{ $brandTagline }}</p>
 

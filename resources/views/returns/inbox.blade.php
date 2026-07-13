@@ -458,7 +458,7 @@
         margin: 0;
     }
 
-    /* Current JewelFlow ERP treatment: flat, compact, and consistent with return detail pages. */
+    /* Current JewelFlows ERP treatment: flat, compact, and consistent with return detail pages. */
     .content-header.returns-index-header {
         border-bottom: 1px solid #cbd5e1;
         background: #ffffff;

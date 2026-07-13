@@ -20,7 +20,7 @@ class PlatformSettingsController extends Controller
             'manufacturer_enabled' => PlatformSetting::manufacturerEnabled(),
             'dhiran_enabled'       => PlatformSetting::dhiranEnabled(),
             'maintenance_mode'     => PlatformSetting::bool('maintenance_mode', false),
-            'maintenance_message'  => PlatformSetting::get('maintenance_message', 'JewelFlow is temporarily down for maintenance. We\'ll be back shortly.'),
+            'maintenance_message'  => PlatformSetting::get('maintenance_message', 'JewelFlows is temporarily down for maintenance. We\'ll be back shortly.'),
             'subscription_trial_days' => PlatformSetting::trialDays(),
             'active_trial_count'   => \App\Models\Platform\ShopSubscription::where('status', 'trial')->count(),
         ];

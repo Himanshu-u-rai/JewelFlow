@@ -77,7 +77,7 @@ class MfaChallengeController extends Controller
     {
         $otp = (string) random_int(100000, 999999);
         Cache::put($this->otpKey($admin), Hash::make($otp), now()->addMinutes(self::OTP_TTL_MINUTES));
-        Mail::to($admin->email)->send(new EmailOtpMail($otp, 'JewelFlow Platform'));
+        Mail::to($admin->email)->send(new EmailOtpMail($otp, 'JewelFlows Platform'));
         $this->audit->log($admin, 'platform_admin.mfa_otp_sent', PlatformAdmin::class, $admin->id, null, null, null, $request);
     }
 

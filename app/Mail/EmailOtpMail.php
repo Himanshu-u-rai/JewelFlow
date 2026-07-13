@@ -24,7 +24,7 @@ class EmailOtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: $this->otp . ' is your JewelFlow verification code',
+            subject: $this->otp . ' is your JewelFlows verification code',
         );
     }
 

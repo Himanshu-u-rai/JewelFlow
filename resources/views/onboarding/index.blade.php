@@ -411,7 +411,7 @@
         {{-- ═══ LANDING: decision between Start Clean and Migrate ═══ --}}
         @if ($state === 'landing')
             <div style="padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;margin-bottom:16px;">
-                <p style="font-weight:700;color:#b45309;margin-bottom:4px;">Before using JewelFlow, choose how your shop should start.</p>
+                <p style="font-weight:700;color:#b45309;margin-bottom:4px;">Before using JewelFlows, choose how your shop should start.</p>
                 <p style="color:#475569;font-size:13px;">This is a one-time setup step. It decides whether your reports begin from zero or from your existing shop balances.</p>
             </div>
             @if ($cancelledNotice)
@@ -421,17 +421,17 @@
             @endif
 
             <p style="color:#475569;font-size:14px;margin-bottom:8px;">
-                Already running your shop before JewelFlow? Enter what you have on hand today — cash, stock,
+                Already running your shop before JewelFlows? Enter what you have on hand today — cash, stock,
                 vault metal, customer dues, supplier and karigar balances — so your reports start from the right numbers.
             </p>
             <p style="color:#475569;font-size:14px;margin-bottom:20px;">
-                Starting fresh? You can skip this and begin using JewelFlow normally.
+                Starting fresh? You can skip this and begin using JewelFlows normally.
             </p>
 
             <div class="onboarding-choice-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                 <div style="{{ $card }}">
                     <label style="{{ $lbl }}">Start Clean</label>
-                    <p style="color:#64748b;font-size:13px;margin-bottom:16px;">My shop starts fresh in JewelFlow. No past balances to enter.</p>
+                    <p style="color:#64748b;font-size:13px;margin-bottom:16px;">My shop starts fresh in JewelFlows. No past balances to enter.</p>
                     <form method="POST" action="{{ route('onboarding.start-clean') }}" onsubmit="return confirm('Start clean with no opening balances?');">
                         @csrf
                         <button type="submit" style="{{ $btnGhost }}">Start clean</button>
@@ -449,11 +449,11 @@
             <div style="{{ $card }}background:#f8fafc;">
                 <label style="{{ $lbl }}">Started clean</label>
                 <p style="color:#475569;font-size:14px;margin-bottom:12px;">
-                    This shop is set to start fresh with no opening balances. Use JewelFlow normally —
+                    This shop is set to start fresh with no opening balances. Use JewelFlows normally —
                     add stock, customers, and sales as they happen.
                 </p>
                 <p style="color:#64748b;font-size:13px;margin-bottom:16px;">
-                    Changed your mind and want to enter pre-JewelFlow balances instead?
+                    Changed your mind and want to enter pre-JewelFlows balances instead?
                 </p>
                 <a href="{{ route('onboarding.index', ['step' => 'migrate']) }}" style="{{ $btnGhost }}">Begin migration</a>
             </div>
@@ -462,9 +462,9 @@
         @elseif ($state === 'migrate')
             @if ($hasLiveSales)
                 <div style="padding:12px 14px;background:#fef2f2;color:#991b1b;border-radius:8px;margin-bottom:16px;font-size:13px;">
-                    <strong>This shop already has live transactions in JewelFlow.</strong>
-                    Opening balances are meant for pre-JewelFlow data. Continue only if you are entering
-                    balances from before your JewelFlow go-live date.
+                    <strong>This shop already has live transactions in JewelFlows.</strong>
+                    Opening balances are meant for pre-JewelFlows data. Continue only if you are entering
+                    balances from before your JewelFlows go-live date.
                 </div>
             @endif
 
@@ -483,11 +483,11 @@
 
             <form method="POST" action="{{ route('onboarding.store') }}" style="{{ $card }}">
                 @csrf
-                <label style="{{ $lbl }}">Pick your JewelFlow go-live date</label>
+                <label style="{{ $lbl }}">Pick your JewelFlows go-live date</label>
                 <input type="date" name="start_date" required style="{{ $inp }}">
                 <p style="color:#64748b;font-size:13px;margin-top:8px;">
                     Opening balances are recorded as of the day before this date, so they never show up as
-                    sales, GST, or profit. Choose the date you start billing live in JewelFlow.
+                    sales, GST, or profit. Choose the date you start billing live in JewelFlows.
                 </p>
                 <div style="display:flex;gap:12px;margin-top:12px;">
                     <button type="submit" style="{{ $btn }}">Start migration</button>

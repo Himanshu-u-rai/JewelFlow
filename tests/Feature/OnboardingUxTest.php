@@ -106,7 +106,7 @@ class OnboardingUxTest extends TestCase
         $this->actingAs($user)->get(route('onboarding.index'))
             ->assertOk()
             ->assertSee('Opening balances locked')
-            ->assertDontSee('Pick your JewelFlow go-live date');
+            ->assertDontSee('Pick your JewelFlows go-live date');
     }
 
     public function test_import_data_page_shows_opening_balances_card_for_owner(): void

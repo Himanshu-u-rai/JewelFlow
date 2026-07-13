@@ -1,6 +1,6 @@
 <x-guest-layout>
     <h2 class="text-xl font-bold text-center text-slate-900 mb-1">Create your shop</h2>
-    <p class="text-center text-sm text-slate-500 mb-6">Set up your Jewelflow account in a minute.</p>
+    <p class="text-center text-sm text-slate-500 mb-6">Set up your Jewelflows account in a minute.</p>
 
     <x-auth-session-status class="mb-4" :status="session('status')" />
 

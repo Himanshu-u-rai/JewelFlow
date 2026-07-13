@@ -82,7 +82,7 @@ class AccountController extends Controller
         $admin->forceFill(['pending_email' => $validated['new_email']])->save();
         $otp = (string) random_int(100000, 999999);
         Cache::put('admin-email-change-otp:' . $admin->id, Hash::make($otp), now()->addMinutes(self::OTP_TTL_MINUTES));
-        Mail::to($validated['new_email'])->send(new EmailOtpMail($otp, 'JewelFlow Platform'));
+        Mail::to($validated['new_email'])->send(new EmailOtpMail($otp, 'JewelFlows Platform'));
 
         $this->audit->log($admin, 'platform_admin.email_change_requested', PlatformAdmin::class, $admin->id, null, null, null, $request);
 
@@ -157,7 +157,7 @@ class AccountController extends Controller
         $admin->forceFill(['pending_mobile' => $validated['new_mobile']])->save();
         $otp = (string) random_int(100000, 999999);
         Cache::put('admin-mobile-change-otp:' . $admin->id, Hash::make($otp), now()->addMinutes(self::OTP_TTL_MINUTES));
-        Mail::to($admin->email)->send(new EmailOtpMail($otp, 'JewelFlow Platform'));
+        Mail::to($admin->email)->send(new EmailOtpMail($otp, 'JewelFlows Platform'));
 
         $this->audit->log($admin, 'platform_admin.mobile_change_requested', PlatformAdmin::class, $admin->id, null, null, null, $request);
 
@@ -202,10 +202,10 @@ class AccountController extends Controller
     private function notifyChange(?string $oldEmail, ?string $confirmEmail, string $what, string $newValue): void
     {
         if ($oldEmail) {
-            Mail::raw("Your JewelFlow platform admin {$what} was just changed. If this wasn't you, contact support immediately.", fn ($m) => $m->to($oldEmail)->subject("JewelFlow security alert — {$what} changed"));
+            Mail::raw("Your JewelFlows platform admin {$what} was just changed. If this wasn't you, contact support immediately.", fn ($m) => $m->to($oldEmail)->subject("JewelFlows security alert — {$what} changed"));
         }
         if ($confirmEmail && $confirmEmail !== $oldEmail) {
-            Mail::raw("Your JewelFlow platform admin {$what} is now {$newValue}.", fn ($m) => $m->to($confirmEmail)->subject("JewelFlow — {$what} updated"));
+            Mail::raw("Your JewelFlows platform admin {$what} is now {$newValue}.", fn ($m) => $m->to($confirmEmail)->subject("JewelFlows — {$what} updated"));
         }
     }
 }

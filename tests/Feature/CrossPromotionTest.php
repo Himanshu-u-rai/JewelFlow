@@ -106,7 +106,7 @@ class CrossPromotionTest extends TestCase
 
         $response = $this->actingAs($dhiran)->get('https://dhiran.jewelflows.com/dhiran');
         $response->assertOk();
-        $response->assertSee('Explore JewelFlow ERP');
+        $response->assertSee('Explore JewelFlows ERP');
         $response->assertSee(self::ERP_REGISTER, false);
     }
 
@@ -119,7 +119,7 @@ class CrossPromotionTest extends TestCase
 
         $response = $this->actingAs($dhiran->fresh())->get('https://dhiran.jewelflows.com/dhiran');
         $response->assertOk();
-        $response->assertDontSee('Explore JewelFlow ERP');
+        $response->assertDontSee('Explore JewelFlows ERP');
     }
 
     // 5. Promo links target the OTHER product's separate register front door.

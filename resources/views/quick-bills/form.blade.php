@@ -198,7 +198,7 @@
             --qb-ink: #1f2430;
             --qb-text: #4a4334;
             --qb-muted: #64748b;
-            /* Accent is JewelFlow gold (matches the index + detail pages). */
+            /* Accent is JewelFlows gold (matches the index + detail pages). */
             --qb-dark: #b45309;
             --qb-dark-hover: #92400e;
             --qb-focus: rgba(245, 158, 11, .2);

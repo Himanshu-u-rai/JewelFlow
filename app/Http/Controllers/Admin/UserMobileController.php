@@ -83,7 +83,7 @@ class UserMobileController extends Controller
                 userName:        $user->first_name ?? $user->name ?? 'there',
                 changedBy:       "Platform admin ({$adminEmail})",
                 ipAddress:       $request->ip() ?? 'unknown',
-                appName:         config('app.name', 'JewelFlow'),
+                appName:         config('app.name', 'JewelFlows'),
                 reason:          $validated['reason']
             ));
         }

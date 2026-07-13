@@ -25,7 +25,7 @@ class CheckMaintenanceMode
         if (PlatformSetting::bool('maintenance_mode', false)) {
             $message = PlatformSetting::get(
                 'maintenance_message',
-                'JewelFlow is temporarily down for maintenance. We\'ll be back shortly.'
+                'JewelFlows is temporarily down for maintenance. We\'ll be back shortly.'
             );
 
             if ($request->expectsJson()) {

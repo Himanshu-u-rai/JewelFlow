@@ -48,7 +48,7 @@
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Email <span class="text-slate-500">(optional)</span></label>
                     <input type="email" name="email" value="{{ old('email') }}"
-                           class="admin-control w-full" placeholder="admin@jewelflow.in">
+                           class="admin-control w-full" placeholder="admin@jewelflows.com">
                 </div>
 
                 <div>

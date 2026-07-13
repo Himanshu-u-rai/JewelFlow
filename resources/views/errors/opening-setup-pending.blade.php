@@ -9,7 +9,7 @@
             </div>
             <h1 style="font-size:28px;font-weight:700;color:#101828;margin-bottom:8px;">Shop setup pending</h1>
             <p style="font-size:15px;color:#475569;line-height:1.6;margin-bottom:24px;">
-                The owner must complete Opening Balance Setup or choose Start Fresh before staff can use JewelFlow.
+                The owner must complete Opening Balance Setup or choose Start Fresh before staff can use JewelFlows.
             </p>
         </div>
     </div>

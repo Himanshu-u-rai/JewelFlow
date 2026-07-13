@@ -105,7 +105,7 @@ class ShopController extends Controller
                     $resp = Http::timeout(5)
                         ->retry(2, 300, throw: false)
                         ->withHeaders([
-                            'User-Agent' => 'Mozilla/5.0 (compatible; JewelFlow/1.0; +https://jewelflows.com)',
+                            'User-Agent' => 'Mozilla/5.0 (compatible; JewelFlows/1.0; +https://jewelflows.com)',
                             'Accept'     => 'application/json',
                         ])
                         ->get("https://api.postalpincode.in/pincode/{$pincode}");
@@ -363,7 +363,7 @@ class ShopController extends Controller
         ]);
 
         return redirect()->route('dashboard')
-            ->with('success', 'Welcome to JewelFlow! Your shop is ready.');
+            ->with('success', 'Welcome to JewelFlows! Your shop is ready.');
     }
 
     /**

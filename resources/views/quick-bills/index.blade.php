@@ -26,7 +26,7 @@
             --qb-ink: #1f2430;
             --qb-text: #4a4334;
             --qb-muted: #64748b;
-            /* Primary accent is the JewelFlow gold, not generic navy. */
+            /* Primary accent is the JewelFlows gold, not generic navy. */
             --qb-dark: #b45309;
             --qb-dark-hover: #92400e;
             --qb-blue: #b45309;

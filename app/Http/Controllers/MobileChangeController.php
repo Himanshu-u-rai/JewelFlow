@@ -118,7 +118,7 @@ class MobileChangeController extends Controller
             otp:             $otp,
             newMobileMasked: $this->maskMobile($validated['new_mobile_number']),
             userName:        $user->first_name ?? $user->name ?? 'there',
-            appName:         config('app.name', 'JewelFlow')
+            appName:         config('app.name', 'JewelFlows')
         ));
 
         return redirect()->route('profile.mobile.change')
@@ -195,7 +195,7 @@ class MobileChangeController extends Controller
             userName:        $user->first_name ?? $user->name ?? 'there',
             changedBy:       'You (self-service)',
             ipAddress:       request()->ip() ?? 'unknown',
-            appName:         config('app.name', 'JewelFlow')
+            appName:         config('app.name', 'JewelFlows')
         ));
 
         return redirect()->route('profile.mobile.change')

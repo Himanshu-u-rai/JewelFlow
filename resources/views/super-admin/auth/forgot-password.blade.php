@@ -13,7 +13,7 @@
                 <div class="admin-auth-brand-row">
                     <span class="admin-auth-logo" aria-hidden="true">JF</span>
                     <div>
-                        <p class="admin-auth-eyebrow">JewelFlow</p>
+                        <p class="admin-auth-eyebrow">JewelFlows</p>
                         <h1 id="admin-reset-title" class="admin-auth-title">Account Access</h1>
                     </div>
                 </div>

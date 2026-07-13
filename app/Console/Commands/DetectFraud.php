@@ -23,14 +23,14 @@ class DetectFraud extends Command
             if ($alertEmail) {
                 $shopList = implode(', ', array_unique($flagged));
                 Mail::raw(
-                    "JewelFlow Fraud Detection Alert\n\n" .
+                    "JewelFlows Fraud Detection Alert\n\n" .
                     "{$count} new fraud flag(s) were raised during the scheduled scan.\n\n" .
                     "Affected shop IDs: {$shopList}\n\n" .
                     "Please review the flags at /admin/fraud-flags\n\n" .
                     "Time: " . now()->toDateTimeString(),
                     function ($message) use ($alertEmail, $count) {
                         $message->to($alertEmail)
-                                ->subject("[JewelFlow] {$count} Fraud Flag(s) Detected — Action Required");
+                                ->subject("[JewelFlows] {$count} Fraud Flag(s) Detected — Action Required");
                     }
                 );
                 $this->info("Alert email sent to {$alertEmail}.");

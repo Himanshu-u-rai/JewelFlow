@@ -26,12 +26,12 @@
 <body>
     <div class="wrap">
         <div class="header">
-            <div class="logo">Jewel<span>Flow</span></div>
+            <div class="logo">Jewel<span>Flows</span></div>
             <div class="badge">Platform Admin Security Alert</div>
         </div>
         <div class="body">
             <p class="greeting">Hi {{ $adminName }},</p>
-            <p class="note">A login attempt was made to the <strong>JewelFlow Platform Admin</strong> panel. Use the code below to complete your sign-in.</p>
+            <p class="note">A login attempt was made to the <strong>JewelFlows Platform Admin</strong> panel. Use the code below to complete your sign-in.</p>
 
             <div class="otp-box">
                 <div class="otp-label">One-Time Login Code</div>
@@ -40,7 +40,7 @@
             </div>
 
             <div class="warning">
-                <strong>Security Notice:</strong> Never share this code. JewelFlow staff will never ask for this code via phone, chat, or email.
+                <strong>Security Notice:</strong> Never share this code. JewelFlows staff will never ask for this code via phone, chat, or email.
             </div>
 
             <p class="note">If you did not attempt to log in, your admin password may be compromised. Change it immediately and contact your platform team.</p>
@@ -48,7 +48,7 @@
             <p class="ignore">If you initiated this login, simply enter the code above and proceed.</p>
         </div>
         <div class="footer">
-            &copy; {{ date('Y') }} JewelFlow &mdash; Platform Control Tower
+            &copy; {{ date('Y') }} JewelFlows &mdash; Platform Control Tower
         </div>
     </div>
 </body>

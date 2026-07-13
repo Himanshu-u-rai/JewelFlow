@@ -34,8 +34,8 @@ class PlatformAdminResetPassword extends Notification
         $minutes = config('auth.passwords.platform_admins.expire', 30);
 
         return (new MailMessage)
-            ->subject('JewelFlow Platform Admin — Password Reset')
-            ->line('A password reset was requested for your JewelFlow platform admin account.')
+            ->subject('JewelFlows Platform Admin — Password Reset')
+            ->line('A password reset was requested for your JewelFlows platform admin account.')
             ->action('Reset Password', $url)
             ->line("This link expires in {$minutes} minutes.")
             ->line('If you did not request this, no action is needed — your password stays unchanged.');

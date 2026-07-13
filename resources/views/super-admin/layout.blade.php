@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>JewelFlow Super Admin</title>
+    <title>JewelFlows Super Admin</title>
     @if(session('success'))
         <meta name="flash-success" content="{{ session('success') }}">
     @endif
@@ -20,7 +20,7 @@
     <header class="admin-legacy-header">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h1 class="font-semibold text-lg">JewelFlow Control Tower</h1>
+                <h1 class="font-semibold text-lg">JewelFlows Control Tower</h1>
                 <p class="text-xs text-slate-300">Super Admin Panel</p>
             </div>
             <nav class="admin-legacy-nav">

@@ -20,7 +20,7 @@ class AdminLoginOtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: $this->otp . ' — JewelFlow Admin Login Code',
+            subject: $this->otp . ' — JewelFlows Admin Login Code',
         );
     }
 

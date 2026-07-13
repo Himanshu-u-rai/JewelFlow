@@ -562,7 +562,7 @@
 
             <div class="cat-footer-bottom">
                 <span>&copy; {{ date('Y') }} {{ $shop->name }}. All rights reserved.</span>
-                <span class="cat-footer-powered">Powered by <a href="https://jewelflow.in" target="_blank" rel="noopener">JewelFlow</a></span>
+                <span class="cat-footer-powered">Powered by <a href="https://jewelflows.com" target="_blank" rel="noopener">JewelFlows</a></span>
             </div>
         </div>
     </footer>

@@ -2298,7 +2298,7 @@
                     <div class="flex flex-col gap-3">
                         <div>
                             <p class="font-semibold text-red-900">{{ __('Logout') }}</p>
-                            <p class="text-red-700 text-xs mt-1">{{ __('You will be signed out of JewelFlow on this device.') }}</p>
+                            <p class="text-red-700 text-xs mt-1">{{ __('You will be signed out of JewelFlows on this device.') }}</p>
                         </div>
                         <form method="POST" action="{{ route('logout') }}" data-turbo-frame="_top">
                             @csrf
@@ -3501,7 +3501,7 @@
                                     <div class="role-body">
                                         @foreach($permissionGroups as $group => $groupPerms)
                                             {{-- Dhiran is a separate product (own subdomain); never surface its
-                                                 permission group in the JewelFlow Roles UI. The DB group key is
+                                                 permission group in the JewelFlows Roles UI. The DB group key is
                                                  'dhiran' (this guard previously checked a label that never matched). --}}
                                             @if($group === 'dhiran') @continue @endif
                                             <div class="perm-group">
@@ -4589,7 +4589,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4Z"/><path d="M4 6v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="M12 12v4h4"/></svg>
                         </div>
                         <p class="text-sm font-semibold text-slate-700">{{ __('No active plan yet') }}</p>
-                        <p class="mt-1 text-sm text-slate-500 max-w-md mx-auto">{{ __('Choose a plan to start using JewelFlow. Your bills will show up here after payment.') }}</p>
+                        <p class="mt-1 text-sm text-slate-500 max-w-md mx-auto">{{ __('Choose a plan to start using JewelFlows. Your bills will show up here after payment.') }}</p>
                         <a href="{{ route('subscription.plans') }}" data-turbo-frame="_top" class="mt-5 inline-flex items-center rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 transition active:scale-[0.97]">
                             {{ __('Choose a plan') }}
                         </a>
@@ -5292,7 +5292,7 @@
                 amount: data.amount,
                 currency: data.currency,
                 order_id: data.order_id,
-                name: 'JewelFlow',
+                name: 'JewelFlows',
                 description: data.plan_name,
                 prefill: {
                     name: data.user_name,

@@ -1,5 +1,5 @@
 <x-guest-layout>
-    @php $brand = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? 'Dhiran' : 'JewelFlow'; @endphp
+    @php $brand = \App\Support\Realm::current() === \App\Support\Realm::DHIRAN ? 'Dhiran' : 'JewelFlows'; @endphp
     <div class="mb-4 text-sm text-gray-600">
         Enter the email address you verified in your {{ $brand }} account and we'll send you a password reset link.
     </div>

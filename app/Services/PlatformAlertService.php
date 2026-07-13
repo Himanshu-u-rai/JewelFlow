@@ -136,10 +136,10 @@ class PlatformAlertService
 
         try {
             Mail::raw(
-                $body . "\n\n---\nSent by JewelFlow PlatformAlertService at " . now()->toDateTimeString(),
+                $body . "\n\n---\nSent by JewelFlows PlatformAlertService at " . now()->toDateTimeString(),
                 function ($message) use ($subject) {
                     $message->to($this->alertEmail)
-                            ->subject('[JewelFlow Alert] ' . $subject);
+                            ->subject('[JewelFlows Alert] ' . $subject);
                 }
             );
         } catch (\Throwable $e) {

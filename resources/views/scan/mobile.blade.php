@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f172a">
-    <title>JewelFlow Scanner</title>
+    <title>JewelFlows Scanner</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -232,7 +232,7 @@
     @if($expired)
         <!-- Session already expired when page loaded -->
         <div class="scanner-header">
-            <div class="scanner-logo">Jewel<span>Flow</span></div>
+            <div class="scanner-logo">Jewel<span>Flows</span></div>
             <div class="scanner-badge expired">Session Expired</div>
         </div>
         <div class="scanner-body">
@@ -245,7 +245,7 @@
     @else
         <!-- Active session — show scanner -->
         <div class="scanner-header">
-            <div class="scanner-logo">Jewel<span>Flow</span></div>
+            <div class="scanner-logo">Jewel<span>Flows</span></div>
             <div class="scanner-badge" id="statusBadge">● Ready</div>
         </div>
 
@@ -265,7 +265,7 @@
             <div id="permissionPrompt">
                 <div class="permission-icon">📷</div>
                 <div class="permission-title">Camera Access Needed</div>
-                <div class="permission-msg">JewelFlow needs camera access to scan barcodes. Your camera is only used for scanning — nothing is saved.</div>
+                <div class="permission-msg">JewelFlows needs camera access to scan barcodes. Your camera is only used for scanning — nothing is saved.</div>
                 <button class="btn-allow" onclick="startCamera()">Allow Camera & Start Scanning</button>
             </div>
 

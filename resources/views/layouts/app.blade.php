@@ -15,7 +15,7 @@
             <meta name="flash-warning" content="{{ session('warning') }}">
         @endif
 
-        <title>{{ config('app.name', 'JewelFlow') }}</title>
+        <title>{{ config('app.name', 'JewelFlows') }}</title>
         @include('partials.favicon')
 
         <!-- Fonts -->
@@ -160,14 +160,14 @@
         @php
             // ERP app shell. Dhiran is a separate customer-facing product served by
             // its own x-dhiran-layout on the dhiran.* subdomain, so this layout is
-            // always the ERP (JewelFlow) chrome — it never re-skins itself as Dhiran.
+            // always the ERP (JewelFlows) chrome — it never re-skins itself as Dhiran.
             $authUser = auth()->user();
             $authShop = $authUser?->shop;
             $hasRetailer = (bool) $authShop?->isRetailer();
             $hasManufacturer = (bool) $authShop?->isManufacturer();
             $hasDhiran = (bool) $authShop?->hasDhiran();
             $homeRoute = 'dashboard';
-            $brandName = 'JewelFlow';
+            $brandName = 'JewelFlows';
             $brandSubtitle = __('Enterprise System');
             $settingsRoute = 'settings.edit';
         @endphp
@@ -710,7 +710,7 @@
                 <div class="content-body">
                     {{-- M7: print-only letterhead so a printed report is CA-presentable. --}}
                     <div class="print-only" style="margin-bottom:12px;border-bottom:1px solid #111;padding-bottom:6px;overflow:hidden;">
-                        <strong style="font-size:15px;">{{ auth()->user()?->shop?->name ?? config('app.name', 'JewelFlow') }}</strong>
+                        <strong style="font-size:15px;">{{ auth()->user()?->shop?->name ?? config('app.name', 'JewelFlows') }}</strong>
                         <span style="float:right;font-size:12px;">Printed {{ now()->format('d M Y') }}</span>
                     </div>
                     {{ $slot ?? '' }}

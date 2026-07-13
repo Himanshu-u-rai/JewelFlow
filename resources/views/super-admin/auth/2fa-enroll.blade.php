@@ -19,7 +19,7 @@
             <div class="bg-slate-800 rounded-lg p-4 text-center">
                 <p class="text-xs text-slate-400 mb-3">Scan with your app, or enter the key below manually:</p>
                 <p class="font-mono text-amber-400 text-lg tracking-widest break-all select-all">{{ $secret }}</p>
-                <p class="text-xs text-slate-500 mt-2">Account: JewelFlow Admin · Type: Time-based</p>
+                <p class="text-xs text-slate-500 mt-2">Account: JewelFlows Admin · Type: Time-based</p>
             </div>
         </div>
 

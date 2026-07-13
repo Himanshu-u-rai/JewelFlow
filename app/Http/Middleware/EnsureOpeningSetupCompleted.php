@@ -81,7 +81,7 @@ class EnsureOpeningSetupCompleted
                 'error'   => $migrating ? 'opening_setup_in_progress' : 'opening_setup_pending',
                 'message' => $migrating
                     ? 'Live billing will unlock after the owner locks opening balances.'
-                    : 'The owner must complete Opening Balance Setup or choose Start Fresh before staff can use JewelFlow.',
+                    : 'The owner must complete Opening Balance Setup or choose Start Fresh before staff can use JewelFlows.',
             ], 403);
         }
 

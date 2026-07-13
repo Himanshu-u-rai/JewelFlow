@@ -8,7 +8,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>JewelFlow Super Admin</title>
+    <title>JewelFlows Super Admin</title>
     @include('partials.favicon')
     @if(session('success'))
         <meta name="flash-success" content="{{ session('success') }}">
@@ -28,7 +28,7 @@
         <aside id="admin-sidebar" class="admin-sidebar border-b backdrop-blur-lg lg:border-b-0 lg:border-r" data-mobile-drawer="admin">
             <div class="admin-sidebar-header p-5">
                 <div class="admin-sidebar-header-main">
-                    <p class="admin-brand-kicker">JewelFlow</p>
+                    <p class="admin-brand-kicker">JewelFlows</p>
                     <h1 class="admin-brand-title">Control Tower</h1>
                     <p class="admin-brand-sub">Super Admin Console</p>
                 </div>

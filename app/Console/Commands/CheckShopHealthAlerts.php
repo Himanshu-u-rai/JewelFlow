@@ -84,16 +84,16 @@ class CheckShopHealthAlerts extends Command
 
             if ($alertEmail) {
                 $shopCount = count($digestLines);
-                $body = "JewelFlow Shop Health Alert\n\n"
+                $body = "JewelFlows Shop Health Alert\n\n"
                     . "{$shopCount} shop(s) have a critical health score (< 30) as of " . now()->toDateTimeString() . ":\n\n"
                     . implode("\n", $digestLines) . "\n\n"
                     . "Please review shop health at /admin/shops\n\n"
-                    . "---\nSent by JewelFlow platform:check-shop-health";
+                    . "---\nSent by JewelFlows platform:check-shop-health";
 
                 try {
                     Mail::raw($body, function ($message) use ($alertEmail, $shopCount) {
                         $message->to($alertEmail)
-                                ->subject("[JewelFlow] {$shopCount} Shop(s) with Critical Health Score — Action Required");
+                                ->subject("[JewelFlows] {$shopCount} Shop(s) with Critical Health Score — Action Required");
                     });
                     $this->info("Digest email sent to {$alertEmail}.");
                 } catch (\Throwable $e) {

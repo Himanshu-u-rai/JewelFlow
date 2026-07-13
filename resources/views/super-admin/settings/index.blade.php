@@ -263,7 +263,7 @@
                     <input type="text" name="mail_from_name"
                            value="{{ old('mail_from_name', $mailSettings['mail_from_name']) }}"
                            class="w-full rounded border border-slate-700 bg-slate-900 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                           placeholder="JewelFlow">
+                           placeholder="JewelFlows">
                 </div>
 
                 {{-- Host --}}
@@ -281,7 +281,7 @@
                     <input type="email" name="mail_from_address"
                            value="{{ old('mail_from_address', $mailSettings['mail_from_address']) }}"
                            class="w-full rounded border border-slate-700 bg-slate-900 text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                           placeholder="noreply@jewelflow.in">
+                           placeholder="noreply@jewelflows.com">
                 </div>
 
                 {{-- Port --}}

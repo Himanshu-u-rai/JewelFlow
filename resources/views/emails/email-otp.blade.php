@@ -24,11 +24,11 @@
 <body>
     <div class="wrap">
         <div class="header">
-            <div class="logo">Jewel<span>Flow</span></div>
+            <div class="logo">Jewel<span>Flows</span></div>
         </div>
         <div class="body">
-            <p class="greeting">Hi{{ $shopName ? ', ' . $shopName : '' }}!</p>
-            <p class="note">Your email verification code for <strong>JewelFlow</strong> is:</p>
+            <p class="greeting">Hi{{ $shopName ? ', ' . $shopName : ' there' }},</p>
+            <p class="note">Your email verification code for <strong>JewelFlows</strong> is:</p>
 
             <div class="otp-box">
                 <div class="otp-label">One-Time Code</div>
@@ -37,16 +37,16 @@
             </div>
 
             <p class="note">
-                Enter this code in the JewelFlow dashboard to verify your email address.
+                Enter this code in the JewelFlows dashboard to verify your email address.
                 Once verified, you can reset your password anytime using this email.
             </p>
             <p class="note">
-                <strong>Do not share this code.</strong> JewelFlow will never ask for this via phone or chat.
+                <strong>Do not share this code.</strong> JewelFlows will never ask for this via phone or chat.
             </p>
             <p class="ignore">If you didn't request this, you can safely ignore this email. Your account remains secure.</p>
         </div>
         <div class="footer">
-            &copy; {{ date('Y') }} JewelFlow &mdash; Jewellery ERP &amp; POS Platform
+            &copy; {{ date('Y') }} JewelFlows &mdash; Jewellery ERP &amp; POS Platform
         </div>
     </div>
 </body>
