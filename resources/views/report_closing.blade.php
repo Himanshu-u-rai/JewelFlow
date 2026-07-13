@@ -4,7 +4,7 @@
     <div class="content-inner clr-page">
         @php
             $reportDatePretty = \Carbon\Carbon::parse($date)->format('l, d M Y');
-            $shopName = auth()->user()->shop->name ?? 'JewelFlow';
+            $shopName = auth()->user()->shop->name ?? 'JewelFlows';
             $netGold = $goldIn - $goldOut - $wastage;
             $totalCash = $sales + $repairs;
             $isRetailer = auth()->user()->shop?->isRetailer();

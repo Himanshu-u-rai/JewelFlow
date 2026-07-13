@@ -33,11 +33,11 @@
                     <tr><td class="px-5 py-3 pl-10 text-gray-500">IGST</td><td class="px-5 py-3 text-right text-emerald-600">₹{{ number_format($data->outwardIgst, 2) }}</td></tr>
                     <tr><td class="px-5 py-3 font-medium text-gray-700">Total output tax</td><td class="px-5 py-3 text-right font-semibold text-emerald-700">₹{{ number_format($data->outwardGst, 2) }}</td></tr>
                     <tr class="bg-rose-50"><td class="px-5 py-3 text-gray-600">Less: GST reversed via credit notes</td><td class="px-5 py-3 text-right text-rose-600">−₹{{ number_format($data->cnGst, 2) }}</td></tr>
-                    <tr><td class="px-5 py-3 text-gray-600">Less: ITC (input tax credit)</td><td class="px-5 py-3 text-right text-gray-500">−₹{{ number_format($data->itc, 2) }} <span class="text-xs">(not tracked in JewelFlow)</span></td></tr>
+                    <tr><td class="px-5 py-3 text-gray-600">Less: ITC (input tax credit)</td><td class="px-5 py-3 text-right text-gray-500">−₹{{ number_format($data->itc, 2) }} <span class="text-xs">(not tracked in JewelFlows)</span></td></tr>
                     <tr class="bg-emerald-50 border-t-2 border-emerald-200"><td class="px-5 py-4 font-bold text-emerald-900">Net GST payable</td><td class="px-5 py-4 text-right font-bold text-lg text-emerald-700">₹{{ number_format($data->netGst, 2) }}</td></tr>
                 </tbody>
             </table>
         </div>
-        <p class="text-xs text-gray-500 mt-3 max-w-3xl">ITC is not tracked inside JewelFlow — apply your purchase-side input credit in your filing software. Net payable above is output tax less credit-note reversals only.</p>
+        <p class="text-xs text-gray-500 mt-3 max-w-3xl">ITC is not tracked inside JewelFlows — apply your purchase-side input credit in your filing software. Net payable above is output tax less credit-note reversals only.</p>
     </div>
 </x-app-layout>

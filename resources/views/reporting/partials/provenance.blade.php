@@ -11,7 +11,7 @@
         <span class="rf-version">Report version {{ $meta->reportVersion }}</span>
     </div>
     <div class="rf-col rf-center">
-        <span class="rf-system">System-generated report — JewelFlow</span>
+        <span class="rf-system">System-generated report — JewelFlows</span>
         <span class="rf-tag">{{ $meta->generatorTag }}</span>
     </div>
     <div class="rf-col rf-right">

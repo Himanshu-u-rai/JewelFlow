@@ -90,7 +90,7 @@
     </div>
 
     <style>
-        /* Reports hub: flat JewelFlow ERP directory, scoped to this page. */
+        /* Reports hub: flat JewelFlows ERP directory, scoped to this page. */
         .rh-page {
             --rh-border: #cbd5e1;
             --rh-border-soft: #e2e8f0;

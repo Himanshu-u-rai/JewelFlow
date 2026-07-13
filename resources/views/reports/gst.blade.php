@@ -4,7 +4,7 @@
         $safeMonth = max(1, min(12, $safeMonth));
         $safeYear = (int) ($year ?? now()->year);
         $reportPeriod = \Carbon\Carbon::create()->month($safeMonth)->format('F') . ' ' . $safeYear;
-        $shopName = auth()->user()->shop->name ?? 'JewelFlow';
+        $shopName = auth()->user()->shop->name ?? 'JewelFlows';
         $reportDate = now()->format('d M Y');
         $isRetailer = auth()->user()->shop?->isRetailer();
     @endphp

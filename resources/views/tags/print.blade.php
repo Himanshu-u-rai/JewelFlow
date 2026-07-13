@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Print Labels — {{ $shop->name ?? 'JewelFlow' }}</title>
+    <title>Print Labels — {{ $shop->name ?? 'JewelFlows' }}</title>
     <style>
         @page { margin: 5mm; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -292,7 +292,7 @@
                 @endphp
                 <div class="folded-label size-{{ $activeFoldedSize }}">
                     <div class="folded-half folded-left">
-                        <div class="folded-shop-name folded-truncate">{{ $shop->name ?? 'JewelFlow' }}</div>
+                        <div class="folded-shop-name folded-truncate">{{ $shop->name ?? 'JewelFlows' }}</div>
                         <div class="folded-barcode-area">
                             @if($includeBarcodeImage)
                                 <svg class="folded-barcode-svg js-barcode"
@@ -330,7 +330,7 @@
             <div class="label {{ $labelSize }}">
 
                 {{-- 1. Shop name - always visible, scales with label size --}}
-                <div class="shop-name">{{ $shop->name ?? 'JewelFlow' }}</div>
+                <div class="shop-name">{{ $shop->name ?? 'JewelFlows' }}</div>
 
                 {{-- 2. Barcode - dominant centre area --}}
                 <div class="barcode-area">

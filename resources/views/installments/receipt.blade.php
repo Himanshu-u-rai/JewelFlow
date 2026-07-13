@@ -351,7 +351,7 @@
 <body>
     @php
         $shop = auth()->user()?->shop;
-        $shopName = $shop?->name ?: config('app.name', 'Jewelflow');
+        $shopName = $shop?->name ?: config('app.name', 'Jewelflows');
         $shopContact = $shop?->mobile ?? $shop?->phone ?? auth()->user()?->mobile ?? null;
         $shopEmail = auth()->user()?->email;
         $shopAddress = $shop?->address ?? null;
