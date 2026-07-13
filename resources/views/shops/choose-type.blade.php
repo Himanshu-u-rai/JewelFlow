@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ __('Choose Your Services') }} | Jewelflows</title>
+    <title>{{ __('Choose Your Services') }} | {{ config('app.name', 'JewelFlows') }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap" rel="stylesheet" />
     <style>
@@ -288,7 +288,7 @@
                 <line x1="8" y1="13" x2="24" y2="13" stroke="#f59e0b" stroke-width="0.8" opacity="0.6"/>
                 <defs><linearGradient id="dg" x1="16" y1="4" x2="16" y2="28" gradientUnits="userSpaceOnUse"><stop stop-color="#fcd34d"/><stop offset="1" stop-color="#d97706"/></linearGradient></defs>
             </svg>
-            <div class="brand-name">Jewel<span>flows</span></div>
+            <div class="brand-name">Jewel<span>Flows</span></div>
         </div>
         {{-- Always allow an escape back to login during onboarding. --}}
         <form method="POST" action="{{ route('logout') }}" style="margin:0;">
