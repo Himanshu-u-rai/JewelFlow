@@ -65,7 +65,8 @@ class EmailVerificationController extends Controller
         $otp = (string) random_int(100000, 999999);
         Cache::put($this->cacheKey($admin), Hash::make($otp), now()->addMinutes(self::OTP_TTL_MINUTES));
 
-        Mail::to($admin->email)->send(new EmailOtpMail($otp, 'JewelFlow Platform'));
+        // Greet by the admin's own name, not the brand. Blank falls back to a plain "Hi!".
+        Mail::to($admin->email)->send(new EmailOtpMail($otp, $admin->first_name ?? ''));
 
         return back()->with('status', "We sent a 6-digit code to {$admin->email}. It expires in " . self::OTP_TTL_MINUTES . ' minutes.');
     }
