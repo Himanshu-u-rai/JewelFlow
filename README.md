@@ -1,6 +1,6 @@
-# JewelFlow
+# JewelFlows
 
-JewelFlow is an end-to-end jewelry business platform with:
+JewelFlows is an end-to-end jewelry business platform with:
 
 - A multi-tenant web SaaS for daily operations
 - A companion mobile app for shop-floor workflows
@@ -14,14 +14,14 @@ Last updated: April 2026
 
 ## 1) What the Product Is
 
-JewelFlow helps jewelry businesses run sales, inventory, customer, and service workflows from one system.
+JewelFlows helps jewelry businesses run sales, inventory, customer, and service workflows from one system.
 
 It supports two business editions:
 
 - Retailer edition: counter sales, customer programs, vendors, schemes, loyalty, catalog sharing.
 - Manufacturer edition: lot-based gold inventory and manufacturing-oriented accounting flows.
 
-JewelFlow is subscription-driven. Shops onboard through a plan and payment flow, then use the product through the web dashboard and mobile app.
+JewelFlows is subscription-driven. Shops onboard through a plan and payment flow, then use the product through the web dashboard and mobile app.
 
 ---
 
@@ -36,7 +36,7 @@ Important: the mobile app consumes backend APIs from the Laravel app. They are t
 
 ---
 
-## 3) Who Uses JewelFlow
+## 3) Who Uses JewelFlows
 
 - Owners and managers: business controls, reporting, subscriptions, exports.
 - Counter staff: POS, quick bills, customer and repair operations.
@@ -191,7 +191,7 @@ This keeps control in your SaaS while avoiding store publishing.
 
 ## 10) OTA vs New APK (Expo)
 
-JewelFlow mobile (Expo) has two update types.
+JewelFlows mobile (Expo) has two update types.
 
 ### OTA update (no new APK)
 

@@ -55,7 +55,7 @@ use Illuminate\Support\Facades\Hash;
 class PilotDemoSeeder extends Seeder
 {
     /** Fixed demo identifiers — re-run detection + documented login creds. */
-    private const SHOP_NAME      = 'JewelFlow Demo Jewellers';
+    private const SHOP_NAME      = 'JewelFlows Demo Jewellers';
     private const OWNER_MOBILE   = '9000000111';
     private const MANAGER_MOBILE = '9000000112';
     private const CASHIER_MOBILE = '9000000113';
