@@ -103,8 +103,11 @@
     }
 
     /* ─── Main 2-col layout ───────────────────────────── */
-    .pos-body { display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start; }
-    .pos-main { display: flex; flex-direction: column; gap: 20px; }
+    /* minmax(0,1fr): let the left column shrink below its min-content so the
+       wide items-table scrolls inside its own overflow:auto shell instead of
+       forcing the whole grid past the viewport (rail clipped at ~1280). */
+    .pos-body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; align-items: start; }
+    .pos-main { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 
     /* ─── Cards ───────────────────────────────────────── */
     .card {

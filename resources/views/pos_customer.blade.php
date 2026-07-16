@@ -102,7 +102,9 @@
     /* ─── Main 2-col layout ───────────────────────────── */
     .pos-body {
         display: grid;
-        grid-template-columns: 1fr 380px;
+        /* minmax(0,1fr): left column shrinks below min-content so wide inner
+           content scrolls locally instead of overflowing the grid at ~1280. */
+        grid-template-columns: minmax(0, 1fr) 380px;
         gap: 24px;
         align-items: start;
     }
@@ -111,6 +113,7 @@
         display: flex;
         flex-direction: column;
         gap: 20px;
+        min-width: 0;
     }
 
     /* ─── Cards ───────────────────────────────────────── */
