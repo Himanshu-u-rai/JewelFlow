@@ -54,6 +54,39 @@ class DashboardAccessAndScopeTest extends TestCase
             ->get(self::ERP . '/dashboard'))->assertOk();
     }
 
+    public function test_dashboard_hides_dhiran_promo_when_url_unavailable(): void
+    {
+        // Staging-like environment with no explicit DHIRAN_REGISTER_URL → the promo
+        // URL resolves to null, so the CTA must NOT be rendered at all (no broken link).
+        config(['platform.cross_promotion.dhiran_register_url' => null]);
+        $this->app['env'] = 'staging';
+
+        [$user, $shop] = $this->createRetailerTenant();
+
+        $res = TenantContext::runFor($shop->id, fn () => $this->actingAs($user)
+            ->get(self::ERP . '/dashboard'));
+
+        $res->assertOk();
+        $res->assertDontSee('Explore Dhiran');
+        $res->assertDontSee('cross_promo_seen:dhiran', false);
+        $res->assertDontSee('dhiran.jewelflows.com');
+    }
+
+    public function test_dashboard_renders_dhiran_promo_when_url_available(): void
+    {
+        // An explicit configured URL is available → the CTA renders with that href.
+        config(['platform.cross_promotion.dhiran_register_url' => 'https://dhiran.staging.example/register']);
+
+        [$user, $shop] = $this->createRetailerTenant();
+
+        $res = TenantContext::runFor($shop->id, fn () => $this->actingAs($user)
+            ->get(self::ERP . '/dashboard'));
+
+        $res->assertOk();
+        $res->assertSee('Explore Dhiran');
+        $res->assertSee('https://dhiran.staging.example/register');
+    }
+
     public function test_dashboard_kpis_are_shop_scoped(): void
     {
         // Shop A: 2 in-stock items. Shop B: 3. Each dashboard counts only its own.

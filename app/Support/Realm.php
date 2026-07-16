@@ -55,25 +55,43 @@ final class Realm
     }
 
     /**
-     * Environment-correct Dhiran "register" URL for cross-promotion.
+     * Environment-safe Dhiran "register" URL for cross-promotion, or null when the
+     * CTA must be hidden. This is the single source of truth for the promo link.
      *
-     * An explicit DHIRAN_REGISTER_URL env override always wins. Otherwise the URL
-     * is derived from the CURRENT request host by prefixing the `dhiran.` subdomain
-     * onto the ERP host — so a staging ERP host resolves to the staging Dhiran host,
-     * never production. Returns '' when no host is available (CLI); callers hide the
-     * CTA in that case.
+     * Policy:
+     *   1. DHIRAN_REGISTER_URL set to a non-empty value  → use it verbatim (any env).
+     *   2. DHIRAN_REGISTER_URL set but EMPTY             → explicitly disabled → null.
+     *      (An empty/disabled config must NEVER fall back to a derived/production URL.)
+     *   3. No override, environment = production          → derive from the request
+     *      host (jewelflows.com → https://dhiran.jewelflows.com/register).
+     *   4. No override, environment = local               → derive from the local host
+     *      (dhiran.<localhost>) — a Dhiran realm resolves locally.
+     *   5. No override, any other environment (staging …) → null. There is no Dhiran
+     *      DNS/cert outside production, so we hide the CTA rather than derive a broken
+     *      host or leak users to production.
+     *
+     * $environment defaults to the running app environment; it is injectable for tests.
      */
-    public static function dhiranRegisterUrl(?Request $request = null): string
+    public static function dhiranRegisterUrl(?Request $request = null, ?string $environment = null): ?string
     {
         $override = config('platform.cross_promotion.dhiran_register_url');
-        if (is_string($override) && $override !== '') {
-            return $override;
+        if ($override !== null) {
+            // Explicitly configured — a non-empty value wins; an empty value disables
+            // the CTA and must not fall through to host derivation.
+            $override = is_string($override) ? trim($override) : '';
+
+            return $override !== '' ? $override : null;
+        }
+
+        $environment ??= app()->environment();
+        if (! in_array($environment, ['production', 'local'], true)) {
+            return null;
         }
 
         $request ??= request();
         $host = strtolower((string) ($request?->getHost() ?? ''));
         if ($host === '') {
-            return '';
+            return null;
         }
 
         // Already a Dhiran host → use as-is; otherwise prefix the dhiran. subdomain.

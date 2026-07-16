@@ -4026,7 +4026,7 @@
             $promoUser = auth()->user();
             $dhiranRegisterUrl = \App\Support\Realm::dhiranRegisterUrl();
             $showDhiranPromo = config('platform.cross_promotion.enabled')
-                && $dhiranRegisterUrl !== ''
+                && ! empty($dhiranRegisterUrl)
                 && $promoUser?->isErp()
                 && ! ($promoUser?->shop?->hasEdition(\App\Support\ShopEdition::DHIRAN) ?? false);
         @endphp
