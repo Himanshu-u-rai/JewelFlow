@@ -24,6 +24,10 @@ class ReturnOrder extends Model
     // Return-type allow-list — Phase 1 supports only customer_return.
     public const TYPE_CUSTOMER_RETURN     = 'customer_return';
 
+    // Refund settlement methods (mirror App\Services\Returns\ReturnService).
+    public const SETTLEMENT_CASH          = 'cash';
+    public const SETTLEMENT_STORE_CREDIT  = 'store_credit';
+
     /**
      * Once a return is settled, ALL fields are immutable. Drafts/pending
      * are edited via dedicated service methods, not generic save(), so the
@@ -37,6 +41,8 @@ class ReturnOrder extends Model
         'status',
         'approved_by_user_id', 'approved_at',
         'settled_by_user_id', 'settled_at',
+        // Written once during the settlement transition (alongside settled_at).
+        'refund_settlement',
         'cancelled_by_user_id', 'cancelled_at', 'cancellation_reason',
         'override_approved_by_user_id', 'override_approved_at',
         'reason',
@@ -45,6 +51,7 @@ class ReturnOrder extends Model
     protected $fillable = [
         'shop_id', 'invoice_id', 'customer_id',
         'return_type', 'status', 'reason',
+        'refund_settlement',
         'return_window_violation_override', 'override_approved_by_user_id', 'override_approved_at',
         'created_by_user_id',
         'approved_by_user_id', 'approved_at',
@@ -103,6 +110,41 @@ class ReturnOrder extends Model
     public function exchangeOrder(): HasOne
     {
         return $this->hasOne(ExchangeOrder::class);
+    }
+
+    /**
+     * Authoritative settlement method for display.
+     *
+     * Prefer the persisted `refund_settlement`. For legacy rows settled before
+     * that column was written, derive it from the append-only store-credit
+     * ledger: a `credit_note_issued` movement against this return's credit note
+     * proves it was settled to store credit. No data rewrite — read-only derive.
+     */
+    public function settlementMethod(): string
+    {
+        if (in_array($this->refund_settlement, [self::SETTLEMENT_CASH, self::SETTLEMENT_STORE_CREDIT], true)) {
+            return $this->refund_settlement;
+        }
+
+        // Scope explicitly to this return's own shop (not ambient tenant context)
+        // so the derivation is deterministic wherever it's called from.
+        $creditNoteId = $this->creditNote?->id;
+        if ($creditNoteId && StoreCreditMovement::withoutTenant()
+            ->where('shop_id', $this->shop_id)
+            ->where('source_type', StoreCreditMovement::SOURCE_CREDIT_NOTE_ISSUED)
+            ->where('source_id', $creditNoteId)
+            ->exists()) {
+            return self::SETTLEMENT_STORE_CREDIT;
+        }
+
+        return self::SETTLEMENT_CASH;
+    }
+
+    public function settlementMethodLabel(): string
+    {
+        return $this->settlementMethod() === self::SETTLEMENT_STORE_CREDIT
+            ? 'Store credit'
+            : 'Cash refund';
     }
 
     public function isSettled(): bool

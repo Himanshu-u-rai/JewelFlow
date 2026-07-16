@@ -266,6 +266,10 @@ class ReturnService
                 'status'             => ReturnOrder::STATUS_SETTLED,
                 'settled_by_user_id' => $userId,
                 'settled_at'         => now(),
+                // Persist the actual refund decision so the credit-note view shows
+                // the true method. Exchanges settle via the exchange service, not a
+                // cash/wallet refund, so leave it unrecorded there.
+                'refund_settlement'  => $forExchange ? null : $refundSettlement,
             ]);
 
             // If every line on the invoice is now returned, also flip invoice to cancelled
@@ -430,6 +434,9 @@ class ReturnService
                 'status'             => ReturnOrder::STATUS_SETTLED,
                 'settled_by_user_id' => $userId,
                 'settled_at'         => now(),
+                // Persist the actual refund decision (cash vs store credit) so the
+                // credit-note view renders the true settlement method.
+                'refund_settlement'  => $refundSettlement,
             ]);
 
             // 8. Mark the original invoice as cancelled (legacy reporting
@@ -451,7 +458,7 @@ class ReturnService
             // 9. Loyalty reversal — non-fatal; failures get logged but don't
             //    roll back the return (matches legacy cancelByReversal behaviour).
             try {
-                (new LoyaltyService())->reversePoints((int) $invoice->id, (int) $invoice->shop_id);
+                (new LoyaltyService())->reversePoints((int) $invoice->id, (int) $invoice->shop_id, 'Reversed — sale returned');
             } catch (\Throwable $e) {
                 Log::warning('Loyalty reversal failed for invoice ' . $invoice->id . ': ' . $e->getMessage());
             }

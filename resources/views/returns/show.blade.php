@@ -322,7 +322,7 @@
                 <div>
                     <dt>Settlement method</dt>
                     <dd>
-                        {{ $returnOrder->refund_settlement === 'store_credit' ? 'Store credit' : 'Cash refund' }}
+                        {{ $returnOrder->settlementMethodLabel() }}
                     </dd>
                 </div>
 
