@@ -48,9 +48,14 @@ class LoyaltyService
     }
 
     /**
-     * Reverse earned points when an invoice is cancelled.
+     * Reverse earned points when an invoice is cancelled or returned.
+     *
+     * The $description is the customer-facing loyalty-ledger note. It defaults to
+     * the cancellation wording so existing callers are unchanged; the returns flow
+     * passes accurate return wording. Only the label differs — the reversal
+     * calculation and ledger balances are identical either way.
      */
-    public function reversePoints(int $invoiceId, int $shopId): void
+    public function reversePoints(int $invoiceId, int $shopId, string $description = 'Reversed — invoice cancelled'): void
     {
         $earnTxns = LoyaltyTransaction::where('invoice_id', $invoiceId)
             ->where('type', 'earn')
@@ -68,7 +73,7 @@ class LoyaltyService
                     'invoice_id'    => $invoiceId,
                     'type'          => 'redeem',
                     'points'        => $deduct,
-                    'description'   => "Reversed — invoice cancelled",
+                    'description'   => $description,
                     'balance_after' => $customer->loyalty_points,
                 ]);
             }
