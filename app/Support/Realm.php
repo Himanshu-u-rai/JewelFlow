@@ -55,6 +55,38 @@ final class Realm
     }
 
     /**
+     * Environment-correct Dhiran "register" URL for cross-promotion.
+     *
+     * An explicit DHIRAN_REGISTER_URL env override always wins. Otherwise the URL
+     * is derived from the CURRENT request host by prefixing the `dhiran.` subdomain
+     * onto the ERP host — so a staging ERP host resolves to the staging Dhiran host,
+     * never production. Returns '' when no host is available (CLI); callers hide the
+     * CTA in that case.
+     */
+    public static function dhiranRegisterUrl(?Request $request = null): string
+    {
+        $override = config('platform.cross_promotion.dhiran_register_url');
+        if (is_string($override) && $override !== '') {
+            return $override;
+        }
+
+        $request ??= request();
+        $host = strtolower((string) ($request?->getHost() ?? ''));
+        if ($host === '') {
+            return '';
+        }
+
+        // Already a Dhiran host → use as-is; otherwise prefix the dhiran. subdomain.
+        if (! str_starts_with($host, 'dhiran.')) {
+            $host = 'dhiran.' . $host;
+        }
+
+        $scheme = $request?->getScheme() ?: 'https';
+
+        return "{$scheme}://{$host}/register";
+    }
+
+    /**
      * Validation rule for registering a UNIQUE mobile_number WITHIN a realm —
      * mirrors the (mobile_number, realm) composite unique index. The same phone
      * may exist once per realm, but never twice within one realm.

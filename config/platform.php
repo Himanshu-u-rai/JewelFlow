@@ -31,7 +31,10 @@ return [
     */
     'cross_promotion' => [
         'enabled'             => env('CROSS_PROMOTION_ENABLED', true),
-        'dhiran_register_url' => env('DHIRAN_REGISTER_URL', 'https://dhiran.jewelflows.com/register'),
+        // No hardcoded default: an explicit env override wins, otherwise the URL is
+        // derived from the current request host (App\Support\Realm::dhiranRegisterUrl)
+        // so staging never links to production. See config note above.
+        'dhiran_register_url' => env('DHIRAN_REGISTER_URL'),
         'erp_register_url'    => env('ERP_REGISTER_URL', 'https://jewelflows.com/register'),
     ],
 ];

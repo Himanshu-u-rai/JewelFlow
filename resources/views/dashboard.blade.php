@@ -4024,7 +4024,9 @@
              register front door — never grants an edition or links accounts. --}}
         @php
             $promoUser = auth()->user();
+            $dhiranRegisterUrl = \App\Support\Realm::dhiranRegisterUrl();
             $showDhiranPromo = config('platform.cross_promotion.enabled')
+                && $dhiranRegisterUrl !== ''
                 && $promoUser?->isErp()
                 && ! ($promoUser?->shop?->hasEdition(\App\Support\ShopEdition::DHIRAN) ?? false);
         @endphp
@@ -4049,7 +4051,7 @@
                 heading="Offer gold-loan services?"
                 body="Use Dhiran to manage pledges, interest, repayments, renewals and closures — as its own separate service."
                 cta="Explore Dhiran"
-                :url="config('platform.cross_promotion.dhiran_register_url')"
+                :url="$dhiranRegisterUrl"
             />
         @endif
 
