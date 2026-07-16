@@ -175,20 +175,16 @@
                 justify-content: center;
             }
 
+            /* Wrap the 4 steps into a 2x2 grid on mobile so every step stays
+               on-screen and tappable at 390px — no horizontal scroll strip
+               (the old flex:0 0 150px overflowed to ~624px, clipping steps 3-4). */
             .purchase-stepper {
-                display: flex;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 8px;
-                overflow-x: auto;
-                padding-bottom: 2px;
-                scrollbar-width: none;
-            }
-
-            .purchase-stepper::-webkit-scrollbar {
-                display: none;
             }
 
             .purchase-step-btn {
-                flex: 0 0 150px;
                 padding: 9px;
             }
 
@@ -916,7 +912,7 @@
                 if (!purchaseDate) warnings.push('Purchase date is required.');
                 if (this.lines.length === 0) warnings.push('Add at least one stock item before saving.');
                 if (this.incompleteLineCount > 0) {
-                    warnings.push(`${this.incompleteLineCount} item${this.incompleteLineCount === 1 ? '' : 's'} need type, metal, purity, category, and gross weight.`);
+                    warnings.push(`${this.incompleteLineCount} item${this.incompleteLineCount === 1 ? ' needs' : 's need'} type, metal, purity, category, and gross weight.`);
                 }
                 if (this.hasTaxConflict) warnings.push('Use either IGST or CGST/SGST, not both.');
 

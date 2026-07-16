@@ -517,8 +517,13 @@
 
     </div>
 
-    {{-- Clear the new-purchase draft from localStorage once the user lands on the show page --}}
+    {{-- Clear the new-purchase draft ONLY after a confirmed server-side save.
+         The flash is set exclusively by StockPurchaseController@store on its
+         redirect here, so merely viewing an existing purchase (cancelled
+         navigation) never wipes an in-progress draft. --}}
+    @if(session('purchase_draft_saved'))
     <script>
         try { localStorage.removeItem('jf_purchase_draft_{{ auth()->id() }}'); } catch (_) {}
     </script>
+    @endif
 </x-app-layout>

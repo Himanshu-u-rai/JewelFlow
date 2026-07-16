@@ -153,7 +153,11 @@ class StockPurchaseController extends Controller
         });
 
         return redirect()->route('inventory.purchases.show', $purchase)
-            ->with('success', "Purchase {$purchase->purchase_number} saved as draft.");
+            ->with('success', "Purchase {$purchase->purchase_number} saved as draft.")
+            // Signal the wizard's localStorage draft was persisted server-side, so
+            // the detail page can clear it (only on confirmed success — never on a
+            // validation/network failure, which never reaches this redirect).
+            ->with('purchase_draft_saved', true);
     }
 
     public function show(StockPurchase $purchase)
