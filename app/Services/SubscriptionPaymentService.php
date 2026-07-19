@@ -10,6 +10,7 @@ use App\Models\Platform\SubscriptionEvent;
 use App\Models\Shop;
 use App\Services\PlatformInvoiceService;
 use App\Support\ShopEdition;
+use App\Support\SubscriptionTerm;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -193,11 +194,8 @@ class SubscriptionPaymentService
         //    last line of defence.
         $startsAt = $this->paidTermStartsAt();
 
-        $endsAt = $billingCycle === 'yearly'
-            ? $startsAt->copy()->addYear()
-            : $startsAt->copy()->addMonth();
-
-        $graceEndsAt = $endsAt->copy()->addDays($plan->grace_days ?? config('business.subscription_grace_days'));
+        $endsAt = SubscriptionTerm::endsAtFor($billingCycle, $startsAt);
+        $graceEndsAt = SubscriptionTerm::graceEndsAtFor($endsAt, $plan);
 
         try {
             $invoiceId = null;
@@ -298,6 +296,7 @@ class SubscriptionPaymentService
         }
 
         $now = Carbon::now();
+        $today = $now->copy()->startOfDay(); // Asia/Kolkata business date
 
         // grace_ends_at is the true end of the customer's paid+grace entitlement.
         // Fall back to ends_at when grace was never set.
@@ -305,24 +304,24 @@ class SubscriptionPaymentService
             ? Carbon::parse($current->grace_ends_at)
             : ($current->ends_at ? Carbon::parse($current->ends_at) : $now);
 
-        $renewingAfterExpiry = $now->gt($graceEndsAt);
+        // Calendar compare (inclusive): grace is valid THROUGH grace_ends_at, so the
+        // term has only fully lapsed once today is strictly past it. Comparing an
+        // afternoon $now against a midnight grace_ends_at would lapse a day early.
+        $renewingAfterExpiry = $today->gt($graceEndsAt->copy()->startOfDay());
 
         if ($renewingAfterExpiry || !$current->ends_at) {
             // Customer let it fully lapse — fresh term from today.
             $startsAt = $now->copy();
         } else {
-            // Still inside the paid term or grace — extend from the original ends_at
-            // so no paid days are lost.
-            $startsAt = Carbon::parse($current->ends_at);
+            // Still inside the paid term or grace — extend from the day AFTER the
+            // original inclusive To so no paid days are lost and terms never overlap.
+            $startsAt = Carbon::parse($current->ends_at)->startOfDay()->addDay();
         }
 
-        $endsAt = $billingCycle === 'yearly'
-            ? $startsAt->copy()->addYear()
-            : $startsAt->copy()->addMonth();
+        $endsAt = SubscriptionTerm::endsAtFor($billingCycle, $startsAt);
 
         $plan = $current->plan;
-        $graceDays = $plan?->grace_days ?? config('business.subscription_grace_days');
-        $newGraceEndsAt = $endsAt->copy()->addDays($graceDays);
+        $newGraceEndsAt = SubscriptionTerm::graceEndsAtFor($endsAt, $plan);
 
         try {
             return DB::transaction(function () use (

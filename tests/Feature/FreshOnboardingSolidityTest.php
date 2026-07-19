@@ -50,10 +50,10 @@ class FreshOnboardingSolidityTest extends TestCase
             $plan, 'yearly', (float)$plan->price_yearly, 'pay_first', 'order_first'
         );
 
-        // 1) Full year, active, NOT trial.
+        // 1) Full inclusive year, active, NOT trial (start + 1 year − 1 day).
         $this->assertSame('active', $sub->status);
-        $this->assertEquals(Carbon::parse($sub->starts_at)->addYear()->toDateString(),
-            Carbon::parse($sub->ends_at)->toDateString(), 'yearly = full year');
+        $this->assertEquals(Carbon::parse($sub->starts_at)->addYearNoOverflow()->subDay()->toDateString(),
+            Carbon::parse($sub->ends_at)->toDateString(), 'yearly = full inclusive year');
         // 2) grace = ends_at + plan grace_days
         $this->assertEquals(Carbon::parse($sub->ends_at)->addDays($plan->grace_days)->toDateString(),
             Carbon::parse($sub->grace_ends_at)->toDateString());

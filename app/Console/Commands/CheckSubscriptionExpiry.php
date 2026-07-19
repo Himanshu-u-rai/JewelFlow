@@ -18,10 +18,15 @@ class CheckSubscriptionExpiry extends Command
     public function handle(): int
     {
         $now = Carbon::now();
+        // Compare CALENDAR dates in the business timezone (Asia/Kolkata). ends_at
+        // is a date-cast (midnight); comparing it against an afternoon now() would
+        // expire a subscription at dawn on its own inclusive To day. To is inclusive:
+        // active through To, grace from To+1, suspended after grace.
+        $today = $now->copy()->startOfDay();
 
-        // 1) Find subscriptions that have expired (ends_at < now, status still active/trial)
+        // 1) Find subscriptions whose term has fully ended (To strictly before today).
         $expired = ShopSubscription::whereIn('status', ['active', 'trial'])
-            ->where('ends_at', '<', $now)
+            ->where('ends_at', '<', $today)
             ->with('plan')
             ->get();
 
@@ -32,8 +37,11 @@ class CheckSubscriptionExpiry extends Command
                 $plan = $subscription->plan;
                 $graceEndsAt = $subscription->grace_ends_at;
 
-                // Determine new status
-                if ($graceEndsAt && $now->lte($graceEndsAt)) {
+                // Determine new status. Compare CALENDAR dates: the final grace day
+                // (businessDate == grace_ends_at) is still within grace; suspension
+                // begins the following business day. Using afternoon $now here would
+                // drop the last grace day (midnight ends_at < afternoon now).
+                if ($graceEndsAt && $today->lte(Carbon::parse($graceEndsAt)->startOfDay())) {
                     $newStatus = 'grace';
                     $shopMode = 'active';
                 } elseif ($plan && $plan->downgrade_to_read_only_on_due) {
@@ -113,10 +121,13 @@ class CheckSubscriptionExpiry extends Command
             }
         }
 
-        // 2) Find grace-period subscriptions that have passed grace_ends_at
+        // 2) Find grace-period subscriptions that have passed grace_ends_at.
+        // Calendar compare: grace is inclusive of grace_ends_at, so only rows whose
+        // grace end is strictly BEFORE today have truly lapsed. Comparing against
+        // afternoon $now would suspend a shop on its own final grace day.
         $graceExpired = ShopSubscription::where('status', 'grace')
             ->whereNotNull('grace_ends_at')
-            ->where('grace_ends_at', '<', $now)
+            ->where('grace_ends_at', '<', $today)
             ->with('plan')
             ->get();
 

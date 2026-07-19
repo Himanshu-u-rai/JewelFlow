@@ -413,10 +413,10 @@
 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Plan <span class="text-rose-400">*</span></label>
-                    <select name="plan_id" required class="admin-control admin-select">
+                    <select name="plan_id" id="sub-plan" required class="admin-control admin-select">
                         <option value="">— Select plan —</option>
                         @foreach($plans as $plan)
-                            <option value="{{ $plan->id }}"
+                            <option value="{{ $plan->id }}" data-grace-days="{{ $plan->grace_days }}"
                                 {{ old('plan_id', $currentSubscription?->plan_id) == $plan->id ? 'selected' : '' }}>
                                 {{ $plan->name }}
                                 (₹{{ number_format($plan->price_monthly, 0) }}/mo · ₹{{ number_format($plan->price_yearly, 0) }}/yr)
@@ -439,7 +439,7 @@
 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Billing Cycle</label>
-                    <select name="billing_cycle" class="admin-control admin-select">
+                    <select name="billing_cycle" id="sub-cycle" class="admin-control admin-select">
                         <option value="">— Not set —</option>
                         <option value="monthly" {{ old('billing_cycle', $currentSubscription?->billing_cycle) === 'monthly' ? 'selected' : '' }}>Monthly</option>
                         <option value="yearly"  {{ old('billing_cycle', $currentSubscription?->billing_cycle) === 'yearly'  ? 'selected' : '' }}>Yearly</option>
@@ -447,24 +447,44 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Starts At <span class="text-rose-400">*</span></label>
-                    <input type="date" name="starts_at" required
-                           value="{{ old('starts_at', $currentSubscription?->starts_at?->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
+                    <label class="block text-xs text-slate-400 mb-1">From <span class="text-rose-400">*</span></label>
+                    <input type="date" name="starts_at" id="sub-from" required
+                           value="{{ old('starts_at', $suggestedTerm['from']->format('Y-m-d')) }}"
                            class="admin-control">
                 </div>
 
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Ends At</label>
-                    <input type="date" name="ends_at"
-                           value="{{ old('ends_at', $currentSubscription?->ends_at?->format('Y-m-d')) }}"
+                    <label class="block text-xs text-slate-400 mb-1">To <span class="text-rose-400">*</span></label>
+                    <input type="date" name="ends_at" id="sub-to" required
+                           value="{{ old('ends_at', $suggestedTerm['to']?->format('Y-m-d')) }}"
                            class="admin-control">
+                    <p class="text-xs text-slate-500 mt-1">Suggested from the billing cycle. Edit freely — your exact dates are saved as-is. Grace begins after To.</p>
                 </div>
 
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Grace Period Ends</label>
-                    <input type="date" name="grace_ends_at"
-                           value="{{ old('grace_ends_at', $currentSubscription?->grace_ends_at?->format('Y-m-d')) }}"
-                           class="admin-control">
+                {{-- Guided-extension preview: previous vs proposed term, grace, invoice period, and warnings. --}}
+                <div class="md:col-span-2 lg:col-span-3 rounded-lg border border-slate-700/60 bg-slate-800/40 p-3 text-xs"
+                     id="sub-preview"
+                     data-prev-from="{{ $currentSubscription?->starts_at?->format('Y-m-d') }}"
+                     data-prev-to="{{ $currentSubscription?->ends_at?->format('Y-m-d') }}"
+                     data-prev-grace="{{ $currentSubscription?->grace_ends_at?->format('Y-m-d') }}"
+                     data-today="{{ now()->format('Y-m-d') }}">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <div class="text-slate-500">Previous term</div>
+                            <div class="text-slate-300">{{ $currentSubscription?->starts_at?->format('d M Y') ?? '—' }} → {{ $currentSubscription?->ends_at?->format('d M Y') ?? '—' }}</div>
+                            <div class="text-slate-500 mt-1">Previous grace end</div>
+                            <div class="text-slate-300">{{ $currentSubscription?->grace_ends_at?->format('d M Y') ?? '—' }}</div>
+                        </div>
+                        <div>
+                            <div class="text-slate-500">Proposed term</div>
+                            <div class="text-emerald-300" id="sub-proposed-term">—</div>
+                            <div class="text-slate-500 mt-1">Proposed grace end</div>
+                            <div class="text-emerald-300" id="sub-proposed-grace">—</div>
+                            <div class="text-slate-500 mt-1">Invoice period (if priced)</div>
+                            <div class="text-slate-300" id="sub-invoice-period">—</div>
+                        </div>
+                    </div>
+                    <ul id="sub-warnings" class="mt-2 space-y-1 text-amber-300"></ul>
                 </div>
 
                 <div>
@@ -501,6 +521,55 @@
                 <button type="submit" class="admin-btn admin-btn-primary">Apply Subscription Change</button>
             </div>
         </form>
+
+        <script>
+        (function () {
+            const from = document.getElementById('sub-from');
+            const to = document.getElementById('sub-to');
+            const cycle = document.getElementById('sub-cycle');
+            const planSel = document.getElementById('sub-plan');
+            const price = document.querySelector('input[name="price_paid"]');
+            const box = document.getElementById('sub-preview');
+            if (!from || !to || !cycle || !box) return;
+
+            const termEl = document.getElementById('sub-proposed-term');
+            const graceEl = document.getElementById('sub-proposed-grace');
+            const invEl = document.getElementById('sub-invoice-period');
+            const warnEl = document.getElementById('sub-warnings');
+            const today = box.dataset.today || '';
+            const prevTo = box.dataset.prevTo || '';
+
+            let toDirty = false;
+            to.addEventListener('input', () => { toDirty = true; refresh(); });
+
+            const parse = s => s ? new Date(s + 'T00:00:00') : null;
+            const fmt = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            const human = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            const addCycle = (d, c) => { const n = new Date(d); c === 'yearly' ? n.setFullYear(n.getFullYear() + 1) : n.setMonth(n.getMonth() + 1); return n; };
+            const graceDays = () => parseInt(planSel?.selectedOptions[0]?.dataset.graceDays || '0', 10) || 0;
+
+            function refresh() {
+                const f = parse(from.value);
+                const c = cycle.value;
+                if (f && c && !toDirty) to.value = fmt(addCycle(f, c));
+                const t = parse(to.value);
+
+                termEl.textContent = (f && t) ? human(f) + ' → ' + human(t) : '—';
+                if (t) { const g = new Date(t); g.setDate(g.getDate() + graceDays()); graceEl.textContent = human(g); } else graceEl.textContent = '—';
+                invEl.textContent = (f && t && parseFloat(price?.value || '0') > 0) ? human(f) + ' → ' + human(t) : '—';
+
+                const w = [];
+                if (f && today && from.value < today) w.push('Backdating: From is before today (' + today + ').');
+                if (f && prevTo) { if (from.value > prevTo) w.push('Gap: From is after the previous term end (' + prevTo + ').'); else if (from.value < prevTo) w.push('Overlap: From is before the previous term end (' + prevTo + ').'); }
+                if (f && t && c && fmt(addCycle(f, c)) !== to.value) w.push('Duration differs from the selected ' + c + ' cycle — an override reason will be required.');
+                if (t && f && to.value <= from.value) w.push('To must be after From.');
+                warnEl.replaceChildren(...w.map(x => { const li = document.createElement('li'); li.textContent = '⚠ ' + x; return li; }));
+            }
+
+            [from, cycle, planSel, price].forEach(el => el && el.addEventListener('input', refresh));
+            refresh();
+        })();
+        </script>
     </div>
 
     {{-- Billing & Invoices --}}

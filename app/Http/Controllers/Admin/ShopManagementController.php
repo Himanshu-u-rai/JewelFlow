@@ -12,6 +12,7 @@ use App\Models\Platform\ShopSubscription;
 use App\Models\Repair;
 use App\Models\Shop;
 use App\Services\PlatformAuditService;
+use App\Support\SubscriptionTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -92,7 +93,14 @@ class ShopManagementController extends Controller
             ->latest('id')
             ->first();
 
-        $plans = Plan::orderBy('name')->get(['id', 'name', 'price_monthly', 'price_yearly']);
+        $plans = Plan::orderBy('name')->get(['id', 'name', 'price_monthly', 'price_yearly', 'grace_days']);
+
+        // Safe suggested term for the manual-extension form — never the stale dates
+        // of an expired row. The form prefills these; the operator's edits win.
+        $suggestedTerm = SubscriptionTerm::suggest(
+            $currentSubscription,
+            $currentSubscription?->billing_cycle ?? 'yearly'
+        );
 
         $storageStat = \App\Models\ShopStorageStat::where('shop_id', $shop->id)->first();
 
@@ -104,6 +112,7 @@ class ShopManagementController extends Controller
             'editionHistory',
             'billingInvoices',
             'currentSubscription',
+            'suggestedTerm',
             'plans',
             'storageStat'
         ));

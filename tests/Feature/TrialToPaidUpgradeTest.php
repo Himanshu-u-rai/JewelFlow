@@ -116,9 +116,10 @@ class TrialToPaidUpgradeTest extends TestCase
         );
 
         $this->assertSame('active', $paid->status);
-        // Paid term begins at the trial end (free days preserved), runs one year.
+        // Paid term begins at the trial end (free days preserved), runs one inclusive
+        // year (trialEnd + 1 year − 1 day).
         $this->assertEquals($trialEnd->toDateString(), Carbon::parse($paid->starts_at)->toDateString());
-        $this->assertEquals($trialEnd->copy()->addYear()->toDateString(), Carbon::parse($paid->ends_at)->toDateString());
+        $this->assertEquals($trialEnd->copy()->addYearNoOverflow()->subDay()->toDateString(), Carbon::parse($paid->ends_at)->toDateString());
         // Trial row is untouched and still live.
         $trial->refresh();
         $this->assertSame('trial', $trial->status);

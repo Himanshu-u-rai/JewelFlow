@@ -94,10 +94,12 @@ class SubscriptionLifecycleTest extends TestCase
         );
 
         $this->assertSame('active', $sub->status, 'A paid purchase must be active, never trial.');
+        // Inclusive To: a full yearly term runs From THROUGH the day before the
+        // anniversary (start + 1 year − 1 day), not a shrunk 7-day trial.
         $this->assertSame(
-            Carbon::parse($sub->starts_at)->addYear()->toDateString(),
+            Carbon::parse($sub->starts_at)->addYearNoOverflow()->subDay()->toDateString(),
             Carbon::parse($sub->ends_at)->toDateString(),
-            'Yearly term must be exactly one year, not a 7-day trial.'
+            'Yearly term must be a full inclusive year, not a 7-day trial.'
         );
     }
 
@@ -114,8 +116,9 @@ class SubscriptionLifecycleTest extends TestCase
         );
 
         $this->assertSame('active', $sub->status);
+        // Inclusive To: full month = start + 1 month − 1 day.
         $this->assertSame(
-            Carbon::parse($sub->starts_at)->addMonth()->toDateString(),
+            Carbon::parse($sub->starts_at)->addMonthNoOverflow()->subDay()->toDateString(),
             Carbon::parse($sub->ends_at)->toDateString()
         );
     }
@@ -278,12 +281,15 @@ class SubscriptionLifecycleTest extends TestCase
         $this->assertSame($oldEndsAt, Carbon::parse($current->ends_at)->toDateString());
         $this->assertSame('active', $current->status);
 
-        // New row anchored at old ends_at.
+        // New row starts the day AFTER the old inclusive To — no lost days, no overlap.
         $this->assertNotSame($current->id, $renewed->id);
         $this->assertSame('active', $renewed->status);
-        $this->assertSame($oldEndsAt, Carbon::parse($renewed->starts_at)->toDateString());
         $this->assertSame(
-            Carbon::parse($renewed->starts_at)->addYear()->toDateString(),
+            Carbon::parse($oldEndsAt)->addDay()->toDateString(),
+            Carbon::parse($renewed->starts_at)->toDateString()
+        );
+        $this->assertSame(
+            Carbon::parse($renewed->starts_at)->addYearNoOverflow()->subDay()->toDateString(),
             Carbon::parse($renewed->ends_at)->toDateString()
         );
 
@@ -311,10 +317,10 @@ class SubscriptionLifecycleTest extends TestCase
         );
 
         $this->assertNotSame($current->id, $renewed->id);
-        $this->assertSame($oldEndsAt, Carbon::parse($renewed->starts_at)->toDateString(),
-            'During grace the new term must extend from the original ends_at.');
+        $this->assertSame(Carbon::parse($oldEndsAt)->addDay()->toDateString(), Carbon::parse($renewed->starts_at)->toDateString(),
+            'During grace the new term must extend from the day after the original inclusive To.');
         $this->assertSame(
-            Carbon::parse($oldEndsAt)->addYear()->toDateString(),
+            Carbon::parse($renewed->starts_at)->addYearNoOverflow()->subDay()->toDateString(),
             Carbon::parse($renewed->ends_at)->toDateString()
         );
     }
@@ -339,7 +345,7 @@ class SubscriptionLifecycleTest extends TestCase
         $this->assertSame(now()->toDateString(), Carbon::parse($renewed->starts_at)->toDateString(),
             'After full lapse the new term must start today.');
         $this->assertSame(
-            now()->addYear()->toDateString(),
+            Carbon::parse($renewed->starts_at)->addYearNoOverflow()->subDay()->toDateString(),
             Carbon::parse($renewed->ends_at)->toDateString()
         );
     }
@@ -414,10 +420,10 @@ class SubscriptionLifecycleTest extends TestCase
             ->assertExitCode(0);
 
         $affected->refresh();
-        // Corrected to full year → active (well within the year).
+        // Corrected to full inclusive year → active (well within the year).
         $this->assertSame('active', $affected->status);
         $this->assertSame(
-            Carbon::parse($affected->starts_at)->addYear()->toDateString(),
+            Carbon::parse($affected->starts_at)->addYearNoOverflow()->subDay()->toDateString(),
             Carbon::parse($affected->ends_at)->toDateString()
         );
         $this->assertSame(

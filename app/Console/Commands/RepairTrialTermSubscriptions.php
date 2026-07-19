@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Platform\ShopSubscription;
 use App\Models\Platform\SubscriptionEvent;
 use App\Models\Shop;
+use App\Support\SubscriptionTerm;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -49,12 +50,8 @@ class RepairTrialTermSubscriptions extends Command
             $startsAt = Carbon::parse($subscription->starts_at);
             $cycle = $subscription->billing_cycle === 'yearly' ? 'yearly' : 'monthly';
 
-            $correctEndsAt = $cycle === 'yearly'
-                ? $startsAt->copy()->addYear()
-                : $startsAt->copy()->addMonth();
-
-            $graceDays = $plan?->grace_days ?? config('business.subscription_grace_days');
-            $correctGraceEndsAt = $correctEndsAt->copy()->addDays($graceDays);
+            $correctEndsAt = SubscriptionTerm::endsAtFor($cycle, $startsAt);
+            $correctGraceEndsAt = SubscriptionTerm::graceEndsAtFor($correctEndsAt, $plan);
 
             // Recompute status against now() — same logic as CheckSubscriptionExpiry.
             [$correctStatus, $shopMode] = $this->resolveStatus($now, $correctEndsAt, $correctGraceEndsAt, $plan);

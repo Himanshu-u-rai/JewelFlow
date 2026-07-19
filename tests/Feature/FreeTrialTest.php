@@ -116,7 +116,8 @@ class FreeTrialTest extends TestCase
         );
 
         $this->assertSame('active', $paid->status);
-        $this->assertEquals(Carbon::parse($paid->starts_at)->addYear()->toDateString(),
+        // Inclusive To: full yearly term = start + 1 year − 1 day.
+        $this->assertEquals(Carbon::parse($paid->starts_at)->addYearNoOverflow()->subDay()->toDateString(),
             Carbon::parse($paid->ends_at)->toDateString());
         SubscriptionGateService::assertShopWritable($shop->id); // writable as paid
         $this->assertTrue(true);
