@@ -95,6 +95,13 @@ class EnsureAccountIsActive
             ]);
         }
 
+        if ($request->routeIs('settings.pricing.save-rates')) {
+            return redirect()->route('dashboard')->with(
+                'error',
+                'Today’s rates were not saved because this shop is in read-only mode. Extend or reactivate the subscription first.'
+            );
+        }
+
         return back()->withErrors([
             'shop' => $message,
         ]);

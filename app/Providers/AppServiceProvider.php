@@ -252,8 +252,12 @@ class AppServiceProvider extends ServiceProvider
                 // Fresh/Migrate is chosen deadlocks a fresh shop. Only prompt for
                 // rates once the shop is live-allowed.
                 $liveAllowed = ShopOpeningSetupState::forShop((int) $user->shop_id)->isLiveAllowed();
+                $accessMode = $user->shop->access_mode ?: ($user->shop->is_active ? 'active' : 'suspended');
                 $pricingShellState = [
-                    'show_owner_modal' => $liveAllowed && $user->isOwner() && ! $pricing->hasCurrentDailyRates($user->shop),
+                    'show_owner_modal' => $liveAllowed
+                        && $accessMode === 'active'
+                        && $user->isOwner()
+                        && ! $pricing->hasCurrentDailyRates($user->shop),
                     'business_date' => $pricing->businessDateString($user->shop),
                     'timezone' => $pricing->pricingTimezone($user->shop),
                     'today_rate' => $pricing->currentDailyRate($user->shop),
