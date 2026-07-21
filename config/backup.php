@@ -26,6 +26,24 @@ return [
                 'exclude' => [
                     base_path('vendor'),
                     base_path('node_modules'),
+
+                    /*
+                     * The backup destination itself must never be a backup source: the
+                     * 'local' disk root is storage/app/private/{name}, where {name} is
+                     * this same env('APP_NAME'). Without this exclusion every daily
+                     * archive nests all previously stored archives inside itself,
+                     * causing unbounded disk growth (each zip ends up containing every
+                     * prior zip). Derived from env('APP_NAME') so it tracks the active
+                     * destination automatically if the brand name changes again.
+                     */
+                    storage_path('app/private/' . env('APP_NAME', 'laravel-backup')),
+
+                    /*
+                     * Legacy destination used before the APP_NAME rebrand
+                     * (JewelFlow -> JewelFlows). Not derivable from current env,
+                     * kept as an explicit literal until it is retired separately.
+                     */
+                    storage_path('app/private/JewelFlow'),
                 ],
 
                 /*
