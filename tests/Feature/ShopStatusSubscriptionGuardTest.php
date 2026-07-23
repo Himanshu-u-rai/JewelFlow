@@ -59,10 +59,36 @@ class ShopStatusSubscriptionGuardTest extends TestCase
         ]);
     }
 
+    private function dhiranPlan(): Plan
+    {
+        return Plan::create([
+            'code' => 'dhiran_guard_' . fake()->unique()->numberBetween(1000, 999999),
+            'name' => 'Dhiran',
+            'price_monthly' => 2999,
+            'price_yearly' => 30000,
+            'grace_days' => 7,
+            'downgrade_to_read_only_on_due' => true,
+            'is_active' => true,
+        ]);
+    }
+
     private function activate(PlatformAdmin $admin, Shop $shop)
     {
         return $this->actingAsAdmin($admin)
             ->patch(route('admin.shops.status', $shop), ['access_mode' => 'active', 'reason' => 'test']);
+    }
+
+    private function makeSub(Shop $shop, Plan $plan, array $overrides = []): ShopSubscription
+    {
+        return ShopSubscription::create(array_merge([
+            'shop_id' => $shop->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'starts_at' => now()->toDateString(),
+            'ends_at' => now()->addYear()->toDateString(),
+            'grace_ends_at' => now()->addYear()->addDays(7)->toDateString(),
+            'billing_cycle' => 'yearly',
+        ], $overrides));
     }
 
     // Reproduces the exact Goldlux row shape: several stale read_only rows,
@@ -234,5 +260,168 @@ class ShopStatusSubscriptionGuardTest extends TestCase
 
         $this->assertSame('suspended', $shop->fresh()->access_mode,
             'A valid subscription must never resurrect an administratively suspended shop.');
+    }
+
+    // ── entitlesAccessToday() hardening ─────────────────────────────────────
+
+    public function test_future_dated_active_subscription_does_not_entitle_access_early(): void
+    {
+        $shop = $this->createShop('retailer');
+        $this->makeSub($shop, $this->retailPlan(), [
+            'starts_at' => now()->addWeek()->toDateString(), // term hasn't started yet
+        ]);
+
+        $this->assertFalse(ShopSubscription::entitlesAccessToday($shop));
+    }
+
+    // Point 2 + 3: a Dhiran subscription can never justify Retail ERP access,
+    // and the generic Restore action must not accept it as justification either.
+    public function test_expired_retail_with_active_dhiran_does_not_unlock_retail_erp(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->verifiedAdmin();
+        $shop = $this->createShop('retailer');
+        $shop->forceFill(['access_mode' => 'read_only', 'is_active' => false])->save();
+
+        $this->makeSub($shop, $this->retailPlan(), [
+            'status' => 'read_only',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'ends_at' => now()->subWeek()->toDateString(),
+            'grace_ends_at' => now()->subWeek()->toDateString(),
+        ]);
+        $this->makeSub($shop, $this->dhiranPlan()); // active, but a different product
+
+        $this->assertFalse(ShopSubscription::entitlesAccessToday($shop),
+            'An active Dhiran subscription must never justify Retail ERP access.');
+
+        $response = $this->activate($admin, $shop);
+        $response->assertSessionHasErrors('access_mode');
+        $this->assertSame('read_only', $shop->fresh()->access_mode,
+            'The generic Restore action must not use a different-edition subscription as justification.');
+    }
+
+    // The reverse must also hold: Retail's own valid entitlement is judged on
+    // its own row, unaffected by an expired Dhiran subscription on the shop.
+    public function test_active_retail_with_expired_dhiran_remains_correctly_isolated(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->verifiedAdmin();
+        $shop = $this->createShop('retailer');
+        $shop->forceFill(['access_mode' => 'read_only', 'is_active' => false])->save();
+
+        $this->makeSub($shop, $this->retailPlan()); // active, entitling today
+        $this->makeSub($shop, $this->dhiranPlan(), [
+            'status' => 'read_only',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'ends_at' => now()->subWeek()->toDateString(),
+            'grace_ends_at' => now()->subWeek()->toDateString(),
+        ]);
+
+        $this->assertTrue(ShopSubscription::entitlesAccessToday($shop));
+
+        $response = $this->activate($admin, $shop);
+        $response->assertSessionDoesntHaveErrors('access_mode');
+        $this->assertSame('active', $shop->fresh()->access_mode);
+    }
+
+    public function test_active_status_with_null_ends_at_cannot_grant_access(): void
+    {
+        $shop = $this->createShop('retailer');
+        $this->makeSub($shop, $this->retailPlan(), [
+            'ends_at' => null,
+            'grace_ends_at' => null,
+        ]);
+
+        $this->assertFalse(ShopSubscription::entitlesAccessToday($shop),
+            'A malformed row with no ends_at must fail closed, not be treated as open-ended.');
+    }
+
+    public function test_grace_status_with_null_grace_ends_at_cannot_grant_access(): void
+    {
+        $shop = $this->createShop('retailer');
+        $this->makeSub($shop, $this->retailPlan(), [
+            'status' => 'grace',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'ends_at' => now()->subWeek()->toDateString(),
+            'grace_ends_at' => null,
+        ]);
+
+        $this->assertFalse(ShopSubscription::entitlesAccessToday($shop),
+            'A malformed grace row with no grace_ends_at must fail closed.');
+    }
+
+    public function test_unrecognised_shop_type_never_entitles_access(): void
+    {
+        $shop = $this->createShop('retailer');
+        $shop->forceFill(['shop_type' => 'something_new'])->save();
+        $this->makeSub($shop, $this->retailPlan());
+
+        $this->assertFalse(ShopSubscription::entitlesAccessToday($shop));
+    }
+
+    // ── Inclusive From/To/grace boundary days ───────────────────────────────
+
+    public function test_starts_at_today_is_inclusive(): void
+    {
+        $shop = $this->createShop('retailer');
+        $this->makeSub($shop, $this->retailPlan(), ['starts_at' => now()->toDateString()]);
+
+        $this->assertTrue(ShopSubscription::entitlesAccessToday($shop));
+    }
+
+    public function test_starts_at_tomorrow_is_not_yet_entitling(): void
+    {
+        $shop = $this->createShop('retailer');
+        $this->makeSub($shop, $this->retailPlan(), ['starts_at' => now()->addDay()->toDateString()]);
+
+        $this->assertFalse(ShopSubscription::entitlesAccessToday($shop));
+    }
+
+    public function test_ends_at_today_is_inclusive(): void
+    {
+        $shop = $this->createShop('retailer');
+        $this->makeSub($shop, $this->retailPlan(), [
+            'starts_at' => now()->subMonth()->toDateString(),
+            'ends_at' => now()->toDateString(),
+        ]);
+
+        $this->assertTrue(ShopSubscription::entitlesAccessToday($shop));
+    }
+
+    public function test_ends_at_yesterday_is_expired(): void
+    {
+        $shop = $this->createShop('retailer');
+        $this->makeSub($shop, $this->retailPlan(), [
+            'starts_at' => now()->subMonth()->toDateString(),
+            'ends_at' => now()->subDay()->toDateString(),
+        ]);
+
+        $this->assertFalse(ShopSubscription::entitlesAccessToday($shop));
+    }
+
+    public function test_grace_ends_at_today_is_inclusive(): void
+    {
+        $shop = $this->createShop('retailer');
+        $this->makeSub($shop, $this->retailPlan(), [
+            'status' => 'grace',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'ends_at' => now()->subWeek()->toDateString(),
+            'grace_ends_at' => now()->toDateString(),
+        ]);
+
+        $this->assertTrue(ShopSubscription::entitlesAccessToday($shop));
+    }
+
+    public function test_grace_ends_at_yesterday_has_lapsed(): void
+    {
+        $shop = $this->createShop('retailer');
+        $this->makeSub($shop, $this->retailPlan(), [
+            'status' => 'grace',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'ends_at' => now()->subWeek()->toDateString(),
+            'grace_ends_at' => now()->subDay()->toDateString(),
+        ]);
+
+        $this->assertFalse(ShopSubscription::entitlesAccessToday($shop));
     }
 }

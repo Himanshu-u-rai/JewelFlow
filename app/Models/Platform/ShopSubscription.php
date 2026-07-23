@@ -75,26 +75,51 @@ class ShopSubscription extends Model
     }
 
     /**
-     * Whether the shop's latest subscription row genuinely entitles access
-     * TODAY, using the same calendar-date boundary logic as the
-     * CheckSubscriptionExpiry scheduler (not the middleware's status-only
-     * trust). A row can carry status='active' with a stale, already-past
-     * ends_at until the next midnight scheduler run catches it — this check
-     * closes that same-day window so callers never grant/promise access the
-     * scheduler is about to revoke anyway.
+     * Whether the shop's own core ERP edition (its shop_type: retailer or
+     * manufacturer) genuinely entitles access TODAY, using the same
+     * calendar-date boundary logic as the CheckSubscriptionExpiry scheduler
+     * (not the middleware's status-only trust). A row can carry
+     * status='active' with a stale, already-past ends_at until the next
+     * midnight scheduler run catches it — this check closes that same-day
+     * window so callers never grant/promise access the scheduler is about
+     * to revoke anyway.
+     *
+     * Edition-scoped: only subscriptions whose plan grants the SAME edition
+     * as the shop's own shop_type are considered. A Dhiran subscription can
+     * never justify Retail/ERP access and vice versa — a shop that holds
+     * both products is judged on the ERP-edition row alone here, regardless
+     * of the other product's state.
+     *
+     * Fails closed: no matching-edition row, an unrecognised shop_type, or a
+     * row with a null/malformed starts_at, ends_at, or grace_ends_at (for
+     * the branch that needs it) never entitles access.
      */
-    public static function entitlesAccessToday(int $shopId): bool
+    public static function entitlesAccessToday(Shop $shop): bool
     {
-        $subscription = static::query()->where('shop_id', $shopId)->latest('id')->first();
-        if (! $subscription) {
+        $edition = $shop->shop_type;
+        if (! in_array($edition, ['retailer', 'manufacturer'], true)) {
+            return false;
+        }
+
+        $subscription = static::query()
+            ->where('shop_id', $shop->id)
+            ->with('plan.platformProduct')
+            ->latest('id')
+            ->get()
+            ->first(fn (self $sub) => $sub->plan?->grantsEdition() === $edition);
+
+        if (! $subscription || ! $subscription->starts_at) {
             return false;
         }
 
         $today = now()->toDateString();
+        if ($subscription->starts_at->toDateString() > $today) {
+            return false; // future-dated term hasn't started yet
+        }
 
         return match ($subscription->status) {
-            'active', 'trial' => ! $subscription->ends_at || $subscription->ends_at->toDateString() >= $today,
-            'grace' => ! $subscription->grace_ends_at || $subscription->grace_ends_at->toDateString() >= $today,
+            'active', 'trial' => (bool) $subscription->ends_at && $subscription->ends_at->toDateString() >= $today,
+            'grace' => (bool) $subscription->grace_ends_at && $subscription->grace_ends_at->toDateString() >= $today,
             default => false,
         };
     }

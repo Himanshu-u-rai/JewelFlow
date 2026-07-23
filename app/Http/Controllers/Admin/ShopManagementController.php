@@ -143,7 +143,7 @@ class ShopManagementController extends Controller
         // first.
         if ($accessMode === 'active'
             && config('platform.enforce_subscriptions', false)
-            && ! ShopSubscription::entitlesAccessToday($shop->id)
+            && ! ShopSubscription::entitlesAccessToday($shop)
         ) {
             return back()->withErrors([
                 'access_mode' => "Cannot activate {$shop->name}: no subscription term currently covers today. Extend or renew the subscription via Billing first.",
