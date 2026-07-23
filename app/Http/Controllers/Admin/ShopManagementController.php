@@ -135,6 +135,21 @@ class ShopManagementController extends Controller
             return back()->withErrors(['access_mode' => 'Access mode is required.']);
         }
 
+        // This generic toggle must not promise access the subscription can't
+        // back — otherwise EnsureSubscriptionIsActive reconciles it straight
+        // back to read_only on the very next request, making the shop look
+        // like it "reverts on its own". Activation requires a subscription
+        // row that genuinely entitles access today; extend/renew via Billing
+        // first.
+        if ($accessMode === 'active'
+            && config('platform.enforce_subscriptions', false)
+            && ! ShopSubscription::entitlesAccessToday($shop->id)
+        ) {
+            return back()->withErrors([
+                'access_mode' => "Cannot activate {$shop->name}: no subscription term currently covers today. Extend or renew the subscription via Billing first.",
+            ]);
+        }
+
         $before = $shop->only([
             'is_active',
             'access_mode',

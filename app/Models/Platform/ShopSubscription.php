@@ -73,4 +73,29 @@ class ShopSubscription extends Model
         return (int) \Carbon\CarbonImmutable::now()->startOfDay()
             ->diffInDays($this->ends_at->copy()->startOfDay(), false);
     }
+
+    /**
+     * Whether the shop's latest subscription row genuinely entitles access
+     * TODAY, using the same calendar-date boundary logic as the
+     * CheckSubscriptionExpiry scheduler (not the middleware's status-only
+     * trust). A row can carry status='active' with a stale, already-past
+     * ends_at until the next midnight scheduler run catches it — this check
+     * closes that same-day window so callers never grant/promise access the
+     * scheduler is about to revoke anyway.
+     */
+    public static function entitlesAccessToday(int $shopId): bool
+    {
+        $subscription = static::query()->where('shop_id', $shopId)->latest('id')->first();
+        if (! $subscription) {
+            return false;
+        }
+
+        $today = now()->toDateString();
+
+        return match ($subscription->status) {
+            'active', 'trial' => ! $subscription->ends_at || $subscription->ends_at->toDateString() >= $today,
+            'grace' => ! $subscription->grace_ends_at || $subscription->grace_ends_at->toDateString() >= $today,
+            default => false,
+        };
+    }
 }
