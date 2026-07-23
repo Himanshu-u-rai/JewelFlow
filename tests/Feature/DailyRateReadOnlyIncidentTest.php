@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Jobs\RepriceRetailerInventoryJob;
+use App\Models\Permission;
 use App\Models\Platform\ShopSubscription;
+use App\Models\Role;
+use App\Models\Shop;
 use App\Models\ShopDailyMetalRate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,11 +32,49 @@ class DailyRateReadOnlyIncidentTest extends TestCase
         [$user, $shop] = $this->createRetailerTenant();
         $this->makeReadOnly($shop->id, updateShop: true);
 
+        // Regression guard for the JF-0001 incident: the modal must disappear
+        // for a genuinely read-only shop, but silence is itself a bug — the
+        // owner must be told *why* rates can't be entered, not left staring
+        // at a dashboard where the rate prompt just vanished.
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
             ->assertDontSee('Enter Today&#039;s Metal Rates', false)
-            ->assertDontSee('action="'.route('settings.pricing.save-rates').'"', false);
+            ->assertDontSee('action="'.route('settings.pricing.save-rates').'"', false)
+            ->assertSee("This shop's subscription is read_only. Extend or reactivate the subscription to enter today's Pricing rates.");
+    }
+
+    /**
+     * Reproduces the exact production incident state: a Goldlux-style shop
+     * whose subscription lapsed and was never cleanly re-synced, leaving
+     * several superseded subscription rows all pointing at the same expired
+     * term. Regardless of how many stale rows exist, the dashboard must
+     * show the read-only notice — never a silently missing modal.
+     */
+    public function test_reproduces_the_production_read_only_incident_with_multiple_stale_subscription_rows(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $expiredStart = now()->subDays(37)->toDateString();
+        $expiredEnd = now()->subDays(17)->toDateString();
+
+        ShopSubscription::query()->where('shop_id', $shop->id)->delete();
+        foreach (range(1, 3) as $_) {
+            ShopSubscription::create([
+                'shop_id' => $shop->id,
+                'plan_id' => \App\Models\Platform\Plan::query()->first()->id,
+                'status' => 'read_only',
+                'starts_at' => $expiredStart,
+                'ends_at' => $expiredEnd,
+                'grace_ends_at' => $expiredEnd,
+            ]);
+        }
+        $shop->forceFill(['access_mode' => 'read_only', 'is_active' => false])->save();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('Enter Today&#039;s Metal Rates', false)
+            ->assertSee('subscription is read_only', false);
     }
 
     public function test_stale_modal_submit_in_read_only_mode_returns_a_visible_error_without_flashing_input(): void
@@ -280,6 +321,59 @@ class DailyRateReadOnlyIncidentTest extends TestCase
             ->get('https://dhiran.jewelflows.com/dhiran')
             ->assertOk()
             ->assertDontSee('Enter Today&#039;s Metal Rates', false);
+    }
+
+    public function test_sales_counter_redirect_gives_active_owner_the_generic_missing_rates_message(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+
+        $this->actingAs($user)
+            ->get(route('pos.index'))
+            ->assertRedirect(route('settings.edit', ['tab' => 'pricing']))
+            ->assertSessionHas('error', 'Today\'s Pricing rates are missing. Please save today\'s rates to continue.');
+    }
+
+    public function test_sales_counter_redirect_gives_read_only_owner_a_subscription_specific_message(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->makeReadOnly($shop->id, updateShop: true);
+
+        $this->actingAs($user)
+            ->get(route('pos.index'))
+            ->assertRedirect(route('settings.edit', ['tab' => 'pricing']))
+            ->assertSessionHas(
+                'error',
+                "Today's Pricing rates are missing and this shop's subscription is read_only. Extend or reactivate the subscription to resume selling."
+            );
+    }
+
+    public function test_sales_counter_redirect_for_non_owner_staff_is_unchanged(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $staff = $this->makeStaffUser($shop);
+
+        $this->actingAs($staff)
+            ->get(route('pos.index'))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('error', 'Today\'s retailer pricing is missing. Ask the owner to save today\'s Pricing rates first.');
+    }
+
+    private function makeStaffUser(Shop $shop): User
+    {
+        $role = new Role();
+        $role->forceFill([
+            'name' => 'staff',
+            'display_name' => 'Staff',
+            'shop_id' => $shop->id,
+        ])->save();
+
+        $role->permissions()->sync(Permission::query()->where('name', 'sales.pos')->pluck('id'));
+
+        return User::factory()->create([
+            'shop_id' => $shop->id,
+            'role_id' => $role->id,
+            'is_active' => true,
+        ]);
     }
 
     private function makeReadOnly(int $shopId, bool $updateShop): void

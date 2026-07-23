@@ -265,6 +265,10 @@
                     </form>
                 </div>
             </div>
+        @elseif($pricingShellState['read_only_notice'] ?? null)
+            <div role="status" style="margin:12px 16px 0;padding:13px 16px;border:1px solid rgba(190,24,93,0.35);border-left:4px solid #be123c;background:#fff1f2;color:#881337;border-radius:8px;font-size:13px;font-weight:600;line-height:1.45;">
+                {{ $pricingShellState['read_only_notice'] }}
+            </div>
         @endif
 
         <div class="sidebar-overlay" data-mobile-menu-overlay="tenant" data-mobile-drawer-overlay="tenant"></div>

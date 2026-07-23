@@ -253,11 +253,14 @@ class AppServiceProvider extends ServiceProvider
                 // rates once the shop is live-allowed.
                 $liveAllowed = ShopOpeningSetupState::forShop((int) $user->shop_id)->isLiveAllowed();
                 $accessMode = $user->shop->access_mode ?: ($user->shop->is_active ? 'active' : 'suspended');
+                $ratesMissing = $liveAllowed && $user->isOwner() && ! $pricing->hasCurrentDailyRates($user->shop);
                 $pricingShellState = [
-                    'show_owner_modal' => $liveAllowed
-                        && $accessMode === 'active'
-                        && $user->isOwner()
-                        && ! $pricing->hasCurrentDailyRates($user->shop),
+                    'show_owner_modal' => $ratesMissing && $accessMode === 'active',
+                    // Modal is suppressed once the shop can't act on it (read-only/suspended),
+                    // but the owner still needs to know *why* rates are missing.
+                    'read_only_notice' => $ratesMissing && $accessMode !== 'active'
+                        ? "This shop's subscription is {$accessMode}. Extend or reactivate the subscription to enter today's Pricing rates."
+                        : null,
                     'business_date' => $pricing->businessDateString($user->shop),
                     'timezone' => $pricing->pricingTimezone($user->shop),
                     'today_rate' => $pricing->currentDailyRate($user->shop),

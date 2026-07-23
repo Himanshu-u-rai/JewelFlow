@@ -546,15 +546,18 @@ class PosController extends Controller
             return null;
         }
 
-        $message = 'Today\'s retailer pricing is missing. Ask the owner to save today\'s Pricing rates first.';
-
         if (auth()->user()->isOwner()) {
+            $accessMode = $shop->access_mode ?: ($shop->is_active ? 'active' : 'suspended');
+            $message = $accessMode === 'active'
+                ? 'Today\'s Pricing rates are missing. Please save today\'s rates to continue.'
+                : "Today's Pricing rates are missing and this shop's subscription is {$accessMode}. Extend or reactivate the subscription to resume selling.";
+
             return redirect()->route('settings.edit', ['tab' => 'pricing'])
                 ->with('error', $message);
         }
 
         return redirect()->route('dashboard')
-            ->with('error', $message);
+            ->with('error', 'Today\'s retailer pricing is missing. Ask the owner to save today\'s Pricing rates first.');
     }
 
     public function exchange(Request $request)
