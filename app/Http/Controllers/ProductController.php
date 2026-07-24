@@ -184,18 +184,20 @@ class ProductController extends Controller
         $shopId = auth()->user()->shop_id;
 
         return DB::transaction(function () use ($shopId, $id) {
-            // ponytail: same lockForUpdate-on-parent trick as CategoryController —
-            // a concurrent Item insert referencing this product_id takes a
-            // Postgres FK "FOR KEY SHARE" lock on this row, so it blocks until we
+            // ponytail: same lockForUpdate-on-parent trick as CategoryController. The
+            // items(product_id, shop_id) -> products(id, shop_id) composite FK
+            // (migration 2026_09_07_000000) makes this real: a concurrent Item insert
+            // referencing this product row takes a Postgres FK "FOR KEY SHARE" lock on
+            // it, which conflicts with our "FOR UPDATE" and blocks until we
             // commit/rollback, making the count-then-delete below race-safe.
             $product = \App\Models\Product::where('shop_id', $shopId)->lockForUpdate()->findOrFail($id);
 
             // ponytail: withoutTenant() here is deliberate, not a leak. $product is
-            // already tenant-authorized above. This count must find every physical
-            // items.product_id reference, including a legacy/malformed cross-shop
-            // Item row that app-level validation would normally block — otherwise
-            // that stray row would get silently detached by items.product_id's
-            // SET NULL FK instead of being counted and blocked.
+            // already tenant-authorized above. Counting without the tenant scope keeps
+            // this a defence-in-depth count of every physical items.product_id
+            // reference; the composite FK now also guarantees any referencing Item
+            // shares this product's shop_id, so a cross-shop reference can no longer
+            // exist to be missed.
             $itemCount = \App\Models\Item::withoutTenant()->where('product_id', $product->id)->count();
 
             if ($itemCount > 0) {

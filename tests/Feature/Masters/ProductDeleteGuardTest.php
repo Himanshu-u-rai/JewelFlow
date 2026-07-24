@@ -110,30 +110,31 @@ class ProductDeleteGuardTest extends TestCase
     }
 
     /**
-     * App-level validation never lets an Item's product_id and shop_id disagree,
-     * so this row is malformed on purpose: it's the case validation would have
-     * prevented, but the schema doesn't forbid it. Before the withoutTenant() fix,
-     * $product->items()->count() ran through BelongsToShop's scope — filtered to
-     * the *caller's* shop_id — so this cross-shop Item would be invisible to the
-     * count, and items.product_id's SET NULL FK would then silently detach it
-     * (another shop's item quietly losing its product link) instead of blocking.
+     * Previously the schema let an Item's product_id point at another shop's
+     * Product (no FK existed), so this test used to build that malformed row and
+     * prove the guard still counted it. The composite FK from migration
+     * 2026_09_07_000000 — items(product_id, shop_id) -> products(id, shop_id) —
+     * now makes that row physically impossible: the insert is rejected by the DB
+     * (SQLSTATE 23503) because there is no products(id, shop_id) matching the
+     * cross-shop pair. So instead of bypassing the constraint, assert the DB
+     * refuses the cross-shop link outright.
      */
-    public function test_legacy_cross_shop_item_dependency_is_still_detected(): void
+    public function test_cross_shop_item_product_link_is_rejected_by_database(): void
     {
-        [$userA, $shopA] = $this->createManufacturerTenant();
+        [, $shopA] = $this->createManufacturerTenant();
         [, $shopB] = $this->createManufacturerTenant();
 
         $product = $this->makeProduct($shopA->id);
-        $rogueItem = $this->createItem($shopB->id, null, ['product_id' => $product->id]);
 
-        $this->actingAs($userA);
-        $this->delete(route('products.destroy', $product))
-            ->assertRedirect(route('products.index'))
-            ->assertSessionHas('error');
-
-        $this->assertDatabaseHas('products', ['id' => $product->id]);
-        $rogueItem->refresh();
-        $this->assertSame($product->id, $rogueItem->product_id);
+        // Postgres aborts the whole transaction on the FK violation, so no further
+        // query can run afterward under RefreshDatabase's wrapping transaction —
+        // the thrown 23503 is itself proof the cross-shop row never persisted.
+        try {
+            $this->createItem($shopB->id, null, ['product_id' => $product->id]);
+            $this->fail('Expected the composite FK to reject an Item linking to another shop\'s Product.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            $this->assertSame('23503', $e->getCode());
+        }
     }
 
     /**
