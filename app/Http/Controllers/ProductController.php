@@ -190,7 +190,13 @@ class ProductController extends Controller
             // commit/rollback, making the count-then-delete below race-safe.
             $product = \App\Models\Product::where('shop_id', $shopId)->lockForUpdate()->findOrFail($id);
 
-            $itemCount = $product->items()->count();
+            // ponytail: withoutTenant() here is deliberate, not a leak. $product is
+            // already tenant-authorized above. This count must find every physical
+            // items.product_id reference, including a legacy/malformed cross-shop
+            // Item row that app-level validation would normally block — otherwise
+            // that stray row would get silently detached by items.product_id's
+            // SET NULL FK instead of being counted and blocked.
+            $itemCount = \App\Models\Item::withoutTenant()->where('product_id', $product->id)->count();
 
             if ($itemCount > 0) {
                 $message = 'Cannot delete this design master: ' . $itemCount . ' item' . ($itemCount === 1 ? '' : 's') . ' still reference it.';

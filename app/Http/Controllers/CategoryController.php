@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Concerns\RespondsDynamically;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\SubCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -80,8 +81,17 @@ class CategoryController extends Controller
             // count-then-delete below race-safe without touching the child tables.
             $locked = Category::whereKey($category->id)->lockForUpdate()->firstOrFail();
 
-            $productCount = Product::where('category_id', $locked->id)->count();
-            $subCategoryCount = $locked->subCategories()->count();
+            // ponytail: withoutTenant() here is deliberate, not a leak. $locked is
+            // already tenant-authorized above (BelongsToShop's scope + lockForUpdate
+            // only bound it if it's this shop's row). These two counts must find
+            // every physical FK reference by category_id, including a legacy or
+            // malformed cross-shop row that app-level validation would normally
+            // block — otherwise a stray Product row would trip the products.category_id
+            // RESTRICT FK into a raw 500 below, and a stray SubCategory row would get
+            // silently wiped by sub_categories.category_id's CASCADE FK instead of
+            // being counted and blocked.
+            $productCount = Product::withoutTenant()->where('category_id', $locked->id)->count();
+            $subCategoryCount = SubCategory::withoutTenant()->where('category_id', $locked->id)->count();
 
             if ($productCount > 0 || $subCategoryCount > 0) {
                 $parts = [];

@@ -108,4 +108,118 @@ class ProductDeleteGuardTest extends TestCase
 
         $this->delete('/products/999999')->assertNotFound();
     }
+
+    /**
+     * App-level validation never lets an Item's product_id and shop_id disagree,
+     * so this row is malformed on purpose: it's the case validation would have
+     * prevented, but the schema doesn't forbid it. Before the withoutTenant() fix,
+     * $product->items()->count() ran through BelongsToShop's scope — filtered to
+     * the *caller's* shop_id — so this cross-shop Item would be invisible to the
+     * count, and items.product_id's SET NULL FK would then silently detach it
+     * (another shop's item quietly losing its product link) instead of blocking.
+     */
+    public function test_legacy_cross_shop_item_dependency_is_still_detected(): void
+    {
+        [$userA, $shopA] = $this->createManufacturerTenant();
+        [, $shopB] = $this->createManufacturerTenant();
+
+        $product = $this->makeProduct($shopA->id);
+        $rogueItem = $this->createItem($shopB->id, null, ['product_id' => $product->id]);
+
+        $this->actingAs($userA);
+        $this->delete(route('products.destroy', $product))
+            ->assertRedirect(route('products.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('products', ['id' => $product->id]);
+        $rogueItem->refresh();
+        $this->assertSame($product->id, $rogueItem->product_id);
+    }
+
+    /**
+     * PART 0.5 CLOSURE — Phase C repeatability. Same reasoning as
+     * CategoryDeleteGuardTest::test_blocked_category_deletion_is_repeatable:
+     * a blocked delete is a pure count-then-redirect read, so firing it
+     * twice must leave the Item link untouched both times.
+     */
+    public function test_blocked_product_deletion_is_repeatable(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+        $product = $this->makeProduct($shop->id);
+        $item = $this->createItem($shop->id, null, ['product_id' => $product->id]);
+
+        $this->delete(route('products.destroy', $product))
+            ->assertRedirect(route('products.index'))
+            ->assertSessionHas('error');
+
+        $this->delete(route('products.destroy', $product))
+            ->assertRedirect(route('products.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('products', ['id' => $product->id]);
+        $item->refresh();
+        $this->assertSame($product->id, $item->product_id);
+    }
+
+    /**
+     * Successful-delete counterpart to test_missing_product_remains_404:
+     * once the Product is actually gone, replaying the same delete request
+     * must 404, not silently succeed or 500.
+     */
+    public function test_repeat_request_after_successful_product_deletion_is_404(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+        $product = $this->makeProduct($shop->id);
+
+        $this->delete(route('products.destroy', $product))
+            ->assertRedirect(route('products.index'))
+            ->assertSessionHas('success');
+
+        $this->delete(route('products.destroy', $product))->assertNotFound();
+    }
+
+    /**
+     * The count-then-block message must reflect the actual Item count (3
+     * here), proving the count() call isn't hardcoded or capped at 1.
+     */
+    public function test_product_dependency_message_reports_exact_count(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+        $product = $this->makeProduct($shop->id);
+        $this->createItem($shop->id, null, ['product_id' => $product->id]);
+        $this->createItem($shop->id, null, ['product_id' => $product->id]);
+        $this->createItem($shop->id, null, ['product_id' => $product->id]);
+
+        $this->delete(route('products.destroy', $product))
+            ->assertRedirect(route('products.index'))
+            ->assertSessionHas('error');
+
+        $message = strtolower(session('error'));
+        $this->assertStringContainsString('3 items', $message);
+    }
+
+    /**
+     * Product-side counterpart to
+     * CategoryDeleteGuardTest::test_blocked_deletion_changes_no_records —
+     * a blocked delete must leave every row count in the tenant untouched,
+     * not just the one Item asserted elsewhere.
+     */
+    public function test_blocked_product_deletion_changes_no_records(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+        $product = $this->makeProduct($shop->id);
+        $this->createItem($shop->id, null, ['product_id' => $product->id]);
+
+        $countsBefore = [Product::count(), \App\Models\Item::count()];
+
+        $this->delete(route('products.destroy', $product));
+
+        $countsAfter = [Product::count(), \App\Models\Item::count()];
+
+        $this->assertSame($countsBefore, $countsAfter);
+    }
 }

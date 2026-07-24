@@ -195,4 +195,130 @@ class CategoryDeleteGuardTest extends TestCase
 
         TenantContext::runFor($shop->id, fn () => $this->delete('/categories/999999'))->assertNotFound();
     }
+
+    /**
+     * App-level validation (Rule::exists(...)->where('shop_id', $shopId)) always
+     * keeps category_id/sub_category_id pointed at the same shop as the Product
+     * row. That's exactly what makes a legacy/malformed row that violates it
+     * dangerous: BelongsToShop scopes every plain Product::query() by the
+     * *caller's* shop_id, so a stray cross-shop Product physically referencing
+     * this category would be invisible to a scoped count — and products.category_id
+     * is a RESTRICT FK, so the delete below would then hit a raw, uncaught
+     * QueryException instead of the friendly blocked-with-count redirect.
+     */
+    public function test_legacy_cross_shop_product_dependency_is_still_detected(): void
+    {
+        [$userA, $shopA] = $this->createManufacturerTenant();
+        [, $shopB] = $this->createManufacturerTenant();
+        $this->actingAs($userA);
+
+        $category = $this->makeCategory($shopA->id, 'Rings');
+        $subInShopB = $this->makeSubCategory($shopB->id, $this->makeCategory($shopB->id, 'Necklaces')->id, 'Plain');
+        // Malformed on purpose: shop_id=B, category_id=A's category — the app
+        // itself would never create this row, but nothing in the schema forbids it.
+        $rogueProduct = $this->makeProduct($shopB->id, $category->id, $subInShopB->id);
+
+        $this->destroyAs($shopA->id, $category)
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('categories', ['id' => $category->id]);
+        $this->assertDatabaseHas('products', ['id' => $rogueProduct->id, 'category_id' => $category->id]);
+    }
+
+    /**
+     * Same reasoning as above, but for sub_categories.category_id, which is a
+     * CASCADE FK — an undetected legacy cross-shop SubCategory here wouldn't 500,
+     * it would silently vanish (another shop's data destroyed by our delete).
+     */
+    public function test_legacy_cross_shop_subcategory_dependency_is_still_detected(): void
+    {
+        [$userA, $shopA] = $this->createManufacturerTenant();
+        [, $shopB] = $this->createManufacturerTenant();
+        $this->actingAs($userA);
+
+        $category = $this->makeCategory($shopA->id, 'Rings');
+        // Malformed on purpose: shop_id=B, category_id=A's category.
+        $rogueSub = $this->makeSubCategory($shopB->id, $category->id, 'Plain');
+
+        $this->destroyAs($shopA->id, $category)
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('categories', ['id' => $category->id]);
+        $this->assertDatabaseHas('sub_categories', ['id' => $rogueSub->id, 'category_id' => $category->id]);
+    }
+
+    /**
+     * PART 0.5 CLOSURE — Phase C repeatability. A blocked delete must be a
+     * pure read (count-then-redirect, no mutation), so firing it twice must
+     * give the identical outcome both times — nothing about the first
+     * request's failure should change state for the second.
+     */
+    public function test_blocked_category_deletion_is_repeatable(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+
+        $category = $this->makeCategory($shop->id, 'Rings');
+        $subCategory = $this->makeSubCategory($shop->id, $category->id, 'Plain');
+
+        $this->destroyAs($shop->id, $category)
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHas('error');
+
+        $this->destroyAs($shop->id, $category)
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('categories', ['id' => $category->id]);
+        $this->assertDatabaseHas('sub_categories', ['id' => $subCategory->id]);
+    }
+
+    /**
+     * A successful delete actually removes the row, so replaying the exact
+     * same request must now 404 — the route-model binding has nothing left
+     * to resolve. This is the successful-delete counterpart to
+     * test_missing_category_remains_404.
+     */
+    public function test_repeat_request_after_successful_category_deletion_is_404(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+
+        $category = $this->makeCategory($shop->id, 'Rings');
+
+        $this->destroyAs($shop->id, $category)
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHas('success');
+
+        $this->destroyAs($shop->id, $category)->assertNotFound();
+    }
+
+    /**
+     * The count-then-block message must reflect the *actual* dependency
+     * counts, not just "some" — with 2 Products and 3 Subcategories, the
+     * message must say so precisely, proving the count() calls aren't
+     * hardcoded or capped at 1.
+     */
+    public function test_category_dependency_message_reports_exact_counts(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+
+        $category = $this->makeCategory($shop->id, 'Rings');
+        $sub1 = $this->makeSubCategory($shop->id, $category->id, 'Plain');
+        $this->makeSubCategory($shop->id, $category->id, 'Studded');
+        $this->makeSubCategory($shop->id, $category->id, 'Antique');
+        $this->makeProduct($shop->id, $category->id, $sub1->id);
+        $this->makeProduct($shop->id, $category->id, $sub1->id);
+
+        $this->destroyAs($shop->id, $category)
+            ->assertRedirect(route('categories.index'))
+            ->assertSessionHas('error');
+
+        $message = strtolower(session('error'));
+        $this->assertStringContainsString('2 products', $message);
+        $this->assertStringContainsString('3 subcategories', $message);
+    }
 }
