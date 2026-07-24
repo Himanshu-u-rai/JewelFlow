@@ -383,14 +383,14 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         return response()->json($subs);
     })->middleware('can:inventory.view')->name('api.sub-categories');
 
-    Route::get('/products', [\App\Http\Controllers\ProductController::class, 'index'])->middleware('can:inventory.view')->name('products.index');
-    Route::get('/products/create', [\App\Http\Controllers\ProductController::class, 'create'])->middleware('can:catalog.manage')->name('products.create');
-    Route::post('/products', [\App\Http\Controllers\ProductController::class, 'store'])->middleware('can:catalog.manage')->name('products.store');
-    Route::get('/products/{product}', [\App\Http\Controllers\ProductController::class, 'show'])->middleware('can:inventory.view')->name('products.show');
-    Route::get('/products/{product}/edit', [\App\Http\Controllers\ProductController::class, 'edit'])->middleware('can:catalog.manage')->name('products.edit');
-    Route::put('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware('can:catalog.manage')->name('products.update');
-    Route::patch('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware('can:catalog.manage');
-    Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->middleware('can:catalog.manage')->name('products.destroy');
+    Route::get('/products', [\App\Http\Controllers\ProductController::class, 'index'])->middleware(['edition:manufacturer', 'can:inventory.view'])->name('products.index');
+    Route::get('/products/create', [\App\Http\Controllers\ProductController::class, 'create'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.create');
+    Route::post('/products', [\App\Http\Controllers\ProductController::class, 'store'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.store');
+    Route::get('/products/{product}', [\App\Http\Controllers\ProductController::class, 'show'])->middleware(['edition:manufacturer', 'can:inventory.view'])->name('products.show');
+    Route::get('/products/{product}/edit', [\App\Http\Controllers\ProductController::class, 'edit'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.edit');
+    Route::put('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.update');
+    Route::patch('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->middleware(['edition:manufacturer', 'can:catalog.manage']);
+    Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->middleware(['edition:manufacturer', 'can:catalog.manage'])->name('products.destroy');
 
     // ======= LIVE SEARCH SUGGESTIONS =======
     Route::get('/search/suggestions', \App\Http\Controllers\SearchSuggestionsController::class)->middleware('can:inventory.view')->name('search.suggestions');

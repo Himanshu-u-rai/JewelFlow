@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Services\ShopPricingService;
 use App\Services\MetalRegistry;
@@ -181,8 +182,25 @@ class ProductController extends Controller
     public function destroy($id)
     {
         $shopId = auth()->user()->shop_id;
-        $product = \App\Models\Product::where('shop_id', $shopId)->findOrFail($id);
-        $product->delete();
-        return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
+
+        return DB::transaction(function () use ($shopId, $id) {
+            // ponytail: same lockForUpdate-on-parent trick as CategoryController —
+            // a concurrent Item insert referencing this product_id takes a
+            // Postgres FK "FOR KEY SHARE" lock on this row, so it blocks until we
+            // commit/rollback, making the count-then-delete below race-safe.
+            $product = \App\Models\Product::where('shop_id', $shopId)->lockForUpdate()->findOrFail($id);
+
+            $itemCount = $product->items()->count();
+
+            if ($itemCount > 0) {
+                $message = 'Cannot delete this design master: ' . $itemCount . ' item' . ($itemCount === 1 ? '' : 's') . ' still reference it.';
+
+                return redirect()->route('products.index')->with('error', $message);
+            }
+
+            $product->delete();
+
+            return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
+        });
     }
 }

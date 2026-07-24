@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Concerns\RespondsDynamically;
 use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -71,11 +72,34 @@ class CategoryController extends Controller
     {
         $this->authorize('delete', $category);
 
-        DB::transaction(function () use ($category) {
-            $category->subCategories()->delete();
-            $category->delete();
-        });
+        return DB::transaction(function () use ($category) {
+            // ponytail: lockForUpdate on the parent row is enough on Postgres — a
+            // concurrent INSERT into products/sub_categories referencing this
+            // category_id takes a FK "FOR KEY SHARE" lock on this same row, so it
+            // blocks until our transaction commits/rolls back. That makes the
+            // count-then-delete below race-safe without touching the child tables.
+            $locked = Category::whereKey($category->id)->lockForUpdate()->firstOrFail();
 
-        return $this->dynamicRedirect('categories.index', [], 'Category deleted successfully!');
+            $productCount = Product::where('category_id', $locked->id)->count();
+            $subCategoryCount = $locked->subCategories()->count();
+
+            if ($productCount > 0 || $subCategoryCount > 0) {
+                $parts = [];
+                if ($productCount > 0) {
+                    $parts[] = $productCount . ' product' . ($productCount === 1 ? '' : 's');
+                }
+                if ($subCategoryCount > 0) {
+                    $parts[] = $subCategoryCount . ' subcategor' . ($subCategoryCount === 1 ? 'y' : 'ies');
+                }
+
+                $message = 'Cannot delete this category: ' . implode(' and ', $parts) . ' still reference it.';
+
+                return $this->dynamicRedirect('categories.index', [], $message, 'error');
+            }
+
+            $locked->delete();
+
+            return $this->dynamicRedirect('categories.index', [], 'Category deleted successfully!');
+        });
     }
 }
