@@ -202,6 +202,30 @@ class ProductDeleteGuardTest extends TestCase
     }
 
     /**
+     * FINAL EVIDENCE SUPPLEMENT — visible UX proof. Follows the redirect so
+     * layouts/app.blade.php actually renders, and asserts the Item dependency
+     * count appears in the rendered <meta name="flash-error"> (the app's flash
+     * convention), that no raw DB error leaks, and the page is a 200 — not a
+     * 500 from an uncaught items.product_id SET NULL FK path.
+     */
+    public function test_blocked_product_page_visibly_shows_item_count(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+        $product = $this->makeProduct($shop->id);
+        $this->createItem($shop->id, null, ['product_id' => $product->id]);
+        $this->createItem($shop->id, null, ['product_id' => $product->id]);
+
+        $response = $this->followingRedirects()->delete(route('products.destroy', $product));
+
+        $response->assertOk();
+        $response->assertSee('2 items', false);
+        $response->assertDontSee('SQLSTATE', false);
+        $response->assertDontSee('QueryException', false);
+        $this->assertDatabaseHas('products', ['id' => $product->id]);
+    }
+
+    /**
      * Product-side counterpart to
      * CategoryDeleteGuardTest::test_blocked_deletion_changes_no_records —
      * a blocked delete must leave every row count in the tenant untouched,

@@ -321,4 +321,81 @@ class CategoryDeleteGuardTest extends TestCase
         $this->assertStringContainsString('2 products', $message);
         $this->assertStringContainsString('3 subcategories', $message);
     }
+
+    /**
+     * FINAL EVIDENCE SUPPLEMENT — visible UX proof. assertSessionHas alone
+     * proves the flash was set, not that the user ever sees it. Following the
+     * redirect renders layouts/app.blade.php, which emits the error flash as
+     * <meta name="flash-error" content="..."> in the page head (the app's
+     * established flash convention, consumed by the toast JS). These tests
+     * assert the actual dependency counts are present in that rendered HTML,
+     * that no raw DB error text leaks, and that the page is a normal 200 —
+     * never a 500 from an uncaught RESTRICT/CASCADE FK exception.
+     */
+    private function followBlockedDestroy(int $shopId, Category $category)
+    {
+        return TenantContext::runFor(
+            $shopId,
+            fn () => $this->followingRedirects()->delete(route('categories.destroy', $category))
+        );
+    }
+
+    private function assertNoRawDbError($response): void
+    {
+        $response->assertDontSee('SQLSTATE', false);
+        $response->assertDontSee('QueryException', false);
+        $response->assertDontSee('violates foreign key constraint', false);
+    }
+
+    public function test_blocked_category_page_visibly_shows_product_count(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+
+        $category = $this->makeCategory($shop->id, 'Rings');
+        $otherCategory = $this->makeCategory($shop->id, 'Necklaces');
+        $otherSub = $this->makeSubCategory($shop->id, $otherCategory->id, 'Plain');
+        $this->makeProduct($shop->id, $category->id, $otherSub->id);
+
+        $response = $this->followBlockedDestroy($shop->id, $category);
+
+        $response->assertOk();
+        $response->assertSee('1 product', false);
+        $this->assertNoRawDbError($response);
+        $this->assertDatabaseHas('categories', ['id' => $category->id]);
+    }
+
+    public function test_blocked_category_page_visibly_shows_subcategory_count(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+
+        $category = $this->makeCategory($shop->id, 'Rings');
+        $sub = $this->makeSubCategory($shop->id, $category->id, 'Plain');
+
+        $response = $this->followBlockedDestroy($shop->id, $category);
+
+        $response->assertOk();
+        $response->assertSee('1 subcategory', false);
+        $this->assertNoRawDbError($response);
+        $this->assertDatabaseHas('sub_categories', ['id' => $sub->id]);
+    }
+
+    public function test_blocked_category_page_visibly_shows_both_counts(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+
+        $category = $this->makeCategory($shop->id, 'Rings');
+        $sub = $this->makeSubCategory($shop->id, $category->id, 'Plain');
+        $this->makeProduct($shop->id, $category->id, $sub->id);
+
+        $response = $this->followBlockedDestroy($shop->id, $category);
+
+        $response->assertOk();
+        $response->assertSee('1 product and 1 subcategory', false);
+        $this->assertNoRawDbError($response);
+        $this->assertDatabaseHas('categories', ['id' => $category->id]);
+        $this->assertDatabaseHas('sub_categories', ['id' => $sub->id]);
+    }
 }
