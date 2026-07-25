@@ -17,11 +17,14 @@ use Illuminate\Support\Facades\Schema;
  * can never point at a Product belonging to a different shop:
  *   items(product_id, shop_id) -> products(id, shop_id) ON DELETE NO ACTION
  *
- * NO ACTION (deferrable, checked at statement end) not RESTRICT (immediate): a
- * whole-shop delete cascades products via products.shop_id and items via a
- * separate statement/path; NO ACTION lets those settle within the statement
- * instead of tripping on intermediate state, while still blocking a *direct*
- * product delete that would orphan an item.
+ * ON DELETE NO ACTION, not RESTRICT. The constraint is NON-DEFERRABLE (the
+ * Postgres default), so the referential check runs at STATEMENT END rather than
+ * per-row: a whole-shop delete can cascade products via products.shop_id and
+ * delete items via a separate statement/path, and NO ACTION lets those settle
+ * within the statement instead of tripping on intermediate state. A *direct*
+ * Product delete while an Item still references it remains blocked. Existing
+ * Shop deletion behavior is unchanged and may already be blocked independently
+ * by the items.shop_id foreign key.
  */
 return new class extends Migration
 {
