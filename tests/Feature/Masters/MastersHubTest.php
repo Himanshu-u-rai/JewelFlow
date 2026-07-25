@@ -197,4 +197,196 @@ class MastersHubTest extends TestCase
             $html
         );
     }
+
+    // ---- Expanded permission × edition card matrix ----------------------
+
+    public function test_inventory_only_retail_staff_sees_only_categories(): void
+    {
+        // inventory.view unlocks Categories (no edition gate) but NOT the
+        // Product/Design Master, whose destination is manufacturer-edition only.
+        [$user] = $this->createRetailerTenant();
+        $this->syncPermissions($user->role_id, ['inventory.view']);
+        $this->actingAs($user);
+
+        $slugs = $this->cardSlugs($this->get(route('masters.index'))->assertOk()->getContent());
+
+        $this->assertSame(['categories'], $slugs);
+    }
+
+    public function test_inventory_only_manufacturer_staff_sees_categories_and_products(): void
+    {
+        // Same permission on a manufacturer shop now clears the products edition
+        // gate too, so the Design Master card appears alongside Categories.
+        [$user] = $this->createManufacturerTenant();
+        $this->syncPermissions($user->role_id, ['inventory.view']);
+        $this->actingAs($user);
+
+        $slugs = $this->cardSlugs($this->get(route('masters.index'))->assertOk()->getContent());
+
+        $this->assertSame(['categories', 'products'], $slugs);
+    }
+
+    public function test_settings_only_staff_sees_only_gst(): void
+    {
+        [$user] = $this->createRetailerTenant();
+        $this->syncPermissions($user->role_id, ['settings.view']);
+        $this->actingAs($user);
+
+        $slugs = $this->cardSlugs($this->get(route('masters.index'))->assertOk()->getContent());
+
+        $this->assertSame(['gst'], $slugs);
+    }
+
+    public function test_read_only_retail_shop_can_still_view_the_hub(): void
+    {
+        // A subscription downgrade sets access_mode=read_only, which blocks
+        // writes but permits GET/HEAD (EnsureSubscriptionIsActive). The hub is
+        // pure navigation, so a read-only shop still sees its full retail set.
+        [$user, $shop] = $this->createRetailerTenant();
+        $shop->forceFill(['access_mode' => 'read_only'])->save();
+        $this->actingAs($user);
+
+        $slugs = $this->cardSlugs($this->get(route('masters.index'))->assertOk()->getContent());
+
+        $this->assertSame(['categories', 'customers', 'gst', 'karigars', 'vendors'], $slugs);
+    }
+
+    // ---- Card gate mirrors destination-route middleware ----------------
+
+    public function test_each_card_gate_mirrors_its_destination_route_middleware(): void
+    {
+        // The hub's promise: a card only appears when the user could actually
+        // reach its destination. That holds only if each card's permission +
+        // edition gate is byte-identical to the destination route's own
+        // `can:` and `edition:` middleware. Assert that against the live route
+        // table (gatherMiddleware returns the same alias form the cards use).
+        $contract = [
+            // slug        => [route name,        can permission,   edition csv or null]
+            'customers'  => ['customers.index',  'customers.view', 'retailer,manufacturer'],
+            'vendors'    => ['vendors.index',    'vendors.view',   'retailer'],
+            'karigars'   => ['karigars.index',   'karigar.view',   'retailer'],
+            'categories' => ['categories.index', 'inventory.view', null],
+            'products'   => ['products.index',   'inventory.view', 'manufacturer'],
+            'gst'        => ['settings.edit',    'settings.view',  null],
+        ];
+
+        foreach ($contract as $slug => [$routeName, $can, $editionCsv]) {
+            $route = app('router')->getRoutes()->getByName($routeName);
+            $this->assertNotNull($route, "Destination route {$routeName} for card {$slug} must exist.");
+            $mw = $route->gatherMiddleware();
+
+            $this->assertContains("can:{$can}", $mw, "Card {$slug} permission must match {$routeName}.");
+
+            $editionMw = array_values(array_filter($mw, fn ($m) => str_starts_with($m, 'edition:')));
+            if ($editionCsv === null) {
+                $this->assertSame([], $editionMw, "Card {$slug} must have no edition gate, matching {$routeName}.");
+            } else {
+                $this->assertSame(["edition:{$editionCsv}"], $editionMw, "Card {$slug} edition gate must match {$routeName}.");
+            }
+        }
+    }
+
+    // ---- Rendered-HTML / accessibility ---------------------------------
+
+    /** @return string[] the full <a>…</a> block for each hub card */
+    private function cardBlocks(string $html): array
+    {
+        preg_match_all('/<a\b[^>]*data-masters-card="[a-z]+"[^>]*>.*?<\/a>/s', $html, $m);
+
+        return $m[0];
+    }
+
+    public function test_hub_markup_is_accessible(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        ShopEdition::grantTo($shop, ShopEdition::MANUFACTURER);
+        $this->actingAs($user);
+
+        $html = $this->get(route('masters.index'))->assertOk()->getContent();
+
+        // Exactly one document H1 (page-header supplies it; the hub adds none).
+        $this->assertSame(1, substr_count($html, '<h1'), 'Page must have exactly one H1.');
+
+        // Three section H2 headings, each with a unique, referenced id.
+        foreach (['parties', 'product', 'config'] as $section) {
+            $id = "masters-{$section}-heading";
+            $this->assertSame(1, substr_count($html, 'id="' . $id . '"'), "Section id {$id} must be unique.");
+            $this->assertStringContainsString('aria-labelledby="' . $id . '"', $html, "Section must reference {$id}.");
+        }
+
+        $blocks = $this->cardBlocks($html);
+        $this->assertCount(6, $blocks, 'Multi-edition owner should render all six cards.');
+
+        foreach ($blocks as $block) {
+            // Card is a single semantic anchor: no nested interactive controls.
+            $this->assertSame(0, substr_count($block, '<button'), 'Cards must not nest buttons.');
+            $this->assertSame(1, substr_count($block, '<a'), 'Cards must not nest anchors.');
+            // Decorative icon hidden from the a11y tree.
+            $this->assertStringContainsString('aria-hidden="true"', $block, 'Card icon must be aria-hidden.');
+            // Visible keyboard-focus styling.
+            $this->assertStringContainsString('focus:ring', $block, 'Card must carry a visible focus ring.');
+            // No inline style attribute on the hub's own markup.
+            $this->assertStringNotContainsString('style="', $block, 'Cards must not use inline styles.');
+        }
+    }
+
+    // ---- Sidebar behaviour ---------------------------------------------
+
+    public function test_sidebar_shows_masters_for_manufacturer_shop(): void
+    {
+        [$user] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+
+        $html = $this->get(route('masters.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('href="' . e(route('masters.index')) . '"', $html);
+    }
+
+    public function test_sidebar_hides_masters_for_dhiran_only_shop(): void
+    {
+        // Dhiran-only shops are 403'd from the hub, and the sidebar entry (gated
+        // on retailer/manufacturer editions) must be absent on pages they CAN
+        // reach — the dashboard renders the same sidebar.
+        [$user] = $this->dhiranTenant();
+        $this->actingAs($user);
+
+        $html = $this->get(route('dashboard'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('href="' . e(route('masters.index')) . '"', $html);
+    }
+
+    public function test_sidebar_preserves_existing_navigation(): void
+    {
+        // The additive Masters entry must not displace its siblings.
+        [$user] = $this->createRetailerTenant();
+        $this->actingAs($user);
+
+        $html = $this->get(route('masters.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('href="' . e(route('dashboard')) . '"', $html);
+        $this->assertStringContainsString('href="' . e(route('pos.index')) . '"', $html);
+    }
+
+    // ---- Responsive structure ------------------------------------------
+
+    public function test_hub_grid_is_responsive_without_fixed_widths(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        ShopEdition::grantTo($shop, ShopEdition::MANUFACTURER);
+        $this->actingAs($user);
+
+        $html = $this->get(route('masters.index'))->assertOk()->getContent();
+
+        // Responsive column utilities present (compiled-CSS presence is verified
+        // separately in the build step; 1280px/390px pixel QA is staging work).
+        $this->assertStringContainsString('grid-cols-1', $html);
+        $this->assertStringContainsString('md:grid-cols-2', $html);
+        $this->assertStringContainsString('lg:grid-cols-3', $html);
+
+        // No fixed/min pixel widths on cards that could force horizontal overflow.
+        foreach ($this->cardBlocks($html) as $block) {
+            $this->assertDoesNotMatchRegularExpression('/\bw-\[/', $block, 'Cards must not hard-code widths.');
+            $this->assertDoesNotMatchRegularExpression('/\bmin-w-\[/', $block, 'Cards must not set fixed min widths.');
+        }
+    }
 }
