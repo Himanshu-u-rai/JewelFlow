@@ -367,10 +367,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::patch('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->middleware('can:catalog.manage');
     Route::delete('/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'destroy'])->middleware('can:catalog.manage')->name('categories.destroy');
 
-    Route::get('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'index'])->middleware('can:inventory.view')->name('sub-categories.index');
-    // Same as categories: managed inline on the index page. create/show/edit had
-    // no controller methods (direct hit → 500); now redirect to the index, gate
-    // unchanged.
+    // Sub-categories are managed inline on the unified categories index page.
+    // index/create/show/edit have no controller methods (a direct URL hit used
+    // to 500 — SubCategoryController has no index()); they redirect to
+    // categories.index, route names/methods/permission gates unchanged.
+    Route::get('/sub-categories', fn () => redirect()->route('categories.index'))->middleware('can:inventory.view')->name('sub-categories.index');
     Route::get('/sub-categories/create', fn () => redirect()->route('sub-categories.index'))->middleware('can:catalog.manage')->name('sub-categories.create');
     Route::post('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'store'])->middleware('can:catalog.manage')->name('sub-categories.store');
     Route::get('/sub-categories/{sub_category}', fn () => redirect()->route('sub-categories.index'))->middleware('can:inventory.view')->name('sub-categories.show');

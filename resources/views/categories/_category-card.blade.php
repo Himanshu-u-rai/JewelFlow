@@ -48,7 +48,7 @@
                 </svg>
             </button>
             <form method="POST" action="{{ route('categories.destroy', $category) }}"
-                  data-confirm-message="{{ __('Delete this category and all its sub-categories?') }}" class="inline"
+                  data-confirm-message="{{ __('Delete this category?') }}" class="inline"
                   data-ajax-delete>
                 @csrf
                 @method('DELETE')
