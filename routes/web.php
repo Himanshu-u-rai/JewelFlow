@@ -205,6 +205,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware('realm:erp')
         ->name('dashboard');
 
+    // Masters Hub — permission/edition-aware index of existing master-data
+    // screens. `edition:retailer,manufacturer` blocks Dhiran-only shops (no
+    // applicable masters); realm:erp keeps it inside the ERP product.
+    Route::get('/masters', [\App\Http\Controllers\MastersController::class, 'index'])
+        ->middleware(['realm:erp', 'edition:retailer,manufacturer'])
+        ->name('masters.index');
+
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])->name('subscription.status');
 
     // ======= BILLING INVOICES (platform-billing portal — strictly shop owner) =======
