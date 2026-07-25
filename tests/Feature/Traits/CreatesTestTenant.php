@@ -178,6 +178,16 @@ trait CreatesTestTenant
         return [$user, $shop];
     }
 
+    /**
+     * Restrict a tenant user's role to exactly the given permission keys.
+     * Used to model view-only / write-only / zero-permission staff.
+     */
+    protected function grantOnlyPermissions(User $user, array $permissionNames): void
+    {
+        $role = Role::withoutTenant()->findOrFail($user->role_id);
+        $role->permissions()->sync(Permission::whereIn('name', $permissionNames)->pluck('id'));
+    }
+
     protected function createCustomer(int $shopId, array $attrs = []): Customer
     {
         $customer = new Customer();

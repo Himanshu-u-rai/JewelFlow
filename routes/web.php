@@ -369,13 +369,15 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
 
     // Sub-categories are managed inline on the unified categories index page.
     // index/create/show/edit have no controller methods (a direct URL hit used
-    // to 500 — SubCategoryController has no index()); they redirect to
-    // categories.index, route names/methods/permission gates unchanged.
-    Route::get('/sub-categories', fn () => redirect()->route('categories.index'))->middleware('can:inventory.view')->name('sub-categories.index');
-    Route::get('/sub-categories/create', fn () => redirect()->route('sub-categories.index'))->middleware('can:catalog.manage')->name('sub-categories.create');
+    // to 500 — SubCategoryController has no index()); each redirects DIRECTLY to
+    // categories.index (no hop through sub-categories.index). Route names, HTTP
+    // methods, params and permission gates are all unchanged. The index carries
+    // the safe ?q search term through so a bookmarked search still lands right.
+    Route::get('/sub-categories', fn (\Illuminate\Http\Request $request) => redirect()->route('categories.index', $request->only('q')))->middleware('can:inventory.view')->name('sub-categories.index');
+    Route::get('/sub-categories/create', fn () => redirect()->route('categories.index'))->middleware('can:catalog.manage')->name('sub-categories.create');
     Route::post('/sub-categories', [\App\Http\Controllers\SubCategoryController::class, 'store'])->middleware('can:catalog.manage')->name('sub-categories.store');
-    Route::get('/sub-categories/{sub_category}', fn () => redirect()->route('sub-categories.index'))->middleware('can:inventory.view')->name('sub-categories.show');
-    Route::get('/sub-categories/{sub_category}/edit', fn () => redirect()->route('sub-categories.index'))->middleware('can:catalog.manage')->name('sub-categories.edit');
+    Route::get('/sub-categories/{sub_category}', fn () => redirect()->route('categories.index'))->middleware('can:inventory.view')->name('sub-categories.show');
+    Route::get('/sub-categories/{sub_category}/edit', fn () => redirect()->route('categories.index'))->middleware('can:catalog.manage')->name('sub-categories.edit');
     Route::put('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('can:catalog.manage')->name('sub-categories.update');
     Route::patch('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'update'])->middleware('can:catalog.manage');
     Route::delete('/sub-categories/{sub_category}', [\App\Http\Controllers\SubCategoryController::class, 'destroy'])->middleware('can:catalog.manage')->name('sub-categories.destroy');

@@ -13,14 +13,49 @@ use Illuminate\Validation\Rule;
 class CategoryController extends Controller
 {
     use RespondsDynamically;
-    public function index()
+    public function index(Request $request)
     {
-        $categories = Category::where('shop_id', auth()->user()->shop_id)
-            ->with('subCategories')
-            ->orderBy('name')
-            ->get();
+        $shopId = auth()->user()->shop_id;
 
-        return view('categories.index', compact('categories'));
+        // Trim + hard-cap length so a pathological query string can't drive a
+        // huge ILIKE scan. 100 chars is well past any real category name.
+        $q = mb_substr(trim((string) $request->query('q', '')), 0, 100);
+
+        $query = Category::where('shop_id', $shopId);
+
+        if ($q !== '') {
+            $like = '%' . $q . '%';
+            // Match on the parent name OR any child name — a subcategory hit
+            // returns its parent. whereHas is an EXISTS subquery, so each parent
+            // appears once (no join fan-out). Bindings only, no raw user SQL.
+            $query->where(function ($outer) use ($like) {
+                $outer->where('name', 'ilike', $like)
+                    ->orWhereHas('subCategories', fn ($sub) => $sub->where('name', 'ilike', $like));
+            });
+        }
+
+        // Deterministic order (name is unique per shop; id breaks any tie).
+        // Eager-load runs only for the paginated parents and pulls each matched
+        // parent's COMPLETE child list (a subcategory hit shows all its
+        // siblings). withQueryString keeps ?q on the pagination links.
+        $categories = $query->with('subCategories')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->paginate(20)
+            ->withQueryString();
+
+        // KPI cards are shop-wide totals — never page-limited or search-limited.
+        $totalCategories = Category::where('shop_id', $shopId)->count();
+        $totalSubCategories = SubCategory::where('shop_id', $shopId)->count();
+        $emptyCategoryCount = Category::where('shop_id', $shopId)->doesntHave('subCategories')->count();
+
+        return view('categories.index', compact(
+            'categories',
+            'q',
+            'totalCategories',
+            'totalSubCategories',
+            'emptyCategoryCount',
+        ));
     }
 
     public function store(Request $request)

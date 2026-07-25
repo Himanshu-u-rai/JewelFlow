@@ -239,7 +239,9 @@ class InventoryAccessTest extends TestCase
             '/sub-categories/' . $sub->id . '/edit',
         ] as $url) {
             $res = TenantContext::runFor($shop->id, fn () => $this->actingAs($mgr)->get(self::ERP . $url));
-            $res->assertRedirect(route('sub-categories.index'));
+            // Part 2: legacy sub-category GET routes now redirect DIRECTLY to the
+            // unified categories page (no double hop through sub-categories.index).
+            $res->assertRedirect(route('categories.index'));
         }
     }
 
