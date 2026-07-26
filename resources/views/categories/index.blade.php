@@ -148,8 +148,8 @@
                     @csrf
                     <input type="hidden" name="_intent" value="add_category">
                     <div class="mb-4">
-                        <label class="categories-field-label">{{ __('Category Name') }} <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" value="{{ old('_intent') === 'add_category' ? old('name') : '' }}" required
+                        <label for="addCategoryName" class="categories-field-label">{{ __('Category Name') }} <span class="text-red-500">*</span></label>
+                        <input type="text" name="name" id="addCategoryName" value="{{ old('_intent') === 'add_category' ? old('name') : '' }}" required
                                class="categories-input @if($errors->has('name') && old('_intent') === 'add_category') border-red-500 @endif"
                                placeholder="{{ __('e.g., Rings, Necklaces, Bangles') }}">
                         @if($errors->has('name') && old('_intent') === 'add_category')
@@ -185,8 +185,8 @@
                     <input type="hidden" name="_intent" value="add_sub_category">
                     <input type="hidden" name="category_id" id="subCategoryCategoryId" value="{{ old('_intent') === 'add_sub_category' ? old('category_id') : '' }}">
                     <div class="mb-4">
-                        <label class="categories-field-label">{{ __('Sub-Category Name') }} <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" value="{{ old('_intent') === 'add_sub_category' ? old('name') : '' }}" required
+                        <label for="addSubCategoryName" class="categories-field-label">{{ __('Sub-Category Name') }} <span class="text-red-500">*</span></label>
+                        <input type="text" name="name" id="addSubCategoryName" value="{{ old('_intent') === 'add_sub_category' ? old('name') : '' }}" required
                                class="categories-input @if($errors->has('name') && old('_intent') === 'add_sub_category') border-red-500 @endif"
                                placeholder="{{ __('e.g., Daily Wear, Bridal, Traditional') }}">
                         @if($errors->has('name') && old('_intent') === 'add_sub_category')

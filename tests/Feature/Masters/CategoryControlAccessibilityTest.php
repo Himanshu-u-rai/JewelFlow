@@ -112,14 +112,16 @@ class CategoryControlAccessibilityTest extends TestCase
         $this->assertTrue($matched, 'No <label for="categorySearchInput"> associated with the search input');
     }
 
-    public function test_edit_modal_labels_are_associated_with_their_inputs(): void
+    public function test_all_modal_name_inputs_are_associated_with_their_labels(): void
     {
         [$user, $shop] = $this->createManufacturerTenant();
         $this->actingAs($user);
 
         $dom = $this->dom($this->renderIndex($shop->id));
 
-        foreach (['editCategoryName', 'editSubCategoryName'] as $inputId) {
+        // A placeholder is not an accessible name — every add/edit name field must
+        // carry an explicit <label for="…"> association.
+        foreach (['addCategoryName', 'addSubCategoryName', 'editCategoryName', 'editSubCategoryName'] as $inputId) {
             $this->assertNotNull($dom->getElementById($inputId), "Missing input #{$inputId}");
 
             $matched = false;
