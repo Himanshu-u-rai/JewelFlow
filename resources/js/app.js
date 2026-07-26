@@ -228,8 +228,8 @@ function ensureConfirmDialog() {
                 <p class="mt-2 text-sm text-slate-600" data-confirm-message="true"></p>
             </div>
             <div class="p-4 flex items-center justify-end gap-2">
-                <button type="button" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50" data-confirm-cancel="true">Cancel</button>
-                <button type="button" class="px-4 py-2 rounded-lg border border-amber-700 bg-amber-700 text-white hover:bg-amber-800" data-confirm-accept="true">Continue</button>
+                <button type="button" class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2" data-confirm-cancel="true">Cancel</button>
+                <button type="button" class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-amber-700 bg-amber-700 text-white hover:bg-amber-800 !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2" data-confirm-accept="true">Continue</button>
             </div>
         </div>
     `;

@@ -7,7 +7,7 @@
         <x-slot:actions>
             @can('catalog.manage')
             <button onclick="openAddCategoryModal()"
-                class="categories-add-btn inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition">
+                class="categories-add-btn inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
@@ -34,7 +34,7 @@
                 <h2 class="text-lg font-semibold text-slate-900">{{ __('No Categories Yet') }}</h2>
                 <p class="mx-auto mt-2 max-w-md text-sm text-slate-500">{{ __('Create your first category to organize jewellery stock and sub-categories.') }}</p>
                 @can('catalog.manage')
-                    <button onclick="openAddCategoryModal()" class="categories-primary-action mt-5 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition">
+                    <button onclick="openAddCategoryModal()" class="categories-primary-action mt-5 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
@@ -89,17 +89,18 @@
 
             {{-- Server-side search (GET). Blank q behaves as the normal index. --}}
             <form method="GET" action="{{ route('categories.index') }}" class="categories-search-form mb-5 flex flex-wrap items-center gap-2">
-                <input type="search" name="q" value="{{ $q }}" maxlength="100"
+                <label for="categorySearchInput" class="sr-only">{{ __('Search categories or sub-categories') }}</label>
+                <input type="search" name="q" id="categorySearchInput" value="{{ $q }}" maxlength="100"
                        placeholder="{{ __('Search categories or sub-categories…') }}"
                        class="categories-input min-w-[12rem] flex-1"
                        aria-label="{{ __('Search categories or sub-categories') }}">
                 <button type="submit"
-                        class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition">
+                        class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                     {{ __('Search') }}
                 </button>
                 @if($q !== '')
                     <a href="{{ route('categories.index') }}"
-                       class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                       class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                         {{ __('Clear') }}
                     </a>
                 @endif
@@ -114,7 +115,7 @@
                 <div class="categories-empty-card rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
                     <h2 class="text-lg font-semibold text-slate-900">{{ __('No matching categories') }}</h2>
                     <p class="mx-auto mt-2 max-w-md text-sm text-slate-500">{{ __('No categories or sub-categories match your search.') }}</p>
-                    <a href="{{ route('categories.index') }}" class="categories-primary-action mt-5 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition">
+                    <a href="{{ route('categories.index') }}" class="categories-primary-action mt-5 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                         {{ __('Clear search') }}
                     </a>
                 </div>
@@ -157,11 +158,11 @@
                     </div>
                     <div class="categories-modal-actions flex justify-end gap-3">
                         <button type="button" onclick="closeAddCategoryModal()"
-                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                             {{ __('Cancel') }}
                         </button>
                         <button type="submit"
-                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition">
+                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                             {{ __('Add Category') }}
                         </button>
                     </div>
@@ -197,11 +198,11 @@
                     </div>
                     <div class="categories-modal-actions flex justify-end gap-3">
                         <button type="button" onclick="closeAddSubCategoryModal()"
-                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                             {{ __('Cancel') }}
                         </button>
                         <button type="submit"
-                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition">
+                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                             {{ __('Add Sub-Category') }}
                         </button>
                     </div>
@@ -225,7 +226,7 @@
                     <input type="hidden" name="_intent" value="edit_category">
                     <input type="hidden" name="_edit_category_id" id="editCategoryIdInput" value="{{ old('_edit_category_id') }}">
                     <div class="mb-4">
-                        <label class="categories-field-label">{{ __('Category Name') }} <span class="text-red-500">*</span></label>
+                        <label for="editCategoryName" class="categories-field-label">{{ __('Category Name') }} <span class="text-red-500">*</span></label>
                         <input type="text" name="name" id="editCategoryName"
                                value="{{ old('_intent') === 'edit_category' ? old('name') : '' }}" required
                                class="categories-input @if($errors->has('name') && old('_intent') === 'edit_category') border-red-500 @endif">
@@ -235,11 +236,11 @@
                     </div>
                     <div class="categories-modal-actions flex justify-end gap-3">
                         <button type="button" onclick="closeEditCategoryModal()"
-                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                             {{ __('Cancel') }}
                         </button>
                         <button type="submit"
-                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition">
+                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                             {{ __('Save Changes') }}
                         </button>
                     </div>
@@ -263,7 +264,7 @@
                     <input type="hidden" name="_intent" value="edit_sub_category">
                     <input type="hidden" name="_edit_sub_id" id="editSubIdInput" value="{{ old('_edit_sub_id') }}">
                     <div class="mb-4">
-                        <label class="categories-field-label">{{ __('Sub-Category Name') }} <span class="text-red-500">*</span></label>
+                        <label for="editSubCategoryName" class="categories-field-label">{{ __('Sub-Category Name') }} <span class="text-red-500">*</span></label>
                         <input type="text" name="name" id="editSubCategoryName"
                                value="{{ old('_intent') === 'edit_sub_category' ? old('name') : '' }}" required
                                class="categories-input @if($errors->has('name') && old('_intent') === 'edit_sub_category') border-red-500 @endif">
@@ -273,11 +274,11 @@
                     </div>
                     <div class="categories-modal-actions flex justify-end gap-3">
                         <button type="button" onclick="closeEditSubCategoryModal()"
-                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                             {{ __('Cancel') }}
                         </button>
                         <button type="submit"
-                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition">
+                                class="categories-primary-action inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition !min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
                             {{ __('Save Changes') }}
                         </button>
                     </div>
