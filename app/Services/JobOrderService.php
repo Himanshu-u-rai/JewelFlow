@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\CustomerGoldTransaction;
 use App\Models\Item;
 use App\Models\JobOrder;
@@ -196,6 +197,10 @@ class JobOrderService
                 if (! $customerId) {
                     throw new LogicException('Customer-supplied metal requires a customer.');
                 }
+                // MASTERS PART 3: issuing a job against a customer's advance metal
+                // is a new commitment. prepareSourceLeg() always runs inside
+                // issue()'s transaction, so this lock serialises with archive().
+                Customer::lockActiveOrFail($shopId, $customerId, 'sources.customer_id');
                 // Guard reads the CONSUMING customer's own ledger balance — never
                 // the pool, never another customer (CUST-2).
                 $this->assertCustomerHasGold($shopId, $customerId, $fine);

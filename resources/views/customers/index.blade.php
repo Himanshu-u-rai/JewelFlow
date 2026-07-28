@@ -149,15 +149,31 @@
                             >
                         </div>
                     </div>
+                    {{-- MASTERS PART 3: archived customers are retained, not deleted,
+                         so they stay one click away. Counts carry the same search
+                         filter as the list, so a count always matches what the
+                         option shows. Both values ride through pagination via the
+                         paginator's withQueryString(). --}}
+                    <div class="ui-filter-field">
+                        <label for="customers-status" class="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">Status</label>
+                        <select id="customers-status" name="status"
+                                class="w-full rounded-xl border-2 border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700 shadow-sm transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/15 focus:outline-none">
+                            <option value="active" {{ $status === 'active' ? 'selected' : '' }}>Active ({{ (int) $statusCounts->active_count }})</option>
+                            <option value="archived" {{ $status === 'archived' ? 'selected' : '' }}>Archived ({{ (int) $statusCounts->archived_count }})</option>
+                            <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All ({{ (int) $statusCounts->all_count }})</option>
+                        </select>
+                    </div>
                     <div class="ui-filter-actions">
+                        {{-- The submit button is always rendered now: with a status
+                             filter in the bar, hiding it would leave no way to apply
+                             a status change once a search was active. --}}
+                        <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                            {{ $searchActive ? 'Apply' : 'Search' }}
+                        </button>
                         @if($searchActive)
                             <a href="{{ route('customers.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
                                 Clear
                             </a>
-                        @else
-                            <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
-                                Search
-                            </button>
                         @endif
                     </div>
                 </form>
@@ -194,6 +210,11 @@
                                         <div class="customers-table-identity">
                                             <div class="customers-table-name text-sm font-semibold text-slate-900">
                                                 {{ trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) }}
+                                                @unless($customer->is_active)
+                                                    {{-- MASTERS PART 3: archived rows are visible under the
+                                                         Archived/All filters, so they must be labelled. --}}
+                                                    <span class="ml-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">Archived</span>
+                                                @endunless
                                             </div>
                                             @if($customer->email)
                                                 <div class="customers-table-meta text-xs text-slate-500">{{ $customer->email }}</div>
@@ -226,6 +247,22 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                                             Edit
                                         </a>
+                                        @can('customers.delete')
+                                            @if($customer->is_active)
+                                                <form action="{{ route('customers.archive', $customer) }}" method="POST" class="inline"
+                                                      onsubmit="return confirm('Archive {{ addslashes(trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''))) }}? Invoices, balances, EMIs and repairs are all kept — the customer just stops appearing when you start a new transaction.')">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">Archive</button>
+                                                </form>
+                                            @else
+                                                <form action="{{ route('customers.reactivate', $customer) }}" method="POST" class="inline">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">Reactivate</button>
+                                                </form>
+                                            @endif
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -291,7 +328,12 @@
                             <div class="customers-mobile-card__identity">
                                 <span class="customers-mobile-avatar">{{ $initials }}</span>
                                 <span>
-                                    <span class="customers-mobile-card__title">{{ trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) }}</span>
+                                    <span class="customers-mobile-card__title">
+                                        {{ trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) }}
+                                        @unless($customer->is_active)
+                                            <span class="ml-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">Archived</span>
+                                        @endunless
+                                    </span>
                                     <span class="customers-mobile-card__sub">{{ $customer->mobile ?: 'No mobile' }}</span>
                                 </span>
                             </div>
@@ -313,6 +355,26 @@
                         <div class="customers-mobile-card__actions">
                             <a href="{{ route('customers.show', $customer) }}" class="customers-row-action customers-row-action--primary">View</a>
                             <a href="{{ route('customers.edit', $customer) }}" class="customers-row-action">Edit</a>
+                            @can('customers.delete')
+                                {{-- Inline flex/height here rather than a new app.css rule: the
+                                     card actions are a flex row whose children stretch, and the
+                                     POST wrapper form is now the child. Keeps the 44px touch
+                                     target without a CSS rebuild. --}}
+                                @if($customer->is_active)
+                                    <form action="{{ route('customers.archive', $customer) }}" method="POST" style="flex:1 1 0;display:flex;"
+                                          onsubmit="return confirm('Archive this customer? Invoices, balances, EMIs and repairs are all kept — the customer just stops appearing when you start a new transaction.')">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="customers-row-action" style="width:100%;min-height:44px;">Archive</button>
+                                    </form>
+                                @else
+                                    <form action="{{ route('customers.reactivate', $customer) }}" method="POST" style="flex:1 1 0;display:flex;">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="customers-row-action" style="width:100%;min-height:44px;">Reactivate</button>
+                                    </form>
+                                @endif
+                            @endcan
                         </div>
                     </article>
                 @empty

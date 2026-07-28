@@ -178,7 +178,7 @@ class PosController extends Controller
             $validated = $request->validate([
                 'customer_id' => [
                     'required',
-                    Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                    Customer::activeExistsRule((int) $shopId),
                 ],
                 'item_ids' => 'required|array|min:1',
                 'item_ids.*' => [
@@ -292,7 +292,7 @@ class PosController extends Controller
         $validated = $request->validate([
             'customer_id' => [
                 'required',
-                Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                Customer::activeExistsRule((int) $shopId),
             ],
             'item_id' => [
                 'required',
@@ -393,7 +393,7 @@ class PosController extends Controller
             $validated = $request->validate([
                 'customer_id' => [
                     'required',
-                    Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                    Customer::activeExistsRule((int) $shopId),
                 ],
                 'item_ids' => 'required|array|min:1',
                 'item_ids.*' => [
@@ -574,7 +574,7 @@ class PosController extends Controller
         $validated = $request->validate([
             'customer_id' => [
                 'required',
-                Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                Customer::activeExistsRule((int) $shopId),
             ],
             'item_id' => [
                 'required',
@@ -714,7 +714,7 @@ class PosController extends Controller
             $validated = $request->validate([
                 'customer_id' => [
                     'required',
-                    Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                    Customer::activeExistsRule((int) $shopId),
                 ],
                 'item_ids'   => 'required|array|min:1',
                 'item_ids.*' => [
@@ -759,7 +759,7 @@ class PosController extends Controller
             $validated = $request->validate([
                 'customer_id' => [
                     'required',
-                    Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                    Customer::activeExistsRule((int) $shopId),
                 ],
                 'item_id' => [
                     'required',

@@ -11,6 +11,7 @@ use App\Models\InvoiceOfferApplication;
 use App\Models\CashTransaction;
 use App\Models\MetalLot;
 use App\Models\MetalMovement;
+use App\Models\Customer;
 use App\Models\CustomerGoldTransaction;
 use App\Models\SchemeEnrollment;
 use App\Services\InvoiceAccountingService;
@@ -48,6 +49,10 @@ class RetailerSalesService
             }
             $shopId = $shop->id;
             SubscriptionGateService::assertShopWritable($shopId);
+
+            // MASTERS PART 3: authoritative archive check, before the item locks
+            // so every sale flow locks party → item in the same order.
+            Customer::lockActiveOrFail((int) $shopId, (int) $customerId, 'customer_id');
 
             // Lock all items
             $items = Item::where('shop_id', $shopId)
@@ -420,6 +425,9 @@ class RetailerSalesService
 
             $shopId = $shop->id;
             SubscriptionGateService::assertShopWritable($shopId);
+
+            // MASTERS PART 3: an EMI draft is a new commitment too.
+            Customer::lockActiveOrFail((int) $shopId, (int) $customerId, 'customer_id');
 
             $items = Item::where('shop_id', $shopId)
                 ->whereIn('id', $itemIds)

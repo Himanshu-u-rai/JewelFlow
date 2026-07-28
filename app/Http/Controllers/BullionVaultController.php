@@ -192,7 +192,7 @@ class BullionVaultController extends Controller
                 },
             ],
             'cost_per_gram' => 'nullable|numeric|min:0',
-            'vendor_id' => ['nullable', \Illuminate\Validation\Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+            'vendor_id' => ['nullable', Vendor::activeExistsRule((int) $shopId)],
             'payment_mode' => 'nullable|in:cash,upi,bank,card,wallet,other',
             'notes' => 'nullable|string',
         ]);
@@ -215,6 +215,10 @@ class BullionVaultController extends Controller
         $costPerFineGram = $fineWeight > 0 ? round($totalCost / $fineWeight, 2) : 0;
 
         $lot = DB::transaction(function () use ($validated, $shopId, $userId, $fineWeight, $totalCost, $costPerFineGram, $paymentMode) {
+            // MASTERS PART 3: a bullion lot bought from a vendor is a new
+            // commitment — authoritative archive check inside this transaction.
+            Vendor::lockActiveOrFail((int) $shopId, isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null, 'vendor_id');
+
             $lot = MetalLot::create([
                 'shop_id' => $shopId,
                 'vendor_id' => $validated['vendor_id'] ?? null,

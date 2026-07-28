@@ -2,14 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ArchivableParty;
 use App\Models\Concerns\BelongsToShop;
 use App\Services\BusinessIdentifierService;
 use Illuminate\Database\Eloquent\Model;
 
 class Customer extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, ArchivableParty;
 
+    /**
+     * MASTERS PART 3: `is_active` is deliberately NOT fillable. Lifecycle is
+     * changed only by the explicit archive/reactivate endpoints (which use
+     * forceFill), so no edit form or crafted request can flip it. New customers
+     * are active via the column's DB default.
+     */
     protected $fillable = [
         'first_name',
         'last_name',
@@ -31,6 +38,7 @@ class Customer extends Model
     ];
 
     protected $casts = [
+        'is_active'              => 'boolean',
         'date_of_birth'          => 'date',
         'anniversary_date'       => 'date',
         'wedding_date'           => 'date',

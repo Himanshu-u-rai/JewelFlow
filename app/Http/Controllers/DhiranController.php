@@ -218,7 +218,7 @@ class DhiranController extends Controller
         $needsSilver = collect($rawItems)->contains(fn ($i) => ($i['metal_type'] ?? 'gold') === 'silver' && (($i['value_mode'] ?? 'metal') !== 'appraised'));
 
         $data = $request->validate([
-            'customer_id'              => ['required', 'integer', Rule::exists('customers', 'id')->where('shop_id', $shopId)],
+            'customer_id'              => ['required', 'integer', Customer::activeExistsRule((int) $shopId)],
             'principal_amount'         => 'required|numeric|min:1',
             'gold_rate_on_date'        => ($needsGold ? 'required' : 'nullable') . '|numeric|min:0',
             'silver_rate_on_date'      => ($needsSilver ? 'required' : 'nullable') . '|numeric|min:0',

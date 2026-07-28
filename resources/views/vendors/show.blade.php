@@ -433,6 +433,25 @@
                 <span class="vendors-show-edit-label-full">Edit Vendor</span>
                 <span class="vendors-show-edit-label-short">Edit</span>
             </a>
+            {{-- MASTERS PART 3: two distinct actions, never one toggle. The state
+                 the user is asking for is in the URL, so a stale page cannot
+                 flip the vendor the wrong way — a repeat is a no-op. --}}
+            @can('vendors.manage')
+                @if($vendor->is_active)
+                    <form action="{{ route('vendors.archive', $vendor) }}" method="POST" class="inline"
+                          onsubmit="return confirm('Archive {{ addslashes($vendor->name) }}? Existing items, purchases and payables are kept — the vendor just stops appearing when you create new ones.')">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-secondary btn-sm">Archive</button>
+                    </form>
+                @else
+                    <form action="{{ route('vendors.reactivate', $vendor) }}" method="POST" class="inline">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-secondary btn-sm">Reactivate</button>
+                    </form>
+                @endif
+            @endcan
             <a href="{{ route('vendors.index') }}" class="btn btn-secondary btn-sm vendors-show-back-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5">
                     <line x1="19" y1="12" x2="5" y2="12" />
@@ -445,6 +464,14 @@
     </x-page-header>
 
     <div class="content-inner ops-treatment-page vendors-show-page">
+        @unless($vendor->is_active)
+            {{-- MASTERS PART 3: archived is a visible state, not a hidden one. --}}
+            <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <strong>This vendor is archived.</strong>
+                Every item, purchase and payable stays on record and open bills can still be settled,
+                but the vendor cannot be picked for new purchases until you reactivate it.
+            </div>
+        @endunless
 <div class="vendors-show-shell">
             <section class="vendors-show-card">
                 <div class="vendors-show-card-head">
@@ -454,7 +481,7 @@
                         <p class="vendors-show-copy">Supplier contact, billing, and registration details in one place.</p>
                     </div>
                     <span class="vendors-show-pill {{ $vendor->is_active ? 'vendors-show-pill--active' : 'vendors-show-pill--inactive' }}">
-                        {{ $vendor->is_active ? 'Active' : 'Inactive' }}
+                        {{ $vendor->is_active ? 'Active' : 'Archived' }}
                     </span>
                 </div>
 
@@ -512,7 +539,7 @@
                 <div class="vendors-show-summary-list">
                     <div class="vendors-show-summary-row">
                         <span class="vendors-show-summary-key">Status</span>
-                        <span class="vendors-show-summary-value">{{ $vendor->is_active ? 'Active' : 'Inactive' }}</span>
+                        <span class="vendors-show-summary-value">{{ $vendor->is_active ? 'Active' : 'Archived' }}</span>
                     </div>
                     <div class="vendors-show-summary-row">
                         <span class="vendors-show-summary-key">In-Stock Items</span>

@@ -249,6 +249,15 @@ class AuditLog extends Model
                 => $make('gold', 'Gold & vault', 'bg-amber-100', 'text-amber-700'),
             $has('delete', 'deleted', 'destroy', 'forfeit', 'write_off', 'writeoff')
                 => $make('delete', 'Removed', 'bg-rose-100', 'text-rose-700'),
+            // MASTERS PART 3. Must sit ABOVE the staff arm: that arm matches the
+            // bare fragment 'reactivated', so customer_reactivated would
+            // otherwise be filed under Staff, and customer_archived would fall
+            // all the way through to the generic Activity bucket.
+            $has('customer_archived', 'customer_reactivated', 'vendor_archived', 'vendor_reactivated')
+                // Violet reuses the Staff palette on purpose: Tailwind scans only
+                // resources/views, so a colour that appears nowhere in a Blade
+                // file is never compiled and the badge would render unstyled.
+                => $make('staff', 'Directory', 'bg-violet-100', 'text-violet-700'),
             $has('staff', 'terminated', 'reactivated')
                 => $make('staff', 'Staff', 'bg-violet-100', 'text-violet-700'),
             $has('role_permissions', 'device_revoked', 'session_revoked', 'sessions_revoked', 'compliance', 'kyc')

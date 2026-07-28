@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\QuickBill;
 use App\Services\QuickBillService;
 use Illuminate\Http\JsonResponse;
@@ -111,7 +112,7 @@ class QuickBillController extends Controller
             return response()->json(['message' => 'Quick bill not found.'], 404);
         }
 
-        $payload = $this->validatedPayload($request);
+        $payload = $this->validatedPayload($request, $quickBill);
         $quickBill = $quickBillService->update($quickBill, $request->user()->shop, $request->user(), $payload);
 
         return response()->json([
@@ -159,12 +160,14 @@ class QuickBillController extends Controller
         ]);
     }
 
-    private function validatedPayload(Request $request): array
+    private function validatedPayload(Request $request, ?QuickBill $quickBill = null): array
     {
         $shopId = (int) $request->user()->shop_id;
 
         return $request->validate([
-            'customer_id' => ['nullable', Rule::exists('customers', 'id')->where('shop_id', $shopId)],
+            // MASTERS PART 3: same rule as the web form — an existing bill stays
+            // editable after its customer is archived.
+            'customer_id' => ['nullable', Customer::activeOrCurrentExistsRule($shopId, $quickBill?->customer_id ? (int) $quickBill->customer_id : null)],
             'customer_name' => 'nullable|string|max:255',
             'customer_mobile' => 'nullable|string|max:20',
             'customer_address' => 'nullable|string|max:1000',

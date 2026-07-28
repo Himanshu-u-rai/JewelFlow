@@ -145,7 +145,7 @@ class InstallmentController extends Controller
             'customer_id' => [
                 'required',
                 'integer',
-                Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                Customer::activeExistsRule((int) $shopId),
             ],
             'invoice_id' => [
                 'required',

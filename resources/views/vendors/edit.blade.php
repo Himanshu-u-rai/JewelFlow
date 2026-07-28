@@ -580,19 +580,27 @@
                     <section class="vendors-edit-section vendors-edit-section--wide">
                         <div class="vendors-edit-section-head">
                             <h3 class="vendors-edit-section-title">Status</h3>
-                            <p class="vendors-edit-section-copy">Control whether this vendor remains active for your ongoing operations.</p>
+                            <p class="vendors-edit-section-copy">Archiving is a separate, deliberate action — it is not part of editing details.</p>
                         </div>
 
+                        {{-- MASTERS PART 3: the old Active checkbox is gone. Saving
+                             vendor details must never change availability by accident,
+                             so this is read-only here and the explicit Archive /
+                             Reactivate action lives on the vendor's page. --}}
                         <div class="vendors-edit-status-panel">
                             <div>
                                 <p class="vendors-edit-status-title">Vendor Availability</p>
-                                <p class="vendors-edit-status-copy">Inactive vendors remain stored but are clearly marked in the directory.</p>
+                                <p class="vendors-edit-status-copy">
+                                    {{ $vendor->is_active
+                                        ? 'Active — available for new purchases. Use Archive on the vendor page to stop new purchases while keeping all history.'
+                                        : 'Archived — kept with all history, but unavailable for new purchases. Use Reactivate on the vendor page to make it selectable again.' }}
+                                </p>
                             </div>
 
                             <div class="vendors-edit-status-toggle">
-                                <input type="hidden" name="is_active" value="0">
-                                <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', $vendor->is_active) ? 'checked' : '' }}>
-                                <label for="is_active" class="vendors-edit-status-label">Active vendor</label>
+                                <span class="vendors-edit-pill {{ $vendor->is_active ? '' : 'vendors-edit-pill--inactive' }}">
+                                    {{ $vendor->is_active ? 'Active vendor' : 'Archived vendor' }}
+                                </span>
                             </div>
                         </div>
                     </section>

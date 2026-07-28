@@ -152,7 +152,7 @@ class JobOrderController extends Controller
             $rules['sources.*.gross_weight'] = 'nullable|numeric|min:0';
             $rules['sources.*.purity']       = ['nullable', 'numeric', 'min:1', $purityCap];
             $rules['sources.*.metal_lot_id'] = ['nullable', 'integer', \Illuminate\Validation\Rule::exists('metal_lots', 'id')->where('shop_id', $shopId)];
-            $rules['sources.*.customer_id']  = ['nullable', 'integer', \Illuminate\Validation\Rule::exists('customers', 'id')->where('shop_id', $shopId)];
+            $rules['sources.*.customer_id']  = ['nullable', 'integer', Customer::activeExistsRule((int) $shopId)];
         } elseif (! $isLaborOnly) {
             $rules['issuances']                = 'required|array|min:1';
             $rules['issuances.*.metal_lot_id'] = ['required', 'integer', \Illuminate\Validation\Rule::exists('metal_lots', 'id')->where('shop_id', $shopId)];

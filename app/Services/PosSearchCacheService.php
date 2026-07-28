@@ -41,7 +41,11 @@ class PosSearchCacheService
         $search = self::normalizeSearch($search);
 
         return TenantContext::runFor($shopId, function () use ($search) {
-            $query = Customer::query();
+            // MASTERS PART 3: POS customer selection is a new-commitment surface,
+            // so archived customers must not be offered. Shared by both
+            // Api\PosController::customers and the mobile /customers/search
+            // endpoint, so this single filter covers every POS picker.
+            $query = Customer::query()->active();
 
             if ($search !== '') {
                 $query->where(function ($q) use ($search) {

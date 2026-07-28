@@ -116,7 +116,7 @@ class ReorderController extends Controller
             'min_stock_threshold' => ['required', 'integer', 'min:1'],
             'vendor_id'          => [
                 'nullable',
-                Rule::exists('vendors', 'id')->where(fn ($q) => $q->where('shop_id', $shopId)),
+                Vendor::activeExistsRule((int) $shopId),
             ],
             'is_active'          => ['sometimes', 'boolean'],
         ], [

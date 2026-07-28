@@ -129,7 +129,8 @@ class ItemController extends Controller
                 ],
                 'cost_price' => 'sometimes|nullable|numeric|min:0',
                 'selling_price' => 'sometimes|nullable|numeric|min:0',
-                'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+                // MASTERS PART 3: existing vendor tag stays valid on edit.
+                'vendor_id' => ['nullable', Vendor::activeOrCurrentExistsRule((int) $shopId, $item->vendor_id ? (int) $item->vendor_id : null)],
                 'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
                 'huid' => [
                     'nullable', 'string', 'max:30',
@@ -228,6 +229,14 @@ class ItemController extends Controller
         unset($validated['image_base64'], $validated['image_upload_id'], $validated['remove_image']);
 
         DB::transaction(function () use ($item, $validated, $isRetailer, $retailerPricing, $newImagePath, $clearImage) {
+            // MASTERS PART 3: same guard as the web edit form.
+            Vendor::lockActiveOrFail(
+                (int) $item->shop_id,
+                isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null,
+                'vendor_id',
+                $item->vendor_id ? (int) $item->vendor_id : null,
+            );
+
             $previousImage = $item->image;
             $updates = array_filter([
                 'barcode' => $validated['barcode'] ?? null,
@@ -402,7 +411,7 @@ class ItemController extends Controller
                 'hallmark_charges' => 'nullable|numeric|min:0',
                 'rhodium_charges' => 'nullable|numeric|min:0',
                 'other_charges' => 'nullable|numeric|min:0',
-                'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+                'vendor_id' => ['nullable', Vendor::activeExistsRule((int) $shopId)],
                 'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
                 'huid' => [
                     'nullable', 'string', 'max:30',
@@ -487,6 +496,9 @@ class ItemController extends Controller
         $netMetalWeight = $pricingPayload['net_metal_weight'] ?? ($validated['gross_weight'] - ($validated['stone_weight'] ?? 0));
 
         $item = DB::transaction(function () use ($shopId, $validated, $isRetailer, $pricingPayload, $netMetalWeight, $imagePath) {
+            // MASTERS PART 3: same guard as the web create form.
+            Vendor::lockActiveOrFail((int) $shopId, isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null, 'vendor_id');
+
             $item = Item::create([
                 'shop_id' => $shopId,
                 'barcode' => $validated['barcode'],

@@ -2,13 +2,20 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ArchivableParty;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 
 class Vendor extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, ArchivableParty;
 
+    /**
+     * MASTERS PART 3: `is_active` is deliberately NOT fillable. Lifecycle is
+     * changed only by the explicit archive/reactivate endpoints (which use
+     * forceFill, matching StaffController's terminate/reactivate precedent), so
+     * no edit form, mass assignment or crafted legacy request can flip it.
+     */
     protected $fillable = [
         'name',
         'contact_person',
@@ -19,7 +26,6 @@ class Vendor extends Model
         'state',
         'gst_number',
         'notes',
-        'is_active',
     ];
 
     protected $casts = [
@@ -34,15 +40,5 @@ class Vendor extends Model
     public function reorderRules()
     {
         return $this->hasMany(ReorderRule::class);
-    }
-
-    public function scopeActive($query)
-    {
-        return $query->whereRaw($query->qualifyColumn('is_active') . ' IS TRUE');
-    }
-
-    public function scopeInactive($query)
-    {
-        return $query->whereRaw($query->qualifyColumn('is_active') . ' IS FALSE');
     }
 }

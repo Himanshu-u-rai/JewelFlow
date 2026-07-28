@@ -113,11 +113,14 @@ class StockPurchaseController extends Controller
                     'shop_id'    => $shopId,
                     'name'       => $validated['supplier_name'],
                     'gst_number' => $validated['supplier_gstin'] ?? null,
-                    'is_active'  => true,
                 ]);
                 $validated['vendor_id']     = $vendor->id;
                 $validated['supplier_name'] = null;
             }
+
+            // MASTERS PART 3: a purchase is a new commitment to the vendor —
+            // authoritative archive check inside the same transaction.
+            Vendor::lockActiveOrFail($shopId, isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null, 'vendor_id');
 
             $imagePath = null;
             if ($request->hasFile('invoice_image')) {
@@ -322,7 +325,7 @@ class StockPurchaseController extends Controller
         }
 
         $shopId    = auth()->user()->shop_id;
-        $validated = $this->validatePurchaseRequest($request, $shopId);
+        $validated = $this->validatePurchaseRequest($request, $shopId, $purchase);
 
         DB::transaction(function () use ($purchase, $validated, $request): void {
             if ($request->boolean('save_as_vendor') && ! empty($validated['supplier_name'])) {
@@ -330,11 +333,19 @@ class StockPurchaseController extends Controller
                     'shop_id'    => $purchase->shop_id,
                     'name'       => $validated['supplier_name'],
                     'gst_number' => $validated['supplier_gstin'] ?? null,
-                    'is_active'  => true,
                 ]);
                 $validated['vendor_id']     = $vendor->id;
                 $validated['supplier_name'] = null;
             }
+
+            // MASTERS PART 3: same authoritative check on edit, but the vendor
+            // already on this draft is still allowed (see the validation rule).
+            Vendor::lockActiveOrFail(
+                (int) $purchase->shop_id,
+                isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null,
+                'vendor_id',
+                $purchase->vendor_id ? (int) $purchase->vendor_id : null,
+            );
 
             if ($request->hasFile('invoice_image')) {
                 if ($purchase->invoice_image) {
@@ -438,10 +449,13 @@ class StockPurchaseController extends Controller
         }
     }
 
-    private function validatePurchaseRequest(Request $request, int $shopId): array
+    private function validatePurchaseRequest(Request $request, int $shopId, ?StockPurchase $purchase = null): array
     {
         $validated = $request->validate([
-            'vendor_id'       => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+            // MASTERS PART 3: a draft purchase already raised against a vendor
+            // stays editable after that vendor is archived; switching it to a
+            // different archived vendor is still rejected.
+            'vendor_id'       => ['nullable', Vendor::activeOrCurrentExistsRule((int) $shopId, $purchase?->vendor_id ? (int) $purchase->vendor_id : null)],
             'supplier_name'   => 'nullable|string|max:255',
             'supplier_gstin'  => 'nullable|string|max:20',
             'invoice_number'  => 'nullable|string|max:100',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\CashTransaction;
+use App\Models\Customer;
 use App\Models\InvoicePayment;
 use App\Models\Repair;
 use App\Services\InvoiceAccountingService;
@@ -86,7 +87,7 @@ class RepairController extends Controller
         $validated = $request->validate([
             'customer_id' => [
                 'required',
-                Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                Customer::activeExistsRule((int) $shopId),
             ],
             'item_description' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
@@ -103,20 +104,25 @@ class RepairController extends Controller
             $imagePath = $this->storeRepairImageFromBase64($validated['image_base64'], $shopId);
         }
 
-        $repair = Repair::create([
-            'shop_id' => $shopId,
-            'customer_id' => $validated['customer_id'],
-            'item_description' => $validated['item_description'],
-            'description' => $validated['description'] ?? null,
-            'image_path' => $imagePath,
-            'image' => $imagePath,
-            'due_date' => $validated['due_date'] ?? null,
-            'metal_type' => $validated['metal_type'] ?? Repair::DEFAULT_METAL_TYPE,
-            'gross_weight' => $validated['gross_weight'],
-            'purity' => $validated['purity'] ?? null,
-            'estimated_cost' => $validated['estimated_cost'],
-            'status' => 'received',
-        ]);
+        // MASTERS PART 3: authoritative archive check shares the write's transaction.
+        $repair = DB::transaction(function () use ($shopId, $validated, $imagePath) {
+            Customer::lockActiveOrFail((int) $shopId, (int) $validated['customer_id'], 'customer_id');
+
+            return Repair::create([
+                'shop_id' => $shopId,
+                'customer_id' => $validated['customer_id'],
+                'item_description' => $validated['item_description'],
+                'description' => $validated['description'] ?? null,
+                'image_path' => $imagePath,
+                'image' => $imagePath,
+                'due_date' => $validated['due_date'] ?? null,
+                'metal_type' => $validated['metal_type'] ?? Repair::DEFAULT_METAL_TYPE,
+                'gross_weight' => $validated['gross_weight'],
+                'purity' => $validated['purity'] ?? null,
+                'estimated_cost' => $validated['estimated_cost'],
+                'status' => 'received',
+            ]);
+        });
 
         AuditLog::create([
             'shop_id' => $shopId,

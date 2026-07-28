@@ -10,6 +10,7 @@ use App\Models\InvoicePayment;
 use App\Models\MetalLot;
 use App\Models\MetalMovement;
 use App\Models\CashTransaction;
+use App\Models\Customer;
 use App\Models\CustomerGoldTransaction;
 use App\Services\InvoiceAccountingService;
 use App\Services\SubscriptionGateService;
@@ -63,6 +64,14 @@ class SalesService
             if (!$shop->isManufacturer()) {
                 throw new \LogicException('Manufacturer edition required for this sale flow.');
             }
+
+            // MASTERS PART 3: authoritative archive check. Validation already
+            // rejected an archived customer, but that check is a TOCTOU hole —
+            // the customer can be archived between validation and here. The row
+            // lock serialises against archive(), which locks the same row.
+            // Taken BEFORE the item lock so every sale flow acquires locks in the
+            // same order (party → item) and cannot deadlock against a sibling.
+            Customer::lockActiveOrFail((int) $shopId, (int) $customerId, 'customer_id');
 
             // Lock the item so it can't be sold twice
             $item = Item::where('shop_id', $shopId)

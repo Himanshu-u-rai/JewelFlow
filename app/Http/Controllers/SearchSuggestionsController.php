@@ -54,7 +54,11 @@ class SearchSuggestionsController extends Controller
 
     private function customers(int $shopId, string $q): array
     {
+        // MASTERS PART 3: suggestions feed party selection, so archived customers
+        // are excluded. Their detail page stays reachable directly and via the
+        // Archived filter on the customer index.
         return Customer::where('shop_id', $shopId)
+            ->active()
             ->where(fn ($query) => $query
                 ->where('first_name', 'ilike', "%{$q}%")
                 ->orWhere('last_name', 'ilike', "%{$q}%")
@@ -71,7 +75,10 @@ class SearchSuggestionsController extends Controller
 
     private function vendors(int $shopId, string $q): array
     {
+        // MASTERS PART 3: see customers() — archived vendors are not offered for
+        // selection, but stay reachable directly and via the Archived filter.
         return Vendor::where('shop_id', $shopId)
+            ->active()
             ->where(fn ($query) => $query
                 ->where('name', 'ilike', "%{$q}%")
                 ->orWhere('contact_person', 'ilike', "%{$q}%")

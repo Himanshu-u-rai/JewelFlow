@@ -144,7 +144,7 @@ class SchemeController extends Controller
         $data = $request->validate([
             'customer_id' => [
                 'required',
-                Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id),
+                Customer::activeExistsRule((int) auth()->user()->shop_id),
             ],
             'monthly_amount' => 'required|numeric|min:100',
             'notes' => 'nullable|string',

@@ -66,39 +66,48 @@ class SchemeService
         $totalInstallments = (int) ($scheme->total_installments ?? 11);
         $bonusAmount = (float) ($scheme->bonus_month_value ?? $monthlyAmount);
 
-        $enrollment = new SchemeEnrollment();
-        $enrollment->forceFill([
-            'shop_id' => $shopId,
-            'scheme_id' => $scheme->id,
-            'customer_id' => $customer->id,
-            'start_date' => now()->toDateString(),
-            'terms_accepted_at' => now(),
-            'terms_version' => sha1((string) ($scheme->updated_at?->toDateTimeString() ?? now()->toDateTimeString())),
-            'monthly_amount' => round($monthlyAmount, 2),
-            'total_paid' => 0,
-            'redeemed_amount' => 0,
-            'redemption_count' => 0,
-            'installments_paid' => 0,
-            'total_installments' => $totalInstallments,
-            'maturity_date' => now()->addMonths($totalInstallments)->toDateString(),
-            'status' => 'active',
-            'bonus_amount' => round($bonusAmount, 2),
-            'is_bonus_accrued' => false,
-            'notes' => $notes,
-        ]);
-        $enrollment->save();
+        // MASTERS PART 3: an enrollment is a new commitment, so the authoritative
+        // archive check and the write share one transaction. Validation already
+        // rejected an archived customer; the lock closes the window between them.
+        return DB::transaction(function () use (
+            $shopId, $scheme, $customer, $monthlyAmount, $totalInstallments, $bonusAmount, $notes
+        ) {
+            Customer::lockActiveOrFail($shopId, (int) $customer->id, 'customer_id');
 
-        AccountingAuditService::log([
-            'shop_id' => $shopId,
-            'action' => 'scheme_enrollment_created',
-            'model_type' => 'scheme_enrollment',
-            'model_id' => $enrollment->id,
-            'description' => "Customer enrolled in scheme {$scheme->name}",
-            'after' => $enrollment->toArray(),
-            'target' => ['type' => 'scheme_enrollment', 'id' => $enrollment->id],
-        ]);
+            $enrollment = new SchemeEnrollment();
+            $enrollment->forceFill([
+                'shop_id' => $shopId,
+                'scheme_id' => $scheme->id,
+                'customer_id' => $customer->id,
+                'start_date' => now()->toDateString(),
+                'terms_accepted_at' => now(),
+                'terms_version' => sha1((string) ($scheme->updated_at?->toDateTimeString() ?? now()->toDateTimeString())),
+                'monthly_amount' => round($monthlyAmount, 2),
+                'total_paid' => 0,
+                'redeemed_amount' => 0,
+                'redemption_count' => 0,
+                'installments_paid' => 0,
+                'total_installments' => $totalInstallments,
+                'maturity_date' => now()->addMonths($totalInstallments)->toDateString(),
+                'status' => 'active',
+                'bonus_amount' => round($bonusAmount, 2),
+                'is_bonus_accrued' => false,
+                'notes' => $notes,
+            ]);
+            $enrollment->save();
 
-        return $enrollment;
+            AccountingAuditService::log([
+                'shop_id' => $shopId,
+                'action' => 'scheme_enrollment_created',
+                'model_type' => 'scheme_enrollment',
+                'model_id' => $enrollment->id,
+                'description' => "Customer enrolled in scheme {$scheme->name}",
+                'after' => $enrollment->toArray(),
+                'target' => ['type' => 'scheme_enrollment', 'id' => $enrollment->id],
+            ]);
+
+            return $enrollment;
+        });
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Items;
 
+use App\Models\Vendor;
 use App\Rules\Inventory\UniqueBarcodeForShop;
 use App\Rules\Material\IsEnabledMetal;
 use App\Rules\Material\PurityRequiredForAccountingTruth;
@@ -61,7 +62,7 @@ abstract class StoreItemRequest extends FormRequest
             'hallmark_charges' => 'nullable|numeric|min:0',
             'rhodium_charges' => 'nullable|numeric|min:0',
             'other_charges' => 'nullable|numeric|min:0',
-            'vendor_id' => ['nullable', Rule::exists('vendors', 'id')->where('shop_id', $shopId)],
+            'vendor_id' => ['nullable', Vendor::activeExistsRule((int) $shopId)],
             'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
             'huid' => [
                 'nullable', 'string', 'max:30',

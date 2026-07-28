@@ -475,6 +475,10 @@
             font-size: 12px;
             font-weight: 700;
             text-decoration: none;
+            /* The class is now also used on <button> (Archive / Reactivate),
+               which does not inherit the page font or show a pointer by default. */
+            font-family: inherit;
+            cursor: pointer;
             transition: background-color 0.18s ease, border-color 0.18s ease;
         }
 
@@ -581,8 +585,16 @@
             margin-top: 14px;
         }
 
+        /* MASTERS PART 3: the Archive / Reactivate action is a POST, so it is
+           wrapped in a form. The form must stretch like the sibling links, and
+           the touch target is raised to the 44px minimum. */
+        .vendors-index-page .vendor-mobile-actions form {
+            width: 100%;
+        }
+
         .vendors-index-page .vendor-mobile-actions .vendors-link-btn {
             width: 100%;
+            min-height: 44px;
         }
 
         .vendors-index-page .vendors-empty {
@@ -997,10 +1009,13 @@
 
                     <div class="vendors-status-field">
                         <label class="vendors-field-label" for="vendors-status">Status</label>
+                        {{-- MASTERS PART 3: counts come from the controller and carry
+                             the same search filter as the list, so the number on an
+                             option always matches what selecting it shows. --}}
                         <select id="vendors-status" name="status" class="vendors-status-select">
-                            <option value="">All status</option>
-                            <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
-                            <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                            <option value="active" {{ $status === 'active' ? 'selected' : '' }}>Active ({{ (int) $statusCounts->active_count }})</option>
+                            <option value="archived" {{ $status === 'archived' ? 'selected' : '' }}>Archived ({{ (int) $statusCounts->archived_count }})</option>
+                            <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All ({{ (int) $statusCounts->all_count }})</option>
                         </select>
                     </div>
 
@@ -1046,7 +1061,7 @@
                                     <td class="vendors-muted">{{ $vendor->gst_number ?: 'Not available' }}</td>
                                     <td class="text-center">
                                         <span class="vendors-status-badge {{ $vendor->is_active ? 'vendors-status-badge--active' : 'vendors-status-badge--inactive' }}">
-                                            {{ $vendor->is_active ? 'Active' : 'Inactive' }}
+                                            {{ $vendor->is_active ? 'Active' : 'Archived' }}
                                         </span>
                                     </td>
                                     <td>
@@ -1065,6 +1080,22 @@
                                                 </svg>
                                                 Edit
                                             </a>
+                                            {{-- MASTERS PART 3: explicit lifecycle action, right where
+                                                 the status badge is, so it is never mistaken for an edit. --}}
+                                            @if($vendor->is_active)
+                                                <form action="{{ route('vendors.archive', $vendor) }}" method="POST" class="inline"
+                                                      onsubmit="return confirm('Archive {{ addslashes($vendor->name) }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.')">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="vendors-link-btn">Archive</button>
+                                                </form>
+                                            @else
+                                                <form action="{{ route('vendors.reactivate', $vendor) }}" method="POST" class="inline">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="vendors-link-btn">Reactivate</button>
+                                                </form>
+                                            @endif
                                             @endcan
                                         </div>
                                     </td>
@@ -1086,7 +1117,7 @@
                                     <p class="vendor-mobile-location">{{ $vendor->city ? $vendor->city . ($vendor->state ? ', ' . $vendor->state : '') : 'Location not added' }}</p>
                                 </div>
                                 <span class="vendors-status-badge {{ $vendor->is_active ? 'vendors-status-badge--active' : 'vendors-status-badge--inactive' }}">
-                                    {{ $vendor->is_active ? 'Active' : 'Inactive' }}
+                                    {{ $vendor->is_active ? 'Active' : 'Archived' }}
                                 </span>
                             </div>
 
@@ -1113,6 +1144,20 @@
                                 <a href="{{ route('vendors.show', $vendor) }}" class="vendors-link-btn vendors-link-btn--primary">View Vendor</a>
                                 @can('vendors.manage')
                                 <a href="{{ route('vendors.edit', $vendor) }}" class="vendors-link-btn">Edit Details</a>
+                                @if($vendor->is_active)
+                                    <form action="{{ route('vendors.archive', $vendor) }}" method="POST" class="inline"
+                                          onsubmit="return confirm('Archive {{ addslashes($vendor->name) }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.')">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="vendors-link-btn">Archive</button>
+                                    </form>
+                                @else
+                                    <form action="{{ route('vendors.reactivate', $vendor) }}" method="POST" class="inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="vendors-link-btn">Reactivate</button>
+                                    </form>
+                                @endif
                                 @endcan
                             </div>
                         </article>

@@ -1,6 +1,24 @@
 <x-app-layout>
     <x-page-header class="customers-show-header" title="Customer Profile" subtitle="Customer account and activity">
         <x-slot:actions>
+            {{-- MASTERS PART 3: two named actions, never one toggle — the requested
+                 state is in the URL, so a stale page or double submit is a no-op. --}}
+            @can('customers.delete')
+                @if($customer->is_active)
+                    <form action="{{ route('customers.archive', $customer) }}" method="POST" class="inline"
+                          onsubmit="return confirm('Archive this customer? Invoices, balances, EMIs, schemes and repairs are all kept and open ones can still be settled — the customer just stops appearing when you start a new transaction.')">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-secondary btn-sm">Archive</button>
+                    </form>
+                @else
+                    <form action="{{ route('customers.reactivate', $customer) }}" method="POST" class="inline">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn btn-secondary btn-sm">Reactivate</button>
+                    </form>
+                @endif
+            @endcan
             <a href="{{ route('customers.index') }}" class="btn btn-secondary btn-sm customers-show-back-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                 <span class="customers-show-back-label-full">Back to Customers</span>
@@ -17,6 +35,7 @@
             @if(session('error'))
                 <div class="customers-show-retailer-alert customers-show-retailer-alert--error">{{ session('error') }}</div>
             @endif
+            @include('customers.partials.archived-banner')
 
             <div class="customers-show-retailer-overview">
                 <section class="customers-show-retailer-profile" aria-label="Customer profile">
@@ -306,6 +325,7 @@
             @if(session('error'))
                 <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">{{ session('error') }}</div>
             @endif
+            @include('customers.partials.archived-banner')
 
             <div class="customers-show-manufacturer-actions" aria-label="Customer account actions">
                 @can('customers.edit')

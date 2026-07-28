@@ -76,7 +76,7 @@ class RepairController extends Controller
         $metalType = $request->input('metal_type', Repair::DEFAULT_METAL_TYPE);
 
         $validated = $request->validate([
-            'customer_id'     => ['required', Rule::exists('customers', 'id')->where('shop_id', $shopId)],
+            'customer_id'     => ['required', Customer::activeExistsRule((int) $shopId)],
             'item_description' => 'required|string|max:255',
             'description'     => 'nullable|string|max:1000',
             'metal_type'      => ['nullable', Rule::in(Repair::METAL_TYPES)],
@@ -94,19 +94,25 @@ class RepairController extends Controller
             $imagePath = $this->storeRepairImageFromBase64($validated['image_base64'], $shopId);
         }
 
-        $repair = Repair::create([
-            'shop_id'          => $shopId,
-            'customer_id'      => $validated['customer_id'],
-            'item_description' => $validated['item_description'],
-            'description'      => $validated['description'] ?? null,
-            'image_path'       => $imagePath,
-            'image'            => $imagePath,
-            'metal_type'       => $validated['metal_type'] ?? Repair::DEFAULT_METAL_TYPE,
-            'gross_weight'     => $validated['gross_weight'],
-            'purity'           => $validated['purity'] ?? null,
-            'estimated_cost'   => $validated['estimated_cost'] ?? null,
-            'status'           => 'received',
-        ]);
+        // MASTERS PART 3: a repair intake is a new commitment — authoritative
+        // archive check and the write share one transaction.
+        $repair = DB::transaction(function () use ($shopId, $validated, $imagePath) {
+            Customer::lockActiveOrFail((int) $shopId, (int) $validated['customer_id'], 'customer_id');
+
+            return Repair::create([
+                'shop_id'          => $shopId,
+                'customer_id'      => $validated['customer_id'],
+                'item_description' => $validated['item_description'],
+                'description'      => $validated['description'] ?? null,
+                'image_path'       => $imagePath,
+                'image'            => $imagePath,
+                'metal_type'       => $validated['metal_type'] ?? Repair::DEFAULT_METAL_TYPE,
+                'gross_weight'     => $validated['gross_weight'],
+                'purity'           => $validated['purity'] ?? null,
+                'estimated_cost'   => $validated['estimated_cost'] ?? null,
+                'status'           => 'received',
+            ]);
+        });
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -159,7 +165,7 @@ class RepairController extends Controller
         $metalType = $request->input('metal_type', $repair->metal_type ?? Repair::DEFAULT_METAL_TYPE);
 
         $validated = $request->validate([
-            'customer_id'      => ['required', Rule::exists('customers', 'id')->where('shop_id', $shopId)],
+            'customer_id'      => ['required', Customer::activeOrCurrentExistsRule((int) $shopId, (int) $repair->customer_id)],
             'item_description' => 'required|string|max:255',
             'description'      => 'nullable|string|max:1000',
             'metal_type'       => ['nullable', Rule::in(Repair::METAL_TYPES)],

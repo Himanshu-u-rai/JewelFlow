@@ -97,8 +97,9 @@ class VendorController extends Controller
             $validated['gst_number'] = strtoupper(trim($validated['gst_number']));
         }
 
-        $validated['is_active'] = $validated['is_active'] ?? true;
-
+        // MASTERS PART 3: no is_active here. It is not fillable, so this line
+        // was already a no-op; the column's NOT NULL DEFAULT true creates every
+        // vendor active, and only archive()/reactivate() can change it.
         $vendor = Vendor::create($validated);
         $vendor->loadCount(['items' => fn ($q) => $q->where('status', 'in_stock')]);
 
@@ -134,7 +135,8 @@ class VendorController extends Controller
 
         if ($vendor->items()->exists()) {
             return response()->json([
-                'message' => 'Cannot delete vendor with associated items.',
+                // MASTERS PART 3: offer archive, never perform it silently.
+                'message' => 'This vendor has associated items, so it cannot be deleted. Archive the vendor instead to stop new purchases while keeping all history.',
             ], 422);
         }
 
@@ -264,7 +266,6 @@ class VendorController extends Controller
                 'regex:/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/i',
             ],
             'notes'          => 'nullable|string|max:2000',
-            'is_active'      => 'nullable|boolean',
         ], [
             'mobile.regex'     => 'Mobile number must be 7–15 digits and may include +, -, spaces, or parentheses.',
             'gst_number.size'  => 'GST number must be exactly 15 characters.',

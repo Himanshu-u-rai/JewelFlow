@@ -36,6 +36,10 @@ class DhiranService
                 throw new LogicException('Customer does not belong to this shop.');
             }
 
+            // MASTERS PART 3: a loan is a new commitment — authoritative archive
+            // check inside this transaction (validation alone is a TOCTOU hole).
+            Customer::lockActiveOrFail((int) $shop->id, (int) $customer->id, 'customer_id');
+
             if (empty($items)) {
                 throw new LogicException('At least one collateral item is required.');
             }

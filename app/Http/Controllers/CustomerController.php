@@ -7,6 +7,7 @@ use App\Models\InstallmentPlan;
 use App\Models\Invoice;
 use App\Models\LoyaltyTransaction;
 use App\Models\CustomerGoldTransaction;
+use App\Http\Concerns\ArchivesParties;
 use App\Http\Concerns\RespondsDynamically;
 use App\Rules\PanFormatRule;
 use App\Services\ComplianceService;
@@ -17,22 +18,49 @@ use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
-    use RespondsDynamically;
+    use ArchivesParties, RespondsDynamically;
 
     public function index(Request $request)
     {
         $shopId = auth()->user()->shop_id;
         $isRetailer = auth()->user()->shop?->isRetailer();
 
-        $query = Customer::where('shop_id', $shopId);
+        // MASTERS PART 3: the search filter is reused for the query AND the tab
+        // counts, so the number on a tab always matches what clicking it shows.
+        $search = $request->filled('search') ? $request->search : null;
+        $applySearch = function ($q) use ($search) {
+            if ($search !== null) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('first_name', 'ilike', "%{$search}%")
+                        ->orWhere('last_name', 'ilike', "%{$search}%")
+                        ->orWhere('mobile', 'like', "%{$search}%");
+                });
+            }
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'ilike', "%{$search}%")
-                  ->orWhere('last_name', 'ilike', "%{$search}%")
-                  ->orWhere('mobile', 'like', "%{$search}%");
-            });
+            return $q;
+        };
+
+        // Default is Active: archived customers are retained, not shown by
+        // default. Anything unrecognised falls back to active rather than
+        // silently widening the list.
+        $status = in_array($request->input('status'), ['archived', 'all'], true)
+            ? $request->input('status')
+            : 'active';
+
+        $statusCounts = $applySearch(Customer::where('shop_id', $shopId))
+            ->selectRaw("
+                count(*) as all_count,
+                count(*) filter (where is_active IS TRUE) as active_count,
+                count(*) filter (where is_active IS FALSE) as archived_count
+            ")
+            ->first();
+
+        $query = $applySearch(Customer::where('shop_id', $shopId));
+
+        if ($status === 'active') {
+            $query->active();
+        } elseif ($status === 'archived') {
+            $query->archived();
         }
 
         // Eager-load counts/sums needed per row — avoids N+1 in the table.
@@ -146,7 +174,8 @@ class CustomerController extends Controller
 
         return view('customers.index', compact(
             'customers', 'loyaltyData', 'installmentData', 'occasionsData',
-            'withEmail', 'retailerInvoiceCount', 'pageGoldTotal'
+            'withEmail', 'retailerInvoiceCount', 'pageGoldTotal',
+            'status', 'statusCounts', 'search'
         ));
     }
 
@@ -391,7 +420,10 @@ class CustomerController extends Controller
         $hasRepairs          = $customer->repairs()->exists();
 
         if ($hasInvoices || $hasGoldTransactions || $hasRepairs) {
-            return $this->dynamicRedirect('customers.show', [$customer], 'Cannot delete customer with existing invoices, gold transactions, or repairs.', 'error');
+            // MASTERS PART 3: deleting would destroy the history those records
+            // depend on, so we OFFER archive instead of doing it silently —
+            // withdrawing a customer from new business is the user's call.
+            return $this->dynamicRedirect('customers.show', [$customer], 'This customer has invoices, gold transactions, or repairs, so they cannot be deleted. Archive the customer instead to stop new transactions while keeping all history.', 'error');
         }
 
         $name = $customer->name;
@@ -399,5 +431,34 @@ class CustomerController extends Controller
         Cache::forget(PosSearchCacheService::customersCacheKey($shopId, null));
 
         return $this->dynamicRedirect('customers.index', [], "Customer {$name} deleted successfully.");
+    }
+
+    /**
+     * MASTERS PART 3 — withdraw a customer from NEW transactions. Every existing
+     * invoice, balance, EMI, scheme and repair stays exactly as it is and stays
+     * settleable; the customer simply stops appearing in pickers.
+     */
+    public function archive(Request $request, Customer $customer)
+    {
+        $this->authorize('delete', $customer);
+
+        $changed = $this->setPartyActive($request, $customer, false);
+        Cache::forget(PosSearchCacheService::customersCacheKey((int) $customer->shop_id, null));
+
+        return $changed
+            ? $this->dynamicRedirect('customers.show', [$customer], "Customer {$customer->name} archived. All history is kept and you can reactivate them anytime.")
+            : $this->dynamicRedirect('customers.show', [$customer], 'This customer is already archived.', 'error');
+    }
+
+    public function reactivate(Request $request, Customer $customer)
+    {
+        $this->authorize('delete', $customer);
+
+        $changed = $this->setPartyActive($request, $customer, true);
+        Cache::forget(PosSearchCacheService::customersCacheKey((int) $customer->shop_id, null));
+
+        return $changed
+            ? $this->dynamicRedirect('customers.show', [$customer], "Customer {$customer->name} reactivated and available for new transactions.")
+            : $this->dynamicRedirect('customers.show', [$customer], 'This customer is already active.', 'error');
     }
 }

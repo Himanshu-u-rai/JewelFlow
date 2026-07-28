@@ -188,7 +188,7 @@ class PosController extends Controller
         $validated = $request->validate([
             'customer_id' => [
                 'required',
-                Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id),
+                Customer::activeExistsRule((int) auth()->user()->shop_id),
             ],
             'item_id' => [
                 'required',
@@ -298,7 +298,7 @@ class PosController extends Controller
         $validated = $request->validate([
             'customer_id' => [
                 'required',
-                Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id),
+                Customer::activeExistsRule((int) auth()->user()->shop_id),
             ],
             'item_ids'   => 'required|array|min:1',
             'item_ids.*' => [
@@ -511,7 +511,7 @@ class PosController extends Controller
             'customer_id' => [
                 'required',
                 'integer',
-                Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id),
+                Customer::activeExistsRule((int) auth()->user()->shop_id),
             ],
             'pan'        => ['nullable', 'string', 'max:10', new PanFormatRule()],
             'mobile'     => ['nullable', 'digits:10', function ($attr, $val, $fail) {
@@ -565,7 +565,7 @@ class PosController extends Controller
         $request->validate([
             'customer_id' => [
                 'required',
-                Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id),
+                Customer::activeExistsRule((int) auth()->user()->shop_id),
             ],
             'old_weight' => 'required|numeric|min:0',
             'old_purity' => 'required|numeric|min:0|max:24',
@@ -606,7 +606,7 @@ class PosController extends Controller
 
         $request->validate([
             'item_id'     => ['required', 'integer', \Illuminate\Validation\Rule::exists('items', 'id')->where('shop_id', $shopId)],
-            'customer_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('customers', 'id')->where('shop_id', $shopId)],
+            'customer_id' => ['required', 'integer', Customer::activeExistsRule((int) $shopId)],
             'gold_rate'   => 'nullable|numeric|min:0',
             'making'      => 'nullable|numeric|min:0',
             'making_charge_type'  => 'nullable|string|in:fixed,percentage,per_gram',
@@ -728,7 +728,9 @@ class PosController extends Controller
         $shopId = auth()->user()->shop_id;
         $search = trim($request->input('search', ''));
 
-        $query = Customer::where('shop_id', $shopId);
+        // MASTERS PART 3: archived customers are withdrawn from new commitments,
+        // so the POS picker must not offer them.
+        $query = Customer::where('shop_id', $shopId)->active();
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -771,7 +773,7 @@ class PosController extends Controller
             $validated = $request->validate([
                 'customer_id' => [
                     'required',
-                    Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                    Customer::activeExistsRule((int) $shopId),
                 ],
                 'item_ids'   => 'required|array|min:1',
                 'item_ids.*' => [
@@ -817,7 +819,7 @@ class PosController extends Controller
             $validated = $request->validate([
                 'customer_id' => [
                     'required',
-                    Rule::exists('customers', 'id')->where('shop_id', $shopId),
+                    Customer::activeExistsRule((int) $shopId),
                 ],
                 'item_id' => [
                     'required',

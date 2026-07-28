@@ -104,7 +104,7 @@ class QuickBillController extends Controller
 
     public function update(Request $request, QuickBill $quickBill): RedirectResponse
     {
-        $payload = $this->validatedPayload($request);
+        $payload = $this->validatedPayload($request, $quickBill);
 
         $quickBill = $this->quickBillService->update($quickBill, auth()->user()->shop, auth()->user(), $payload);
 
@@ -211,10 +211,13 @@ class QuickBillController extends Controller
         return $bill;
     }
 
-    private function validatedPayload(Request $request): array
+    private function validatedPayload(Request $request, ?QuickBill $quickBill = null): array
     {
         return $request->validate([
-            'customer_id' => ['nullable', Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id)],
+            // MASTERS PART 3: editing a bill whose customer was archived after it
+            // was raised must keep working; only switching to another archived
+            // customer is rejected.
+            'customer_id' => ['nullable', Customer::activeOrCurrentExistsRule((int) auth()->user()->shop_id, $quickBill?->customer_id ? (int) $quickBill->customer_id : null)],
             'customer_name' => 'nullable|string|max:255',
             'customer_mobile' => 'nullable|string|max:20',
             'customer_address' => 'nullable|string|max:1000',

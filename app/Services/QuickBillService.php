@@ -161,6 +161,7 @@ class QuickBillService
         }
 
         $customer = null;
+        $customerField = 'customer_id';
         if (!empty($payload['customer_id'])) {
             $customer = Customer::query()->find((int) $payload['customer_id']);
         }
@@ -181,10 +182,29 @@ class QuickBillService
         // no mobile stays a text-only name on the bill (no directory clutter).
         if (! $customer && $customerMobile !== '') {
             $customer = Customer::findOrCreateByMobile($customerName, $customerMobile, $customerAddress);
+            $customerField = 'customer_mobile';
             if ($customer) {
                 $customerName = $customerName !== '' ? $customerName : $customer->name;
                 $customerAddress = $customerAddress !== '' ? $customerAddress : (string) $customer->address;
             }
+        }
+
+        // MASTERS PART 3 (walk-in decision (c) "match-but-guard"): both customer
+        // paths converge here - the explicitly picked one and the one matched by
+        // mobile. findOrCreateByMobile deliberately still MATCHES an archived
+        // customer (mobile stays unique, history stays on one record) and never
+        // auto-reactivates, so the block belongs here instead. This is inside the
+        // create()/update() transaction, so a customer the walk-in path just
+        // created rolls back with it - no bill, payment or audit row survives.
+        if ($customer) {
+            $customer = Customer::lockActiveOrFail(
+                (int) $shop->id,
+                (int) $customer->id,
+                $customerField,
+                // Editing an existing bill keeps working after its customer is
+                // archived; only pointing it at a different archived customer fails.
+                $quickBill->exists && $quickBill->customer_id ? (int) $quickBill->customer_id : null,
+            );
         }
 
         // A bill being issued must name who it is for: a selected customer or a

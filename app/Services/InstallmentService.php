@@ -35,22 +35,32 @@ class InstallmentService
         $remaining = $totalPayable;
         $emiAmount = $emiAmount ?? round($totalPayable / $totalEmis, 2);
 
-        return InstallmentPlan::create([
-            'invoice_id' => $invoice->id,
-            'customer_id' => $customer->id,
-            'total_amount' => $invoiceTotal,
-            'principal_amount' => $principal,
-            'down_payment' => $downPayment,
-            'interest_rate_annual' => $interestRateAnnual,
-            'interest_amount' => $interestAmount,
-            'total_payable' => $totalPayable,
-            'remaining_amount' => $remaining,
-            'emi_amount' => $emiAmount,
-            'total_emis' => $totalEmis,
-            'emis_paid' => 0,
-            'next_due_date' => now()->addMonth()->toDateString(),
-            'status' => 'active',
-        ]);
+        // MASTERS PART 3: an EMI plan is a new commitment. Wrapped so the
+        // authoritative archive check and the write share one transaction; when
+        // finalizeDraftInvoiceToPlan() calls this it simply joins that outer one.
+        return DB::transaction(function () use (
+            $invoice, $customer, $invoiceTotal, $principal, $downPayment, $interestRateAnnual,
+            $interestAmount, $totalPayable, $remaining, $emiAmount, $totalEmis
+        ) {
+            Customer::lockActiveOrFail((int) $invoice->shop_id, (int) $customer->id, 'customer_id');
+
+            return InstallmentPlan::create([
+                'invoice_id' => $invoice->id,
+                'customer_id' => $customer->id,
+                'total_amount' => $invoiceTotal,
+                'principal_amount' => $principal,
+                'down_payment' => $downPayment,
+                'interest_rate_annual' => $interestRateAnnual,
+                'interest_amount' => $interestAmount,
+                'total_payable' => $totalPayable,
+                'remaining_amount' => $remaining,
+                'emi_amount' => $emiAmount,
+                'total_emis' => $totalEmis,
+                'emis_paid' => 0,
+                'next_due_date' => now()->addMonth()->toDateString(),
+                'status' => 'active',
+            ]);
+        });
     }
 
     /**

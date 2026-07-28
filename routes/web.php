@@ -443,6 +443,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->middleware(['edition:retailer,manufacturer', 'can:customers.edit'])->name('customers.update');
     Route::post('/customers/{customer}/verify-compliance', [CustomerController::class, 'verifyCompliance'])->middleware(['edition:retailer,manufacturer', 'can:customers.edit'])->name('customers.verify-compliance');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->middleware(['edition:retailer,manufacturer', 'can:customers.delete'])->name('customers.destroy');
+    // MASTERS PART 3: two explicit named actions, never one ambiguous toggle.
+    // Gated on customers.delete because withdrawing a party from new business
+    // is the same class of decision as removing it — not a routine edit.
+    Route::patch('/customers/{customer}/archive', [CustomerController::class, 'archive'])->middleware(['edition:retailer,manufacturer', 'can:customers.delete'])->name('customers.archive');
+    Route::patch('/customers/{customer}/reactivate', [CustomerController::class, 'reactivate'])->middleware(['edition:retailer,manufacturer', 'can:customers.delete'])->name('customers.reactivate');
 
     // KYC docs follow customer access: create-class can attach, delete-class can remove.
     Route::post('/kyc-documents', [\App\Http\Controllers\KycDocumentController::class, 'store'])->middleware('can:customers.create')->name('kyc-documents.store');
@@ -829,6 +834,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/vendors/{vendor}/edit', [VendorController::class, 'edit'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.edit');
     Route::put('/vendors/{vendor}', [VendorController::class, 'update'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.update');
     Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.destroy');
+    // MASTERS PART 3: explicit archive / reactivate — see the customer routes.
+    Route::patch('/vendors/{vendor}/archive', [VendorController::class, 'archive'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.archive');
+    Route::patch('/vendors/{vendor}/reactivate', [VendorController::class, 'reactivate'])->middleware(['edition:retailer', 'can:vendors.manage'])->name('vendors.reactivate');
 
     // --- Schemes & Offers (reuse catalog.manage — no dedicated schemes permission in seed) ---
     Route::get('/schemes', [SchemeController::class, 'index'])->middleware(['edition:retailer', 'can:catalog.manage'])->name('schemes.index');
