@@ -201,7 +201,20 @@ class RepairController extends Controller
 
         unset($validated['image_base64'], $validated['remove_image']);
 
-        $repair->update($validated);
+        // MASTERS PART 3: authoritative check shares the write's transaction, so a
+        // race that archives the newly picked customer cannot slip past layer 1.
+        // The customer already on this repair stays allowed; re-tagging it to a
+        // different archived customer is rejected (see activeOrCurrentExistsRule).
+        DB::transaction(function () use ($repair, $validated, $shopId) {
+            Customer::lockActiveOrFail(
+                (int) $shopId,
+                (int) $validated['customer_id'],
+                'customer_id',
+                (int) $repair->customer_id,
+            );
+
+            $repair->update($validated);
+        });
 
         if ($request->expectsJson()) {
             return response()->json([

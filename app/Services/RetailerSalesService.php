@@ -52,7 +52,14 @@ class RetailerSalesService
 
             // MASTERS PART 3: authoritative archive check, before the item locks
             // so every sale flow locks party → item in the same order.
-            Customer::lockActiveOrFail((int) $shopId, (int) $customerId, 'customer_id');
+            // customer_id 0 is this cash-sale path's historical "no customer"
+            // sentinel (see the old-gold excess guard below, `$customerId <= 0`).
+            // Exactly 0 maps to null — the helper's documented "no party" input —
+            // so the pre-Part-3 no-customer behavior is preserved. Any other
+            // missing/archived/cross-shop id still fails the lock. Web/API
+            // checkout endpoints validate customer_id as required + active, so
+            // 0 can only arrive from internal optional-customer callers.
+            Customer::lockActiveOrFail((int) $shopId, $customerId === 0 ? null : (int) $customerId, 'customer_id');
 
             // Lock all items
             $items = Item::where('shop_id', $shopId)

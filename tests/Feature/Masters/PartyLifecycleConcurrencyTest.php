@@ -5,6 +5,7 @@ namespace Tests\Feature\Masters;
 use App\Models\Customer;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use LogicException;
@@ -50,6 +51,25 @@ class PartyLifecycleConcurrencyTest extends TestCase
         // user" whose click races ours.
         config(['database.connections.pgsql_rival' => config('database.connections.pgsql')]);
         DB::purge('pgsql_rival');
+    }
+
+    protected function tearDown(): void
+    {
+        // DatabaseTruncation cleans in the NEXT test's setUp, never after this
+        // class's FINAL test — so without this, the last test's committed rows
+        // (a whole tenant, and crucially the ACTIVE super admin that
+        // createRetailerTenant() makes) leak into whatever runs next in the
+        // same process. RefreshDatabase tests skip migrate:fresh once
+        // RefreshDatabaseState::$migrated is true, so they inherit that extra
+        // super admin — and PlatformBoundaryHardeningTest's "last super admin
+        // cannot be deleted" finds its admin is not the last one. Truncate
+        // after every test so this class leaves the database exactly as a
+        // fresh migrate left it (the reference tables in $exceptTables stay).
+        if (RefreshDatabaseState::$migrated && $this->app) {
+            $this->truncateDatabaseTables();
+        }
+
+        parent::tearDown();
     }
 
     private function rival()

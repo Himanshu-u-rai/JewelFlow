@@ -7,9 +7,11 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Repair;
 use App\Models\Vendor;
+use App\Services\RetailerSalesService;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
@@ -466,6 +468,68 @@ class PartyLifecycleTest extends TestCase
         $this->assertSame('Chain Solder + Polish', $repair->fresh()->item_description);
     }
 
+    public function test_editing_a_repair_onto_a_different_archived_customer_is_rejected_with_no_partial_write(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+
+        $current = $this->createCustomer($shop->id);
+        $other = $this->createCustomer($shop->id);
+        $this->archiveCustomer($shop->id, $other);
+
+        $repair = Repair::forceCreate([
+            'shop_id' => $shop->id,
+            'customer_id' => $current->id,
+            'item_description' => 'Chain solder',
+            'gross_weight' => 4,
+            'status' => 'received',
+        ]);
+
+        // Re-tagging an existing repair onto a DIFFERENT, archived customer is a
+        // new commitment against that party and must fail — the grandfather
+        // allowance only covers the customer already on the record.
+        TenantContext::runFor($shop->id, fn () => $this->from(route('repairs.edit', $repair))->put(route('repairs.update', $repair), [
+            'customer_id' => $other->id,
+            'item_description' => 'Chain solder + polish',
+            'gross_weight' => 4,
+            'status' => 'received',
+        ]))->assertSessionHasErrors('customer_id');
+
+        // No partial write: neither the customer link nor the edited field moved.
+        $fresh = $repair->fresh();
+        $this->assertSame((int) $current->id, (int) $fresh->customer_id);
+        $this->assertSame('Chain solder', $fresh->item_description);
+    }
+
+    public function test_editing_a_repair_onto_an_active_customer_succeeds(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+
+        $current = $this->createCustomer($shop->id);
+        $this->archiveCustomer($shop->id, $current);
+        $target = $this->createCustomer($shop->id);
+
+        $repair = Repair::forceCreate([
+            'shop_id' => $shop->id,
+            'customer_id' => $current->id,
+            'item_description' => 'Chain solder',
+            'gross_weight' => 4,
+            'status' => 'received',
+        ]);
+
+        // Moving a grandfathered repair off an archived customer onto an active
+        // one is the intended remedy and must succeed.
+        TenantContext::runFor($shop->id, fn () => $this->put(route('repairs.update', $repair), [
+            'customer_id' => $target->id,
+            'item_description' => 'Chain solder + polish',
+            'gross_weight' => 4,
+            'status' => 'received',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame((int) $target->id, (int) $repair->fresh()->customer_id);
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // Walk-in decision (c): match-but-guard
     // ─────────────────────────────────────────────────────────────────
@@ -595,5 +659,95 @@ class PartyLifecycleTest extends TestCase
         TenantContext::runFor($shop->id, fn () => $this->get(route('vendors.index', ['status' => 'archived'])))
             ->assertSee('Archived Supplier')
             ->assertDontSee('Active Supplier');
+    }
+
+    /**
+     * MASTERS PART 3 closure — retailer cash-sale sentinel compatibility.
+     *
+     * RetailerSalesService::sellItems() historically accepts customer_id 0 as
+     * "no customer" (cash sale; see its old-gold guard `$customerId <= 0`).
+     * The Part 3 party lock must not intercept exactly that sentinel: 0 maps
+     * to null at the service boundary, so the next guard in line (unknown
+     * items here) speaks instead — proving the lock was skipped for 0 and
+     * the pre-Part-3 flow is preserved.
+     */
+    public function test_retailer_cash_sale_sentinel_zero_skips_party_lock(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+
+        try {
+            TenantContext::runFor($shop->id, fn () => RetailerSalesService::sellItems(0, [999999]));
+            $this->fail('Sale with an unknown item must fail on the item guard.');
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+            $this->assertArrayNotHasKey(
+                'customer_id',
+                $errors,
+                'Sentinel 0 must not be rejected as a missing customer.'
+            );
+            $this->assertArrayHasKey('item_ids', $errors);
+        }
+
+        $this->assertSame(0, Invoice::withoutTenant()->where('shop_id', $shop->id)->count());
+    }
+
+    /**
+     * Only the exact sentinel is exempt: missing, archived and cross-shop
+     * positive ids are still rejected by the party lock before any item or
+     * money work, and nothing is written.
+     */
+    public function test_retailer_cash_sale_still_rejects_bad_positive_customer_ids(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+
+        $archived = $this->createCustomer($shop->id);
+        $this->archiveCustomer($shop->id, $archived)->assertSessionHas('success');
+        $foreignShop = $this->createShop('retailer');
+        $foreign = $this->createCustomer($foreignShop->id);
+
+        foreach ([
+            'missing'    => [999999, 'was not found'],
+            'archived'   => [(int) $archived->id, 'is archived'],
+            'cross-shop' => [(int) $foreign->id, 'was not found'],
+        ] as $case => [$id, $needle]) {
+            try {
+                TenantContext::runFor($shop->id, fn () => RetailerSalesService::sellItems($id, [999999]));
+                $this->fail("Case {$case}: customer_id {$id} must be rejected by the party lock.");
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('customer_id', $e->errors(), "Case {$case}");
+                $this->assertStringContainsString(
+                    $needle,
+                    collect($e->errors())->flatten()->implode(' '),
+                    "Case {$case}"
+                );
+            }
+        }
+
+        $this->assertSame(0, Invoice::withoutTenant()->where('shop_id', $shop->id)->count());
+    }
+
+    /**
+     * The EMI draft path is NOT an optional-customer flow (an EMI plan needs a
+     * person). Sentinel 0 stays rejected there, exactly like before this fix.
+     */
+    public function test_emi_draft_still_rejects_sentinel_zero_customer(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+
+        try {
+            TenantContext::runFor($shop->id, fn () => RetailerSalesService::prepareEmiDraftSale(0, [999999]));
+            $this->fail('EMI draft with customer_id 0 must be rejected.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('customer_id', $e->errors());
+            $this->assertStringContainsString(
+                'was not found',
+                collect($e->errors())->flatten()->implode(' ')
+            );
+        }
+
+        $this->assertSame(0, Invoice::withoutTenant()->where('shop_id', $shop->id)->count());
     }
 }
