@@ -443,13 +443,13 @@
                           onsubmit="return confirm('Archive {{ addslashes($vendor->name) }}? Existing items, purchases and payables are kept — the vendor just stops appearing when you create new ones.')">
                         @csrf
                         @method('PATCH')
-                        <button type="submit" aria-label="Archive this vendor" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-lg text-sm font-semibold bg-amber-700 text-white hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 transition-colors">Archive</button>
+                        <button type="submit" aria-label="Archive this vendor" class="jf-header-action--warn inline-flex items-center justify-center gap-1.5 px-4 rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 transition-colors">Archive</button>
                     </form>
                 @else
                     <form action="{{ route('vendors.reactivate', $vendor) }}" method="POST" class="inline">
                         @csrf
                         @method('PATCH')
-                        <button type="submit" aria-label="Reactivate this vendor" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-lg text-sm font-semibold bg-emerald-700 text-white hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 transition-colors">Reactivate</button>
+                        <button type="submit" aria-label="Reactivate this vendor" class="jf-header-action--success inline-flex items-center justify-center gap-1.5 px-4 rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 transition-colors">Reactivate</button>
                     </form>
                 @endif
             @endcan

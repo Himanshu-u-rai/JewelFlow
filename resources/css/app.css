@@ -3848,6 +3848,47 @@ body.drawer-open {
     border-color: #fca5a5 !important;
 }
 
+/* MASTERS PART 3: solid amber "archive" + emerald "reactivate" header actions.
+   Same 0,3,2 specificity + !important idiom as --primary/--dark/--danger above,
+   the only mechanism that beats the neutralizing :not([class*="btn-"]) rule. */
+.jf-header-action--warn,
+.page-actions > a.jf-header-action--warn:not([class*="btn-"]),
+.page-actions > button.jf-header-action--warn:not([class*="btn-"]),
+.page-actions > form > button.jf-header-action--warn:not([class*="btn-"]) {
+    background: #b45309 !important;
+    color: #ffffff !important;
+    border-color: #b45309 !important;
+    min-height: 44px !important;
+}
+
+.jf-header-action--warn:hover,
+.page-actions > a.jf-header-action--warn:not([class*="btn-"]):hover,
+.page-actions > button.jf-header-action--warn:not([class*="btn-"]):hover,
+.page-actions > form > button.jf-header-action--warn:not([class*="btn-"]):hover {
+    background: #92400e !important;
+    color: #ffffff !important;
+    border-color: #92400e !important;
+}
+
+.jf-header-action--success,
+.page-actions > a.jf-header-action--success:not([class*="btn-"]),
+.page-actions > button.jf-header-action--success:not([class*="btn-"]),
+.page-actions > form > button.jf-header-action--success:not([class*="btn-"]) {
+    background: #047857 !important;
+    color: #ffffff !important;
+    border-color: #047857 !important;
+    min-height: 44px !important;
+}
+
+.jf-header-action--success:hover,
+.page-actions > a.jf-header-action--success:not([class*="btn-"]):hover,
+.page-actions > button.jf-header-action--success:not([class*="btn-"]):hover,
+.page-actions > form > button.jf-header-action--success:not([class*="btn-"]):hover {
+    background: #065f46 !important;
+    color: #ffffff !important;
+    border-color: #065f46 !important;
+}
+
 .btn-black {
     background: var(--jf-black);
     color: #fff;
