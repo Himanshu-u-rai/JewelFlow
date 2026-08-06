@@ -1087,13 +1087,13 @@
                                                       onsubmit="return confirm('Archive {{ addslashes($vendor->name) }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.')">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="vendors-link-btn">Archive</button>
+                                                    <button type="submit" class="vendors-link-btn vendors-link-btn--archive" aria-label="Archive this vendor">Archive</button>
                                                 </form>
                                             @else
                                                 <form action="{{ route('vendors.reactivate', $vendor) }}" method="POST" class="inline">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="vendors-link-btn">Reactivate</button>
+                                                    <button type="submit" class="vendors-link-btn vendors-link-btn--reactivate" aria-label="Reactivate this vendor">Reactivate</button>
                                                 </form>
                                             @endif
                                             @endcan
@@ -1149,13 +1149,13 @@
                                           onsubmit="return confirm('Archive {{ addslashes($vendor->name) }}? Existing items and purchases are kept — the vendor just stops appearing when you create new ones.')">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="vendors-link-btn">Archive</button>
+                                        <button type="submit" class="vendors-link-btn vendors-link-btn--archive" aria-label="Archive this vendor">Archive</button>
                                     </form>
                                 @else
                                     <form action="{{ route('vendors.reactivate', $vendor) }}" method="POST" class="inline">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="vendors-link-btn">Reactivate</button>
+                                        <button type="submit" class="vendors-link-btn vendors-link-btn--reactivate" aria-label="Reactivate this vendor">Reactivate</button>
                                     </form>
                                 @endif
                                 @endcan

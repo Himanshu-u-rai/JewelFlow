@@ -213,7 +213,7 @@
                                                 @unless($customer->is_active)
                                                     {{-- MASTERS PART 3: archived rows are visible under the
                                                          Archived/All filters, so they must be labelled. --}}
-                                                    <span class="ml-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">Archived</span>
+                                                    <span class="ml-1 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">Archived</span>
                                                 @endunless
                                             </div>
                                             @if($customer->email)
@@ -253,13 +253,13 @@
                                                       onsubmit="return confirm('Archive {{ addslashes(trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''))) }}? Invoices, balances, EMIs and repairs are all kept — the customer just stops appearing when you start a new transaction.')">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">Archive</button>
+                                                    <button type="submit" aria-label="Archive customer" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] rounded-lg px-3 text-xs font-semibold bg-amber-700 text-white shadow-sm transition-colors hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">Archive</button>
                                                 </form>
                                             @else
                                                 <form action="{{ route('customers.reactivate', $customer) }}" method="POST" class="inline">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="customers-row-action inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">Reactivate</button>
+                                                    <button type="submit" aria-label="Reactivate customer" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] rounded-lg px-3 text-xs font-semibold bg-emerald-700 text-white shadow-sm transition-colors hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Reactivate</button>
                                                 </form>
                                             @endif
                                         @endcan
@@ -331,7 +331,7 @@
                                     <span class="customers-mobile-card__title">
                                         {{ trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) }}
                                         @unless($customer->is_active)
-                                            <span class="ml-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">Archived</span>
+                                            <span class="ml-1 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">Archived</span>
                                         @endunless
                                     </span>
                                     <span class="customers-mobile-card__sub">{{ $customer->mobile ?: 'No mobile' }}</span>
@@ -365,13 +365,13 @@
                                           onsubmit="return confirm('Archive this customer? Invoices, balances, EMIs and repairs are all kept — the customer just stops appearing when you start a new transaction.')">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="customers-row-action" style="width:100%;min-height:44px;">Archive</button>
+                                        <button type="submit" aria-label="Archive customer" class="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold bg-amber-700 text-white transition-colors hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2" style="width:100%;min-height:44px;">Archive</button>
                                     </form>
                                 @else
                                     <form action="{{ route('customers.reactivate', $customer) }}" method="POST" style="flex:1 1 0;display:flex;">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="customers-row-action" style="width:100%;min-height:44px;">Reactivate</button>
+                                        <button type="submit" aria-label="Reactivate customer" class="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold bg-emerald-700 text-white transition-colors hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2" style="width:100%;min-height:44px;">Reactivate</button>
                                     </form>
                                 @endif
                             @endcan

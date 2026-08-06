@@ -6181,6 +6181,35 @@ body.admin-shell {
     color: var(--vendor-ink) !important;
 }
 
+/* MASTERS PART 3: lifecycle controls carry their own meaning-colour so a
+   destructive Archive is never mistaken for a neutral Edit. Amber = archive,
+   emerald = reactivate. min-height keeps the >=44px tap target. */
+.vendors-index-page .vendors-link-btn--archive {
+    min-height: 44px !important;
+    border-color: #b45309 !important;
+    background: #b45309 !important;
+    color: #ffffff !important;
+}
+
+.vendors-index-page .vendors-link-btn--archive:hover {
+    border-color: #92400e !important;
+    background: #92400e !important;
+    color: #ffffff !important;
+}
+
+.vendors-index-page .vendors-link-btn--reactivate {
+    min-height: 44px !important;
+    border-color: #047857 !important;
+    background: #047857 !important;
+    color: #ffffff !important;
+}
+
+.vendors-index-page .vendors-link-btn--reactivate:hover {
+    border-color: #065f46 !important;
+    background: #065f46 !important;
+    color: #ffffff !important;
+}
+
 .vendors-index-page .vendors-list-head,
 .vendors-show-page .vendors-show-items-head {
     padding: 15px 18px !important;
@@ -6224,9 +6253,9 @@ body.admin-shell {
 .vendors-index-page .vendors-status-badge--inactive,
 .vendors-edit-page .vendors-edit-pill--inactive,
 .vendors-show-page .vendors-show-pill--inactive {
-    border-color: var(--vendor-line-soft) !important;
-    background: #f8fafc !important;
-    color: #475569 !important;
+    border-color: #fcd34d !important;
+    background: #fef3c7 !important;
+    color: #78350f !important;
 }
 
 .vendors-index-page .vendors-table thead th,

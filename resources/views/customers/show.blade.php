@@ -9,13 +9,13 @@
                           onsubmit="return confirm('Archive this customer? Invoices, balances, EMIs, schemes and repairs are all kept and open ones can still be settled — the customer just stops appearing when you start a new transaction.')">
                         @csrf
                         @method('PATCH')
-                        <button type="submit" class="btn btn-secondary btn-sm">Archive</button>
+                        <button type="submit" aria-label="Archive this customer" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-lg text-sm font-semibold bg-amber-700 text-white hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 transition-colors">Archive</button>
                     </form>
                 @else
                     <form action="{{ route('customers.reactivate', $customer) }}" method="POST" class="inline">
                         @csrf
                         @method('PATCH')
-                        <button type="submit" class="btn btn-secondary btn-sm">Reactivate</button>
+                        <button type="submit" aria-label="Reactivate this customer" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-lg text-sm font-semibold bg-emerald-700 text-white hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 transition-colors">Reactivate</button>
                     </form>
                 @endif
             @endcan

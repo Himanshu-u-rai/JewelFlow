@@ -215,7 +215,14 @@ function extractConfirmMessage(onsubmitAttr) {
 }
 
 function ensureConfirmDialog() {
-    if (confirmDialogEl) return confirmDialogEl;
+    if (confirmDialogEl) {
+        // Turbo Drive replaces <body> on every in-app visit, which detaches
+        // this singleton. Re-attach it to the live body instead of handing
+        // back a dead off-document node (that's the "button does nothing"
+        // bug — the dialog was shown on a node no longer in the page).
+        if (!confirmDialogEl.isConnected) document.body.appendChild(confirmDialogEl);
+        return confirmDialogEl;
+    }
 
     confirmDialogEl = document.createElement('div');
     confirmDialogEl.className = 'fixed inset-0 z-[9999] hidden items-center justify-center px-4';
@@ -287,40 +294,22 @@ function openConfirmDialog(message) {
     });
 }
 
-function initAccessibleFormConfirms() {
-    document.querySelectorAll('form[onsubmit*="confirm("], form[data-confirm-message]').forEach((form) => {
-        if (form.dataset.confirmInterceptBound === 'true') return;
-        // Ajax-delete forms run their own confirm flow inside initAjaxDeletes()
-        // so the dialog appears BEFORE the DELETE fetch fires. Skip them here
-        // to avoid double-binding the submit event with conflicting handlers.
+// Normalize-only pass: lift inline `onsubmit="confirm(...)"` into a
+// `data-confirm-message` attribute and strip the inline handler so the native
+// blocking confirm() can never double-fire alongside our custom dialog.
+// Behaviour is handled by a single delegated submit listener (see below), so
+// there is no per-form listener or guard attribute to go stale across Turbo
+// navigation. Idempotent — safe to run on every turbo:load.
+function normalizeConfirmForms() {
+    document.querySelectorAll('form[onsubmit*="confirm("]').forEach((form) => {
+        // Ajax-delete forms own their confirm flow inside initAjaxDeletes().
         if (form.hasAttribute('data-ajax-delete')) return;
 
         const onsubmitAttr = form.getAttribute('onsubmit') || '';
-        const message = form.dataset.confirmMessage || extractConfirmMessage(onsubmitAttr);
-
-        if (onsubmitAttr.includes('confirm(')) {
-            form.removeAttribute('onsubmit');
+        if (!form.dataset.confirmMessage) {
+            form.dataset.confirmMessage = extractConfirmMessage(onsubmitAttr);
         }
-        form.dataset.confirmMessage = message;
-        form.dataset.confirmInterceptBound = 'true';
-
-        form.addEventListener('submit', async (event) => {
-            if (form.dataset.confirmAllowSubmit === 'true') {
-                form.dataset.confirmAllowSubmit = 'false';
-                return;
-            }
-
-            event.preventDefault();
-            const confirmed = await openConfirmDialog(form.dataset.confirmMessage || 'Are you sure you want to continue?');
-            if (!confirmed) return;
-
-            form.dataset.confirmAllowSubmit = 'true';
-            if (typeof form.requestSubmit === 'function') {
-                form.requestSubmit();
-                return;
-            }
-            form.submit();
-        });
+        form.removeAttribute('onsubmit');
     });
 }
 
@@ -1446,6 +1435,38 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
+// Delegated confirm handler for all non-ajax lifecycle/confirmation forms
+// (Archive, and any form carrying data-confirm-message). Bound to `document`,
+// which Turbo never replaces, so it works on the initial load, after in-app
+// navigation, after archive/reactivate redirects, and after back/forward
+// restoration — with no per-form binding and no duplicate handlers.
+let confirmClearedForm = null;
+document.addEventListener('submit', async (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.hasAttribute('data-ajax-delete')) return;      // owns its own flow
+    if (!form.hasAttribute('data-confirm-message')) return; // not a confirm form
+
+    // Second pass, after the user confirmed: let this submit through once.
+    if (form === confirmClearedForm) {
+        confirmClearedForm = null;
+        return;
+    }
+
+    event.preventDefault();
+    const confirmed = await openConfirmDialog(
+        form.dataset.confirmMessage || 'Are you sure you want to continue?'
+    );
+    if (!confirmed) return;
+
+    confirmClearedForm = form;
+    if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+    } else {
+        form.submit();
+    }
+});
+
 document.addEventListener('turbo:before-visit', persistSidebarScroll);
 
 // Fix: clean up before Turbo snapshots the page
@@ -1458,11 +1479,27 @@ document.addEventListener('turbo:before-cache', () => {
     document.querySelectorAll('.jf-skeleton-host').forEach((host) => host.classList.remove('is-loading'));
 
     if (confirmDialogEl) {
+        // Resolve a still-open dialog as cancelled so no await hangs across nav.
+        if (confirmDialogResolve) {
+            const resolver = confirmDialogResolve;
+            confirmDialogResolve = null;
+            resolver(false);
+        }
         confirmDialogEl.classList.add('hidden');
         confirmDialogEl.classList.remove('flex');
         confirmDialogEl.setAttribute('aria-hidden', 'true');
-        confirmDialogResolve = null;
+        // Detach so it is NOT captured in the Turbo cache snapshot (which would
+        // leave a duplicate, listener-less copy in the restored page). It is
+        // re-appended to the live body by ensureConfirmDialog() on next use.
+        confirmDialogEl.remove();
     }
+
+    // Per-form guards are serialized into the cache snapshot but their live
+    // listeners are not — clear the ajax-delete guard so initAjaxDeletes()
+    // re-binds a working handler when the page is restored from cache.
+    document.querySelectorAll('form[data-ajax-delete]').forEach((form) => {
+        delete form.dataset.ajaxDeleteBound;
+    });
 
     // Stop translation observer so it doesn't interfere with Turbo's
     // own DOM manipulation during the snapshot process
@@ -1495,7 +1532,7 @@ document.addEventListener('turbo:load', () => {
     normalizeLegacyPageHeaders();
     normalizeButtonTypes();
     upgradeInlineClickTargetsA11y();
-    initAccessibleFormConfirms();
+    normalizeConfirmForms();
     restoreSidebarScroll();
     closeAllMobileDrawers();
     runLocaleSweep();
@@ -1543,7 +1580,7 @@ if (document.readyState !== 'loading') {
     normalizeLegacyPageHeaders();
     normalizeButtonTypes();
     upgradeInlineClickTargetsA11y();
-    initAccessibleFormConfirms();
+    normalizeConfirmForms();
     restoreSidebarScroll();
     closeAllMobileDrawers();
     runLocaleSweep();
@@ -1565,7 +1602,7 @@ if (document.readyState !== 'loading') {
         normalizeLegacyPageHeaders();
         normalizeButtonTypes();
         upgradeInlineClickTargetsA11y();
-        initAccessibleFormConfirms();
+        normalizeConfirmForms();
         restoreSidebarScroll();
         closeAllMobileDrawers();
         runLocaleSweep();
