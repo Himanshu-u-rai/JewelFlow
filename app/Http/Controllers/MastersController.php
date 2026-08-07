@@ -46,6 +46,15 @@ class MastersController extends Controller
             ['section' => 'config', 'icon' => 'gst', 'title' => 'GST & Tax',
              'description' => 'Tax rates and GST categories applied during billing.',
              'route' => 'settings.edit', 'params' => ['tab' => 'gst'], 'can' => 'settings.view', 'editions' => []],
+            // Discoverability shortcut into the existing Pricing Settings purity-profile
+            // editor — Pricing Settings remains the single source of truth. This card
+            // owns no data and adds no CRUD. Its gate mirrors the pricing entry point
+            // EXACTLY (`$shop->isRetailer()` + `can:pricing.update`), so it renders only
+            // when the user could already open that editor.
+            ['section' => 'config', 'icon' => 'purity', 'title' => 'Metal Purity Profiles',
+             'description' => 'Manage metal purity profiles and same-day overrides used by retailer pricing.',
+             'route' => 'settings.edit', 'params' => ['tab' => 'pricing'], 'fragment' => 'purity-profiles',
+             'can' => 'pricing.update', 'editions' => ['retailer']],
         ])->filter(function (array $card) use ($user, $shop) {
             $editionOk = empty($card['editions'])
                 || ($shop && $shop->hasAnyEdition(...$card['editions']));

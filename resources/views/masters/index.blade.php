@@ -20,7 +20,7 @@
                     <h2 id="masters-{{ $key }}-heading" class="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">{{ $label }}</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         @foreach($cards[$key] as $card)
-                            <a href="{{ route($card['route'], $card['params'] ?? []) }}"
+                            <a href="{{ route($card['route'], $card['params'] ?? []) . (isset($card['fragment']) ? '#' . $card['fragment'] : '') }}"
                                data-masters-card="{{ $card['icon'] }}"
                                class="group flex items-start gap-4 bg-white rounded-xl shadow-sm border border-gray-200 p-5 transition hover:shadow-md hover:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500/40">
                                 <span class="shrink-0 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-amber-50 text-amber-600" aria-hidden="true">

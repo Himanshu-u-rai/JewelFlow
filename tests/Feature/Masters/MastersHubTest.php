@@ -92,7 +92,9 @@ class MastersHubTest extends TestCase
 
         $slugs = $this->cardSlugs($this->get(route('masters.index'))->assertOk()->getContent());
 
-        $this->assertSame(['categories', 'customers', 'gst', 'karigars', 'vendors'], $slugs);
+        // + 'purity' — retailer owner has pricing.update, so the Pricing→purity
+        // shortcut card (retailer edition + can:pricing.update) renders here.
+        $this->assertSame(['categories', 'customers', 'gst', 'karigars', 'purity', 'vendors'], $slugs);
         $this->assertNotContains('products', $slugs);
     }
 
@@ -107,6 +109,7 @@ class MastersHubTest extends TestCase
         $this->assertSame(['categories', 'customers', 'gst', 'products'], $slugs);
         $this->assertNotContains('vendors', $slugs);   // vendors = retailer edition
         $this->assertNotContains('karigars', $slugs);  // karigars = retailer edition
+        $this->assertNotContains('purity', $slugs);    // purity = retailer edition
     }
 
     public function test_multi_edition_shop_sees_both_product_master_and_retailer_parties(): void
@@ -117,7 +120,7 @@ class MastersHubTest extends TestCase
 
         $slugs = $this->cardSlugs($this->get(route('masters.index'))->assertOk()->getContent());
 
-        $this->assertSame(['categories', 'customers', 'gst', 'karigars', 'products', 'vendors'], $slugs);
+        $this->assertSame(['categories', 'customers', 'gst', 'karigars', 'products', 'purity', 'vendors'], $slugs);
     }
 
     // ---- Permission visibility -----------------------------------------
@@ -174,10 +177,11 @@ class MastersHubTest extends TestCase
 
         $slugs = $this->cardSlugs($this->get(route('masters.index'))->assertOk()->getContent());
 
-        // Only the six locked cards ever appear — no stock/items/opening-balance/
+        // Only the locked card set ever appears — no stock/items/opening-balance/
         // stone/metal/staff/payment-method/daily-rate/reorder card leaked in.
+        // 'purity' is the Part 4 Pricing→purity shortcut (retailer + pricing.update).
         $this->assertEqualsCanonicalizing(
-            ['categories', 'customers', 'gst', 'karigars', 'products', 'vendors'],
+            ['categories', 'customers', 'gst', 'karigars', 'products', 'purity', 'vendors'],
             $slugs
         );
     }
@@ -248,7 +252,8 @@ class MastersHubTest extends TestCase
 
         $slugs = $this->cardSlugs($this->get(route('masters.index'))->assertOk()->getContent());
 
-        $this->assertSame(['categories', 'customers', 'gst', 'karigars', 'vendors'], $slugs);
+        // The purity card is pure GET navigation, so a read-only shop still sees it.
+        $this->assertSame(['categories', 'customers', 'gst', 'karigars', 'purity', 'vendors'], $slugs);
     }
 
     // ---- Card gate mirrors destination-route middleware ----------------
@@ -315,7 +320,7 @@ class MastersHubTest extends TestCase
         }
 
         $blocks = $this->cardBlocks($html);
-        $this->assertCount(6, $blocks, 'Multi-edition owner should render all six cards.');
+        $this->assertCount(7, $blocks, 'Multi-edition owner should render all seven cards (incl. purity).');
 
         foreach ($blocks as $block) {
             // Card is a single semantic anchor: no nested interactive controls.

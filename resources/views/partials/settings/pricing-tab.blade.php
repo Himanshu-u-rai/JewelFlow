@@ -794,7 +794,7 @@
 
     <div class="pricing-desktop-card">
         <div class="section-divider"></div>
-        <div class="section-label">{{ __('Purity Profiles') }}</div>
+        <div id="purity-profiles" class="section-label" style="scroll-margin-top:80px">{{ __('Purity Profiles') }}</div>
         <form method="POST" action="{{ route('settings.pricing.profiles.store') }}" class="pricing-panel pricing-panel-stack">
             @csrf
             <div class="pricing-grid pricing-grid-4">
