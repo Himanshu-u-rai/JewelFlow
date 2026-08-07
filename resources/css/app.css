@@ -21341,9 +21341,11 @@ input::-webkit-calendar-picker-indicator {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 30px;
+    /* MASTERS PART 6: 44px min tap target on every viewport (WCAG 2.5.8 /
+       Material). Lifecycle Disable/Re-enable + Edit all share this base. */
+    min-height: 44px;
     border-radius: 999px;
-    padding: 0 10px;
+    padding: 0 14px;
     font-size: 11px;
     font-weight: 700;
     text-decoration: none;
@@ -21538,10 +21540,6 @@ input::-webkit-calendar-picker-indicator {
     .karigars-mobile-actions a,
     .karigars-mobile-actions button {
         width: 100%;
-    }
-
-    .karigars-mobile-actions .karigars-row-btn {
-        min-height: 44px;
     }
 }
 

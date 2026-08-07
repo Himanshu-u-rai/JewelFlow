@@ -464,6 +464,45 @@ class KarigarLifecycleTest extends TestCase
         $this->assertSame(1, (int) $counts->archived_count);
     }
 
+    public function test_lifecycle_actions_render_with_the_44px_tap_target_contract(): void
+    {
+        // MASTERS PART 6 (staging closure correction): the desktop Disable /
+        // Re-enable controls must meet the 44px min tap target on every viewport,
+        // not just the mobile card layout. Prove both halves: (1) both lifecycle
+        // buttons render with the shared .karigars-row-btn class on the same
+        // directory page, and (2) that class carries a >=44px min-height in the
+        // stylesheet — with no lingering sub-44px override on the base rule.
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+
+        $active = $this->makeKarigar($shop->id, ['name' => 'Amit Active']);
+        $disabled = $this->makeKarigar($shop->id, ['name' => 'Dinesh Disabled']);
+        $this->archive($shop->id, $disabled);
+        // Burn the disable flash so it does not bleed into the assertion page.
+        TenantContext::runFor($shop->id, fn () => $this->get(route('karigars.index')));
+
+        $html = TenantContext::runFor($shop->id, fn () => $this->get(route('karigars.index', ['status' => 'all'])))
+            ->assertOk()
+            ->getContent();
+
+        // Both lifecycle triggers present, labelled, and on the shared control class.
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*class="[^"]*karigars-row-btn--muted[^"]*"[^>]*aria-label="Disable Amit Active"/',
+            $html,
+            'active row must render a labelled Disable button on the .karigars-row-btn class'
+        );
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*class="[^"]*karigars-row-btn--enable[^"]*"[^>]*aria-label="Re-enable Dinesh Disabled"/',
+            $html,
+            'disabled row must render a labelled Re-enable button on the .karigars-row-btn class'
+        );
+
+        // The base .karigars-row-btn rule must set min-height >= 44px, viewport-wide.
+        $css = file_get_contents(resource_path('css/app.css'));
+        $this->assertMatchesRegularExpression('/\.karigars-row-btn\s*\{[^}]*min-height:\s*44px/', $css);
+        $this->assertDoesNotMatchRegularExpression('/\.karigars-row-btn\s*\{[^}]*min-height:\s*3\dpx/', $css);
+    }
+
     public function test_item_create_selector_hides_disabled_karigars(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
