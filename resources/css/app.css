@@ -21362,6 +21362,71 @@ input::-webkit-calendar-picker-indicator {
     color: var(--karigar-teal);
 }
 
+/* MASTERS PART 6: re-enable action — emerald so status is never colour-only
+   (the button text says "Enable" and the pill says "Disabled" too). */
+.karigars-row-btn--enable {
+    border: 1px solid #a7f3d0;
+    background: #ecfdf5;
+    color: #047857;
+}
+
+/* MASTERS PART 6: status filter tabs. 44px min tap target for accessibility. */
+.karigars-filter-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.karigars-filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid #dbe3ee;
+    background: #ffffff;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.karigars-filter-tab:hover {
+    border-color: var(--karigar-teal);
+    color: var(--karigar-teal);
+}
+
+.karigars-filter-tab--active {
+    background: var(--karigar-teal);
+    border-color: var(--karigar-teal);
+    color: #ffffff;
+}
+
+.karigars-filter-tab:focus-visible {
+    outline: 2px solid var(--karigar-teal);
+    outline-offset: 2px;
+}
+
+.karigars-filter-tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(15, 118, 110, 0.12);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.karigars-filter-tab--active .karigars-filter-tab-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
 .karigars-mobile-list {
     display: none;
 }
@@ -21476,7 +21541,7 @@ input::-webkit-calendar-picker-indicator {
     }
 
     .karigars-mobile-actions .karigars-row-btn {
-        min-height: 34px;
+        min-height: 44px;
     }
 }
 

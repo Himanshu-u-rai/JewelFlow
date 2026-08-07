@@ -286,7 +286,9 @@ class JobOrderController extends Controller
         $this->authorizeShop($jobOrder);
 
         $validated = $request->validate([
-            'to_karigar_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('karigars', 'id')->where('shop_id', auth()->user()->shop_id)],
+            // MASTERS PART 6: reassigning a job hands it to the target karigar —
+            // a new commitment, so a disabled karigar is rejected.
+            'to_karigar_id' => ['required', 'integer', Karigar::activeExistsRule((int) auth()->user()->shop_id)],
         ]);
 
         try {
@@ -307,8 +309,10 @@ class JobOrderController extends Controller
         $shopId = auth()->user()->shop_id;
 
         $validated = $request->validate([
+            // Source may be disabled — moving metal OUT of a disabled karigar is
+            // a settlement, not a new commitment. The destination must be active.
             'from_karigar_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
-            'to_karigar_id'   => ['required', 'integer', 'different:from_karigar_id', \Illuminate\Validation\Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+            'to_karigar_id'   => ['required', 'integer', 'different:from_karigar_id', Karigar::activeExistsRule((int) $shopId)],
             'metal_type'      => 'required|in:gold,silver',
             'purity'          => 'required|numeric|min:1',
             'fine_weight'     => 'required|numeric|min:0.0001',

@@ -2,14 +2,30 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Concerns\ArchivesParties;
+use App\Http\Concerns\RespondsDynamically;
 use App\Models\Karigar;
 use Illuminate\Http\Request;
 
 class KarigarController extends Controller
 {
-    public function index()
+    use ArchivesParties, RespondsDynamically;
+
+    public function index(Request $request)
     {
+        // MASTERS PART 6: Active is the default view. Disabled karigars are
+        // retained (no global scope) and reachable via the status filter, so
+        // history and settlement paths are never hidden. 'inactive' aliases
+        // 'archived' to keep any existing bookmarks working.
+        $status = match ($request->input('status')) {
+            'archived', 'inactive' => 'archived',
+            'all' => 'all',
+            default => 'active',
+        };
+
         $karigars = Karigar::query()
+            ->when($status === 'active', fn ($q) => $q->active())
+            ->when($status === 'archived', fn ($q) => $q->archived())
             ->orderByRaw('is_active DESC')
             ->orderBy('name')
             ->withCount(['jobOrders', 'invoices'])
@@ -24,7 +40,12 @@ class KarigarController extends Controller
             $k->id => (float) $vault->karigarHeldBreakdown($shopId, (int) $k->id)->sum('total'),
         ]);
 
-        return view('karigars.index', compact('karigars', 'goldHeldByKarigar'));
+        // Filter-tab counts over the full dataset, not the filtered page.
+        $counts = Karigar::query()
+            ->selectRaw('count(*) as all_count, count(*) filter (where is_active IS TRUE) as active_count, count(*) filter (where is_active IS FALSE) as archived_count')
+            ->first();
+
+        return view('karigars.index', compact('karigars', 'goldHeldByKarigar', 'status', 'counts'));
     }
 
     public function create()
@@ -85,8 +106,15 @@ class KarigarController extends Controller
     {
         $this->authorizeShop($karigar);
 
-        if ($karigar->jobOrders()->exists() || $karigar->invoices()->exists() || $karigar->payments()->exists()) {
-            return back()->with('error', "Cannot delete \"{$karigar->name}\" — there are job orders, invoices, or payments linked. Disable instead.");
+        // MASTERS PART 6: items.karigar_id is nullOnDelete, so deleting a
+        // referenced karigar would silently strip the karigar off historical
+        // stock. Block it (as job orders / invoices / payments already do) and
+        // offer Disable, which keeps every reference intact.
+        if ($karigar->items()->exists()
+            || $karigar->jobOrders()->exists()
+            || $karigar->invoices()->exists()
+            || $karigar->payments()->exists()) {
+            return back()->with('error', "Cannot delete \"{$karigar->name}\" — there are items, job orders, invoices, or payments linked. Disable instead.");
         }
 
         $name = $karigar->name;
@@ -96,12 +124,42 @@ class KarigarController extends Controller
             ->with('success', "Karigar \"{$name}\" deleted.");
     }
 
-    public function toggle(Karigar $karigar)
+    /**
+     * MASTERS PART 6 — disable a karigar: withdraw them from NEW items, jobs and
+     * commitments while every existing item, job order, invoice, payment and
+     * balance keeps pointing at them and stays settleable.
+     */
+    public function archive(Request $request, Karigar $karigar)
     {
         $this->authorizeShop($karigar);
 
-        $karigar->update(['is_active' => ! $karigar->is_active]);
-        $state = $karigar->is_active ? 'enabled' : 'disabled';
+        return $this->setPartyActive($request, $karigar, false)
+            ? $this->dynamicRedirect('karigars.show', [$karigar], "Karigar \"{$karigar->name}\" disabled. All history is kept and you can re-enable them anytime.")
+            : $this->dynamicRedirect('karigars.show', [$karigar], 'This karigar is already disabled.', 'error');
+    }
+
+    public function reactivate(Request $request, Karigar $karigar)
+    {
+        $this->authorizeShop($karigar);
+
+        return $this->setPartyActive($request, $karigar, true)
+            ? $this->dynamicRedirect('karigars.show', [$karigar], "Karigar \"{$karigar->name}\" re-enabled and available for new work.")
+            : $this->dynamicRedirect('karigars.show', [$karigar], 'This karigar is already active.', 'error');
+    }
+
+    /**
+     * Back-compat shim for the old toggle route. Delegates to the same
+     * race-safe, audited, idempotent setPartyActive() as archive/reactivate —
+     * no more raw is_active flip. The target is derived from current state; a
+     * concurrent change simply no-ops thanks to the locked re-read.
+     */
+    public function toggle(Karigar $karigar, Request $request)
+    {
+        $this->authorizeShop($karigar);
+
+        $target = ! $karigar->is_active;
+        $this->setPartyActive($request, $karigar, $target);
+        $state = $target ? 'enabled' : 'disabled';
 
         return back()->with('success', "\"{$karigar->name}\" {$state}.");
     }

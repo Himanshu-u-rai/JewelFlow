@@ -17,10 +17,14 @@
         @endunless
 
         @php
-            $activeKarigars = $karigars->where('is_active', true)->count();
-            $inactiveKarigars = $karigars->count() - $activeKarigars;
+            // Counts come from the full dataset (see controller $counts), not the
+            // filtered page, so the KPI cards and filter tabs stay honest.
+            $allKarigars = (int) ($counts->all_count ?? $karigars->count());
+            $activeKarigars = (int) ($counts->active_count ?? $karigars->where('is_active', true)->count());
+            $inactiveKarigars = (int) ($counts->archived_count ?? ($allKarigars - $activeKarigars));
             $totalJobOrders = (int) $karigars->sum('job_orders_count');
             $totalInvoices = (int) $karigars->sum('invoices_count');
+            $status = $status ?? 'active';
         @endphp
 
         <div class="karigars-kpi-grid jobwork-kpi-grid">
@@ -30,7 +34,7 @@
                 </span>
                 <div>
                     <span class="karigars-kpi-label">Karigars</span>
-                    <strong>{{ $karigars->count() }}</strong>
+                    <strong>{{ $allKarigars }}</strong>
                 </div>
             </section>
             <section class="karigars-kpi-card jobwork-kpi-card">
@@ -62,6 +66,23 @@
             </section>
         </div>
 
+        <nav class="karigars-filter-tabs" aria-label="Filter karigars by status">
+            @php
+                $tabs = [
+                    'active'   => ['Active', $activeKarigars],
+                    'archived' => ['Disabled', $inactiveKarigars],
+                    'all'      => ['All', $allKarigars],
+                ];
+            @endphp
+            @foreach($tabs as $key => [$label, $count])
+                <a href="{{ route('karigars.index', $key === 'active' ? [] : ['status' => $key]) }}"
+                   class="karigars-filter-tab{{ $status === $key ? ' karigars-filter-tab--active' : '' }}"
+                   @if($status === $key) aria-current="page" @endif>
+                    {{ $label }} <span class="karigars-filter-tab-count">{{ $count }}</span>
+                </a>
+            @endforeach
+        </nav>
+
         <div class="karigars-surface-card jobwork-register-card">
             <div class="karigars-surface-head jobwork-register-head">
                 <div class="jobwork-register-titleblock">
@@ -73,10 +94,19 @@
 
             @if($karigars->isEmpty())
                 <div class="karigars-empty-state">
-                    <p>No karigars yet.</p>
-                    @can('karigar.manage')
-                    <a href="{{ route('karigars.create') }}" class="karigars-empty-link">Add your first karigar</a>
-                    @endcan
+                    @if($status === 'archived')
+                        <p>No disabled karigars.</p>
+                    @elseif($status === 'active')
+                        <p>No active karigars.</p>
+                        @can('karigar.manage')
+                        <a href="{{ route('karigars.create') }}" class="karigars-empty-link">Add your first karigar</a>
+                        @endcan
+                    @else
+                        <p>No karigars yet.</p>
+                        @can('karigar.manage')
+                        <a href="{{ route('karigars.create') }}" class="karigars-empty-link">Add your first karigar</a>
+                        @endcan
+                    @endif
                 </div>
             @else
                 <div class="karigars-table-shell">
@@ -122,11 +152,19 @@
                                     <td class="text-right" onclick="event.stopPropagation()">
                                         @can('karigar.manage')
                                         <div class="karigars-row-actions">
-                                            <form method="POST" action="{{ route('karigars.toggle', $k) }}" class="inline">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="karigars-row-btn karigars-row-btn--muted">{{ $k->is_active ? 'Disable' : 'Enable' }}</button>
-                                            </form>
+                                            @if($k->is_active)
+                                                <form method="POST" action="{{ route('karigars.archive', $k) }}" class="inline" onsubmit="return confirm('Disable {{ addslashes($k->name) }}? They keep all history but can\'t take new work until re-enabled.');">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="karigars-row-btn karigars-row-btn--muted" aria-label="Disable {{ $k->name }}">Disable</button>
+                                                </form>
+                                            @else
+                                                <form method="POST" action="{{ route('karigars.reactivate', $k) }}" class="inline">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="karigars-row-btn karigars-row-btn--enable" aria-label="Re-enable {{ $k->name }}">Enable</button>
+                                                </form>
+                                            @endif
                                             <a href="{{ route('karigars.edit', $k) }}" class="karigars-row-btn karigars-row-btn--edit">Edit</a>
                                         </div>
                                         @endcan
@@ -184,11 +222,19 @@
 
                             @can('karigar.manage')
                             <div class="karigars-mobile-actions" onclick="event.stopPropagation()">
-                                <form method="POST" action="{{ route('karigars.toggle', $k) }}">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="karigars-row-btn karigars-row-btn--muted">{{ $k->is_active ? 'Disable' : 'Enable' }}</button>
-                                </form>
+                                @if($k->is_active)
+                                    <form method="POST" action="{{ route('karigars.archive', $k) }}" onsubmit="return confirm('Disable {{ addslashes($k->name) }}? They keep all history but can\'t take new work until re-enabled.');">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="karigars-row-btn karigars-row-btn--muted" aria-label="Disable {{ $k->name }}">Disable</button>
+                                    </form>
+                                @else
+                                    <form method="POST" action="{{ route('karigars.reactivate', $k) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="karigars-row-btn karigars-row-btn--enable" aria-label="Re-enable {{ $k->name }}">Enable</button>
+                                    </form>
+                                @endif
                                 <a href="{{ route('karigars.edit', $k) }}" class="karigars-row-btn karigars-row-btn--edit">Edit</a>
                             </div>
                             @endcan

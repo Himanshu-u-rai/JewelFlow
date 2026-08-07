@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
+use App\Models\Karigar;
 use App\Models\MetalLot;
 use App\Models\MetalMovement;
 use App\Models\Category;
@@ -320,6 +321,8 @@ class ItemController extends Controller
                 // MASTERS PART 3: stock tagged to a vendor is a new commitment to
                 // that vendor — authoritative archive check in the same transaction.
                 Vendor::lockActiveOrFail((int) $shopId, isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null, 'vendor_id');
+                // MASTERS PART 6: same race-safe check for a disabled karigar.
+                Karigar::lockActiveOrFail((int) $shopId, isset($validated['karigar_id']) ? (int) $validated['karigar_id'] : null, 'karigar_id');
 
                 $item = Item::create([
                     'shop_id' => $shopId,
@@ -584,7 +587,9 @@ class ItemController extends Controller
             // after that vendor is archived; only re-tagging to another archived
             // vendor is rejected.
             'vendor_id' => ['nullable', Vendor::activeOrCurrentExistsRule((int) $shopId, $item->vendor_id ? (int) $item->vendor_id : null)],
-            'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+            // MASTERS PART 6: the karigar already on this item stays editable after
+            // it is disabled; only re-tagging to another disabled karigar is rejected.
+            'karigar_id' => ['nullable', Karigar::activeOrCurrentExistsRule((int) $shopId, $item->karigar_id ? (int) $item->karigar_id : null)],
             'huid' => ['nullable', 'string', 'max:30', Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')->ignore($item->id)],
             'hallmark_date' => 'nullable|date',
             'image' => 'nullable|file|mimes:' . self::ITEM_GALLERY_IMAGE_MIMES . '|max:5120',
@@ -636,6 +641,13 @@ class ItemController extends Controller
                     isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null,
                     'vendor_id',
                     $item->vendor_id ? (int) $item->vendor_id : null,
+                );
+                // MASTERS PART 6: same grandfather rule for the karigar.
+                Karigar::lockActiveOrFail(
+                    (int) $item->shop_id,
+                    isset($validated['karigar_id']) ? (int) $validated['karigar_id'] : null,
+                    'karigar_id',
+                    $item->karigar_id ? (int) $item->karigar_id : null,
                 );
 
                 $item->update([

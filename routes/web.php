@@ -559,6 +559,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         Route::get('/karigars/{karigar}/edit', [\App\Http\Controllers\KarigarController::class, 'edit'])->middleware('can:karigar.manage')->name('karigars.edit');
         Route::put('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'update'])->middleware('can:karigar.manage')->name('karigars.update');
         Route::delete('/karigars/{karigar}', [\App\Http\Controllers\KarigarController::class, 'destroy'])->middleware('can:karigar.manage')->name('karigars.destroy');
+        // MASTERS PART 6: explicit disable / re-enable (the target state is stated,
+        // never toggled) so a stale page or double-submit can't flip the wrong way.
+        Route::patch('/karigars/{karigar}/archive', [\App\Http\Controllers\KarigarController::class, 'archive'])->middleware('can:karigar.manage')->name('karigars.archive');
+        Route::patch('/karigars/{karigar}/reactivate', [\App\Http\Controllers\KarigarController::class, 'reactivate'])->middleware('can:karigar.manage')->name('karigars.reactivate');
+        // Back-compat toggle route, now backed by the same race-safe/audited path.
         Route::patch('/karigars/{karigar}/toggle', [\App\Http\Controllers\KarigarController::class, 'toggle'])->middleware('can:karigar.manage')->name('karigars.toggle');
 
         // Job Orders — view to read; manage to mutate.

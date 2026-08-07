@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Items;
 
+use App\Models\Karigar;
 use App\Models\Vendor;
 use App\Rules\Inventory\UniqueBarcodeForShop;
 use App\Rules\Material\IsEnabledMetal;
@@ -63,7 +64,9 @@ abstract class StoreItemRequest extends FormRequest
             'rhodium_charges' => 'nullable|numeric|min:0',
             'other_charges' => 'nullable|numeric|min:0',
             'vendor_id' => ['nullable', Vendor::activeExistsRule((int) $shopId)],
-            'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+            // MASTERS PART 6: tagging new stock to a disabled karigar is a new
+            // commitment and is rejected, mirroring vendor_id above.
+            'karigar_id' => ['nullable', Karigar::activeExistsRule((int) $shopId)],
             'huid' => [
                 'nullable', 'string', 'max:30',
                 Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid'),

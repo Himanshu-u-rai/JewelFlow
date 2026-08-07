@@ -2,13 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ArchivableParty;
 use App\Models\Concerns\BelongsToShop;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Karigar extends Model
 {
-    use BelongsToShop;
+    // MASTERS PART 6: Karigar joins Customer/Vendor on the shared Part-3
+    // archive/reactivate standard. ArchivableParty supplies the active()/
+    // archived() scopes plus the two-layer eligibility (activeExistsRule +
+    // lockActiveOrFail) so a disabled karigar can never receive a NEW item,
+    // job or commitment while every historical row keeps resolving it.
+    use ArchivableParty, BelongsToShop;
 
     protected $fillable = [
         'shop_id',
@@ -28,7 +33,9 @@ class Karigar extends Model
         'opening_balance',
         'opening_balance_at',
         'notes',
-        'is_active',
+        // is_active is intentionally NOT fillable: lifecycle moves only through
+        // archive()/reactivate() (ArchivesParties::setPartyActive), so an edit
+        // form or crafted request can never flip it.
     ];
 
     protected $casts = [
@@ -54,9 +61,12 @@ class Karigar extends Model
         return $this->hasMany(KarigarPayment::class);
     }
 
-    public function scopeActive(Builder $query): Builder
+    // Stock tagged to this karigar. Used by the delete guard so a karigar
+    // referenced by items (items.karigar_id is nullOnDelete) cannot be hard
+    // deleted out from under that history.
+    public function items()
     {
-        return $query->whereRaw($query->qualifyColumn('is_active') . ' IS TRUE');
+        return $this->hasMany(Item::class);
     }
 
     public function getOutstandingBalanceAttribute(): float

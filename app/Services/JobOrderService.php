@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\CustomerGoldTransaction;
 use App\Models\Item;
 use App\Models\JobOrder;
+use App\Models\Karigar;
 use App\Models\JobOrderIssuance;
 use App\Models\JobOrderSource;
 use App\Models\JobOrderReceipt;
@@ -462,6 +463,11 @@ class JobOrderService
         }
 
         return DB::transaction(function () use ($shopId, $fromKarigarId, $toKarigarId, $metalType, $purity, $fine, $userId) {
+            // MASTERS PART 6: authoritative, race-safe destination check inside the
+            // same txn as the transfer — serialises against archive() so a karigar
+            // disabled mid-flight cannot receive held metal.
+            Karigar::lockActiveOrFail($shopId, $toKarigarId, 'to_karigar_id');
+
             $from = $this->resolveHoldingLot($shopId, $fromKarigarId, $metalType, $purity);
             $this->assertLotSufficient($from, $fine);
             $to = $this->findOrCreateHoldingLot($shopId, $toKarigarId, $metalType, $purity);
@@ -498,6 +504,10 @@ class JobOrderService
     {
         return DB::transaction(function () use ($jobOrder, $toKarigarId, $userId) {
             $jobOrder = JobOrder::query()->where('id', $jobOrder->id)->lockForUpdate()->firstOrFail();
+
+            // MASTERS PART 6: race-safe destination check — a job cannot be
+            // reassigned to a karigar disabled between validation and this write.
+            Karigar::lockActiveOrFail((int) $jobOrder->shop_id, $toKarigarId, 'to_karigar_id');
 
             if (! $jobOrder->isOpen()) {
                 throw new LogicException('Only open job orders can be reassigned.');
