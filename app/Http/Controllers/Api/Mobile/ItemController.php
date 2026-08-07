@@ -131,7 +131,10 @@ class ItemController extends Controller
                 'selling_price' => 'sometimes|nullable|numeric|min:0',
                 // MASTERS PART 3: existing vendor tag stays valid on edit.
                 'vendor_id' => ['nullable', Vendor::activeOrCurrentExistsRule((int) $shopId, $item->vendor_id ? (int) $item->vendor_id : null)],
-                'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+                // MASTERS PART 6 (correction): reassigning to a disabled karigar
+                // is a new commitment (rejected), but the currently-attached
+                // karigar is grandfathered so edits to legacy items still save.
+                'karigar_id' => ['nullable', Karigar::activeOrCurrentExistsRule((int) $shopId, $item->karigar_id ? (int) $item->karigar_id : null)],
                 'huid' => [
                     'nullable', 'string', 'max:30',
                     Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid')->ignore($item->id),
@@ -235,6 +238,14 @@ class ItemController extends Controller
                 isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null,
                 'vendor_id',
                 $item->vendor_id ? (int) $item->vendor_id : null,
+            );
+            // MASTERS PART 6 (correction): race-safe karigar check on edit; the
+            // currently-attached karigar is allowed through so legacy items save.
+            Karigar::lockActiveOrFail(
+                (int) $item->shop_id,
+                isset($validated['karigar_id']) ? (int) $validated['karigar_id'] : null,
+                'karigar_id',
+                $item->karigar_id ? (int) $item->karigar_id : null,
             );
 
             $previousImage = $item->image;
@@ -412,7 +423,9 @@ class ItemController extends Controller
                 'rhodium_charges' => 'nullable|numeric|min:0',
                 'other_charges' => 'nullable|numeric|min:0',
                 'vendor_id' => ['nullable', Vendor::activeExistsRule((int) $shopId)],
-                'karigar_id' => ['nullable', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+                // MASTERS PART 6 (correction): tagging new stock to a disabled
+                // karigar is a new commitment — rejected, mirroring the web form.
+                'karigar_id' => ['nullable', Karigar::activeExistsRule((int) $shopId)],
                 'huid' => [
                     'nullable', 'string', 'max:30',
                     Rule::unique('items', 'huid')->where('shop_id', $shopId)->whereNotNull('huid'),
@@ -498,6 +511,8 @@ class ItemController extends Controller
         $item = DB::transaction(function () use ($shopId, $validated, $isRetailer, $pricingPayload, $netMetalWeight, $imagePath) {
             // MASTERS PART 3: same guard as the web create form.
             Vendor::lockActiveOrFail((int) $shopId, isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null, 'vendor_id');
+            // MASTERS PART 6 (correction): same race-safe check for the karigar.
+            Karigar::lockActiveOrFail((int) $shopId, isset($validated['karigar_id']) ? (int) $validated['karigar_id'] : null, 'karigar_id');
 
             $item = Item::create([
                 'shop_id' => $shopId,

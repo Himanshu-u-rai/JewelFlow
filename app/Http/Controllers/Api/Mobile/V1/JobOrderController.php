@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Concerns\EmitsEntityTag;
 use App\Models\JobOrder;
+use App\Models\Karigar;
 use App\Models\MetalLot;
 use App\Services\JobOrderService;
 use App\Services\MetalRegistry;
@@ -75,7 +76,7 @@ class JobOrderController extends Controller
 
         $jobOrder->load([
             'karigar:id,name,mobile',
-            'issuances.lot:id,lot_number,purity,source',
+            'issuances.metalLot:id,lot_number,purity,source',
             'receipts.items',
             'createdBy:id,name',
         ]);
@@ -112,7 +113,10 @@ class JobOrderController extends Controller
         $shopId = (int) $request->user()->shop_id;
 
         $validated = $request->validate([
-            'karigar_id'             => ['required', 'integer', Rule::exists('karigars', 'id')->where('shop_id', $shopId)],
+            // MASTERS PART 6 (correction): a disabled karigar cannot receive a
+            // new job. Friendly JSON 422 here; the authoritative FOR UPDATE lock
+            // is in JobOrderService::issue() (shared with the web create path).
+            'karigar_id'             => ['required', 'integer', Karigar::activeExistsRule($shopId)],
             'metal_type'             => ['required', 'string', Rule::in(MetalRegistry::enabledMetalsForShop($shopId))],
             'purity'                 => ['required', 'numeric', 'min:0.001', 'max:1000'],
             'allowed_wastage_percent' => ['nullable', 'numeric', 'min:0', 'max:25'],
@@ -133,7 +137,7 @@ class JobOrderController extends Controller
             ], 422);
         }
 
-        $jobOrder->load(['karigar:id,name', 'issuances.lot:id,lot_number']);
+        $jobOrder->load(['karigar:id,name', 'issuances.metalLot:id,lot_number']);
 
         return response()->json($this->presentFull($jobOrder), 201);
     }

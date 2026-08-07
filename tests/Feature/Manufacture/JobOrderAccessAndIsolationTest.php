@@ -143,12 +143,15 @@ class JobOrderAccessAndIsolationTest extends TestCase
         $kB = $this->karigar($shopB, 'Foreign');
 
         [$ownerA, $shopA] = $this->createRetailerTenant();
-        // karigar_id is validated only as `integer`; the controller's
-        // abort_unless(shop match + active) is the sole cross-shop guard.
+        // MASTERS PART 6: cross-shop karigar_id is now rejected via the standard
+        // web validation contract — Karigar::activeExistsRule reports a
+        // non-leaking "not found" field error (302 redirect back), and the
+        // race-safe lock in JobOrderService::issue() backs it. This replaced the
+        // old controller abort_unless() that returned a bare 422 "Invalid karigar".
         $res = TenantContext::runFor($shopA->id, fn () => $this->actingAs($ownerA)
             ->post(self::ERP . '/job-orders', $this->laborJobPayload($kB)));
 
-        $this->assertContains($res->getStatusCode(), [403, 404, 422], 'cross-shop karigar must be rejected');
+        $res->assertRedirect()->assertSessionHasErrors('karigar_id');
         $this->assertSame(0, JobOrder::withoutGlobalScopes()->where('shop_id', $shopA->id)->count(), 'no job order created for shop A');
         $this->assertSame(0, JobOrder::withoutGlobalScopes()->where('karigar_id', $kB)->count(), 'shop B karigar never attached');
     }

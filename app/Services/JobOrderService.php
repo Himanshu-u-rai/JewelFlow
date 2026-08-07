@@ -47,6 +47,14 @@ class JobOrderService
             $metalType = $data['metal_type'] ?? 'gold';
             $karigarId = (int) $data['karigar_id'];
 
+            // MASTERS PART 6 (correction): issuing a job order is a NEW commitment
+            // to the karigar. This is the single authoritative write shared by the
+            // web and mobile-v1 create paths, so the race-safe FOR UPDATE check
+            // lives here — it serialises against archive()/disable so a karigar
+            // disabled mid-flight can never receive a new job. Layer-1
+            // activeExistsRule on each controller gives the friendly up-front error.
+            Karigar::lockActiveOrFail($shopId, $karigarId, 'karigar_id');
+
             // Normalise the metal-source SET (empty = labor-only / 'none'), then
             // lock + validate every leg BEFORE any write (sufficiency, ownership).
             $legs     = $this->resolveSourceLegs($data);

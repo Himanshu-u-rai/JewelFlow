@@ -106,7 +106,10 @@ class JobOrderController extends Controller
         };
 
         $rules = [
-            'karigar_id'                => 'required|integer',
+            // MASTERS PART 6 (correction): friendly up-front rejection of a
+            // disabled karigar. The authoritative race-safe lock is in
+            // JobOrderService::issue() (shared with the mobile-v1 create path).
+            'karigar_id'                => ['required', 'integer', Karigar::activeExistsRule((int) $shopId)],
             'job_type'                  => ['nullable', \Illuminate\Validation\Rule::in(['manufacture', 'repair', 'rework'])],
             'source_item_id'            => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('items', 'id')->where('shop_id', $shopId)],
             'metal_type'                => 'required|in:gold,silver',
@@ -163,8 +166,8 @@ class JobOrderController extends Controller
 
         $validated = $request->validate($rules);
 
-        $karigar = Karigar::query()->where('id', $validated['karigar_id'])->first();
-        abort_unless($karigar && $karigar->shop_id === $shopId && $karigar->is_active, 422, 'Invalid karigar.');
+        // Karigar tenancy + active state are enforced by activeExistsRule above
+        // (friendly field error) and by lockActiveOrFail inside issue() (race-safe).
 
         $data = $validated;
         if ($isLaborOnly) {

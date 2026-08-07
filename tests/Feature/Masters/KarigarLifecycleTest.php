@@ -6,8 +6,14 @@ use App\Models\AuditLog;
 use App\Models\Item;
 use App\Models\JobOrder;
 use App\Models\Karigar;
+use App\Models\MetalLot;
+use App\Models\Role;
+use App\Services\JobOrderService;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\Sanctum;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
@@ -490,5 +496,203 @@ class KarigarLifecycleTest extends TestCase
             'issue_date' => now()->toDateString(),
             'status' => 'issued',
         ]);
+    }
+
+    private function vaultLot(int $shopId, float $fine = 100.0): MetalLot
+    {
+        $lot = new MetalLot();
+        $lot->forceFill([
+            'shop_id' => $shopId,
+            'source' => 'purchase',
+            'metal_type' => 'gold',
+            'purity' => 22.00,
+            'fine_weight_total' => $fine,
+            'fine_weight_remaining' => $fine,
+            'cost_per_fine_gram' => 5000,
+        ]);
+        $lot->save();
+
+        return $lot;
+    }
+
+    private function grant(\App\Models\User $user, string ...$perms): void
+    {
+        $role = Role::withoutTenant()->findOrFail($user->role_id);
+        foreach ($perms as $p) {
+            $role->givePermission($p);
+        }
+    }
+
+    private function jobOrderCount(int $shopId): int
+    {
+        return JobOrder::withoutTenant()->where('shop_id', $shopId)->count();
+    }
+
+    // ── New assignment: web job-order create (Section 2 — race guard) ─────
+
+    public function test_web_job_order_create_rejects_a_disabled_karigar_with_no_partial_write(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->withoutMiddleware(\Illuminate\Auth\Middleware\Authorize::class);
+        $this->actingAs($user);
+
+        $disabled = $this->makeKarigar($shop->id);
+        $this->archive($shop->id, $disabled);
+
+        // Labor-only payload isolates the karigar guard: no metal movement, so a
+        // stray JobOrder row could only come from the guard leaking.
+        TenantContext::runFor($shop->id, fn () => $this->post(route('job-orders.store'), [
+            'karigar_id' => $disabled->id,
+            'metal_type' => 'gold',
+            'purity' => 22,
+            'allowed_wastage_percent' => 5,
+            'issue_date' => now()->toDateString(),
+            'metal_source' => 'none',
+            'job_type' => 'repair',
+        ]))->assertSessionHasErrors(['karigar_id' => Karigar::archivedMessage()]);
+
+        $this->assertSame(0, $this->jobOrderCount($shop->id));
+    }
+
+    public function test_web_job_order_create_succeeds_for_an_active_karigar(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->withoutMiddleware(\Illuminate\Auth\Middleware\Authorize::class);
+        $this->actingAs($user);
+
+        $active = $this->makeKarigar($shop->id);
+
+        TenantContext::runFor($shop->id, fn () => $this->post(route('job-orders.store'), [
+            'karigar_id' => $active->id,
+            'metal_type' => 'gold',
+            'purity' => 22,
+            'allowed_wastage_percent' => 5,
+            'issue_date' => now()->toDateString(),
+            'metal_source' => 'none',
+            'job_type' => 'repair',
+        ]))->assertSessionDoesntHaveErrors('karigar_id');
+
+        $this->assertSame(1, $this->jobOrderCount($shop->id));
+    }
+
+    /**
+     * Layer-2 proof: call the shared authoritative write directly, bypassing the
+     * controller's Layer-1 validation entirely. Only the in-transaction
+     * lockActiveOrFail can stop the write here — if that lock were removed, this
+     * test fails while the controller tests (which still catch at Layer 1) pass,
+     * pinpointing the race guard.
+     */
+    public function test_job_order_service_issue_locks_out_a_disabled_karigar_with_no_partial_write(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+        $disabled = $this->makeKarigar($shop->id);
+        $this->archive($shop->id, $disabled);
+
+        TenantContext::runFor($shop->id, function () use ($shop, $user, $disabled) {
+            try {
+                app(JobOrderService::class)->issue([
+                    'karigar_id' => $disabled->id,
+                    'metal_type' => 'gold',
+                    'purity' => 22,
+                    'allowed_wastage_percent' => 5,
+                    'issue_date' => now()->toDateString(),
+                    'metal_source' => 'none',
+                ], (int) $shop->id, (int) $user->id);
+                $this->fail('Expected the disabled karigar to be locked out of a new job order.');
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('karigar_id', $e->errors());
+            }
+        });
+
+        $this->assertSame(0, $this->jobOrderCount($shop->id));
+    }
+
+    // ── New assignment: mobile V1 job-order issue (Section 1) ────────────
+
+    public function test_mobile_v1_job_order_issue_rejects_a_disabled_karigar(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->grant($user, 'job_order.manage');
+        $this->actingAs($user);
+        $disabled = $this->makeKarigar($shop->id);
+        $this->archive($shop->id, $disabled);
+        $lot = $this->vaultLot($shop->id);
+
+        Sanctum::actingAs($user);
+        TenantContext::set((int) $shop->id);
+
+        $response = $this->postJson('/api/mobile/v1/job-orders', [
+            'karigar_id' => $disabled->id,
+            'metal_type' => 'gold',
+            'purity' => 22,
+            'allowed_wastage_percent' => 5,
+            'issuances' => [['metal_lot_id' => $lot->id, 'gross_weight' => 5, 'fine_weight' => 4.58]],
+        ], ['X-Idempotency-Key' => 'jo-reject-' . uniqid()]);
+
+        $response->assertStatus(422);
+        $fields = array_column($response->json('errors') ?? [], 'field');
+        $this->assertContains('karigar_id', $fields);
+
+        // No partial write — a disabled karigar never gets a job or a lot debit.
+        $this->assertSame(0, $this->jobOrderCount($shop->id));
+        $this->assertEqualsWithDelta(100.0, (float) $lot->fresh()->fine_weight_remaining, 0.0001);
+    }
+
+    public function test_mobile_v1_job_order_issue_succeeds_for_an_active_karigar(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->grant($user, 'job_order.manage');
+        $active = $this->makeKarigar($shop->id);
+        $lot = $this->vaultLot($shop->id);
+
+        Sanctum::actingAs($user);
+        TenantContext::set((int) $shop->id);
+
+        $response = $this->postJson('/api/mobile/v1/job-orders', [
+            'karigar_id' => $active->id,
+            'metal_type' => 'gold',
+            'purity' => 22,
+            'allowed_wastage_percent' => 5,
+            'issuances' => [['metal_lot_id' => $lot->id, 'gross_weight' => 5, 'fine_weight' => 4.58]],
+        ], ['X-Idempotency-Key' => 'jo-ok-' . uniqid()]);
+
+        $response->assertStatus(201);
+        $this->assertSame(1, $this->jobOrderCount($shop->id));
+    }
+
+    // ── New assignment: mobile item create (Section 3) ───────────────────
+
+    public function test_mobile_item_create_rejects_a_disabled_karigar_with_no_partial_write(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->seedRetailerPricing($shop, $user);
+        $this->grant($user, 'inventory.create');
+        $this->actingAs($user);
+        $disabled = $this->makeKarigar($shop->id);
+        $this->archive($shop->id, $disabled);
+
+        Sanctum::actingAs($user);
+        TenantContext::set((int) $shop->id);
+
+        $response = $this->postJson('/api/mobile/items', [
+            'barcode' => 'P6-MOB-1',
+            'design' => 'Bangle',
+            'category' => 'Gold Jewellery',
+            'metal_type' => 'gold',
+            'gross_weight' => 10,
+            'stone_weight' => 0,
+            'purity' => 22,
+            'making_charges' => 300,
+            'stone_charges' => 0,
+            'karigar_id' => $disabled->id,
+        ]);
+
+        // Legacy /api/mobile/items is not wrapped by MobileEnvelope (only /v1 is),
+        // so it returns Laravel's raw {errors:{field:[...]}} validation map.
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['karigar_id' => Karigar::archivedMessage()]);
+
+        $this->assertSame(0, Item::withoutTenant()->where('shop_id', $shop->id)->where('barcode', 'P6-MOB-1')->count());
     }
 }
