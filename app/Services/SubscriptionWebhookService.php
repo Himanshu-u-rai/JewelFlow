@@ -41,7 +41,8 @@ class SubscriptionWebhookService
      */
     public function handlePaymentCaptured(array $payload): void
     {
-        $paymentId = $payload['payload']['payment']['entity']['id'] ?? null;
+        $entity = $payload['payload']['payment']['entity'] ?? [];
+        $paymentId = $entity['id'] ?? null;
         if (!$paymentId) {
             return;
         }
@@ -49,8 +50,26 @@ class SubscriptionWebhookService
         $sub = ShopSubscription::where('razorpay_payment_id', $paymentId)->first();
 
         if (!$sub) {
-            Log::info('Webhook: payment.captured — no subscription found for payment', [
+            // The browser callback never created the subscription (browser closed,
+            // callback network failed, or the webhook simply raced ahead). Self-heal
+            // through the shared, idempotent, session-less finalization path — it
+            // re-resolves user/plan/amount server-side from the order and records an
+            // admin-visible mismatch if the payment genuinely cannot be applied.
+            $orderId = $entity['order_id'] ?? null;
+            if (!$orderId) {
+                app(SubscriptionPaymentService::class)
+                    ->recordUnresolvedPayment('', $paymentId, 'payment.captured webhook carried no order_id');
+                return;
+            }
+
+            $created = app(SubscriptionPaymentService::class)
+                ->reconcileCapturedPayment($orderId, $paymentId);
+
+            Log::info('Webhook: payment.captured — no existing subscription, ran finalization', [
                 'payment_id' => $paymentId,
+                'order_id' => $orderId,
+                'activated' => (bool) $created,
+                'subscription_id' => $created?->id,
             ]);
             return;
         }

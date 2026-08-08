@@ -122,6 +122,7 @@ Artisan::command('assets:verify-fresh', function () {
 Schedule::command('backup:run')->daily();
 Schedule::command('loyalty:expire')->daily();
 Schedule::command('subscription:check-expiry')->daily();
+Schedule::command('subscription:reconcile-payments')->daily()->withoutOverlapping();
 Schedule::command('scan:cleanup')->daily();
 Schedule::command('schemes:process-maturity')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('cache:warm-shops')->everyTenMinutes()->withoutOverlapping();

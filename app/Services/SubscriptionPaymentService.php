@@ -8,6 +8,7 @@ use App\Models\Platform\PlatformAdmin;
 use App\Models\Platform\ShopSubscription;
 use App\Models\Platform\SubscriptionEvent;
 use App\Models\Shop;
+use App\Models\User;
 use App\Services\PlatformInvoiceService;
 use App\Support\ShopEdition;
 use App\Support\SubscriptionTerm;
@@ -132,10 +133,10 @@ class SubscriptionPaymentService
      * (rare) case of paying on the trial's final day so the paid term never
      * backdates before now.
      */
-    private function paidTermStartsAt(): Carbon
+    private function paidTermStartsAt(?User $actor): Carbon
     {
         $now    = Carbon::now();
-        $shopId = Auth::user()?->shop_id;
+        $shopId = $actor?->shop_id;
 
         if (! $shopId) {
             return $now; // pay-before-shop onboarding: first-ever purchase
@@ -166,13 +167,20 @@ class SubscriptionPaymentService
         float $expectedPrice,
         string $paymentId,
         string $orderId,
+        ?User $actor = null,
     ): ShopSubscription {
+        // The browser callback runs in-session (actor = Auth::user()); the
+        // webhook / reconcile paths are session-less and pass the actor resolved
+        // from the Razorpay order notes. Everything downstream reads $actor, never
+        // Auth, so the identical locked create path serves all three callers.
+        $actor = $actor ?? Auth::user();
+
         $admin = $this->systemAdmin();
 
         if (!$admin) {
             Log::error('Subscription payment callback failed: no platform super admin found.', [
                 'payment_id' => $paymentId,
-                'user_id' => Auth::id(),
+                'user_id' => $actor?->id,
             ]);
             throw new \Exception('Platform configuration incomplete.');
         }
@@ -192,7 +200,7 @@ class SubscriptionPaymentService
         //    refuse — never stack a second paid term. This is the authoritative
         //    money guard; the controller gates block reaching here, this is the
         //    last line of defence.
-        $startsAt = $this->paidTermStartsAt();
+        $startsAt = $this->paidTermStartsAt($actor);
 
         $endsAt = SubscriptionTerm::endsAtFor($billingCycle, $startsAt);
         $graceEndsAt = SubscriptionTerm::graceEndsAtFor($endsAt, $plan);
@@ -202,12 +210,12 @@ class SubscriptionPaymentService
 
             $subscription = DB::transaction(function () use (
                 $plan, $status, $startsAt, $endsAt, $graceEndsAt,
-                $billingCycle, $expectedPrice, $paymentId, $orderId, $admin,
+                $billingCycle, $expectedPrice, $paymentId, $orderId, $admin, $actor,
                 &$invoiceId
             ) {
                 $subscription = ShopSubscription::create([
-                    'shop_id' => Auth::user()->shop_id,
-                    'user_id' => Auth::id(),
+                    'shop_id' => $actor?->shop_id,
+                    'user_id' => $actor?->id,
                     'plan_id' => $plan->id,
                     'status' => $status,
                     'starts_at' => $startsAt,
@@ -248,8 +256,8 @@ class SubscriptionPaymentService
                 // shop. An administrative suspension (suspended_by set) MUST
                 // survive the payment: the money is recorded (row created above)
                 // but the shop stays Contact-Support and is NOT reactivated.
-                if (Auth::user()->shop_id) {
-                    $shop = Shop::whereKey(Auth::user()->shop_id)->lockForUpdate()->first();
+                if ($actor?->shop_id) {
+                    $shop = Shop::whereKey($actor->shop_id)->lockForUpdate()->first();
                     if ($shop && ! $shop->suspensionIsAdministrative()) {
                         $shop->forceFill([
                             'access_mode' => 'active',
@@ -282,6 +290,101 @@ class SubscriptionPaymentService
             ]);
             return ShopSubscription::where('razorpay_payment_id', $paymentId)->firstOrFail();
         }
+    }
+
+    /**
+     * SESSION-LESS finalization of a captured Razorpay payment.
+     *
+     * The browser callback creates the subscription in-session. This method is
+     * the durable twin used by the webhook and the reconcile command when the
+     * callback never ran (browser closed, callback network failed, webhook
+     * arrived first). Everything is re-resolved server-side from the Razorpay
+     * order — the acting user from notes.user_id, the plan/cycle from notes,
+     * the amount cross-checked against the plan — so an attacker-supplied
+     * payload can never widen or cheapen a subscription.
+     *
+     * Idempotent: a second call for the same payment returns the existing row
+     * (short-circuit + the unique razorpay_payment_id constraint inside
+     * createSubscription). Provider fetches happen BEFORE createSubscription's
+     * DB::transaction, so no network call is ever made under a row lock.
+     *
+     * @throws \RuntimeException  order notes carry no resolvable user
+     * @throws \LogicException    shop already holds a live paid term (anti-stack)
+     * @throws \Exception         amount mismatch / not captured / plan missing
+     */
+    public function finalizeCapturedPayment(string $orderId, string $paymentId): ShopSubscription
+    {
+        if ($existing = $this->findExistingSubscription($paymentId)) {
+            return $existing;
+        }
+
+        $orderData = $this->fetchAndValidateOrder($orderId);
+        $rzpOrder = $orderData['order'];
+        $plan = $orderData['plan'];
+        $billingCycle = $orderData['billing_cycle'];
+
+        $userId = $rzpOrder->notes['user_id'] ?? null;
+        $actor = $userId ? User::find($userId) : null;
+        if (!$actor) {
+            throw new \RuntimeException("Razorpay order {$orderId} has no resolvable user (notes.user_id).");
+        }
+
+        $this->verifyAmount($rzpOrder, $plan, $billingCycle);
+        $this->verifyPaymentCaptured($paymentId);
+
+        $expectedPrice = $billingCycle === 'yearly' ? $plan->price_yearly : $plan->price_monthly;
+
+        return $this->createSubscription($plan, $billingCycle, (float) $expectedPrice, $paymentId, $orderId, $actor);
+    }
+
+    /**
+     * Best-effort wrapper the webhook and reconcile command call: finalize the
+     * payment, or — when it genuinely cannot be applied (anti-stack, user gone,
+     * amount mismatch) — leave an immutable admin-visible mismatch record so a
+     * Super Admin can refund/investigate. Never throws.
+     */
+    public function reconcileCapturedPayment(string $orderId, string $paymentId): ?ShopSubscription
+    {
+        try {
+            return $this->finalizeCapturedPayment($orderId, $paymentId);
+        } catch (\LogicException $e) {
+            $this->recordUnresolvedPayment($orderId, $paymentId, 'anti-stacking: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->recordUnresolvedPayment($orderId, $paymentId, $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Immutable, admin-visible evidence that money was captured but could not be
+     * applied. Deduped per payment so webhook retries don't spam the ledger.
+     */
+    public function recordUnresolvedPayment(string $orderId, string $paymentId, string $reason): void
+    {
+        $exists = SubscriptionEvent::where('event_type', 'payment.unresolved')
+            ->where('after->payment_id', $paymentId)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        SubscriptionEvent::create([
+            'shop_subscription_id' => null,
+            'shop_id' => null,
+            'admin_id' => null,
+            'event_type' => 'payment.unresolved',
+            'before' => null,
+            'after' => ['order_id' => $orderId, 'payment_id' => $paymentId],
+            'reason' => 'Captured Razorpay payment not applied — needs admin review: ' . $reason,
+        ]);
+
+        Log::critical('Captured payment unresolved — admin review required', [
+            'order_id' => $orderId,
+            'payment_id' => $paymentId,
+            'reason' => $reason,
+        ]);
     }
 
     /**
