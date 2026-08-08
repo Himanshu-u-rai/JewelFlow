@@ -44,6 +44,16 @@ class AuthenticatedSessionController extends Controller
             && $shop->subscriptions()->doesntExist()
             && $shop->suspension_reason === 'Legacy shop missing subscription record';
 
+        // A shop deactivated by a subscription lapse (trial/grace expiry) is
+        // RECOVERABLE — the owner must be able to log in and buy/renew a plan.
+        // Without this, the generic "shop deactivated" logout below traps the
+        // owner off the login screen with no way to reach the plan picker. Admin
+        // deactivations (any other suspension_reason) still fall through to that
+        // logout — they are Contact-Support, not self-serve.
+        $subscriptionRecoverableShop = $shop
+            && !$shop->is_active
+            && $shop->suspensionIsSubscriptionManaged();
+
         if (!auth()->user()->is_active) {
             Auth::guard('web')->logout();
             $request->session()->regenerate();
@@ -56,7 +66,7 @@ class AuthenticatedSessionController extends Controller
                 ]);
         }
 
-        if ($shop && !$shop->is_active && !$legacyUnpaidShop) {
+        if ($shop && !$shop->is_active && !$legacyUnpaidShop && !$subscriptionRecoverableShop) {
             Auth::guard('web')->logout();
             $request->session()->regenerate();
             $request->session()->regenerateToken();
@@ -70,6 +80,26 @@ class AuthenticatedSessionController extends Controller
 
         if ($legacyUnpaidShop) {
             return redirect()->route('subscription.plans')->with('error', 'Please choose a plan and complete payment to reactivate your shop.');
+        }
+
+        // Subscription-lapsed shop: owner recovers via the plan picker; staff
+        // cannot purchase, so they are logged out with an owner-must-renew note
+        // (no plan/payment leakage).
+        if ($subscriptionRecoverableShop) {
+            if (auth()->user()->isShopOwner()) {
+                return redirect()->route('subscription.plans')->with(
+                    'error',
+                    'Your subscription has ended. Choose a plan to restore access to your shop.'
+                );
+            }
+
+            Auth::guard('web')->logout();
+            $request->session()->regenerate();
+            $request->session()->regenerateToken();
+
+            return redirect('/login')->withErrors([
+                'mobile_number' => 'Your shop owner must renew the subscription to restore access.',
+            ]);
         }
 
         // After successful login, redirect based on whether the user has a shop.

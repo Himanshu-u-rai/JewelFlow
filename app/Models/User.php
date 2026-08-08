@@ -189,6 +189,22 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Tenant-safe owner check for authorization decisions taken OUTSIDE a tenant
+     * context — e.g. the login handler (guest, no `tenant` middleware) and the
+     * subscription-recovery gate. There, Role's shop global scope fails closed,
+     * so $this->role would resolve null and mis-classify a real owner as staff,
+     * locking them out of recovery. A user's role is always their own row, so
+     * reading its name unscoped leaks nothing. ponytail: reuses the existing
+     * withoutTenant scope — no new query surface.
+     */
+    public function isShopOwner(): bool
+    {
+        return Role::withoutTenant()
+            ->whereKey($this->role_id)
+            ->value('name') === 'owner';
+    }
+
+    /**
      * Helper to determine if user is manager.
      */
     public function isManager(): bool

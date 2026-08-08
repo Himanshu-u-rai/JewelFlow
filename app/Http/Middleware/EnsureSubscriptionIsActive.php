@@ -43,6 +43,13 @@ class EnsureSubscriptionIsActive
 
         $shop = $user->shop;
         if ($shop->access_mode === 'suspended') {
+            // A subscription lapse is RECOVERABLE — route the owner to plans
+            // (never log them out). Only a genuine admin suspension gets the
+            // Contact-Support dead end.
+            if ($shop->suspensionIsSubscriptionManaged()) {
+                return $this->recover($request);
+            }
+
             return $this->deny($request, 'Your shop has been suspended. Please contact support.');
         }
         if ($shop->access_mode === 'read_only') {
@@ -99,10 +106,57 @@ class EnsureSubscriptionIsActive
         }
 
         if ($shouldBlock) {
+            // Subscription lapse (as opposed to an admin block) is recoverable:
+            // the resolver only ever emits "Subscription …" reasons here, and
+            // modeUpdates() has just written the same reason to the shop, so the
+            // classifier agrees. Route to recovery instead of the logout deny().
+            if ($shop->suspensionIsSubscriptionManaged()) {
+                return $this->recover($request);
+            }
+
             return $this->deny($request, $reason ?: 'Subscription status does not allow access.');
         }
 
         return $next($request);
+    }
+
+    /**
+     * Recovery response for a subscription lapse. The owner can fix it, so send
+     * them to the plan picker WITHOUT logging out (subscription.* routes are
+     * bypass-listed above, so there is no redirect loop). Staff cannot purchase,
+     * so they get a clear "owner must renew" message. API clients keep the 403
+     * forbidden contract but carry a stable SUBSCRIPTION_REQUIRED code so the
+     * mobile app can branch to a renew flow.
+     */
+    private function recover(Request $request)
+    {
+        if ($request->expectsJson() || $request->is('api/*')) {
+            // Keep the 403 block contract (a lapsed tenant is still forbidden),
+            // but attach a stable code so the mobile app can branch to a renew
+            // flow instead of treating it as a generic suspension.
+            return response()->json([
+                'code' => 'SUBSCRIPTION_REQUIRED',
+                'message' => 'Your subscription has ended. Renew a plan to restore access.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        $user = Auth::user();
+        if ($user && $user->isShopOwner()) {
+            return redirect()->route('subscription.plans')->with(
+                'error',
+                'Your subscription has ended. Choose a plan to restore access to your shop.'
+            );
+        }
+
+        // Staff: no purchase, no plan leakage. Log out with an owner-must-renew
+        // message (re-login lets them switch shops).
+        Auth::guard('web')->logout();
+        $request->session()->regenerate();
+        $request->session()->regenerateToken();
+
+        return redirect('/login')->withErrors([
+            'mobile_number' => 'Your shop owner must renew the subscription to restore access.',
+        ]);
     }
 
     private function resolveSubscriptionAccess(?ShopSubscription $subscription): array
@@ -174,13 +228,7 @@ class EnsureSubscriptionIsActive
             return;
         }
 
-        $reason = (string) ($shop->suspension_reason ?? '');
-        $managedReason = str_starts_with($reason, 'Subscription')
-            || $reason === 'No active subscription found for shop.'
-            || $reason === 'Subscription status is invalid for tenant access.'
-            || $reason === 'middleware-check';
-
-        if (!$managedReason) {
+        if (!$shop->suspensionIsSubscriptionManaged()) {
             return;
         }
 

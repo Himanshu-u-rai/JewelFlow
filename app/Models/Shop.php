@@ -153,6 +153,31 @@ class Shop extends Model
         return $this->hasOne(ShopSubscription::class)->latest('id');
     }
 
+    /**
+     * Authoritative classifier: is this shop's current suspension caused by the
+     * subscription lifecycle (trial/grace expiry, lapse) rather than a manual
+     * admin action? Subscription-managed suspensions are RECOVERABLE by the
+     * owner buying/renewing a plan; admin suspensions are NOT (Contact Support).
+     *
+     * Single source of truth for the recovery gates in
+     * AuthenticatedSessionController and EnsureSubscriptionIsActive. The reason
+     * strings mirror what CheckSubscriptionExpiry / EnsureSubscriptionIsActive
+     * actually write. ponytail: string-classifier, not a new value object —
+     * suspension_reason already carries the origin; upgrade to a typed column
+     * only if reason free-text ever proves unreliable.
+     */
+    public function suspensionIsSubscriptionManaged(): bool
+    {
+        $reason = (string) ($this->suspension_reason ?? '');
+
+        return str_starts_with($reason, 'Subscription')
+            || in_array($reason, [
+                'No active subscription found for shop.',
+                'Subscription status is invalid for tenant access.',
+                'middleware-check',
+            ], true);
+    }
+
     public function scopeActive($query)
     {
         return $query->whereRaw($query->qualifyColumn('is_active') . ' IS TRUE');
