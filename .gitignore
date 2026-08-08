@@ -34,3 +34,6 @@ Thumbs.db
 /impeccable.md
 .mcp.json
 .env.testing
+
+# Local-only SaaS marketing assets — NEVER commit, push, or deploy to VPS.
+/marketing/
