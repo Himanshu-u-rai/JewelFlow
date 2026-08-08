@@ -351,6 +351,14 @@ class ShopController extends Controller
             return $shop;
         });
 
+        // Ops alert: a genuinely new shop was created. Fired once, after the
+        // create transaction has committed, with the shop's subscription (paid or
+        // trial) folded in — never rolls back the shop if mail delivery fails.
+        app(\App\Services\PlatformSubscriptionAlerts::class)->shopCreated(
+            $shop,
+            ShopSubscription::where('shop_id', $shop->id)->latest('id')->first()
+        );
+
         OnboardingResumeService::clearOnboarding($user);
         session()->forget([
             'onboarding_shop_type',

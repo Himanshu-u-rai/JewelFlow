@@ -22,7 +22,9 @@ class ReconcileCapturedPayments extends Command
     protected $signature = 'subscription:reconcile-payments
         {--payment= : Reconcile a single Razorpay payment id (requires --order)}
         {--order= : Razorpay order id, used with --payment}
-        {--days=3 : Days back to scan captured payments in auto mode}';
+        {--days=2 : Days back to scan captured payments in auto mode}
+        {--limit=25 : Max payments to actually reconcile per run (bounds provider calls)}
+        {--sleep-ms=200 : Pause between provider-touching reconciles (rate-limit safety)}';
 
     protected $description = 'Finalize captured Razorpay payments never applied to a subscription (lost callback / missed webhook).';
 
@@ -45,8 +47,12 @@ class ReconcileCapturedPayments extends Command
             return self::SUCCESS;
         }
 
-        // Auto-sweep mode.
+        // Auto-sweep mode — bounded so a 10-minute cadence never floods Razorpay.
+        $limit = max(1, (int) $this->option('limit'));
+        $sleepMs = max(0, (int) $this->option('sleep-ms'));
+
         $applied = 0;
+        $reconciled = 0; // provider-touching reconciles attempted this run
         foreach ($this->recentCapturedPayments((int) $this->option('days')) as $candidate) {
             $pid = $candidate['id'] ?? null;
             $oid = $candidate['order_id'] ?? null;
@@ -54,10 +60,23 @@ class ReconcileCapturedPayments extends Command
                 continue;
             }
 
-            // Cheap DB short-circuit before any provider call.
+            // Cheap DB short-circuit before any provider call — free, unbounded.
             if ($service->findExistingSubscription($pid)) {
                 continue;
             }
+
+            // Bound the number of provider-touching reconciles per run. Anything
+            // beyond the limit is picked up by the next 10-minute sweep.
+            if ($reconciled >= $limit) {
+                $this->warn("Reconcile limit ({$limit}) reached — remaining candidates deferred to next run.");
+                break;
+            }
+
+            // Rate-limit safety: brief pause between provider-touching reconciles.
+            if ($reconciled > 0 && $sleepMs > 0) {
+                usleep($sleepMs * 1000);
+            }
+            $reconciled++;
 
             if ($service->reconcileCapturedPayment($oid, $pid)) {
                 $applied++;

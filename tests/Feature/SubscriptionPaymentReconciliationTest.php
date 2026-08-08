@@ -58,11 +58,12 @@ class SubscriptionPaymentReconciliationTest extends TestCase
     }
 
     /** A fake Razorpay order object — never touches the network. */
-    private function fakeOrder(int $userId, int $amountPaise = 99900, string $id = 'order_TEST'): object
+    private function fakeOrder(int $userId, int $amountPaise = 99900, string $id = 'order_TEST', string $currency = 'INR'): object
     {
         return (object) [
             'id' => $id,
             'amount' => $amountPaise,
+            'currency' => $currency,
             'notes' => ['user_id' => $userId, 'plan_id' => 0, 'billing_cycle' => 'monthly'],
         ];
     }

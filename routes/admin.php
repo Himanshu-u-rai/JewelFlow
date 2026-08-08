@@ -169,6 +169,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             // P2-8: Fraud Flags
             Route::get('/fraud-flags', [FraudFlagController::class, 'index'])->name('fraud-flags.index');
             Route::post('/fraud-flags/{flag}/review', [FraudFlagController::class, 'markReviewed'])->name('fraud-flags.review');
+
+            // Captured-but-unapplied Razorpay payments — money-safety visibility.
+            Route::get('/unresolved-payments', [\App\Http\Controllers\Admin\UnresolvedPaymentController::class, 'index'])->name('unresolved-payments.index');
         });
     });
 });

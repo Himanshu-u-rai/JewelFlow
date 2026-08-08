@@ -558,14 +558,35 @@ class SubscriptionController extends Controller
 
         Log::info('Razorpay webhook', ['event' => $event]);
 
-        match ($event) {
+        // Only payment.captured can leave money captured-but-unapplied, so only it
+        // reports a graded outcome. The others are best-effort logs/updates → 200.
+        $outcome = match ($event) {
             'payment.captured' => $this->webhookService->handlePaymentCaptured($payload),
-            'payment.failed' => $this->webhookService->handlePaymentFailed($payload),
-            'refund.created' => $this->webhookService->handleRefundCreated($payload),
-            default => Log::info('Webhook: unhandled event', ['event' => $event]),
+            'payment.failed' => $this->void_(fn () => $this->webhookService->handlePaymentFailed($payload)),
+            'refund.created' => $this->void_(fn () => $this->webhookService->handleRefundCreated($payload)),
+            default => $this->void_(fn () => Log::info('Webhook: unhandled event', ['event' => $event])),
         };
 
-        return response()->json(['status' => 'ok']);
+        // Map the outcome to a status Razorpay understands:
+        //   transient → 500 so Razorpay retries the still-unapplied payment;
+        //   permanent → 422 so Razorpay stops retrying an unfixable payment
+        //               (an immutable admin-visible mismatch was already recorded);
+        //   applied   → 200.
+        return match ($outcome) {
+            SubscriptionPaymentService::OUTCOME_TRANSIENT =>
+                response()->json(['status' => 'retry'], 500),
+            SubscriptionPaymentService::OUTCOME_PERMANENT =>
+                response()->json(['status' => 'not_applied'], 422),
+            default => response()->json(['status' => 'ok'], 200),
+        };
+    }
+
+    /** Run a void handler and report the applied (200) outcome. */
+    private function void_(callable $fn): string
+    {
+        $fn();
+
+        return SubscriptionPaymentService::OUTCOME_APPLIED;
     }
 
     public function status()

@@ -14,6 +14,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ops Alert Email
+    |--------------------------------------------------------------------------
+    |
+    | The JewelFlows internal operations inbox that receives platform alerts
+    | (new shop created, payment applied / unresolved / permanently failed /
+    | reconciled). Never a hardcoded personal address — set PLATFORM_ALERT_EMAIL
+    | in the environment. Empty = alerts are logged and suppressed (never sent).
+    |
+    */
+    'alert_email' => env('PLATFORM_ALERT_EMAIL', ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Cross-Promotion (Phase 4)
     |--------------------------------------------------------------------------
     |

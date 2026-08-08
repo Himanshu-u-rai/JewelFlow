@@ -38,13 +38,21 @@ class SubscriptionWebhookService
 
     /**
      * Handle the payment.captured webhook event.
+     *
+     * Returns a coarse outcome the controller maps to an HTTP status:
+     *   applied   → 200 (money applied, or idempotently already applied/updated)
+     *   permanent → 4xx (validation failed / malformed — Razorpay should stop)
+     *   transient → 5xx (provider/DB hiccup — Razorpay should retry)
+     *
+     * A captured payment that remains UNAPPLIED never returns 'applied'.
      */
-    public function handlePaymentCaptured(array $payload): void
+    public function handlePaymentCaptured(array $payload): string
     {
         $entity = $payload['payload']['payment']['entity'] ?? [];
         $paymentId = $entity['id'] ?? null;
         if (!$paymentId) {
-            return;
+            // Malformed event with no payment id — retrying cannot fix it.
+            return SubscriptionPaymentService::OUTCOME_PERMANENT;
         }
 
         $sub = ShopSubscription::where('razorpay_payment_id', $paymentId)->first();
@@ -58,20 +66,21 @@ class SubscriptionWebhookService
             $orderId = $entity['order_id'] ?? null;
             if (!$orderId) {
                 app(SubscriptionPaymentService::class)
-                    ->recordUnresolvedPayment('', $paymentId, 'payment.captured webhook carried no order_id');
-                return;
+                    ->recordUnresolvedPayment('', $paymentId, 'payment.captured webhook carried no order_id', false);
+                return SubscriptionPaymentService::OUTCOME_PERMANENT;
             }
 
-            $created = app(SubscriptionPaymentService::class)
-                ->reconcileCapturedPayment($orderId, $paymentId);
+            $result = app(SubscriptionPaymentService::class)
+                ->applyCapturedPayment($orderId, $paymentId);
 
             Log::info('Webhook: payment.captured — no existing subscription, ran finalization', [
                 'payment_id' => $paymentId,
                 'order_id' => $orderId,
-                'activated' => (bool) $created,
-                'subscription_id' => $created?->id,
+                'outcome' => $result['outcome'],
+                'subscription_id' => $result['subscription']?->id,
             ]);
-            return;
+
+            return $result['outcome'];
         }
 
         $updates = [];
@@ -132,6 +141,9 @@ class SubscriptionWebhookService
                 'subscription_id' => $sub->id,
             ]);
         }
+
+        // The payment is already applied to an existing subscription — idempotent success.
+        return SubscriptionPaymentService::OUTCOME_APPLIED;
     }
 
     /**

@@ -91,6 +91,12 @@
                     <span>Fraud Flags</span>
                     <span class="admin-nav-suffix">Detect</span>
                 </a>
+                @if(auth('platform_admin')->user()?->isSuperAdmin())
+                    <a href="{{ route('admin.unresolved-payments.index') }}" class="admin-nav-link {{ request()->routeIs('admin.unresolved-payments.*') ? 'is-active' : '' }}">
+                        <span>Unresolved Payments</span>
+                        <span class="admin-nav-suffix">Money</span>
+                    </a>
+                @endif
                 <a href="{{ route('admin.system.jobs.index') }}" class="admin-nav-link {{ request()->routeIs('admin.system.jobs.*') ? 'is-active' : '' }}">
                     <span>System Jobs</span>
                     <span class="admin-nav-suffix">Queues</span>

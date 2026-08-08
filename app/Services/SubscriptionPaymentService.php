@@ -21,6 +21,19 @@ use Razorpay\Api\Errors\SignatureVerificationError;
 
 class SubscriptionPaymentService
 {
+    /** Coarse outcome a webhook maps to an HTTP status. */
+    public const OUTCOME_APPLIED   = 'applied';   // 200 — money applied (or idempotently already applied)
+    public const OUTCOME_PERMANENT = 'permanent'; // 4xx — validation failed, retry can never fix
+    public const OUTCOME_TRANSIENT = 'transient'; // 5xx — provider/DB hiccup, safe for Razorpay to retry
+
+    /** The only currency subscription orders are ever created in. */
+    public const EXPECTED_CURRENCY = 'INR';
+
+    private function alerts(): PlatformSubscriptionAlerts
+    {
+        return app(PlatformSubscriptionAlerts::class);
+    }
+
     private function razorpay(): Api
     {
         return new Api(
@@ -65,6 +78,13 @@ class SubscriptionPaymentService
             throw new \Exception('Plan not found in order notes.');
         }
 
+        // Server-authoritative: the billing cycle must be one we actually price.
+        // An unknown cycle would silently fall through verifyAmount's monthly
+        // branch and could apply a mispriced term — reject it as permanent.
+        if (!in_array($billingCycle, ['monthly', 'yearly'], true)) {
+            throw new \Exception("Invalid billing cycle in order notes: {$billingCycle}.");
+        }
+
         return [
             'order' => $rzpOrder,
             'plan' => $plan,
@@ -91,6 +111,27 @@ class SubscriptionPaymentService
         }
 
         return $expectedPaise;
+    }
+
+    /**
+     * Verify the order currency is the one we price in. Orders are always
+     * created in INR (createRazorpayOrder), so a differing currency means a
+     * tampered / foreign order that must never be applied.
+     *
+     * @throws \Exception
+     */
+    public function verifyCurrency(object $rzpOrder): void
+    {
+        $currency = $rzpOrder->currency ?? null;
+
+        if ($currency !== self::EXPECTED_CURRENCY) {
+            Log::error('Razorpay currency mismatch', [
+                'order_id' => $rzpOrder->id ?? null,
+                'expected' => self::EXPECTED_CURRENCY,
+                'actual' => $currency,
+            ]);
+            throw new \Exception('Payment currency mismatch.');
+        }
     }
 
     /**
@@ -283,6 +324,13 @@ class SubscriptionPaymentService
                 dispatch(new SendPlatformInvoiceEmail($invoiceId));
             }
 
+            // Ops alert: a captured payment was genuinely applied. Fired here in
+            // the single genuine-create path (the UniqueConstraintViolation catch
+            // below returns the existing row WITHOUT re-firing), so a duplicate
+            // callback / webhook / reconcile emits exactly ONE payment-applied
+            // email per Razorpay payment.
+            $this->alerts()->paymentApplied($subscription);
+
             return $subscription;
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
             Log::info('Concurrent payment callback caught by unique constraint', [
@@ -329,6 +377,12 @@ class SubscriptionPaymentService
             throw new \RuntimeException("Razorpay order {$orderId} has no resolvable user (notes.user_id).");
         }
 
+        // A deactivated plan must never mint a fresh paid term — reject as permanent.
+        if (! $plan->is_active) {
+            throw new \Exception("Plan {$plan->id} is not active; payment cannot be applied.");
+        }
+
+        $this->verifyCurrency($rzpOrder);
         $this->verifyAmount($rzpOrder, $plan, $billingCycle);
         $this->verifyPaymentCaptured($paymentId);
 
@@ -338,53 +392,187 @@ class SubscriptionPaymentService
     }
 
     /**
-     * Best-effort wrapper the webhook and reconcile command call: finalize the
-     * payment, or — when it genuinely cannot be applied (anti-stack, user gone,
-     * amount mismatch) — leave an immutable admin-visible mismatch record so a
-     * Super Admin can refund/investigate. Never throws.
+     * Apply a captured payment and report a coarse outcome the webhook maps to an
+     * HTTP status. On failure it leaves (or advances) an immutable admin-visible
+     * mismatch record and classifies the error as PERMANENT (validation — retry
+     * can never fix) or TRANSIENT (provider/DB hiccup — safe to retry). Never
+     * throws.
+     *
+     * @return array{outcome: string, subscription: ?ShopSubscription}
+     */
+    public function applyCapturedPayment(string $orderId, string $paymentId): array
+    {
+        try {
+            $subscription = $this->finalizeCapturedPayment($orderId, $paymentId);
+
+            // If this payment previously failed and was recorded as unresolved,
+            // flip that record to resolved and alert ops it was reconciled. The
+            // exactly-once payment-applied alert is fired inside createSubscription.
+            if ($this->markPaymentResolved($paymentId, $subscription)) {
+                $this->alerts()->paymentReconciled($subscription);
+            }
+
+            return ['outcome' => self::OUTCOME_APPLIED, 'subscription' => $subscription];
+        } catch (\LogicException $e) {
+            // Anti-stacking: a real live paid term already exists. Permanent —
+            // Razorpay must stop retrying; a human refunds the double charge.
+            $this->recordUnresolvedPayment($orderId, $paymentId, 'anti-stacking: ' . $e->getMessage(), false);
+
+            return ['outcome' => self::OUTCOME_PERMANENT, 'subscription' => null];
+        } catch (\Throwable $e) {
+            $transient = $this->isTransientPaymentError($e);
+            $this->recordUnresolvedPayment(
+                $orderId,
+                $paymentId,
+                ($transient ? 'transient: ' : 'permanent: ') . $e->getMessage(),
+                $transient
+            );
+
+            return [
+                'outcome' => $transient ? self::OUTCOME_TRANSIENT : self::OUTCOME_PERMANENT,
+                'subscription' => null,
+            ];
+        }
+    }
+
+    /**
+     * Best-effort wrapper the reconcile command and older callers use: finalize
+     * the payment or record an admin-visible mismatch. Never throws. Returns the
+     * subscription on success, null otherwise (outcome is discarded).
      */
     public function reconcileCapturedPayment(string $orderId, string $paymentId): ?ShopSubscription
     {
-        try {
-            return $this->finalizeCapturedPayment($orderId, $paymentId);
-        } catch (\LogicException $e) {
-            $this->recordUnresolvedPayment($orderId, $paymentId, 'anti-stacking: ' . $e->getMessage());
-        } catch (\Throwable $e) {
-            $this->recordUnresolvedPayment($orderId, $paymentId, $e->getMessage());
+        return $this->applyCapturedPayment($orderId, $paymentId)['subscription'];
+    }
+
+    /**
+     * Classify a finalize failure. PERMANENT = a server-authoritative validation
+     * failure that a retry can never fix (mismatched amount/currency, missing
+     * plan/user, dead plan, bad cycle, anti-stack). Everything else — provider
+     * network errors, DB deadlocks, "platform config incomplete" — is TRANSIENT
+     * and safe for Razorpay to retry.
+     *
+     * ponytail: message-substring match, not typed exceptions. The permanent set
+     * is small and owned here; upgrade to dedicated exception classes if the
+     * throw-sites ever multiply.
+     */
+    public function isTransientPaymentError(\Throwable $e): bool
+    {
+        if ($e instanceof \LogicException) {
+            return false; // anti-stack — never retryable
         }
 
-        return null;
+        $permanentNeedles = [
+            'amount mismatch',
+            'currency mismatch',
+            'not captured',
+            'Plan not found in order notes',
+            'Invalid billing cycle',
+            'is not active',
+            'has no resolvable user',
+        ];
+
+        $msg = $e->getMessage();
+        foreach ($permanentNeedles as $needle) {
+            if (stripos($msg, $needle) !== false) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
      * Immutable, admin-visible evidence that money was captured but could not be
-     * applied. Deduped per payment so webhook retries don't spam the ledger.
+     * applied. Deduped per payment: the first failure creates the record and
+     * alerts ops; repeat failures only advance attempt_count / last_failed_at so
+     * webhook + reconcile retries never spam the ledger or the inbox.
      */
-    public function recordUnresolvedPayment(string $orderId, string $paymentId, string $reason): void
+    public function recordUnresolvedPayment(string $orderId, string $paymentId, string $reason, bool $transient = false): void
     {
-        $exists = SubscriptionEvent::where('event_type', 'payment.unresolved')
-            ->where('after->payment_id', $paymentId)
-            ->exists();
+        $now = now()->toIso8601String();
+        $reasonText = 'Captured Razorpay payment not applied — needs admin review: ' . $reason;
 
-        if ($exists) {
+        $event = SubscriptionEvent::where('event_type', 'payment.unresolved')
+            ->where('after->payment_id', $paymentId)
+            ->first();
+
+        if ($event) {
+            $after = $event->after ?? [];
+            // Already recovered — leave the resolved history intact.
+            if (!empty($after['resolved_at'])) {
+                return;
+            }
+            $after['attempt_count'] = (int) ($after['attempt_count'] ?? 1) + 1;
+            $after['last_failed_at'] = $now;
+            $after['transient'] = $transient;
+            $event->update(['after' => $after, 'reason' => $reasonText]);
+
             return;
         }
 
-        SubscriptionEvent::create([
+        $event = SubscriptionEvent::create([
             'shop_subscription_id' => null,
             'shop_id' => null,
             'admin_id' => null,
             'event_type' => 'payment.unresolved',
             'before' => null,
-            'after' => ['order_id' => $orderId, 'payment_id' => $paymentId],
-            'reason' => 'Captured Razorpay payment not applied — needs admin review: ' . $reason,
+            'after' => [
+                'order_id' => $orderId,
+                'payment_id' => $paymentId,
+                'attempt_count' => 1,
+                'first_failed_at' => $now,
+                'last_failed_at' => $now,
+                'transient' => $transient,
+                'resolved_at' => null,
+            ],
+            'reason' => $reasonText,
         ]);
 
         Log::critical('Captured payment unresolved — admin review required', [
             'order_id' => $orderId,
             'payment_id' => $paymentId,
             'reason' => $reason,
+            'transient' => $transient,
         ]);
+
+        // Alert ops once, on the first failure. Transient → "retrying"; permanent
+        // → "needs manual review / refund".
+        if ($transient) {
+            $this->alerts()->reconciliationRequired($event);
+        } else {
+            $this->alerts()->permanentFailure($event);
+        }
+    }
+
+    /**
+     * Flip a prior payment.unresolved record to resolved when its payment finally
+     * applies. Returns true only when it actually transitioned an open record
+     * (so the reconciled alert fires exactly once).
+     */
+    private function markPaymentResolved(string $paymentId, ShopSubscription $subscription): bool
+    {
+        $event = SubscriptionEvent::where('event_type', 'payment.unresolved')
+            ->where('after->payment_id', $paymentId)
+            ->first();
+
+        if (!$event) {
+            return false;
+        }
+
+        $after = $event->after ?? [];
+        if (!empty($after['resolved_at'])) {
+            return false;
+        }
+
+        $after['resolved_at'] = now()->toIso8601String();
+        $after['resolved_subscription_id'] = $subscription->id;
+        $event->update([
+            'after' => $after,
+            'reason' => $event->reason . ' [RESOLVED — subscription #' . $subscription->id . ']',
+        ]);
+
+        return true;
     }
 
     /**
