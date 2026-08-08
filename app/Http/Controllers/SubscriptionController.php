@@ -307,6 +307,19 @@ class SubscriptionController extends Controller
 
     public function initiatePayment(Request $request)
     {
+        // An administratively suspended shop can NEVER buy its way out — a plan
+        // purchase must not lift an admin suspension. Block checkout here because
+        // the payment routes are deliberately bypass-listed by both middlewares
+        // (so a locked shop can reach the RECOVERY flow), which means this
+        // controller is the real server-side boundary for the admin case.
+        $currentShop = Auth::user()->shop;
+        if ($currentShop && $currentShop->suspensionIsAdministrative()) {
+            return response()->json([
+                'error' => 'Your shop is suspended by platform admin. Please contact support.',
+                'redirect' => route('subscription.status'),
+            ], 403);
+        }
+
         // Defence in depth: this endpoint previously had no subscription gate and
         // relied on the upstream pages. Block a live PAID shop from creating a
         // Razorpay order here directly (a trial shop is allowed — early upgrade).

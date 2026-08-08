@@ -175,8 +175,10 @@ class SubscriptionRecoveryLifecycleTest extends TestCase
 
         $response = $this->runMiddleware($owner, Request::create('/api/mobile/v1/dashboard', 'GET'));
 
-        // deny() path, not recover(): 403 with a plain message, no recovery code.
+        // denyAdministrative() path, not recover(): 403 with the DISTINCT
+        // administrative code so mobile can show "contact support" (never a
+        // renew flow). This must never be SUBSCRIPTION_REQUIRED.
         $this->assertSame(403, $response->getStatusCode());
-        $this->assertArrayNotHasKey('code', $response->getData(true));
+        $this->assertSame('SHOP_SUSPENDED', $response->getData(true)['code']);
     }
 }

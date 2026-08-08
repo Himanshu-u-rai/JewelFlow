@@ -154,28 +154,63 @@ class Shop extends Model
     }
 
     /**
+     * Exact suspension_reason strings the subscription lifecycle writes that do
+     * NOT literally begin with "Subscription". Every other subscription-managed
+     * reason (from CheckSubscriptionExpiry / EnsureSubscriptionIsActive) starts
+     * with the "Subscription" prefix; these are the named exceptions.
+     */
+    public const SUBSCRIPTION_MANAGED_REASONS = [
+        'No active subscription found for shop.',
+        'Subscription status is invalid for tenant access.',
+        'middleware-check',
+    ];
+
+    /**
+     * Whether the current suspension was applied by a human platform admin
+     * (Contact-Support, NEVER self-service recoverable). This is the authoritative
+     * precedence signal: every admin/manual path — ShopManagementController,
+     * BillingManagementController, ShopBulkActionController, GdprExportController —
+     * stamps suspended_by with the acting platform_admin id, while the
+     * subscription lifecycle (CheckSubscriptionExpiry scheduler +
+     * EnsureSubscriptionIsActive reconciler) NEVER touches suspended_by. So a
+     * non-null suspended_by is proof-positive of an administrative action, no
+     * matter what free-text the admin typed (or the reason fallback retained)
+     * into suspension_reason.
+     */
+    public function suspensionIsAdministrative(): bool
+    {
+        return $this->suspended_by !== null;
+    }
+
+    /**
      * Authoritative classifier: is this shop's current suspension caused by the
      * subscription lifecycle (trial/grace expiry, lapse) rather than a manual
      * admin action? Subscription-managed suspensions are RECOVERABLE by the
      * owner buying/renewing a plan; admin suspensions are NOT (Contact Support).
      *
      * Single source of truth for the recovery gates in
-     * AuthenticatedSessionController and EnsureSubscriptionIsActive. The reason
-     * strings mirror what CheckSubscriptionExpiry / EnsureSubscriptionIsActive
-     * actually write. ponytail: string-classifier, not a new value object —
-     * suspension_reason already carries the origin; upgrade to a typed column
-     * only if reason free-text ever proves unreliable.
+     * AuthenticatedSessionController, EnsureSubscriptionIsActive and
+     * EnsureAccountIsActive.
+     *
+     * PRECEDENCE (closes the "admin typed a Subscription reason" / reason-fallback
+     * bypass): an administrative suspension always wins — if suspended_by is set,
+     * this is NEVER subscription-managed regardless of the reason text. Only when
+     * no admin actor is recorded do we corroborate with the reason string that the
+     * scheduler / reconciler actually writes. ponytail: reuses the existing
+     * suspended_by FK — no schema change; upgrade to a typed origin column only if
+     * a non-admin writer ever needs to set suspended_by.
      */
     public function suspensionIsSubscriptionManaged(): bool
     {
+        // Precedence: an admin action can never be self-service recoverable.
+        if ($this->suspensionIsAdministrative()) {
+            return false;
+        }
+
         $reason = (string) ($this->suspension_reason ?? '');
 
         return str_starts_with($reason, 'Subscription')
-            || in_array($reason, [
-                'No active subscription found for shop.',
-                'Subscription status is invalid for tenant access.',
-                'middleware-check',
-            ], true);
+            || in_array($reason, self::SUBSCRIPTION_MANAGED_REASONS, true);
     }
 
     public function scopeActive($query)

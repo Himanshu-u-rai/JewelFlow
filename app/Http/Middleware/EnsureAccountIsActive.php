@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\SubscriptionRecovery;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -64,7 +65,21 @@ class EnsureAccountIsActive
                 return $next($request);
             }
 
-            return $this->deny($request, 'This shop is suspended by platform admin.', Response::HTTP_FORBIDDEN, true);
+            // Defence in depth: respond IDENTICALLY to EnsureSubscriptionIsActive
+            // no matter which middleware runs first. A subscription-managed lock is
+            // recoverable (owner → plans, staff → owner-must-renew, API →
+            // SUBSCRIPTION_REQUIRED); only a genuine admin suspension is the
+            // Contact-Support dead end (API → SHOP_SUSPENDED).
+            if ($shop->suspensionIsSubscriptionManaged()) {
+                // Enforcement OFF: a subscription lapse must not lock ERP access.
+                if (!config('platform.enforce_subscriptions', false)) {
+                    return $next($request);
+                }
+
+                return SubscriptionRecovery::recover($request);
+            }
+
+            return SubscriptionRecovery::denyAdministrative($request);
         }
 
         if ($accessMode === 'read_only' && !$this->isReadOperation($request)) {

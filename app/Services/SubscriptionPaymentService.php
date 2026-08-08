@@ -241,11 +241,24 @@ class SubscriptionPaymentService
                     $invoiceId = $invoice->id;
                 }
 
-                if (Auth::user()->shop_id && Auth::user()->shop) {
-                    Auth::user()->shop->forceFill([
-                        'access_mode' => 'active',
-                        'is_active' => true,
-                    ])->save();
+                // Reactivate the shop — but ONLY a subscription-managed lock, and
+                // ONLY under a row lock. Locking here serialises against
+                // CheckSubscriptionExpiry (which locks the same row), so a
+                // concurrent expiry job can never re-suspend this freshly-paid
+                // shop. An administrative suspension (suspended_by set) MUST
+                // survive the payment: the money is recorded (row created above)
+                // but the shop stays Contact-Support and is NOT reactivated.
+                if (Auth::user()->shop_id) {
+                    $shop = Shop::whereKey(Auth::user()->shop_id)->lockForUpdate()->first();
+                    if ($shop && ! $shop->suspensionIsAdministrative()) {
+                        $shop->forceFill([
+                            'access_mode' => 'active',
+                            'is_active' => true,
+                            'suspended_at' => null,
+                            'suspension_reason' => null,
+                            'deactivated_at' => null,
+                        ])->save();
+                    }
                 }
 
                 // Grant the edition this product's plan unlocks. Only possible

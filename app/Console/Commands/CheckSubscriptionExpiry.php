@@ -9,6 +9,7 @@ use App\Models\ShopEditionAssignment;
 use App\Support\ShopEdition;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class CheckSubscriptionExpiry extends Command
 {
@@ -92,26 +93,13 @@ class CheckSubscriptionExpiry extends Command
                 }
 
                 if ($subscription->shop_id && ! $superseded) {
-                    $shop = Shop::find($subscription->shop_id);
-
-                    // Multi-product guard: a single product's lapse must NOT
-                    // suspend / read-only the WHOLE shop while another product is
-                    // still entitled. Only downgrade the shop when nothing else
-                    // backs it.
-                    if ($shopMode !== 'active' && $shop && $this->shopHasOtherEntitledEdition($shop, $subscription)) {
-                        $shopMode = 'active';
-                    }
-
-                    if ($shop && $shop->access_mode !== $shopMode) {
-                        $shop->forceFill([
-                            'access_mode' => $shopMode,
-                            'is_active' => $shopMode === 'active',
-                            'suspended_at' => $shopMode === 'suspended' ? $now : null,
-                            'suspension_reason' => $shopMode !== 'active'
-                                ? "Subscription {$newStatus}"
-                                : null,
-                        ])->save();
-                    }
+                    $this->applyShopModeUnderLock(
+                        $subscription->shop_id,
+                        $subscription,
+                        $shopMode,
+                        "Subscription {$newStatus}",
+                        $now
+                    );
                 }
 
                 $transitioned++;
@@ -155,25 +143,13 @@ class CheckSubscriptionExpiry extends Command
                 }
 
                 if ($subscription->shop_id) {
-                    $shop = Shop::find($subscription->shop_id);
-
-                    // Multi-product guard (see block 1): keep the shop active if
-                    // another product still backs an entitled edition.
-                    $effectiveMode = $shopMode;
-                    if ($shop && $this->shopHasOtherEntitledEdition($shop, $subscription)) {
-                        $effectiveMode = 'active';
-                    }
-
-                    if ($shop && $shop->access_mode !== $effectiveMode) {
-                        $shop->forceFill([
-                            'access_mode' => $effectiveMode,
-                            'is_active' => $effectiveMode === 'active',
-                            'suspended_at' => $effectiveMode === 'active' ? null : $now,
-                            'suspension_reason' => $effectiveMode === 'active'
-                                ? null
-                                : "Subscription grace period ended",
-                        ])->save();
-                    }
+                    $this->applyShopModeUnderLock(
+                        $subscription->shop_id,
+                        $subscription,
+                        $shopMode,
+                        'Subscription grace period ended',
+                        $now
+                    );
                 }
 
                 $transitioned++;
@@ -186,6 +162,70 @@ class CheckSubscriptionExpiry extends Command
         $this->info("Processed {$expired->count()} expired + {$graceExpired->count()} grace-expired subscriptions. Transitioned: {$transitioned}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Apply a shop access_mode downgrade for a lapsed subscription — but ONLY
+     * when subscription enforcement is on, and ONLY under a row lock that is
+     * re-evaluated after acquisition.
+     *
+     * Enforcement OFF (the default): a subscription lapse must NEVER lock ERP
+     * access. The subscription status has already been transitioned above (pure
+     * tracking); the shop row is left completely untouched.
+     *
+     * Enforcement ON: lock the shop row so this serialises against
+     * SubscriptionPaymentService (which locks the same row inside its payment
+     * transaction). After acquiring the lock we RE-CHECK, because a concurrent
+     * payment may have raced us:
+     *   - a newer live subscription now covers the shop  → bookkeeping only, skip;
+     *   - the shop is under a human admin suspension      → never override it;
+     *   - another product still entitles the shop         → keep it active.
+     * This is what proves a freshly-paid shop can never be re-suspended by the
+     * expiry job.
+     */
+    private function applyShopModeUnderLock(
+        int $shopId,
+        ShopSubscription $lapsing,
+        string $shopMode,
+        string $reason,
+        Carbon $now
+    ): void {
+        if (! config('platform.enforce_subscriptions', false)) {
+            return;
+        }
+
+        DB::transaction(function () use ($shopId, $lapsing, $shopMode, $reason, $now) {
+            $shop = Shop::whereKey($shopId)->lockForUpdate()->first();
+            if (! $shop) {
+                return;
+            }
+
+            // Raced by a payment that created a newer live term → do not downgrade.
+            if ($this->hasNewerLiveSubscription($lapsing)) {
+                return;
+            }
+
+            // Never override a human platform-admin suspension.
+            if ($shop->suspensionIsAdministrative()) {
+                return;
+            }
+
+            // Multi-product guard: keep the shop active if another product still
+            // backs an entitled edition.
+            $effectiveMode = $shopMode;
+            if ($shopMode !== 'active' && $this->shopHasOtherEntitledEdition($shop, $lapsing)) {
+                $effectiveMode = 'active';
+            }
+
+            if ($shop->access_mode !== $effectiveMode) {
+                $shop->forceFill([
+                    'access_mode' => $effectiveMode,
+                    'is_active' => $effectiveMode === 'active',
+                    'suspended_at' => $effectiveMode === 'suspended' ? $now : null,
+                    'suspension_reason' => $effectiveMode !== 'active' ? $reason : null,
+                ])->save();
+            }
+        });
     }
 
     /**
