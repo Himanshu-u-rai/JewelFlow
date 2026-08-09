@@ -6,6 +6,7 @@ use App\Models\Platform\ShopSubscription;
 use App\Models\Platform\SubscriptionEvent;
 use App\Support\ShopEdition;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Razorpay\Api\Api;
 
@@ -174,7 +175,18 @@ class SubscriptionWebhookService
     }
 
     /**
-     * Handle the refund.created webhook event.
+     * Handle the refund.created webhook event — for PARTIAL and FULL refunds.
+     *
+     * DEDUP is DURABLE, not cache-based. Razorpay may re-deliver the same
+     * refund.created long after the alert job's ShouldBeUnique lock (10 min)
+     * has expired, so the sole permanent guard is an immutable subscription
+     * event recording the provider refund id. We:
+     *   1. lock the authoritative subscription row (serialize concurrent
+     *      duplicate deliveries of the SAME refund), then
+     *   2. re-check for an existing event carrying this refund_id, then
+     *   3. record ONE event + fire ONE internal alert.
+     * Only a FULL refund cancels the subscription and revokes its edition; a
+     * PARTIAL refund leaves the subscription active. Exactly one alert either way.
      */
     public function handleRefundCreated(array $payload): void
     {
@@ -185,90 +197,109 @@ class SubscriptionWebhookService
             return;
         }
 
-        // Idempotent: only act if not already cancelled.
-        $subscription = ShopSubscription::where('razorpay_payment_id', $paymentId)
-            ->where('status', '!=', 'cancelled')
-            ->first();
-
-        if (!$subscription) {
-            Log::info('Webhook: refund.created — subscription already cancelled or not found', [
-                'payment_id' => $paymentId,
-            ]);
-            return;
-        }
-
+        $refundId = $refundEntity['id'] ?? '';
         // Razorpay sends the refunded amount in paise.
         $refundedRupees = ((int) ($refundEntity['amount'] ?? 0)) / 100;
-        $pricePaid = (float) ($subscription->price_paid ?? 0);
-        $refundId = $refundEntity['id'] ?? '';
+        $currency = $refundEntity['currency'] ?? 'INR';
 
-        // Full refund: refunded >= price paid (within a tiny rounding epsilon).
-        $isFullRefund = $refundedRupees >= ($pricePaid - 0.01);
+        DB::transaction(function () use ($paymentId, $refundId, $refundedRupees, $currency) {
+            // Lock the authoritative row: a second delivery of the same refund
+            // blocks here until the first commits, then re-checks dedup below.
+            $subscription = ShopSubscription::where('razorpay_payment_id', $paymentId)
+                ->lockForUpdate()
+                ->first();
 
-        if ($isFullRefund) {
+            if (!$subscription) {
+                Log::info('Webhook: refund.created — no subscription for payment', [
+                    'payment_id' => $paymentId,
+                    'refund_id' => $refundId,
+                ]);
+                return;
+            }
+
+            // DURABLE dedup: an immutable event already recording this provider
+            // refund id means it was handled — survives ShouldBeUnique expiry so a
+            // delayed duplicate never enqueues a second semantic alert.
+            // ponytail: with an empty refund id we cannot dedup, so we process —
+            //   acceptable, Razorpay always sends a refund id on refund.created.
+            if ($refundId !== '') {
+                $already = SubscriptionEvent::where('shop_subscription_id', $subscription->id)
+                    ->whereIn('event_type', ['subscription.refunded', 'subscription.partial_refund'])
+                    ->where('after->refund_id', $refundId)
+                    ->exists();
+
+                if ($already) {
+                    Log::info('Webhook: refund.created — refund id already processed, skipping', [
+                        'payment_id' => $paymentId,
+                        'refund_id' => $refundId,
+                        'subscription_id' => $subscription->id,
+                    ]);
+                    return;
+                }
+            }
+
+            $pricePaid = (float) ($subscription->price_paid ?? 0);
+            // Full refund: refunded >= price paid (within a tiny rounding epsilon).
+            $isFullRefund = $refundedRupees >= ($pricePaid - 0.01);
+            $classification = $isFullRefund ? 'full' : 'partial';
+
             $before = $subscription->toArray();
-            $subscription->update([
-                'status' => 'cancelled',
-                'cancelled_at' => Carbon::now(),
+
+            if ($isFullRefund) {
+                $subscription->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => Carbon::now(),
+                ]);
+            }
+
+            // The refund id lives in `after` so the durable dedup query above can
+            // find it on any later duplicate delivery.
+            $after = array_merge($subscription->fresh()->toArray(), [
+                'refund_id' => $refundId,
+                'payment_id' => $paymentId,
+                'refunded_amount' => $refundedRupees,
+                'currency' => $currency,
+                'refund_classification' => $classification,
             ]);
 
             SubscriptionEvent::create([
                 'shop_subscription_id' => $subscription->id,
                 'shop_id' => $subscription->shop_id,
                 'admin_id' => null,
-                'event_type' => 'subscription.refunded',
+                'event_type' => $isFullRefund ? 'subscription.refunded' : 'subscription.partial_refund',
                 'before' => $before,
-                'after' => $subscription->fresh()->toArray(),
-                'reason' => 'Razorpay full refund: ' . $refundId
-                    . ' (₹' . number_format($refundedRupees, 2) . ' of ₹' . number_format($pricePaid, 2) . ')',
+                'after' => $after,
+                'reason' => 'Razorpay ' . $classification . ' refund: ' . $refundId
+                    . ' (' . $currency . ' ' . number_format($refundedRupees, 2)
+                    . ' of ' . $currency . ' ' . number_format($pricePaid, 2) . ')'
+                    . ($isFullRefund ? '' : ' — subscription remains active'),
             ]);
 
-            // A full refund fully lapses this subscription. Revoke the edition it
-            // was backing — but only if no other active source (another paid
-            // subscription, or an admin_grant / seed) still justifies it.
-            $this->revokeEditionForLapsedSubscription(
-                $subscription,
-                'Subscription fully refunded — service removed.'
-            );
+            if ($isFullRefund) {
+                // A full refund fully lapses this subscription. Revoke the edition
+                // it was backing — but only if no other active source (another
+                // paid subscription, or an admin_grant / seed) still justifies it.
+                $this->revokeEditionForLapsedSubscription(
+                    $subscription,
+                    'Subscription fully refunded — service removed.'
+                );
+            }
 
-            Log::info('Webhook: full refund processed, subscription cancelled', [
+            Log::info('Webhook: refund.created processed', [
                 'payment_id' => $paymentId,
+                'refund_id' => $refundId,
                 'subscription_id' => $subscription->id,
+                'classification' => $classification,
                 'refunded' => $refundedRupees,
                 'price_paid' => $pricePaid,
             ]);
 
-            // One ops alert per refund. A duplicate refund.created finds no
-            // non-cancelled subscription above and returns early, and the alert
-            // is ShouldBeUnique on "refund:{id}" — so exactly one email.
+            // Exactly one internal alert per validated refund (partial OR full).
+            // afterCommit + ShouldBeUnique collapse the in-window duplicate; the
+            // durable event row above collapses the out-of-window duplicate.
             app(PlatformSubscriptionAlerts::class)
-                ->refundProcessed($subscription->fresh(), $refundId, $refundedRupees);
-
-            return;
-        }
-
-        // Partial refund: the subscription stays active — only log it. before and
-        // after status are identical because nothing on the subscription changes.
-        $snapshot = $subscription->toArray();
-
-        SubscriptionEvent::create([
-            'shop_subscription_id' => $subscription->id,
-            'shop_id' => $subscription->shop_id,
-            'admin_id' => null,
-            'event_type' => 'subscription.partial_refund',
-            'before' => $snapshot,
-            'after' => $snapshot,
-            'reason' => 'Razorpay partial refund: ' . $refundId
-                . ' (₹' . number_format($refundedRupees, 2) . ' of ₹' . number_format($pricePaid, 2)
-                . ' — subscription remains active)',
-        ]);
-
-        Log::info('Webhook: partial refund logged, subscription remains active', [
-            'payment_id' => $paymentId,
-            'subscription_id' => $subscription->id,
-            'refunded' => $refundedRupees,
-            'price_paid' => $pricePaid,
-        ]);
+                ->refundProcessed($subscription->fresh(), $refundId, $refundedRupees, $isFullRefund, $currency);
+        });
     }
 
     /**

@@ -122,19 +122,38 @@ class PlatformSubscriptionAlerts
         );
     }
 
-    public function refundProcessed(ShopSubscription $subscription, string $refundId, float $refundedRupees): void
-    {
+    /**
+     * One internal alert per validated refund — partial OR full. Only a FULL
+     * refund cancels/lapses the subscription (the caller performs revocation);
+     * a PARTIAL refund leaves the subscription active. The classification and
+     * currency are passed in so this composer never re-derives money state.
+     * Body carries only human-readable refs — NO signatures, tokens or payloads.
+     */
+    public function refundProcessed(
+        ShopSubscription $subscription,
+        string $refundId,
+        float $refundedRupees,
+        bool $isFull = true,
+        string $currency = 'INR',
+    ): void {
+        $classification = $isFull ? 'FULL' : 'PARTIAL';
+        $headline = $isFull
+            ? "A Razorpay FULL refund was processed — the subscription is now cancelled."
+            : "A Razorpay PARTIAL refund was processed — the subscription remains active.";
+
         $lines = [
-            "A Razorpay FULL refund was processed — the subscription is now cancelled.",
+            $headline,
+            "Classification: {$classification}",
             "Refund ref: " . ($refundId ?: '—'),
             "Payment ref: " . ($subscription->razorpay_payment_id ?? '—'),
             "Shop: " . $this->shopLabel($subscription),
             "Plan: " . ($subscription->plan?->name ?? '#' . $subscription->plan_id),
-            "Refunded: ₹" . number_format($refundedRupees, 2) . " of ₹" . number_format((float) $subscription->price_paid, 2),
+            "Refunded: {$currency} " . number_format($refundedRupees, 2)
+                . " of {$currency} " . number_format((float) $subscription->price_paid, 2),
         ];
 
         $this->send(
-            "Refund processed — " . $this->shopLabel($subscription),
+            ucfirst(strtolower($classification)) . " refund processed — " . $this->shopLabel($subscription),
             $lines,
             "refund:" . ($refundId ?: 'sub-' . $subscription->id),
         );

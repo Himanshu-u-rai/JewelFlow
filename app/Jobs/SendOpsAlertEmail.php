@@ -79,14 +79,17 @@ class SendOpsAlertEmail implements ShouldQueue, ShouldBeUnique
 
     public function handle(): void
     {
-        // Isolated recipient: prefer the subscription-only inbox so operators can
-        // enable this pipeline WITHOUT setting PLATFORM_ALERT_EMAIL (which also
-        // feeds fraud/shop-health/evaluate-alerts). Fall back to the shared key.
-        $to = config('platform.subscription_alert_email')
-            ?: config('platform.alert_email', env('PLATFORM_ALERT_EMAIL', ''));
+        // FAIL-CLOSED, dedicated recipient. This pipeline sends ONLY to
+        // SUBSCRIPTION_ALERT_EMAIL and deliberately does NOT fall back to
+        // PLATFORM_ALERT_EMAIL: that shared key also feeds fraud/shop-health/
+        // evaluate-alerts, so a fallback would let one env var silently turn on
+        // several unrelated pipelines. If the dedicated inbox is unset, suppress
+        // the send and log a clear (non-secret) operational warning instead —
+        // SUBSCRIPTION_ALERT_EMAIL is the single staging blocker for this pipeline.
+        $to = config('platform.subscription_alert_email');
 
         if (empty($to)) {
-            Log::warning("SendOpsAlertEmail: suppressed (no SUBSCRIPTION_ALERT_EMAIL / PLATFORM_ALERT_EMAIL set). Subject: {$this->subject}");
+            Log::warning("SendOpsAlertEmail: suppressed — SUBSCRIPTION_ALERT_EMAIL is not configured (no fallback to PLATFORM_ALERT_EMAIL by design). Subject: {$this->subject}");
             return;
         }
 

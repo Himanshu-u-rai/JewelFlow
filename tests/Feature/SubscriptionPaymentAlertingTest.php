@@ -359,7 +359,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
         // sync). Mail::raw therefore happens later in a dedicated worker, fully
         // decoupled from the payment transaction: a broken SMTP hop can never
         // roll back the committed subscription. Prove raw is not called inline.
-        config(['platform.alert_email' => 'ops@jewelflows.test']);
+        config(['platform.subscription_alert_email' => 'ops@jewelflows.test']);
         Mail::shouldReceive('raw')->never();
 
         $this->createPlatformAdmin();
@@ -454,14 +454,135 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
             ->assertStatus(200);
-        // Duplicate delivery: the subscription is now cancelled, so the
-        // status!=cancelled filter finds nothing and fires no second alert.
+        // Duplicate delivery AFTER the first was fully processed: the durable
+        // subscription-event carrying refund_id=rfnd_1 is found, so no second
+        // alert — this survives even after the ShouldBeUnique cache lock expires.
         $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
             ->assertStatus(200);
 
         $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
-            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Refund processed')));
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Full refund processed')));
         $this->assertSame('cancelled', $sub->fresh()->status);
+        // Exactly one durable refund event recorded for this refund id.
+        $this->assertSame(1, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->where('event_type', 'subscription.refunded')
+            ->where('after->refund_id', 'rfnd_1')->count());
+    }
+
+    public function test_partial_refund_webhook_sends_one_alert_and_keeps_subscription_active(): void
+    {
+        config(['services.razorpay.webhook_secret' => 'test_secret']);
+        Bus::fake([SendOpsAlertEmail::class]);
+        $admin = $this->createPlatformAdmin();
+        $plan = $this->createPlan('retailer');
+        [$owner, $shop] = $this->ownerWithShop();
+
+        $sub = $this->createSubscription($shop->id, $admin, $plan);
+        $sub->forceFill(['razorpay_payment_id' => 'pay_PARTIAL', 'price_paid' => 999.0])->save();
+
+        $this->bindTrustedWebhook();
+
+        // Refund only ₹400 of ₹999 → partial: alert fires, NO revocation.
+        $payload = ['event' => 'refund.created',
+            'payload' => ['refund' => ['entity' => [
+                'id' => 'rfnd_P', 'payment_id' => 'pay_PARTIAL', 'amount' => 40000,
+            ]]]];
+
+        $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
+            ->assertStatus(200);
+        // Delayed duplicate after first fully processed → durable dedup, no 2nd alert.
+        $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
+            ->assertStatus(200);
+
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Partial refund processed')));
+        // Subscription must NOT be cancelled by a partial refund.
+        $this->assertNotSame('cancelled', $sub->fresh()->status);
+        $this->assertSame(1, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->where('event_type', 'subscription.partial_refund')
+            ->where('after->refund_id', 'rfnd_P')->count());
+    }
+
+    public function test_duplicate_refund_after_first_completed_enqueues_no_second_alert(): void
+    {
+        // Explicit durable-dedup proof: drive handleRefundCreated twice directly,
+        // simulating a delivery that arrives after the first job already finished
+        // AND its ShouldBeUnique lock has evaporated. The immutable event row —
+        // not the cache — is what collapses the duplicate.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $admin = $this->createPlatformAdmin();
+        $plan = $this->createPlan('retailer');
+        [$owner, $shop] = $this->ownerWithShop();
+
+        $sub = $this->createSubscription($shop->id, $admin, $plan);
+        $sub->forceFill(['razorpay_payment_id' => 'pay_DDUP', 'price_paid' => 999.0])->save();
+
+        $webhook = app(SubscriptionWebhookService::class);
+        $payload = ['payload' => ['refund' => ['entity' => [
+            'id' => 'rfnd_D', 'payment_id' => 'pay_DDUP', 'amount' => 99900,
+        ]]]];
+
+        $webhook->handleRefundCreated($payload);
+        $webhook->handleRefundCreated($payload); // second delivery, lock long gone
+
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'refund processed')));
+        $this->assertSame(1, SubscriptionEvent::where('after->refund_id', 'rfnd_D')->count());
+    }
+
+    // ── Fail-closed recipient (SUBSCRIPTION_ALERT_EMAIL only) ───────────────
+
+    public function test_ops_alert_sends_to_dedicated_subscription_recipient(): void
+    {
+        config(['platform.subscription_alert_email' => 'subs-ops@jewelflows.test']);
+        // The dedicated inbox is set → the job delivers to exactly that address.
+        Mail::shouldReceive('raw')->once()->withArgs(function ($body, $closure) {
+            $msg = Mockery::mock();
+            $msg->shouldReceive('to')->once()->with('subs-ops@jewelflows.test')->andReturnSelf();
+            $msg->shouldReceive('subject')->once()->andReturnSelf();
+            $closure($msg);
+            return true;
+        });
+
+        (new SendOpsAlertEmail('Payment applied — Shop', 'body line', 'evt'))->handle();
+    }
+
+    public function test_ops_alert_suppressed_when_dedicated_recipient_missing(): void
+    {
+        config(['platform.subscription_alert_email' => '']);
+        // Blank dedicated inbox → fail-closed: no send at all.
+        Mail::shouldReceive('raw')->never();
+
+        (new SendOpsAlertEmail('Payment applied — Shop', 'body line', 'evt'))->handle();
+    }
+
+    public function test_platform_alert_email_alone_does_not_enable_subscription_alerts(): void
+    {
+        // The shared fraud/health/evaluate key is set, but the dedicated
+        // subscription key is NOT → the subscription pipeline still suppresses.
+        // Proves there is NO fallback from alert_email into this pipeline.
+        config([
+            'platform.alert_email' => 'shared-ops@jewelflows.test',
+            'platform.subscription_alert_email' => '',
+        ]);
+        Mail::shouldReceive('raw')->never();
+
+        (new SendOpsAlertEmail('Payment applied — Shop', 'body line', 'evt'))->handle();
+    }
+
+    public function test_dedicated_recipient_does_not_feed_unrelated_platform_pipelines(): void
+    {
+        // Structural isolation: the subscription pipeline reads ONLY
+        // subscription_alert_email; the fraud/shop-health/evaluate pipelines read
+        // ONLY alert_email. Setting one must never populate the other.
+        config([
+            'platform.subscription_alert_email' => 'subs-ops@jewelflows.test',
+            'platform.alert_email' => '',
+        ]);
+
+        $this->assertSame('subs-ops@jewelflows.test', config('platform.subscription_alert_email'));
+        $this->assertSame('', config('platform.alert_email'),
+            'setting the dedicated key must not leak into the shared fraud/health/evaluate key');
     }
 
     public function test_callback_then_webhook_sends_one_success_alert(): void

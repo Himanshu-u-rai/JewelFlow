@@ -24,15 +24,17 @@ return [
     |
     | NOTE: PLATFORM_ALERT_EMAIL is ALSO read by unrelated scheduled pipelines
     | (platform:detect-fraud, platform:check-shop-health, platform:evaluate-alerts).
-    | To enable ONLY the subscription/shop pipeline without turning those on, set
-    | SUBSCRIPTION_ALERT_EMAIL instead — SendOpsAlertEmail prefers it and only
-    | falls back to alert_email when it is empty.
+    | The subscription/shop/payment ops pipeline does NOT use this key at all —
+    | it sends only to SUBSCRIPTION_ALERT_EMAIL below (fail-closed, no fallback).
     |
     */
     'alert_email' => env('PLATFORM_ALERT_EMAIL', ''),
 
-    // Isolated recipient for the subscription/shop ops-alert pipeline only.
-    // Empty → fall back to alert_email (which also feeds fraud/health/evaluate).
+    // Dedicated, FAIL-CLOSED recipient for the subscription/shop/payment ops-alert
+    // pipeline (SendOpsAlertEmail) ONLY. Deliberately NO fallback to alert_email:
+    // a fallback would let PLATFORM_ALERT_EMAIL silently enable this pipeline (and
+    // vice-versa entangle it with fraud/health/evaluate). Blank → sends are
+    // suppressed and logged. A single address — comma-separated lists not accepted.
     'subscription_alert_email' => env('SUBSCRIPTION_ALERT_EMAIL', ''),
 
     /*

@@ -1,0 +1,24 @@
+[Unit]
+Description=JewelFlow STAGING ops-alerts queue worker (isolated)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/jewelflow-staging
+# Drains ONLY database/ops-alerts — never the `default` queue, so the 11
+# unrelated sync workflows are unaffected. No --stop-timeout (unsupported in
+# this Laravel version; `queue:work --help` lists only --timeout/--max-time/
+# --backoff). Graceful shutdown is handled by KillSignal=SIGTERM +
+# TimeoutStopSec below: the worker finishes its in-flight job on SIGTERM.
+ExecStart=/usr/bin/php /var/www/jewelflow-staging/artisan queue:work database --queue=ops-alerts --sleep=3 --tries=3 --backoff=30 --timeout=60 --max-time=3600
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=90
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jewelflow-staging-ops-alerts
+
+[Install]
+WantedBy=multi-user.target

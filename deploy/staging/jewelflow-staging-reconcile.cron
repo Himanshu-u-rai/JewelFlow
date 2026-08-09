@@ -1,0 +1,22 @@
+# JewelFlow STAGING — subscription payment reconciliation (staging only).
+#
+# This is a DEDICATED cron for ONE command — NOT `artisan schedule:run`. It must
+# never drive the full Laravel scheduler on staging (that would also fire fraud/
+# shop-health/evaluate-alerts and every other scheduled job).
+#
+# flock (-n = non-blocking, exit immediately if a prior run still holds the lock)
+# gives the same overlap protection as the in-app withoutOverlapping(20) guard on
+# the scheduled definition, so a slow run never stacks a second reconcile.
+# Lock file lives under STAGING storage — never /etc, never a shared path.
+#
+# Routine stdout/stderr is discarded (>/dev/null 2>&1): genuine failures surface
+# through Laravel logging (storage/logs), so this cron cannot grow an unbounded
+# raw log. If per-run output is ever wanted, drop the redirect and add a
+# logrotate stanza for the target file instead.
+#
+# Every 10 minutes, bounded: 25 payments/run, 2 days back, 200ms between
+# provider-touching reconciles (Razorpay rate-limit safety).
+#
+# Install as www-data's crontab on STAGING ONLY (e.g. `crontab -u www-data`);
+# do NOT add to the production scheduler. Left here as a reviewed artifact.
+*/10 * * * * /usr/bin/flock -n /var/www/jewelflow-staging/storage/framework/reconcile-payments.lock /usr/bin/php /var/www/jewelflow-staging/artisan subscription:reconcile-payments --limit=25 --days=2 --sleep-ms=200 >/dev/null 2>&1
