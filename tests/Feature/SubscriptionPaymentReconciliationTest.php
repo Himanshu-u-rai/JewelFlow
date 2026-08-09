@@ -273,4 +273,24 @@ class SubscriptionPaymentReconciliationTest extends TestCase
         $this->assertSame(1, ShopSubscription::where('razorpay_payment_id', 'pay_ONCE')->count());
         $this->assertSame(1, SubscriptionEvent::where('event_type', 'subscription.paid')->count());
     }
+
+    // ── Scheduler: overlap guard has an explicit, bounded stale-lock TTL ────
+
+    public function test_reconcile_schedule_has_bounded_overlap_expiry(): void
+    {
+        $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+
+        $event = collect($schedule->events())->first(
+            fn ($e) => str_contains($e->command ?? '', 'subscription:reconcile-payments')
+        );
+
+        $this->assertNotNull($event, 'reconcile-payments must be scheduled');
+        $this->assertTrue($event->withoutOverlapping, 'must guard against overlapping runs');
+        // Explicit, bounded TTL: a mid-flight kill auto-releases the lock instead
+        // of wedging for Laravel's 24h (1440 min) default. A healthy run (~1-2 min)
+        // always releases its own lock well before this.
+        $this->assertNotNull($event->expiresAt, 'stale-lock TTL must be explicit');
+        $this->assertGreaterThan(0, $event->expiresAt);
+        $this->assertLessThan(1440, $event->expiresAt, 'TTL must be bounded, not the 24h default');
+    }
 }

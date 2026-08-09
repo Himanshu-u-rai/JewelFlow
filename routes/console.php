@@ -122,7 +122,12 @@ Artisan::command('assets:verify-fresh', function () {
 Schedule::command('backup:run')->daily();
 Schedule::command('loyalty:expire')->daily();
 Schedule::command('subscription:check-expiry')->daily();
-Schedule::command('subscription:reconcile-payments')->everyTenMinutes()->withoutOverlapping();
+// Stale-lock TTL 20 min: one run is bounded to --limit=25 provider-touching
+// reconciles at ~200ms spacing plus a single 100-item list (~1-2 min worst
+// case), so a healthy run always releases its own lock long before 20 min. The
+// explicit TTL only matters if a run is killed mid-flight — the lock then
+// auto-expires in 20 min instead of Laravel's default 24h wedge.
+Schedule::command('subscription:reconcile-payments')->everyTenMinutes()->withoutOverlapping(20);
 Schedule::command('scan:cleanup')->daily();
 Schedule::command('schemes:process-maturity')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('cache:warm-shops')->everyTenMinutes()->withoutOverlapping();

@@ -324,12 +324,25 @@ class SubscriptionPaymentService
                 dispatch(new SendPlatformInvoiceEmail($invoiceId));
             }
 
-            // Ops alert: a captured payment was genuinely applied. Fired here in
-            // the single genuine-create path (the UniqueConstraintViolation catch
-            // below returns the existing row WITHOUT re-firing), so a duplicate
-            // callback / webhook / reconcile emits exactly ONE payment-applied
-            // email per Razorpay payment.
-            $this->alerts()->paymentApplied($subscription);
+            // Exactly ONE success alert per payment, chosen here in the single
+            // genuine-create path — the UniqueConstraintViolation catch below
+            // returns the existing row WITHOUT re-firing, so a duplicate
+            // callback / webhook / reconcile emits no extra alert.
+            //
+            // markPaymentResolved() returning true means this payment had a prior
+            // open payment.unresolved record: it was RECONCILED, so send only the
+            // "reconciled" alert. Otherwise it is a fresh apply. This is the single
+            // decision point for BOTH the in-session callback and the sessionless
+            // webhook/reconcile paths, so a captured payment can never generate two
+            // success emails (previously createSubscription fired paymentApplied
+            // while applyCapturedPayment separately fired paymentReconciled).
+            if ($paymentId) {
+                if ($this->markPaymentResolved($paymentId, $subscription)) {
+                    $this->alerts()->paymentReconciled($subscription);
+                } else {
+                    $this->alerts()->paymentApplied($subscription);
+                }
+            }
 
             return $subscription;
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
@@ -403,14 +416,10 @@ class SubscriptionPaymentService
     public function applyCapturedPayment(string $orderId, string $paymentId): array
     {
         try {
+            // finalize → createSubscription fires exactly one success alert
+            // (reconciled vs applied), including flipping any open unresolved
+            // record to resolved. No alert is fired here to avoid a second email.
             $subscription = $this->finalizeCapturedPayment($orderId, $paymentId);
-
-            // If this payment previously failed and was recorded as unresolved,
-            // flip that record to resolved and alert ops it was reconciled. The
-            // exactly-once payment-applied alert is fired inside createSubscription.
-            if ($this->markPaymentResolved($paymentId, $subscription)) {
-                $this->alerts()->paymentReconciled($subscription);
-            }
 
             return ['outcome' => self::OUTCOME_APPLIED, 'subscription' => $subscription];
         } catch (\LogicException $e) {

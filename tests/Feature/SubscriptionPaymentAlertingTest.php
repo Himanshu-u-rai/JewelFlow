@@ -258,7 +258,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
             fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Payment applied'));
     }
 
-    public function test_unresolved_then_reconciled_sends_both_alerts(): void
+    public function test_successful_reconciliation_sends_exactly_one_reconciled_alert_not_payment_applied(): void
     {
         Bus::fake([SendOpsAlertEmail::class]);
         $plan = $this->createPlan('retailer');
@@ -270,11 +270,37 @@ class SubscriptionPaymentAlertingTest extends TestCase
         Bus::assertDispatched(SendOpsAlertEmail::class,
             fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'unresolved'));
 
-        // Then: fixed → applied + reconciled → "reconciled" alert.
+        // Then: fixed → reconciled. Exactly ONE reconciliation-success alert and
+        // NOT a separate "Payment applied" — a reconciled payment must never emit
+        // two success emails.
         $this->createPlatformAdmin();
         $svc->applyCapturedPayment('order_TEST', 'pay_RCX');
+
         Bus::assertDispatched(SendOpsAlertEmail::class,
             fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'reconciled'));
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'reconciled')));
+        Bus::assertNotDispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Payment applied'));
+    }
+
+    public function test_duplicate_reconciliation_sends_no_additional_alert(): void
+    {
+        Bus::fake([SendOpsAlertEmail::class]);
+        $plan = $this->createPlan('retailer');
+        [$owner] = $this->ownerWithShop();
+        $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id));
+
+        // Transient first, then reconcile, then a duplicate reconcile delivery.
+        $svc->applyCapturedPayment('order_TEST', 'pay_RDUP');
+        $this->createPlatformAdmin();
+        $svc->applyCapturedPayment('order_TEST', 'pay_RDUP');
+        $svc->applyCapturedPayment('order_TEST', 'pay_RDUP');
+
+        // The unique constraint returns the existing row on replay WITHOUT
+        // re-firing, so still exactly one reconciled alert.
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'reconciled')));
     }
 
     public function test_no_alert_on_ordinary_subscription_state_change(): void
@@ -326,19 +352,19 @@ class SubscriptionPaymentAlertingTest extends TestCase
         });
     }
 
-    public function test_mail_dispatch_failure_cannot_roll_back_the_applied_payment(): void
+    public function test_alert_delivery_is_decoupled_from_the_applied_payment(): void
     {
-        // Configure a real ops recipient so the queued job actually attempts to
-        // send — and make Mail::raw throw. Under the sync queue the job runs
-        // inline, so the throw would surface at the dispatch site; the alerting
-        // layer must swallow it and leave the committed subscription intact.
+        // The alert job is pinned to connection=database/queue=ops-alerts, so it
+        // NEVER runs inline at the dispatch site (even though the app default is
+        // sync). Mail::raw therefore happens later in a dedicated worker, fully
+        // decoupled from the payment transaction: a broken SMTP hop can never
+        // roll back the committed subscription. Prove raw is not called inline.
         config(['platform.alert_email' => 'ops@jewelflows.test']);
-        Mail::shouldReceive('raw')->andThrow(new \RuntimeException('smtp down'));
+        Mail::shouldReceive('raw')->never();
 
         $this->createPlatformAdmin();
         $plan = $this->createPlan('retailer');
-        // A shopless owner → no platform invoice email, so Mail::raw is the ONLY
-        // mail call and its failure is the only thing under test.
+        // A shopless owner → no platform invoice email path in this flow.
         $owner = User::factory()->create(['shop_id' => null]);
         $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id));
 
@@ -346,6 +372,118 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         $this->assertSame(SubscriptionPaymentService::OUTCOME_APPLIED, $result['outcome']);
         $this->assertSame(1, ShopSubscription::where('razorpay_payment_id', 'pay_MAILDOWN')->count(),
-            'a mail failure must never roll back the committed payment');
+            'the deferred alert must never roll back the committed payment');
+    }
+
+    // ── Queue isolation (Part: infra design correction) ─────────────────────
+
+    public function test_ops_alert_job_is_pinned_to_isolated_connection_and_queue(): void
+    {
+        // Structural guarantee: the job carries its OWN connection + queue so that
+        // enabling subscription alerting never changes how the 11 unrelated queued
+        // workflows run under QUEUE_CONNECTION=sync. A worker draining ONLY
+        // database/ops-alerts picks this up; a worker on `default` never will.
+        $job = new SendOpsAlertEmail('subj', 'body', 'evt');
+
+        $this->assertSame('database', $job->connection, 'must not ride the sync default');
+        $this->assertSame('ops-alerts', $job->queue, 'must be isolated on its own queue');
+    }
+
+    public function test_dispatched_ops_alert_is_routed_to_the_isolated_queue(): void
+    {
+        Bus::fake([SendOpsAlertEmail::class]);
+        [$owner, $shop] = $this->ownerWithShop();
+
+        app(PlatformSubscriptionAlerts::class)->shopCreated($shop);
+
+        Bus::assertDispatched(SendOpsAlertEmail::class, function (SendOpsAlertEmail $job) {
+            return $job->connection === 'database' && $job->queue === 'ops-alerts';
+        });
+    }
+
+    public function test_ops_alert_uniqueId_is_stable_per_business_event(): void
+    {
+        // Duplicate business-event paths (double callback/webhook/reconcile)
+        // collapse to one queued job because uniqueId() keys on the semantic
+        // eventKey, not on content. A keyless job still can't double-enqueue.
+        $a = new SendOpsAlertEmail('s', 'b', 'payment-applied:pay_X');
+        $b = new SendOpsAlertEmail('s2', 'b2', 'payment-applied:pay_X');
+        $this->assertSame($a->uniqueId(), $b->uniqueId(), 'same event → same lock key');
+
+        $c = new SendOpsAlertEmail('s', 'b', 'payment-applied:pay_Y');
+        $this->assertNotSame($a->uniqueId(), $c->uniqueId(), 'different event → different key');
+
+        $keyless = new SendOpsAlertEmail('subj', 'body');
+        $this->assertNotSame('', $keyless->uniqueId(), 'keyless falls back to content hash');
+    }
+
+    public function test_payment_failed_webhook_sends_no_ops_alert(): void
+    {
+        config(['services.razorpay.webhook_secret' => 'test_secret']);
+        Bus::fake([SendOpsAlertEmail::class]);
+        $this->bindTrustedWebhook();
+
+        $this->postJson('/subscription/payment/webhook',
+            ['event' => 'payment.failed',
+             'payload' => ['payment' => ['entity' => ['order_id' => 'order_F', 'error_description' => 'declined']]]],
+            ['X-Razorpay-Signature' => 'stubbed']
+        )->assertStatus(200);
+
+        // payment.failed only writes a SubscriptionEvent — the closed alert set
+        // never emits ops email for a failed payment.
+        Bus::assertNotDispatched(SendOpsAlertEmail::class);
+    }
+
+    public function test_full_refund_webhook_sends_exactly_one_refund_alert_and_dedupes_on_replay(): void
+    {
+        config(['services.razorpay.webhook_secret' => 'test_secret']);
+        Bus::fake([SendOpsAlertEmail::class]);
+        $admin = $this->createPlatformAdmin();
+        $plan = $this->createPlan('retailer');
+        [$owner, $shop] = $this->ownerWithShop();
+
+        $sub = $this->createSubscription($shop->id, $admin, $plan);
+        $sub->forceFill(['razorpay_payment_id' => 'pay_REF', 'price_paid' => 999.0])->save();
+
+        $this->bindTrustedWebhook();
+
+        $payload = ['event' => 'refund.created',
+            'payload' => ['refund' => ['entity' => [
+                'id' => 'rfnd_1', 'payment_id' => 'pay_REF', 'amount' => 99900,
+            ]]]];
+
+        $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
+            ->assertStatus(200);
+        // Duplicate delivery: the subscription is now cancelled, so the
+        // status!=cancelled filter finds nothing and fires no second alert.
+        $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
+            ->assertStatus(200);
+
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Refund processed')));
+        $this->assertSame('cancelled', $sub->fresh()->status);
+    }
+
+    public function test_callback_then_webhook_sends_one_success_alert(): void
+    {
+        config(['services.razorpay.webhook_secret' => 'test_secret']);
+        Bus::fake([SendOpsAlertEmail::class]);
+        $this->createPlatformAdmin();
+        $plan = $this->createPlan('retailer');
+        [$owner] = $this->ownerWithShop();
+        $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id));
+        $this->bindTrustedWebhook();
+
+        // Callback applies first…
+        $svc->applyCapturedPayment('order_TEST', 'pay_SEQ');
+        // …then the webhook races in for the same payment.
+        $this->postJson('/subscription/payment/webhook',
+            $this->capturedPayload('pay_SEQ', 'order_TEST'),
+            ['X-Razorpay-Signature' => 'stubbed']
+        )->assertStatus(200);
+
+        $this->assertSame(1, ShopSubscription::where('razorpay_payment_id', 'pay_SEQ')->count());
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Payment applied')));
     }
 }

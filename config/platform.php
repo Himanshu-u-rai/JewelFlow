@@ -22,8 +22,18 @@ return [
     | reconciled). Never a hardcoded personal address — set PLATFORM_ALERT_EMAIL
     | in the environment. Empty = alerts are logged and suppressed (never sent).
     |
+    | NOTE: PLATFORM_ALERT_EMAIL is ALSO read by unrelated scheduled pipelines
+    | (platform:detect-fraud, platform:check-shop-health, platform:evaluate-alerts).
+    | To enable ONLY the subscription/shop pipeline without turning those on, set
+    | SUBSCRIPTION_ALERT_EMAIL instead — SendOpsAlertEmail prefers it and only
+    | falls back to alert_email when it is empty.
+    |
     */
     'alert_email' => env('PLATFORM_ALERT_EMAIL', ''),
+
+    // Isolated recipient for the subscription/shop ops-alert pipeline only.
+    // Empty → fall back to alert_email (which also feeds fraud/health/evaluate).
+    'subscription_alert_email' => env('SUBSCRIPTION_ALERT_EMAIL', ''),
 
     /*
     |--------------------------------------------------------------------------

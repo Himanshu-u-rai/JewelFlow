@@ -238,6 +238,12 @@ class SubscriptionWebhookService
                 'price_paid' => $pricePaid,
             ]);
 
+            // One ops alert per refund. A duplicate refund.created finds no
+            // non-cancelled subscription above and returns early, and the alert
+            // is ShouldBeUnique on "refund:{id}" — so exactly one email.
+            app(PlatformSubscriptionAlerts::class)
+                ->refundProcessed($subscription->fresh(), $refundId, $refundedRupees);
+
             return;
         }
 
