@@ -91,6 +91,20 @@ class SubscriptionPaymentAlertingTest extends TestCase
         return ['event' => 'payment.captured', 'payload' => ['payment' => ['entity' => $entity]]];
     }
 
+    /**
+     * Razorpay stamps every webhook with a unique x-razorpay-event-id header.
+     * The controller fail-closes on empty, so tests that hit the HTTP surface
+     * MUST send one. This helper defaults to a per-call unique id; tests that
+     * need to simulate a genuine at-least-once redelivery pass the same id twice.
+     */
+    private function webhookHeaders(string $eventId = 'evt_default'): array
+    {
+        return [
+            'X-Razorpay-Signature' => 'stubbed',
+            'X-Razorpay-Event-Id' => $eventId,
+        ];
+    }
+
     // ── Outcome classification (Part 1) ─────────────────────────────────────
 
     public function test_transient_failure_records_transient_then_recovers_and_resolves(): void
@@ -166,7 +180,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         $this->postJson('/subscription/payment/webhook',
             $this->capturedPayload('pay_OK', 'order_TEST'),
-            ['X-Razorpay-Signature' => 'stubbed']
+            $this->webhookHeaders('evt_ok')
         )->assertStatus(200)->assertJson(['status' => 'ok']);
     }
 
@@ -182,29 +196,47 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         $this->postJson('/subscription/payment/webhook',
             $this->capturedPayload('pay_5XX', 'order_TEST'),
-            ['X-Razorpay-Signature' => 'stubbed']
+            $this->webhookHeaders('evt_5xx')
         )->assertStatus(500)->assertJson(['status' => 'retry']);
 
         $this->assertSame(0, ShopSubscription::where('razorpay_payment_id', 'pay_5XX')->count());
     }
 
-    public function test_webhook_permanent_failure_returns_422(): void
+    public function test_webhook_permanent_failure_returns_200_after_evidence(): void
     {
         config(['services.razorpay.webhook_secret' => 'test_secret']);
         $this->createPlatformAdmin();
         $plan = $this->createPlan('retailer');
         [$owner] = $this->ownerWithShop();
 
-        // Currency mismatch → permanent → 422, Razorpay must stop retrying.
+        // Currency mismatch → permanent. Contract: 2xx AFTER immutable evidence
+        // has been recorded (Razorpay must NOT retry a durably-consumed event).
         $this->bindFakeService($plan, $this->fakeOrder($owner->id, 99900, 'order_TEST', 'USD'));
         $this->bindTrustedWebhook();
 
         $this->postJson('/subscription/payment/webhook',
-            $this->capturedPayload('pay_422', 'order_TEST'),
-            ['X-Razorpay-Signature' => 'stubbed']
-        )->assertStatus(422)->assertJson(['status' => 'not_applied']);
+            $this->capturedPayload('pay_perm', 'order_TEST'),
+            $this->webhookHeaders('evt_perm')
+        )->assertStatus(200)->assertJson(['status' => 'not_applied']);
 
         $this->assertDatabaseHas('subscription_events', ['event_type' => 'payment.unresolved']);
+    }
+
+    public function test_webhook_rejects_missing_event_id(): void
+    {
+        // At-least-once delivery contract: Razorpay sends x-razorpay-event-id on
+        // every webhook. Missing → fail-closed 400 (cannot dedup → cannot safely
+        // process). No mutation, no evidence, no retry storm.
+        config(['services.razorpay.webhook_secret' => 'test_secret']);
+        $this->bindTrustedWebhook();
+
+        $this->postJson('/subscription/payment/webhook',
+            $this->capturedPayload('pay_NOEID', 'order_TEST'),
+            ['X-Razorpay-Signature' => 'stubbed'] // no event id
+        )->assertStatus(400)->assertJson(['status' => 'rejected']);
+
+        $this->assertSame(0, ShopSubscription::where('razorpay_payment_id', 'pay_NOEID')->count());
+        $this->assertDatabaseMissing('subscription_events', ['event_type' => 'payment.unresolved']);
     }
 
     // ── Super-Admin visibility (Part 4) ─────────────────────────────────────
@@ -427,7 +459,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
         $this->postJson('/subscription/payment/webhook',
             ['event' => 'payment.failed',
              'payload' => ['payment' => ['entity' => ['order_id' => 'order_F', 'error_description' => 'declined']]]],
-            ['X-Razorpay-Signature' => 'stubbed']
+            $this->webhookHeaders('evt_failed')
         )->assertStatus(200);
 
         // payment.failed only writes a SubscriptionEvent — the closed alert set
@@ -454,12 +486,14 @@ class SubscriptionPaymentAlertingTest extends TestCase
                 'currency' => 'INR',
             ]]]];
 
-        $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
+        // A genuine Razorpay redelivery carries the SAME x-razorpay-event-id.
+        $headers = $this->webhookHeaders('evt_full_refund_1');
+        $this->postJson('/subscription/payment/webhook', $payload, $headers)
             ->assertStatus(200);
         // Duplicate delivery AFTER the first was fully processed: the durable
-        // subscription-event carrying refund_id=rfnd_1 is found, so no second
-        // alert — this survives even after the ShouldBeUnique cache lock expires.
-        $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
+        // subscription-event carrying event_id + refund_id is found (both
+        // dedup layers hold), so no second alert.
+        $this->postJson('/subscription/payment/webhook', $payload, $headers)
             ->assertStatus(200);
 
         $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
@@ -491,10 +525,11 @@ class SubscriptionPaymentAlertingTest extends TestCase
                 'currency' => 'INR',
             ]]]];
 
-        $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
+        $headers = $this->webhookHeaders('evt_partial_1');
+        $this->postJson('/subscription/payment/webhook', $payload, $headers)
             ->assertStatus(200);
         // Delayed duplicate after first fully processed → durable dedup, no 2nd alert.
-        $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
+        $this->postJson('/subscription/payment/webhook', $payload, $headers)
             ->assertStatus(200);
 
         $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
@@ -526,8 +561,9 @@ class SubscriptionPaymentAlertingTest extends TestCase
             'currency' => 'INR',
         ]]]];
 
-        $webhook->handleRefundCreated($payload);
-        $webhook->handleRefundCreated($payload); // second delivery, lock long gone
+        // Same event_id twice — a genuine at-least-once redelivery.
+        $webhook->handleRefundCreated($payload, 'evt_ddup');
+        $webhook->handleRefundCreated($payload, 'evt_ddup');
 
         $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
             fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'refund processed')));
@@ -538,22 +574,23 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
     /**
      * Post a refund.created webhook carrying an arbitrary entity map. Returns
-     * the response so each test asserts its own status + side-effects.
+     * the response so each test asserts its own status + side-effects. Each
+     * call gets a unique x-razorpay-event-id unless explicitly overridden.
      */
-    private function postRefund(array $entity)
+    private function postRefund(array $entity, string $eventId = null)
     {
         config(['services.razorpay.webhook_secret' => 'test_secret']);
         $this->bindTrustedWebhook();
 
         return $this->postJson('/subscription/payment/webhook',
             ['event' => 'refund.created', 'payload' => ['refund' => ['entity' => $entity]]],
-            ['X-Razorpay-Signature' => 'stubbed']
+            $this->webhookHeaders($eventId ?? 'evt_' . bin2hex(random_bytes(6)))
         );
     }
 
     /**
      * Shared assertions for a refund that must be REFUSED before mutation:
-     *   • webhook responds 422 (Razorpay stops retrying)
+     *   • webhook responds 200 (durable evidence recorded → Razorpay must NOT retry)
      *   • an immutable `refund.invalid` event is recorded
      *   • the subscription is NOT cancelled and NOT marked refunded
      *   • no refundProcessed ops alert is dispatched
@@ -587,7 +624,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         // No 'id' key at all → validation should refuse before touching the sub.
         $this->postRefund(['payment_id' => 'pay_MRID', 'amount' => 99900, 'currency' => 'INR'])
-            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+            ->assertStatus(200)->assertJson(['status' => 'not_applied']);
 
         $this->assertRefundRefused($sub);
     }
@@ -599,7 +636,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         // Explicit empty string — the same rung as missing.
         $this->postRefund(['id' => '', 'payment_id' => 'pay_BRID', 'amount' => 99900, 'currency' => 'INR'])
-            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+            ->assertStatus(200)->assertJson(['status' => 'not_applied']);
 
         $this->assertRefundRefused($sub);
     }
@@ -611,7 +648,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         // No payment_id → cannot bind to any subscription → refuse.
         $this->postRefund(['id' => 'rfnd_MP', 'amount' => 99900, 'currency' => 'INR'])
-            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+            ->assertStatus(200)->assertJson(['status' => 'not_applied']);
 
         $this->assertRefundRefused($sub);
     }
@@ -623,14 +660,14 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         // Zero amount → nonsense money → refuse.
         $this->postRefund(['id' => 'rfnd_Z', 'payment_id' => 'pay_ZERO', 'amount' => 0, 'currency' => 'INR'])
-            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+            ->assertStatus(200)->assertJson(['status' => 'not_applied']);
 
         $this->assertRefundRefused($sub);
 
         // Negative amount → same rung, same refusal.
         Bus::fake([SendOpsAlertEmail::class]);
         $this->postRefund(['id' => 'rfnd_N', 'payment_id' => 'pay_ZERO', 'amount' => -100, 'currency' => 'INR'])
-            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+            ->assertStatus(200)->assertJson(['status' => 'not_applied']);
     }
 
     public function test_refund_currency_mismatch_is_refused_permanent(): void
@@ -640,7 +677,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         // Subscriptions are INR-only; a USD event is foreign/tampered → refuse.
         $this->postRefund(['id' => 'rfnd_USD', 'payment_id' => 'pay_USD', 'amount' => 99900, 'currency' => 'USD'])
-            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+            ->assertStatus(200)->assertJson(['status' => 'not_applied']);
 
         $this->assertRefundRefused($sub);
         $this->assertDatabaseHas('subscription_events', [
@@ -678,7 +715,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
                     'id' => 'rfnd_TXN', 'payment_id' => 'pay_TXN',
                     'amount' => 99900, 'currency' => 'INR',
                 ]]],
-            ]);
+            ], 'evt_txn');
         } finally {
             DB::swap($real);
         }
@@ -764,11 +801,287 @@ class SubscriptionPaymentAlertingTest extends TestCase
         // …then the webhook races in for the same payment.
         $this->postJson('/subscription/payment/webhook',
             $this->capturedPayload('pay_SEQ', 'order_TEST'),
-            ['X-Razorpay-Signature' => 'stubbed']
+            $this->webhookHeaders('evt_seq')
         )->assertStatus(200);
 
         $this->assertSame(1, ShopSubscription::where('razorpay_payment_id', 'pay_SEQ')->count());
         $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
             fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Payment applied')));
+    }
+
+    // ── Money-integrity + event_id dedup (Phase 5 of webhook ACK/refund task) ──
+
+    public function test_duplicate_malformed_refund_by_event_id_records_one_evidence_only(): void
+    {
+        // At-least-once redelivery of the SAME malformed event (same event_id):
+        // the evidence row is created ONCE by event-id dedup — attempt_count
+        // may advance, but no second refund.invalid row appears.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_DUPMAL');
+
+        $entity = ['id' => 'rfnd_DM', 'payment_id' => 'pay_DUPMAL', 'amount' => 0, 'currency' => 'INR'];
+        $this->postRefund($entity, 'evt_dup_mal')->assertStatus(200);
+        $this->postRefund($entity, 'evt_dup_mal')->assertStatus(200);
+
+        $this->assertSame(1, SubscriptionEvent::where('event_type', 'refund.invalid')
+            ->where('after->event_id', 'evt_dup_mal')->count());
+        $this->assertRefundRefused($sub);
+    }
+
+    public function test_duplicate_valid_refund_by_event_id_dedups(): void
+    {
+        // Same VALID refund redelivered under the same event_id: exactly one
+        // subscription.refunded event, exactly one alert.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_EIDDUP');
+
+        $entity = ['id' => 'rfnd_EID', 'payment_id' => 'pay_EIDDUP', 'amount' => 99900, 'currency' => 'INR'];
+        $this->postRefund($entity, 'evt_eid_dup')->assertStatus(200);
+        $this->postRefund($entity, 'evt_eid_dup')->assertStatus(200);
+
+        $this->assertSame(1, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->where('event_type', 'subscription.refunded')
+            ->where('after->refund_id', 'rfnd_EID')->count());
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'refund processed')));
+    }
+
+    public function test_two_distinct_partial_refunds_track_cumulative_and_keep_active(): void
+    {
+        // Two DIFFERENT refunds — each < captured, cumulative < captured —
+        // must both be recorded as partial. Subscription remains active.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_2PART');
+
+        $this->postRefund(
+            ['id' => 'rfnd_P1', 'payment_id' => 'pay_2PART', 'amount' => 30000, 'currency' => 'INR'],
+            'evt_p1'
+        )->assertStatus(200);
+        $this->postRefund(
+            ['id' => 'rfnd_P2', 'payment_id' => 'pay_2PART', 'amount' => 40000, 'currency' => 'INR'],
+            'evt_p2'
+        )->assertStatus(200);
+
+        $this->assertSame(2, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->where('event_type', 'subscription.partial_refund')->count());
+        $this->assertNotSame('cancelled', $sub->fresh()->status);
+        // Two distinct alerts, one per refund.
+        $this->assertCount(2, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Partial refund processed')));
+    }
+
+    public function test_final_partial_completing_captured_triggers_full_refund_behavior_exactly_once(): void
+    {
+        // Two partials whose SUM equals captured: the second refund is the one
+        // that pushes cumulative to captured → full-refund behavior (cancel +
+        // revoke) fires exactly once. That refund's event is classified as
+        // subscription.refunded, not partial.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_FINPART');
+
+        // ₹300 partial
+        $this->postRefund(
+            ['id' => 'rfnd_A', 'payment_id' => 'pay_FINPART', 'amount' => 30000, 'currency' => 'INR'],
+            'evt_a'
+        )->assertStatus(200);
+        $this->assertNotSame('cancelled', $sub->fresh()->status,
+            'first partial must NOT cancel the subscription');
+
+        // ₹699 → cumulative ₹999 = captured ₹999
+        $this->postRefund(
+            ['id' => 'rfnd_B', 'payment_id' => 'pay_FINPART', 'amount' => 69900, 'currency' => 'INR'],
+            'evt_b'
+        )->assertStatus(200);
+
+        $this->assertSame('cancelled', $sub->fresh()->status,
+            'the refund that pushes cumulative to captured cancels the subscription');
+        $this->assertSame(1, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->where('event_type', 'subscription.refunded')
+            ->where('after->refund_id', 'rfnd_B')->count(),
+            'the final refund is classified as full');
+        $this->assertSame(1, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->where('event_type', 'subscription.partial_refund')->count(),
+            'earlier refund stays classified as partial');
+        // Exactly one Full-refund alert + one Partial-refund alert.
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Full refund processed')));
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Partial refund processed')));
+    }
+
+    public function test_individual_refund_over_captured_records_invalid_evidence(): void
+    {
+        // A single refund whose amount alone > captured is nonsense (tampered
+        // or misdirected). refund.invalid evidence, no mutation, no alert.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_OVER1');
+
+        $this->postRefund(
+            ['id' => 'rfnd_OV1', 'payment_id' => 'pay_OVER1', 'amount' => 200000, 'currency' => 'INR'],
+            'evt_ov1'
+        )->assertStatus(200)->assertJson(['status' => 'not_applied']);
+
+        $this->assertDatabaseHas('subscription_events', [
+            'event_type' => 'refund.invalid',
+            'after->refund_id' => 'rfnd_OV1',
+        ]);
+        $this->assertRefundRefused($sub);
+    }
+
+    public function test_cumulative_refunds_over_captured_records_invalid_evidence(): void
+    {
+        // Two refunds — each ≤ captured individually, but SUM > captured → the
+        // second one must be refused as invalid evidence, no mutation.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_OVERSUM');
+
+        // ₹700 partial — legitimate.
+        $this->postRefund(
+            ['id' => 'rfnd_S1', 'payment_id' => 'pay_OVERSUM', 'amount' => 70000, 'currency' => 'INR'],
+            'evt_s1'
+        )->assertStatus(200);
+        // ₹500 partial — but cumulative would be ₹1200 > ₹999 captured.
+        $this->postRefund(
+            ['id' => 'rfnd_S2', 'payment_id' => 'pay_OVERSUM', 'amount' => 50000, 'currency' => 'INR'],
+            'evt_s2'
+        )->assertStatus(200)->assertJson(['status' => 'not_applied']);
+
+        $this->assertDatabaseHas('subscription_events', [
+            'event_type' => 'refund.invalid',
+            'after->refund_id' => 'rfnd_S2',
+        ]);
+        // First partial remains valid; subscription stays active.
+        $this->assertSame(1, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->where('event_type', 'subscription.partial_refund')->count());
+        $this->assertNotSame('cancelled', $sub->fresh()->status);
+    }
+
+    public function test_unknown_payment_id_records_invalid_evidence(): void
+    {
+        // Refund arrives for a payment id that has NO local subscription.
+        // Under the corrected contract this is refund.invalid evidence (not a
+        // silent no-op) — a genuine cross-shop mismatch or misroute needs
+        // admin visibility.
+        Bus::fake([SendOpsAlertEmail::class]);
+
+        $this->postRefund(
+            ['id' => 'rfnd_UNK', 'payment_id' => 'pay_UNKNOWN', 'amount' => 10000, 'currency' => 'INR'],
+            'evt_unk'
+        )->assertStatus(200)->assertJson(['status' => 'not_applied']);
+
+        $this->assertDatabaseHas('subscription_events', [
+            'event_type' => 'refund.invalid',
+            'after->refund_id' => 'rfnd_UNK',
+            'after->payment_id' => 'pay_UNKNOWN',
+        ]);
+        Bus::assertNotDispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'refund processed'));
+    }
+
+    public function test_cross_shop_refund_attaches_evidence_to_correct_shop_only(): void
+    {
+        // Two shops, one payment id owned by shop A. A refund for pay_A must
+        // stamp its refund event on shop A only — never on shop B. (The refund
+        // resolves by unique razorpay_payment_id, so the tenant is authoritative.)
+        Bus::fake([SendOpsAlertEmail::class]);
+        $subA = $this->seedSubscriptionForRefund('pay_A');
+        // A second shop with its own subscription (different payment id).
+        $shopBAdmin = $this->createPlatformAdmin();
+        $planB = $this->createPlan('retailer');
+        $shopB = $this->createShop('retailer');
+        $roleB = $this->createOwnerRole($shopB->id);
+        $this->createOwnerUser($shopB, $roleB);
+        $subB = $this->createSubscription($shopB->id, $shopBAdmin, $planB);
+        $subB->forceFill(['razorpay_payment_id' => 'pay_B', 'price_paid' => 999.0])->save();
+
+        // Refund for pay_A must land only on subA / shopA.
+        $this->postRefund(
+            ['id' => 'rfnd_A', 'payment_id' => 'pay_A', 'amount' => 40000, 'currency' => 'INR'],
+            'evt_a_only'
+        )->assertStatus(200);
+
+        $this->assertSame(1, SubscriptionEvent::where('shop_subscription_id', $subA->id)
+            ->where('event_type', 'subscription.partial_refund')->count());
+        $this->assertSame(0, SubscriptionEvent::where('shop_subscription_id', $subB->id)
+            ->whereIn('event_type', ['subscription.refunded', 'subscription.partial_refund'])->count(),
+            'refund for shop A must never attach to shop B');
+        $this->assertSame($subA->shop_id, SubscriptionEvent::where('shop_subscription_id', $subA->id)
+            ->where('event_type', 'subscription.partial_refund')->firstOrFail()->shop_id);
+    }
+
+    public function test_transient_recovery_processes_exactly_once(): void
+    {
+        // First delivery raises → transient (no mutation, no evidence).
+        // Second delivery (identical event_id, DB healthy) → processed exactly
+        // once: single refund event, single alert.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_RECOV');
+
+        $payload = ['payload' => ['refund' => ['entity' => [
+            'id' => 'rfnd_R', 'payment_id' => 'pay_RECOV', 'amount' => 99900, 'currency' => 'INR',
+        ]]]];
+
+        // Inject transient failure ONLY for the first call.
+        $real = $this->app->make('db');
+        $mock = Mockery::mock($real)->makePartial();
+        $mock->shouldReceive('transaction')->once()->andThrow(new \RuntimeException('simulated deadlock'));
+        DB::swap($mock);
+
+        $outcome1 = null;
+        try {
+            $outcome1 = app(SubscriptionWebhookService::class)->handleRefundCreated($payload, 'evt_recov');
+        } finally {
+            DB::swap($real);
+        }
+
+        $this->assertSame(SubscriptionPaymentService::OUTCOME_TRANSIENT, $outcome1);
+        $this->assertSame(0, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->whereIn('event_type', ['subscription.refunded', 'subscription.partial_refund'])->count());
+
+        // Second delivery — DB healthy. Must process exactly once.
+        $outcome2 = app(SubscriptionWebhookService::class)->handleRefundCreated($payload, 'evt_recov');
+        $this->assertSame(SubscriptionPaymentService::OUTCOME_APPLIED, $outcome2);
+        $this->assertSame(1, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->where('event_type', 'subscription.refunded')->count());
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'refund processed')));
+    }
+
+    public function test_event_id_is_sole_dedup_when_both_ids_blank(): void
+    {
+        // A pure-junk redelivery: no refund_id AND no payment_id AND same
+        // event_id twice → event_id is the ONLY dedup primitive available.
+        // Exactly ONE refund.invalid row must be recorded.
+        Bus::fake([SendOpsAlertEmail::class]);
+
+        $this->postRefund(['amount' => 0, 'currency' => 'INR'], 'evt_blank_ids')
+            ->assertStatus(200);
+        $this->postRefund(['amount' => 0, 'currency' => 'INR'], 'evt_blank_ids')
+            ->assertStatus(200);
+
+        $this->assertSame(1, SubscriptionEvent::where('event_type', 'refund.invalid')
+            ->where('after->event_id', 'evt_blank_ids')->count(),
+            'event_id must be sufficient to dedup when refund_id and payment_id are absent');
+    }
+
+    public function test_refund_invalid_evidence_carries_no_secrets_or_signature(): void
+    {
+        // The refund.invalid audit row must persist only safe fields:
+        // event_id, refund_id, payment_id, paise, currency, timestamps,
+        // reason. NEVER signature/secret/token/card/PII.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $this->seedSubscriptionForRefund('pay_CLEAN_INV');
+
+        $this->postRefund(
+            ['id' => 'rfnd_CLN', 'payment_id' => 'pay_CLEAN_INV', 'amount' => 200000, 'currency' => 'INR'],
+            'evt_clean_inv'
+        );
+
+        $event = SubscriptionEvent::where('event_type', 'refund.invalid')
+            ->where('after->refund_id', 'rfnd_CLN')->firstOrFail();
+        $blob = strtolower(json_encode($event->after) . ' ' . strtolower($event->reason));
+        foreach (['signature', 'secret', 'token', 'razorpay_signature', 'card_number', 'cvv', 'pan '] as $needle) {
+            $this->assertStringNotContainsString($needle, $blob, "invalid-refund evidence leaked '{$needle}'");
+        }
     }
 }

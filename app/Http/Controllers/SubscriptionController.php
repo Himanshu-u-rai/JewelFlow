@@ -544,6 +544,8 @@ class SubscriptionController extends Controller
         $body = $request->getContent();
         $signature = $request->header('X-Razorpay-Signature');
 
+        // Signature verification MUST run against the raw body first — before we
+        // trust any header value including x-razorpay-event-id.
         try {
             $this->webhookService->verifySignature($body, $signature);
         } catch (\RuntimeException $e) {
@@ -553,33 +555,46 @@ class SubscriptionController extends Controller
             return response()->json(['status' => 'rejected'], 400);
         }
 
+        // At-least-once delivery contract: Razorpay stamps every webhook with a
+        // unique x-razorpay-event-id. It is the ONLY primitive that lets us
+        // durably collapse a redelivered event to a single record/alert/mutation
+        // without adding a schema column. Missing → fail-closed 400 (no mutation,
+        // no evidence, no retry storm) because we cannot dedup without it.
+        $eventId = trim((string) $request->header('X-Razorpay-Event-Id', ''));
+        if ($eventId === '') {
+            Log::warning('Razorpay webhook rejected — missing x-razorpay-event-id (cannot dedup at-least-once delivery)');
+            return response()->json(['status' => 'rejected', 'reason' => 'missing event id'], 400);
+        }
+
         $payload = json_decode($body, true);
         $event = $payload['event'] ?? '';
 
-        Log::info('Razorpay webhook', ['event' => $event]);
+        Log::info('Razorpay webhook', ['event' => $event, 'event_id' => $eventId]);
 
-        // payment.captured and refund.created both report a graded outcome:
-        //   captured can leave money captured-but-unapplied;
-        //   refund.created fail-closed-refuses malformed refund events (422)
-        //   and reports transient DB/provider hiccups (500) for safe retry.
-        // payment.failed and unhandled events are best-effort logs → 200.
+        // Graded outcome reported by each handler:
+        //   applied   → 200 (processed OK, or already processed / harmless no-op)
+        //   permanent → 200 (durable evidence recorded; Razorpay must NOT retry
+        //               — retry cannot fix a permanently-classified event that
+        //               the app has already consumed and audited)
+        //   transient → 500 (DB/provider hiccup; safe for Razorpay to retry the
+        //               STILL-unapplied event)
         $outcome = match ($event) {
-            'payment.captured' => $this->webhookService->handlePaymentCaptured($payload),
-            'refund.created' => $this->webhookService->handleRefundCreated($payload),
-            'payment.failed' => $this->void_(fn () => $this->webhookService->handlePaymentFailed($payload)),
-            default => $this->void_(fn () => Log::info('Webhook: unhandled event', ['event' => $event])),
+            'payment.captured' => $this->webhookService->handlePaymentCaptured($payload, $eventId),
+            'refund.created' => $this->webhookService->handleRefundCreated($payload, $eventId),
+            'payment.failed' => $this->void_(fn () => $this->webhookService->handlePaymentFailed($payload, $eventId)),
+            default => $this->void_(fn () => Log::info('Webhook: unhandled event', ['event' => $event, 'event_id' => $eventId])),
         };
 
-        // Map the outcome to a status Razorpay understands:
-        //   transient → 500 so Razorpay retries the still-unapplied payment;
-        //   permanent → 422 so Razorpay stops retrying an unfixable payment
-        //               (an immutable admin-visible mismatch was already recorded);
-        //   applied   → 200.
+        // Both APPLIED and PERMANENT map to 2xx: PERMANENT means immutable
+        // admin-visible evidence has already been durably recorded, so a
+        // Razorpay retry would only re-hit the same durable dedup and produce
+        // no additional record. Returning 4xx here would trigger an unbounded
+        // retry loop with no new information.
         return match ($outcome) {
             SubscriptionPaymentService::OUTCOME_TRANSIENT =>
                 response()->json(['status' => 'retry'], 500),
             SubscriptionPaymentService::OUTCOME_PERMANENT =>
-                response()->json(['status' => 'not_applied'], 422),
+                response()->json(['status' => 'not_applied'], 200),
             default => response()->json(['status' => 'ok'], 200),
         };
     }

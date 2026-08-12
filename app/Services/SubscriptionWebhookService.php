@@ -42,12 +42,19 @@ class SubscriptionWebhookService
      *
      * Returns a coarse outcome the controller maps to an HTTP status:
      *   applied   → 200 (money applied, or idempotently already applied/updated)
-     *   permanent → 4xx (validation failed / malformed — Razorpay should stop)
+     *   permanent → 200 (validation failed / malformed — evidence recorded,
+     *                    Razorpay must NOT retry the durably-consumed event)
      *   transient → 5xx (provider/DB hiccup — Razorpay should retry)
      *
      * A captured payment that remains UNAPPLIED never returns 'applied'.
+     *
+     * $eventId — Razorpay's x-razorpay-event-id header. Used for logging /
+     * observability and (for durable-audited events) event_id dedup. Existing
+     * payment_id-based idempotency (unique constraint + payment.unresolved
+     * dedup by payment_id) already collapses redeliveries at the correctness
+     * layer, so event_id is threaded here mostly for the audit trail.
      */
-    public function handlePaymentCaptured(array $payload): string
+    public function handlePaymentCaptured(array $payload, string $eventId = ''): string
     {
         $entity = $payload['payload']['payment']['entity'] ?? [];
         $paymentId = $entity['id'] ?? null;
@@ -149,8 +156,11 @@ class SubscriptionWebhookService
 
     /**
      * Handle the payment.failed webhook event.
+     *
+     * $eventId is persisted in `after.event_id` so a redelivery of the same
+     * provider event dedups by event_id and does not create a second row.
      */
-    public function handlePaymentFailed(array $payload): void
+    public function handlePaymentFailed(array $payload, string $eventId = ''): void
     {
         $paymentEntity = $payload['payload']['payment']['entity'] ?? [];
         $orderId = $paymentEntity['order_id'] ?? null;
@@ -159,7 +169,15 @@ class SubscriptionWebhookService
         Log::warning('Webhook: payment.failed', [
             'order_id' => $orderId,
             'error' => $errorDesc,
+            'event_id' => $eventId,
         ]);
+
+        // Durable event-id dedup: a redelivery with the same x-razorpay-event-id
+        // must not create an additional row (see: at-least-once delivery contract).
+        if ($eventId !== '' && SubscriptionEvent::where('event_type', 'payment.failed')
+            ->where('after->event_id', $eventId)->exists()) {
+            return;
+        }
 
         if ($orderId) {
             SubscriptionEvent::create([
@@ -168,7 +186,11 @@ class SubscriptionWebhookService
                 'admin_id' => null,
                 'event_type' => 'payment.failed',
                 'before' => null,
-                'after' => ['order_id' => $orderId, 'error' => $errorDesc],
+                'after' => [
+                    'event_id' => $eventId,
+                    'order_id' => $orderId,
+                    'error' => $errorDesc,
+                ],
                 'reason' => 'Razorpay webhook: payment failed — ' . $errorDesc,
             ]);
         }
@@ -177,34 +199,57 @@ class SubscriptionWebhookService
     /**
      * Handle the refund.created webhook event — for PARTIAL and FULL refunds.
      *
-     * FAIL-CLOSED VALIDATION runs BEFORE any mutation. A correctly-signed but
-     * malformed refund (missing/blank ids, non-positive amount, non-INR
-     * currency) MUST NOT revoke entitlement, mark the subscription refunded,
-     * or fire an ops alert. It records an immutable, deduped admin-visible
-     * `refund.invalid` event and returns PERMANENT so Razorpay stops retrying.
+     * MONEY-INTEGRITY CONTRACT (authoritative money math):
      *
-     * DEDUP is DURABLE, not cache-based. Razorpay may re-deliver the same
-     * refund.created long after the alert job's ShouldBeUnique lock (10 min)
-     * has expired, so the sole permanent guard is an immutable subscription
-     * event recording the provider refund id. We:
-     *   1. lock the authoritative subscription row (serialize concurrent
-     *      duplicate deliveries of the SAME refund), then
-     *   2. re-check for an existing event carrying this refund_id, then
-     *   3. record ONE event + fire ONE internal alert.
-     * Only a FULL refund cancels the subscription and revokes its edition; a
-     * PARTIAL refund leaves the subscription active. Exactly one alert either way.
+     *   • ALL amount comparisons happen in INTEGER PAISE. `price_paid` is
+     *     converted once via `(int) round($rupees * 100)`. No float compare.
+     *
+     *   • Currency is checked against the authoritative captured payment's
+     *     currency (SubscriptionPaymentService::EXPECTED_CURRENCY / INR-only),
+     *     never against an unconnected request value.
+     *
+     *   • CUMULATIVE refunded is computed live under `lockForUpdate()` by
+     *     SUMming `after->refund_amount_paise` across every prior valid refund
+     *     event (partial + full) for this subscription. A single refund whose
+     *     amount ≤ captured is not enough — cumulative ≤ captured is enforced.
+     *
+     *   • FULL-vs-PARTIAL classification is based on the AUTHORITATIVE
+     *     cumulative-after-this-refund, not on whether this one refund happens
+     *     to equal price_paid. The refund that pushes cumulative to captured
+     *     is the one that emits full-refund behavior — EXACTLY ONCE.
+     *
+     *   • Over-refund, currency mismatch, unknown payment, and every field
+     *     failure are recorded as immutable `refund.invalid` evidence (safe
+     *     fields only — no signature / secret / token / raw payload) and the
+     *     handler returns PERMANENT (mapped to 2xx: the event is durably
+     *     consumed, Razorpay must not retry it).
+     *
+     * DEDUP is DURABLE and layered:
+     *   1. event_id (x-razorpay-event-id) — collapses at-least-once delivery
+     *      across ALL event types (invalid + valid) via `after->event_id`.
+     *   2. refund_id — preserved for valid refunds via `after->refund_id`.
+     *      Defense-in-depth: even if a provider ever reused the same refund
+     *      under a fresh event_id, the cumulative event still records once.
+     *
+     * CONCURRENCY:
+     *   • PostgreSQL advisory transaction-scoped lock keyed on the event_id
+     *     serializes duplicate concurrent deliveries of the SAME event before
+     *     they can each pass the dedup check.
+     *   • ShopSubscription::lockForUpdate serializes concurrent DIFFERENT
+     *     refunds against the same subscription so cumulative math is atomic.
      *
      * Returns a graded outcome the controller maps to an HTTP status:
-     *   applied   → 200  (processed, or harmless no-op for an unknown payment)
-     *   permanent → 422  (validation failed — retry can never fix)
+     *   applied   → 200  (processed, or already processed / harmless no-op)
+     *   permanent → 200  (immutable evidence recorded; Razorpay must NOT retry)
      *   transient → 500  (provider/DB hiccup — safe for Razorpay to retry)
      */
-    public function handleRefundCreated(array $payload): string
+    public function handleRefundCreated(array $payload, string $eventId = ''): string
     {
         $refundEntity = $payload['payload']['refund']['entity'] ?? [];
         $paymentId = (string) ($refundEntity['payment_id'] ?? '');
         $refundId  = (string) ($refundEntity['id'] ?? '');
-        // Razorpay sends the refunded amount in paise (int).
+        // Razorpay sends the refunded amount in paise (int) — integer arithmetic
+        // is authoritative here; the rupee value is derived only for display.
         $amountPaise    = (int) ($refundEntity['amount'] ?? 0);
         $refundedRupees = $amountPaise / 100;
         $currency       = (string) ($refundEntity['currency'] ?? '');
@@ -229,40 +274,60 @@ class SubscriptionWebhookService
         };
 
         if ($problem !== null) {
-            $this->recordInvalidRefund($paymentId, $refundId, $problem, $amountPaise, $currency);
+            $this->recordInvalidRefund($paymentId, $refundId, $problem, $amountPaise, $currency, $eventId);
             return SubscriptionPaymentService::OUTCOME_PERMANENT;
         }
 
         // ── Transactional processing (fail-safe: any throw → transient/500) ──
         try {
-            return DB::transaction(function () use ($paymentId, $refundId, $refundedRupees, $currency) {
-                // Lock the authoritative row: a second delivery of the same refund
-                // blocks here until the first commits, then re-checks dedup below.
+            return DB::transaction(function () use ($paymentId, $refundId, $refundedRupees, $amountPaise, $currency, $eventId) {
+                // Advisory lock keyed on event_id serializes concurrent duplicate
+                // deliveries of the SAME event so the dedup check below sees
+                // committed state from the first delivery, not a racing sibling.
+                // Transaction-scoped: released on commit/rollback automatically.
+                if ($eventId !== '' && $this->isPostgres()) {
+                    DB::statement("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", [$eventId]);
+                }
+
+                // event_id dedup FIRST — collapses any redelivery of the same
+                // provider event regardless of outcome (invalid, partial, full).
+                if ($eventId !== '' && SubscriptionEvent::where('after->event_id', $eventId)->exists()) {
+                    Log::info('Webhook: refund.created — event_id already processed, skipping', [
+                        'event_id'  => $eventId,
+                        'refund_id' => $refundId,
+                    ]);
+                    return SubscriptionPaymentService::OUTCOME_APPLIED;
+                }
+
+                // Lock the authoritative row: a second delivery of a DIFFERENT
+                // refund for the same subscription blocks until the first
+                // commits, so cumulative math stays atomic.
                 $subscription = ShopSubscription::where('razorpay_payment_id', $paymentId)
                     ->lockForUpdate()
                     ->first();
 
                 if (!$subscription) {
-                    // Unknown payment: not our subscription (could be an unrelated
-                    // Razorpay payment on the same key). Harmless no-op — do NOT
-                    // 422, or Razorpay would stop retrying a payment that might
-                    // later show up. Do NOT 500 either — nothing is broken.
-                    Log::info('Webhook: refund.created — no subscription for payment', [
-                        'payment_id' => $paymentId,
-                        'refund_id'  => $refundId,
-                    ]);
-                    return SubscriptionPaymentService::OUTCOME_APPLIED;
+                    // Unknown payment: we cannot bind to a local subscription. Under
+                    // the current contract this MUST be recorded as immutable
+                    // `refund.invalid` evidence (not a silent no-op) — a genuine
+                    // cross-shop mismatch, tampered payload, or provider misroute
+                    // needs admin visibility. Return PERMANENT (→ 2xx after evidence).
+                    $this->recordInvalidRefund(
+                        $paymentId, $refundId,
+                        'no local subscription found for payment id',
+                        $amountPaise, $currency, $eventId
+                    );
+                    return SubscriptionPaymentService::OUTCOME_PERMANENT;
                 }
 
-                // DURABLE dedup: an immutable event already recording this provider
-                // refund id means it was handled — survives ShouldBeUnique expiry so a
-                // delayed duplicate never enqueues a second semantic alert.
-                $already = SubscriptionEvent::where('shop_subscription_id', $subscription->id)
+                // Defense-in-depth: refund_id dedup (survives even if a provider
+                // ever reuses a refund id under a fresh event_id).
+                $alreadyByRefundId = SubscriptionEvent::where('shop_subscription_id', $subscription->id)
                     ->whereIn('event_type', ['subscription.refunded', 'subscription.partial_refund'])
                     ->where('after->refund_id', $refundId)
                     ->exists();
 
-                if ($already) {
+                if ($alreadyByRefundId) {
                     Log::info('Webhook: refund.created — refund id already processed, skipping', [
                         'payment_id'      => $paymentId,
                         'refund_id'       => $refundId,
@@ -271,9 +336,46 @@ class SubscriptionWebhookService
                     return SubscriptionPaymentService::OUTCOME_APPLIED;
                 }
 
-                $pricePaid = (float) ($subscription->price_paid ?? 0);
-                // Full refund: refunded >= price paid (within a tiny rounding epsilon).
-                $isFullRefund   = $refundedRupees >= ($pricePaid - 0.01);
+                // Authoritative captured amount from the LOCAL record, in paise.
+                $pricePaid     = (float) ($subscription->price_paid ?? 0);
+                $capturedPaise = (int) round($pricePaid * 100);
+
+                // Individual over-refund: this one refund alone > captured is nonsense
+                // (a tampered or misdirected event). Record evidence, no mutation.
+                if ($amountPaise > $capturedPaise) {
+                    $this->recordInvalidRefund(
+                        $paymentId, $refundId,
+                        "refund amount ({$amountPaise} paise) exceeds captured ({$capturedPaise} paise)",
+                        $amountPaise, $currency, $eventId
+                    );
+                    return SubscriptionPaymentService::OUTCOME_PERMANENT;
+                }
+
+                // Cumulative over-refund: SUM(prior valid refunds in paise) + this
+                // one must not exceed captured. Computed live under lockForUpdate so
+                // two concurrent refunds cannot both slip past the guard.
+                //
+                // Portable SUM over JSON: the JSON cast handles Postgres vs the SQLite
+                // in-memory fallback used by some historical tests.
+                $priorCumulativePaise = (int) SubscriptionEvent::where('shop_subscription_id', $subscription->id)
+                    ->whereIn('event_type', ['subscription.refunded', 'subscription.partial_refund'])
+                    ->sum(DB::raw($this->refundAmountPaiseSumExpr()));
+                $newCumulativePaise = $priorCumulativePaise + $amountPaise;
+
+                if ($newCumulativePaise > $capturedPaise) {
+                    $this->recordInvalidRefund(
+                        $paymentId, $refundId,
+                        "cumulative refunds ({$newCumulativePaise} paise) would exceed captured ({$capturedPaise} paise)",
+                        $amountPaise, $currency, $eventId
+                    );
+                    return SubscriptionPaymentService::OUTCOME_PERMANENT;
+                }
+
+                // Full vs partial is decided by the AUTHORITATIVE cumulative, not
+                // by comparing a single refund to price_paid. This is the refund
+                // that pushes cumulative to captured → it emits full-refund
+                // behavior (cancel + edition revoke) exactly once.
+                $isFullRefund   = $newCumulativePaise === $capturedPaise;
                 $classification = $isFullRefund ? 'full' : 'partial';
 
                 $before = $subscription->toArray();
@@ -285,14 +387,19 @@ class SubscriptionWebhookService
                     ]);
                 }
 
-                // The refund id lives in `after` so the durable dedup query above can
-                // find it on any later duplicate delivery.
+                // The refund id + event id + paise amounts live in `after` so the
+                // durable dedup queries above find them on any redelivery, and
+                // the next cumulative computation sums correct paise.
                 $after = array_merge($subscription->fresh()->toArray(), [
-                    'refund_id'             => $refundId,
-                    'payment_id'            => $paymentId,
-                    'refunded_amount'       => $refundedRupees,
-                    'currency'              => $currency,
-                    'refund_classification' => $classification,
+                    'event_id'                    => $eventId,
+                    'refund_id'                   => $refundId,
+                    'payment_id'                  => $paymentId,
+                    'refund_amount_paise'         => $amountPaise,
+                    'refunded_amount'             => $refundedRupees,
+                    'currency'                    => $currency,
+                    'refund_classification'       => $classification,
+                    'captured_amount_paise'       => $capturedPaise,
+                    'cumulative_refunded_paise'   => $newCumulativePaise,
                 ]);
 
                 SubscriptionEvent::create([
@@ -304,7 +411,8 @@ class SubscriptionWebhookService
                     'after'                => $after,
                     'reason'               => 'Razorpay ' . $classification . ' refund: ' . $refundId
                         . ' (' . $currency . ' ' . number_format($refundedRupees, 2)
-                        . ' of ' . $currency . ' ' . number_format($pricePaid, 2) . ')'
+                        . ' of ' . $currency . ' ' . number_format($pricePaid, 2)
+                        . '; cumulative ' . $currency . ' ' . number_format($newCumulativePaise / 100, 2) . ')'
                         . ($isFullRefund ? '' : ' — subscription remains active'),
                 ]);
 
@@ -319,12 +427,14 @@ class SubscriptionWebhookService
                 }
 
                 Log::info('Webhook: refund.created processed', [
-                    'payment_id'      => $paymentId,
-                    'refund_id'       => $refundId,
-                    'subscription_id' => $subscription->id,
-                    'classification'  => $classification,
-                    'refunded'        => $refundedRupees,
-                    'price_paid'      => $pricePaid,
+                    'event_id'                  => $eventId,
+                    'payment_id'                => $paymentId,
+                    'refund_id'                 => $refundId,
+                    'subscription_id'           => $subscription->id,
+                    'classification'            => $classification,
+                    'refund_amount_paise'       => $amountPaise,
+                    'captured_amount_paise'     => $capturedPaise,
+                    'cumulative_refunded_paise' => $newCumulativePaise,
                 ]);
 
                 // Exactly one internal alert per validated refund (partial OR full).
@@ -339,6 +449,7 @@ class SubscriptionWebhookService
             // Any DB/provider hiccup: transaction is rolled back, no partial state.
             // Report transient so Razorpay retries the STILL-unapplied refund.
             Log::error('Webhook: refund.created transient failure — will retry', [
+                'event_id'   => $eventId,
                 'payment_id' => $paymentId,
                 'refund_id'  => $refundId,
                 'error'      => $e->getMessage(),
@@ -347,27 +458,68 @@ class SubscriptionWebhookService
         }
     }
 
+    /** Whether the default DB connection is PostgreSQL (production/staging). */
+    private function isPostgres(): bool
+    {
+        try {
+            return DB::connection()->getDriverName() === 'pgsql';
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * A driver-portable SUM expression over `after->refund_amount_paise`:
+     *   • Postgres: `CAST(after->>'refund_amount_paise' AS BIGINT)`
+     *   • Other: falls back to a JSON_EXTRACT form that yields 0 outside PG.
+     * Non-PG environments are only ever hit by unit-level tests; production
+     * and the CI feature suite both run against Postgres.
+     */
+    private function refundAmountPaiseSumExpr(): string
+    {
+        return $this->isPostgres()
+            ? "COALESCE(CAST(after->>'refund_amount_paise' AS BIGINT), 0)"
+            : "COALESCE(JSON_EXTRACT(after, '$.refund_amount_paise'), 0)";
+    }
+
     /**
      * Immutable, admin-visible evidence that a correctly-signed but malformed
      * refund event arrived and was refused BEFORE any subscription mutation.
-     * Deduped by refund id (or payment id when refund id is blank): the first
-     * failure creates the record; subsequent identical redeliveries only
-     * advance attempt_count / last_failed_at so the ledger and inbox stay clean.
+     *
+     * Also used for money-integrity refusals (over-refund, cumulative
+     * over-refund, unknown payment) that pass field validation but cannot
+     * be safely applied.
+     *
+     * DEDUP order (strongest → weakest primitive that avoids duplicate rows):
+     *   1. event_id  — collapses at-least-once redeliveries of the same event
+     *   2. refund_id — collapses same refund arriving under a different event
+     *   3. payment_id — last-resort fallback when refund id is missing
+     *
+     * Safe fields ONLY are persisted (event_id, refund_id, payment_id, paise,
+     * currency, attempt counters, reason). No signature / secret / token / raw
+     * payload / card details / PII — the admin surface only ever renders these.
      *
      * No alert fired here by design: these are non-actionable refusals surfaced
      * through the same super-admin unresolved-payments panel that shows
      * payment.unresolved records. Log at critical for external alerting hooks.
      */
-    private function recordInvalidRefund(string $paymentId, string $refundId, string $reason, int $amountPaise, string $currency): void
-    {
+    private function recordInvalidRefund(
+        string $paymentId,
+        string $refundId,
+        string $reason,
+        int $amountPaise,
+        string $currency,
+        string $eventId = ''
+    ): void {
         $now        = now()->toIso8601String();
         $reasonText = 'Razorpay refund refused — validation failed: ' . $reason;
 
-        // Dedup key: prefer refund id; fall back to payment id when the event
-        // literally arrived without one. If both are blank we still create a
-        // row so the audit trail records the malformed delivery.
+        // Dedup query: layered from strongest to weakest so a redelivery
+        // never creates a duplicate row.
         $query = SubscriptionEvent::where('event_type', 'refund.invalid');
-        if ($refundId !== '') {
+        if ($eventId !== '') {
+            $query->where('after->event_id', $eventId);
+        } elseif ($refundId !== '') {
             $query->where('after->refund_id', $refundId);
         } elseif ($paymentId !== '') {
             $query->whereNull('after->refund_id')->where('after->payment_id', $paymentId);
@@ -393,6 +545,7 @@ class SubscriptionWebhookService
             'event_type'           => 'refund.invalid',
             'before'               => null,
             'after'                => [
+                'event_id'           => $eventId,
                 'payment_id'         => $paymentId,
                 'refund_id'          => $refundId,
                 'refund_amount_paise'=> $amountPaise,
@@ -402,11 +555,13 @@ class SubscriptionWebhookService
                 'last_failed_at'     => $now,
                 'transient'          => false,
                 'resolved_at'        => null,
+                'validation_reason'  => $reason,
             ],
             'reason'               => $reasonText,
         ]);
 
         Log::critical('Refund refused — validation failed', [
+            'event_id'    => $eventId,
             'payment_id'  => $paymentId,
             'refund_id'   => $refundId,
             'amount_paise'=> $amountPaise,
