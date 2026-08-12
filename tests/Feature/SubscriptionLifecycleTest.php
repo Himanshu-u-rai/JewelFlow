@@ -215,20 +215,24 @@ class SubscriptionLifecycleTest extends TestCase
     {
         $sub = $this->makeSubscription(['price_paid' => 19999, 'status' => 'active']);
 
+        // Realistic Razorpay refund entity: non-blank refund id, matching
+        // payment id, integer paise, INR. The unique x-razorpay-event-id
+        // threads through so event-id dedup can uniquely identify this delivery.
         $this->webhookService()->handleRefundCreated([
             'payload' => ['refund' => ['entity' => [
                 'payment_id' => $sub->razorpay_payment_id,
-                'id' => 'rfnd_full_1',
-                'amount' => 1999900, // ₹19,999 in paise == price_paid
+                'id'         => 'rfnd_full_1',
+                'amount'     => 1999900,   // ₹19,999.00 in paise == price_paid
+                'currency'   => 'INR',
             ]]],
-        ]);
+        ], 'evt_full_' . uniqid());
 
         $sub->refresh();
         $this->assertSame('cancelled', $sub->status);
         $this->assertNotNull($sub->cancelled_at);
         $this->assertDatabaseHas('subscription_events', [
             'shop_subscription_id' => $sub->id,
-            'event_type' => 'subscription.refunded',
+            'event_type'           => 'subscription.refunded',
         ]);
     }
 
@@ -239,21 +243,22 @@ class SubscriptionLifecycleTest extends TestCase
         $this->webhookService()->handleRefundCreated([
             'payload' => ['refund' => ['entity' => [
                 'payment_id' => $sub->razorpay_payment_id,
-                'id' => 'rfnd_partial_1',
-                'amount' => 500000, // ₹5,000 < price_paid
+                'id'         => 'rfnd_partial_1',
+                'amount'     => 500000,    // ₹5,000.00 < price_paid
+                'currency'   => 'INR',
             ]]],
-        ]);
+        ], 'evt_partial_' . uniqid());
 
         $sub->refresh();
         $this->assertSame('active', $sub->status, 'Partial refund must not change subscription status.');
         $this->assertNull($sub->cancelled_at);
         $this->assertDatabaseHas('subscription_events', [
             'shop_subscription_id' => $sub->id,
-            'event_type' => 'subscription.partial_refund',
+            'event_type'           => 'subscription.partial_refund',
         ]);
         $this->assertDatabaseMissing('subscription_events', [
             'shop_subscription_id' => $sub->id,
-            'event_type' => 'subscription.refunded',
+            'event_type'           => 'subscription.refunded',
         ]);
     }
 

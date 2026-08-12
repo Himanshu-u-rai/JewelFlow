@@ -825,6 +825,10 @@ class SubscriptionPaymentAlertingTest extends TestCase
 
         $this->assertSame(1, SubscriptionEvent::where('event_type', 'refund.invalid')
             ->where('after->event_id', 'evt_dup_mal')->count());
+        // Alert fires on the FIRST occurrence only; the redelivery hits the
+        // dedup-update branch in recordInvalidRefund and does not re-alert.
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Refund permanently refused')));
         $this->assertRefundRefused($sub);
     }
 
@@ -1062,6 +1066,61 @@ class SubscriptionPaymentAlertingTest extends TestCase
         $this->assertSame(1, SubscriptionEvent::where('event_type', 'refund.invalid')
             ->where('after->event_id', 'evt_blank_ids')->count(),
             'event_id must be sufficient to dedup when refund_id and payment_id are absent');
+    }
+
+    public function test_permanently_invalid_refund_dispatches_one_dedicated_permanent_alert(): void
+    {
+        // A validly-signed but permanently-invalid refund MUST enqueue exactly
+        // ONE dedicated permanent-validation-failure alert, on connection
+        // `database` / queue `ops-alerts` (SendOpsAlertEmail is pinned there),
+        // with a stable eventKey keyed on x-razorpay-event-id. No `refund
+        // processed` alert may fire.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_ALERT');
+
+        $this->postRefund(
+            ['id' => 'rfnd_A', 'payment_id' => 'pay_ALERT', 'amount' => 200000, 'currency' => 'INR'],
+            'evt_alert_one'
+        )->assertStatus(200)->assertJson(['status' => 'not_applied']);
+
+        // Exactly one permanent-failure alert; zero refund-processed alerts.
+        $permanent = Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Refund permanently refused'));
+        $this->assertCount(1, $permanent, 'exactly one permanent-refusal alert must fire');
+        Bus::assertNotDispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'refund processed'));
+
+        /** @var SendOpsAlertEmail $job */
+        $job = $permanent->first();
+        // The Queueable trait's onConnection()/onQueue() calls in the ctor
+        // populate public $connection / $queue on the job instance.
+        $this->assertSame('database',   $job->connection, 'alert must ride the database connection');
+        $this->assertSame('ops-alerts', $job->queue,      'alert must ride the ops-alerts queue');
+        // Stable dedup key keyed on the Razorpay event id (strongest primitive).
+        $this->assertSame('refund-permanent:evt_alert_one', $job->uniqueId());
+        // Body carries only safe references (event/refund/payment refs + reason).
+        $this->assertStringContainsString('evt_alert_one', $job->body);
+        $this->assertStringContainsString('rfnd_A',       $job->body);
+        $this->assertStringContainsString('pay_ALERT',    $job->body);
+    }
+
+    public function test_duplicate_permanently_invalid_refund_alerts_only_once(): void
+    {
+        // Redelivery of the SAME permanently-invalid event: evidence dedups on
+        // event_id AND the alert dedups on the same primitive — exactly one of
+        // each survives across arbitrary redeliveries.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $this->seedSubscriptionForRefund('pay_ALERT_DUP');
+        $entity = ['id' => 'rfnd_AD', 'payment_id' => 'pay_ALERT_DUP', 'amount' => 200000, 'currency' => 'INR'];
+
+        $this->postRefund($entity, 'evt_alert_dup')->assertStatus(200);
+        $this->postRefund($entity, 'evt_alert_dup')->assertStatus(200);
+        $this->postRefund($entity, 'evt_alert_dup')->assertStatus(200);
+
+        $this->assertSame(1, SubscriptionEvent::where('event_type', 'refund.invalid')
+            ->where('after->event_id', 'evt_alert_dup')->count());
+        $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'Refund permanently refused')));
     }
 
     public function test_refund_invalid_evidence_carries_no_secrets_or_signature(): void

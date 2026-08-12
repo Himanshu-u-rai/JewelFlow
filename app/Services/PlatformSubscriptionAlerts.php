@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
  *   • a captured payment that could not be applied yet     → reconciliationRequired()
  *   • a captured payment that will never apply (validation)→ permanentFailure()
  *   • a previously-unresolved payment later recovered      → paymentReconciled()
+ *   • a validly-signed refund refused by validation        → refundPermanentlyRefused()
  *
  * NEVER for login/logout/session/device, trial/grace expiry, subscription
  * middleware redirects, plan-page visits, ordinary CRUD or state changes.
@@ -101,6 +102,51 @@ class PlatformSubscriptionAlerts
             "Payment permanently unresolved — " . ($after['payment_id'] ?? 'unknown'),
             $lines,
             "payment-permanent:" . ($after['payment_id'] ?? 'unknown'),
+        );
+    }
+
+    /**
+     * A validly-signed refund event that FAILED server-side validation and will
+     * never be applied — immutable `refund.invalid` evidence has just been
+     * recorded. Fires once per NEW evidence row (redelivery of the same
+     * x-razorpay-event-id increments attempt_count and does not re-alert).
+     *
+     * eventKey is keyed on event_id → refund_id → payment_id (strongest→weakest)
+     * so ShouldBeUnique collapses any in-window duplicate dispatch even if a
+     * caller path ever mis-called this twice for the same event.
+     *
+     * Body carries only safe references — NO signature/secret/token/raw payload.
+     */
+    public function refundPermanentlyRefused(SubscriptionEvent $event): void
+    {
+        $after     = $event->after ?? [];
+        $eventId   = (string) ($after['event_id'] ?? '');
+        $refundId  = (string) ($after['refund_id'] ?? '');
+        $paymentId = (string) ($after['payment_id'] ?? '');
+        $paise     = (int)    ($after['refund_amount_paise'] ?? 0);
+        $currency  = (string) ($after['currency'] ?? 'INR');
+        $reason    = (string) ($after['validation_reason'] ?? $event->reason);
+        $recorded  = (string) ($after['first_failed_at'] ?? $event->created_at?->toIso8601String() ?? '—');
+
+        $lines = [
+            "A Razorpay refund webhook FAILED server-side validation and will not be applied.",
+            "Event ref: "   . ($eventId   !== '' ? $eventId   : '—'),
+            "Refund ref: "  . ($refundId  !== '' ? $refundId  : '—'),
+            "Payment ref: " . ($paymentId !== '' ? $paymentId : '—'),
+            "Amount: {$currency} " . number_format($paise / 100, 2) . " ({$paise} paise)",
+            "Reason: {$reason}",
+            "Recorded at: {$recorded}",
+            "Manual review may be required — see Unresolved Payments in the admin panel.",
+        ];
+
+        $dedupKey = $eventId !== '' ? $eventId
+                  : ($refundId !== '' ? $refundId
+                  : ($paymentId !== '' ? $paymentId : 'evt-' . $event->id));
+
+        $this->send(
+            "Refund permanently refused — " . ($refundId !== '' ? $refundId : ($paymentId !== '' ? $paymentId : $dedupKey)),
+            $lines,
+            "refund-permanent:{$dedupKey}",
         );
     }
 

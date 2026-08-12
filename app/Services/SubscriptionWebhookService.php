@@ -499,9 +499,12 @@ class SubscriptionWebhookService
      * currency, attempt counters, reason). No signature / secret / token / raw
      * payload / card details / PII — the admin surface only ever renders these.
      *
-     * No alert fired here by design: these are non-actionable refusals surfaced
-     * through the same super-admin unresolved-payments panel that shows
-     * payment.unresolved records. Log at critical for external alerting hooks.
+     * Alert contract: exactly ONE dedicated `refundPermanentlyRefused` alert
+     * fires on the FIRST occurrence (i.e. when a NEW evidence row is created).
+     * A redelivery of the same x-razorpay-event-id (or same refund_id) hits the
+     * dedup branch above, bumps attempt_count, and does NOT re-alert. This
+     * mirrors the captured-payment `permanentFailure` cadence and keeps a
+     * malformed retry loop from spamming ops.
      */
     private function recordInvalidRefund(
         string $paymentId,
@@ -538,7 +541,7 @@ class SubscriptionWebhookService
             return;
         }
 
-        SubscriptionEvent::create([
+        $created = SubscriptionEvent::create([
             'shop_subscription_id' => null,
             'shop_id'              => null,
             'admin_id'             => null,
@@ -568,6 +571,12 @@ class SubscriptionWebhookService
             'currency'    => $currency,
             'reason'      => $reason,
         ]);
+
+        // Dedicated permanent-validation-failure alert — first occurrence only.
+        // Redeliveries hit the dedup update path above and never reach here.
+        // The alert body carries only safe references (no signature/secret/
+        // token/raw payload). See PlatformSubscriptionAlerts::refundPermanentlyRefused.
+        app(PlatformSubscriptionAlerts::class)->refundPermanentlyRefused($created);
     }
 
     /**
