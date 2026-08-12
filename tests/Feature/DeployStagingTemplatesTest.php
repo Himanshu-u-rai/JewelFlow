@@ -110,5 +110,31 @@ class DeployStagingTemplatesTest extends TestCase
             'lock file lives under staging storage, never /etc');
         $this->assertStringContainsString('>/dev/null 2>&1', $cmd,
             'routine output discarded so the cron log cannot grow unbounded');
+        $this->assertStringNotContainsString('/var/www/jewelflow-production', $cmd,
+            'no production path in a staging template');
+    }
+
+    // ── /etc/cron.d grammar: 5 timing fields + user field + command ─────────
+
+    public function test_reconcile_cron_uses_full_etc_crond_grammar_with_user(): void
+    {
+        $cmd = $this->cronCommand();
+
+        // /etc/cron.d lines carry a mandatory user field AFTER the five timing
+        // fields. Without it the line is a syntax error and silently never runs.
+        // Grammar: <min> <hour> <dom> <mon> <dow> <user> <command...>
+        $this->assertMatchesRegularExpression(
+            '#^\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+www-data\s+/usr/bin/flock\b#',
+            $cmd,
+            'cron.d line must be: 5 timing fields, then www-data, then the flock command',
+        );
+
+        // Exactly five whitespace-separated timing tokens precede the user field.
+        [$schedule] = explode('www-data', $cmd, 2);
+        $this->assertCount(5, preg_split('/\s+/', trim($schedule)),
+            'exactly five cron timing fields before the user');
+
+        // File must end with a trailing newline (cron ignores a final unterminated line).
+        $this->assertStringEndsWith("\n", $this->cron(), 'cron file needs a final newline');
     }
 }

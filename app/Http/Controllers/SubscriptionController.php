@@ -558,12 +558,15 @@ class SubscriptionController extends Controller
 
         Log::info('Razorpay webhook', ['event' => $event]);
 
-        // Only payment.captured can leave money captured-but-unapplied, so only it
-        // reports a graded outcome. The others are best-effort logs/updates → 200.
+        // payment.captured and refund.created both report a graded outcome:
+        //   captured can leave money captured-but-unapplied;
+        //   refund.created fail-closed-refuses malformed refund events (422)
+        //   and reports transient DB/provider hiccups (500) for safe retry.
+        // payment.failed and unhandled events are best-effort logs → 200.
         $outcome = match ($event) {
             'payment.captured' => $this->webhookService->handlePaymentCaptured($payload),
+            'refund.created' => $this->webhookService->handleRefundCreated($payload),
             'payment.failed' => $this->void_(fn () => $this->webhookService->handlePaymentFailed($payload)),
-            'refund.created' => $this->void_(fn () => $this->webhookService->handleRefundCreated($payload)),
             default => $this->void_(fn () => Log::info('Webhook: unhandled event', ['event' => $event])),
         };
 

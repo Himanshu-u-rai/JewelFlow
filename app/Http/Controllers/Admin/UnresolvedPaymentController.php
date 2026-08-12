@@ -8,20 +8,25 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * Super-Admin read-only visibility into captured Razorpay payments that could
- * not be applied to a subscription (payment.unresolved SubscriptionEvents).
+ * Super-Admin read-only visibility into two money-safety event streams:
+ *   • `payment.unresolved` — captured Razorpay payments that could not be
+ *     applied to a subscription;
+ *   • `refund.invalid`     — correctly-signed refund events refused by the
+ *     webhook's fail-closed validation (no mutation, no alert, but audited).
  *
  * This is the "genuinely visible, not just stored" surface for the money-safety
- * audit trail: every unapplied capture, its attempt count / first+last failure,
- * whether it is transient (auto-retrying) or permanent (needs a refund), and
- * whether a later reconcile already resolved it. Read-only — owns no mutations.
+ * audit trail: every refused capture/refund, its attempt count / first+last
+ * failure, whether it is transient (auto-retrying) or permanent (needs a
+ * refund), and whether a later reconcile already resolved it. The generic
+ * Blade view renders `after` fields (payment_id, refund_id, attempt_count,
+ * resolved_at, reason) the same way for both types. Read-only — owns no mutations.
  */
 class UnresolvedPaymentController extends Controller
 {
     public function index(Request $request): View
     {
         $query = SubscriptionEvent::query()
-            ->where('event_type', 'payment.unresolved');
+            ->whereIn('event_type', ['payment.unresolved', 'refund.invalid']);
 
         // Default view: still-open (unresolved) records. resolved_at lives in the
         // `after` JSON; in Postgres `after->>'resolved_at'` is text-or-null.

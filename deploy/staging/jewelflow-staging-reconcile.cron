@@ -1,5 +1,10 @@
 # JewelFlow STAGING — subscription payment reconciliation (staging only).
 #
+# /etc/cron.d format: five timing fields, THEN the user field (www-data), then
+# the command. This is NOT a personal `crontab -u` file (which omits the user),
+# so the www-data field is mandatory — a system-crontab line without it is a
+# syntax error and silently never runs.
+#
 # This is a DEDICATED cron for ONE command — NOT `artisan schedule:run`. It must
 # never drive the full Laravel scheduler on staging (that would also fire fraud/
 # shop-health/evaluate-alerts and every other scheduled job).
@@ -17,6 +22,6 @@
 # Every 10 minutes, bounded: 25 payments/run, 2 days back, 200ms between
 # provider-touching reconciles (Razorpay rate-limit safety).
 #
-# Install as www-data's crontab on STAGING ONLY (e.g. `crontab -u www-data`);
-# do NOT add to the production scheduler. Left here as a reviewed artifact.
-*/10 * * * * /usr/bin/flock -n /var/www/jewelflow-staging/storage/framework/reconcile-payments.lock /usr/bin/php /var/www/jewelflow-staging/artisan subscription:reconcile-payments --limit=25 --days=2 --sleep-ms=200 >/dev/null 2>&1
+# Install to /etc/cron.d/ on STAGING ONLY, root-owned, mode 0644; verify syntax
+# before activation. Do NOT add to the production scheduler. Reviewed artifact.
+*/10 * * * * www-data /usr/bin/flock -n /var/www/jewelflow-staging/storage/framework/reconcile-payments.lock /usr/bin/php /var/www/jewelflow-staging/artisan subscription:reconcile-payments --limit=25 --days=2 --sleep-ms=200 >/dev/null 2>&1

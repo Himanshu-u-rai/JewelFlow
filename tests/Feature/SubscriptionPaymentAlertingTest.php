@@ -13,6 +13,7 @@ use App\Services\SubscriptionPaymentService;
 use App\Services\SubscriptionWebhookService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Mockery;
 use Tests\Feature\Traits\CreatesTestTenant;
@@ -450,6 +451,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
         $payload = ['event' => 'refund.created',
             'payload' => ['refund' => ['entity' => [
                 'id' => 'rfnd_1', 'payment_id' => 'pay_REF', 'amount' => 99900,
+                'currency' => 'INR',
             ]]]];
 
         $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
@@ -486,6 +488,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
         $payload = ['event' => 'refund.created',
             'payload' => ['refund' => ['entity' => [
                 'id' => 'rfnd_P', 'payment_id' => 'pay_PARTIAL', 'amount' => 40000,
+                'currency' => 'INR',
             ]]]];
 
         $this->postJson('/subscription/payment/webhook', $payload, ['X-Razorpay-Signature' => 'stubbed'])
@@ -520,6 +523,7 @@ class SubscriptionPaymentAlertingTest extends TestCase
         $webhook = app(SubscriptionWebhookService::class);
         $payload = ['payload' => ['refund' => ['entity' => [
             'id' => 'rfnd_D', 'payment_id' => 'pay_DDUP', 'amount' => 99900,
+            'currency' => 'INR',
         ]]]];
 
         $webhook->handleRefundCreated($payload);
@@ -528,6 +532,166 @@ class SubscriptionPaymentAlertingTest extends TestCase
         $this->assertCount(1, Bus::dispatched(SendOpsAlertEmail::class,
             fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'refund processed')));
         $this->assertSame(1, SubscriptionEvent::where('after->refund_id', 'rfnd_D')->count());
+    }
+
+    // ── Fail-closed refund validation (Phase 2) ─────────────────────────────
+
+    /**
+     * Post a refund.created webhook carrying an arbitrary entity map. Returns
+     * the response so each test asserts its own status + side-effects.
+     */
+    private function postRefund(array $entity)
+    {
+        config(['services.razorpay.webhook_secret' => 'test_secret']);
+        $this->bindTrustedWebhook();
+
+        return $this->postJson('/subscription/payment/webhook',
+            ['event' => 'refund.created', 'payload' => ['refund' => ['entity' => $entity]]],
+            ['X-Razorpay-Signature' => 'stubbed']
+        );
+    }
+
+    /**
+     * Shared assertions for a refund that must be REFUSED before mutation:
+     *   • webhook responds 422 (Razorpay stops retrying)
+     *   • an immutable `refund.invalid` event is recorded
+     *   • the subscription is NOT cancelled and NOT marked refunded
+     *   • no refundProcessed ops alert is dispatched
+     */
+    private function assertRefundRefused(ShopSubscription $sub): void
+    {
+        $this->assertDatabaseHas('subscription_events', ['event_type' => 'refund.invalid']);
+        $this->assertNotSame('cancelled', $sub->fresh()->status,
+            'refund refusal must not cancel the subscription');
+        $this->assertSame(0, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->whereIn('event_type', ['subscription.refunded', 'subscription.partial_refund'])
+            ->count(), 'no refund mutation event may exist');
+        Bus::assertNotDispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'refund processed'));
+    }
+
+    private function seedSubscriptionForRefund(string $paymentId): ShopSubscription
+    {
+        $admin = $this->createPlatformAdmin();
+        $plan = $this->createPlan('retailer');
+        [$owner, $shop] = $this->ownerWithShop();
+        $sub = $this->createSubscription($shop->id, $admin, $plan);
+        $sub->forceFill(['razorpay_payment_id' => $paymentId, 'price_paid' => 999.0])->save();
+        return $sub;
+    }
+
+    public function test_refund_missing_refund_id_is_refused_permanent(): void
+    {
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_MRID');
+
+        // No 'id' key at all → validation should refuse before touching the sub.
+        $this->postRefund(['payment_id' => 'pay_MRID', 'amount' => 99900, 'currency' => 'INR'])
+            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+
+        $this->assertRefundRefused($sub);
+    }
+
+    public function test_refund_blank_refund_id_is_refused_permanent(): void
+    {
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_BRID');
+
+        // Explicit empty string — the same rung as missing.
+        $this->postRefund(['id' => '', 'payment_id' => 'pay_BRID', 'amount' => 99900, 'currency' => 'INR'])
+            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+
+        $this->assertRefundRefused($sub);
+    }
+
+    public function test_refund_missing_payment_id_is_refused_permanent(): void
+    {
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_MPID');
+
+        // No payment_id → cannot bind to any subscription → refuse.
+        $this->postRefund(['id' => 'rfnd_MP', 'amount' => 99900, 'currency' => 'INR'])
+            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+
+        $this->assertRefundRefused($sub);
+    }
+
+    public function test_refund_non_positive_amount_is_refused_permanent(): void
+    {
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_ZERO');
+
+        // Zero amount → nonsense money → refuse.
+        $this->postRefund(['id' => 'rfnd_Z', 'payment_id' => 'pay_ZERO', 'amount' => 0, 'currency' => 'INR'])
+            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+
+        $this->assertRefundRefused($sub);
+
+        // Negative amount → same rung, same refusal.
+        Bus::fake([SendOpsAlertEmail::class]);
+        $this->postRefund(['id' => 'rfnd_N', 'payment_id' => 'pay_ZERO', 'amount' => -100, 'currency' => 'INR'])
+            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+    }
+
+    public function test_refund_currency_mismatch_is_refused_permanent(): void
+    {
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_USD');
+
+        // Subscriptions are INR-only; a USD event is foreign/tampered → refuse.
+        $this->postRefund(['id' => 'rfnd_USD', 'payment_id' => 'pay_USD', 'amount' => 99900, 'currency' => 'USD'])
+            ->assertStatus(422)->assertJson(['status' => 'not_applied']);
+
+        $this->assertRefundRefused($sub);
+        $this->assertDatabaseHas('subscription_events', [
+            'event_type' => 'refund.invalid',
+            'after->refund_id' => 'rfnd_USD',
+        ]);
+    }
+
+    public function test_refund_transient_db_failure_returns_transient_with_no_partial_state(): void
+    {
+        Bus::fake([SendOpsAlertEmail::class]);
+        $sub = $this->seedSubscriptionForRefund('pay_TXN');
+
+        // Force the transaction closure to throw — simulates a DB deadlock or
+        // the provider dropping the row lock. The handler MUST catch, return
+        // TRANSIENT, and leave NO partial state behind.
+        //
+        // Direct service call (not the HTTP route) so faking DB::transaction
+        // doesn't collide with the framework session driver's DB access.
+        // The controller's TRANSIENT→500 mapping is already proven by
+        // test_webhook_transient_failure_returns_500_for_retry.
+        //
+        // Swap ONLY for the service call, then restore, so subsequent
+        // assertions (assertDatabaseMissing, Eloquent counts) run against the
+        // real database manager.
+        $real = $this->app->make('db');
+        $mock = Mockery::mock($real)->makePartial();
+        $mock->shouldReceive('transaction')->once()
+            ->andThrow(new \RuntimeException('simulated deadlock'));
+        DB::swap($mock);
+
+        try {
+            $outcome = app(SubscriptionWebhookService::class)->handleRefundCreated([
+                'payload' => ['refund' => ['entity' => [
+                    'id' => 'rfnd_TXN', 'payment_id' => 'pay_TXN',
+                    'amount' => 99900, 'currency' => 'INR',
+                ]]],
+            ]);
+        } finally {
+            DB::swap($real);
+        }
+
+        $this->assertSame(SubscriptionPaymentService::OUTCOME_TRANSIENT, $outcome,
+            'a transient DB failure must classify as transient (→ 500 for retry)');
+        $this->assertNotSame('cancelled', $sub->fresh()->status);
+        $this->assertSame(0, SubscriptionEvent::where('shop_subscription_id', $sub->id)
+            ->whereIn('event_type', ['subscription.refunded', 'subscription.partial_refund'])
+            ->count());
+        $this->assertDatabaseMissing('subscription_events', ['event_type' => 'refund.invalid']);
+        Bus::assertNotDispatched(SendOpsAlertEmail::class,
+            fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'refund processed'));
     }
 
     // ── Fail-closed recipient (SUBSCRIPTION_ALERT_EMAIL only) ───────────────
