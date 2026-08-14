@@ -610,6 +610,75 @@ class HistoricalSalesFoundationTest extends TestCase
         });
     }
 
+    /**
+     * A terminal document must never become somebody else's replacement.
+     *
+     * Both writes are individually legal transitions, so PostgreSQL cannot see the
+     * problem: supersede(A, B) then supersede(B, A) closes a loop in
+     * `superseded_by_document_id`, and walking forward to "the current version"
+     * never terminates. The service is the only place that can refuse it.
+     */
+    public function test_14b_a_terminal_document_cannot_become_a_replacement(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $service = app(HistoricalDocumentLifecycleService::class);
+
+        TenantContext::runFor($shop->id, function () use ($shop, $owner, $service) {
+            $batchA = $this->makeBatch($shop->id);
+            $a      = $this->makeDocument($shop->id, $batchA->id, ['original_document_number' => 'CYC-A']);
+            $service->publish($batchA, $owner->id);
+            $a->refresh();
+
+            $batchB = $this->makeBatch($shop->id, ['label' => 'revision']);
+            $b      = $this->makeDocument($shop->id, $batchB->id, [
+                'original_document_number' => 'CYC-B',
+                'grand_total'              => 26000.00,
+            ]);
+
+            $service->supersede($a, $b);
+            $a->refresh();
+            $b->refresh();
+
+            $this->assertSame(HistoricalSalesDocument::STATUS_SUPERSEDED, $a->status);
+            $this->assertSame($b->id, $a->superseded_by_document_id);
+
+            // A is terminal now. Pointing B forward at it would close the loop.
+            try {
+                $service->supersede($b, $a);
+                $this->fail('A superseded document was accepted as a replacement, creating a cycle.');
+            } catch (LogicException $e) {
+                $this->assertStringContainsString('cannot replace', $e->getMessage());
+            }
+
+            $a->refresh();
+            $b->refresh();
+            $this->assertNull($b->superseded_by_document_id, 'Forward pointer cycle was created.');
+            $this->assertSame(HistoricalSalesDocument::STATUS_PUBLISHED, $b->status);
+
+            // The same rule holds for a voided replacement.
+            $batchC = $this->makeBatch($shop->id, ['label' => 'voided']);
+            $c      = $this->makeDocument($shop->id, $batchC->id, [
+                'original_document_number' => 'CYC-C',
+                'grand_total'              => 27000.00,
+            ]);
+            $service->publish($batchC, $owner->id);
+            $c->refresh();
+            $service->void($c, $owner->id, 'Imported in error.');
+            $c->refresh();
+
+            try {
+                $service->supersede($b, $c);
+                $this->fail('A voided document was accepted as a replacement.');
+            } catch (LogicException $e) {
+                $this->assertStringContainsString('cannot replace', $e->getMessage());
+            }
+
+            $b->refresh();
+            $this->assertSame(HistoricalSalesDocument::STATUS_PUBLISHED, $b->status);
+            $this->assertNull($b->superseded_by_document_id);
+        });
+    }
+
     // ------------------------------------------------------ 15-17. data honesty
 
     public function test_15_unlinking_customer_and_item_preserves_the_snapshots(): void

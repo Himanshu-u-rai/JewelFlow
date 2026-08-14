@@ -173,6 +173,23 @@ class HistoricalDocumentLifecycleService
             throw new LogicException('A historical document cannot supersede itself.');
         }
 
+        // A terminal document has no future. Allowing one to become a replacement
+        // lets `superseded_by_document_id` close a loop (A -> B, then B -> A), and
+        // "walk forward to the current version" never terminates. The database
+        // cannot catch this: both writes are individually legal transitions.
+        if (in_array($replacement->status, [
+            HistoricalSalesDocument::STATUS_VOID,
+            HistoricalSalesDocument::STATUS_SUPERSEDED,
+        ], true)) {
+            throw new LogicException(sprintf(
+                'Historical document #%s is %s and cannot replace document #%s. '
+                . 'Import the corrected document as a new record instead.',
+                $replacement->getKey(),
+                $replacement->status,
+                $original->getKey()
+            ));
+        }
+
         return HistoricalLifecycle::run(function () use ($original, $replacement, $actorId): HistoricalSalesDocument {
             return DB::transaction(function () use ($original, $replacement, $actorId): HistoricalSalesDocument {
                 $now = now();
