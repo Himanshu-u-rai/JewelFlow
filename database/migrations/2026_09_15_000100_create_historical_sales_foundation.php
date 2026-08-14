@@ -382,6 +382,14 @@ return new class extends Migration
      * with COALESCE, and the number index is partial so unnumbered documents fall
      * through to the fingerprint index instead.
      *
+     * NULL IS NOT THE ONLY BYPASS. `document_series` is operator-entered free
+     * text, so `A`, `a` and `A ` are three distinct index keys and the same bill
+     * could be imported three times under "different" series. upper() and btrim()
+     * are both IMMUTABLE in PostgreSQL and close that hole inside the index
+     * itself, which is the only enforcement point that cannot be forgotten by a
+     * future write path. Series remains a real distinction — `A` and `B` are
+     * still separate — it just stops being case- and padding-sensitive.
+     *
      * Voided and superseded documents are excluded from both: correcting a
      * mistake must not permanently burn the invoice number or the content.
      */
@@ -393,7 +401,7 @@ return new class extends Migration
                 shop_id,
                 financial_year,
                 document_type,
-                COALESCE(document_series, ''),
+                COALESCE(upper(btrim(document_series)), ''),
                 original_document_number_normalized
             )
             WHERE original_document_number_normalized IS NOT NULL

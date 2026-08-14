@@ -267,14 +267,31 @@ class HistoricalSalesFoundationTest extends TestCase
     {
         [, $shop] = $this->createRetailerTenant();
 
-        $numbers = ['0012', 'INV/2023-24/0045', 'GST-458/A', 'RJ-JPR 2024 0018', 'A-0007', 'inv-lower/9'];
+        $numbers = [
+            '0012',
+            'INV/2023-24/0045',
+            'INV-01',
+            'INV/01',
+            'GST-458/A',
+            'RJ-JPR 2024 0018',
+            'A.0007',
+            'A-0007',
+            'inv-lower/9',
+            '०१२',           // Devanagari digits
+            'बीजक/०१२',      // Devanagari word + digits
+            '００１２',        // full-width digits
+        ];
 
         TenantContext::runFor($shop->id, function () use ($shop, $numbers) {
             $batch = $this->makeBatch($shop->id);
 
             foreach ($numbers as $i => $number) {
+                // A distinct series per row: this test is about STORAGE fidelity,
+                // and `0012` / `００１２` deliberately share one normalized identity,
+                // so they would otherwise collide on the duplicate index.
                 $doc = $this->makeDocument($shop->id, $batch->id, [
                     'original_document_number' => $number,
+                    'document_series'          => 'S' . $i,
                     'grand_total'              => 1000 + $i,
                 ]);
 
@@ -295,7 +312,9 @@ class HistoricalSalesFoundationTest extends TestCase
             $batch = $this->makeBatch($shop->id);
             $doc   = $this->makeDocument($shop->id, $batch->id, ['original_document_number' => 'INV/2023-24/0045']);
 
-            $this->assertSame('INV2023240045', $doc->original_document_number_normalized);
+            // Punctuation SURVIVES normalization. The old rule produced
+            // 'INV2023240045' and could not tell INV-01 from INV/01.
+            $this->assertSame('INV/2023-24/0045', $doc->original_document_number_normalized);
             $this->assertSame('INV/2023-24/0045', $doc->displayNumber());
             $this->assertSame(HistoricalSalesDocument::NUMBER_LABEL, 'Original Invoice Number');
         });
@@ -306,11 +325,178 @@ class HistoricalSalesFoundationTest extends TestCase
             HistoricalDocumentIdentity::normalizeNumber('0012'),
             HistoricalDocumentIdentity::normalizeNumber('12')
         );
-        // Separator noise collapses so re-typed variants are recognised.
+        // Case is the only thing that folds away in a re-typed variant.
         $this->assertSame(
             HistoricalDocumentIdentity::normalizeNumber('INV/2023-24/0045'),
-            HistoricalDocumentIdentity::normalizeNumber('inv 2023 24 0045')
+            HistoricalDocumentIdentity::normalizeNumber('inv/2023-24/0045')
         );
+    }
+
+    /**
+     * The defect this correction exists for.
+     *
+     * `preg_replace('/[^A-Z0-9]/', '', strtoupper($n))` turned INV-01 and INV/01
+     * into one key, so importing a shop that runs both series meant the second
+     * bill was refused as a duplicate of the first. Punctuation in a statutory
+     * invoice number is not noise.
+     */
+    public function test_5a_punctuation_distinguishes_two_real_document_numbers(): void
+    {
+        $this->assertSame('INV-01', HistoricalDocumentIdentity::normalizeNumber('INV-01'));
+        $this->assertSame('INV/01', HistoricalDocumentIdentity::normalizeNumber('INV/01'));
+        $this->assertNotSame(
+            HistoricalDocumentIdentity::normalizeNumber('INV-01'),
+            HistoricalDocumentIdentity::normalizeNumber('INV/01')
+        );
+        $this->assertSame('A.0007', HistoricalDocumentIdentity::normalizeNumber('A.0007'));
+        $this->assertNotSame(
+            HistoricalDocumentIdentity::normalizeNumber('A.0007'),
+            HistoricalDocumentIdentity::normalizeNumber('A-0007')
+        );
+
+        // And the database agrees: both survive under one shop/FY/type/series.
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            $batch = $this->makeBatch($shop->id);
+
+            $a = $this->makeDocument($shop->id, $batch->id, [
+                'original_document_number' => 'INV-01',
+                'grand_total'              => 1100.00,
+            ]);
+            $b = $this->makeDocument($shop->id, $batch->id, [
+                'original_document_number' => 'INV/01',
+                'grand_total'              => 1200.00,
+            ]);
+
+            $this->assertNotSame($a->id, $b->id);
+            $this->assertSame('INV-01', $a->fresh()->displayNumber());
+            $this->assertSame('INV/01', $b->fresh()->displayNumber());
+        });
+    }
+
+    /**
+     * Non-ASCII scripts must produce a REAL identity, not null.
+     *
+     * The old rule returned null for `०१२` and `００１२`, which silently switched
+     * number-based duplicate protection off for every shop that prints its bills
+     * in Devanagari — exactly the shops this module exists for.
+     */
+    public function test_5b_non_ascii_numbers_produce_a_usable_identity(): void
+    {
+        $this->assertSame('०१२', HistoricalDocumentIdentity::normalizeNumber('०१२'));
+        $this->assertSame('बीजक/०१२', HistoricalDocumentIdentity::normalizeNumber('बीजक/०१२'));
+        $this->assertNotNull(HistoricalDocumentIdentity::normalizeNumber('०१२'));
+
+        // Full-width forms are the one compatibility fold that matters for a
+        // printed number: U+FF01-FF5E is ASCII at a fixed 0xFEE0 offset.
+        $this->assertSame('0012', HistoricalDocumentIdentity::normalizeNumber('００１２'));
+        $this->assertSame(
+            HistoricalDocumentIdentity::normalizeNumber('0012'),
+            HistoricalDocumentIdentity::normalizeNumber('００１２')
+        );
+        $this->assertSame('INV-01', HistoricalDocumentIdentity::normalizeNumber('ＩＮＶ－０１'));
+
+        // Devanagari digits are NOT ASCII digits. They are a different printed
+        // number and must never be folded onto 012.
+        $this->assertNotSame(
+            HistoricalDocumentIdentity::normalizeNumber('०१२'),
+            HistoricalDocumentIdentity::normalizeNumber('012')
+        );
+
+        // Only genuinely empty input yields null.
+        $this->assertNull(HistoricalDocumentIdentity::normalizeNumber(null));
+        $this->assertNull(HistoricalDocumentIdentity::normalizeNumber(''));
+        $this->assertNull(HistoricalDocumentIdentity::normalizeNumber("   \u{00A0}\u{200B}"));
+    }
+
+    /**
+     * Invisible characters must not be able to mint a "new" invoice number, and
+     * visually identical spacing/dashes must land on one key.
+     */
+    public function test_5c_invisible_and_equivalent_characters_normalize_predictably(): void
+    {
+        // Zero-width and other format characters are removed outright.
+        foreach (["INV\u{200B}-01", "INV\u{200C}-01", "INV\u{FEFF}-01", "INV\u{00AD}-01"] as $sneaky) {
+            $this->assertSame(
+                'INV-01',
+                HistoricalDocumentIdentity::normalizeNumber($sneaky),
+                'A zero-width character created a second identity for INV-01.'
+            );
+        }
+
+        // Every Unicode space collapses to one ordinary space; runs collapse; ends trim.
+        foreach (["INV\u{00A0}01", "INV\u{3000}01", "INV \t 01", "  INV   01  "] as $spaced) {
+            $this->assertSame('INV 01', HistoricalDocumentIdentity::normalizeNumber($spaced));
+        }
+
+        // Dash variants fold onto ASCII hyphen. A space is NOT a dash.
+        foreach (["INV\u{2013}01", "INV\u{2014}01", "INV\u{2212}01", "INV\u{FF0D}01"] as $dashed) {
+            $this->assertSame('INV-01', HistoricalDocumentIdentity::normalizeNumber($dashed));
+        }
+        $this->assertNotSame(
+            HistoricalDocumentIdentity::normalizeNumber('INV-01'),
+            HistoricalDocumentIdentity::normalizeNumber('INV 01')
+        );
+
+        // Case policy: mb_strtoupper, locale-INDEPENDENT. No Turkish dotted-i
+        // special casing — U+0130 is already uppercase and is left alone rather
+        // than being dropped the way the byte-wise strtoupper() dropped it.
+        $this->assertSame('INV/2023-24/0045', HistoricalDocumentIdentity::normalizeNumber('inv/2023-24/0045'));
+        $this->assertSame('İNV1', HistoricalDocumentIdentity::normalizeNumber('İNV1'));
+        $this->assertSame('बीजक', HistoricalDocumentIdentity::normalizeNumber('बीजक'));
+    }
+
+    /**
+     * The bypass proof, at the database, not just in the helper: a zero-width
+     * space pasted into the second import must still hit the unique index.
+     */
+    public function test_5d_zero_width_characters_cannot_bypass_duplicate_detection(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            $batch = $this->makeBatch($shop->id);
+            $this->makeDocument($shop->id, $batch->id, ['original_document_number' => 'INV/2023-24/0045']);
+
+            $batch2 = $this->makeBatch($shop->id, ['label' => 'second file']);
+            $this->assertQueryFails(fn () => $this->makeDocument($shop->id, $batch2->id, [
+                'original_document_number' => "INV/2023-\u{200B}24/00\u{FEFF}45",
+                'grand_total'              => 88888.00,
+            ]));
+        });
+    }
+
+    /**
+     * Series is a real distinction — and is itself case/padding insensitive, so
+     * `A` and `a ` cannot be used to smuggle the same bill in twice.
+     */
+    public function test_5e_an_explicit_series_separates_the_same_number(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            $batch = $this->makeBatch($shop->id);
+
+            $a = $this->makeDocument($shop->id, $batch->id, [
+                'original_document_number' => '0012',
+                'document_series'          => 'A',
+                'grand_total'              => 3100.00,
+            ]);
+            $b = $this->makeDocument($shop->id, $batch->id, [
+                'original_document_number' => '0012',
+                'document_series'          => 'B',
+                'grand_total'              => 3200.00,
+            ]);
+            $this->assertNotSame($a->id, $b->id);
+
+            // But 'a ' is series A, not a third series.
+            $this->assertQueryFails(fn () => $this->makeDocument($shop->id, $batch->id, [
+                'original_document_number' => '0012',
+                'document_series'          => 'a ',
+                'grand_total'              => 3300.00,
+            ]));
+        });
     }
 
     public function test_6_duplicate_number_in_same_shop_year_type_series_is_rejected(): void
@@ -321,11 +507,11 @@ class HistoricalSalesFoundationTest extends TestCase
             $batch = $this->makeBatch($shop->id);
             $this->makeDocument($shop->id, $batch->id, ['original_document_number' => 'INV/2023-24/0045']);
 
-            // Same bill re-typed with different separators, different total, and
+            // Same bill re-typed in a different case, with a different total and
             // a second batch: still the same statutory number.
             $batch2 = $this->makeBatch($shop->id, ['label' => 'second file']);
             $this->assertQueryFails(fn () => $this->makeDocument($shop->id, $batch2->id, [
-                'original_document_number' => 'inv 2023-24 0045',
+                'original_document_number' => 'inv/2023-24/0045',
                 'grand_total'              => 99999.00,
             ]));
         });
@@ -403,6 +589,18 @@ class HistoricalSalesFoundationTest extends TestCase
                 'original_document_number' => null,
                 'source_system'            => 'Marg',
                 'source_reference'         => 'marg-export-2.xlsx:88',
+            ]));
+
+            // Nor does provenance bypass the NUMBER identity index.
+            $this->makeDocument($shop->id, $batch->id, [
+                'original_document_number' => 'बीजक/०१२',
+                'source_system'            => 'Tally',
+                'grand_total'              => 4100.00,
+            ]);
+            $this->assertQueryFails(fn () => $this->makeDocument($shop->id, $batch->id, [
+                'original_document_number' => 'बीजक/०१२',
+                'source_system'            => 'Busy',
+                'grand_total'              => 4200.00,
             ]));
         });
 

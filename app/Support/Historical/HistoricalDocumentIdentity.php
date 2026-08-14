@@ -17,15 +17,53 @@ use DateTimeInterface;
 final class HistoricalDocumentIdentity
 {
     /**
+     * Zero-width and invisible formatting characters. These carry no printed
+     * meaning, so leaving them in would let `INV<ZWSP>1` and `INV1` coexist as
+     * two "different" bills — a duplicate-detection bypass, not a distinction.
+     * Removing them is the one deliberate deletion this class performs.
+     */
+    private const INVISIBLE = '/\p{Cf}/u';
+
+    /** Every dash the real world prints for an ASCII hyphen. */
+    private const DASHES = '/[\x{2010}-\x{2015}\x{2212}\x{FE58}\x{FE63}]/u';
+
+    /** Any run of any Unicode space (NBSP, ideographic, tab, newline) -> one space. */
+    private const SPACES = '/[\p{Zs}\s]+/u';
+
+    /**
      * Comparison key for a printed document number.
      *
-     * Uppercases and strips separators/whitespace so `INV/2023-24/0045` and
-     * `INV-2023 24 0045` are recognised as the same bill.
+     * WHAT IT DOES, exactly and in this order:
+     *   1. drop invisible formatting characters (see self::INVISIBLE);
+     *   2. fold full-width forms U+FF01–U+FF5E onto their ASCII twins, so
+     *      `００１２` and `0012` are the same number;
+     *   3. fold Unicode dash variants onto ASCII `-`;
+     *   4. collapse every Unicode whitespace run to one ordinary space and trim;
+     *   5. Unicode-aware uppercase via mb_strtoupper (locale-independent).
      *
-     * LEADING ZEROES ARE DELIBERATELY PRESERVED. `0012` and `12` are different
-     * printed numbers and may be different bills; collapsing them would silently
-     * merge two real invoices, which is worse than showing the operator two
-     * candidates. Returns null when nothing comparable survives.
+     * WHAT IT DELIBERATELY DOES NOT DO:
+     *   - It does not strip punctuation. `INV-01` and `INV/01` are DIFFERENT
+     *     printed numbers and stay different keys. The previous ASCII-only rule
+     *     collapsed both to `INV01` and would have rejected the second bill as a
+     *     duplicate of the first.
+     *   - It does not drop non-ASCII letters or digits. Devanagari `०१२` and
+     *     `बीजक/०१२` produce real keys; the old rule produced null, which
+     *     disabled number-based duplicate protection for every non-Latin shop.
+     *   - It does not collapse leading zeroes. `0012` and `12` are different
+     *     printed numbers and may be different bills; merging them silently is
+     *     worse than showing the operator two candidates.
+     *   - It applies NO Unicode normalisation form (NFC/NFKC). `ext-intl` is not
+     *     a declared requirement of this project, and a persisted, uniquely
+     *     indexed identity key must be a pure function of its input — never of
+     *     which extensions happen to be loaded. Every compatibility fold that
+     *     matters for a printed invoice number (full-width digits and letters)
+     *     is done explicitly above, so the result is identical on every runtime.
+     *     Consequence, accepted knowingly: a canonically-decomposed spelling of
+     *     a Devanagari number is a different key from its composed spelling.
+     *     That fails toward "two candidates for operator review", never toward a
+     *     silent merge.
+     *
+     * Returns null only when the value is null or contains nothing visible.
      */
     public static function normalizeNumber(?string $number): ?string
     {
@@ -33,9 +71,37 @@ final class HistoricalDocumentIdentity
             return null;
         }
 
-        $normalized = preg_replace('/[^A-Z0-9]/', '', strtoupper($number)) ?? '';
+        $normalized = self::fold($number);
 
         return $normalized === '' ? null : $normalized;
+    }
+
+    /**
+     * The shared, deterministic Unicode fold. Nothing here depends on ext-intl.
+     */
+    private static function fold(string $value): string
+    {
+        $value = preg_replace(self::INVISIBLE, '', $value) ?? $value;
+        $value = self::foldFullWidth($value);
+        $value = preg_replace(self::DASHES, '-', $value) ?? $value;
+        $value = preg_replace(self::SPACES, ' ', $value) ?? $value;
+
+        return mb_strtoupper(trim($value), 'UTF-8');
+    }
+
+    /**
+     * U+FF01–U+FF5E are the full-width twins of ASCII 0x21–0x7E at a fixed
+     * offset of 0xFEE0. A straight codepoint subtraction is exact and needs no
+     * lookup table — this is the single piece of NFKC this class actually needs.
+     * U+FF0D (full-width hyphen) lands on ASCII `-` for free.
+     */
+    private static function foldFullWidth(string $value): string
+    {
+        return preg_replace_callback(
+            '/[\x{FF01}-\x{FF5E}]/u',
+            static fn (array $m): string => mb_chr(mb_ord($m[0], 'UTF-8') - 0xFEE0, 'UTF-8'),
+            $value
+        ) ?? $value;
     }
 
     /** Indian financial year (1 April – 31 March) as `2023-24`. */
@@ -111,8 +177,21 @@ final class HistoricalDocumentIdentity
         return hash('sha256', $payload);
     }
 
+    /**
+     * The LOOSE fold, for fingerprint fields only: series, customer name, line
+     * description. Unlike a document number, these are free text a source system
+     * punctuates however it likes, so punctuation and spacing are removed after
+     * the shared Unicode fold — `Ramesh & Co.` and `RAMESH AND CO` are still not
+     * equal, but `Ramesh & Co.` and `Ramesh & Co` are.
+     *
+     * It is Unicode-aware for the same reason normalizeNumber() is: the old
+     * ASCII-only rule reduced EVERY Devanagari customer name to the empty
+     * string, so two unrelated Hindi-named customers with the same date and
+     * total collided on one fingerprint and the second import was refused as a
+     * duplicate.
+     */
     private static function comparable(?string $value): string
     {
-        return preg_replace('/[^A-Z0-9]/', '', strtoupper((string) $value)) ?? '';
+        return preg_replace('/[^\p{L}\p{N}]/u', '', self::fold((string) $value)) ?? '';
     }
 }
