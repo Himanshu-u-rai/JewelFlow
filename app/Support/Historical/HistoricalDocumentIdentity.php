@@ -192,6 +192,19 @@ final class HistoricalDocumentIdentity
      */
     private static function comparable(?string $value): string
     {
+        return self::comparableLabel($value);
+    }
+
+    /**
+     * The same loose fold, exposed for column-header and charge-label matching.
+     *
+     * Alias tables live and die on this: `Net Wt.`, `net wt`, `NET-WT` and
+     * `Ｎｅｔ　Ｗｔ` are one header written four ways, and a suggester that
+     * compares them raw suggests nothing for three of the four. It is the same
+     * function the fingerprint uses on purpose — one fold, one set of surprises.
+     */
+    public static function comparableLabel(?string $value): string
+    {
         return preg_replace('/[^\p{L}\p{N}]/u', '', self::fold((string) $value)) ?? '';
     }
 }

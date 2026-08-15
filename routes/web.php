@@ -11,6 +11,10 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\GoldInventoryController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\BulkImportController;
+use App\Http\Controllers\Historical\HistoricalDocumentController;
+use App\Http\Controllers\Historical\HistoricalImportController;
+use App\Http\Controllers\Historical\HistoricalManualEntryController;
+use App\Http\Controllers\Historical\HistoricalSalesController;
 use App\Http\Controllers\QuickBillController;
 use App\Http\Controllers\RepairReportController;
 use App\Http\Controllers\VendorController;
@@ -260,6 +264,55 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::post('/imports/{import}/cancel', [BulkImportController::class, 'cancel'])
         ->middleware('can:imports.manage')
         ->name('imports.cancel');
+
+    // ======= HISTORICAL SALES (permanent record-only module; retailer edition) =======
+    // edition:retailer blocks manufacturer-only shops; a multi-edition shop with a
+    // retailer edition passes. Read-only shops are already blocked on every non-GET
+    // by subscription.active above, so the view routes stay open and the write
+    // routes close with no module-specific code. Permissions are enforced per verb.
+    Route::middleware('edition:retailer')->prefix('historical')->name('historical.')->group(function () {
+        // --- view (historical.view) ---
+        Route::get('/', [HistoricalSalesController::class, 'index'])
+            ->middleware('can:historical.view')->name('index');
+        Route::get('/documents/{document}', [HistoricalSalesController::class, 'showDocument'])
+            ->middleware('can:historical.view')->name('documents.show');
+        Route::get('/batches/{batch}', [HistoricalSalesController::class, 'showBatch'])
+            ->middleware('can:historical.view')->name('batches.show');
+
+        // --- manual entry (historical.import) ---
+        Route::get('/manual', [HistoricalManualEntryController::class, 'create'])
+            ->middleware('can:historical.import')->name('manual.create');
+        Route::post('/manual', [HistoricalManualEntryController::class, 'store'])
+            ->middleware('can:historical.import')->name('manual.store');
+
+        // --- file import lifecycle (historical.import) ---
+        Route::get('/upload', [HistoricalImportController::class, 'create'])
+            ->middleware('can:historical.import')->name('upload.create');
+        Route::post('/upload', [HistoricalImportController::class, 'store'])
+            ->middleware('can:historical.import')->name('upload.store');
+        Route::get('/batches/{batch}/map', [HistoricalImportController::class, 'map'])
+            ->middleware('can:historical.import')->name('batches.map');
+        Route::post('/batches/{batch}/map', [HistoricalImportController::class, 'saveMapping'])
+            ->middleware('can:historical.import')->name('batches.map.save');
+        Route::post('/batches/{batch}/normalize', [HistoricalImportController::class, 'renormalize'])
+            ->middleware('can:historical.import')->name('batches.normalize');
+        Route::post('/batches/{batch}/duplicates', [HistoricalImportController::class, 'resolveDuplicate'])
+            ->middleware('can:historical.import')->name('batches.duplicates');
+        Route::post('/batches/{batch}/acknowledge', [HistoricalImportController::class, 'acknowledgeWarnings'])
+            ->middleware('can:historical.import')->name('batches.acknowledge');
+        Route::delete('/batches/{batch}', [HistoricalImportController::class, 'destroy'])
+            ->middleware('can:historical.import')->name('batches.destroy');
+        Route::post('/documents/{document}/link-customer', [HistoricalDocumentController::class, 'linkCustomer'])
+            ->middleware('can:historical.import')->name('documents.link-customer');
+
+        // --- publish + published-record corrections (historical.publish) ---
+        Route::post('/batches/{batch}/publish', [HistoricalImportController::class, 'publish'])
+            ->middleware('can:historical.publish')->name('batches.publish');
+        Route::post('/documents/{document}/void', [HistoricalDocumentController::class, 'void'])
+            ->middleware('can:historical.publish')->name('documents.void');
+        Route::post('/documents/{document}/supersede', [HistoricalDocumentController::class, 'supersede'])
+            ->middleware('can:historical.publish')->name('documents.supersede');
+    });
 
     // ======= EXISTING-SHOP ONBOARDING (opening balances; owner-only, re-checked in controller) =======
     Route::get('/onboarding', [\App\Http\Controllers\OnboardingController::class, 'index'])

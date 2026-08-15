@@ -47,13 +47,23 @@ class HistoricalImportBatch extends Model
         'source_file_name',
         'cutover_date',
         'totals_snapshot',
+        'source_file_disk',
+        'source_file_path',
+        'layout_type',
+        'date_format',
     ];
 
     protected $casts = [
-        'cutover_date'    => 'date',
-        'totals_snapshot' => 'array',
-        'published_at'    => 'datetime',
-        'cancelled_at'    => 'datetime',
+        'cutover_date'             => 'date',
+        'totals_snapshot'          => 'array',
+        'published_at'             => 'datetime',
+        'cancelled_at'             => 'datetime',
+        'preview_summary'          => 'array',
+        'duplicate_resolutions'    => 'array',
+        'preview_generated_at'     => 'datetime',
+        'warnings_acknowledged_at' => 'datetime',
+        'blocking_count'           => 'integer',
+        'warning_count'            => 'integer',
     ];
 
     protected static function booted(): void
@@ -75,6 +85,34 @@ class HistoricalImportBatch extends Model
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_PUBLISHED;
+    }
+
+    public function hasBlockingErrors(): bool
+    {
+        return (int) $this->blocking_count > 0;
+    }
+
+    public function warningsAcknowledged(): bool
+    {
+        return $this->warnings_acknowledged_at !== null;
+    }
+
+    /**
+     * The publish gate, in one place so the controller, the button and the test
+     * cannot disagree. Preview must have been generated: publishing a batch whose
+     * counters were never computed is publishing an unreviewed batch.
+     */
+    public function blockedFromPublishing(): ?string
+    {
+        return match (true) {
+            $this->isPublished()                            => 'This batch is already published.',
+            ! $this->isEditable()                           => 'This batch is not in a publishable state.',
+            $this->preview_generated_at === null            => 'Generate the reconciliation preview before publishing.',
+            $this->hasBlockingErrors()                      => 'Resolve all blocking errors before publishing.',
+            $this->warning_count > 0
+                && ! $this->warningsAcknowledged()          => 'Acknowledge the outstanding warnings before publishing.',
+            default                                         => null,
+        };
     }
 
     public function shop(): BelongsTo

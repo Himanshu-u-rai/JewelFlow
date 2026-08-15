@@ -56,9 +56,12 @@ class HistoricalDocumentLifecycleService
     }
 
     /**
-     * Freeze every draft document in the batch. After this the documents are
-     * evidence: no hard delete, no financial edit, corrections only via void or
-     * supersede.
+     * Claim, publish, and release-if-stranded — the self-contained path for a
+     * caller that has not already taken the claim (Batch 1 tests, console).
+     *
+     * The HTTP controller does NOT use this: it owns the claim so it can put
+     * releaseClaim() in its own `finally` (Phase 5), which is why the claim and
+     * the work are separable below.
      */
     public function publish(HistoricalImportBatch $batch, ?int $actorId = null): HistoricalImportBatch
     {
@@ -68,6 +71,29 @@ class HistoricalDocumentLifecycleService
             );
         }
 
+        try {
+            return $this->publishClaimed($batch, $actorId);
+        } finally {
+            // A throw inside the transaction leaves the batch in `publishing`;
+            // hand it back to `review` so it is never stranded.
+            if ($batch->fresh()?->status === HistoricalImportBatch::STATUS_PUBLISHING) {
+                $this->releaseClaim($batch);
+            }
+        }
+    }
+
+    /**
+     * The publish WORK, on a batch whose `publishing` claim the caller already
+     * holds. Freeze every draft document in the batch. After this the documents
+     * are evidence: no hard delete, no financial edit, corrections only via void
+     * or supersede.
+     *
+     * Idempotent by construction: a batch already `published` has no DRAFT
+     * documents to move and its counters are recomputed to the same values, so a
+     * repeated call produces the same stable result and never a duplicate.
+     */
+    public function publishClaimed(HistoricalImportBatch $batch, ?int $actorId = null): HistoricalImportBatch
+    {
         return HistoricalLifecycle::run(function () use ($batch, $actorId): HistoricalImportBatch {
             return DB::transaction(function () use ($batch, $actorId): HistoricalImportBatch {
                 $now = now();

@@ -1,0 +1,238 @@
+<?php
+
+namespace Tests\Feature\Historical;
+
+use App\Models\Historical\HistoricalImportBatch;
+use App\Models\Historical\HistoricalSalesDocument;
+use App\Support\TenantContext;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
+use Tests\Feature\Traits\CreatesTestTenant;
+use Tests\TestCase;
+
+/**
+ * Historical Sales — Batch 2 HTTP surface.
+ *
+ * Batch 1 proved the model and the database boundary. These tests prove the web
+ * layer that sits on top: the permission matrix (view / import / publish), the
+ * retailer-edition gate, cross-shop 404, read-only enforcement, the manual-entry
+ * pipeline, future-date blocking, and publish idempotency.
+ *
+ * The security rule under test is Phase 3's: navigation is NOT the boundary —
+ * route middleware and controller authorization enforce the same thing, so every
+ * assertion here hits the route directly rather than trusting a hidden link.
+ */
+class HistoricalModuleHttpTest extends TestCase
+{
+    use RefreshDatabase;
+    use CreatesTestTenant;
+
+    protected function setUp(): void
+    {
+        $this->skipIfNotPostgres();
+        parent::setUp();
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    private function seedPublishableBatch(int $shopId, int $actorId): HistoricalImportBatch
+    {
+        return TenantContext::runFor($shopId, function () use ($shopId, $actorId): HistoricalImportBatch {
+            $batch = new HistoricalImportBatch();
+            $batch->forceFill([
+                'shop_id'              => $shopId,
+                'label'               => 'FY 2022-23',
+                'source_system'       => 'Tally',
+                'status'              => HistoricalImportBatch::STATUS_REVIEW,
+                'created_by'          => $actorId,
+                'preview_generated_at' => now(),
+                'blocking_count'      => 0,
+                'warning_count'       => 0,
+            ])->save();
+
+            $doc = new HistoricalSalesDocument();
+            $doc->forceFill([
+                'shop_id'                    => $shopId,
+                'historical_import_batch_id' => $batch->id,
+                'historical_reference'       => (string) Str::uuid(),
+                'original_document_number'   => 'INV/2022-23/0001',
+                'original_document_number_normalized' => 'INV/2022-23/0001',
+                'document_type'              => HistoricalSalesDocument::TYPE_SALE_INVOICE,
+                'document_date'              => '2022-11-04',
+                'financial_year'             => '2022-23',
+                'source_system'              => 'Tally',
+                'customer_snapshot'          => ['name' => 'Ramesh Patel'],
+                'tax_mode'                   => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+                'tax_completeness'           => HistoricalSalesDocument::TAX_UNKNOWN,
+                'grand_total'                => 25000.00,
+                'status'                     => HistoricalSalesDocument::STATUS_DRAFT,
+                'content_fingerprint'        => str_repeat('a', 64),
+            ])->save();
+
+            return $batch;
+        });
+    }
+
+    /** @return array<string, mixed> a valid manual-entry payload. */
+    private function manualPayload(array $override = []): array
+    {
+        return array_merge([
+            'original_document_number' => 'M-' . fake()->unique()->numberBetween(1, 99999),
+            'document_date'            => '2023-06-15',
+            'source_system'            => 'Manual',
+            'customer_name'            => 'Walk-in Customer',
+            'grand_total'              => 18000,
+            'tax_mode'                 => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+        ], $override);
+    }
+
+    // ------------------------------------------------------------ view / edition
+
+    public function test_view_permission_is_required_for_the_landing_page(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->grantOnlyPermissions($owner, []);
+        $this->actingAs($owner->fresh())->get(route('historical.index'))->assertForbidden();
+
+        $this->grantOnlyPermissions($owner, ['historical.view']);
+        $this->actingAs($owner->fresh())->get(route('historical.index'))->assertOk();
+    }
+
+    public function test_manufacturer_shop_cannot_reach_the_module(): void
+    {
+        [$owner] = $this->createManufacturerTenant(); // owner has every permission…
+
+        // …but the retailer-edition gate refuses the whole module.
+        $this->actingAs($owner)->get(route('historical.index'))->assertForbidden();
+    }
+
+    public function test_a_document_from_another_shop_is_404(): void
+    {
+        [$ownerA, $shopA] = $this->createRetailerTenant();
+        [, $shopB]        = $this->createRetailerTenant();
+
+        $batchB = $this->seedPublishableBatch($shopB->id, $ownerA->id);
+        $docB   = TenantContext::runFor($shopB->id, fn () => HistoricalSalesDocument::query()->firstOrFail());
+
+        // Shop A's owner has full permissions, but the object is not in their tenant.
+        // Bind under shop A's real tenant context so the 404 proves scope exclusion,
+        // not merely that console binding fails closed (see note on RMB below).
+        TenantContext::runFor($shopA->id, function () use ($ownerA, $docB, $batchB) {
+            $this->actingAs($ownerA)->get(route('historical.documents.show', $docB->id))->assertNotFound();
+            $this->actingAs($ownerA)->get(route('historical.batches.show', $batchB->id))->assertNotFound();
+        });
+    }
+
+    // ------------------------------------------------------------ import matrix
+
+    public function test_import_permission_is_required_to_reach_manual_entry(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $this->grantOnlyPermissions($owner, ['historical.view']);
+        $this->actingAs($owner->fresh())->get(route('historical.manual.create'))->assertForbidden();
+
+        $this->grantOnlyPermissions($owner, ['historical.view', 'historical.import']);
+        $this->actingAs($owner->fresh())->get(route('historical.manual.create'))->assertOk();
+    }
+
+    public function test_manual_entry_creates_a_draft_document(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.store'), $this->manualPayload());
+
+        $response->assertRedirect();
+        TenantContext::runFor($shop->id, function () {
+            $this->assertSame(1, HistoricalSalesDocument::query()->count());
+            $this->assertSame(
+                HistoricalSalesDocument::STATUS_DRAFT,
+                HistoricalSalesDocument::query()->firstOrFail()->status
+            );
+        });
+    }
+
+    public function test_a_future_dated_manual_bill_is_blocked_and_saves_nothing(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->actingAs($owner)
+            ->post(route('historical.manual.store'), $this->manualPayload([
+                'document_date' => now()->addYear()->toDateString(),
+            ]))
+            ->assertSessionHas('historical_messages');
+
+        TenantContext::runFor($shop->id, function () {
+            $this->assertSame(0, HistoricalSalesDocument::query()->count());
+            $this->assertSame(0, HistoricalImportBatch::query()->count(), 'A rejected bill left an orphan batch.');
+        });
+    }
+
+    // ------------------------------------------------------------ publish matrix
+
+    public function test_publish_requires_the_publish_permission(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->seedPublishableBatch($shop->id, $owner->id);
+
+        $this->grantOnlyPermissions($owner, ['historical.view', 'historical.import']);
+        // Route-model binding of a tenant model only resolves under an active tenant
+        // context. Live, EnsureTenantUser supplies it; under `artisan test` the console
+        // guard nulls the Auth fallback, so we inject it — otherwise binding 404s before
+        // the can: gate can even fire, and this would assert the wrong failure.
+        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner->fresh())
+            ->post(route('historical.batches.publish', $batch->id))
+            ->assertForbidden());
+
+        TenantContext::runFor($shop->id, fn () => $this->assertSame(
+            HistoricalSalesDocument::STATUS_DRAFT,
+            HistoricalSalesDocument::query()->firstOrFail()->status
+        ));
+    }
+
+    public function test_publish_is_idempotent(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->seedPublishableBatch($shop->id, $owner->id);
+
+        // Tenant context injected per request so the {batch} binding resolves under
+        // test (see the note in test_publish_requires_the_publish_permission). Each
+        // request's EnsureTenantUser clears the context in its finally, so a shared
+        // wrapper would be wiped before the second post — hence one runFor per call.
+        $publish = fn () => TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
+            ->post(route('historical.batches.publish', $batch->id)));
+
+        $publish()->assertRedirect();
+        // A second publish must neither error nor duplicate — it re-shows.
+        $publish()->assertRedirect();
+
+        TenantContext::runFor($shop->id, function () {
+            $this->assertSame(1, HistoricalSalesDocument::query()->count());
+            $this->assertSame(
+                HistoricalSalesDocument::STATUS_PUBLISHED,
+                HistoricalSalesDocument::query()->firstOrFail()->status
+            );
+        });
+    }
+
+    // ------------------------------------------------------------ read-only shop
+
+    public function test_read_only_shop_may_view_but_not_write(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $shop->forceFill(['access_mode' => 'read_only'])->save();
+
+        // Viewing is allowed with historical.view.
+        $this->actingAs($owner)->get(route('historical.index'))->assertOk();
+
+        // Writing is refused by the read-only middleware before any controller runs.
+        $this->actingAs($owner)->post(route('historical.manual.store'), $this->manualPayload());
+
+        TenantContext::runFor($shop->id, fn () => $this->assertSame(
+            0,
+            HistoricalSalesDocument::query()->count(),
+            'A read-only shop wrote a historical document.'
+        ));
+    }
+}
