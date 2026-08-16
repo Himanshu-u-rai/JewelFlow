@@ -96,15 +96,15 @@
                         <label>Data / header sheet
                             <select name="sheets[header]" style="width:100%;">
                                 @foreach($sheets as $sheet)
-                                    <option value="{{ $sheet['name'] }}" @selected(old('sheets.header', $profile?->sheetFor('header')) === $sheet['name'])>{{ $sheet['name'] }}</option>
+                                    <option value="{{ $sheet['name'] }}" @selected($headerSheet === $sheet['name'])>{{ $sheet['name'] }}</option>
                                 @endforeach
                             </select>
                         </label>
                         <label>Detail sheet (Layout C only)
                             <select name="sheets[detail]" style="width:100%;">
-                                <option value="">—</option>
+                                <option value="" @selected($detailSheet === null)>—</option>
                                 @foreach($sheets as $sheet)
-                                    <option value="{{ $sheet['name'] }}" @selected(old('sheets.detail', $profile?->sheetFor('detail')) === $sheet['name'])>{{ $sheet['name'] }}</option>
+                                    <option value="{{ $sheet['name'] }}" @selected($detailSheet === $sheet['name'])>{{ $sheet['name'] }}</option>
                                 @endforeach
                             </select>
                         </label>

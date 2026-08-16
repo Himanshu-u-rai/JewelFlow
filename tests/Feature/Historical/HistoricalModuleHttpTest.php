@@ -566,6 +566,103 @@ class HistoricalModuleHttpTest extends TestCase
             ->assertOk();
     }
 
+    /**
+     * A fresh two-sheet upload, no profile, no old() input: header must default
+     * to the first sheet and detail to the second — not the empty "—" option.
+     * This is the exact bug the acceptance run found: the screen computed the
+     * right default internally but never rendered it as `selected`.
+     */
+    public function test_fresh_layout_c_mapping_defaults_header_and_detail_sheet_selection(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batchId = $this->uploadTwoSheetBatch($shop->id, $owner);
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.map', $batchId));
+
+        $response->assertOk();
+        $response->assertSee('<option value="Invoices" selected>', false);
+        $response->assertSee('<option value="Lines" selected>', false);
+        // The empty placeholder must not win by browser default any more.
+        $response->assertDontSee('<option value="" selected>', false);
+    }
+
+    /** A saved profile's sheet choice beats the plain first/second-sheet default, even when it reverses the natural order. */
+    public function test_saved_profile_sheet_selection_overrides_the_default(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batchId = $this->uploadTwoSheetBatch($shop->id, $owner);
+
+        $payload = $this->twoSheetMappingPayload();
+        $payload['sheets'] = ['header' => 'Lines', 'detail' => 'Invoices'];
+
+        $this->actingAs($owner)
+            ->post(route('historical.batches.map.save', $batchId), $payload)
+            ->assertRedirect();
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.map', $batchId));
+
+        $response->assertOk();
+        $response->assertSee('<option value="Lines" selected>', false);
+        $response->assertSee('<option value="Invoices" selected>', false);
+    }
+
+    /** A validation-failure replay's sheet choice beats both the saved profile and the plain default. */
+    public function test_old_input_sheet_selection_overrides_saved_profile_and_default(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batchId = $this->uploadTwoSheetBatch($shop->id, $owner);
+
+        // Save a profile with the roles reversed …
+        $saved = $this->twoSheetMappingPayload();
+        $saved['sheets'] = ['header' => 'Lines', 'detail' => 'Invoices'];
+        $this->actingAs($owner)
+            ->post(route('historical.batches.map.save', $batchId), $saved)
+            ->assertRedirect();
+
+        // … then fail validation while asking to remember the natural order. old()
+        // must win over the profile that was just persisted.
+        $bad = $this->twoSheetMappingPayload();
+        $bad['name'] = '';
+
+        $this->actingAs($owner)
+            ->from(route('historical.batches.map', $batchId))
+            ->post(route('historical.batches.map.save', $batchId), $bad)
+            ->assertRedirect(route('historical.batches.map', $batchId));
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.map', $batchId));
+
+        $response->assertOk();
+        $response->assertSee('<option value="Invoices" selected>', false);
+        $response->assertSee('<option value="Lines" selected>', false);
+    }
+
+    /** A remembered sheet that no longer exists must degrade to the plain default, not stay stuck on nothing. */
+    public function test_stale_remembered_detail_sheet_falls_back_to_the_default_sheet(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batchId = $this->uploadTwoSheetBatch($shop->id, $owner);
+
+        $bad = $this->twoSheetMappingPayload();
+        $bad['name'] = '';
+        $bad['sheets']['detail'] = 'NoSuchSheet';
+
+        $this->actingAs($owner)
+            ->from(route('historical.batches.map', $batchId))
+            ->post(route('historical.batches.map.save', $batchId), $bad)
+            ->assertRedirect(route('historical.batches.map', $batchId));
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.map', $batchId));
+
+        $response->assertOk();
+        // Falls back to the second real sheet, not the stale name and not empty.
+        $response->assertSee('<option value="Lines" selected>', false);
+        $response->assertDontSee('<option value="" selected>', false);
+    }
+
     /** Same shop-scoped bind as every other Historical route — the map screen is not a special case. */
     public function test_cross_shop_mapping_route_is_404(): void
     {
