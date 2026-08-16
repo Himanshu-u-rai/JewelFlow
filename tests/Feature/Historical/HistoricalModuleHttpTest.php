@@ -221,6 +221,48 @@ class HistoricalModuleHttpTest extends TestCase
         });
     }
 
+    // ------------------------------------------------------------ clean manual batch render
+
+    /**
+     * Regression for the empty-severity-section render blocker: a clean manual-entry
+     * batch (one document, one line, zero duplicate/warning/blocking rows) must render
+     * both the batch-detail and document-detail pages without the severity sections
+     * throwing, and must show the real original number rather than a generated one.
+     */
+    public function test_clean_manual_batch_and_document_render_without_error(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $store = $this->actingAs($owner)->post(route('historical.manual.store'), $this->manualPayload([
+            'original_document_number' => 'OLD-HARD-COPY-2023-017',
+            'lines' => [[
+                'line_item_name'    => 'Gold ring',
+                'line_quantity'     => 1,
+                'line_gross_weight' => 5,
+                'line_net_weight'   => 5,
+                'line_total'        => 18000,
+            ]],
+        ]));
+
+        $store->assertRedirect();
+        [$batchId, $document] = TenantContext::runFor($shop->id, function () {
+            $doc = HistoricalSalesDocument::query()->firstOrFail();
+
+            return [$doc->historical_import_batch_id, $doc];
+        });
+
+        $batchResponse = $this->actingAs($owner)->get(route('historical.batches.show', $batchId));
+        $batchResponse->assertStatus(200);
+        $batchResponse->assertDontSee($document->historical_reference);
+
+        $documentResponse = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
+        $documentResponse->assertStatus(200);
+        $documentResponse->assertSee('OLD-HARD-COPY-2023-017');
+        $documentResponse->assertSee(HistoricalSalesDocument::BADGE);
+        $documentResponse->assertSee(HistoricalSalesDocument::RECORD_DISCLAIMER);
+        $documentResponse->assertDontSee($document->historical_reference);
+    }
+
     // ------------------------------------------------------------ read-only shop
 
     public function test_read_only_shop_may_view_but_not_write(): void

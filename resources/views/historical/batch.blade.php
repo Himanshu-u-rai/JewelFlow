@@ -45,8 +45,10 @@
         @if(session('historical_messages'))
             <div style="border:1px solid #fca5a5;background:#fef2f2;padding:.75rem 1rem;border-radius:8px;margin-top:1rem;">
                 @foreach(session('historical_messages') as $m)
-                    @php([$c, $lbl] = $sev($m['severity'] ?? 'info'))@endphp
-                    <div style="color:{{ $c }};"><strong>{{ $lbl }}:</strong> {{ $m['text'] }}</div>
+                    @php
+                        [$severityColor, $severityLabel] = $sev($m['severity'] ?? 'info');
+                    @endphp
+                    <div style="color:{{ $severityColor }};"><strong>{{ $severityLabel }}:</strong> {{ $m['text'] }}</div>
                 @endforeach
             </div>
         @endif
@@ -127,9 +129,11 @@
                 <table class="data-table" style="width:100%;border-collapse:collapse;">
                     <tbody>
                     @foreach($preview['messages'] as $code => $m)
-                        @php([$c, $lbl] = $sev($m['severity']))@endphp
+                        @php
+                            [$severityColor, $severityLabel] = $sev($m['severity']);
+                        @endphp
                         <tr>
-                            <td style="color:{{ $c }};white-space:nowrap;"><strong>{{ $lbl }}</strong> ×{{ $m['count'] }}</td>
+                            <td style="color:{{ $severityColor }};white-space:nowrap;"><strong>{{ $severityLabel }}</strong> ×{{ $m['count'] ?? 1 }}</td>
                             <td>{{ $m['text'] }}</td>
                         </tr>
                     @endforeach
@@ -202,11 +206,13 @@
             <thead><tr><th>Sheet</th><th>Row</th><th>Severity</th><th style="text-align:left;">Findings</th></tr></thead>
             <tbody>
             @forelse($rows as $row)
-                @php([$c, $lbl] = $sev($row->severity === 'error' ? 'error' : ($row->severity === 'warning' ? 'warning' : 'info')))@endphp
+                @php
+                    [$severityColor, $severityLabel] = $sev($row->severity === 'error' ? 'error' : ($row->severity === 'warning' ? 'warning' : 'info'));
+                @endphp
                 <tr>
                     <td>{{ $row->source_sheet ?? '—' }}</td>
                     <td style="text-align:center;">{{ $row->source_row_number }}</td>
-                    <td style="color:{{ $c }};">{{ ucfirst($row->severity ?? 'ok') }}</td>
+                    <td style="color:{{ $severityColor }};">{{ ucfirst($row->severity ?? 'ok') }}</td>
                     <td style="text-align:left;">
                         @foreach(json_decode($row->messages ?? '[]', true) ?: [] as $m){{ $m['text'] }}@if(!$loop->last)<br>@endif @endforeach
                     </td>
