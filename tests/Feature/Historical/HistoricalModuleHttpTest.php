@@ -8,7 +8,11 @@ use App\Models\Historical\HistoricalSalesDocument;
 use App\Services\Historical\HistoricalDuplicateDetector;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
@@ -136,6 +140,83 @@ class HistoricalModuleHttpTest extends TestCase
 
             return $batch;
         });
+    }
+
+    /**
+     * A genuine two-sheet XLSX (real PhpSpreadsheet bytes, not seeded rows): an
+     * "Invoices" header sheet and a "Lines" detail sheet, joined on InvoiceNo.
+     * Layout C only exists for files shaped like this, so the mapping-screen
+     * regression has to exercise the real upload -> real reader path.
+     */
+    private function buildTwoSheetXlsxContent(): string
+    {
+        $spreadsheet = new Spreadsheet();
+
+        $invoices = $spreadsheet->getActiveSheet();
+        $invoices->setTitle('Invoices');
+        $invoices->fromArray(['InvoiceNo', 'InvoiceDate', 'CustomerName', 'GrandTotal'], null, 'A1');
+        $invoices->fromArray(['INV-1', '2023-06-15', 'Asha Traders', 15000], null, 'A2');
+        $invoices->fromArray(['INV-2', '2023-06-20', 'Ramesh Patel', 8000], null, 'A3');
+
+        $lines = $spreadsheet->createSheet();
+        $lines->setTitle('Lines');
+        $lines->fromArray(['InvoiceNo', 'ItemName', 'Quantity', 'LineTotal'], null, 'A1');
+        $lines->fromArray(['INV-1', 'Gold Ring', 1, 10000], null, 'A2');
+        $lines->fromArray(['INV-1', 'Gold Chain', 1, 5000], null, 'A3');
+        $lines->fromArray(['INV-2', 'Silver Bangle', 2, 8000], null, 'A4');
+
+        $path = tempnam(sys_get_temp_dir(), 'jf_xlsx_');
+        (new Xlsx($spreadsheet))->save($path);
+        $content = file_get_contents($path);
+        unlink($path);
+
+        return $content;
+    }
+
+    /** Uploads the two-sheet fixture through the real route and returns the resulting batch id. */
+    private function uploadTwoSheetBatch(int $shopId, $owner): int
+    {
+        $file = UploadedFile::fake()->createWithContent('sales.xlsx', $this->buildTwoSheetXlsxContent());
+
+        $this->actingAs($owner)
+            ->post(route('historical.upload.store'), [
+                'file'          => $file,
+                'label'         => 'Two-sheet import',
+                'source_system' => 'Tally',
+            ])
+            ->assertRedirect();
+
+        return (int) TenantContext::runFor(
+            $shopId,
+            fn () => HistoricalImportBatch::query()->latest('id')->value('id')
+        );
+    }
+
+    /** @return array<string, mixed> a valid header/detail (Layout C) mapping payload for the fixture above. */
+    private function twoSheetMappingPayload(): array
+    {
+        return [
+            'name'                => 'Two-sheet profile',
+            'source_system'       => 'Tally',
+            'layout_type'         => \App\Models\Historical\HistoricalImportProfile::LAYOUT_HEADER_DETAIL,
+            'header_row'          => 1,
+            'date_format'         => 'YYYY-MM-DD',
+            'decimal_separator'   => '.',
+            'thousands_separator' => ',',
+            'tax_mode'            => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
+            'sheets'              => ['header' => 'Invoices', 'detail' => 'Lines'],
+            'mapping'             => [
+                'original_document_number' => 'InvoiceNo',
+                'document_date'            => 'InvoiceDate',
+                'customer_name'            => 'CustomerName',
+                'grand_total'              => 'GrandTotal',
+                'line_item_name'           => 'ItemName',
+                'line_quantity'            => 'Quantity',
+                'line_total'               => 'LineTotal',
+                'join_key'                 => 'InvoiceNo',
+                'detail_join_key'          => 'InvoiceNo',
+            ],
+        ];
     }
 
     /** @return array<string, mixed> a valid manual-entry payload. */
@@ -347,6 +428,152 @@ class HistoricalModuleHttpTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Bill DUP-0001 is already imported in this financial year.', false);
         $response->assertSee('Tax mode could not be determined from source data.', false);
+    }
+
+    // ------------------------------------------------------------ Layout C multi-sheet mapping
+
+    /**
+     * Regression for the Layout-C mapping blocker: before the fix, every mapping
+     * dropdown (including the "Line" group and the detail-sheet join key) was fed
+     * only the first sheet's headers, so a detail-only column like ItemName could
+     * never be selected — not a validation gap, a screen that could not express it.
+     */
+    public function test_layout_c_mapping_screen_offers_detail_sheet_headers_separately(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batchId = $this->uploadTwoSheetBatch($shop->id, $owner);
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.map', $batchId));
+
+        $response->assertOk();
+
+        // Detail-only columns must now be selectable somewhere on the page.
+        $response->assertSee('<option value="ItemName"', false);
+        $response->assertSee('<option value="Quantity"', false);
+        $response->assertSee('<option value="LineTotal"', false);
+
+        // Header-sheet columns are unaffected.
+        $response->assertSee('<option value="InvoiceNo"', false);
+        $response->assertSee('<option value="CustomerName"', false);
+        $response->assertSee('<option value="GrandTotal"', false);
+
+        // Both sheet-role pickers render, one per sheet.
+        $response->assertSee('name="sheets[header]"', false);
+        $response->assertSee('name="sheets[detail]"', false);
+
+        // The mapping/link fields carry the JS refresh hook the fix introduces.
+        $response->assertSee('data-sheet-role="header"', false);
+        $response->assertSee('data-sheet-role="detail"', false);
+    }
+
+    /**
+     * The full contract: the operator confirms the corrected mapping, staging
+     * reads both sheets, and normalize() joins each Lines row onto its Invoices
+     * row purely by the mapped InvoiceNo key — proving the pre-existing (and
+     * already-correct) join backend now actually receives a usable mapping.
+     */
+    public function test_layout_c_full_pipeline_joins_header_and_detail_rows_into_documents_and_lines(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batchId = $this->uploadTwoSheetBatch($shop->id, $owner);
+
+        $this->actingAs($owner)
+            ->post(route('historical.batches.map.save', $batchId), $this->twoSheetMappingPayload())
+            ->assertRedirect();
+
+        TenantContext::runFor($shop->id, function () use ($batchId): void {
+            $documents = HistoricalSalesDocument::query()
+                ->where('historical_import_batch_id', $batchId)
+                ->orderBy('original_document_number')
+                ->get();
+
+            $this->assertSame(2, $documents->count(), 'Expected one draft document per invoice.');
+
+            $inv1 = $documents->firstWhere('original_document_number', 'INV-1');
+            $inv2 = $documents->firstWhere('original_document_number', 'INV-2');
+
+            $this->assertNotNull($inv1);
+            $this->assertNotNull($inv2);
+            $this->assertSame(15000.0, (float) $inv1->grand_total);
+            $this->assertSame(8000.0, (float) $inv2->grand_total);
+
+            // Two Lines rows joined to INV-1, one to INV-2 — proves the detail
+            // sheet's own headers (now selectable) actually round-tripped.
+            $this->assertSame(2, $inv1->lines()->count());
+            $this->assertSame(1, $inv2->lines()->count());
+        });
+    }
+
+    /**
+     * Layout A (single-sheet) must render exactly as before: one sheet, one set
+     * of options, no detail/header split. This is the regression backstop for
+     * "don't break the common case while fixing the two-sheet case."
+     */
+    public function test_layout_a_single_sheet_mapping_is_unaffected_by_the_fix(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $csv = "InvoiceNo,InvoiceDate,GrandTotal\nINV-9,2023-01-01,5000\n";
+        $file = UploadedFile::fake()->createWithContent('single.csv', $csv);
+
+        $this->actingAs($owner)
+            ->post(route('historical.upload.store'), ['file' => $file, 'source_system' => 'Tally'])
+            ->assertRedirect();
+
+        $batchId = (int) TenantContext::runFor(
+            $shop->id,
+            fn () => HistoricalImportBatch::query()->latest('id')->value('id')
+        );
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.map', $batchId));
+
+        $response->assertOk();
+        $response->assertSee('<option value="InvoiceNo"', false);
+        $response->assertSee('<option value="GrandTotal"', false);
+        // A single-sheet file has nothing to offer as a second sheet — the
+        // "Sheets" picker fieldset only renders once at least one sheet exists,
+        // which single-sheet CSVs and XLSXs already satisfy pre-fix.
+        $response->assertDontSee('<option value="Lines"', false);
+    }
+
+    /**
+     * A stale/edited profile can carry a sheet name that no longer exists in the
+     * current file. The screen must fall back rather than 500 on a
+     * HistoricalParseException from deep inside the reader.
+     */
+    public function test_invalid_remembered_sheet_selection_does_not_crash_the_mapping_screen(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batchId = $this->uploadTwoSheetBatch($shop->id, $owner);
+
+        // Force a validation failure (missing required "name") while asking to
+        // remember a sheet that isn't in this workbook — old() will replay it.
+        $badPayload = $this->twoSheetMappingPayload();
+        $badPayload['name'] = '';
+        $badPayload['sheets']['detail'] = 'NoSuchSheet';
+
+        $this->actingAs($owner)
+            ->from(route('historical.batches.map', $batchId))
+            ->post(route('historical.batches.map.save', $batchId), $badPayload)
+            ->assertRedirect(route('historical.batches.map', $batchId));
+
+        $this->actingAs($owner)
+            ->get(route('historical.batches.map', $batchId))
+            ->assertOk();
+    }
+
+    /** Same shop-scoped bind as every other Historical route — the map screen is not a special case. */
+    public function test_cross_shop_mapping_route_is_404(): void
+    {
+        [$ownerA] = $this->createRetailerTenant();
+        [, $shopB] = $this->createRetailerTenant();
+        $batchB = $this->seedPublishableBatch($shopB->id, $ownerA->id);
+
+        $this->actingAs($ownerA)->get(route('historical.batches.map', $batchB->id))->assertNotFound();
     }
 
     // ------------------------------------------------------------ read-only shop

@@ -91,12 +91,14 @@ class HistoricalImportController extends Controller
             $sheets = $this->imports->inspect($batch);
         } catch (HistoricalParseException $e) {
             return view('historical.map', [
-                'batch'        => $batch,
-                'error'        => $e->getMessage(),
-                'sheets'       => [],
-                'headers'      => [],
-                'suggestion'   => ['mapping' => [], 'unmapped' => []],
-                'samples'      => [],
+                'batch'          => $batch,
+                'error'          => $e->getMessage(),
+                'sheets'         => [],
+                'headers'        => [],
+                'detailHeaders'  => [],
+                'headersBySheet' => [],
+                'suggestion'     => ['mapping' => [], 'unmapped' => []],
+                'samples'        => [],
                 'headerFields' => HistoricalFields::HEADER,
                 'lineFields'   => HistoricalFields::LINE,
                 'formats'      => \App\Services\Historical\HistoricalDateParser::FORMATS,
@@ -108,16 +110,40 @@ class HistoricalImportController extends Controller
         }
 
         $headerRow  = (int) ($profile?->header_row ?: 1);
-        $firstSheet = $sheets[0]['name'] ?? null;
-        $headers    = $this->imports->headers($batch, $firstSheet, $headerRow);
+        $sheetNames = array_column($sheets, 'name');
+
+        // The header sheet always has a usable default (the workbook's first
+        // sheet — unchanged from before this fix). The detail sheet only
+        // defaults to something when a second sheet actually exists; a plain
+        // single-sheet CSV/XLSX (Layout A/B) leaves it null, which is exactly
+        // today's behaviour for those layouts.
+        $headerSheet = $this->resolveSheetName($sheetNames, old('sheets.header', $profile?->sheetFor('header')), $sheetNames[0] ?? null);
+        $detailSheet = $this->resolveSheetName($sheetNames, old('sheets.detail', $profile?->sheetFor('detail')), $sheetNames[1] ?? null);
+
+        // Every visible sheet's headers, keyed by name — read once so the
+        // mapping screen's own JS can swap a dropdown's options the instant the
+        // operator changes which sheet plays which role, with no round trip.
+        $headersBySheet = [];
+        foreach ($sheetNames as $name) {
+            $headersBySheet[$name] = $this->imports->headers($batch, $name, $headerRow);
+        }
+
+        $headers       = $headersBySheet[$headerSheet] ?? [];
+        // Layout A/B have no separate detail sheet: line fields (Layout B) map
+        // against the same single sheet as everything else, so this falls back
+        // to $headers rather than being empty.
+        $detailHeaders = $detailSheet !== null ? ($headersBySheet[$detailSheet] ?? []) : $headers;
+
         $suggestion = $this->imports->suggest($headers);
-        $samples    = $this->imports->sample($batch, $firstSheet, $headerRow, $headers);
+        $samples    = $this->imports->sample($batch, $headerSheet, $headerRow, $headers);
 
         return view('historical.map', [
-            'batch'        => $batch,
-            'error'        => null,
-            'sheets'       => $sheets,
-            'headers'      => $headers,
+            'batch'          => $batch,
+            'error'          => null,
+            'sheets'         => $sheets,
+            'headers'        => $headers,
+            'detailHeaders'  => $detailHeaders,
+            'headersBySheet' => $headersBySheet,
             'suggestion'   => $suggestion,
             'samples'      => $samples,
             'headerFields' => HistoricalFields::HEADER,
@@ -300,5 +326,18 @@ class HistoricalImportController extends Controller
     private function assertEditable(HistoricalImportBatch $batch): void
     {
         abort_unless($batch->isEditable(), 409, 'This batch can no longer be changed.');
+    }
+
+    /**
+     * A requested sheet name is untrusted (query/session leftovers, an edited
+     * profile from a previous, differently-shaped file). Only ever hand the
+     * reader a name that is actually in this workbook — anything else falls
+     * back rather than risking a "no sheet named ..." exception mid-render.
+     *
+     * @param  array<int, string>  $sheetNames
+     */
+    private function resolveSheetName(array $sheetNames, ?string $requested, ?string $fallback): ?string
+    {
+        return $requested !== null && in_array($requested, $sheetNames, true) ? $requested : $fallback;
     }
 }

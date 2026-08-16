@@ -119,15 +119,22 @@
                         ->filter(fn ($g) => $g === $group);
                 @endphp
                 @if($fields->isNotEmpty())
+                    @php
+                        // Line fields live on the detail sheet (Layout C) or the
+                        // one sheet a single-sheet file has (Layout A/B, where
+                        // $detailHeaders already falls back to $headers).
+                        $role    = $group === 'Line' ? 'detail' : 'header';
+                        $options = $group === 'Line' ? $detailHeaders : $headers;
+                    @endphp
                     <fieldset style="border:1px solid #e2e8f0;border-radius:8px;padding:1rem;">
                         <legend>{{ $group }}</legend>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
                             @foreach($fields as $field => $g)
                                 <label>{{ str_replace('_', ' ', $field) }}
                                     @if(in_array($field, HistoricalFields::REQUIRED, true))<span style="color:#b91c1c;">*</span>@endif
-                                    <select name="mapping[{{ $field }}]" style="width:100%;">
+                                    <select name="mapping[{{ $field }}]" class="js-mapping-field" data-sheet-role="{{ $role }}" style="width:100%;">
                                         <option value="">— unmapped —</option>
-                                        @foreach($headers as $header)
+                                        @foreach($options as $header)
                                             <option value="{{ $header }}" @selected($current($field) === $header)>{{ $header }}</option>
                                         @endforeach
                                     </select>
@@ -143,7 +150,7 @@
                 <legend>Link column (Layout C)</legend>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
                     <label>Header sheet key
-                        <select name="mapping[{{ HistoricalFields::JOIN_KEY }}]" style="width:100%;">
+                        <select name="mapping[{{ HistoricalFields::JOIN_KEY }}]" class="js-mapping-field" data-sheet-role="header" style="width:100%;">
                             <option value="">—</option>
                             @foreach($headers as $header)
                                 <option value="{{ $header }}" @selected($current(HistoricalFields::JOIN_KEY) === $header)>{{ $header }}</option>
@@ -151,9 +158,9 @@
                         </select>
                     </label>
                     <label>Detail sheet key
-                        <select name="mapping[{{ HistoricalFields::DETAIL_JOIN_KEY }}]" style="width:100%;">
+                        <select name="mapping[{{ HistoricalFields::DETAIL_JOIN_KEY }}]" class="js-mapping-field" data-sheet-role="detail" style="width:100%;">
                             <option value="">—</option>
-                            @foreach($headers as $header)
+                            @foreach($detailHeaders as $header)
                                 <option value="{{ $header }}" @selected($current(HistoricalFields::DETAIL_JOIN_KEY) === $header)>{{ $header }}</option>
                             @endforeach
                         </select>
@@ -224,6 +231,50 @@
 
             <div><button class="btn btn-primary" type="submit">Save mapping &amp; normalize</button></div>
         </form>
+
+        <script>
+        (function () {
+            // Headers for every sheet in the workbook, keyed by sheet name.
+            // Lets the "header sheet" / "detail sheet" pickers swap every
+            // dependent mapping dropdown's options instantly, no round trip.
+            var headersBySheet = @json($headersBySheet ?? []);
+
+            function refresh(role, sheetName) {
+                var headers = headersBySheet[sheetName] || [];
+                document.querySelectorAll('.js-mapping-field[data-sheet-role="' + role + '"]').forEach(function (select) {
+                    var previous = select.value;
+                    // Keep the select's own first option ("— unmapped —" or
+                    // "—") and rebuild everything after it.
+                    while (select.options.length > 1) {
+                        select.remove(1);
+                    }
+                    headers.forEach(function (header) {
+                        var option = document.createElement('option');
+                        option.value = header;
+                        option.textContent = header; // never innerHTML: header text is untrusted workbook data
+                        select.appendChild(option);
+                    });
+                    if (headers.indexOf(previous) !== -1) {
+                        select.value = previous;
+                    }
+                });
+            }
+
+            var headerSheetSelect = document.querySelector('select[name="sheets[header]"]');
+            var detailSheetSelect = document.querySelector('select[name="sheets[detail]"]');
+
+            if (headerSheetSelect) {
+                headerSheetSelect.addEventListener('change', function () {
+                    refresh('header', this.value);
+                });
+            }
+            if (detailSheetSelect) {
+                detailSheetSelect.addEventListener('change', function () {
+                    refresh('detail', this.value);
+                });
+            }
+        })();
+        </script>
         @endif
     </div>
 </x-app-layout>
