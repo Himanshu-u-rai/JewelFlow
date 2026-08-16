@@ -15,6 +15,7 @@ use App\Support\Historical\HistoricalMakingCharge;
 use App\Support\Historical\HistoricalParseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Throwable;
@@ -39,8 +40,14 @@ class HistoricalImportController extends Controller
 
     public function create(Request $request): View
     {
+        // DB::raw('true'), not a bound PHP value: with emulated prepares (this
+        // connection's config) an `int` binding is inlined as a bare numeric
+        // literal, and Postgres refuses `boolean = integer` with no cast. A
+        // bound bool/string would dodge this one query, but the raw literal
+        // is what CustomerController::index() already uses for this exact
+        // column type, so it's the proven-safe convention here.
         $profiles = HistoricalImportProfile::query()
-            ->where('is_active', true)
+            ->where('is_active', DB::raw('true'))
             ->orderBy('name')
             ->get(['id', 'name', 'source_system', 'layout_type']);
 
@@ -135,6 +142,12 @@ class HistoricalImportController extends Controller
 
         $shop  = $request->user()->shop;
         $attrs = $request->profileAttributes() + ['shop_id' => $shop->id];
+
+        // `source_system` is NOT NULL on the profile table (Batch 1 schema). The
+        // mapping form leaves it optional — the operator already typed it (or
+        // didn't) on the upload screen — so fall back to the batch's value, and
+        // only then to a generic label. Never let an omitted field 500.
+        $attrs['source_system'] = $attrs['source_system'] ?: ($batch->source_system ?: 'Import');
 
         $profile = $batch->profile ?? new HistoricalImportProfile();
         $profile->fill($attrs)->save();

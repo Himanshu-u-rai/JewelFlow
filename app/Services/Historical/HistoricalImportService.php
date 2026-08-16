@@ -760,7 +760,8 @@ class HistoricalImportService
         $codes  = [];
 
         foreach ($rows as $row) {
-            foreach (($row->messages ? json_decode($row->messages, true) : []) ?: [] as $message) {
+            // `messages` is cast to `array` on the model — already decoded, never a JSON string.
+            foreach ($row->messages ?: [] as $message) {
                 $severity = (string) ($message['severity'] ?? HistoricalMessages::INFO);
 
                 if (isset($counts[$severity])) {
@@ -906,21 +907,31 @@ class HistoricalImportService
     }
 
     /** @return array<int, string> */
+    /**
+     * The union of every staged sheet's column headers. A header/detail import
+     * (Layout C) stages two sheets with different columns — taking only the
+     * first row's keys would see just the header sheet and wrongly flag every
+     * detail-only mapped field (join key, item lines) as a missing column.
+     */
     private function stagedHeaders(HistoricalImportBatch $batch): array
     {
-        $row = HistoricalImportRow::query()
-            ->where('historical_import_batch_id', $batch->id)
-            ->orderBy('id')
-            ->first();
+        $headers = [];
 
-        if ($row === null) {
-            return [];
+        foreach (
+            HistoricalImportRow::query()
+                ->where('historical_import_batch_id', $batch->id)
+                ->orderBy('id')
+                ->get(['source_sheet', 'original_payload'])
+                ->unique('source_sheet')
+            as $row
+        ) {
+            $cells = $row->original_payload ?? [];
+            unset($cells['role']);
+
+            $headers += array_fill_keys(array_map('strval', array_keys($cells)), true);
         }
 
-        $cells = $row->original_payload ?? [];
-        unset($cells['role']);
-
-        return array_map('strval', array_keys($cells));
+        return array_keys($headers);
     }
 
     private function assertEditable(HistoricalImportBatch $batch): void

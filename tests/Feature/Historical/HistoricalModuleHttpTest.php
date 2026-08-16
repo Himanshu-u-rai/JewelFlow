@@ -115,13 +115,26 @@ class HistoricalModuleHttpTest extends TestCase
         $batchB = $this->seedPublishableBatch($shopB->id, $ownerA->id);
         $docB   = TenantContext::runFor($shopB->id, fn () => HistoricalSalesDocument::query()->firstOrFail());
 
-        // Shop A's owner has full permissions, but the object is not in their tenant.
-        // Bind under shop A's real tenant context so the 404 proves scope exclusion,
-        // not merely that console binding fails closed (see note on RMB below).
-        TenantContext::runFor($shopA->id, function () use ($ownerA, $docB, $batchB) {
-            $this->actingAs($ownerA)->get(route('historical.documents.show', $docB->id))->assertNotFound();
-            $this->actingAs($ownerA)->get(route('historical.batches.show', $batchB->id))->assertNotFound();
-        });
+        // Shop A's owner has full permissions, but the objects live in shop B. The
+        // explicit shop-scoped Route::bind resolves against ownerA's shop, so shop B's
+        // ids can only 404 — no TenantContext injection, this is the real route.
+        $this->actingAs($ownerA)->get(route('historical.documents.show', $docB->id))->assertNotFound();
+        $this->actingAs($ownerA)->get(route('historical.batches.show', $batchB->id))->assertNotFound();
+
+        // And an unauthenticated request never reveals the object: it either 404s
+        // (scoped bind fails closed with no user) or redirects to login — never 200.
+        $status = $this->get(route('historical.batches.show', $batchB->id))->status();
+        $this->assertContains($status, [302, 401, 404], "Unauth got {$status}, may leak existence.");
+    }
+
+    public function test_owner_reaches_own_batch_through_the_real_route(): void
+    {
+        // Positive counterpart to the cross-shop 404: same shop resolves and renders,
+        // proving the scoped bind is not just trivially 404-ing everything under test.
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->seedPublishableBatch($shop->id, $owner->id);
+
+        $this->actingAs($owner)->get(route('historical.batches.show', $batch->id))->assertOk();
     }
 
     // ------------------------------------------------------------ import matrix
@@ -177,13 +190,11 @@ class HistoricalModuleHttpTest extends TestCase
         $batch = $this->seedPublishableBatch($shop->id, $owner->id);
 
         $this->grantOnlyPermissions($owner, ['historical.view', 'historical.import']);
-        // Route-model binding of a tenant model only resolves under an active tenant
-        // context. Live, EnsureTenantUser supplies it; under `artisan test` the console
-        // guard nulls the Auth fallback, so we inject it — otherwise binding 404s before
-        // the can: gate can even fire, and this would assert the wrong failure.
-        TenantContext::runFor($shop->id, fn () => $this->actingAs($owner->fresh())
+        // The scoped Route::bind resolves the batch (same shop), so the 403 here is
+        // the can:historical.publish gate firing — not a binding miss.
+        $this->actingAs($owner->fresh())
             ->post(route('historical.batches.publish', $batch->id))
-            ->assertForbidden());
+            ->assertForbidden();
 
         TenantContext::runFor($shop->id, fn () => $this->assertSame(
             HistoricalSalesDocument::STATUS_DRAFT,
@@ -196,16 +207,10 @@ class HistoricalModuleHttpTest extends TestCase
         [$owner, $shop] = $this->createRetailerTenant();
         $batch = $this->seedPublishableBatch($shop->id, $owner->id);
 
-        // Tenant context injected per request so the {batch} binding resolves under
-        // test (see the note in test_publish_requires_the_publish_permission). Each
-        // request's EnsureTenantUser clears the context in its finally, so a shared
-        // wrapper would be wiped before the second post — hence one runFor per call.
-        $publish = fn () => TenantContext::runFor($shop->id, fn () => $this->actingAs($owner)
-            ->post(route('historical.batches.publish', $batch->id)));
-
-        $publish()->assertRedirect();
+        // Real route, scoped bind — no context injection needed.
+        $this->actingAs($owner)->post(route('historical.batches.publish', $batch->id))->assertRedirect();
         // A second publish must neither error nor duplicate — it re-shows.
-        $publish()->assertRedirect();
+        $this->actingAs($owner)->post(route('historical.batches.publish', $batch->id))->assertRedirect();
 
         TenantContext::runFor($shop->id, function () {
             $this->assertSame(1, HistoricalSalesDocument::query()->count());

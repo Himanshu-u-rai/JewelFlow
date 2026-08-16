@@ -270,6 +270,18 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // retailer edition passes. Read-only shops are already blocked on every non-GET
     // by subscription.active above, so the view routes stay open and the write
     // routes close with no module-specific code. Permissions are enforced per verb.
+    // Resolve the two historical route params explicitly, scoped to the signed-in
+    // user's shop. This does not lean on TenantContext being populated at bind time
+    // (SubstituteBindings runs before EnsureTenantUser) nor on the BelongsToShop
+    // Auth fallback (which is disabled under runningInConsole()). A wrong-shop or
+    // missing id can only 404 — the same guarantee live and under `artisan test`.
+    Route::bind('batch', fn ($value) => \App\Models\Historical\HistoricalImportBatch::withoutGlobalScope('shop')
+        ->where('shop_id', auth()->user()?->shop_id)
+        ->findOrFail($value));
+    Route::bind('document', fn ($value) => \App\Models\Historical\HistoricalSalesDocument::withoutGlobalScope('shop')
+        ->where('shop_id', auth()->user()?->shop_id)
+        ->findOrFail($value));
+
     Route::middleware('edition:retailer')->prefix('historical')->name('historical.')->group(function () {
         // --- view (historical.view) ---
         Route::get('/', [HistoricalSalesController::class, 'index'])

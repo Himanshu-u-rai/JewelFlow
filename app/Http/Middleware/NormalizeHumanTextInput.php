@@ -95,6 +95,22 @@ class NormalizeHumanTextInput
         'otp',
     ];
 
+    /**
+     * Dynamic dictionaries whose keys are foreign data (spreadsheet column
+     * headers, canonical field slugs), never semantic field names. Recursing
+     * into these lets an arbitrary source column literally named "Notes" or
+     * "Name" collide with the generic key heuristics below and silently
+     * mangle a stored value (e.g. an enum like "ignored" -> "Ignored"),
+     * breaking validation without a clear cause. Left untouched wholesale.
+     */
+    private array $opaqueContainerKeys = [
+        'mapping',
+        'column_decisions',
+        'sheets',
+        'making_defaults',
+        'tax_defaults',
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
         if (in_array($request->getMethod(), ['POST', 'PUT', 'PATCH'], true)) {
@@ -108,6 +124,10 @@ class NormalizeHumanTextInput
     {
         foreach ($payload as $key => $value) {
             if (is_array($value)) {
+                if (in_array(strtolower((string) $key), $this->opaqueContainerKeys, true)) {
+                    continue;
+                }
+
                 $payload[$key] = $this->normalizeArray($value);
                 continue;
             }

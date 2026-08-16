@@ -42,6 +42,7 @@ class HistoricalDocumentNormalizer
     public const CODE_ITEM_SNAPSHOT      = 'item_snapshot_only';
     public const CODE_FORMULA_LITERAL    = 'formula_literal';
     public const CODE_LINE_TOTAL_DRIFT   = 'line_total_drift';
+    public const CODE_LINE_TOTAL_UNKNOWN = 'line_total_unknown';
     public const CODE_OPENING_BALANCE    = 'opening_balance_not_evaluated';
 
     public function __construct(
@@ -454,6 +455,21 @@ class HistoricalDocumentNormalizer
             );
 
             $name = self::text($line['line_item_name'] ?? null);
+
+            // `historical_sales_lines.line_total` is NOT NULL with a `>= 0` check
+            // (Batch 1 schema, immutable) — a line with no mapped/parseable total
+            // (e.g. a Layout C detail row that only carries an item name) still
+            // has to persist a number. 0 is the same "unknown, not invented"
+            // convention fingerprint() already uses; the message makes the
+            // substitution visible instead of silently understating the line.
+            if ($lineTotal === null) {
+                $messages->warning(
+                    self::CODE_LINE_TOTAL_UNKNOWN,
+                    sprintf('Line %d has no readable total. Recorded as 0 — the header grand total is unaffected.', $number),
+                    'lines'
+                );
+                $lineTotal = 0.0;
+            }
 
             $normalized[] = [
                 'line_number'           => $number,
