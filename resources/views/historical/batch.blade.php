@@ -13,7 +13,7 @@
     // Release 1 pages at 100 rows; a batch with duplicates past page 1 is rare
     // and the operator can page to it. Revisit if real files need cross-page review.
     $dupGroups = collect($rows->items())
-        ->filter(fn ($r) => collect(json_decode($r->messages ?? '[]', true) ?: [])
+        ->filter(fn ($r) => collect($r->messages ?: [])
             ->contains(fn ($m) => in_array($m['code'] ?? '', [
                 HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
                 HistoricalDuplicateDetector::CODE_DUPLICATE_FINGERPRINT,
@@ -168,7 +168,7 @@
                 <h2 style="margin-top:1.5rem;">Duplicate review</h2>
                 @foreach($dupGroups as $key => $groupRows)
                     @php
-                        $msg = collect(json_decode($groupRows->first()->messages ?? '[]', true) ?: [])
+                        $msg = collect($groupRows->first()->messages ?: [])
                             ->first(fn ($m) => in_array($m['code'] ?? '', [
                                 HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
                                 HistoricalDuplicateDetector::CODE_DUPLICATE_FINGERPRINT,
@@ -214,7 +214,7 @@
                     <td style="text-align:center;">{{ $row->source_row_number }}</td>
                     <td style="color:{{ $severityColor }};">{{ ucfirst($row->severity ?? 'ok') }}</td>
                     <td style="text-align:left;">
-                        @foreach(json_decode($row->messages ?? '[]', true) ?: [] as $m){{ $m['text'] }}@if(!$loop->last)<br>@endif @endforeach
+                        @foreach($row->messages ?: [] as $m){{ $m['text'] }}@if(!$loop->last)<br>@endif @endforeach
                     </td>
                 </tr>
             @empty

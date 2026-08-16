@@ -3,7 +3,9 @@
 namespace Tests\Feature\Historical;
 
 use App\Models\Historical\HistoricalImportBatch;
+use App\Models\Historical\HistoricalImportRow;
 use App\Models\Historical\HistoricalSalesDocument;
+use App\Services\Historical\HistoricalDuplicateDetector;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -67,6 +69,69 @@ class HistoricalModuleHttpTest extends TestCase
                 'grand_total'                => 25000.00,
                 'status'                     => HistoricalSalesDocument::STATUS_DRAFT,
                 'content_fingerprint'        => str_repeat('a', 64),
+            ])->save();
+
+            return $batch;
+        });
+    }
+
+    /**
+     * A real-import-shaped batch: HistoricalImportRow rows carrying array-cast
+     * `messages` — one duplicate-group hit, one plain warning. Manual-entry
+     * batches never populate this table, so only this shape exercises the
+     * batch-detail view's duplicate-group and staged-row rendering.
+     */
+    private function seedImportBatchWithStagedRows(int $shopId, int $actorId): HistoricalImportBatch
+    {
+        return TenantContext::runFor($shopId, function () use ($shopId, $actorId): HistoricalImportBatch {
+            $batch = new HistoricalImportBatch();
+            $batch->forceFill([
+                'shop_id'              => $shopId,
+                'label'                => 'CSV Import Layout A',
+                'source_system'        => 'Tally',
+                'status'               => HistoricalImportBatch::STATUS_REVIEW,
+                'created_by'           => $actorId,
+                'preview_generated_at' => now(),
+                'blocking_count'       => 0,
+                'warning_count'        => 1,
+            ])->save();
+
+            $dupRow = new HistoricalImportRow();
+            $dupRow->forceFill([
+                'shop_id'                    => $shopId,
+                'historical_import_batch_id' => $batch->id,
+                'source_sheet'               => 'Sheet1',
+                'source_row_number'          => 2,
+                'grouping_key'               => 'dup-group-1',
+                'original_payload'           => ['InvoiceNo' => 'DUP-0001'],
+                'normalized_payload'         => ['original_document_number' => 'DUP-0001'],
+                'severity'                   => HistoricalImportRow::SEVERITY_WARNING,
+                'validation_status'          => HistoricalImportRow::VALIDATION_VALID,
+                'messages'                   => [[
+                    'severity' => HistoricalImportRow::SEVERITY_WARNING,
+                    'code'     => HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
+                    'text'     => 'Bill DUP-0001 is already imported in this financial year.',
+                    'field'    => null,
+                ]],
+            ])->save();
+
+            $warnRow = new HistoricalImportRow();
+            $warnRow->forceFill([
+                'shop_id'                    => $shopId,
+                'historical_import_batch_id' => $batch->id,
+                'source_sheet'               => 'Sheet1',
+                'source_row_number'          => 3,
+                'grouping_key'               => 'row-3',
+                'original_payload'           => ['InvoiceNo' => 'CSV-0002'],
+                'normalized_payload'         => ['original_document_number' => 'CSV-0002'],
+                'severity'                   => HistoricalImportRow::SEVERITY_WARNING,
+                'validation_status'          => HistoricalImportRow::VALIDATION_VALID,
+                'messages'                   => [[
+                    'severity' => HistoricalImportRow::SEVERITY_WARNING,
+                    'code'     => 'tax_unknown',
+                    'text'     => 'Tax mode could not be determined from source data.',
+                    'field'    => null,
+                ]],
             ])->save();
 
             return $batch;
@@ -261,6 +326,27 @@ class HistoricalModuleHttpTest extends TestCase
         $documentResponse->assertSee(HistoricalSalesDocument::BADGE);
         $documentResponse->assertSee(HistoricalSalesDocument::RECORD_DISCLAIMER);
         $documentResponse->assertDontSee($document->historical_reference);
+    }
+
+    // ------------------------------------------------------------ real-import staged rows
+
+    /**
+     * Regression for the array-cast double-decode blocker: HistoricalImportRow
+     * `messages` is Eloquent-cast to array, so calling json_decode() on it in the
+     * view throws a TypeError. Only a batch with real staged rows (i.e. a real
+     * CSV/XLSX import) exercises this path — manual entries never populate
+     * HistoricalImportRow, which is why Batch 1's manual-entry test missed it.
+     */
+    public function test_import_batch_with_staged_rows_renders_duplicate_group_and_warning(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->seedImportBatchWithStagedRows($shop->id, $owner->id);
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.show', $batch->id));
+
+        $response->assertStatus(200);
+        $response->assertSee('Bill DUP-0001 is already imported in this financial year.', false);
+        $response->assertSee('Tax mode could not be determined from source data.', false);
     }
 
     // ------------------------------------------------------------ read-only shop
