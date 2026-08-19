@@ -239,6 +239,33 @@ class HistoricalCustomerMatchingTest extends TestCase
         $response->assertSee('archived', false);
     }
 
+    // ------------------------------------------------- 6b. masked suggestion UI
+
+    public function test_document_show_renders_masked_match_basis_labels_not_raw_mobile(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $this->createCustomer($shop->id, ['first_name' => 'Raj', 'last_name' => 'Jewels', 'mobile' => '9876543210']);
+            $batch = $this->makeBatch($shop->id);
+
+            // An exact mobile match requires the document's own snapshot to equal
+            // the candidate's mobile — so the raw digits legitimately appear once,
+            // in "Customer snapshot". The suggestion card must not repeat them.
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'customer_snapshot' => ['name' => 'Someone Else', 'mobile' => '9876543210'],
+            ]);
+        });
+
+        $response = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
+        $html = $response->getContent();
+
+        $response->assertOk();
+        $response->assertSee('Mobile match');
+        $response->assertSee('98******10');
+        $this->assertSame(1, substr_count($html, '9876543210'), 'Raw mobile must appear only in the immutable snapshot, never in the masked suggestion card.');
+    }
+
     // --------------------------------------------------- 7. no auto-preselect via HTTP
 
     public function test_a_name_or_mobile_match_never_auto_sets_customer_id_via_the_manual_flow(): void

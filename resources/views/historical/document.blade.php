@@ -45,22 +45,45 @@
 
                 @if($document->status === HistoricalSalesDocument::STATUS_DRAFT)
                     @can('historical.import')
+                        @php
+                            $bases = ['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'];
+                            $candidates = collect();
+                            foreach ($bases as $key => $basisLabel) {
+                                $match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()];
+                                if ($match['status'] !== 'match') {
+                                    continue;
+                                }
+                                foreach ($match['customers'] as $candidate) {
+                                    $entry = $candidates->get($candidate->id, ['candidate' => $candidate, 'bases' => []]);
+                                    $entry['bases'][] = $basisLabel;
+                                    $candidates->put($candidate->id, $entry);
+                                }
+                            }
+                        @endphp
+
                         @if($suggestions)
-                            @foreach(['mobile' => 'Mobile', 'gstin' => 'GSTIN', 'name' => 'Name'] as $key => $label)
+                            @foreach(['gstin' => 'GSTIN'] as $key => $label)
                                 @php($match = $suggestions[$key])
                                 @if($match['status'] === 'ambiguous')
-                                    <p style="color:#b45309;">{{ $label }} match is ambiguous ({{ $match['customers']->count() }} customers) — pick one manually below, if any.</p>
-                                @elseif($match['status'] === 'match')
-                                    <p>{{ $label }} suggests:</p>
-                                    @foreach($match['customers'] as $candidate)
-                                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" style="display:inline-block;margin:0 .5rem .5rem 0;">
-                                            @csrf
-                                            <input type="hidden" name="customer_id" value="{{ $candidate->id }}">
-                                            <button class="btn" type="submit">Link {{ $candidate->name }} ({{ $candidate->mobile ?? '—' }})</button>
-                                        </form>
-                                    @endforeach
+                                    <p style="color:#b45309;font-weight:600;">⚠ {{ $label }} match is ambiguous — {{ $match['customers']->count() }} customers share this GSTIN. Not linked automatically; review manually.</p>
                                 @endif
                             @endforeach
+                        @endif
+
+                        @if($candidates->isNotEmpty())
+                            <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}">
+                                @csrf
+                                <p style="color:#64748b;margin-bottom:.25rem;">Possible existing customers — nothing selected by default:</p>
+                                @foreach($candidates as $entry)
+                                    @php($candidate = $entry['candidate'])
+                                    <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:.4rem;min-height:44px;">
+                                        <input type="radio" name="customer_id" value="{{ $candidate->id }}" required>
+                                        <span>{{ $candidate->name }} — {{ Str::mask($candidate->mobile ?? '—', '*', 2, -2) }}
+                                            <small style="color:#64748b;">({{ implode(', ', $entry['bases']) }})</small></span>
+                                    </label>
+                                @endforeach
+                                <button class="btn" type="submit">Link selected customer</button>
+                            </form>
                         @endif
 
                         <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem;">
@@ -69,12 +92,10 @@
                             <button class="btn" type="submit">Link by ID</button>
                         </form>
 
-                        @if($document->customer_id)
-                            <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" style="margin-top:.5rem;">
-                                @csrf
-                                <button class="btn" type="submit">Unlink — keep snapshot-only</button>
-                            </form>
-                        @endif
+                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" style="margin-top:.5rem;">
+                            @csrf
+                            <button class="btn" type="submit">{{ $document->customer_id ? 'Unlink — keep snapshot only' : 'Keep historical snapshot only' }}</button>
+                        </form>
                     @endcan
                 @endif
             </div>

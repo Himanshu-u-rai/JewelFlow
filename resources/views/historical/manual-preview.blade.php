@@ -64,10 +64,10 @@
             @if(($suggestions['mobile']['status'] ?? 'none') !== 'none' || ($suggestions['gstin']['status'] ?? 'none') !== 'none' || ($suggestions['name']['status'] ?? 'none') !== 'none')
                 <div style="color:#64748b;">
                     Possible existing customer matches (informational — link them after saving, from the document's review screen):
-                    @foreach(['mobile' => 'Mobile', 'gstin' => 'GSTIN', 'name' => 'Name'] as $key => $label)
+                    @foreach(['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'] as $key => $label)
                         @php($match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()])
                         @if($match['status'] === 'ambiguous')
-                            <div>{{ $label }}: ambiguous ({{ $match['customers']->count() }} customers)</div>
+                            <div>{{ $label }}: ambiguous — {{ $match['customers']->count() }} customers share this value, not linked automatically</div>
                         @elseif($match['status'] === 'match')
                             <div>{{ $label }}: {{ $match['customers']->pluck('name')->join(', ') }}</div>
                         @endif
