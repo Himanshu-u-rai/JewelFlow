@@ -10,35 +10,40 @@
     $money = ['taxable_amount'=>'Taxable','tax_total'=>'Tax total','cgst'=>'CGST','sgst'=>'SGST','igst'=>'IGST','cess'=>'Cess','discount'=>'Discount','rounding'=>'Rounding','metal_value'=>'Metal value','stone_value'=>'Stone value','paid_amount'=>'Paid','outstanding_amount'=>'Outstanding'];
 @endphp
 <x-app-layout>
-    <div class="page" style="padding:1rem;max-width:900px;margin:0 auto;">
+    <x-page-header title="Enter a historical bill" subtitle="Records a sale made before JewelFlow. Not a live invoice — no number issued, no stock moved.">
+        <x-slot:actions>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm">← Historical sales</a>
+        </x-slot:actions>
+    </x-page-header>
+
+    <div class="content-inner historical-manual-page">
         <x-app-alerts />
+
+        <p class="text-sm text-amber-700 mb-4">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
 
         {{-- Blocking findings from a rejected save. --}}
         @if(session('historical_messages'))
-            <div style="border:1px solid #fca5a5;background:#fef2f2;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;">
+            <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 mb-4" role="alert">
                 @foreach(session('historical_messages') as $m)
-                    <div style="color:#b91c1c;">{{ $m['text'] }}</div>
+                    <div class="text-rose-700 text-sm">{{ $m['text'] }}</div>
                 @endforeach
             </div>
         @endif
-
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-            <h1 style="margin:0;">Enter a historical bill</h1>
-            <a href="{{ route('historical.index') }}">← Historical sales</a>
-        </div>
-        <p style="color:#b45309;">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
 
         {{-- Preview renders a 200 HTML view (not a redirect) so the operator can review
              before anything is written. Turbo Drive requires form responses to redirect,
              so it must be opted out here — see resources/views/export/index.blade.php
              and super-admin/account/index.blade.php for the same pattern. --}}
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
-              x-data="{ lines: [] }" style="display:grid;gap:1.25rem;">
+              x-data="{ lines: [] }" class="grid gap-5">
             @csrf
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
-            <div><button class="btn btn-primary" type="submit">Preview</button></div>
+            <div>
+                <button class="btn btn-primary" type="submit">Preview</button>
+                <p class="text-xs text-slate-500 mt-2">Nothing is saved yet — the next screen is a read-only preview to review before Confirm Save.</p>
+            </div>
         </form>
     </div>
 </x-app-layout>

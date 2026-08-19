@@ -1,45 +1,55 @@
 <x-app-layout>
-    <div class="page" style="padding:1rem;max-width:700px;margin:0 auto;">
+    <x-page-header title="Import a historical file" subtitle="Upload a CSV or XLSX export. Nothing is read yet — you confirm the column mapping on the next screen.">
+        <x-slot:actions>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm">← Historical sales</a>
+        </x-slot:actions>
+    </x-page-header>
+
+    <div class="content-inner historical-upload-page max-w-2xl">
         <x-app-alerts />
 
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-            <h1 style="margin:0;">Import a historical file</h1>
-            <a href="{{ route('historical.index') }}">← Historical sales</a>
-        </div>
-        <p style="color:#475569;">
-            Upload a CSV or XLSX export. Nothing is read yet — you confirm the column mapping on the next screen.
-        </p>
-
-        <form method="POST" action="{{ route('historical.upload.store') }}" enctype="multipart/form-data"
-              style="display:grid;gap:1rem;margin-top:1rem;">
+        <form method="POST" action="{{ route('historical.upload.store') }}" enctype="multipart/form-data" class="grid gap-5">
             @csrf
 
-            <label>Batch label
-                <input type="text" name="label" value="{{ old('label') }}" required placeholder="e.g. Tally FY 2021-22" style="width:100%;">
-            </label>
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                <h2 class="text-base font-semibold text-slate-800 mb-4">File</h2>
+                <div class="grid gap-4">
+                    <div>
+                        <label for="label">Batch label <span class="text-rose-600">*</span></label>
+                        <input type="text" id="label" name="label" value="{{ old('label') }}" required aria-required="true" placeholder="e.g. Tally FY 2021-22" class="w-full">
+                    </div>
 
-            <label>File (.csv or .xlsx)
-                <input type="file" name="file" accept=".csv,.txt,.xlsx" required style="width:100%;">
-            </label>
+                    <div>
+                        <label for="file">File</label>
+                        <input type="file" id="file" name="file" accept=".csv,.txt,.xlsx" required aria-required="true" class="w-full">
+                        <p class="text-xs text-slate-500 mt-1">Accepted formats: .csv or .xlsx. Maximum size: 20 MB. This file is stored privately for your shop only — no one outside your team can read it.</p>
+                    </div>
 
-            <label>Reuse a saved mapping profile (optional)
-                <select name="historical_import_profile_id" style="width:100%;">
-                    <option value="">— New mapping —</option>
-                    @foreach($profiles as $profile)
-                        <option value="{{ $profile->id }}" @selected(old('historical_import_profile_id') == $profile->id)>
-                            {{ $profile->name }} ({{ $profile->source_system ?? 'n/a' }}, {{ $profile->layout_type }})
-                        </option>
-                    @endforeach
-                </select>
-            </label>
+                    <div>
+                        <label for="historical_import_profile_id">Reuse a saved mapping profile <span class="text-slate-400 font-normal">(optional)</span></label>
+                        <select id="historical_import_profile_id" name="historical_import_profile_id" class="w-full">
+                            <option value="">— New mapping —</option>
+                            @foreach($profiles as $profile)
+                                <option value="{{ $profile->id }}" @selected(old('historical_import_profile_id') == $profile->id)>
+                                    {{ $profile->name }} ({{ $profile->source_system ?? 'n/a' }}, {{ $profile->layout_type }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">Choose a profile from an earlier import to reuse its column mapping, or leave as "New mapping" to map columns from scratch on the next screen.</p>
+                    </div>
 
-            <label>Source system (optional)
-                <input type="text" name="source_system" value="{{ old('source_system') }}" placeholder="Tally, Busy, Marg…" style="width:100%;">
-            </label>
-
-            <label>Cutover date (optional — when JewelFlow went live)
-                <input type="date" name="cutover_date" value="{{ old('cutover_date') }}" style="width:100%;">
-            </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="source_system">Source system <span class="text-slate-400 font-normal">(optional)</span></label>
+                            <input type="text" id="source_system" name="source_system" value="{{ old('source_system') }}" placeholder="Tally, Busy, Marg…" class="w-full">
+                        </div>
+                        <div>
+                            <label for="cutover_date">Cutover date <span class="text-slate-400 font-normal">(optional — when JewelFlow went live)</span></label>
+                            <input type="date" id="cutover_date" name="cutover_date" value="{{ old('cutover_date') }}" class="w-full">
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div><button class="btn btn-primary" type="submit">Upload &amp; continue to mapping</button></div>
         </form>

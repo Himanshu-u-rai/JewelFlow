@@ -17,105 +17,144 @@
     $infos    = $messages->ofSeverity(HistoricalMessages::INFO);
 @endphp
 <x-app-layout>
-    <div class="page" style="padding:1rem;max-width:900px;margin:0 auto;">
+    <x-page-header title="Preview historical bill" subtitle="Nothing has been saved yet — this is a computed preview. Review it, then Confirm Save.">
+        <x-slot:actions>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm">← Historical sales</a>
+        </x-slot:actions>
+    </x-page-header>
+
+    <div class="content-inner historical-manual-preview-page">
         <x-app-alerts />
 
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-            <h1 style="margin:0;">Preview historical bill</h1>
-            <a href="{{ route('historical.index') }}">← Historical sales</a>
+        {{-- Prominent read-only preview header: badge, disclaimer, and the exact
+             original number up front — this is what the operator is confirming. --}}
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 mb-4">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-teal-700 text-white">{{ HistoricalSalesDocument::BADGE }}</span>
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Read-only preview</span>
+            </div>
+            <p class="text-lg font-semibold text-slate-800 mt-2">
+                {{ $attributes['original_document_number'] ?? 'Number unavailable' }}
+                @if($attributes['document_series'] ?? null) <span class="text-sm font-normal text-slate-500">(series {{ $attributes['document_series'] }})</span> @endif
+            </p>
+            <p class="text-sm text-amber-700 mt-1">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
         </div>
-        <p style="color:#b45309;">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
-        <p style="color:#64748b;">Nothing has been saved yet. This is a computed preview — review it, then Confirm Save.</p>
 
+        {{-- Warnings and blockers are visually separated by severity, and blockers
+             are shown first — Confirm Save is not disabled client-side (it always
+             re-validates server-side), but a blocking finding here means it will
+             be rejected, so the operator should see that before scrolling to it. --}}
         @if($errors !== [])
-            <div style="border:1px solid #fca5a5;background:#fef2f2;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;">
-                <strong style="color:#b91c1c;">Blocking — this bill cannot be saved until these are fixed:</strong>
-                @foreach($errors as $m)<div style="color:#b91c1c;">{{ $m['text'] }}</div>@endforeach
+            <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 mb-3" role="alert">
+                <p class="font-semibold text-rose-700 text-sm mb-1">Blocking — this bill cannot be saved until these are fixed:</p>
+                @foreach($errors as $m)<p class="text-rose-700 text-sm">{{ $m['text'] }}</p>@endforeach
             </div>
         @endif
 
         @if($warnings !== [])
-            <div style="border:1px solid #fde68a;background:#fffbeb;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;">
-                <strong style="color:#b45309;">Warnings:</strong>
-                @foreach($warnings as $m)<div style="color:#b45309;">{{ $m['text'] }}</div>@endforeach
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-3">
+                <p class="font-semibold text-amber-800 text-sm mb-1">Warnings:</p>
+                @foreach($warnings as $m)<p class="text-amber-800 text-sm">{{ $m['text'] }}</p>@endforeach
             </div>
         @endif
 
         @if($infos !== [])
-            <div style="border:1px solid #bfdbfe;background:#eff6ff;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;">
-                @foreach($infos as $m)<div style="color:#1e40af;">{{ $m['text'] }}</div>@endforeach
+            <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 mb-3">
+                @foreach($infos as $m)<p class="text-blue-800 text-sm">{{ $m['text'] }}</p>@endforeach
             </div>
         @endif
 
-        <section style="border:1px solid #e2e8f0;border-radius:8px;padding:1rem;margin-bottom:1rem;">
-            <h2 style="margin-top:0;">Document</h2>
-            <div>Number: {{ $attributes['original_document_number'] ?? '—' }} @if($attributes['document_series'] ?? null) (series {{ $attributes['document_series'] }}) @endif</div>
-            <div>Date: {{ $attributes['document_date'] ?? '—' }}</div>
-            <div>Financial year: {{ $attributes['financial_year'] ?? '—' }}</div>
-            <div>Source: {{ $attributes['source_system'] ?? '—' }}</div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                <h2 class="text-base font-semibold text-slate-800 mb-3">Document</h2>
+                <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                    <dt class="text-slate-500">Date</dt><dd class="text-slate-800">{{ $attributes['document_date'] ?? '—' }}</dd>
+                    <dt class="text-slate-500">Financial year</dt><dd class="text-slate-800">{{ $attributes['financial_year'] ?? '—' }}</dd>
+                    <dt class="text-slate-500">Source</dt><dd class="text-slate-800">{{ $attributes['source_system'] ?? '—' }}</dd>
+                </dl>
+            </div>
 
-            <h3>Customer snapshot (never linked)</h3>
-            <div>Name: {{ $customer['name'] ?? '—' }}</div>
-            <div>Mobile: {{ $customer['mobile'] ?? '—' }}</div>
-            <div>GSTIN: {{ $customer['gstin'] ?? '—' }}</div>
-            <div>Place of supply: {{ $customer['place_of_supply'] ?? '—' }}</div>
-            <div>Address: {{ $customer['address'] ?? '—' }}</div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                <h2 class="text-base font-semibold text-slate-800 mb-3">Customer snapshot <span class="text-slate-400 font-normal text-xs">(never linked)</span></h2>
+                <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                    <dt class="text-slate-500">Name</dt><dd class="text-slate-800">{{ $customer['name'] ?? '—' }}</dd>
+                    <dt class="text-slate-500">Mobile</dt><dd class="text-slate-800">{{ $customer['mobile'] ?? '—' }}</dd>
+                    <dt class="text-slate-500">GSTIN</dt><dd class="text-slate-800">{{ $customer['gstin'] ?? '—' }}</dd>
+                    <dt class="text-slate-500">Place of supply</dt><dd class="text-slate-800">{{ $customer['place_of_supply'] ?? '—' }}</dd>
+                    <dt class="text-slate-500">Address</dt><dd class="text-slate-800">{{ $customer['address'] ?? '—' }}</dd>
+                </dl>
 
-            @if(($suggestions['mobile']['status'] ?? 'none') !== 'none' || ($suggestions['gstin']['status'] ?? 'none') !== 'none' || ($suggestions['name']['status'] ?? 'none') !== 'none')
-                <div style="color:#64748b;">
-                    Possible existing customer matches (informational — link them after saving, from the document's review screen):
-                    @foreach(['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'] as $key => $label)
-                        @php
-                            $match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()];
-                        @endphp
-                        @if($match['status'] === 'ambiguous')
-                            <div>{{ $label }}: ambiguous — {{ $match['customers']->count() }} customers share this value, not linked automatically</div>
-                        @elseif($match['status'] === 'match')
-                            <div>{{ $label }}: {{ $match['customers']->pluck('name')->join(', ') }}</div>
-                        @endif
-                    @endforeach
-                </div>
-            @endif
-
-            <h3>Making / labour</h3>
-            <div>{{ $attributes['making_label_original'] ?? '—' }}: {{ $attributes['making_value_original'] ?? '—' }}
-                ({{ $attributes['making_category'] ?? 'uncategorized' }} / {{ $attributes['making_basis'] ?? 'unknown basis' }})
-                — {{ number_format((float) ($attributes['making_amount'] ?? 0), 2) }}</div>
-
-            <h3>Tax</h3>
-            <div>Mode: {{ $attributes['tax_mode'] ?? '—' }} ({{ $attributes['tax_completeness'] ?? '—' }})</div>
-
-            <h3>Amounts</h3>
-            <div>Taxable: {{ number_format((float) ($attributes['taxable_amount'] ?? 0), 2) }}</div>
-            <div>Discount: {{ number_format((float) ($attributes['discount_snapshot'] ?? 0), 2) }}</div>
-            <div>Rounding: {{ number_format((float) ($attributes['rounding_snapshot'] ?? 0), 2) }}</div>
-            <div><strong>Grand total: {{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</strong></div>
-            <div>Paid: {{ number_format((float) ($attributes['paid_amount_snapshot'] ?? 0), 2) }}</div>
-            <div>Outstanding: {{ number_format((float) ($attributes['outstanding_amount_snapshot'] ?? 0), 2) }}</div>
-
-            @if($lines !== [])
-                <h3>Item lines ({{ count($lines) }})</h3>
-                <table style="width:100%;border-collapse:collapse;">
-                    <thead><tr>
-                        <th style="text-align:left;">Item</th><th>Qty</th><th>Net wt</th><th>Gross wt</th><th>Stone wt</th><th>Total</th>
-                    </tr></thead>
-                    <tbody>
-                        @foreach($lines as $line)
-                            <tr>
-                                <td>{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</td>
-                                <td>{{ $line['quantity'] ?? '—' }}</td>
-                                <td>{{ $line['net_weight'] ?? '—' }}</td>
-                                <td>{{ $line['gross_weight'] ?? '—' }}</td>
-                                <td>{{ $line['stone_weight'] ?? '—' }}</td>
-                                <td>{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</td>
-                            </tr>
+                @if(($suggestions['mobile']['status'] ?? 'none') !== 'none' || ($suggestions['gstin']['status'] ?? 'none') !== 'none' || ($suggestions['name']['status'] ?? 'none') !== 'none')
+                    <div class="mt-3 pt-3 border-t border-slate-100 text-sm text-slate-500">
+                        <p class="mb-1">Possible existing customer matches — informational only, link them after saving from the document's review screen:</p>
+                        @foreach(['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'] as $key => $label)
+                            @php $match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()]; @endphp
+                            @if($match['status'] === 'ambiguous')
+                                <p>{{ $label }}: ambiguous — {{ $match['customers']->count() }} customers share this value, not linked automatically</p>
+                            @elseif($match['status'] === 'match')
+                                <p>{{ $label }}: {{ $match['customers']->pluck('name')->join(', ') }}</p>
+                            @endif
                         @endforeach
+                    </div>
+                @endif
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                <h2 class="text-base font-semibold text-slate-800 mb-3">Tax and making / labour charge</h2>
+                <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                    <dt class="text-slate-500">Tax</dt><dd class="text-slate-800">{{ $attributes['tax_mode'] ?? '—' }} ({{ $attributes['tax_completeness'] ?? '—' }})</dd>
+                    <dt class="text-slate-500">Making / labour</dt>
+                    <dd class="text-slate-800">
+                        {{ $attributes['making_label_original'] ?? '—' }}: {{ $attributes['making_value_original'] ?? '—' }}
+                        <span class="text-slate-500">({{ $attributes['making_category'] ?? 'uncategorized' }} / {{ $attributes['making_basis'] ?? 'unknown basis' }})</span>
+                        — {{ number_format((float) ($attributes['making_amount'] ?? 0), 2) }}
+                    </dd>
+                </dl>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                <h2 class="text-base font-semibold text-slate-800 mb-3">Amounts <span class="text-slate-400 font-normal text-xs">(computed — nothing here is trusted as input)</span></h2>
+                <table class="w-full text-sm">
+                    <tbody class="divide-y divide-slate-100">
+                        <tr><td class="py-1.5 text-slate-500">Taxable</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['taxable_amount'] ?? 0), 2) }}</td></tr>
+                        <tr><td class="py-1.5 text-slate-500">Discount</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['discount_snapshot'] ?? 0), 2) }}</td></tr>
+                        <tr><td class="py-1.5 text-slate-500">Rounding</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['rounding_snapshot'] ?? 0), 2) }}</td></tr>
+                        <tr class="font-semibold"><td class="py-1.5 text-slate-800">Grand total</td><td class="py-1.5 text-right tabular-nums text-slate-800">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</td></tr>
+                        <tr><td class="py-1.5 text-slate-500">Paid</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['paid_amount_snapshot'] ?? 0), 2) }}</td></tr>
+                        <tr><td class="py-1.5 text-slate-500">Outstanding</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['outstanding_amount_snapshot'] ?? 0), 2) }}</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 mt-4">
+            @if($lines !== [])
+                <h2 class="text-base font-semibold text-slate-800 mb-3">Item lines ({{ count($lines) }})</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[560px] text-sm">
+                        <thead>
+                            <tr class="text-left">
+                                <th>Item</th><th class="text-right">Qty</th><th class="text-right">Net wt</th><th class="text-right">Gross wt</th><th class="text-right">Stone wt</th><th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach($lines as $line)
+                                <tr>
+                                    <td>{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</td>
+                                    <td class="text-right tabular-nums">{{ $line['quantity'] ?? '—' }}</td>
+                                    <td class="text-right tabular-nums">{{ $line['net_weight'] ?? '—' }}</td>
+                                    <td class="text-right tabular-nums">{{ $line['gross_weight'] ?? '—' }}</td>
+                                    <td class="text-right tabular-nums">{{ $line['stone_weight'] ?? '—' }}</td>
+                                    <td class="text-right tabular-nums">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             @else
-                <p style="color:#64748b;">Header only — no item lines.</p>
+                <p class="text-sm text-slate-500">Header only — no item lines.</p>
             @endif
-        </section>
+        </div>
 
         {{-- The same fields, prefilled from what was submitted (flashed as old input).
              Edit them and Preview again, or Confirm Save to post these exact values —
@@ -126,12 +165,12 @@
              redirects and would work under Turbo either way — data-turbo="false" on the
              whole form is harmless for it and keeps both buttons' behavior consistent. --}}
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
-              x-data="{ lines: [] }" style="display:grid;gap:1.25rem;">
+              x-data="{ lines: [] }" class="grid gap-5 mt-4">
             @csrf
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
-            <div style="display:flex;gap:.75rem;">
+            <div class="flex gap-3 flex-wrap">
                 <button class="btn" type="submit">Edit / Recalculate preview</button>
                 <button class="btn btn-primary" type="submit" formaction="{{ route('historical.manual.store') }}">Confirm Save</button>
             </div>
