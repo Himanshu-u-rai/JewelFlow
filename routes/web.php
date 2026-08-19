@@ -294,6 +294,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         // --- manual entry (historical.import) ---
         Route::get('/manual', [HistoricalManualEntryController::class, 'create'])
             ->middleware('can:historical.import')->name('manual.create');
+        Route::post('/manual/preview', [HistoricalManualEntryController::class, 'preview'])
+            ->middleware('can:historical.import')->name('manual.preview');
         Route::post('/manual', [HistoricalManualEntryController::class, 'store'])
             ->middleware('can:historical.import')->name('manual.store');
 

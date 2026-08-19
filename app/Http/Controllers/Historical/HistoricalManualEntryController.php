@@ -31,6 +31,44 @@ class HistoricalManualEntryController extends Controller
         ]);
     }
 
+    /**
+     * Zero-write preview. Confirm Save re-posts the same raw fields to
+     * store() — nothing computed here is trusted, only recomputed.
+     */
+    public function preview(StoreManualHistoricalRequest $request): View|RedirectResponse
+    {
+        $shop = $request->user()->shop;
+
+        try {
+            $result = $this->imports->previewManual(
+                $shop,
+                $request->headerFields(),
+                $request->lines(),
+                (int) $request->user()->id,
+                $request->options(),
+            );
+        } catch (Throwable $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        // Flashes the submitted input into the session so the same old()-backed
+        // form fields (shared with the create screen) render prefilled here —
+        // Edit is just re-submitting this page, Confirm Save posts these same
+        // raw values, never the computed preview numbers.
+        $request->flash();
+
+        return view('historical.manual-preview', [
+            'attributes'       => $result['attributes'],
+            'lines'            => $result['lines'],
+            'messages'         => $result['messages'],
+            'fingerprint'      => $result['fingerprint'],
+            'headerFields'     => HistoricalFields::HEADER,
+            'lineFields'       => HistoricalFields::LINE,
+            'makingCategories' => HistoricalMakingCharge::CATEGORIES,
+            'makingBases'      => HistoricalMakingCharge::BASES,
+        ]);
+    }
+
     public function store(StoreManualHistoricalRequest $request): RedirectResponse
     {
         $shop = $request->user()->shop;

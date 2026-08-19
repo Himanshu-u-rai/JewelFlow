@@ -694,21 +694,7 @@ class HistoricalImportService
             'row_count'     => 1,
         ])->save();
 
-        $result = $this->normalizer->normalize($shop, $header, $lines, [
-            'date_format'          => HistoricalDateParser::FORMAT_ISO,
-            'decimal_separator'    => '.',
-            'thousands_separator'  => ',',
-            'tax_mode'             => $options['tax_mode'] ?? HistoricalSalesDocument::TAX_MODE_UNKNOWN,
-            'source_system'        => $options['source_system'] ?? self::SOURCE_MANUAL,
-            'cutover_date'         => $options['cutover_date'] ?? null,
-            'making_category'      => $options['making_category'] ?? null,
-            'making_basis'         => $options['making_basis'] ?? null,
-            'zero_tax_confirmed'   => (bool) ($options['zero_tax_confirmed'] ?? false),
-            'cutover_acknowledged' => (bool) ($options['cutover_acknowledged'] ?? false),
-            'cutover_reason'       => $options['cutover_reason'] ?? null,
-            'actor_id'             => $actorId,
-            'layout_type'          => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
-        ]);
+        $result = $this->normalizer->normalize($shop, $header, $lines, $this->manualNormalizerOptions($options, $actorId));
 
         $messages = $result['messages'];
 
@@ -737,6 +723,61 @@ class HistoricalImportService
         }
 
         return ['batch' => $batch, 'document' => $document, 'messages' => $messages];
+    }
+
+    /** @return array<string, mixed> */
+    private function manualNormalizerOptions(array $options, int $actorId): array
+    {
+        return [
+            'date_format'          => HistoricalDateParser::FORMAT_ISO,
+            'decimal_separator'    => '.',
+            'thousands_separator'  => ',',
+            'tax_mode'             => $options['tax_mode'] ?? HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'source_system'        => $options['source_system'] ?? self::SOURCE_MANUAL,
+            'cutover_date'         => $options['cutover_date'] ?? null,
+            'making_category'      => $options['making_category'] ?? null,
+            'making_basis'         => $options['making_basis'] ?? null,
+            'zero_tax_confirmed'   => (bool) ($options['zero_tax_confirmed'] ?? false),
+            'cutover_acknowledged' => (bool) ($options['cutover_acknowledged'] ?? false),
+            'cutover_reason'       => $options['cutover_reason'] ?? null,
+            'actor_id'             => $actorId,
+            'layout_type'          => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
+        ];
+    }
+
+    /**
+     * Zero-write preview of a manual entry. Same normalizer, same fingerprint,
+     * same duplicate detector as storeManual() — nothing here opens a
+     * transaction or calls persistDraft(). What the operator sees in preview
+     * is provably what Save would compute, because it is the same call.
+     *
+     * @param  array<string, mixed>  $header
+     * @param  array<int, array<string, mixed>>  $lines
+     * @return array{attributes: array, lines: array, messages: HistoricalMessages, fingerprint: ?string}
+     */
+    public function previewManual(Shop $shop, array $header, array $lines, int $actorId, array $options = []): array
+    {
+        $result = $this->normalizer->normalize($shop, $header, $lines, $this->manualNormalizerOptions($options, $actorId));
+
+        $messages   = $result['messages'];
+        $attributes = $result['attributes'];
+        $fingerprint = null;
+
+        if (! $messages->hasBlocking() && $attributes['grand_total'] !== null && $attributes['document_date'] !== null) {
+            $fingerprint = $this->normalizer->fingerprint($shop->id, $attributes, $result['lines']);
+            $conflict    = $this->duplicates->detect($shop->id, $attributes, $fingerprint);
+
+            if ($conflict !== null) {
+                $this->duplicates->report($conflict, $messages);
+            }
+        }
+
+        return [
+            'attributes'  => $attributes,
+            'lines'       => $result['lines'],
+            'messages'    => $messages,
+            'fingerprint' => $fingerprint,
+        ];
     }
 
     // ---------------------------------------------------------------- preview
