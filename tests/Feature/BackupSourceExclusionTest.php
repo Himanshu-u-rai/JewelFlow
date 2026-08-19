@@ -74,7 +74,7 @@ class BackupSourceExclusionTest extends TestCase
     }
 
     /**
-     * Builds the same four exclusion entries added to config/backup.php,
+     * Builds the same five exclusion entries added to config/backup.php,
      * plus the pre-existing exclusions they must not disturb, all rooted
      * at the isolated fixture directory instead of the real base_path().
      */
@@ -90,6 +90,7 @@ class BackupSourceExclusionTest extends TestCase
             $base.'/.env.save',
             $base.'/.env.testing',
             $base.'/.env.pre-*',
+            $base.'/.git',
         ];
     }
 
@@ -174,6 +175,17 @@ class BackupSourceExclusionTest extends TestCase
         $this->assertContains(realpath($this->fixtureBase.'/.env'), $selected);
     }
 
+    public function test_git_directory_is_excluded(): void
+    {
+        $this->putFixtureFile('.git/objects/eb/deadbeef');
+        $this->putFixtureFile('.git/HEAD');
+
+        $selected = $this->selectFixtureFiles();
+
+        $this->assertNotContains(realpath($this->fixtureBase.'/.git/objects/eb/deadbeef'), $selected);
+        $this->assertNotContains(realpath($this->fixtureBase.'/.git/HEAD'), $selected);
+    }
+
     public function test_existing_backup_destination_exclusions_are_preserved(): void
     {
         $this->putFixtureFile('storage/app/private/JewelFlow/2026-06-13-00-00-02.zip');
@@ -207,6 +219,7 @@ class BackupSourceExclusionTest extends TestCase
             $this->assertContains(base_path('.env.save'), $exclude);
             $this->assertContains(base_path('.env.testing'), $exclude);
             $this->assertContains(base_path('.env.pre-*'), $exclude);
+            $this->assertContains(base_path('.git'), $exclude);
 
             // The live .env must never be added to the exclude list.
             $this->assertNotContains(base_path('.env'), $exclude);

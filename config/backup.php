@@ -63,6 +63,17 @@ return [
                     base_path('.env.save'),
                     base_path('.env.testing'),
                     base_path('.env.pre-*'),
+
+                    /*
+                     * VCS metadata, not application/business backup data. Also
+                     * closes off a whole class of failure: a root-run git
+                     * operation can leave an object directory with a mode that
+                     * www-data can't traverse (seen on staging: a single
+                     * .git/objects/xx dir at 0700 root:root broke the entire
+                     * archive at finalization, the same lazy-read failure mode
+                     * as the secret-snapshot files above).
+                     */
+                    base_path('.git'),
                 ],
 
                 /*
