@@ -74,6 +74,19 @@ return [
                      * as the secret-snapshot files above).
                      */
                     base_path('.git'),
+
+                    /*
+                     * Deploy/hotfix audit trail (scripts, rollback manifests,
+                     * checksums, log snapshots), not application/business
+                     * data. Seen on staging as a root:root 0700 tree left by
+                     * a prior hotfix run. Excluding it here only keeps its
+                     * contents out of the archive once Finder can enter the
+                     * directory — the directory itself still needs read+
+                     * traverse permission for www-data, or the walk throws
+                     * before this exclusion is ever consulted (same lesson
+                     * as the .git fix above).
+                     */
+                    base_path('output'),
                 ],
 
                 /*

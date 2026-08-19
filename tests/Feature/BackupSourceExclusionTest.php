@@ -91,6 +91,7 @@ class BackupSourceExclusionTest extends TestCase
             $base.'/.env.testing',
             $base.'/.env.pre-*',
             $base.'/.git',
+            $base.'/output',
         ];
     }
 
@@ -186,6 +187,23 @@ class BackupSourceExclusionTest extends TestCase
         $this->assertNotContains(realpath($this->fixtureBase.'/.git/HEAD'), $selected);
     }
 
+    public function test_output_directory_is_excluded(): void
+    {
+        $this->putFixtureFile('output/audit/staging-hotfix/deploy-staging-hotfix.sh');
+        $this->putFixtureFile('output/audit/staging-hotfix/backup-20260806T192054Z/manifest.before.json');
+
+        $selected = $this->selectFixtureFiles();
+
+        $this->assertNotContains(
+            realpath($this->fixtureBase.'/output/audit/staging-hotfix/deploy-staging-hotfix.sh'),
+            $selected
+        );
+        $this->assertNotContains(
+            realpath($this->fixtureBase.'/output/audit/staging-hotfix/backup-20260806T192054Z/manifest.before.json'),
+            $selected
+        );
+    }
+
     public function test_existing_backup_destination_exclusions_are_preserved(): void
     {
         $this->putFixtureFile('storage/app/private/JewelFlow/2026-06-13-00-00-02.zip');
@@ -220,6 +238,7 @@ class BackupSourceExclusionTest extends TestCase
             $this->assertContains(base_path('.env.testing'), $exclude);
             $this->assertContains(base_path('.env.pre-*'), $exclude);
             $this->assertContains(base_path('.git'), $exclude);
+            $this->assertContains(base_path('output'), $exclude);
 
             // The live .env must never be added to the exclude list.
             $this->assertNotContains(base_path('.env'), $exclude);
