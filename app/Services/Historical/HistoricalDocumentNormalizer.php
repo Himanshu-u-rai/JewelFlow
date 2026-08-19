@@ -43,7 +43,7 @@ class HistoricalDocumentNormalizer
     public const CODE_FORMULA_LITERAL    = 'formula_literal';
     public const CODE_LINE_TOTAL_DRIFT   = 'line_total_drift';
     public const CODE_LINE_TOTAL_UNKNOWN = 'line_total_unknown';
-    public const CODE_OPENING_BALANCE    = 'opening_balance_not_evaluated';
+    public const CODE_OPENING_BALANCE    = 'opening_balance_not_linked';
 
     public function __construct(
         private readonly HistoricalDateParser $dates,
@@ -129,7 +129,7 @@ class HistoricalDocumentNormalizer
         // a silent `false` that reads as "checked and clear".
         $messages->info(
             self::CODE_OPENING_BALANCE,
-            'Overlap with opening balances is not yet evaluated for historical documents.',
+            'Opening-balance overlap can only be checked once this bill is linked to a customer, after saving.',
             'opening_balance_overlap'
         );
 

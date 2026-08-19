@@ -318,6 +318,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             ->middleware('can:historical.import')->name('batches.destroy');
         Route::post('/documents/{document}/link-customer', [HistoricalDocumentController::class, 'linkCustomer'])
             ->middleware('can:historical.import')->name('documents.link-customer');
+        Route::post('/documents/{document}/resolve-opening-balance', [HistoricalDocumentController::class, 'resolveOpeningBalance'])
+            ->middleware('can:historical.import')->name('documents.resolve-opening-balance');
 
         // --- publish + published-record corrections (historical.publish) ---
         Route::post('/batches/{batch}/publish', [HistoricalImportController::class, 'publish'])

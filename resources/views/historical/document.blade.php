@@ -1,4 +1,7 @@
-@php use App\Models\Historical\HistoricalSalesDocument; @endphp
+@php
+    use App\Models\Historical\HistoricalSalesDocument;
+    use App\Services\Historical\HistoricalOpeningBalanceEvaluator;
+@endphp
 <x-app-layout>
     <div class="page" style="padding:1rem;max-width:900px;margin:0 auto;">
         <x-app-alerts />
@@ -63,7 +66,7 @@
 
                         @if($suggestions)
                             @foreach(['gstin' => 'GSTIN'] as $key => $label)
-                                @php($match = $suggestions[$key])
+                                @php $match = $suggestions[$key]; @endphp
                                 @if($match['status'] === 'ambiguous')
                                     <p style="color:#b45309;font-weight:600;">⚠ {{ $label }} match is ambiguous — {{ $match['customers']->count() }} customers share this GSTIN. Not linked automatically; review manually.</p>
                                 @endif
@@ -75,7 +78,7 @@
                                 @csrf
                                 <p style="color:#64748b;margin-bottom:.25rem;">Possible existing customers — nothing selected by default:</p>
                                 @foreach($candidates as $entry)
-                                    @php($candidate = $entry['candidate'])
+                                    @php $candidate = $entry['candidate']; @endphp
                                     <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:.4rem;min-height:44px;">
                                         <input type="radio" name="customer_id" value="{{ $candidate->id }}" required>
                                         <span>{{ $candidate->name }} — {{ Str::mask($candidate->mobile ?? '—', '*', 2, -2) }}
@@ -100,6 +103,52 @@
                 @endif
             </div>
         </div>
+
+        {{-- Opening-balance overlap: metadata-only, never touches the customer's
+             actual opening balance/ledger/receivables. Severity is recomputed live
+             (never cached), so this reflects the customer's opening-balance rows
+             right now, not at the time the document was linked or last resolved. --}}
+        @php
+            $obSeverity = $openingBalanceSeverity ?? HistoricalOpeningBalanceEvaluator::NONE;
+            $obResolved = $document->opening_balance_resolution !== null;
+        @endphp
+        @if($obSeverity !== HistoricalOpeningBalanceEvaluator::NONE || $obResolved)
+            <div style="margin:1rem 0;padding:1rem;border-radius:8px;border:1px solid {{ $obSeverity === HistoricalOpeningBalanceEvaluator::HIGH && ! $obResolved ? '#fca5a5' : '#e2e8f0' }};background:{{ $obSeverity === HistoricalOpeningBalanceEvaluator::HIGH && ! $obResolved ? '#fef2f2' : '#f8fafc' }};">
+                <h3 style="margin-top:0;">Opening-balance overlap</h3>
+
+                @if($obResolved)
+                    <p>
+                        <strong>Resolved:</strong>
+                        {{ $document->opening_balance_resolution === HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED ? 'Already included in opening balance' : 'Separate from opening balance' }}
+                        <br>
+                        <small style="color:#64748b;">by {{ $document->openingBalanceResolver->name ?? 'unknown' }} on {{ $document->opening_balance_resolved_at?->format('d M Y, H:i') }}</small>
+                    </p>
+                @elseif($obSeverity === HistoricalOpeningBalanceEvaluator::HIGH)
+                    <p style="color:#b91c1c;font-weight:600;">⚠ HIGH — the linked customer already has an opening-balance entry on or before this bill's date, with an outstanding amount. This bill's receivable may already be counted there. Publishing is blocked until this is resolved.</p>
+                    <p style="color:#64748b;">JewelFlow will not change the customer's opening balance automatically — pick the option that reflects reality:</p>
+
+                    @if($document->status === HistoricalSalesDocument::STATUS_DRAFT)
+                        @can('historical.import')
+                            <form method="POST" action="{{ route('historical.documents.resolve-opening-balance', $document) }}"
+                                  onsubmit="return confirm('Confirm this opening-balance resolution?');">
+                                @csrf
+                                <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:.4rem;min-height:44px;">
+                                    <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED }}" required>
+                                    <span>Already included in opening balance</span>
+                                </label>
+                                <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:.4rem;min-height:44px;">
+                                    <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE }}" required>
+                                    <span>Separate from opening balance</span>
+                                </label>
+                                <button class="btn" type="submit">Confirm resolution</button>
+                            </form>
+                        @endcan
+                    @endif
+                @elseif($obSeverity === HistoricalOpeningBalanceEvaluator::MEDIUM)
+                    <p style="color:#334155;">ℹ MEDIUM — on or before the linked customer's opening-balance date, but no outstanding amount is recorded on this bill. Informational only, does not block publishing.</p>
+                @endif
+            </div>
+        @endif
 
         <h3>Amounts <small style="color:#64748b;">(display snapshot — creates no ledger or receivable)</small></h3>
         <table class="data-table" style="width:100%;border-collapse:collapse;">

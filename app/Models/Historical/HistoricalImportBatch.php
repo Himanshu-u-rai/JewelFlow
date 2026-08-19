@@ -5,6 +5,7 @@ namespace App\Models\Historical;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Historical\HistoricalOpeningBalanceEvaluator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -102,7 +103,7 @@ class HistoricalImportBatch extends Model
      * cannot disagree. Preview must have been generated: publishing a batch whose
      * counters were never computed is publishing an unreviewed batch.
      */
-    public function blockedFromPublishing(): ?string
+    public function blockedFromPublishing(HistoricalOpeningBalanceEvaluator $evaluator = new HistoricalOpeningBalanceEvaluator()): ?string
     {
         return match (true) {
             $this->isPublished()                            => 'This batch is already published.',
@@ -111,8 +112,25 @@ class HistoricalImportBatch extends Model
             $this->hasBlockingErrors()                      => 'Resolve all blocking errors before publishing.',
             $this->warning_count > 0
                 && ! $this->warningsAcknowledged()          => 'Acknowledge the outstanding warnings before publishing.',
+            $this->hasUnresolvedHighOpeningBalanceOverlap($evaluator)
+                                                             => 'A linked customer has a HIGH-risk opening-balance overlap. Resolve it on the document before publishing.',
             default                                         => null,
         };
+    }
+
+    /** Per-document: only a HIGH overlap (not MEDIUM) blocks, and only while unresolved. */
+    public function hasUnresolvedHighOpeningBalanceOverlap(HistoricalOpeningBalanceEvaluator $evaluator): bool
+    {
+        return $this->documents()
+            ->where('status', HistoricalSalesDocument::STATUS_DRAFT)
+            // Native (non-emulated) pgsql prepares reject `boolean = integer` — Laravel's
+            // Connection::prepareBindings() casts PHP bool to int before binding. Same
+            // whereRaw workaround already used for `is_active` elsewhere in this codebase
+            // (BullionVaultController, QuickBillController).
+            ->whereRaw('opening_balance_overlap = true')
+            ->whereNull('opening_balance_resolution')
+            ->get()
+            ->contains(fn (HistoricalSalesDocument $document): bool => $evaluator->evaluate($document) === HistoricalOpeningBalanceEvaluator::HIGH);
     }
 
     public function shop(): BelongsTo

@@ -7,6 +7,7 @@ use App\Models\Historical\HistoricalSalesDocument;
 use App\Services\Historical\HistoricalDocumentLifecycleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 /**
@@ -78,5 +79,30 @@ class HistoricalDocumentController extends Controller
         }
 
         return back()->with('success', 'Customer link updated.');
+    }
+
+    /**
+     * Operator's explicit call on a HIGH (or MEDIUM) opening-balance overlap.
+     * This is metadata only — it never touches the customer's actual opening
+     * balance, ledger or receivables. Draft-only and re-checked by the
+     * service; a published document's resolution is frozen by both the DB
+     * trigger's column allow-list and this same guard.
+     */
+    public function resolveOpeningBalance(Request $request, HistoricalSalesDocument $document): RedirectResponse
+    {
+        $data = $request->validate([
+            'resolution' => ['required', 'string', Rule::in([
+                HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED,
+                HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE,
+            ])],
+        ]);
+
+        try {
+            $this->lifecycle->resolveOpeningBalance($document, $data['resolution'], (int) $request->user()->id);
+        } catch (Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Opening-balance overlap resolved.');
     }
 }

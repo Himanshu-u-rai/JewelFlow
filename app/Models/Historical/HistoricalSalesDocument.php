@@ -48,6 +48,13 @@ class HistoricalSalesDocument extends Model
     public const TAX_NOT_APPLICABLE = 'not_applicable';
 
     /**
+     * The only two opening-balance overlap resolutions. Deliberately no third
+     * "not applicable" option — a HIGH overlap must be looked at, not waved off.
+     */
+    public const OPENING_BALANCE_RESOLUTION_INCLUDED = 'included_in_opening_balance';
+    public const OPENING_BALANCE_RESOLUTION_SEPARATE = 'separate_from_opening_balance';
+
+    /**
      * UI contract, kept beside the data so no screen can invent its own wording.
      * A historical record is never presented as a JewelFlow-issued invoice.
      */
@@ -73,6 +80,7 @@ class HistoricalSalesDocument extends Model
         'stone_value'                  => 'decimal:2',
         'making_amount'                => 'decimal:2',
         'opening_balance_overlap'      => 'boolean',
+        'opening_balance_resolved_at'  => 'datetime',
         'cutover_warning_acknowledged' => 'boolean',
         'voided_at'                    => 'datetime',
         'imported_at'                  => 'datetime',
@@ -182,5 +190,10 @@ class HistoricalSalesDocument extends Model
     public function voider(): BelongsTo
     {
         return $this->belongsTo(User::class, 'voided_by');
+    }
+
+    public function openingBalanceResolver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'opening_balance_resolved_by');
     }
 }

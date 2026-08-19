@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Historical\HistoricalImportBatch;
 use App\Models\Historical\HistoricalSalesDocument;
 use App\Services\Historical\HistoricalCustomerMatcher;
+use App\Services\Historical\HistoricalOpeningBalanceEvaluator;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -39,9 +40,12 @@ class HistoricalSalesController extends Controller
     }
 
     /** One historical document — always badged, never dressed as a live invoice. */
-    public function showDocument(HistoricalSalesDocument $document, HistoricalCustomerMatcher $matcher): View
-    {
-        $document->load(['lines', 'batch:id,label,status', 'revises', 'supersededBy', 'customer']);
+    public function showDocument(
+        HistoricalSalesDocument $document,
+        HistoricalCustomerMatcher $matcher,
+        HistoricalOpeningBalanceEvaluator $openingBalance,
+    ): View {
+        $document->load(['lines', 'batch:id,label,status', 'revises', 'supersededBy', 'customer', 'openingBalanceResolver:id,name']);
 
         // Suggestions only matter while a link can still be made — linking is
         // draft-only (Batch 3), so a published/void/superseded document never
@@ -55,7 +59,11 @@ class HistoricalSalesController extends Controller
             )
             : null;
 
-        return view('historical.document', compact('document', 'suggestions'));
+        // Recomputed live, never cached — the customer's opening-balance rows
+        // may have changed since this document was linked or last resolved.
+        $openingBalanceSeverity = $openingBalance->evaluate($document);
+
+        return view('historical.document', compact('document', 'suggestions', 'openingBalanceSeverity'));
     }
 
     /** A batch's status/detail page (also the preview + reconciliation surface). */
