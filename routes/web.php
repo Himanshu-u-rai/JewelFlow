@@ -318,8 +318,6 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             ->middleware('can:historical.import')->name('batches.destroy');
         Route::post('/documents/{document}/link-customer', [HistoricalDocumentController::class, 'linkCustomer'])
             ->middleware('can:historical.import')->name('documents.link-customer');
-        Route::post('/documents/{document}/resolve-opening-balance', [HistoricalDocumentController::class, 'resolveOpeningBalance'])
-            ->middleware('can:historical.import')->name('documents.resolve-opening-balance');
 
         // --- publish + published-record corrections (historical.publish) ---
         Route::post('/batches/{batch}/publish', [HistoricalImportController::class, 'publish'])
@@ -328,6 +326,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             ->middleware('can:historical.publish')->name('documents.void');
         Route::post('/documents/{document}/supersede', [HistoricalDocumentController::class, 'supersede'])
             ->middleware('can:historical.publish')->name('documents.supersede');
+        // Resolving a HIGH/MEDIUM opening-balance overlap clears a publish gate,
+        // so it requires the same permission as publishing, not mere import.
+        Route::post('/documents/{document}/resolve-opening-balance', [HistoricalDocumentController::class, 'resolveOpeningBalance'])
+            ->middleware('can:historical.publish')->name('documents.resolve-opening-balance');
     });
 
     // ======= EXISTING-SHOP ONBOARDING (opening balances; owner-only, re-checked in controller) =======

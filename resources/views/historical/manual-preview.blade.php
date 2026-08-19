@@ -65,7 +65,9 @@
                 <div style="color:#64748b;">
                     Possible existing customer matches (informational — link them after saving, from the document's review screen):
                     @foreach(['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'] as $key => $label)
-                        @php($match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()])
+                        @php
+                            $match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()];
+                        @endphp
                         @if($match['status'] === 'ambiguous')
                             <div>{{ $label }}: ambiguous — {{ $match['customers']->count() }} customers share this value, not linked automatically</div>
                         @elseif($match['status'] === 'match')

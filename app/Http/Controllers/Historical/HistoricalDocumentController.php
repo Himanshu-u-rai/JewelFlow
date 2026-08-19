@@ -90,6 +90,12 @@ class HistoricalDocumentController extends Controller
      */
     public function resolveOpeningBalance(Request $request, HistoricalSalesDocument $document): RedirectResponse
     {
+        // Defense in depth: this is a publish-control action (it clears a HIGH
+        // publish blocker), not an import action — route middleware already
+        // enforces this, but the check is repeated here so the guard does not
+        // depend solely on routing.
+        $this->authorize('historical.publish');
+
         $data = $request->validate([
             'resolution' => ['required', 'string', Rule::in([
                 HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED,

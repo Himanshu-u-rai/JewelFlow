@@ -315,6 +315,12 @@ class HistoricalDocumentLifecycleService
      * balance/ledger — it only records which of the two honest answers applies,
      * so a HIGH overlap can clear the publish gate instead of being silently
      * bypassed. Draft-only, same as the customer link it accompanies.
+     *
+     * Severity is re-evaluated live, right before the write — never trusts the
+     * stored `opening_balance_overlap` boolean, which may be stale. A document
+     * with no overlap (NONE) has nothing to resolve; only HIGH and MEDIUM are
+     * eligible, matching the DB CHECK added in 2026_09_17_000200 that rejects a
+     * resolution on a row where `opening_balance_overlap` is not true.
      */
     public function resolveOpeningBalance(HistoricalSalesDocument $document, string $resolution, int $actorId): HistoricalSalesDocument
     {
@@ -331,6 +337,13 @@ class HistoricalDocumentLifecycleService
             HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE,
         ], true)) {
             throw new LogicException("Invalid opening-balance resolution: {$resolution}");
+        }
+
+        if ($this->openingBalance->evaluate($document) === HistoricalOpeningBalanceEvaluator::NONE) {
+            throw new LogicException(sprintf(
+                'Historical document %d has no opening-balance overlap to resolve.',
+                $document->id
+            ));
         }
 
         return HistoricalLifecycle::run(function () use ($document, $resolution, $actorId): HistoricalSalesDocument {

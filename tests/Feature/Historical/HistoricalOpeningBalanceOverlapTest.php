@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Historical;
 
+use App\Http\Controllers\Historical\HistoricalDocumentController;
 use App\Models\CustomerOpeningBalance;
 use App\Models\Historical\HistoricalImportBatch;
 use App\Models\Historical\HistoricalSalesDocument;
@@ -10,7 +11,10 @@ use App\Services\Historical\HistoricalDocumentLifecycleService;
 use App\Services\Historical\HistoricalOpeningBalanceEvaluator;
 use App\Support\Historical\HistoricalDocumentIdentity;
 use App\Support\TenantContext;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use LogicException;
@@ -539,6 +543,10 @@ class HistoricalOpeningBalanceOverlapTest extends TestCase
             $document = $this->makeDraftDocument($shop->id, $batch->id, [
                 'document_date' => '2022-12-31', 'customer_id' => $customer->id,
                 'outstanding_amount_snapshot' => 1000.00,
+                // A HIGH scenario that is about to be resolved — matches every
+                // other resolve-calling fixture in this file, and satisfies the
+                // 2026_09_17_000200 CHECK (resolution requires overlap = true).
+                'opening_balance_overlap' => true,
             ]);
 
             $before = $this->moneyTableCounts();
@@ -627,5 +635,214 @@ class HistoricalOpeningBalanceOverlapTest extends TestCase
         $response->assertSee('Resolved:');
         $response->assertSee('Separate from opening balance');
         $response->assertDontSee('Confirm resolution');
+    }
+
+    // ------------------------------------- 16. permission boundary (Correction 1)
+
+    /**
+     * Resolving a HIGH overlap clears a publish gate — it is a publish-control
+     * action, not an import action. An import-only user (historical.view +
+     * historical.import, no historical.publish) must be refused at the route
+     * and must not even see the form.
+     */
+    public function test_import_only_user_is_forbidden_from_resolving_and_sees_no_form(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->grantOnlyPermissions($owner, ['historical.view', 'historical.import']);
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = $this->createCustomer($shop->id);
+            $this->makeOpeningBalance($shop->id, $customer->id, '2023-01-01', 500.00);
+
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31', 'customer_id' => $customer->id,
+                'outstanding_amount_snapshot' => 1000.00,
+                'opening_balance_overlap' => true,
+            ]);
+        });
+
+        // No form on the page — the import-only operator sees the HIGH warning
+        // but never a way to act on it.
+        $view = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
+        $view->assertOk();
+        $view->assertSee('HIGH');
+        $view->assertDontSee('Confirm resolution');
+
+        $this->actingAs($owner)->post(
+            route('historical.documents.resolve-opening-balance', $document->id),
+            ['resolution' => HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE]
+        )->assertForbidden();
+
+        TenantContext::runFor($shop->id, function () use ($document) {
+            $this->assertNull($document->fresh()->opening_balance_resolution, 'A forbidden request must never write.');
+        });
+    }
+
+    /**
+     * A publish-authorized user (historical.view + historical.publish, no
+     * historical.import) must be able to see and submit the resolution form —
+     * the permission that gates this is publish, not import.
+     */
+    public function test_publish_only_user_may_view_and_submit_the_resolution_form(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->grantOnlyPermissions($owner, ['historical.view', 'historical.publish']);
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = $this->createCustomer($shop->id);
+            $this->makeOpeningBalance($shop->id, $customer->id, '2023-01-01', 500.00);
+
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31', 'customer_id' => $customer->id,
+                'outstanding_amount_snapshot' => 1000.00,
+                'opening_balance_overlap' => true,
+            ]);
+        });
+
+        $view = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
+        $view->assertOk();
+        $view->assertSee('Confirm resolution');
+
+        $before = $this->moneyTableCounts();
+
+        $this->actingAs($owner)->post(
+            route('historical.documents.resolve-opening-balance', $document->id),
+            ['resolution' => HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE]
+        )->assertRedirect();
+
+        $this->assertSame($before, $this->moneyTableCounts(), 'Resolving must never touch a money table.');
+
+        TenantContext::runFor($shop->id, function () use ($document) {
+            $this->assertSame(
+                HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE,
+                $document->fresh()->opening_balance_resolution
+            );
+        });
+    }
+
+    /**
+     * The controller's own `$this->authorize('historical.publish')` call must
+     * refuse an import-only user even with route middleware out of the
+     * picture entirely — proves the guard is not solely a routing artifact.
+     */
+    public function test_controller_level_authorization_is_enforced_independently_of_route_middleware(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->grantOnlyPermissions($owner, ['historical.view', 'historical.import']);
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31',
+                'opening_balance_overlap' => true,
+            ]);
+        });
+
+        $this->actingAs($owner);
+
+        $controller = $this->app->make(HistoricalDocumentController::class);
+        $request = Request::create('/x', 'POST', [
+            'resolution' => HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE,
+        ]);
+        $request->setUserResolver(fn () => $owner);
+
+        $this->expectException(AuthorizationException::class);
+
+        TenantContext::runFor($shop->id, function () use ($controller, $request, $document) {
+            $controller->resolveOpeningBalance($request, $document);
+        });
+    }
+
+    // -------------------------------------- 17. resolution integrity (Correction 2)
+
+    /** A document with no overlap at all (NONE) has nothing to resolve. */
+    public function test_resolving_a_none_document_is_rejected(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $service = app(HistoricalDocumentLifecycleService::class);
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $batch = $this->makeBatch($shop->id);
+
+            // No customer linked, no opening-balance row at all -> NONE.
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31',
+            ]);
+        });
+
+        $this->expectException(LogicException::class);
+        $service->resolveOpeningBalance(
+            $document,
+            HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE,
+            $owner->id
+        );
+    }
+
+    /**
+     * Defense in depth below the app layer: the CHECK constraint added in
+     * 2026_09_17_000200 rejects a resolution row-value at the database even if
+     * the service guard were bypassed entirely (a raw UPDATE, a bad migration,
+     * a different code path).
+     */
+    public function test_none_document_cannot_persist_a_resolution_at_the_database_level(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31',
+                'opening_balance_overlap' => false,
+            ]);
+        });
+
+        $this->expectException(QueryException::class);
+
+        DB::table('historical_sales_documents')
+            ->where('id', $document->id)
+            ->update([
+                'opening_balance_resolution'   => HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE,
+                'opening_balance_resolved_by'  => $owner->id,
+                'opening_balance_resolved_at'  => now(),
+            ]);
+    }
+
+    /** MEDIUM is not blocking, but the service still allows it to be resolved. */
+    public function test_medium_overlap_may_also_be_resolved(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $service = app(HistoricalDocumentLifecycleService::class);
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = $this->createCustomer($shop->id);
+            $this->makeOpeningBalance($shop->id, $customer->id, '2023-01-01', 500.00);
+
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31', 'customer_id' => $customer->id,
+                'outstanding_amount_snapshot' => 0.00,
+                'opening_balance_overlap' => true,
+            ]);
+        });
+
+        $service->resolveOpeningBalance(
+            $document,
+            HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED,
+            $owner->id
+        );
+
+        TenantContext::runFor($shop->id, function () use ($document) {
+            $this->assertSame(
+                HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED,
+                $document->fresh()->opening_balance_resolution
+            );
+        });
     }
 }

@@ -128,7 +128,9 @@
                     <p style="color:#64748b;">JewelFlow will not change the customer's opening balance automatically — pick the option that reflects reality:</p>
 
                     @if($document->status === HistoricalSalesDocument::STATUS_DRAFT)
-                        @can('historical.import')
+                        {{-- Resolution clears a publish gate, so it needs historical.publish,
+                             not historical.import — an import-only operator sees no form. --}}
+                        @can('historical.publish')
                             <form method="POST" action="{{ route('historical.documents.resolve-opening-balance', $document) }}"
                                   onsubmit="return confirm('Confirm this opening-balance resolution?');">
                                 @csrf
