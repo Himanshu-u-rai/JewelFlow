@@ -243,9 +243,36 @@ class HistoricalDocumentLifecycleService
      * Manual, operator-confirmed customer linking (R1 never auto-links on fuzzy
      * confidence). The immutable `customer_snapshot` is untouched either way, so
      * unlinking never loses what the original bill said.
+     *
+     * Draft-only: once a document is published/voided/superseded its customer
+     * link is frozen along with everything else it represents as evidence — the
+     * DB trigger's allowed_cols still permits this column post-publish (it
+     * predates this rule), so the guard has to live here.
      */
     public function linkCustomer(HistoricalSalesDocument $document, ?int $customerId): HistoricalSalesDocument
     {
+        if ($document->status !== HistoricalSalesDocument::STATUS_DRAFT) {
+            throw new LogicException(sprintf(
+                'Historical document %d is %s and its customer link is frozen.',
+                $document->id,
+                $document->status
+            ));
+        }
+
+        if ($customerId !== null && $customerId !== $document->customer_id) {
+            $customer = \App\Models\Customer::withoutTenant()
+                ->where('shop_id', $document->shop_id)
+                ->find($customerId);
+
+            if ($customer === null) {
+                throw new LogicException('The selected customer was not found for this shop.');
+            }
+
+            if ($customer->isArchived()) {
+                throw new LogicException('This customer is archived. Reactivate the customer before linking.');
+            }
+        }
+
         return HistoricalLifecycle::run(function () use ($document, $customerId): HistoricalSalesDocument {
             $document->forceFill(['customer_id' => $customerId])->save();
 

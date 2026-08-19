@@ -30,6 +30,53 @@
                     <dt>GSTIN</dt><dd>{{ data_get($document->customer_snapshot, 'gstin', '—') }}</dd>
                     <dt>Place of supply</dt><dd>{{ data_get($document->customer_snapshot, 'place_of_supply', '—') }}</dd>
                 </dl>
+
+                <h4>Linked customer <small style="color:#64748b;">(the snapshot above never changes)</small></h4>
+                @if($document->customer)
+                    <p>
+                        {{ $document->customer->name }}
+                        @if($document->customer->isArchived())
+                            <span style="color:#b45309;">(archived — link kept, no longer eligible for new links)</span>
+                        @endif
+                    </p>
+                @else
+                    <p style="color:#64748b;">Not linked — snapshot only.</p>
+                @endif
+
+                @if($document->status === HistoricalSalesDocument::STATUS_DRAFT)
+                    @can('historical.import')
+                        @if($suggestions)
+                            @foreach(['mobile' => 'Mobile', 'gstin' => 'GSTIN', 'name' => 'Name'] as $key => $label)
+                                @php($match = $suggestions[$key])
+                                @if($match['status'] === 'ambiguous')
+                                    <p style="color:#b45309;">{{ $label }} match is ambiguous ({{ $match['customers']->count() }} customers) — pick one manually below, if any.</p>
+                                @elseif($match['status'] === 'match')
+                                    <p>{{ $label }} suggests:</p>
+                                    @foreach($match['customers'] as $candidate)
+                                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" style="display:inline-block;margin:0 .5rem .5rem 0;">
+                                            @csrf
+                                            <input type="hidden" name="customer_id" value="{{ $candidate->id }}">
+                                            <button class="btn" type="submit">Link {{ $candidate->name }} ({{ $candidate->mobile ?? '—' }})</button>
+                                        </form>
+                                    @endforeach
+                                @endif
+                            @endforeach
+                        @endif
+
+                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem;">
+                            @csrf
+                            <input type="number" name="customer_id" placeholder="Customer ID" style="width:8rem;">
+                            <button class="btn" type="submit">Link by ID</button>
+                        </form>
+
+                        @if($document->customer_id)
+                            <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" style="margin-top:.5rem;">
+                                @csrf
+                                <button class="btn" type="submit">Unlink — keep snapshot-only</button>
+                            </form>
+                        @endif
+                    @endcan
+                @endif
             </div>
         </div>
 

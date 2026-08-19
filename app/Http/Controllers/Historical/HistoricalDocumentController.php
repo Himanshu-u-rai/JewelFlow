@@ -60,14 +60,22 @@ class HistoricalDocumentController extends Controller
         return back()->with('success', 'Document superseded. The original is kept as evidence.');
     }
 
-    /** Operator-confirmed customer link. The snapshot is never disturbed. */
+    /**
+     * Operator-confirmed customer link. The snapshot is never disturbed.
+     * Shop membership, archive state, and draft-only eligibility are all
+     * revalidated inside the service — never trust a posted customer_id.
+     */
     public function linkCustomer(Request $request, HistoricalSalesDocument $document): RedirectResponse
     {
         $data = $request->validate([
             'customer_id' => ['nullable', 'integer'],
         ]);
 
-        $this->lifecycle->linkCustomer($document, $data['customer_id'] ?? null);
+        try {
+            $this->lifecycle->linkCustomer($document, $data['customer_id'] ?? null);
+        } catch (Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', 'Customer link updated.');
     }

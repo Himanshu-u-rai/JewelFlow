@@ -61,6 +61,20 @@
             <div>Place of supply: {{ $customer['place_of_supply'] ?? '—' }}</div>
             <div>Address: {{ $customer['address'] ?? '—' }}</div>
 
+            @if(($suggestions['mobile']['status'] ?? 'none') !== 'none' || ($suggestions['gstin']['status'] ?? 'none') !== 'none' || ($suggestions['name']['status'] ?? 'none') !== 'none')
+                <div style="color:#64748b;">
+                    Possible existing customer matches (informational — link them after saving, from the document's review screen):
+                    @foreach(['mobile' => 'Mobile', 'gstin' => 'GSTIN', 'name' => 'Name'] as $key => $label)
+                        @php($match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()])
+                        @if($match['status'] === 'ambiguous')
+                            <div>{{ $label }}: ambiguous ({{ $match['customers']->count() }} customers)</div>
+                        @elseif($match['status'] === 'match')
+                            <div>{{ $label }}: {{ $match['customers']->pluck('name')->join(', ') }}</div>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+
             <h3>Making / labour</h3>
             <div>{{ $attributes['making_label_original'] ?? '—' }}: {{ $attributes['making_value_original'] ?? '—' }}
                 ({{ $attributes['making_category'] ?? 'uncategorized' }} / {{ $attributes['making_basis'] ?? 'unknown basis' }})

@@ -891,13 +891,12 @@ class HistoricalSalesFoundationTest extends TestCase
             $batch = $this->makeBatch($shop->id);
             $doc   = $this->makeDocument($shop->id, $batch->id, ['customer_id' => $customer->id]);
             $line  = $this->makeLine($doc, ['item_id' => $item->id]);
-            $service->publish($batch, $owner->id);
-            $doc->refresh();
-            $line->refresh();
 
             $customerSnapshot = $doc->customer_snapshot;
             $itemSnapshot     = $line->item_snapshot;
 
+            // Batch 3: customer linking is draft-only, so this exercise happens
+            // before publish now — see the post-publish rejection below.
             $service->linkCustomer($doc, null);
             $service->linkItem($line, null);
 
@@ -914,6 +913,20 @@ class HistoricalSalesFoundationTest extends TestCase
             $service->linkCustomer($doc, $customer->id);
             $service->linkItem($line, $item->id);
             $this->assertSame($before, $this->operationalCounts());
+
+            $service->publish($batch, $owner->id);
+            $doc->refresh();
+            $line->refresh();
+
+            // Item linking is still advisory-editable post-publish (DB trigger
+            // allows it); customer linking is not (Batch 3 draft-only guard).
+            $service->linkItem($line, null);
+            $line->refresh();
+            $this->assertNull($line->item_id);
+            $this->assertSame($itemSnapshot, $line->item_snapshot);
+
+            $this->expectException(\LogicException::class);
+            $service->linkCustomer($doc, null);
         });
     }
 

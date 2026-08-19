@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Historical;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Historical\StoreManualHistoricalRequest;
+use App\Services\Historical\HistoricalCustomerMatcher;
 use App\Services\Historical\HistoricalImportService;
 use App\Support\Historical\HistoricalFields;
 use App\Support\Historical\HistoricalMakingCharge;
@@ -19,7 +20,10 @@ use Throwable;
  */
 class HistoricalManualEntryController extends Controller
 {
-    public function __construct(private readonly HistoricalImportService $imports) {}
+    public function __construct(
+        private readonly HistoricalImportService $imports,
+        private readonly HistoricalCustomerMatcher $matcher,
+    ) {}
 
     public function create(): View
     {
@@ -57,11 +61,23 @@ class HistoricalManualEntryController extends Controller
         // raw values, never the computed preview numbers.
         $request->flash();
 
+        // Informational only — no document exists yet at preview time, so
+        // there is nothing to link. These are shown purely so the operator
+        // knows what Save's review screen will likely suggest.
+        $snapshot = $result['attributes']['customer_snapshot'] ?? [];
+        $suggestions = $this->matcher->suggest(
+            $shop->id,
+            $snapshot['name'] ?? null,
+            $snapshot['mobile'] ?? null,
+            $snapshot['gstin'] ?? null,
+        );
+
         return view('historical.manual-preview', [
             'attributes'       => $result['attributes'],
             'lines'            => $result['lines'],
             'messages'         => $result['messages'],
             'fingerprint'      => $result['fingerprint'],
+            'suggestions'      => $suggestions,
             'headerFields'     => HistoricalFields::HEADER,
             'lineFields'       => HistoricalFields::LINE,
             'makingCategories' => HistoricalMakingCharge::CATEGORIES,

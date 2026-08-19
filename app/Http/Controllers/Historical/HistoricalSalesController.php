@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Historical;
 use App\Http\Controllers\Controller;
 use App\Models\Historical\HistoricalImportBatch;
 use App\Models\Historical\HistoricalSalesDocument;
+use App\Services\Historical\HistoricalCustomerMatcher;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -38,11 +39,23 @@ class HistoricalSalesController extends Controller
     }
 
     /** One historical document — always badged, never dressed as a live invoice. */
-    public function showDocument(HistoricalSalesDocument $document): View
+    public function showDocument(HistoricalSalesDocument $document, HistoricalCustomerMatcher $matcher): View
     {
-        $document->load(['lines', 'batch:id,label,status', 'revises', 'supersededBy']);
+        $document->load(['lines', 'batch:id,label,status', 'revises', 'supersededBy', 'customer']);
 
-        return view('historical.document', compact('document'));
+        // Suggestions only matter while a link can still be made — linking is
+        // draft-only (Batch 3), so a published/void/superseded document never
+        // needs a fresh candidate list.
+        $suggestions = $document->status === HistoricalSalesDocument::STATUS_DRAFT
+            ? $matcher->suggest(
+                $document->shop_id,
+                $document->customer_snapshot['name'] ?? null,
+                $document->customer_snapshot['mobile'] ?? null,
+                $document->customer_snapshot['gstin'] ?? null,
+            )
+            : null;
+
+        return view('historical.document', compact('document', 'suggestions'));
     }
 
     /** A batch's status/detail page (also the preview + reconciliation surface). */
