@@ -44,6 +44,25 @@ return [
                      * kept as an explicit literal until it is retired separately.
                      */
                     storage_path('app/private/JewelFlow'),
+
+                    /*
+                     * Non-runtime secret snapshots and Claude-agent files. These are
+                     * root-owned, mode 600, unreadable by the www-data scheduler user.
+                     * ZipArchive::addFile() defers the actual read to close(), so an
+                     * unreadable source file here doesn't fail until the archive is
+                     * being finalized ("ZipArchive::close(): Permission denied"),
+                     * aborting the whole backup. None of these are needed in the
+                     * archive: .claude/ is editor/agent tooling state, and .env.save /
+                     * .env.testing / .env.pre-* are point-in-time secret snapshots that
+                     * duplicate what's already rotated into the live .env. The glob
+                     * below is re-evaluated on every run, so it also excludes
+                     * .env.pre-* snapshots created after this deploy. The live .env is
+                     * intentionally NOT excluded.
+                     */
+                    base_path('.claude'),
+                    base_path('.env.save'),
+                    base_path('.env.testing'),
+                    base_path('.env.pre-*'),
                 ],
 
                 /*
