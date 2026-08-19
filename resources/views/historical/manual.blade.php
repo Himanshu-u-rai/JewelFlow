@@ -28,7 +28,11 @@
         </div>
         <p style="color:#b45309;">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
 
-        <form method="POST" action="{{ route('historical.manual.preview') }}"
+        {{-- Preview renders a 200 HTML view (not a redirect) so the operator can review
+             before anything is written. Turbo Drive requires form responses to redirect,
+             so it must be opted out here — see resources/views/export/index.blade.php
+             and super-admin/account/index.blade.php for the same pattern. --}}
+        <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
               x-data="{ lines: [] }" style="display:grid;gap:1.25rem;">
             @csrf
 

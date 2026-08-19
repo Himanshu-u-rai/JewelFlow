@@ -121,7 +121,11 @@
              Edit them and Preview again, or Confirm Save to post these exact values —
              Save re-validates and re-normalizes from scratch; nothing computed above
              is trusted as input. --}}
-        <form method="POST" action="{{ route('historical.manual.preview') }}"
+        {{-- Same Turbo opt-out as manual.blade.php: "Edit / Recalculate preview" re-posts
+             to the 200-rendering preview endpoint. "Confirm Save" (formaction override)
+             redirects and would work under Turbo either way — data-turbo="false" on the
+             whole form is harmless for it and keeps both buttons' behavior consistent. --}}
+        <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
               x-data="{ lines: [] }" style="display:grid;gap:1.25rem;">
             @csrf
 

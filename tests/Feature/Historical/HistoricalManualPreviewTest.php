@@ -232,4 +232,42 @@ class HistoricalManualPreviewTest extends TestCase
             ->post(route('historical.manual.preview'), $this->manualPayload())
             ->assertForbidden();
     }
+
+    /**
+     * preview() renders a 200 HTML view, not a redirect — Turbo Drive rejects
+     * any form response that isn't a redirect ("Form responses must redirect
+     * to another location") and silently refuses to display it, leaving a real
+     * browser stuck on the stale form. Both forms that POST to this route
+     * (the create form and the preview page's own Edit/Recalculate + Confirm
+     * Save form) must opt out of Turbo. This is a markup regression test, not
+     * a behavioral one: PHPUnit never runs Turbo's client-side JS, so only
+     * asserting the attribute is present catches a regression here.
+     */
+    public function test_manual_create_form_opts_out_of_turbo_for_the_200_preview_response(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->get(route('historical.manual.create'));
+
+        $response->assertOk();
+        $response->assertSee(
+            '<form method="POST" action="' . route('historical.manual.preview') . '" data-turbo="false"',
+            false
+        );
+    }
+
+    public function test_manual_preview_page_form_also_opts_out_of_turbo(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.preview'), $this->manualPayload([
+            'original_document_number' => 'TURBO-0001',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee(
+            '<form method="POST" action="' . route('historical.manual.preview') . '" data-turbo="false"',
+            false
+        );
+    }
 }
