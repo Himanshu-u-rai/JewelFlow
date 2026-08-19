@@ -120,6 +120,10 @@ Artisan::command('assets:verify-fresh', function () {
 })->purpose('Fail when compiled Vite assets are older than frontend sources');
 
 Schedule::command('backup:run')->daily();
+// backup:clean was never scheduled, so nothing ever pruned old archives —
+// root cause of the Aug 2026 capacity incident. 01:00 gives backup:run
+// (00:00) a full hour to finish before cleanup inspects the destination.
+Schedule::command('backup:clean')->dailyAt('01:00')->withoutOverlapping(60);
 Schedule::command('loyalty:expire')->daily();
 Schedule::command('subscription:check-expiry')->daily();
 // Stale-lock TTL 20 min: one run is bounded to --limit=25 provider-touching
