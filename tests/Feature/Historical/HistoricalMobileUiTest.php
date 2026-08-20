@@ -165,6 +165,11 @@ class HistoricalMobileUiTest extends TestCase
                 'shop_id' => $shopId,
                 'label' => 'Mobile review batch',
                 'source_system' => 'Legacy ERP',
+                // These fixtures exercise the FILE-import batch page (staged rows,
+                // reconciliation, document register). isManualBatch() keys off
+                // source_file_name, so without one they would be manual bills and
+                // their batch URL would forward to a document instead of rendering.
+                'source_file_name' => 'legacy-erp-export.csv',
                 'status' => HistoricalImportBatch::STATUS_REVIEW,
                 'created_by' => $actorId,
                 'preview_generated_at' => now(),
@@ -835,7 +840,29 @@ class HistoricalMobileUiTest extends TestCase
         $previewForm = $this->firstNode($previewXpath, "//form[@data-historical-form='manual-preview']");
         $this->assertSame(route('historical.manual.preview'), $previewForm->getAttribute('action'));
         $this->assertSame('false', $previewForm->getAttribute('data-turbo'));
-        $this->assertSame(1, $previewXpath->query("//button[@formaction='" . route('historical.manual.store') . "']")?->length);
+        // The preview now offers two DISTINCT save intents, not one Confirm Save:
+        // draft, and (for a publish-authorized user) save-and-publish. The rule this
+        // assertion has always enforced still holds — no intent may be rendered
+        // twice, so there is never an ambiguous duplicate of the same control.
+        $storeAction = route('historical.manual.store');
+
+        foreach ([
+            \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT,
+            \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH,
+        ] as $intent) {
+            $this->assertSame(
+                1,
+                $previewXpath->query("//button[@formaction='{$storeAction}'][@name='intent'][@value='{$intent}']")?->length,
+                "Expected exactly one '{$intent}' save control on the manual preview."
+            );
+        }
+
+        // …and every store control declares an intent, so none can fall back to a
+        // default the operator did not choose.
+        $this->assertSame(
+            2,
+            $previewXpath->query("//button[@formaction='{$storeAction}']")?->length
+        );
 
         $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
         $document = $this->makeDocument($shop->id, $batch->id, [

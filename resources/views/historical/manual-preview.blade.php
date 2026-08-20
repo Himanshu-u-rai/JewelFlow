@@ -330,11 +330,31 @@
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
+            {{-- Warning acknowledgement for a direct publish. The digest pins this tick
+                 to the exact warning set shown above: edit the bill so its warnings
+                 change and the server recomputes a different digest and refuses the
+                 stale acknowledgement instead of carrying it over. --}}
+            @if (! empty($warningDigest))
+                <label class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:px-6">
+                    <input type="checkbox" name="acknowledge_warnings" value="1" class="mt-0.5 h-4 w-4 rounded border-amber-300">
+                    <span>I have read the {{ $messages->countOf(\App\Support\Historical\HistoricalMessages::WARNING) }}
+                        warning(s) above and want to record this bill as it stands.</span>
+                </label>
+                <input type="hidden" name="acknowledged_warning_digest" value="{{ $warningDigest }}">
+            @endif
+
             <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <p class="text-xs text-slate-500">Recalculate to review edits, or confirm once the historical record is correct.</p>
+                <p class="text-xs text-slate-500">Recalculate to review edits, or save once the historical record is correct.</p>
                 <div class="flex gap-3 flex-wrap">
                     <button class="btn min-h-[44px]" type="submit">Edit / Recalculate preview</button>
-                    <button class="btn btn-primary min-h-[44px]" type="submit" formaction="{{ route('historical.manual.store') }}">Confirm Save</button>
+                    <button class="btn btn-primary min-h-[44px]" type="submit"
+                            name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT }}"
+                            formaction="{{ route('historical.manual.store') }}">Save draft</button>
+                    @can('historical.publish')
+                        <button class="btn btn-primary min-h-[44px]" type="submit"
+                                name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH }}"
+                                formaction="{{ route('historical.manual.store') }}">Save &amp; publish</button>
+                    @endcan
                 </div>
             </div>
         </form>

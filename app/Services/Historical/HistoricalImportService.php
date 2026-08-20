@@ -9,6 +9,7 @@ use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\Historical\HistoricalSalesLine;
 use App\Models\Shop;
 use App\Support\Historical\HistoricalFields;
+use App\Support\Historical\HistoricalManualPublishRejected;
 use App\Support\Historical\HistoricalMessages;
 use App\Support\Historical\HistoricalParseException;
 use Illuminate\Http\UploadedFile;
@@ -48,6 +49,7 @@ class HistoricalImportService
         private readonly HistoricalColumnMapper $mapper,
         private readonly HistoricalDocumentNormalizer $normalizer,
         private readonly HistoricalDuplicateDetector $duplicates,
+        private readonly HistoricalDocumentLifecycleService $lifecycle,
     ) {}
 
     // ------------------------------------------------------------- uploading
@@ -725,6 +727,108 @@ class HistoricalImportService
         return ['batch' => $batch, 'document' => $document, 'messages' => $messages];
     }
 
+    /**
+     * "Save & publish" for a manual bill: create the record and publish it in ONE
+     * transaction, so the operator never has to visit the batch page.
+     *
+     * FAILURE SEMANTICS, stated exactly because half-published historical evidence
+     * would be worse than no evidence at all:
+     *
+     *   - The whole method body runs inside a single DB::transaction. Creation and
+     *     publication either both happen or neither does.
+     *   - Every refusal (blocking finding, unresolved duplicate, unacknowledged or
+     *     stale-acknowledged warnings, HIGH opening-balance overlap, an unclaimable
+     *     batch) throws HistoricalManualPublishRejected, which unwinds the
+     *     transaction. Row counts return to what they were: no batch, no document,
+     *     no lines, no orphan draft.
+     *   - An unexpected fault inside the lifecycle service propagates and unwinds
+     *     the same way. `publish()` puts a stranded `publishing` claim back to
+     *     `review` in its own finally; that write is itself rolled back with
+     *     everything else, which is harmless precisely because the batch it refers
+     *     to ceases to exist.
+     *   - Therefore a failed direct publish is indistinguishable from never having
+     *     pressed the button, and the operator's form comes back with the reason.
+     *
+     * The acknowledgement is verified against a digest recomputed HERE, from this
+     * submission's warnings — never against whatever the preview screen happened to
+     * be showing. See HistoricalMessages::warningDigest().
+     *
+     * @param  array<string, mixed>  $header
+     * @param  array<int, array<string, mixed>>  $lines
+     * @return array{batch: HistoricalImportBatch, document: HistoricalSalesDocument, messages: HistoricalMessages}
+     *
+     * @throws HistoricalManualPublishRejected
+     */
+    public function publishManual(
+        Shop $shop,
+        array $header,
+        array $lines,
+        int $actorId,
+        array $options = [],
+        ?string $acknowledgedWarningDigest = null,
+    ): array {
+        return DB::transaction(function () use ($shop, $header, $lines, $actorId, $options, $acknowledgedWarningDigest): array {
+            // Full re-validation and re-normalisation from the raw input, not from
+            // anything the preview computed. This is the same call Save-draft makes.
+            $result   = $this->storeManual($shop, $header, $lines, $actorId, $options);
+            $batch    = $result['batch'];
+            $document = $result['document'];
+            $messages = $result['messages'];
+
+            if ($messages->hasBlocking()) {
+                throw new HistoricalManualPublishRejected($this->firstMessageText($messages, HistoricalMessages::ERROR)
+                    ?? 'This bill has blocking errors and cannot be published.');
+            }
+
+            // No document with no blocking error means the duplicate machinery
+            // declined to create one (skip / unresolved collision). Nothing to publish.
+            if ($document === null) {
+                throw new HistoricalManualPublishRejected(
+                    'This bill was not recorded — resolve the duplicate decision before publishing.'
+                );
+            }
+
+            $digest = $messages->warningDigest();
+
+            if ($digest !== null && $acknowledgedWarningDigest !== $digest) {
+                throw new HistoricalManualPublishRejected(
+                    'Acknowledge the outstanding warnings for this bill before publishing.'
+                );
+            }
+
+            if ($digest !== null) {
+                $batch->forceFill([
+                    'warnings_acknowledged_at' => now(),
+                    'warnings_acknowledged_by' => $actorId,
+                ])->save();
+            }
+
+            // The one publish gate, reused rather than reimplemented: already
+            // published / not editable / no preview / blocking / unacknowledged
+            // warnings / unresolved HIGH opening-balance overlap.
+            $blocker = $batch->blockedFromPublishing();
+
+            if ($blocker !== null) {
+                throw new HistoricalManualPublishRejected($blocker);
+            }
+
+            $this->lifecycle->publish($batch, $actorId);
+
+            return [
+                'batch'    => $batch->refresh(),
+                'document' => $document->refresh(),
+                'messages' => $messages,
+            ];
+        });
+    }
+
+    private function firstMessageText(HistoricalMessages $messages, string $severity): ?string
+    {
+        $first = $messages->ofSeverity($severity)[0] ?? null;
+
+        return $first === null ? null : (string) $first['text'];
+    }
+
     /** @return array<string, mixed> */
     private function manualNormalizerOptions(array $options, int $actorId): array
     {
@@ -890,6 +994,11 @@ class HistoricalImportService
             'manual'                  => true,
             'staged_rows_applicable'  => false,
             'workflow_steps'          => ['enter', 'preview', 'review', 'publish'],
+            // The findings verbatim, not just aggregated code counts. A manual bill
+            // has no HistoricalImportRow to carry its messages, and the document page
+            // is now the only place they are shown — so they are kept whole here,
+            // severity and field intact, for HistoricalMessages::fromArray().
+            'manual_messages'         => $messages->all(),
         ]
             + $this->documentSummary($documents)
             + [

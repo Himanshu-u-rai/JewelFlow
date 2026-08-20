@@ -19,6 +19,12 @@ use Illuminate\Validation\Rule;
  */
 class StoreManualHistoricalRequest extends FormRequest
 {
+    /** Save the bill as a historical draft and stop. */
+    public const INTENT_DRAFT = 'draft';
+
+    /** Save and immediately publish it, without ever showing the batch page. */
+    public const INTENT_PUBLISH = 'publish';
+
     public function authorize(): bool
     {
         return true;
@@ -29,6 +35,13 @@ class StoreManualHistoricalRequest extends FormRequest
         $money = ['nullable', 'numeric'];
 
         return [
+            // which button was pressed. Absent/unknown means the safe one.
+            'intent'                   => ['nullable', Rule::in([self::INTENT_DRAFT, self::INTENT_PUBLISH])],
+            // warning acknowledgement for a direct publish. The checkbox alone is not
+            // enough: the digest pins the acknowledgement to the exact warning set the
+            // operator was shown, so an edit that changes the warnings invalidates it.
+            'acknowledge_warnings'         => ['nullable', 'boolean'],
+            'acknowledged_warning_digest'  => ['nullable', 'string', 'max:64'],
             // identity — number optional (cash bills exist), date + total required.
             'original_document_number' => ['nullable', 'string', 'max:120'],
             'document_series'          => ['nullable', 'string', 'max:60'],
@@ -104,6 +117,34 @@ class StoreManualHistoricalRequest extends FormRequest
     public function headerFields(): array
     {
         return array_intersect_key($this->validated(), HistoricalFields::HEADER);
+    }
+
+    /** Defaults to the non-destructive intent for any absent or unexpected value. */
+    public function intent(): string
+    {
+        return $this->input('intent') === self::INTENT_PUBLISH
+            ? self::INTENT_PUBLISH
+            : self::INTENT_DRAFT;
+    }
+
+    public function wantsDirectPublish(): bool
+    {
+        return $this->intent() === self::INTENT_PUBLISH;
+    }
+
+    /**
+     * The digest is only meaningful when the operator actually ticked the box —
+     * a stray hidden field must not acknowledge anything on its own.
+     */
+    public function acknowledgedWarningDigest(): ?string
+    {
+        if (! $this->boolean('acknowledge_warnings')) {
+            return null;
+        }
+
+        $digest = trim((string) $this->input('acknowledged_warning_digest', ''));
+
+        return $digest === '' ? null : $digest;
     }
 
     /** @return array<int, array<string, mixed>> */

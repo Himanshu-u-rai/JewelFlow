@@ -296,6 +296,12 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             ->middleware('can:historical.import')->name('manual.create');
         Route::post('/manual/preview', [HistoricalManualEntryController::class, 'preview'])
             ->middleware('can:historical.import')->name('manual.preview');
+        // The preview page is a POST result, so browser Back / reload / a bookmark
+        // replays a GET against a POST-only URL and blows up with a 405. This is the
+        // safe landing pad: same permission, zero writes, no submitted values in the
+        // URL — it just sends the operator back to the form to recalculate.
+        Route::get('/manual/preview', [HistoricalManualEntryController::class, 'previewExpired'])
+            ->middleware('can:historical.import')->name('manual.preview.expired');
         Route::post('/manual', [HistoricalManualEntryController::class, 'store'])
             ->middleware('can:historical.import')->name('manual.store');
 
@@ -318,10 +324,18 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             ->middleware('can:historical.import')->name('batches.destroy');
         Route::post('/documents/{document}/link-customer', [HistoricalDocumentController::class, 'linkCustomer'])
             ->middleware('can:historical.import')->name('documents.link-customer');
+        // Thin document-level wrappers over the existing batch lifecycle, so a manual
+        // operator never needs the batch page. They delegate to the same service calls
+        // the batch routes use and refuse any document whose batch is a file import
+        // (where one document is not the whole batch).
+        Route::post('/documents/{document}/acknowledge', [HistoricalDocumentController::class, 'acknowledgeWarnings'])
+            ->middleware('can:historical.import')->name('documents.acknowledge');
 
         // --- publish + published-record corrections (historical.publish) ---
         Route::post('/batches/{batch}/publish', [HistoricalImportController::class, 'publish'])
             ->middleware('can:historical.publish')->name('batches.publish');
+        Route::post('/documents/{document}/publish', [HistoricalDocumentController::class, 'publish'])
+            ->middleware('can:historical.publish')->name('documents.publish');
         Route::post('/documents/{document}/void', [HistoricalDocumentController::class, 'void'])
             ->middleware('can:historical.publish')->name('documents.void');
         Route::post('/documents/{document}/supersede', [HistoricalDocumentController::class, 'supersede'])

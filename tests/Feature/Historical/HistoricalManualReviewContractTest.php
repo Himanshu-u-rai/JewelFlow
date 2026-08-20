@@ -93,16 +93,23 @@ class HistoricalManualReviewContractTest extends TestCase
 
     // ------------------------------------------------------------ Test #1
 
-    public function test_manual_save_redirects_into_the_batch_review_lifecycle(): void
+    public function test_manual_save_redirects_into_the_document_review_lifecycle(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
 
         $response = $this->actingAs($owner)->post(route('historical.manual.store'), $this->manualPayload());
         $response->assertRedirect();
 
-        $batch = TenantContext::runFor($shop->id, fn () => HistoricalImportBatch::query()->firstOrFail());
+        [$batch, $document] = TenantContext::runFor($shop->id, fn (): array => [
+            HistoricalImportBatch::query()->firstOrFail(),
+            HistoricalSalesDocument::query()->firstOrFail(),
+        ]);
 
-        $response->assertRedirect(route('historical.batches.show', $batch));
+        // The batch still exists and still carries the preview contract this test
+        // file was written to protect — but it is now internal. A manually typed
+        // bill lands on its own document, never on the bulk-import review page.
+        $response->assertRedirect(route('historical.documents.show', $document));
+        $this->assertTrue($batch->isManualBatch());
     }
 
     // -------------------------------------------------------- Tests #2-#7
@@ -264,8 +271,15 @@ class HistoricalManualReviewContractTest extends TestCase
 
         $this->actingAs($owner)->post(route('historical.manual.store'), $this->manualPayload())->assertRedirect();
 
-        $batch = TenantContext::runFor($shop->id, fn () => HistoricalImportBatch::query()->firstOrFail());
-        $this->actingAs($owner)->get(route('historical.batches.show', $batch->id))->assertOk();
+        $batch    = TenantContext::runFor($shop->id, fn () => HistoricalImportBatch::query()->firstOrFail());
+        $document = TenantContext::runFor($shop->id, fn () => HistoricalSalesDocument::query()->firstOrFail());
+
+        // Exercise BOTH review surfaces a manual bill can be reached through: the
+        // document page it now lands on, and the internal batch URL that forwards
+        // to it. Neither may write to a live table.
+        $this->actingAs($owner)->get(route('historical.documents.show', $document->id))->assertOk();
+        $this->actingAs($owner)->get(route('historical.batches.show', $batch->id))
+            ->assertRedirect(route('historical.documents.show', $document->id));
 
         $after = TenantContext::runFor($shop->id, fn () => $this->snapshotCounts($liveTables));
         $this->assertSame($before, $after, 'Manual save/review must never write to a live accounting/inventory table.');

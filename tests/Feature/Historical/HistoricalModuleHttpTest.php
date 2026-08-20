@@ -49,6 +49,11 @@ class HistoricalModuleHttpTest extends TestCase
                 'shop_id'              => $shopId,
                 'label'               => 'FY 2022-23',
                 'source_system'       => 'Tally',
+                // A FILE-import batch, and now structurally so. isManualBatch() keys
+                // off source_file_name (source_system is free text the operator can
+                // edit), so a fixture that calls itself a Tally export has to carry a
+                // file name or it is a manual bill wearing a Tally label.
+                'source_file_name'    => 'tally-fy-2022-23.csv',
                 'status'              => HistoricalImportBatch::STATUS_REVIEW,
                 'created_by'          => $actorId,
                 'preview_generated_at' => now(),
@@ -397,9 +402,13 @@ class HistoricalModuleHttpTest extends TestCase
             return [$doc->historical_import_batch_id, $doc];
         });
 
-        $batchResponse = $this->actingAs($owner)->get(route('historical.batches.show', $batchId));
-        $batchResponse->assertStatus(200);
-        $batchResponse->assertDontSee($document->historical_reference);
+        // The internal batch URL forwards to the document; the document page is the
+        // manual review surface, so it is where the empty-severity-section render
+        // blocker has to stay fixed. (The same regression on the BATCH page is still
+        // covered by the file-import batch tests above, which render it directly.)
+        $this->actingAs($owner)
+            ->get(route('historical.batches.show', $batchId))
+            ->assertRedirect(route('historical.documents.show', $document->id));
 
         $documentResponse = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
         $documentResponse->assertStatus(200);

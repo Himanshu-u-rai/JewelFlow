@@ -110,99 +110,88 @@ class HistoricalManualBatchUiTest extends TestCase
         );
     }
 
-    private function metricValue(DOMXPath $xpath, string $metric): string
-    {
-        return trim($this->firstNode(
-            $xpath,
-            "//*[@data-historical-batch-summary='manual']//*[@data-historical-metric='{$metric}']//*[@data-historical-metric-value]"
-        )->textContent);
-    }
-
-    public function test_manual_batch_renders_source_aware_workflow_summary_and_saved_bill(): void
+    /**
+     * A manually typed bill no longer has a user-facing batch page: its batch is an
+     * internal one-document container and its URL forwards to the document.
+     *
+     * These four manual cases therefore assert the DOCUMENT-page lifecycle contract
+     * (the `lifecycle` view data) rather than batch-page markup. That contract is
+     * backend-owned and is exactly what the document Blade is built against, so the
+     * facts the manual batch summary used to display — findings, acknowledgement,
+     * publishability, workflow state — stay covered while the presentation moves.
+     */
+    public function test_manual_batch_url_forwards_and_the_document_carries_the_review_contract(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         [$batch, $document] = $this->storeManualReview($owner, $shop->id);
 
-        $response = $this->actingAs($owner)
+        $this->actingAs($owner)
             ->get(route('historical.batches.show', $batch))
+            ->assertRedirect(route('historical.documents.show', $document->id));
+
+        $response = $this->actingAs($owner)
+            ->get(route('historical.documents.show', $document->id))
             ->assertOk();
-        $xpath = $this->xpath($response->getContent());
 
-        $this->assertSame(['Enter', 'Preview', 'Review', 'Publish'], $this->workflowLabels($xpath));
-        $this->firstNode($xpath, "//*[@data-historical-step='review']//*[@aria-current='step']");
+        $lifecycle = $response->viewData('lifecycle');
 
-        $context = $this->firstNode($xpath, "//*[@data-historical-batch-context='manual']");
-        $this->assertStringContainsString('Historical bill review', $context->textContent);
-        $this->assertStringContainsString(
-            'Review the saved historical draft and its findings before publishing immutable evidence.',
-            $context->textContent
-        );
+        $this->assertTrue($lifecycle['is_manual']);
+        $this->assertTrue($lifecycle['is_draft']);
+        $this->assertFalse($lifecycle['is_published']);
+        $this->assertSame(HistoricalImportBatch::STATUS_REVIEW, $lifecycle['batch_status']);
 
-        $this->firstNode($xpath, "//*[@data-historical-batch-summary='manual']");
-        $this->assertSame('1', $this->metricValue($xpath, 'documents'));
-        $this->assertSame('2', $this->metricValue($xpath, 'item-lines'));
-        $this->assertSame('1,000.00', $this->metricValue($xpath, 'grand-total'));
-        $this->assertSame('1,000.00', $this->metricValue($xpath, 'taxable-total'));
-        $this->assertSame('0.00', $this->metricValue($xpath, 'tax-total'));
-        $this->assertSame('1,000.00', $this->metricValue($xpath, 'paid'));
-        $this->assertSame('0.00', $this->metricValue($xpath, 'outstanding'));
-        $this->assertSame('0', $this->metricValue($xpath, 'blocking-errors'));
-        $this->assertGreaterThan(0, (int) $this->metricValue($xpath, 'warnings'));
-        $this->assertGreaterThan(0, (int) $this->metricValue($xpath, 'informational-findings'));
-        $this->assertSame('2024-06-15', $this->metricValue($xpath, 'date'));
-        $this->assertSame('2024-25', $this->metricValue($xpath, 'financial-year'));
+        // Findings, with the same severities the batch summary used to count.
+        $this->assertSame(0, $lifecycle['blocking_count']);
+        $this->assertSame([], $lifecycle['blocking']);
+        $this->assertGreaterThan(0, $lifecycle['warning_count']);
+        $this->assertNotEmpty($lifecycle['warnings']);
+        $this->assertNotEmpty($lifecycle['informational']);
 
-        $summary = $this->firstNode($xpath, "//*[@data-historical-batch-summary='manual']");
-        foreach (['Upload', 'Map', 'Rows', 'Header-only', 'Staged rows', 'Ignored / informational columns', 'Reconciliation preview'] as $importOnly) {
-            $this->assertStringNotContainsString($importOnly, $summary->textContent);
-        }
-        $this->assertSame(0, $xpath->query("//*[@data-historical-register='staged-desktop' or @data-historical-register='staged-mobile']")?->length);
+        // Unacknowledged warnings hold the publish gate shut, and the reason is
+        // stated rather than merely implied by a disabled button.
+        $this->assertFalse($lifecycle['warnings_acknowledged']);
+        $this->assertFalse($lifecycle['can_publish']);
+        $this->assertNotNull($lifecycle['publish_blocker']);
 
-        $documents = $this->firstNode($xpath, "//*[@data-historical-batch-documents='manual']");
-        $this->assertStringContainsString('Saved historical bill', $documents->textContent);
-        $this->assertStringContainsString('2024-06-15', $documents->textContent);
-        $this->assertStringContainsString('1,000.00', $documents->textContent);
-        $this->assertGreaterThanOrEqual(1, $xpath->query("//*[@data-historical-batch-documents='manual']//a[@href='" . route('historical.documents.show', $document) . "']")?->length ?? 0);
+        // The bill itself is on the page it belongs to, with its real lines.
+        $this->assertSame('UI-MANUAL-100', $document->original_document_number);
+        $this->assertSame('2024-06-15', $document->document_date->toDateString());
+        $this->assertSame(2, $document->lines->count());
+        $this->assertSame(1000.0, round((float) $document->grand_total, 2));
 
-        $page = $this->firstNode($xpath, "//*[@data-historical-batch-page]");
-        $pageClasses = preg_split('/\s+/', trim($page->getAttribute('class'))) ?: [];
-        $this->assertContains('min-w-0', $pageClasses);
-        $this->firstNode($xpath, "//*[@data-historical-batch-actions][contains(concat(' ', normalize-space(@class), ' '), ' flex-wrap ')]");
-        $this->assertSame(
-            0,
-            $xpath->query("//*[@data-historical-batch-actions]//a[not(contains(concat(' ', normalize-space(@class), ' '), ' min-h-[44px] '))] | //*[@data-historical-batch-actions]//button[not(contains(concat(' ', normalize-space(@class), ' '), ' min-h-[44px] '))]")?->length
-        );
-        $this->assertSame(
-            0,
-            $xpath->query("//*[@data-historical-batch-actions]//a[not(contains(concat(' ', normalize-space(@class), ' '), ' h-11 '))] | //*[@data-historical-batch-actions]//button[not(contains(concat(' ', normalize-space(@class), ' '), ' h-11 '))]")?->length
-        );
-        $this->firstNode(
-            $xpath,
-            "//a[@href='" . route('historical.index') . "'][contains(concat(' ', normalize-space(@class), ' '), ' h-11 ')]"
-        );
+        // Staged import rows are a file-import concept and must not appear here.
+        $this->assertSame(0, $batch->rows()->count());
     }
 
-    public function test_manual_warning_acknowledgement_keeps_the_existing_publish_gate(): void
+    public function test_manual_warning_acknowledgement_gate_moves_to_the_document(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
-        [$batch] = $this->storeManualReview($owner, $shop->id);
+        [$batch, $document] = $this->storeManualReview($owner, $shop->id);
         $this->assertGreaterThan(0, (int) $batch->warning_count);
 
-        $before = $this->actingAs($owner)->get(route('historical.batches.show', $batch))->assertOk();
-        $beforeXpath = $this->xpath($before->getContent());
-        $this->firstNode($beforeXpath, "//form[@action='" . route('historical.batches.acknowledge', $batch) . "']");
-        $this->firstNode($beforeXpath, "//*[@data-historical-publish-blocker]");
-        $this->assertSame(0, $beforeXpath->query("//form[@action='" . route('historical.batches.publish', $batch) . "']")?->length);
+        $before = $this->actingAs($owner)->get(route('historical.documents.show', $document->id))->assertOk();
+        $this->assertFalse($before->viewData('lifecycle')['warnings_acknowledged']);
+        $this->assertFalse($before->viewData('lifecycle')['can_publish']);
+
+        // Publishing before acknowledging is refused by the same batch-level gate
+        // the batch page used — no second, weaker rule for the document route.
+        $this->actingAs($owner)
+            ->post(route('historical.documents.publish', $document->id))
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        TenantContext::runFor($shop->id, function () use ($document): void {
+            $this->assertSame(HistoricalSalesDocument::STATUS_DRAFT, $document->fresh()->status);
+        });
 
         $this->actingAs($owner)
-            ->post(route('historical.batches.acknowledge', $batch))
-            ->assertRedirect(route('historical.batches.show', $batch));
+            ->post(route('historical.documents.acknowledge', $document->id))
+            ->assertRedirect();
 
-        $after = $this->actingAs($owner)->get(route('historical.batches.show', $batch))->assertOk();
-        $afterXpath = $this->xpath($after->getContent());
-        $this->assertSame(0, $afterXpath->query("//form[@action='" . route('historical.batches.acknowledge', $batch) . "']")?->length);
-        $this->firstNode($afterXpath, "//form[@action='" . route('historical.batches.publish', $batch) . "']");
-        $this->firstNode($afterXpath, "//form[@action='" . route('historical.batches.destroy', $batch) . "']");
+        $after = $this->actingAs($owner)->get(route('historical.documents.show', $document->id))->assertOk();
+        $this->assertTrue($after->viewData('lifecycle')['warnings_acknowledged']);
+        $this->assertTrue($after->viewData('lifecycle')['can_publish']);
+        $this->assertNull($after->viewData('lifecycle')['publish_blocker']);
     }
 
     public function test_csv_import_keeps_file_workflow_reconciliation_and_staged_rows(): void
@@ -293,42 +282,53 @@ class HistoricalManualBatchUiTest extends TestCase
         $this->assertStringContainsString('Reconciliation preview', $response->getContent());
     }
 
-    public function test_manual_batch_actions_remain_permission_gated(): void
+    public function test_manual_document_lifecycle_actions_remain_permission_gated(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
-        [$batch] = $this->storeManualReview($owner, $shop->id);
+        [, $document] = $this->storeManualReview($owner, $shop->id);
         $this->grantOnlyPermissions($owner, ['historical.view']);
 
-        $response = $this->actingAs($owner)->get(route('historical.batches.show', $batch))->assertOk();
-        $xpath = $this->xpath($response->getContent());
+        // Read stays open, every mutation closes — enforced by the route, not by
+        // whether the Blade happened to render a button.
+        $this->actingAs($owner)->get(route('historical.documents.show', $document->id))->assertOk();
+        $this->actingAs($owner)->post(route('historical.documents.acknowledge', $document->id))->assertForbidden();
+        $this->actingAs($owner)->post(route('historical.documents.publish', $document->id))->assertForbidden();
 
-        foreach (['acknowledge', 'destroy', 'publish', 'normalize'] as $action) {
-            $routeName = "historical.batches.{$action}";
-            $this->assertSame(0, $xpath->query("//form[@action='" . route($routeName, $batch) . "']")?->length);
-        }
-        $this->firstNode($xpath, "//*[@data-historical-batch-summary='manual']");
+        TenantContext::runFor($shop->id, function () use ($document): void {
+            $this->assertSame(HistoricalSalesDocument::STATUS_DRAFT, $document->fresh()->status);
+        });
     }
 
-    public function test_published_manual_batch_is_read_only(): void
+    public function test_published_manual_document_is_read_only_and_republishing_is_a_no_op(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         [$batch, $document] = $this->storeManualReview($owner, $shop->id);
 
         if ((int) $batch->warning_count > 0) {
-            $this->actingAs($owner)->post(route('historical.batches.acknowledge', $batch))->assertRedirect();
+            $this->actingAs($owner)->post(route('historical.documents.acknowledge', $document->id))->assertRedirect();
         }
-        $this->actingAs($owner)->post(route('historical.batches.publish', $batch))->assertRedirect();
+        $this->actingAs($owner)->post(route('historical.documents.publish', $document->id))->assertRedirect();
 
-        $response = $this->actingAs($owner)->get(route('historical.batches.show', $batch))->assertOk();
-        $xpath = $this->xpath($response->getContent());
+        $response = $this->actingAs($owner)->get(route('historical.documents.show', $document->id))->assertOk();
+        $lifecycle = $response->viewData('lifecycle');
 
-        $this->firstNode($xpath, "//*[@data-historical-step='publish']//*[@aria-current='step']");
-        $this->assertStringContainsString('Published', $this->firstNode($xpath, "//*[@data-historical-batch-context='manual']")->textContent);
-        foreach (['acknowledge', 'destroy', 'publish', 'normalize'] as $action) {
-            $routeName = "historical.batches.{$action}";
-            $this->assertSame(0, $xpath->query("//form[@action='" . route($routeName, $batch) . "']")?->length);
-        }
-        $this->assertGreaterThanOrEqual(1, $xpath->query("//a[@href='" . route('historical.documents.show', $document) . "']")?->length ?? 0);
+        $this->assertTrue($lifecycle['is_published']);
+        $this->assertFalse($lifecycle['is_draft']);
+        $this->assertFalse($lifecycle['can_publish']);
+        $this->assertSame(HistoricalImportBatch::STATUS_PUBLISHED, $lifecycle['batch_status']);
+        $this->assertNotNull($lifecycle['publish_blocker']);
+
+        // Idempotent replay: pressing publish again is a no-op, not an error and
+        // not a second document.
+        $this->actingAs($owner)
+            ->post(route('historical.documents.publish', $document->id))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        TenantContext::runFor($shop->id, function () use ($document): void {
+            $this->assertSame(1, HistoricalSalesDocument::query()->count());
+            $this->assertSame(HistoricalSalesDocument::STATUS_PUBLISHED, $document->fresh()->status);
+        });
     }
 
     private function layoutCXlsx(): string
