@@ -15,9 +15,12 @@
     $errors   = $messages->ofSeverity(HistoricalMessages::ERROR);
     $warnings = $messages->ofSeverity(HistoricalMessages::WARNING);
     $infos    = $messages->ofSeverity(HistoricalMessages::INFO);
+    $documentDateDisplay = isset($attributes['document_date'])
+        ? \Illuminate\Support\Carbon::parse($attributes['document_date'])->format('d M Y')
+        : '—';
 @endphp
 <x-app-layout>
-    <x-page-header title="Preview historical bill" subtitle="Nothing has been saved yet — this is a computed preview. Review it, then Confirm Save.">
+    <x-page-header title="Preview historical bill" subtitle="Review the normalized record before confirming the save.">
         <x-slot:actions>
             <a href="{{ route('historical.index') }}" class="btn btn-sm min-h-[44px]">← Historical sales</a>
         </x-slot:actions>
@@ -26,157 +29,277 @@
     <div class="content-inner historical-manual-preview-page">
         <x-app-alerts />
 
-        {{-- Prominent read-only preview header: badge, disclaimer, and the exact
-             original number up front — this is what the operator is confirming. --}}
-        <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden mb-4">
-            <div class="p-4 sm:p-6">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide bg-teal-700 text-white">{{ HistoricalSalesDocument::BADGE }}</span>
-                    <span class="text-xs font-semibold normal-case tracking-normal text-slate-500">Read-only preview</span>
-                </div>
-                <p class="text-xl font-semibold text-slate-900 mt-2">
-                    {{ $attributes['original_document_number'] ?? 'Number unavailable' }}
-                    @if($attributes['document_series'] ?? null) <span class="text-sm font-normal text-slate-500">(series {{ $attributes['document_series'] }})</span> @endif
-                </p>
-            </div>
-            <div class="border-t border-amber-200 bg-amber-50 px-4 py-3 sm:px-6">
-                <p class="text-sm text-amber-800">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
-            </div>
-        </section>
-
-        {{-- Warnings and blockers are visually separated by severity, and blockers
-             are shown first — Confirm Save is not disabled client-side (it always
-             re-validates server-side), but a blocking finding here means it will
-             be rejected, so the operator should see that before scrolling to it. --}}
-        @if($errors !== [])
-            <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 mb-3" role="alert">
-                <p class="font-semibold text-rose-700 text-sm mb-1">Blocking — this bill cannot be saved until these are fixed:</p>
-                @foreach($errors as $m)<p class="text-rose-700 text-sm">{{ $m['text'] }}</p>@endforeach
-            </div>
-        @endif
-
-        @if($warnings !== [])
-            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-3">
-                <p class="font-semibold text-amber-800 text-sm mb-1">Warnings:</p>
-                @foreach($warnings as $m)<p class="text-amber-800 text-sm">{{ $m['text'] }}</p>@endforeach
-            </div>
-        @endif
-
-        @if($infos !== [])
-            <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 mb-3">
-                @foreach($infos as $m)<p class="text-blue-800 text-sm">{{ $m['text'] }}</p>@endforeach
-            </div>
-        @endif
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" data-historical-preview-layout>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-2">
-                <h2 class="text-base font-semibold text-slate-800 mb-3">Document</h2>
-                <dl class="text-sm grid grid-cols-2 gap-x-3 gap-y-4">
-                    <dt class="text-slate-500">Date</dt><dd class="text-slate-800">{{ $attributes['document_date'] ?? '—' }}</dd>
-                    <dt class="text-slate-500">Financial year</dt><dd class="text-slate-800">{{ $attributes['financial_year'] ?? '—' }}</dd>
-                    <dt class="text-slate-500">Source</dt><dd class="text-slate-800">{{ $attributes['source_system'] ?? '—' }}</dd>
-                </dl>
-            </div>
-
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                <h2 class="text-base font-semibold text-slate-800 mb-3">Customer snapshot <span class="text-slate-400 font-normal text-xs">(never linked)</span></h2>
-                <dl class="text-sm grid grid-cols-2 gap-x-3 gap-y-4">
-                    <dt class="text-slate-500">Name</dt><dd class="text-slate-800">{{ $customer['name'] ?? '—' }}</dd>
-                    <dt class="text-slate-500">Mobile</dt><dd class="text-slate-800">{{ $customer['mobile'] ?? '—' }}</dd>
-                    <dt class="text-slate-500">GSTIN</dt><dd class="text-slate-800">{{ $customer['gstin'] ?? '—' }}</dd>
-                    <dt class="text-slate-500">Place of supply</dt><dd class="text-slate-800">{{ $customer['place_of_supply'] ?? '—' }}</dd>
-                    <dt class="text-slate-500">Address</dt><dd class="text-slate-800">{{ $customer['address'] ?? '—' }}</dd>
-                </dl>
-
-                @if(($suggestions['mobile']['status'] ?? 'none') !== 'none' || ($suggestions['gstin']['status'] ?? 'none') !== 'none' || ($suggestions['name']['status'] ?? 'none') !== 'none')
-                    <div class="mt-3 pt-3 border-t border-slate-100 text-sm text-slate-500">
-                        <p class="mb-1">Possible existing customer matches — informational only, link them after saving from the document's review screen:</p>
-                        @foreach(['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'] as $key => $label)
-                            @php $match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()]; @endphp
-                            @if($match['status'] === 'ambiguous')
-                                <p>{{ $label }}: ambiguous — {{ $match['customers']->count() }} customers share this value, not linked automatically</p>
-                            @elseif($match['status'] === 'match')
-                                <p>{{ $label }}: {{ $match['customers']->pluck('name')->join(', ') }}</p>
+        <div class="grid gap-4" data-historical-preview-review>
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-preview-summary>
+                <div class="flex flex-col gap-5 p-4 sm:p-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center rounded bg-teal-700 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">{{ HistoricalSalesDocument::BADGE }}</span>
+                            <span class="text-xs font-semibold text-slate-500">Read-only review</span>
+                        </div>
+                        <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Original document</p>
+                        <p class="mt-1 break-words text-2xl font-semibold leading-tight text-slate-900">
+                            {{ $attributes['original_document_number'] ?? 'Number unavailable' }}
+                            @if($attributes['document_series'] ?? null)
+                                <span class="text-sm font-normal text-slate-500">Series {{ $attributes['document_series'] }}</span>
                             @endif
-                        @endforeach
+                        </p>
+                        <dl class="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                            <div class="rounded-xl bg-slate-50 px-3 py-3">
+                                <dt class="text-xs font-medium text-slate-500">Document date</dt>
+                                <dd class="mt-1 font-semibold text-slate-800">{{ $documentDateDisplay }}</dd>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 px-3 py-3">
+                                <dt class="text-xs font-medium text-slate-500">Financial year</dt>
+                                <dd class="mt-1 font-semibold text-slate-800">{{ $attributes['financial_year'] ?? '—' }}</dd>
+                            </div>
+                            <div class="col-span-2 rounded-xl bg-slate-50 px-3 py-3 sm:col-span-1">
+                                <dt class="text-xs font-medium text-slate-500">Source</dt>
+                                <dd class="mt-1 font-semibold text-slate-800">{{ $attributes['source_system'] ?? '—' }}</dd>
+                            </div>
+                        </dl>
                     </div>
+
+                    <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 lg:w-64 lg:shrink-0" data-historical-preview-grand-total>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Grand total</p>
+                        <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</p>
+                        <dl class="mt-3 grid grid-cols-2 gap-3 border-t border-amber-200 pt-3 text-xs">
+                            <div>
+                                <dt class="text-amber-700">Paid</dt>
+                                <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['paid_amount_snapshot'] ?? 0), 2) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-amber-700">Outstanding</dt>
+                                <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['outstanding_amount_snapshot'] ?? 0), 2) }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+                <div class="border-t border-amber-200 bg-amber-50 px-4 py-3 sm:px-6">
+                    <p class="text-sm text-amber-800">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
+                </div>
+            </section>
+
+            {{-- Findings remain informational until the server re-validates on save. --}}
+            <div class="grid gap-3" data-historical-preview-messages>
+                @if($errors !== [])
+                    <section class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3" role="alert">
+                        <h2 class="text-sm font-semibold text-rose-800">Blocking issues</h2>
+                        <p class="mt-1 text-xs text-rose-700">This bill cannot be saved until these are fixed.</p>
+                        <div class="mt-2 grid gap-1">
+                            @foreach($errors as $m)<p class="text-sm text-rose-700">{{ $m['text'] }}</p>@endforeach
+                        </div>
+                    </section>
+                @endif
+
+                @if($warnings !== [])
+                    <section class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                        <h2 class="text-sm font-semibold text-amber-800">Review warnings</h2>
+                        <div class="mt-2 grid gap-1">
+                            @foreach($warnings as $m)<p class="text-sm text-amber-800">{{ $m['text'] }}</p>@endforeach
+                        </div>
+                    </section>
+                @endif
+
+                @if($infos !== [])
+                    <section class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                        <h2 class="text-sm font-semibold text-blue-800">Record notes</h2>
+                        <div class="mt-2 grid gap-1">
+                            @foreach($infos as $m)<p class="text-sm text-blue-800">{{ $m['text'] }}</p>@endforeach
+                        </div>
+                    </section>
                 @endif
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-2">
-                <h2 class="text-base font-semibold text-slate-800 mb-3">Tax and making / labour charge</h2>
-                <dl class="text-sm grid grid-cols-2 gap-x-3 gap-y-4">
-                    <dt class="text-slate-500">Tax</dt><dd class="text-slate-800">{{ $attributes['tax_mode'] ?? '—' }} ({{ $attributes['tax_completeness'] ?? '—' }})</dd>
-                    <dt class="text-slate-500">Making / labour</dt>
-                    <dd class="text-slate-800">
-                        {{ $attributes['making_label_original'] ?? '—' }}: {{ $attributes['making_value_original'] ?? '—' }}
-                        <span class="text-slate-500">({{ $attributes['making_category'] ?? 'uncategorized' }} / {{ $attributes['making_basis'] ?? 'unknown basis' }})</span>
-                        — {{ number_format((float) ($attributes['making_amount'] ?? 0), 2) }}
-                    </dd>
-                </dl>
-            </div>
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-historical-preview-layout>
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-preview-card="customer">
+                    <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                        <h2 class="text-base font-semibold text-slate-900">Customer snapshot</h2>
+                        <p class="mt-1 text-xs text-slate-500">Stored as entered and never linked automatically.</p>
+                    </div>
+                    <dl class="grid grid-cols-1 gap-4 p-4 text-sm sm:grid-cols-2 sm:p-6">
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Name</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $customer['name'] ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Mobile</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $customer['mobile'] ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">GSTIN</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $customer['gstin'] ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Place of supply</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $customer['place_of_supply'] ?? '—' }}</dd>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <dt class="text-xs font-medium text-slate-500">Address</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $customer['address'] ?? '—' }}</dd>
+                        </div>
+                    </dl>
 
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                <h2 class="text-base font-semibold text-slate-800 mb-3">Amounts <span class="text-slate-400 font-normal text-xs">(computed — nothing here is trusted as input)</span></h2>
-                <table class="w-full text-sm">
-                    <tbody class="divide-y divide-slate-100">
-                        <tr><td class="py-1.5 text-slate-500">Taxable</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['taxable_amount'] ?? 0), 2) }}</td></tr>
-                        <tr><td class="py-1.5 text-slate-500">Discount</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['discount_snapshot'] ?? 0), 2) }}</td></tr>
-                        <tr><td class="py-1.5 text-slate-500">Rounding</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['rounding_snapshot'] ?? 0), 2) }}</td></tr>
-                        <tr class="font-semibold"><td class="py-1.5 text-slate-800">Grand total</td><td class="py-1.5 text-right tabular-nums text-slate-800">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</td></tr>
-                        <tr><td class="py-1.5 text-slate-500">Paid</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['paid_amount_snapshot'] ?? 0), 2) }}</td></tr>
-                        <tr><td class="py-1.5 text-slate-500">Outstanding</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($attributes['outstanding_amount_snapshot'] ?? 0), 2) }}</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden mt-4">
-            <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
-                <h2 class="text-lg font-semibold text-slate-900">Item lines <span class="text-sm font-normal text-slate-500">({{ count($lines) }})</span></h2>
-                <p class="mt-1 text-sm text-slate-500">Read-only normalized values from the bill you entered.</p>
-            </div>
-            @if($lines !== [])
-                <div class="hidden md:block" data-historical-preview-register="lines-desktop">
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-full text-sm">
-                        <thead>
-                            <tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
-                                <th class="px-4 py-3 sm:px-6">Item</th><th class="px-4 py-3 text-right sm:px-6">Qty</th><th class="px-4 py-3 text-right sm:px-6">Net wt</th><th class="px-4 py-3 text-right sm:px-6">Gross wt</th><th class="px-4 py-3 text-right sm:px-6">Stone wt</th><th class="px-4 py-3 text-right sm:px-6">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach($lines as $line)
-                                <tr class="transition-colors hover:bg-slate-50">
-                                    <td class="px-4 py-4 text-sm font-semibold text-slate-900 sm:px-6">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</td>
-                                    <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['quantity'] ?? '—' }}</td>
-                                    <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['net_weight'] ?? '—' }}</td>
-                                    <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['gross_weight'] ?? '—' }}</td>
-                                    <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['stone_weight'] ?? '—' }}</td>
-                                    <td class="px-4 py-4 text-right font-semibold tabular-nums text-slate-900 sm:px-6">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                </div>
-                <div class="grid gap-3 bg-slate-50 p-3 md:hidden" data-historical-preview-register="lines-mobile">
-                    @foreach($lines as $line)
-                        <article class="rounded-xl border border-slate-200 bg-white p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <h3 class="text-sm font-semibold text-slate-900">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</h3>
-                                    <p class="mt-1 text-xs text-slate-500">Qty {{ $line['quantity'] ?? '—' }} · Net {{ $line['net_weight'] ?? '—' }} · Gross {{ $line['gross_weight'] ?? '—' }}</p>
-                                </div>
-                                <span class="shrink-0 text-sm font-semibold text-slate-900 tabular-nums">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</span>
+                    @if(($suggestions['mobile']['status'] ?? 'none') !== 'none' || ($suggestions['gstin']['status'] ?? 'none') !== 'none' || ($suggestions['name']['status'] ?? 'none') !== 'none')
+                        <div class="border-t border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600 sm:px-6">
+                            <p class="font-medium text-slate-700">Possible existing customer matches</p>
+                            <p class="mt-1 text-xs">Informational only. Link a customer after saving from the document review screen.</p>
+                            <div class="mt-2 grid gap-1 text-xs">
+                                @foreach(['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'] as $key => $label)
+                                    @php $match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()]; @endphp
+                                    @if($match['status'] === 'ambiguous')
+                                        <p>{{ $label }}: ambiguous — {{ $match['customers']->count() }} customers share this value</p>
+                                    @elseif($match['status'] === 'match')
+                                        <p>{{ $label }}: {{ $match['customers']->pluck('name')->join(', ') }}</p>
+                                    @endif
+                                @endforeach
                             </div>
-                        </article>
-                    @endforeach
+                        </div>
+                    @endif
+                </section>
+
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-preview-card="tax-making">
+                    <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                        <h2 class="text-base font-semibold text-slate-900">Tax and making / labour</h2>
+                        <p class="mt-1 text-xs text-slate-500">Normalized display values from the submitted record.</p>
+                    </div>
+                    <dl class="grid grid-cols-2 gap-4 p-4 text-sm sm:p-6">
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Tax mode</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $attributes['tax_mode'] ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Completeness</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $attributes['tax_completeness'] ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Charge label</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $attributes['making_label_original'] ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Charge value</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $attributes['making_value_original'] ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Category</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $attributes['making_category'] ?? 'Uncategorized' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Basis</dt>
+                            <dd class="mt-1 font-medium text-slate-800">{{ $attributes['making_basis'] ?? 'Unknown' }}</dd>
+                        </div>
+                        <div class="col-span-2 border-t border-slate-200 pt-4">
+                            <dt class="text-xs font-medium text-slate-500">Computed making / labour amount</dt>
+                            <dd class="mt-1 text-lg font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['making_amount'] ?? 0), 2) }}</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white lg:col-span-2" data-historical-preview-card="amounts">
+                    <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                        <h2 class="text-base font-semibold text-slate-900">Financial summary</h2>
+                        <p class="mt-1 text-xs text-slate-500">Computed review values; nothing here is trusted as input.</p>
+                    </div>
+                    <dl class="grid grid-cols-2 gap-3 p-4 text-sm sm:grid-cols-3 sm:p-6 md:hidden">
+                        <div class="rounded-xl bg-slate-50 p-3">
+                            <dt class="text-xs font-medium text-slate-500">Taxable</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['taxable_amount'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 p-3">
+                            <dt class="text-xs font-medium text-slate-500">Discount</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['discount_snapshot'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 p-3">
+                            <dt class="text-xs font-medium text-slate-500">Rounding</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['rounding_snapshot'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                            <dt class="text-xs font-medium text-amber-700">Grand total</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 p-3">
+                            <dt class="text-xs font-medium text-slate-500">Paid</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['paid_amount_snapshot'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 p-3">
+                            <dt class="text-xs font-medium text-slate-500">Outstanding</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['outstanding_amount_snapshot'] ?? 0), 2) }}</dd>
+                        </div>
+                    </dl>
+                    <div class="hidden overflow-x-auto p-4 sm:p-6 md:block">
+                        <table class="w-full text-sm">
+                            <tbody class="divide-y divide-slate-200">
+                                <tr>
+                                    <td class="py-3 text-slate-500">Taxable</td><td class="py-3 pr-8 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['taxable_amount'] ?? 0), 2) }}</td>
+                                    <td class="py-3 text-slate-500">Discount</td><td class="py-3 pr-8 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['discount_snapshot'] ?? 0), 2) }}</td>
+                                    <td class="py-3 text-slate-500">Rounding</td><td class="py-3 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['rounding_snapshot'] ?? 0), 2) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 text-slate-500">Grand total</td><td class="py-3 pr-8 text-right font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</td>
+                                    <td class="py-3 text-slate-500">Paid</td><td class="py-3 pr-8 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['paid_amount_snapshot'] ?? 0), 2) }}</td>
+                                    <td class="py-3 text-slate-500">Outstanding</td><td class="py-3 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['outstanding_amount_snapshot'] ?? 0), 2) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-preview-items>
+                <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                    <h2 class="text-lg font-semibold text-slate-900">Item lines <span class="text-sm font-normal text-slate-500">({{ count($lines) }})</span></h2>
+                    <p class="mt-1 text-sm text-slate-500">Read-only normalized values from the bill you entered.</p>
                 </div>
-            @else
-                <div class="p-4 sm:p-6"><p class="text-sm text-slate-500">Header only — no item lines.</p></div>
-            @endif
-        </section>
+                @if($lines !== [])
+                    <div class="hidden md:block" data-historical-preview-register="lines-desktop">
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-full text-sm">
+                                <thead class="bg-slate-50">
+                                    <tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
+                                        <th class="border-b border-slate-200 px-4 py-3 sm:px-6">Item</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Qty</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Net wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Gross wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Stone wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    @foreach($lines as $line)
+                                        <tr class="transition-colors hover:bg-slate-50">
+                                            <td class="px-4 py-4 text-sm font-semibold text-slate-900 sm:px-6">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</td>
+                                            <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['quantity'] ?? '—' }}</td>
+                                            <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['net_weight'] ?? '—' }}</td>
+                                            <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['gross_weight'] ?? '—' }}</td>
+                                            <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['stone_weight'] ?? '—' }}</td>
+                                            <td class="px-4 py-4 text-right font-semibold tabular-nums text-slate-900 sm:px-6">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="grid gap-3 bg-slate-50 p-3 md:hidden" data-historical-preview-register="lines-mobile">
+                        @foreach($lines as $line)
+                            <article class="rounded-xl border border-slate-200 bg-white p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <h3 class="min-w-0 text-sm font-semibold text-slate-900">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</h3>
+                                    <span class="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</span>
+                                </div>
+                                <dl class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                                    <div><dt class="text-slate-500">Quantity</dt><dd class="mt-1 font-medium text-slate-800">{{ $line['quantity'] ?? '—' }}</dd></div>
+                                    <div><dt class="text-slate-500">Net weight</dt><dd class="mt-1 font-medium text-slate-800">{{ $line['net_weight'] ?? '—' }}</dd></div>
+                                    <div><dt class="text-slate-500">Gross weight</dt><dd class="mt-1 font-medium text-slate-800">{{ $line['gross_weight'] ?? '—' }}</dd></div>
+                                    <div><dt class="text-slate-500">Stone weight</dt><dd class="mt-1 font-medium text-slate-800">{{ $line['stone_weight'] ?? '—' }}</dd></div>
+                                </dl>
+                            </article>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="p-4 sm:p-6"><p class="text-sm text-slate-500">Header only — no item lines.</p></div>
+                @endif
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:px-6" data-historical-preview-editor-heading>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Editable copy</p>
+                <h2 id="historical-preview-editor-title" class="mt-1 text-lg font-semibold text-slate-900">Edit submitted details</h2>
+                <p class="mt-1 text-sm text-slate-600">Adjust any field below and recalculate the preview, or confirm once the historical record is correct.</p>
+            </section>
 
         {{-- The same fields, prefilled from what was submitted (flashed as old input).
              Edit them and Preview again, or Confirm Save to post these exact values —
@@ -193,7 +316,7 @@
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
               x-data="{ lines: [] }"
               x-init="lines = historicalPadLines(historicalSeedLines(@js(old('lines', []))))"
-              class="grid gap-4 mt-4" data-historical-form="manual-preview">
+              class="grid gap-4" data-historical-form="manual-preview" aria-labelledby="historical-preview-editor-title">
             @csrf
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
@@ -206,5 +329,6 @@
                 </div>
             </div>
         </form>
+        </div>
     </div>
 </x-app-layout>

@@ -702,6 +702,84 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-register='staged-mobile']", ['md:hidden']);
     }
 
+    public function test_manual_preview_uses_compact_review_hierarchy_before_the_editor(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'PREVIEW-POLISH-1',
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'customer_name' => 'Preview Customer',
+            'grand_total' => 9876.50,
+            'paid_amount' => 2500,
+            'outstanding_amount' => 7376.50,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'lines' => [[
+                'line_item_name' => 'Archive Gold Ring',
+                'line_quantity' => 2,
+                'line_net_weight' => 4.25,
+                'line_total' => 9876.50,
+            ]],
+        ])->assertOk();
+
+        $xpath = $this->xpath($preview->getContent());
+        $review = $this->firstNode($xpath, "//*[@data-historical-preview-review]");
+        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-preview-review]", ['grid', 'gap-4']);
+
+        $summary = $this->firstNode($xpath, "//*[@data-historical-preview-review]/*[@data-historical-preview-summary]");
+        $this->assertStringContainsString('PREVIEW-POLISH-1', $summary->textContent);
+        $this->assertStringContainsString('15 Jun 2023', $summary->textContent);
+        $this->assertStringContainsString('9,876.50', $summary->textContent);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-preview-summary]//*[@data-historical-preview-grand-total]",
+            ['lg:w-64']
+        );
+
+        $this->firstNode($xpath, "//*[@data-historical-preview-review]/*[@data-historical-preview-messages]");
+        $layout = $this->firstNode($xpath, "//*[@data-historical-preview-review]/*[@data-historical-preview-layout]");
+        $layoutClasses = preg_split('/\s+/', trim($layout->getAttribute('class'))) ?: [];
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:grid-cols-2'] as $class) {
+            $this->assertContains($class, $layoutClasses);
+        }
+
+        foreach (['customer', 'tax-making'] as $card) {
+            $this->firstNode($xpath, "//*[@data-historical-preview-layout]/*[@data-historical-preview-card='{$card}']");
+        }
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-preview-layout]/*[@data-historical-preview-card='amounts']",
+            ['lg:col-span-2']
+        );
+
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-preview-summary]/following-sibling::*[1][@data-historical-preview-messages]"
+        );
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-preview-messages]/following-sibling::*[1][@data-historical-preview-layout]"
+        );
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-preview-layout]/following-sibling::*[1][@data-historical-preview-items]"
+        );
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-preview-items]/following-sibling::*[1][@data-historical-preview-editor-heading]"
+        );
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-preview-editor-heading]/following-sibling::form[1][@data-historical-form='manual-preview']"
+        );
+        $this->assertSame('historical-preview-editor-title', $this->firstNode(
+            $xpath,
+            "//form[@data-historical-form='manual-preview']"
+        )->getAttribute('aria-labelledby'));
+        $this->assertStringContainsString('Edit submitted details', $review->textContent);
+    }
+
     public function test_preview_and_document_keep_reference_hierarchy_and_single_mutation_controls(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
