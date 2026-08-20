@@ -780,6 +780,33 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertStringContainsString('Edit submitted details', $review->textContent);
     }
 
+    public function test_manual_preview_uses_a_polished_back_control(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'PREVIEW-BACK-1',
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'grand_total' => 1000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+        ])->assertOk();
+
+        $xpath = $this->xpath($preview->getContent());
+        $back = $this->firstNode(
+            $xpath,
+            "//a[@data-historical-preview-back][@href='" . route('historical.index') . "']"
+        );
+
+        $this->assertSame('Historical sales', trim($back->textContent));
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//a[@data-historical-preview-back]",
+            ['inline-flex', 'items-center', 'gap-2', 'min-h-[44px]', 'rounded-xl', 'border', 'bg-white', 'px-4', 'text-sm', 'font-semibold', 'shadow-sm']
+        );
+        $this->firstNode($xpath, "//a[@data-historical-preview-back]//*[local-name()='svg'][@aria-hidden='true']");
+    }
+
     public function test_preview_and_document_keep_reference_hierarchy_and_single_mutation_controls(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

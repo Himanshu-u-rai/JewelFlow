@@ -22,7 +22,16 @@
 <x-app-layout>
     <x-page-header title="Preview historical bill" subtitle="Review the normalized record before confirming the save.">
         <x-slot:actions>
-            <a href="{{ route('historical.index') }}" class="btn btn-sm min-h-[44px]">← Historical sales</a>
+            <a href="{{ route('historical.index') }}"
+               class="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+               data-historical-preview-back>
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600" aria-hidden="true">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                        <path d="M12.5 5 7.5 10l5 5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </span>
+                <span>Historical sales</span>
+            </a>
         </x-slot:actions>
     </x-page-header>
 
