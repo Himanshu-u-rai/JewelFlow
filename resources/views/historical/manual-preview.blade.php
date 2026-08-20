@@ -186,8 +186,14 @@
              to the 200-rendering preview endpoint. "Confirm Save" (formaction override)
              redirects and would work under Turbo either way — data-turbo="false" on the
              whole form is harmless for it and keeps both buttons' behavior consistent. --}}
+        {{-- Same x-init contract as manual.blade.php. request->flash() in
+             HistoricalManualEntryController::preview() puts the just-submitted
+             lines into old() before this view renders, so Edit/Recalculate
+             reloads exactly what was typed instead of starting empty. --}}
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
-              x-data="{ lines: [] }" class="grid gap-4 mt-4" data-historical-form="manual-preview">
+              x-data="{ lines: [] }"
+              x-init="lines = historicalPadLines(historicalSeedLines(@js(old('lines', []))))"
+              class="grid gap-4 mt-4" data-historical-form="manual-preview">
             @csrf
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))

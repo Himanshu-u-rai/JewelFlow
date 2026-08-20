@@ -4,6 +4,50 @@
      Fieldset/legend kept for accessibility (screen readers announce the
      group name) — only the visual wrapper changed to match the shared
      card system used across the app. --}}
+@once
+<script>
+    // Blank template for one item row — the exact 14 canonical keys
+    // StoreManualHistoricalRequest::lines() / HistoricalFields::LINE accept.
+    // Kept in one place so manual.blade.php and manual-preview.blade.php
+    // never grow two divergent row shapes.
+    window.historicalBlankLine = function historicalBlankLine() {
+        return {
+            line_item_name: '', line_sku: '', line_hsn: '', line_quantity: '',
+            line_purity: '', line_gross_weight: '', line_net_weight: '',
+            line_stone_weight: '', line_metal_value: '', line_stone_value: '',
+            line_making_label: '', line_making_value: '', line_rate: '', line_total: '',
+        };
+    };
+
+    // Same "any non-empty field counts, zero counts" rule the backend uses
+    // in StoreManualHistoricalRequest::lines() — a row this calls blank is
+    // exactly the row that request drops before it ever reaches the normalizer.
+    window.historicalLineIsBlank = function historicalLineIsBlank(line) {
+        return Object.values(line || {}).every((v) => v === null || v === undefined || String(v).trim() === '');
+    };
+
+    // Normalizes old('lines', []) — an array on a clean submit, but Laravel
+    // hands back an object once any index is missing — into full row objects.
+    window.historicalSeedLines = function historicalSeedLines(raw) {
+        return Object.values(raw || {}).map((row) => Object.assign(historicalBlankLine(), row || {}));
+    };
+
+    // The one invariant the register keeps: at least 4 rows, and the last one
+    // always blank, so the operator never has to click Add to keep typing.
+    window.historicalPadLines = function historicalPadLines(lines) {
+        const next = (lines || []).slice();
+        while (next.length < 4) next.push(historicalBlankLine());
+        if (!historicalLineIsBlank(next[next.length - 1])) next.push(historicalBlankLine());
+        return next;
+    };
+
+    window.historicalRemoveLine = function historicalRemoveLine(lines, index) {
+        const next = (lines || []).slice();
+        next.splice(index, 1);
+        return historicalPadLines(next);
+    };
+</script>
+@endonce
 <div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" style="--app-control-bg: #ffffff; --app-control-border: #cbd5e1; --app-control-border-focus: #b45309;" data-historical-manual-layout>
 <div class="grid grid-cols-1 gap-4 lg:col-span-2" data-historical-primary-column>
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="document">
@@ -59,28 +103,38 @@
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Item lines <span class="text-slate-400 font-normal text-sm">(optional)</span></h2>
     </div>
-    <div class="p-4 sm:p-6">
+    {{-- A single bubbled, debounced listener covers every field in every row —
+         no per-input handler. Typing into the LAST row is what grows the
+         register; editing an earlier row leaves the trailing blank row alone,
+         because historicalPadLines() only looks at whether the last row (by
+         array position) is still blank. --}}
+    <div class="p-4 sm:p-6" @input.debounce.400ms="lines = historicalPadLines(lines)">
     <template x-for="(line, i) in lines" :key="i">
         <div class="rounded-lg border border-slate-200 p-3 mt-3">
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                <input :name="`lines[${i}][line_item_name]`" placeholder="Item name" aria-label="Item name" class="w-full">
-                <input :name="`lines[${i}][line_sku]`" placeholder="SKU" aria-label="SKU" class="w-full">
-                <input :name="`lines[${i}][line_hsn]`" placeholder="HSN" aria-label="HSN" class="w-full">
-                <input :name="`lines[${i}][line_quantity]`" placeholder="Qty" aria-label="Quantity" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_purity]`" placeholder="Purity" aria-label="Purity" class="w-full">
-                <input :name="`lines[${i}][line_gross_weight]`" placeholder="Gross wt" aria-label="Gross weight" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_net_weight]`" placeholder="Net wt" aria-label="Net weight" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_stone_weight]`" placeholder="Stone wt" aria-label="Stone weight" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_metal_value]`" placeholder="Metal value" aria-label="Metal value" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_stone_value]`" placeholder="Stone value" aria-label="Stone value" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_making_label]`" placeholder="Making label" aria-label="Making charge label" class="w-full">
-                <input :name="`lines[${i}][line_making_value]`" placeholder="Making value" aria-label="Making charge value" class="w-full">
-                <input :name="`lines[${i}][line_rate]`" placeholder="Rate" aria-label="Rate" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_total]`" placeholder="Line total" aria-label="Line total" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" placeholder="Item name" aria-label="Item name" class="w-full">
+                <input :name="`lines[${i}][line_sku]`" x-model="line.line_sku" placeholder="SKU" aria-label="SKU" class="w-full">
+                <input :name="`lines[${i}][line_hsn]`" x-model="line.line_hsn" placeholder="HSN" aria-label="HSN" class="w-full">
+                <input :name="`lines[${i}][line_quantity]`" x-model="line.line_quantity" placeholder="Qty" aria-label="Quantity" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_purity]`" x-model="line.line_purity" placeholder="Purity" aria-label="Purity" class="w-full">
+                <input :name="`lines[${i}][line_gross_weight]`" x-model="line.line_gross_weight" placeholder="Gross wt" aria-label="Gross weight" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_net_weight]`" x-model="line.line_net_weight" placeholder="Net wt" aria-label="Net weight" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_stone_weight]`" x-model="line.line_stone_weight" placeholder="Stone wt" aria-label="Stone weight" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_metal_value]`" x-model="line.line_metal_value" placeholder="Metal value" aria-label="Metal value" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_stone_value]`" x-model="line.line_stone_value" placeholder="Stone value" aria-label="Stone value" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_making_label]`" x-model="line.line_making_label" placeholder="Making label" aria-label="Making charge label" class="w-full">
+                <input :name="`lines[${i}][line_making_value]`" x-model="line.line_making_value" placeholder="Making value" aria-label="Making charge value" class="w-full">
+                <input :name="`lines[${i}][line_rate]`" x-model="line.line_rate" placeholder="Rate" aria-label="Rate" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_total]`" x-model="line.line_total" placeholder="Line total" aria-label="Line total" type="number" step="any" class="w-full">
             </div>
-            <button type="button" class="btn btn-danger btn-sm mt-2 min-h-[44px]" @click="lines.splice(i,1)">Remove line</button>
+            {{-- Repads after removal so the 4-row minimum and trailing blank
+                 invariant hold even when Alpine state is mutated this way. --}}
+            <button type="button" class="btn btn-danger btn-sm mt-2 min-h-[44px]" @click="lines = historicalRemoveLine(lines, i)">Remove line</button>
         </div>
     </template>
+    {{-- Kept as a fallback (frozen by HistoricalMobileUiTest's literal-markup
+         check) — normal entry no longer needs it, the row above always
+         auto-expands. Codex may restyle/relabel it; behavior stays. --}}
     <button type="button" class="btn btn-sm mt-3 min-h-[44px]" @click="lines.push({})">+ Add line</button>
     </div>
 </fieldset>

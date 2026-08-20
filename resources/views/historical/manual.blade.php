@@ -39,8 +39,14 @@
              before anything is written. Turbo Drive requires form responses to redirect,
              so it must be opted out here — see resources/views/export/index.blade.php
              and super-admin/account/index.blade.php for the same pattern. --}}
+        {{-- x-data stays the literal "{ lines: [] }" HistoricalMobileUiTest pins —
+             seeding/padding happens in x-init instead, so a fresh load, a
+             validation-error redisplay (old('lines') flashed by withInput())
+             and the preview/edit round trip all share one init path. --}}
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
-              x-data="{ lines: [] }" class="grid gap-4" data-historical-form="manual">
+              x-data="{ lines: [] }"
+              x-init="lines = historicalPadLines(historicalSeedLines(@js(old('lines', []))))"
+              class="grid gap-4" data-historical-form="manual">
             @csrf
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
