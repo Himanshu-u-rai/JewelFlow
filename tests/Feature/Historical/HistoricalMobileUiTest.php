@@ -415,7 +415,7 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertNodesHaveClasses(
             $xpath,
             "{$taxSection}//*[@data-historical-supporting-grid]/*[.//*[@id='making_label'] or .//*[@id='making_value']]",
-            ['lg:col-span-2']
+            ['lg:col-span-1']
         );
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='cutover']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
     }

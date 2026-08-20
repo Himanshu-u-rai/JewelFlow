@@ -215,11 +215,11 @@
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mt-4" data-historical-supporting-grid>
-        <div class="lg:col-span-2">
+        <div class="lg:col-span-1">
             <label for="making_label">Making / labour charge label</label>
             <input type="text" id="making_label" name="making_label" value="{{ old('making_label') }}" placeholder="MC, VA, Wastage…" class="w-full">
         </div>
-        <div class="lg:col-span-2">
+        <div class="lg:col-span-1">
             <label for="making_value">Making / labour charge value</label>
             <input type="text" id="making_value" name="making_value" value="{{ old('making_value') }}" placeholder="12% or 450/gm" class="w-full">
         </div>
