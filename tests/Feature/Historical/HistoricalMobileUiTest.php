@@ -310,6 +310,32 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertSame(1, $mappingXpath->query("//ol[@data-historical-workflow]//*[@aria-current='step' and contains(normalize-space(.), 'Map')]")?->length);
     }
 
+    public function test_manual_section_titles_render_inside_cards_instead_of_on_fieldset_borders(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+        $sectionQuery = "//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]";
+        $sections = $xpath->query($sectionQuery);
+
+        $this->assertNotFalse($sections);
+        $this->assertSame(6, $sections->length);
+        $this->assertSame(6, $xpath->query($sectionQuery . "/legend[contains(concat(' ', normalize-space(@class), ' '), ' sr-only ')]")?->length);
+        $this->assertSame(6, $xpath->query($sectionQuery . "/*[@data-historical-card-header]")?->length);
+        $this->assertSame(0, $xpath->query($sectionQuery . "/legend[contains(concat(' ', normalize-space(@class), ' '), ' w-full ')]")?->length);
+
+        $headings = $xpath->query($sectionQuery . "/*[@data-historical-card-header]");
+        $headingText = '';
+        foreach ($headings ?: [] as $heading) {
+            $headingText .= ' ' . $heading->textContent;
+        }
+
+        foreach (['Document identity', 'Customer snapshot', 'Amount / payment', 'Tax and making / labour charge', 'Item lines', 'Cutover'] as $title) {
+            $this->assertStringContainsString($title, $headingText);
+        }
+    }
+
     public function test_upload_manual_preview_and_index_actions_have_mobile_tap_targets(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

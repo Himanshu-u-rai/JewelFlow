@@ -5,7 +5,10 @@
      group name) — only the visual wrapper changed to match the shared
      card system used across the app. --}}
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
-    <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Document identity</legend>
+    <legend class="sr-only">Document identity</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Document identity</h2>
+    </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6">
         <div>
             <label for="original_document_number">Original invoice number <span class="text-slate-400 font-normal">(optional)</span></label>
@@ -27,7 +30,10 @@
 </fieldset>
 
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
-    <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Customer snapshot <span class="text-slate-400 font-normal text-sm">(never linked automatically)</span></legend>
+    <legend class="sr-only">Customer snapshot (never linked automatically)</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Customer snapshot <span class="text-slate-400 font-normal text-sm">(never linked automatically)</span></h2>
+    </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6">
         <div>
             <label for="customer_name">Name</label>
@@ -53,7 +59,10 @@
 </fieldset>
 
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
-    <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Amount / payment <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></legend>
+    <legend class="sr-only">Amount / payment (display snapshot — no ledger, no receivable)</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Amount / payment <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
+    </div>
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 sm:p-6">
         @foreach($money as $f => $label)
             <div>
@@ -69,7 +78,10 @@
 </fieldset>
 
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
-    <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Tax and making / labour charge</legend>
+    <legend class="sr-only">Tax and making / labour charge</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Tax and making / labour charge</h2>
+    </div>
     <div class="p-4 sm:p-6">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -119,7 +131,10 @@
      visible per-cell label — the same reason a spreadsheet uses a header row
      instead of repeating labels per cell. --}}
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
-    <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Item lines <span class="text-slate-400 font-normal text-sm">(optional)</span></legend>
+    <legend class="sr-only">Item lines (optional)</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Item lines <span class="text-slate-400 font-normal text-sm">(optional)</span></h2>
+    </div>
     <div class="p-4 sm:p-6">
     <template x-for="(line, i) in lines" :key="i">
         <div class="rounded-lg border border-slate-200 p-3 mt-3">
@@ -148,7 +163,10 @@
 
 {{-- Cutover acknowledgement (Phase 4): a date after go-live needs a reason. --}}
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
-    <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Cutover <span class="text-slate-400 font-normal text-sm">(only if this bill is dated after JewelFlow went live)</span></legend>
+    <legend class="sr-only">Cutover (only if this bill is dated after JewelFlow went live)</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Cutover <span class="text-slate-400 font-normal text-sm">(only if this bill is dated after JewelFlow went live)</span></h2>
+    </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6">
         <div>
             <label for="cutover_date">Cutover date</label>
