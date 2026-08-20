@@ -351,17 +351,21 @@ class HistoricalMobileUiTest extends TestCase
 
         $identity = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-identity-row]");
         $financial = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-financial-row]");
-        foreach ([$identity, $financial] as $row) {
-            $classes = preg_split('/\s+/', trim($row->getAttribute('class'))) ?: [];
-            foreach (['grid', 'grid-cols-1', 'gap-4', 'items-start', 'lg:grid-cols-3'] as $class) {
-                $this->assertContains($class, $classes);
-            }
+        $identityClasses = preg_split('/\s+/', trim($identity->getAttribute('class'))) ?: [];
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:grid-cols-2'] as $class) {
+            $this->assertContains($class, $identityClasses);
+        }
+        $this->assertNotContains('items-start', $identityClasses);
+
+        $financialClasses = preg_split('/\s+/', trim($financial->getAttribute('class'))) ?: [];
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'items-start', 'lg:grid-cols-3'] as $class) {
+            $this->assertContains($class, $financialClasses);
         }
 
         $this->assertNodesHaveClasses(
             $xpath,
             "//*[@data-historical-identity-row]/fieldset[@data-historical-section='document']",
-            ['lg:col-span-2']
+            ['lg:col-span-1']
         );
         $this->assertNodesHaveClasses(
             $xpath,

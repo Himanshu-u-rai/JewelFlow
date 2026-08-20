@@ -49,8 +49,8 @@
 </script>
 @endonce
 <div class="grid grid-cols-1 gap-4 items-start" style="--app-control-bg: #ffffff; --app-control-border: #cbd5e1; --app-control-border-focus: #b45309;" data-historical-manual-layout>
-<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" data-historical-identity-row>
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="document">
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-historical-identity-row>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="document">
     <legend class="sr-only">Document identity</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Document identity</h2>
