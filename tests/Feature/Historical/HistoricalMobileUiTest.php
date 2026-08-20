@@ -358,19 +358,133 @@ class HistoricalMobileUiTest extends TestCase
             $this->assertContains($class, preg_split('/\s+/', trim($supporting->getAttribute('class'))) ?: []);
         }
 
-        $this->assertSame(3, $xpath->query("//*[@data-historical-primary-column]/fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(2, $xpath->query("//*[@data-historical-primary-column]/fieldset[@data-historical-form-section]")?->length);
         $this->assertSame(3, $xpath->query("//*[@data-historical-supporting-column]/fieldset[@data-historical-form-section]")?->length);
-        $this->assertSame(0, $xpath->query("//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(1, $xpath->query("//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]")?->length);
 
-        foreach (['document', 'amounts', 'items'] as $section) {
+        foreach (['document', 'amounts'] as $section) {
             $this->firstNode($xpath, "//*[@data-historical-primary-column]/fieldset[@data-historical-section='{$section}']");
         }
         foreach (['customer', 'tax-making', 'cutover'] as $section) {
             $this->firstNode($xpath, "//*[@data-historical-supporting-column]/fieldset[@data-historical-section='{$section}']");
         }
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-manual-layout]/fieldset[@data-historical-section='items']",
+            ['min-w-0', 'max-w-full', 'lg:col-span-3']
+        );
 
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='tax-making']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='cutover']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
+    }
+
+    public function test_manual_item_lines_render_as_one_semantic_scrollable_table(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $html = $response->getContent();
+        $xpath = $this->xpath($html);
+        $itemSection = "//form[@data-historical-form='manual']//fieldset[@data-historical-section='items']";
+
+        $this->firstNode($xpath, "{$itemSection}//table[@data-historical-item-table]");
+        $this->assertSame(1, $xpath->query("{$itemSection}//table")?->length);
+
+        $headers = $xpath->query("{$itemSection}//table/thead/tr/th[@scope='col']");
+        $this->assertNotFalse($headers);
+        $headerText = [];
+        foreach ($headers as $header) {
+            $headerText[] = trim(preg_replace('/\s+/', ' ', $header->textContent) ?? '');
+        }
+        $this->assertSame([
+            '#', 'Item name', 'SKU', 'HSN', 'Qty', 'Purity', 'Gross wt', 'Net wt',
+            'Stone wt', 'Metal value', 'Stone value', 'Making label', 'Making value',
+            'Rate', 'Line total', 'Action',
+        ], $headerText);
+
+        $this->firstNode($xpath, "{$itemSection}//tbody/template[@x-for='(line, i) in lines']/tr[@data-historical-item-row]");
+        $this->firstNode($xpath, "{$itemSection}//tbody/template/tr/th[@scope='row' and @x-text='i + 1']");
+        $this->assertSame(0, $xpath->query("{$itemSection}//tbody/template/div")?->length);
+        $this->assertSame(0, $xpath->query("{$itemSection}//*[@data-historical-item-card or @data-historical-item-mobile]")?->length);
+
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "{$itemSection}//*[@data-historical-item-table-scroll]",
+            ['overflow-x-auto', 'max-w-full', 'rounded-xl', 'border', 'border-slate-200']
+        );
+        $this->assertNodesHaveClasses($xpath, "{$itemSection}//table", ['min-w-[1100px]', 'w-full', 'text-sm']);
+        $this->assertStringContainsString(
+            'Start entering items below. A new blank row appears automatically; completely blank rows are ignored.',
+            $html
+        );
+        $this->assertStringContainsString('Swipe sideways to view all item columns', $html);
+    }
+
+    public function test_manual_item_table_preserves_bindings_targets_and_shared_preview_markup(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $manual = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $html = $manual->getContent();
+        $xpath = $this->xpath($html);
+        $row = "//form[@data-historical-form='manual']//*[@data-historical-item-table]//tbody/template/tr[@data-historical-item-row]";
+        $fields = [
+            'line_item_name' => 'Item name',
+            'line_sku' => 'SKU',
+            'line_hsn' => 'HSN',
+            'line_quantity' => 'Quantity',
+            'line_purity' => 'Purity',
+            'line_gross_weight' => 'Gross weight',
+            'line_net_weight' => 'Net weight',
+            'line_stone_weight' => 'Stone weight',
+            'line_metal_value' => 'Metal value',
+            'line_stone_value' => 'Stone value',
+            'line_making_label' => 'Making charge label',
+            'line_making_value' => 'Making charge value',
+            'line_rate' => 'Rate',
+            'line_total' => 'Line total',
+        ];
+
+        $this->assertSame(14, $xpath->query("{$row}//input")?->length);
+        foreach ($fields as $key => $label) {
+            $this->assertSame(1, substr_count($html, ':name="`lines[${i}][' . $key . ']`"'));
+            $this->assertSame(1, substr_count($html, 'x-model="line.' . $key . '"'));
+            $this->assertSame(1, substr_count($html, 'x-bind:aria-label="`Item ${i + 1} — ' . $label . '`"'));
+            $this->assertNodesHaveClasses($xpath, "{$row}//input[@x-model='line.{$key}']", ['min-h-[44px]']);
+        }
+
+        $numericFields = [
+            'line_quantity', 'line_gross_weight', 'line_net_weight', 'line_stone_weight',
+            'line_metal_value', 'line_stone_value', 'line_rate', 'line_total',
+        ];
+        foreach ($numericFields as $key) {
+            $this->assertNodesHaveClasses($xpath, "{$row}//input[@x-model='line.{$key}']", ['text-right', 'tabular-nums']);
+        }
+
+        $this->assertNodesHaveClasses($xpath, "{$row}//button", ['min-h-[44px]']);
+        $this->assertStringContainsString('@click="lines = historicalRemoveLine(lines, i)"', $html);
+        $this->assertStringContainsString('x-bind:aria-label="`Remove item ${i + 1}`"', $html);
+        $this->assertStringContainsString('@input.debounce.400ms="lines = historicalPadLines(lines)"', $html);
+        $this->assertStringContainsString('@click="lines.push({})"', $html);
+        $this->assertStringContainsString('>Add another row</button>', $html);
+        $this->assertSame(6, $xpath->query("//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]")?->length);
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'grand_total' => 18000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+        ])->assertOk();
+        $previewXpath = $this->xpath($preview->getContent());
+        $this->firstNode(
+            $previewXpath,
+            "//form[@data-historical-form='manual-preview']//*[@data-historical-item-table]"
+        );
+        $this->assertSame(
+            14,
+            $previewXpath->query("//form[@data-historical-form='manual-preview']//*[@data-historical-item-table]//tbody/template/tr//input")?->length
+        );
+        $this->assertSame(6, $previewXpath->query("//form[@data-historical-form='manual-preview']//fieldset[@data-historical-form-section]")?->length);
     }
 
     public function test_manual_form_controls_override_the_shared_page_surface_tokens(): void
