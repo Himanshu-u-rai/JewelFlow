@@ -336,6 +336,31 @@ class HistoricalMobileUiTest extends TestCase
         }
     }
 
+    public function test_manual_form_uses_a_quick_bill_style_primary_and_supporting_grid(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+        $layout = $this->firstNode($xpath, "//form[@data-historical-form='manual']//*[@data-historical-manual-layout]");
+        $layoutClasses = preg_split('/\s+/', trim($layout->getAttribute('class'))) ?: [];
+
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'items-start', 'lg:grid-cols-3'] as $class) {
+            $this->assertContains($class, $layoutClasses);
+        }
+
+        foreach (['document', 'amounts', 'items'] as $section) {
+            $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='{$section}']", ['lg:col-span-2']);
+        }
+        foreach (['customer', 'tax-making', 'cutover'] as $section) {
+            $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='{$section}']", ['lg:col-span-1']);
+        }
+
+        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='tax-making']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
+        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='cutover']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
+        $this->assertSame(6, $xpath->query("//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]")?->length);
+    }
+
     public function test_upload_manual_preview_and_index_actions_have_mobile_tap_targets(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

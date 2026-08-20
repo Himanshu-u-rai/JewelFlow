@@ -4,7 +4,8 @@
      Fieldset/legend kept for accessibility (screen readers announce the
      group name) — only the visual wrapper changed to match the shared
      card system used across the app. --}}
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" data-historical-manual-layout>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="document">
     <legend class="sr-only">Document identity</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Document identity</h2>
@@ -29,10 +30,11 @@
     </div>
 </fieldset>
 
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="customer">
     <legend class="sr-only">Customer snapshot (never linked automatically)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
-        <h2 class="text-base font-semibold text-slate-900">Customer snapshot <span class="text-slate-400 font-normal text-sm">(never linked automatically)</span></h2>
+        <h2 class="text-base font-semibold text-slate-900">Customer snapshot</h2>
+        <p class="mt-1 text-xs text-slate-500">Never linked automatically.</p>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6">
         <div>
@@ -58,7 +60,7 @@
     </div>
 </fieldset>
 
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="amounts">
     <legend class="sr-only">Amount / payment (display snapshot — no ledger, no receivable)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Amount / payment <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
@@ -77,13 +79,13 @@
     </div>
 </fieldset>
 
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="tax-making">
     <legend class="sr-only">Tax and making / labour charge</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Tax and making / labour charge</h2>
     </div>
     <div class="p-4 sm:p-6">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4" data-historical-supporting-grid>
         <div>
             <label for="tax_mode">Tax mode</label>
             <select id="tax_mode" name="tax_mode" class="w-full min-h-[44px]">
@@ -99,7 +101,7 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 mt-4" data-historical-supporting-grid>
         <div>
             <label for="making_label">Making / labour charge label</label>
             <input type="text" id="making_label" name="making_label" value="{{ old('making_label') }}" placeholder="MC, VA, Wastage…" class="w-full">
@@ -130,7 +132,7 @@
      Each field carries an aria-label since the row layout has no room for a
      visible per-cell label — the same reason a spreadsheet uses a header row
      instead of repeating labels per cell. --}}
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="items">
     <legend class="sr-only">Item lines (optional)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Item lines <span class="text-slate-400 font-normal text-sm">(optional)</span></h2>
@@ -162,12 +164,13 @@
 </fieldset>
 
 {{-- Cutover acknowledgement (Phase 4): a date after go-live needs a reason. --}}
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="cutover">
     <legend class="sr-only">Cutover (only if this bill is dated after JewelFlow went live)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
-        <h2 class="text-base font-semibold text-slate-900">Cutover <span class="text-slate-400 font-normal text-sm">(only if this bill is dated after JewelFlow went live)</span></h2>
+        <h2 class="text-base font-semibold text-slate-900">Cutover</h2>
+        <p class="mt-1 text-xs text-slate-500">Only needed for bills dated after JewelFlow went live.</p>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 p-4 sm:p-6" data-historical-supporting-grid>
         <div>
             <label for="cutover_date">Cutover date</label>
             <input type="date" id="cutover_date" name="cutover_date" value="{{ old('cutover_date') }}" class="w-full">
@@ -179,9 +182,10 @@
                 <span class="font-normal normal-case tracking-normal text-sm text-slate-700">I confirm this historical bill is dated after cutover</span>
             </label>
         </div>
-        <div class="sm:col-span-2">
+        <div class="sm:col-span-2 lg:col-span-1">
             <label for="cutover_reason">Reason</label>
             <input type="text" id="cutover_reason" name="cutover_reason" value="{{ old('cutover_reason') }}" class="w-full">
         </div>
     </div>
 </fieldset>
+</div>
