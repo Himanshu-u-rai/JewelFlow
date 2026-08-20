@@ -373,6 +373,20 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='cutover']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
     }
 
+    public function test_manual_form_controls_override_the_shared_page_surface_tokens(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+        $layout = $this->firstNode($xpath, "//form[@data-historical-form='manual']//*[@data-historical-manual-layout]");
+        $style = $layout->getAttribute('style');
+
+        $this->assertStringContainsString('--app-control-bg: #ffffff', $style);
+        $this->assertStringContainsString('--app-control-border: #cbd5e1', $style);
+        $this->assertStringContainsString('--app-control-border-focus: #b45309', $style);
+    }
+
     public function test_upload_manual_preview_and_index_actions_have_mobile_tap_targets(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

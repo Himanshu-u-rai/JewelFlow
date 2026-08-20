@@ -4,7 +4,7 @@
      Fieldset/legend kept for accessibility (screen readers announce the
      group name) — only the visual wrapper changed to match the shared
      card system used across the app. --}}
-<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" data-historical-manual-layout>
+<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" style="--app-control-bg: #ffffff; --app-control-border: #cbd5e1; --app-control-border-focus: #b45309;" data-historical-manual-layout>
 <div class="grid grid-cols-1 gap-4 lg:col-span-2" data-historical-primary-column>
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="document">
     <legend class="sr-only">Document identity</legend>
