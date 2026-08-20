@@ -30,7 +30,7 @@
              original number up front — this is what the operator is confirming. --}}
         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 mb-4">
             <div class="flex items-center gap-2 flex-wrap">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-teal-700 text-white">{{ HistoricalSalesDocument::BADGE }}</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide bg-teal-700 text-white">{{ HistoricalSalesDocument::BADGE }}</span>
                 <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Read-only preview</span>
             </div>
             <p class="text-lg font-semibold text-slate-800 mt-2">
@@ -67,7 +67,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Document</h2>
-                <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                <dl class="text-sm grid grid-cols-2 gap-x-3 gap-y-4">
                     <dt class="text-slate-500">Date</dt><dd class="text-slate-800">{{ $attributes['document_date'] ?? '—' }}</dd>
                     <dt class="text-slate-500">Financial year</dt><dd class="text-slate-800">{{ $attributes['financial_year'] ?? '—' }}</dd>
                     <dt class="text-slate-500">Source</dt><dd class="text-slate-800">{{ $attributes['source_system'] ?? '—' }}</dd>
@@ -76,7 +76,7 @@
 
             <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Customer snapshot <span class="text-slate-400 font-normal text-xs">(never linked)</span></h2>
-                <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                <dl class="text-sm grid grid-cols-2 gap-x-3 gap-y-4">
                     <dt class="text-slate-500">Name</dt><dd class="text-slate-800">{{ $customer['name'] ?? '—' }}</dd>
                     <dt class="text-slate-500">Mobile</dt><dd class="text-slate-800">{{ $customer['mobile'] ?? '—' }}</dd>
                     <dt class="text-slate-500">GSTIN</dt><dd class="text-slate-800">{{ $customer['gstin'] ?? '—' }}</dd>
@@ -101,7 +101,7 @@
 
             <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Tax and making / labour charge</h2>
-                <dl class="text-sm grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                <dl class="text-sm grid grid-cols-2 gap-x-3 gap-y-4">
                     <dt class="text-slate-500">Tax</dt><dd class="text-slate-800">{{ $attributes['tax_mode'] ?? '—' }} ({{ $attributes['tax_completeness'] ?? '—' }})</dd>
                     <dt class="text-slate-500">Making / labour</dt>
                     <dd class="text-slate-800">
@@ -131,7 +131,7 @@
             @if($lines !== [])
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Item lines ({{ count($lines) }})</h2>
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[560px] text-sm">
+                    <table class="w-full min-w-full text-sm">
                         <thead>
                             <tr class="text-left">
                                 <th>Item</th><th class="text-right">Qty</th><th class="text-right">Net wt</th><th class="text-right">Gross wt</th><th class="text-right">Stone wt</th><th class="text-right">Total</th>

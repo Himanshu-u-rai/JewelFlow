@@ -42,7 +42,7 @@
 
         @include('historical._workflow-steps', ['currentStep' => $workflowStep])
 
-        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium w-fit {{ $batchStatusColors[$batch->status] ?? 'bg-slate-100 text-slate-700' }}">
+        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $batchStatusColors[$batch->status] ?? 'bg-slate-100 text-slate-700' }}">
             {{ ucfirst($batch->status) }}
         </span>
 
@@ -147,7 +147,7 @@
                 @if($preview['samples'] ?? [])
                     <h3 class="text-sm font-semibold text-slate-700 mt-4 mb-1">Sample records</h3>
                     <div class="overflow-x-auto">
-                        <table class="w-full min-w-[560px] text-sm">
+                        <table class="w-full min-w-full text-sm">
                             <thead><tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                                 <th class="py-2">Number</th><th class="py-2">Date</th><th class="py-2">Customer</th><th class="py-2 text-right">Total</th><th class="py-2">Tax</th><th class="py-2 text-center">Lines</th>
                             </tr></thead>
@@ -217,7 +217,7 @@
                 <h2 class="text-base font-semibold text-slate-800">Staged rows</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[560px] text-sm">
+                <table class="w-full min-w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             <th class="px-4 sm:px-6 py-3">Sheet</th><th class="px-4 sm:px-6 py-3 text-center">Row</th><th class="px-4 sm:px-6 py-3">Severity</th><th class="px-4 sm:px-6 py-3">Findings</th>
@@ -250,7 +250,7 @@
                 <ul class="grid gap-1.5 text-sm">
                     @foreach($documents as $doc)
                         <li>
-                            <a href="{{ route('historical.documents.show', $doc) }}" class="text-teal-700 hover:text-teal-900 font-medium">{{ $doc->displayNumber() }}</a>
+                            <a href="{{ route('historical.documents.show', $doc) }}" class="text-teal-700 hover:text-teal-800 font-medium">{{ $doc->displayNumber() }}</a>
                             <span class="text-slate-500"> — {{ $doc->document_date?->toDateString() ?? 'no date' }}, {{ number_format((float) $doc->grand_total, 2) }}</span>
                         </li>
                     @endforeach

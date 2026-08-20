@@ -22,7 +22,7 @@
         {{-- The immutable UI contract: badge + status, kept apart from the number
              itself (the number is the page title, the primary identity). --}}
         <div class="flex flex-wrap items-center gap-2">
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-teal-700 text-white">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide bg-teal-700 text-white">
                 {{ HistoricalSalesDocument::BADGE }}
             </span>
             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$document->status] ?? 'bg-slate-100 text-slate-700' }}">
@@ -38,12 +38,12 @@
                 <ul class="text-sm text-slate-700 grid gap-1">
                     @if($document->revises)
                         <li>Revises
-                            <a href="{{ route('historical.documents.show', $document->revises) }}" class="text-teal-700 hover:text-teal-900 font-medium">{{ $document->revises->displayNumber() }}</a>
+                            <a href="{{ route('historical.documents.show', $document->revises) }}" class="text-teal-700 hover:text-teal-800 font-medium">{{ $document->revises->displayNumber() }}</a>
                         </li>
                     @endif
                     @if($document->supersededBy)
                         <li>Superseded by
-                            <a href="{{ route('historical.documents.show', $document->supersededBy) }}" class="text-teal-700 hover:text-teal-900 font-medium">{{ $document->supersededBy->displayNumber() }}</a>
+                            <a href="{{ route('historical.documents.show', $document->supersededBy) }}" class="text-teal-700 hover:text-teal-800 font-medium">{{ $document->supersededBy->displayNumber() }}</a>
                         </li>
                     @endif
                     @if($document->status === HistoricalSalesDocument::STATUS_VOID)
@@ -59,7 +59,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Document</h2>
-                <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+                <dl class="grid grid-cols-2 gap-x-3 gap-y-4 text-sm">
                     <dt class="text-slate-500">{{ HistoricalSalesDocument::NUMBER_LABEL }}</dt><dd class="text-slate-800 font-medium">{{ $document->displayNumber() }}</dd>
                     <dt class="text-slate-500">Series</dt><dd class="text-slate-800">{{ $document->document_series ?? '—' }}</dd>
                     <dt class="text-slate-500">Date</dt><dd class="text-slate-800">{{ $document->document_date?->toDateString() ?? '—' }}</dd>
@@ -71,7 +71,7 @@
 
             <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Customer snapshot</h2>
-                <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm mb-4">
+                <dl class="grid grid-cols-2 gap-x-3 gap-y-4 text-sm mb-4">
                     <dt class="text-slate-500">Name</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'name', '—') }}</dd>
                     <dt class="text-slate-500">Mobile</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'mobile', '—') }}</dd>
                     <dt class="text-slate-500">GSTIN</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'gstin', '—') }}</dd>
@@ -124,7 +124,7 @@
                                 <div class="grid gap-2 mb-2">
                                     @foreach($candidates as $entry)
                                         @php $candidate = $entry['candidate']; @endphp
-                                        <label class="flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">
+                                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">
                                             <input type="radio" name="customer_id" value="{{ $candidate->id }}" required>
                                             <span class="text-sm text-slate-700">{{ $candidate->name }} — {{ Str::mask($candidate->mobile ?? '—', '*', 2, -2) }}
                                                 <span class="text-slate-500">({{ implode(', ', $entry['bases']) }})</span></span>
@@ -184,11 +184,11 @@
                             <form method="POST" action="{{ route('historical.documents.resolve-opening-balance', $document) }}"
                                   onsubmit="return confirm('Confirm this opening-balance resolution?');" class="mt-3 grid gap-2">
                                 @csrf
-                                <label class="flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-lg border border-slate-200 bg-white">
+                                <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white">
                                     <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED }}" required>
                                     <span class="text-sm text-slate-700">Already included in opening balance</span>
                                 </label>
-                                <label class="flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-lg border border-slate-200 bg-white">
+                                <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white">
                                     <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE }}" required>
                                     <span class="text-sm text-slate-700">Separate from opening balance</span>
                                 </label>
@@ -225,7 +225,7 @@
             <h2 class="text-base font-semibold text-slate-800 mb-3">Line items</h2>
             @if($document->lines->isNotEmpty())
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[640px] text-sm">
+                    <table class="w-full min-w-full text-sm">
                         <thead><tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             <th class="py-2">Item</th><th class="py-2">SKU</th><th class="py-2">HSN</th><th class="py-2 text-right">Qty</th><th class="py-2 text-right">Net wt</th><th class="py-2 text-right">Line total</th>
                         </tr></thead>
