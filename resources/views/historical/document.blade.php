@@ -160,7 +160,12 @@
         @php
             $obSeverity = $openingBalanceSeverity ?? HistoricalOpeningBalanceEvaluator::NONE;
             $obResolved = $document->opening_balance_resolution !== null;
-            $obHighUnresolved = $obSeverity === HistoricalOpeningBalanceEvaluator::HIGH && ! $obResolved;
+            $obIsDraft = $document->status === HistoricalSalesDocument::STATUS_DRAFT;
+            // Alarm styling and the "publishing is blocked" claim are only true
+            // while the document is still draft and the block is actionable.
+            // A HIGH severity on a terminal (published/void/superseded) document
+            // is immutable and can never be resolved — the copy must say so.
+            $obHighUnresolved = $obSeverity === HistoricalOpeningBalanceEvaluator::HIGH && ! $obResolved && $obIsDraft;
         @endphp
         @if($obSeverity !== HistoricalOpeningBalanceEvaluator::NONE || $obResolved)
             <div class="rounded-2xl border p-4 sm:p-6 {{ $obHighUnresolved ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50' }}">
@@ -173,29 +178,30 @@
                         <br>
                         <span class="text-slate-500">by {{ $document->openingBalanceResolver->name ?? 'unknown' }} on {{ $document->opening_balance_resolved_at?->format('d M Y, H:i') }}</span>
                     </p>
+                @elseif($obSeverity === HistoricalOpeningBalanceEvaluator::HIGH && ! $obIsDraft)
+                    <p class="text-sm text-slate-600 font-medium">⚠ HIGH — the linked customer already has an opening-balance entry on or before this bill's date, with an outstanding amount. This document is {{ $document->status }} and can no longer be changed. This overlap is shown for reference only and creates no ledger or receivable.</p>
                 @elseif($obSeverity === HistoricalOpeningBalanceEvaluator::HIGH)
                     <p class="text-sm text-rose-700 font-medium">⚠ HIGH — the linked customer already has an opening-balance entry on or before this bill's date, with an outstanding amount. This bill's receivable may already be counted there. Publishing is blocked until this is resolved.</p>
-                    <p class="text-sm text-slate-600 mt-1">JewelFlow will not change the customer's opening balance automatically — pick the option that reflects reality:</p>
 
-                    @if($document->status === HistoricalSalesDocument::STATUS_DRAFT)
-                        {{-- Resolution clears a publish gate, so it needs historical.publish,
-                             not historical.import — an import-only operator sees no form. --}}
-                        @can('historical.publish')
-                            <form method="POST" action="{{ route('historical.documents.resolve-opening-balance', $document) }}"
-                                  onsubmit="return confirm('Confirm this opening-balance resolution?');" class="mt-3 grid gap-2">
-                                @csrf
-                                <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white">
-                                    <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED }}" required>
-                                    <span class="text-sm text-slate-700">Already included in opening balance</span>
-                                </label>
-                                <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white">
-                                    <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE }}" required>
-                                    <span class="text-sm text-slate-700">Separate from opening balance</span>
-                                </label>
-                                <div><button class="btn btn-sm" type="submit">Confirm resolution</button></div>
-                            </form>
-                        @endcan
-                    @endif
+                    {{-- Resolution clears a publish gate, so it needs historical.publish,
+                         not historical.import — an import-only operator sees the block
+                         notice above but no dangling instruction and no form. --}}
+                    @can('historical.publish')
+                        <p class="text-sm text-slate-600 mt-1">JewelFlow will not change the customer's opening balance automatically — pick the option that reflects reality:</p>
+                        <form method="POST" action="{{ route('historical.documents.resolve-opening-balance', $document) }}"
+                              onsubmit="return confirm('Confirm this opening-balance resolution?');" class="mt-3 grid gap-2">
+                            @csrf
+                            <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white">
+                                <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED }}" required>
+                                <span class="text-sm text-slate-700">Already included in opening balance</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white">
+                                <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE }}" required>
+                                <span class="text-sm text-slate-700">Separate from opening balance</span>
+                            </label>
+                            <div><button class="btn btn-sm" type="submit">Confirm resolution</button></div>
+                        </form>
+                    @endcan
                 @elseif($obSeverity === HistoricalOpeningBalanceEvaluator::MEDIUM)
                     <p class="text-sm text-slate-600">ℹ MEDIUM — on or before the linked customer's opening-balance date, but no outstanding amount is recorded on this bill. Informational only, does not block publishing.</p>
                 @endif

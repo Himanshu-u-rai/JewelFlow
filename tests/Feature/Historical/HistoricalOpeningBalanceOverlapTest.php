@@ -72,6 +72,7 @@ class HistoricalOpeningBalanceOverlapTest extends TestCase
         $date       = $attrs['document_date'] ?? '2023-11-04';
         $normalized = HistoricalDocumentIdentity::normalizeNumber($number);
         $fy         = HistoricalDocumentIdentity::financialYearFor(new \DateTimeImmutable($date));
+        $status     = $attrs['status'] ?? HistoricalSalesDocument::STATUS_DRAFT;
 
         $document = new HistoricalSalesDocument();
         $document->forceFill(array_merge([
@@ -90,6 +91,13 @@ class HistoricalOpeningBalanceOverlapTest extends TestCase
             'grand_total'                            => 25000.00,
             'status'                                 => HistoricalSalesDocument::STATUS_DRAFT,
             'content_fingerprint'                    => hash('sha256', (string) Str::uuid()),
+            // The DB check constraint requires published_at whenever status is
+            // published/superseded — mirror that here (as HistoricalDocumentLifecycleActionsTest
+            // does) so D1's terminal-status fixtures don't need to repeat it themselves.
+            'published_at' => in_array($status, [
+                HistoricalSalesDocument::STATUS_PUBLISHED,
+                HistoricalSalesDocument::STATUS_SUPERSEDED,
+            ], true) ? now() : null,
         ], $attrs))->save();
 
         return $document;
@@ -756,6 +764,150 @@ class HistoricalOpeningBalanceOverlapTest extends TestCase
         TenantContext::runFor($shop->id, function () use ($controller, $request, $document) {
             $controller->resolveOpeningBalance($request, $document);
         });
+    }
+
+    // -------------------------------------- 18. terminal HIGH wording (D1 fix)
+
+    /**
+     * D1: a HIGH overlap on a superseded (terminal, immutable) document must
+     * not claim publishing is blocked -- it is already published-and-replaced
+     * and can never be resolved. The view must show truthful reference-only
+     * wording instead of the draft-only "blocked" copy.
+     */
+    public function test_superseded_high_document_shows_reference_only_copy(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = $this->createCustomer($shop->id);
+            $this->makeOpeningBalance($shop->id, $customer->id, '2023-01-01', 500.00);
+
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31', 'customer_id' => $customer->id,
+                'outstanding_amount_snapshot' => 1000.00,
+                'opening_balance_overlap' => true,
+                'status' => HistoricalSalesDocument::STATUS_SUPERSEDED,
+            ]);
+        });
+
+        $view = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
+        $view->assertOk();
+        $view->assertSee('HIGH');
+        $view->assertSee('superseded and can no longer be changed', false);
+        $view->assertSee('shown for reference only and creates no ledger or receivable');
+    }
+
+    /** Terminal HIGH must never say publishing is blocked -- it already published. */
+    public function test_terminal_high_document_does_not_claim_publishing_is_blocked(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = $this->createCustomer($shop->id);
+            $this->makeOpeningBalance($shop->id, $customer->id, '2023-01-01', 500.00);
+
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31', 'customer_id' => $customer->id,
+                'outstanding_amount_snapshot' => 1000.00,
+                'opening_balance_overlap' => true,
+                'status' => HistoricalSalesDocument::STATUS_PUBLISHED,
+            ]);
+        });
+
+        $view = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
+        $view->assertOk();
+        $view->assertDontSee('Publishing is blocked');
+    }
+
+    /** Terminal HIGH is immutable -- no resolution form, regardless of permission. */
+    public function test_terminal_high_document_has_no_resolution_form(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->grantOnlyPermissions($owner, ['historical.view', 'historical.publish']);
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = $this->createCustomer($shop->id);
+            $this->makeOpeningBalance($shop->id, $customer->id, '2023-01-01', 500.00);
+
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31', 'customer_id' => $customer->id,
+                'outstanding_amount_snapshot' => 1000.00,
+                'opening_balance_overlap' => true,
+                'status' => HistoricalSalesDocument::STATUS_PUBLISHED,
+            ]);
+        });
+
+        $view = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
+        $view->assertOk();
+        $view->assertDontSee('Confirm resolution');
+        $view->assertDontSee(route('historical.documents.resolve-opening-balance', $document), false);
+    }
+
+    /**
+     * D1's second instance: an import-only user on a still-actionable draft
+     * must see the "blocked" notice but never the dangling "pick the option
+     * that reflects reality" lead-in -- that sentence only makes sense right
+     * above a form the import-only user is not shown.
+     */
+    public function test_import_only_draft_has_no_dangling_resolution_instruction(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->grantOnlyPermissions($owner, ['historical.view', 'historical.import']);
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = $this->createCustomer($shop->id);
+            $this->makeOpeningBalance($shop->id, $customer->id, '2023-01-01', 500.00);
+
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31', 'customer_id' => $customer->id,
+                'outstanding_amount_snapshot' => 1000.00,
+                'opening_balance_overlap' => true,
+            ]);
+        });
+
+        $view = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
+        $view->assertOk();
+        $view->assertSee('Publishing is blocked until this is resolved');
+        $view->assertDontSee('pick the option that reflects reality');
+        $view->assertDontSee('Confirm resolution');
+    }
+
+    /**
+     * Draft + publish-authorized is the one path that must be unchanged by
+     * the D1 fix: alarm styling, blocked notice, instruction, and form all
+     * still render together exactly as before.
+     */
+    public function test_authorized_draft_high_behavior_is_unchanged(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $document = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = $this->createCustomer($shop->id);
+            $this->makeOpeningBalance($shop->id, $customer->id, '2023-01-01', 500.00);
+
+            $batch = $this->makeBatch($shop->id);
+
+            return $this->makeDraftDocument($shop->id, $batch->id, [
+                'document_date' => '2022-12-31', 'customer_id' => $customer->id,
+                'outstanding_amount_snapshot' => 1000.00,
+                'opening_balance_overlap' => true,
+            ]);
+        });
+
+        $view = $this->actingAs($owner)->get(route('historical.documents.show', $document->id));
+        $view->assertOk();
+        $view->assertSee('Publishing is blocked until this is resolved');
+        $view->assertSee('pick the option that reflects reality');
+        $view->assertSee('Confirm resolution');
+        $view->assertSee(route('historical.documents.resolve-opening-balance', $document), false);
     }
 
     // -------------------------------------- 17. resolution integrity (Correction 2)
