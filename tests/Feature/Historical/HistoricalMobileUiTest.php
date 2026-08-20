@@ -336,7 +336,7 @@ class HistoricalMobileUiTest extends TestCase
         }
     }
 
-    public function test_manual_form_uses_independent_columns_to_avoid_short_card_row_gaps(): void
+    public function test_manual_form_places_item_register_between_identity_and_financial_groups(): void
     {
         [$owner] = $this->createRetailerTenant();
 
@@ -345,33 +345,60 @@ class HistoricalMobileUiTest extends TestCase
         $layout = $this->firstNode($xpath, "//form[@data-historical-form='manual']//*[@data-historical-manual-layout]");
         $layoutClasses = preg_split('/\s+/', trim($layout->getAttribute('class'))) ?: [];
 
-        foreach (['grid', 'grid-cols-1', 'gap-4', 'items-start', 'lg:grid-cols-3'] as $class) {
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'items-start'] as $class) {
             $this->assertContains($class, $layoutClasses);
         }
 
-        $primary = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-primary-column]");
-        $supporting = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-supporting-column]");
-        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:col-span-2'] as $class) {
-            $this->assertContains($class, preg_split('/\s+/', trim($primary->getAttribute('class'))) ?: []);
+        $identity = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-identity-row]");
+        $financial = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-financial-row]");
+        foreach ([$identity, $financial] as $row) {
+            $classes = preg_split('/\s+/', trim($row->getAttribute('class'))) ?: [];
+            foreach (['grid', 'grid-cols-1', 'gap-4', 'items-start', 'lg:grid-cols-3'] as $class) {
+                $this->assertContains($class, $classes);
+            }
         }
+
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='document']",
+            ['lg:col-span-2']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='customer']",
+            ['lg:col-span-1']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-financial-row]/fieldset[@data-historical-section='amounts']",
+            ['lg:col-span-2']
+        );
+
+        $supporting = $this->firstNode($xpath, "//*[@data-historical-financial-row]/*[@data-historical-supporting-column]");
         foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:col-span-1'] as $class) {
             $this->assertContains($class, preg_split('/\s+/', trim($supporting->getAttribute('class'))) ?: []);
         }
 
-        $this->assertSame(2, $xpath->query("//*[@data-historical-primary-column]/fieldset[@data-historical-form-section]")?->length);
-        $this->assertSame(3, $xpath->query("//*[@data-historical-supporting-column]/fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(2, $xpath->query("//*[@data-historical-identity-row]/fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(1, $xpath->query("//*[@data-historical-financial-row]/fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(2, $xpath->query("//*[@data-historical-supporting-column]/fieldset[@data-historical-form-section]")?->length);
         $this->assertSame(1, $xpath->query("//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]")?->length);
 
-        foreach (['document', 'amounts'] as $section) {
-            $this->firstNode($xpath, "//*[@data-historical-primary-column]/fieldset[@data-historical-section='{$section}']");
-        }
-        foreach (['customer', 'tax-making', 'cutover'] as $section) {
+        foreach (['tax-making', 'cutover'] as $section) {
             $this->firstNode($xpath, "//*[@data-historical-supporting-column]/fieldset[@data-historical-section='{$section}']");
         }
         $this->assertNodesHaveClasses(
             $xpath,
             "//*[@data-historical-manual-layout]/fieldset[@data-historical-section='items']",
-            ['min-w-0', 'max-w-full', 'lg:col-span-3']
+            ['min-w-0', 'max-w-full']
+        );
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-identity-row]/following-sibling::*[1][self::fieldset][@data-historical-section='items']"
+        );
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-manual-layout]/fieldset[@data-historical-section='items']/following-sibling::*[1][@data-historical-financial-row]"
         );
 
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='tax-making']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);

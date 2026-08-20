@@ -48,9 +48,9 @@
     };
 </script>
 @endonce
-<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" style="--app-control-bg: #ffffff; --app-control-border: #cbd5e1; --app-control-border-focus: #b45309;" data-historical-manual-layout>
-<div class="grid grid-cols-1 gap-4 lg:col-span-2" data-historical-primary-column>
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="document">
+<div class="grid grid-cols-1 gap-4 items-start" style="--app-control-bg: #ffffff; --app-control-border: #cbd5e1; --app-control-border-focus: #b45309;" data-historical-manual-layout>
+<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" data-historical-identity-row>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="document">
     <legend class="sr-only">Document identity</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Document identity</h2>
@@ -75,29 +75,7 @@
     </div>
 </fieldset>
 
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="amounts">
-    <legend class="sr-only">Amount / payment (display snapshot — no ledger, no receivable)</legend>
-    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
-        <h2 class="text-base font-semibold text-slate-900">Amount / payment <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 sm:p-6">
-        @foreach($money as $f => $label)
-            <div>
-                <label for="{{ $f }}">{{ $label }}</label>
-                <input type="number" step="any" id="{{ $f }}" name="{{ $f }}" value="{{ old($f) }}" class="w-full">
-            </div>
-        @endforeach
-        <div>
-            <label for="grand_total">Grand total <span class="text-rose-600">*</span></label>
-            <input type="number" step="any" id="grand_total" name="grand_total" value="{{ old('grand_total') }}" required aria-required="true" class="w-full">
-        </div>
-    </div>
-</fieldset>
-
-</div>
-
-<div class="grid grid-cols-1 gap-4 lg:col-span-1" data-historical-supporting-column>
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="customer">
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="customer">
     <legend class="sr-only">Customer snapshot (never linked automatically)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Customer snapshot</h2>
@@ -126,7 +104,94 @@
         </div>
     </div>
 </fieldset>
+</div>
 
+{{-- One register for every item row. The table is intentionally shared by
+     create and preview/edit; Alpine remains the sole owner of row state. --}}
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden min-w-0 max-w-full" data-historical-form-section data-historical-section="items">
+    <legend class="sr-only">Item lines (optional)</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Item lines <span class="text-slate-400 font-normal text-sm">(optional)</span></h2>
+    </div>
+    {{-- This exact bubbled listener is Claude's auto-expansion contract. --}}
+    <div class="p-4 sm:p-6" @input.debounce.400ms="lines = historicalPadLines(lines)">
+        <p class="text-sm text-slate-600">Start entering items below. A new blank row appears automatically; completely blank rows are ignored.</p>
+        <p class="mt-1 text-xs text-slate-500 md:hidden">Swipe sideways to view all item columns</p>
+
+        <div class="mt-4 max-w-full overflow-x-auto rounded-xl border border-slate-200" data-historical-item-table-scroll>
+            <table class="min-w-[1100px] w-full text-sm" data-historical-item-table>
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">#</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Item name</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">SKU</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">HSN</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Qty</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Purity</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Gross wt</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Net wt</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Stone wt</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Metal value</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Stone value</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Making label</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Making value</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Rate</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Line total</th>
+                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="(line, i) in lines" :key="i">
+                        <tr class="hover:bg-slate-50" data-historical-item-row>
+                            <th scope="row" x-text="i + 1" class="border-b border-slate-200 px-3 py-2 text-center text-sm font-semibold tabular-nums text-slate-500 whitespace-nowrap"></th>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" placeholder="Item name" x-bind:aria-label="`Item ${i + 1} — Item name`" class="w-40 min-h-[44px] text-sm"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_sku]`" x-model="line.line_sku" placeholder="SKU" x-bind:aria-label="`Item ${i + 1} — SKU`" class="w-28 min-h-[44px] text-sm"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_hsn]`" x-model="line.line_hsn" placeholder="HSN" x-bind:aria-label="`Item ${i + 1} — HSN`" class="w-24 min-h-[44px] text-sm"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_quantity]`" x-model="line.line_quantity" placeholder="Qty" x-bind:aria-label="`Item ${i + 1} — Quantity`" type="number" step="any" class="w-20 min-h-[44px] text-sm text-right tabular-nums"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_purity]`" x-model="line.line_purity" placeholder="Purity" x-bind:aria-label="`Item ${i + 1} — Purity`" class="w-24 min-h-[44px] text-sm"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_gross_weight]`" x-model="line.line_gross_weight" placeholder="Gross wt" x-bind:aria-label="`Item ${i + 1} — Gross weight`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_net_weight]`" x-model="line.line_net_weight" placeholder="Net wt" x-bind:aria-label="`Item ${i + 1} — Net weight`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_stone_weight]`" x-model="line.line_stone_weight" placeholder="Stone wt" x-bind:aria-label="`Item ${i + 1} — Stone weight`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_metal_value]`" x-model="line.line_metal_value" placeholder="Metal value" x-bind:aria-label="`Item ${i + 1} — Metal value`" type="number" step="any" class="w-28 min-h-[44px] text-sm text-right tabular-nums"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_stone_value]`" x-model="line.line_stone_value" placeholder="Stone value" x-bind:aria-label="`Item ${i + 1} — Stone value`" type="number" step="any" class="w-28 min-h-[44px] text-sm text-right tabular-nums"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_making_label]`" x-model="line.line_making_label" placeholder="Making label" x-bind:aria-label="`Item ${i + 1} — Making charge label`" class="w-32 min-h-[44px] text-sm"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_making_value]`" x-model="line.line_making_value" placeholder="Making value" x-bind:aria-label="`Item ${i + 1} — Making charge value`" class="w-32 min-h-[44px] text-sm"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_rate]`" x-model="line.line_rate" placeholder="Rate" x-bind:aria-label="`Item ${i + 1} — Rate`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
+                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_total]`" x-model="line.line_total" placeholder="Line total" x-bind:aria-label="`Item ${i + 1} — Line total`" type="number" step="any" class="w-28 min-h-[44px] text-sm text-right tabular-nums"></td>
+                            <td class="border-b border-slate-200 p-2">
+                                <button type="button" class="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-rose-200 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" @click="lines = historicalRemoveLine(lines, i)" x-bind:aria-label="`Remove item ${i + 1}`">Remove</button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <button type="button" class="btn btn-sm mt-3 min-h-[44px]" @click="lines.push({})">Add another row</button>
+    </div>
+</fieldset>
+
+<div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" data-historical-financial-row>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="amounts">
+    <legend class="sr-only">Amount / payment (display snapshot — no ledger, no receivable)</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Amount / payment <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 sm:p-6">
+        @foreach($money as $f => $label)
+            <div>
+                <label for="{{ $f }}">{{ $label }}</label>
+                <input type="number" step="any" id="{{ $f }}" name="{{ $f }}" value="{{ old($f) }}" class="w-full">
+            </div>
+        @endforeach
+        <div>
+            <label for="grand_total">Grand total <span class="text-rose-600">*</span></label>
+            <input type="number" step="any" id="grand_total" name="grand_total" value="{{ old('grand_total') }}" required aria-required="true" class="w-full">
+        </div>
+    </div>
+</fieldset>
+
+<div class="grid grid-cols-1 gap-4 lg:col-span-1" data-historical-supporting-column>
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="tax-making">
     <legend class="sr-only">Tax and making / labour charge</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
@@ -202,69 +267,5 @@
     </div>
 </fieldset>
 </div>
-
-{{-- One register for every item row. The table is intentionally shared by
-     create and preview/edit; Alpine remains the sole owner of row state. --}}
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden min-w-0 max-w-full lg:col-span-3" data-historical-form-section data-historical-section="items">
-    <legend class="sr-only">Item lines (optional)</legend>
-    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
-        <h2 class="text-base font-semibold text-slate-900">Item lines <span class="text-slate-400 font-normal text-sm">(optional)</span></h2>
-    </div>
-    {{-- This exact bubbled listener is Claude's auto-expansion contract. --}}
-    <div class="p-4 sm:p-6" @input.debounce.400ms="lines = historicalPadLines(lines)">
-        <p class="text-sm text-slate-600">Start entering items below. A new blank row appears automatically; completely blank rows are ignored.</p>
-        <p class="mt-1 text-xs text-slate-500 md:hidden">Swipe sideways to view all item columns</p>
-
-        <div class="mt-4 max-w-full overflow-x-auto rounded-xl border border-slate-200" data-historical-item-table-scroll>
-            <table class="min-w-[1100px] w-full text-sm" data-historical-item-table>
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">#</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Item name</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">SKU</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">HSN</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Qty</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Purity</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Gross wt</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Net wt</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Stone wt</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Metal value</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Stone value</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Making label</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Making value</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Rate</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Line total</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <template x-for="(line, i) in lines" :key="i">
-                        <tr class="hover:bg-slate-50" data-historical-item-row>
-                            <th scope="row" x-text="i + 1" class="border-b border-slate-200 px-3 py-2 text-center text-sm font-semibold tabular-nums text-slate-500 whitespace-nowrap"></th>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" placeholder="Item name" x-bind:aria-label="`Item ${i + 1} — Item name`" class="w-40 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_sku]`" x-model="line.line_sku" placeholder="SKU" x-bind:aria-label="`Item ${i + 1} — SKU`" class="w-28 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_hsn]`" x-model="line.line_hsn" placeholder="HSN" x-bind:aria-label="`Item ${i + 1} — HSN`" class="w-24 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_quantity]`" x-model="line.line_quantity" placeholder="Qty" x-bind:aria-label="`Item ${i + 1} — Quantity`" type="number" step="any" class="w-20 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_purity]`" x-model="line.line_purity" placeholder="Purity" x-bind:aria-label="`Item ${i + 1} — Purity`" class="w-24 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_gross_weight]`" x-model="line.line_gross_weight" placeholder="Gross wt" x-bind:aria-label="`Item ${i + 1} — Gross weight`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_net_weight]`" x-model="line.line_net_weight" placeholder="Net wt" x-bind:aria-label="`Item ${i + 1} — Net weight`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_stone_weight]`" x-model="line.line_stone_weight" placeholder="Stone wt" x-bind:aria-label="`Item ${i + 1} — Stone weight`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_metal_value]`" x-model="line.line_metal_value" placeholder="Metal value" x-bind:aria-label="`Item ${i + 1} — Metal value`" type="number" step="any" class="w-28 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_stone_value]`" x-model="line.line_stone_value" placeholder="Stone value" x-bind:aria-label="`Item ${i + 1} — Stone value`" type="number" step="any" class="w-28 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_making_label]`" x-model="line.line_making_label" placeholder="Making label" x-bind:aria-label="`Item ${i + 1} — Making charge label`" class="w-32 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_making_value]`" x-model="line.line_making_value" placeholder="Making value" x-bind:aria-label="`Item ${i + 1} — Making charge value`" class="w-32 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_rate]`" x-model="line.line_rate" placeholder="Rate" x-bind:aria-label="`Item ${i + 1} — Rate`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_total]`" x-model="line.line_total" placeholder="Line total" x-bind:aria-label="`Item ${i + 1} — Line total`" type="number" step="any" class="w-28 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2">
-                                <button type="button" class="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-rose-200 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" @click="lines = historicalRemoveLine(lines, i)" x-bind:aria-label="`Remove item ${i + 1}`">Remove</button>
-                            </td>
-                        </tr>
-                    </template>
-                </tbody>
-            </table>
-        </div>
-
-        <button type="button" class="btn btn-sm mt-3 min-h-[44px]" @click="lines.push({})">Add another row</button>
-    </div>
-</fieldset>
+</div>
 </div>
