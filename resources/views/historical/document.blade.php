@@ -1,49 +1,93 @@
 @php
     use App\Models\Historical\HistoricalSalesDocument;
     use App\Services\Historical\HistoricalOpeningBalanceEvaluator;
+
+    $statusColors = [
+        HistoricalSalesDocument::STATUS_DRAFT      => 'bg-amber-100 text-amber-800',
+        HistoricalSalesDocument::STATUS_PUBLISHED  => 'bg-emerald-100 text-emerald-800',
+        HistoricalSalesDocument::STATUS_SUPERSEDED => 'bg-slate-100 text-slate-700',
+        HistoricalSalesDocument::STATUS_VOID       => 'bg-rose-100 text-rose-800',
+    ];
 @endphp
 <x-app-layout>
-    <div class="page" style="padding:1rem;max-width:900px;margin:0 auto;">
+    <x-page-header title="{{ $document->displayNumber() }}" subtitle="{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}">
+        <x-slot:actions>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm">← Historical sales</a>
+        </x-slot:actions>
+    </x-page-header>
+
+    <div class="content-inner historical-document-page grid gap-4">
         <x-app-alerts />
 
-        {{-- The immutable UI contract: badge + disclaimer, wording owned by the model. --}}
-        <div style="display:flex;align-items:center;gap:.5rem;">
-            <span class="badge" style="background:#0f766e;color:#fff;">{{ HistoricalSalesDocument::BADGE }}</span>
-            <h1 style="margin:0;">{{ $document->displayNumber() }}</h1>
+        {{-- The immutable UI contract: badge + status, kept apart from the number
+             itself (the number is the page title, the primary identity). --}}
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-teal-700 text-white">
+                {{ HistoricalSalesDocument::BADGE }}
+            </span>
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$document->status] ?? 'bg-slate-100 text-slate-700' }}">
+                {{ ucfirst($document->status) }}
+            </span>
         </div>
-        <p style="color:#b45309;font-weight:600;margin:.25rem 0 1rem;">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-            <div>
-                <h3>Document</h3>
-                <dl>
-                    <dt>{{ HistoricalSalesDocument::NUMBER_LABEL }}</dt><dd>{{ $document->displayNumber() }}</dd>
-                    <dt>Series</dt><dd>{{ $document->document_series ?? '—' }}</dd>
-                    <dt>Date</dt><dd>{{ $document->document_date?->toDateString() ?? '—' }}</dd>
-                    <dt>Financial year</dt><dd>{{ $document->financial_year ?? '—' }}</dd>
-                    <dt>Source system</dt><dd>{{ $document->source_system ?? '—' }}</dd>
-                    <dt>Status</dt><dd>{{ ucfirst($document->status) }}</dd>
+        {{-- Lifecycle: revises/supersededBy are already eager-loaded by the
+             controller but were never rendered before this. Read-only, links only. --}}
+        @if($document->revises || $document->supersededBy || $document->status === HistoricalSalesDocument::STATUS_VOID)
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-6">
+                <h2 class="text-base font-semibold text-slate-800 mb-2">Lifecycle</h2>
+                <ul class="text-sm text-slate-700 grid gap-1">
+                    @if($document->revises)
+                        <li>Revises
+                            <a href="{{ route('historical.documents.show', $document->revises) }}" class="text-teal-700 hover:text-teal-900 font-medium">{{ $document->revises->displayNumber() }}</a>
+                        </li>
+                    @endif
+                    @if($document->supersededBy)
+                        <li>Superseded by
+                            <a href="{{ route('historical.documents.show', $document->supersededBy) }}" class="text-teal-700 hover:text-teal-900 font-medium">{{ $document->supersededBy->displayNumber() }}</a>
+                        </li>
+                    @endif
+                    @if($document->status === HistoricalSalesDocument::STATUS_VOID)
+                        <li>
+                            Voided{{ $document->voider?->name ? ' by '.$document->voider->name : '' }}{{ $document->voided_at ? ' on '.$document->voided_at->format('d M Y, H:i') : '' }}
+                            @if($document->void_reason)<br><span class="text-slate-500">Reason: {{ $document->void_reason }}</span>@endif
+                        </li>
+                    @endif
+                </ul>
+            </div>
+        @endif
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                <h2 class="text-base font-semibold text-slate-800 mb-3">Document</h2>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+                    <dt class="text-slate-500">{{ HistoricalSalesDocument::NUMBER_LABEL }}</dt><dd class="text-slate-800 font-medium">{{ $document->displayNumber() }}</dd>
+                    <dt class="text-slate-500">Series</dt><dd class="text-slate-800">{{ $document->document_series ?? '—' }}</dd>
+                    <dt class="text-slate-500">Date</dt><dd class="text-slate-800">{{ $document->document_date?->toDateString() ?? '—' }}</dd>
+                    <dt class="text-slate-500">Financial year</dt><dd class="text-slate-800">{{ $document->financial_year ?? '—' }}</dd>
+                    <dt class="text-slate-500">Source system</dt><dd class="text-slate-800">{{ $document->source_system ?? '—' }}</dd>
+                    <dt class="text-slate-500">Status</dt><dd class="text-slate-800">{{ ucfirst($document->status) }}</dd>
                 </dl>
             </div>
-            <div>
-                <h3>Customer snapshot</h3>
-                <dl>
-                    <dt>Name</dt><dd>{{ data_get($document->customer_snapshot, 'name', '—') }}</dd>
-                    <dt>Mobile</dt><dd>{{ data_get($document->customer_snapshot, 'mobile', '—') }}</dd>
-                    <dt>GSTIN</dt><dd>{{ data_get($document->customer_snapshot, 'gstin', '—') }}</dd>
-                    <dt>Place of supply</dt><dd>{{ data_get($document->customer_snapshot, 'place_of_supply', '—') }}</dd>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                <h2 class="text-base font-semibold text-slate-800 mb-3">Customer snapshot</h2>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm mb-4">
+                    <dt class="text-slate-500">Name</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'name', '—') }}</dd>
+                    <dt class="text-slate-500">Mobile</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'mobile', '—') }}</dd>
+                    <dt class="text-slate-500">GSTIN</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'gstin', '—') }}</dd>
+                    <dt class="text-slate-500">Place of supply</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'place_of_supply', '—') }}</dd>
                 </dl>
 
-                <h4>Linked customer <small style="color:#64748b;">(the snapshot above never changes)</small></h4>
+                <h3 class="text-sm font-semibold text-slate-700 mb-1">Linked customer <span class="font-normal text-slate-500">(the snapshot above never changes)</span></h3>
                 @if($document->customer)
-                    <p>
+                    <p class="text-sm text-slate-700 flex items-center gap-2 flex-wrap">
                         {{ $document->customer->name }}
                         @if($document->customer->isArchived())
-                            <span style="color:#b45309;">(archived — link kept, no longer eligible for new links)</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">archived — link kept, no longer eligible for new links</span>
                         @endif
                     </p>
                 @else
-                    <p style="color:#64748b;">Not linked — snapshot only.</p>
+                    <p class="text-sm text-slate-500">Not linked — snapshot only.</p>
                 @endif
 
                 @if($document->status === HistoricalSalesDocument::STATUS_DRAFT)
@@ -68,36 +112,41 @@
                             @foreach(['gstin' => 'GSTIN'] as $key => $label)
                                 @php $match = $suggestions[$key]; @endphp
                                 @if($match['status'] === 'ambiguous')
-                                    <p style="color:#b45309;font-weight:600;">⚠ {{ $label }} match is ambiguous — {{ $match['customers']->count() }} customers share this GSTIN. Not linked automatically; review manually.</p>
+                                    <p class="text-sm text-amber-700 font-medium mt-3">⚠ {{ $label }} match is ambiguous — {{ $match['customers']->count() }} customers share this GSTIN. Not linked automatically; review manually.</p>
                                 @endif
                             @endforeach
                         @endif
 
                         @if($candidates->isNotEmpty())
-                            <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}">
+                            <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="mt-3">
                                 @csrf
-                                <p style="color:#64748b;margin-bottom:.25rem;">Possible existing customers — nothing selected by default:</p>
-                                @foreach($candidates as $entry)
-                                    @php $candidate = $entry['candidate']; @endphp
-                                    <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:.4rem;min-height:44px;">
-                                        <input type="radio" name="customer_id" value="{{ $candidate->id }}" required>
-                                        <span>{{ $candidate->name }} — {{ Str::mask($candidate->mobile ?? '—', '*', 2, -2) }}
-                                            <small style="color:#64748b;">({{ implode(', ', $entry['bases']) }})</small></span>
-                                    </label>
-                                @endforeach
-                                <button class="btn" type="submit">Link selected customer</button>
+                                <p class="text-sm text-slate-500 mb-2">Possible existing customers — nothing selected by default:</p>
+                                <div class="grid gap-2 mb-2">
+                                    @foreach($candidates as $entry)
+                                        @php $candidate = $entry['candidate']; @endphp
+                                        <label class="flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">
+                                            <input type="radio" name="customer_id" value="{{ $candidate->id }}" required>
+                                            <span class="text-sm text-slate-700">{{ $candidate->name }} — {{ Str::mask($candidate->mobile ?? '—', '*', 2, -2) }}
+                                                <span class="text-slate-500">({{ implode(', ', $entry['bases']) }})</span></span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                                <button class="btn btn-sm" type="submit">Link selected customer</button>
                             </form>
                         @endif
 
-                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem;">
+                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="flex items-end gap-2 mt-3">
                             @csrf
-                            <input type="number" name="customer_id" placeholder="Customer ID" style="width:8rem;">
-                            <button class="btn" type="submit">Link by ID</button>
+                            <div>
+                                <label for="doc_customer_id" class="text-xs">Customer ID</label>
+                                <input type="number" id="doc_customer_id" name="customer_id" placeholder="Customer ID" class="w-32">
+                            </div>
+                            <button class="btn btn-sm" type="submit">Link by ID</button>
                         </form>
 
-                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" style="margin-top:.5rem;">
+                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="mt-2">
                             @csrf
-                            <button class="btn" type="submit">{{ $document->customer_id ? 'Unlink — keep snapshot only' : 'Keep historical snapshot only' }}</button>
+                            <button class="btn btn-sm" type="submit">{{ $document->customer_id ? 'Unlink — keep snapshot only' : 'Keep historical snapshot only' }}</button>
                         </form>
                     @endcan
                 @endif
@@ -111,94 +160,121 @@
         @php
             $obSeverity = $openingBalanceSeverity ?? HistoricalOpeningBalanceEvaluator::NONE;
             $obResolved = $document->opening_balance_resolution !== null;
+            $obHighUnresolved = $obSeverity === HistoricalOpeningBalanceEvaluator::HIGH && ! $obResolved;
         @endphp
         @if($obSeverity !== HistoricalOpeningBalanceEvaluator::NONE || $obResolved)
-            <div style="margin:1rem 0;padding:1rem;border-radius:8px;border:1px solid {{ $obSeverity === HistoricalOpeningBalanceEvaluator::HIGH && ! $obResolved ? '#fca5a5' : '#e2e8f0' }};background:{{ $obSeverity === HistoricalOpeningBalanceEvaluator::HIGH && ! $obResolved ? '#fef2f2' : '#f8fafc' }};">
-                <h3 style="margin-top:0;">Opening-balance overlap</h3>
+            <div class="rounded-2xl border p-4 sm:p-6 {{ $obHighUnresolved ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50' }}">
+                <h2 class="text-base font-semibold text-slate-800 mb-2">Opening-balance overlap</h2>
 
                 @if($obResolved)
-                    <p>
+                    <p class="text-sm text-slate-700">
                         <strong>Resolved:</strong>
                         {{ $document->opening_balance_resolution === HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED ? 'Already included in opening balance' : 'Separate from opening balance' }}
                         <br>
-                        <small style="color:#64748b;">by {{ $document->openingBalanceResolver->name ?? 'unknown' }} on {{ $document->opening_balance_resolved_at?->format('d M Y, H:i') }}</small>
+                        <span class="text-slate-500">by {{ $document->openingBalanceResolver->name ?? 'unknown' }} on {{ $document->opening_balance_resolved_at?->format('d M Y, H:i') }}</span>
                     </p>
                 @elseif($obSeverity === HistoricalOpeningBalanceEvaluator::HIGH)
-                    <p style="color:#b91c1c;font-weight:600;">⚠ HIGH — the linked customer already has an opening-balance entry on or before this bill's date, with an outstanding amount. This bill's receivable may already be counted there. Publishing is blocked until this is resolved.</p>
-                    <p style="color:#64748b;">JewelFlow will not change the customer's opening balance automatically — pick the option that reflects reality:</p>
+                    <p class="text-sm text-rose-700 font-medium">⚠ HIGH — the linked customer already has an opening-balance entry on or before this bill's date, with an outstanding amount. This bill's receivable may already be counted there. Publishing is blocked until this is resolved.</p>
+                    <p class="text-sm text-slate-600 mt-1">JewelFlow will not change the customer's opening balance automatically — pick the option that reflects reality:</p>
 
                     @if($document->status === HistoricalSalesDocument::STATUS_DRAFT)
                         {{-- Resolution clears a publish gate, so it needs historical.publish,
                              not historical.import — an import-only operator sees no form. --}}
                         @can('historical.publish')
                             <form method="POST" action="{{ route('historical.documents.resolve-opening-balance', $document) }}"
-                                  onsubmit="return confirm('Confirm this opening-balance resolution?');">
+                                  onsubmit="return confirm('Confirm this opening-balance resolution?');" class="mt-3 grid gap-2">
                                 @csrf
-                                <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:.4rem;min-height:44px;">
+                                <label class="flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-lg border border-slate-200 bg-white">
                                     <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED }}" required>
-                                    <span>Already included in opening balance</span>
+                                    <span class="text-sm text-slate-700">Already included in opening balance</span>
                                 </label>
-                                <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:.4rem;min-height:44px;">
+                                <label class="flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-lg border border-slate-200 bg-white">
                                     <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE }}" required>
-                                    <span>Separate from opening balance</span>
+                                    <span class="text-sm text-slate-700">Separate from opening balance</span>
                                 </label>
-                                <button class="btn" type="submit">Confirm resolution</button>
+                                <div><button class="btn btn-sm" type="submit">Confirm resolution</button></div>
                             </form>
                         @endcan
                     @endif
                 @elseif($obSeverity === HistoricalOpeningBalanceEvaluator::MEDIUM)
-                    <p style="color:#334155;">ℹ MEDIUM — on or before the linked customer's opening-balance date, but no outstanding amount is recorded on this bill. Informational only, does not block publishing.</p>
+                    <p class="text-sm text-slate-600">ℹ MEDIUM — on or before the linked customer's opening-balance date, but no outstanding amount is recorded on this bill. Informational only, does not block publishing.</p>
                 @endif
             </div>
         @endif
 
-        <h3>Amounts <small style="color:#64748b;">(display snapshot — creates no ledger or receivable)</small></h3>
-        <table class="data-table" style="width:100%;border-collapse:collapse;">
-            <tbody>
-                <tr><td>Taxable</td><td style="text-align:right;">{{ $document->taxable_amount === null ? 'unavailable' : number_format((float) $document->taxable_amount, 2) }}</td></tr>
-                <tr><td>Tax completeness</td><td style="text-align:right;">{{ $document->tax_completeness }}</td></tr>
-                <tr><td>Metal value</td><td style="text-align:right;">{{ number_format((float) $document->metal_value, 2) }}</td></tr>
-                <tr><td>Stone value</td><td style="text-align:right;">{{ number_format((float) $document->stone_value, 2) }}</td></tr>
-                <tr><td>Making / labour ({{ $document->making_category ?? 'uncategorised' }}, {{ $document->making_basis ?? 'unknown' }})</td>
-                    <td style="text-align:right;">{{ $document->making_amount === null ? ($document->making_value_original ?? '—').' (amount unknown)' : number_format((float) $document->making_amount, 2) }}</td></tr>
-                <tr><td>Discount</td><td style="text-align:right;">{{ number_format((float) $document->discount_snapshot, 2) }}</td></tr>
-                <tr><td>Rounding</td><td style="text-align:right;">{{ number_format((float) $document->rounding_snapshot, 2) }}</td></tr>
-                <tr style="font-weight:700;"><td>Grand total</td><td style="text-align:right;">{{ number_format((float) $document->grand_total, 2) }}</td></tr>
-                <tr><td>Paid</td><td style="text-align:right;">{{ $document->paid_amount_snapshot === null ? 'unknown' : number_format((float) $document->paid_amount_snapshot, 2) }}</td></tr>
-                <tr><td>Outstanding</td><td style="text-align:right;">{{ $document->outstanding_amount_snapshot === null ? 'unknown' : number_format((float) $document->outstanding_amount_snapshot, 2) }}</td></tr>
-            </tbody>
-        </table>
-
-        @if($document->lines->isNotEmpty())
-            <h3>Line items</h3>
-            <table class="data-table" style="width:100%;border-collapse:collapse;">
-                <thead><tr><th style="text-align:left;">Item</th><th>SKU</th><th>HSN</th><th>Qty</th><th>Net wt</th><th>Line total</th></tr></thead>
-                <tbody>
-                @foreach($document->lines as $line)
-                    <tr>
-                        <td style="text-align:left;">{{ data_get($line->item_snapshot, 'name', '—') }}</td>
-                        <td>{{ $line->source_sku ?? '—' }}</td>
-                        <td>{{ $line->hsn_snapshot ?? '—' }}</td>
-                        <td style="text-align:right;">{{ $line->quantity ?? '—' }}</td>
-                        <td style="text-align:right;">{{ $line->net_weight ?? '—' }}</td>
-                        <td style="text-align:right;">{{ number_format((float) $line->line_total, 2) }}</td>
-                    </tr>
-                @endforeach
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <h2 class="text-base font-semibold text-slate-800 mb-3">Amounts <span class="font-normal text-slate-500 text-sm">(display snapshot — creates no ledger or receivable)</span></h2>
+            <table class="w-full text-sm">
+                <tbody class="divide-y divide-slate-100">
+                    <tr><td class="py-1.5 text-slate-600">Taxable</td><td class="py-1.5 text-right tabular-nums">{{ $document->taxable_amount === null ? 'unavailable' : number_format((float) $document->taxable_amount, 2) }}</td></tr>
+                    <tr><td class="py-1.5 text-slate-600">Tax completeness</td><td class="py-1.5 text-right">{{ $document->tax_completeness }}</td></tr>
+                    <tr><td class="py-1.5 text-slate-600">Metal value</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->metal_value, 2) }}</td></tr>
+                    <tr><td class="py-1.5 text-slate-600">Stone value</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->stone_value, 2) }}</td></tr>
+                    <tr><td class="py-1.5 text-slate-600">Making / labour charge ({{ $document->making_category ?? 'uncategorised' }}, {{ $document->making_basis ?? 'unknown' }})</td>
+                        <td class="py-1.5 text-right tabular-nums">{{ $document->making_amount === null ? ($document->making_value_original ?? '—').' (amount unknown)' : number_format((float) $document->making_amount, 2) }}</td></tr>
+                    <tr><td class="py-1.5 text-slate-600">Discount</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->discount_snapshot, 2) }}</td></tr>
+                    <tr><td class="py-1.5 text-slate-600">Rounding</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->rounding_snapshot, 2) }}</td></tr>
+                    <tr class="font-semibold"><td class="py-1.5 text-slate-800">Grand total</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->grand_total, 2) }}</td></tr>
+                    <tr><td class="py-1.5 text-slate-600">Paid</td><td class="py-1.5 text-right tabular-nums">{{ $document->paid_amount_snapshot === null ? 'unknown' : number_format((float) $document->paid_amount_snapshot, 2) }}</td></tr>
+                    <tr><td class="py-1.5 text-slate-600">Outstanding</td><td class="py-1.5 text-right tabular-nums">{{ $document->outstanding_amount_snapshot === null ? 'unknown' : number_format((float) $document->outstanding_amount_snapshot, 2) }}</td></tr>
                 </tbody>
             </table>
-        @else
-            <p style="color:#64748b;">Header-only document — no itemised lines were recorded.</p>
-        @endif
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <h2 class="text-base font-semibold text-slate-800 mb-3">Line items</h2>
+            @if($document->lines->isNotEmpty())
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[640px] text-sm">
+                        <thead><tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <th class="py-2">Item</th><th class="py-2">SKU</th><th class="py-2">HSN</th><th class="py-2 text-right">Qty</th><th class="py-2 text-right">Net wt</th><th class="py-2 text-right">Line total</th>
+                        </tr></thead>
+                        <tbody class="divide-y divide-slate-100">
+                        @foreach($document->lines as $line)
+                            <tr>
+                                <td class="py-2 text-slate-800">{{ data_get($line->item_snapshot, 'name', '—') }}</td>
+                                <td class="py-2 text-slate-600">{{ $line->source_sku ?? '—' }}</td>
+                                <td class="py-2 text-slate-600">{{ $line->hsn_snapshot ?? '—' }}</td>
+                                <td class="py-2 text-right tabular-nums">{{ $line->quantity ?? '—' }}</td>
+                                <td class="py-2 text-right tabular-nums">{{ $line->net_weight ?? '—' }}</td>
+                                <td class="py-2 text-right tabular-nums">{{ number_format((float) $line->line_total, 2) }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <p class="text-sm text-slate-500">Header-only document — no itemised lines were recorded.</p>
+            @endif
+        </div>
 
         @can('historical.publish')
             @if($document->status === HistoricalSalesDocument::STATUS_PUBLISHED)
-                <form method="POST" action="{{ route('historical.documents.void', $document) }}"
-                      onsubmit="return confirm('Void this document? Its number and fingerprint are released.');"
-                      style="margin-top:1rem;display:flex;gap:.5rem;align-items:center;">
-                    @csrf
-                    <input type="text" name="reason" placeholder="Reason for voiding (required)" required style="flex:1;">
-                    <button class="btn" type="submit">Void</button>
-                </form>
+                <div class="rounded-2xl border border-rose-300 bg-rose-50 p-4 sm:p-6">
+                    <h2 class="text-base font-semibold text-rose-800 mb-1">Danger zone</h2>
+                    <p class="text-sm text-rose-700 mb-4">These actions change the lifecycle of a published record. Neither deletes it — the record and its number stay as evidence.</p>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <form method="POST" action="{{ route('historical.documents.void', $document) }}"
+                              onsubmit="return confirm('Void this document? Its number and fingerprint are released.');" class="grid gap-2">
+                            @csrf
+                            <label for="void_reason" class="text-sm font-medium text-slate-700">Void</label>
+                            <input type="text" id="void_reason" name="reason" placeholder="Reason for voiding (required)" required class="w-full">
+                            <p class="text-xs text-slate-500">Marks this document void and frees its original number for reuse. Cannot be undone from here.</p>
+                            <div><button class="btn btn-danger btn-sm" type="submit">Void document</button></div>
+                        </form>
+
+                        <form method="POST" action="{{ route('historical.documents.supersede', $document) }}"
+                              onsubmit="return confirm('Supersede this document with the replacement? The original is kept as evidence and marked superseded.');" class="grid gap-2">
+                            @csrf
+                            <label for="supersede_replacement_id" class="text-sm font-medium text-slate-700">Supersede</label>
+                            <input type="number" id="supersede_replacement_id" name="replacement_id" placeholder="Replacement document ID" required class="w-full">
+                            <input type="text" id="supersede_reason" name="reason" placeholder="Reason (optional, recorded)" maxlength="500" class="w-full">
+                            <p class="text-xs text-slate-500">Marks this document superseded and points it to the replacement, which becomes published in its place. Cannot be undone from here.</p>
+                            <div><button class="btn btn-danger btn-sm" type="submit">Supersede document</button></div>
+                        </form>
+                    </div>
+                </div>
             @endif
         @endcan
     </div>
