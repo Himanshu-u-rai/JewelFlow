@@ -103,6 +103,17 @@ class HistoricalMobileUiTest extends TestCase
         );
     }
 
+    private function firstNode(DOMXPath $xpath, string $expression): DOMElement
+    {
+        $nodes = $xpath->query($expression);
+
+        $this->assertNotFalse($nodes);
+        $this->assertSame(1, $nodes->length, "Expected one rendered node for {$expression}.");
+        $this->assertInstanceOf(DOMElement::class, $nodes->item(0));
+
+        return $nodes->item(0);
+    }
+
     private function buildTwoSheetXlsx(): string
     {
         $spreadsheet = new Spreadsheet();
@@ -257,6 +268,58 @@ class HistoricalMobileUiTest extends TestCase
             'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
         ])->assertOk();
         $this->assertTapTargets($preview->getContent());
+    }
+
+    public function test_index_registers_keep_equivalent_desktop_tables_and_mobile_cards(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, [
+            'label' => 'FY 2023 archive',
+            'warning_count' => 0,
+        ]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'HIST-MOBILE-42',
+            'customer_snapshot' => ['name' => 'Asha Jewels'],
+            'grand_total' => 15420.75,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('historical.index'))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+
+        foreach (['batches', 'documents'] as $surface) {
+            $desktop = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}-desktop']");
+            $mobile = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}-mobile']");
+
+            $this->assertContains('hidden', preg_split('/\s+/', trim($desktop->getAttribute('class'))) ?: []);
+            $this->assertContains('md:block', preg_split('/\s+/', trim($desktop->getAttribute('class'))) ?: []);
+            $this->assertContains('md:hidden', preg_split('/\s+/', trim($mobile->getAttribute('class'))) ?: []);
+        }
+
+        $batchUrl = route('historical.batches.show', $batch);
+        $documentUrl = route('historical.documents.show', $document);
+        foreach (['batches-desktop', 'batches-mobile'] as $surface) {
+            $node = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}']");
+            $this->assertStringContainsString('FY 2023 archive', $node->textContent);
+            $this->assertSame(1, $xpath->query(".//a[@href='{$batchUrl}']", $node)?->length);
+        }
+        foreach (['documents-desktop', 'documents-mobile'] as $surface) {
+            $node = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}']");
+            $this->assertStringContainsString('HIST-MOBILE-42', $node->textContent);
+            $this->assertStringContainsString('Asha Jewels', $node->textContent);
+            $this->assertStringContainsString('15,420.75', $node->textContent);
+            $this->assertSame(1, $xpath->query(".//a[@href='{$documentUrl}']", $node)?->length);
+        }
+
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-register='batches-desktop' or @data-historical-register='documents-desktop']//th",
+            ['normal-case', 'tracking-normal', 'text-xs', 'font-semibold']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-register='batches-desktop' or @data-historical-register='documents-desktop']//a",
+            ['border', 'rounded-lg', 'min-h-[44px]']
+        );
     }
 
     public function test_batch_review_controls_have_mobile_tap_targets(): void
