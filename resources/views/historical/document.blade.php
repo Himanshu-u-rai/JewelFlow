@@ -21,14 +21,19 @@
 
         {{-- The immutable UI contract: badge + status, kept apart from the number
              itself (the number is the page title, the primary identity). --}}
-        <div class="flex flex-wrap items-center gap-2">
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide bg-teal-700 text-white">
-                {{ HistoricalSalesDocument::BADGE }}
-            </span>
-            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$document->status] ?? 'bg-slate-100 text-slate-700' }}">
-                {{ ucfirst($document->status) }}
-            </span>
-        </div>
+        <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide bg-teal-700 text-white">
+                    {{ HistoricalSalesDocument::BADGE }}
+                </span>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$document->status] ?? 'bg-slate-100 text-slate-700' }}">
+                    {{ ucfirst($document->status) }}
+                </span>
+            </div>
+            <div class="border-t border-amber-200 bg-amber-50 px-4 py-3 sm:px-6">
+                <p class="text-sm text-amber-800">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
+            </div>
+        </section>
 
         {{-- Lifecycle: revises/supersededBy are already eager-loaded by the
              controller but were never rendered before this. Read-only, links only. --}}
@@ -56,8 +61,8 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" data-historical-document-layout>
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-2">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Document</h2>
                 <dl class="grid grid-cols-2 gap-x-3 gap-y-4 text-sm">
                     <dt class="text-slate-500">{{ HistoricalSalesDocument::NUMBER_LABEL }}</dt><dd class="text-slate-800 font-medium">{{ $document->displayNumber() }}</dd>
@@ -227,36 +232,55 @@
             </table>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-            <h2 class="text-base font-semibold text-slate-800 mb-3">Line items</h2>
+        <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                <h2 class="text-base font-semibold text-slate-900">Line items <span class="text-sm font-normal text-slate-500">({{ $document->lines->count() }})</span></h2>
+                <p class="mt-1 text-sm text-slate-500">Read-only item details captured with this historical document.</p>
+            </div>
             @if($document->lines->isNotEmpty())
+                <div class="hidden md:block" data-historical-document-register="lines-desktop">
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-full text-sm">
-                        <thead><tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                            <th class="py-2">Item</th><th class="py-2">SKU</th><th class="py-2">HSN</th><th class="py-2 text-right">Qty</th><th class="py-2 text-right">Net wt</th><th class="py-2 text-right">Line total</th>
+                        <thead class="bg-slate-50 border-b border-slate-200"><tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
+                            <th class="px-4 py-3 sm:px-6">Item</th><th class="px-4 py-3 sm:px-6">SKU</th><th class="px-4 py-3 sm:px-6">HSN</th><th class="px-4 py-3 text-right sm:px-6">Qty</th><th class="px-4 py-3 text-right sm:px-6">Net wt</th><th class="px-4 py-3 text-right sm:px-6">Line total</th>
                         </tr></thead>
                         <tbody class="divide-y divide-slate-100">
                         @foreach($document->lines as $line)
-                            <tr>
-                                <td class="py-2 text-slate-800">{{ data_get($line->item_snapshot, 'name', '—') }}</td>
-                                <td class="py-2 text-slate-600">{{ $line->source_sku ?? '—' }}</td>
-                                <td class="py-2 text-slate-600">{{ $line->hsn_snapshot ?? '—' }}</td>
-                                <td class="py-2 text-right tabular-nums">{{ $line->quantity ?? '—' }}</td>
-                                <td class="py-2 text-right tabular-nums">{{ $line->net_weight ?? '—' }}</td>
-                                <td class="py-2 text-right tabular-nums">{{ number_format((float) $line->line_total, 2) }}</td>
+                            <tr class="transition-colors hover:bg-slate-50">
+                                <td class="px-4 py-4 text-sm font-semibold text-slate-900 sm:px-6">{{ data_get($line->item_snapshot, 'name', '—') }}</td>
+                                <td class="px-4 py-4 text-slate-600 sm:px-6">{{ $line->source_sku ?? '—' }}</td>
+                                <td class="px-4 py-4 text-slate-600 sm:px-6">{{ $line->hsn_snapshot ?? '—' }}</td>
+                                <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line->quantity ?? '—' }}</td>
+                                <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line->net_weight ?? '—' }}</td>
+                                <td class="px-4 py-4 text-right font-semibold tabular-nums text-slate-900 sm:px-6">{{ number_format((float) $line->line_total, 2) }}</td>
                             </tr>
                         @endforeach
                         </tbody>
                     </table>
                 </div>
+                </div>
+                <div class="grid gap-3 bg-slate-50 p-3 md:hidden" data-historical-document-register="lines-mobile">
+                    @foreach($document->lines as $line)
+                        <article class="rounded-xl border border-slate-200 bg-white p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <h3 class="text-sm font-semibold text-slate-900">{{ data_get($line->item_snapshot, 'name', '—') }}</h3>
+                                    <p class="mt-1 text-xs text-slate-500">SKU {{ $line->source_sku ?? '—' }} · HSN {{ $line->hsn_snapshot ?? '—' }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">Qty {{ $line->quantity ?? '—' }} · Net wt {{ $line->net_weight ?? '—' }}</p>
+                                </div>
+                                <span class="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{{ number_format((float) $line->line_total, 2) }}</span>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
             @else
-                <p class="text-sm text-slate-500">Header-only document — no itemised lines were recorded.</p>
+                <div class="p-4 sm:p-6"><p class="text-sm text-slate-500">Header-only document — no itemised lines were recorded.</p></div>
             @endif
-        </div>
+        </section>
 
         @can('historical.publish')
             @if($document->status === HistoricalSalesDocument::STATUS_PUBLISHED)
-                <div class="rounded-2xl border border-rose-300 bg-rose-50 p-4 sm:p-6">
+                <div class="rounded-2xl border border-rose-200 bg-white p-4 sm:p-6">
                     <h2 class="text-base font-semibold text-rose-800 mb-1">Danger zone</h2>
                     <p class="text-sm text-rose-700 mb-4">These actions change the lifecycle of a published record. Neither deletes it — the record and its number stay as evidence.</p>
 

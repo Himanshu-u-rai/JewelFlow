@@ -28,17 +28,21 @@
 
         {{-- Prominent read-only preview header: badge, disclaimer, and the exact
              original number up front — this is what the operator is confirming. --}}
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 mb-4">
-            <div class="flex items-center gap-2 flex-wrap">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide bg-teal-700 text-white">{{ HistoricalSalesDocument::BADGE }}</span>
-                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Read-only preview</span>
+        <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden mb-4">
+            <div class="p-4 sm:p-6">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide bg-teal-700 text-white">{{ HistoricalSalesDocument::BADGE }}</span>
+                    <span class="text-xs font-semibold normal-case tracking-normal text-slate-500">Read-only preview</span>
+                </div>
+                <p class="text-xl font-semibold text-slate-900 mt-2">
+                    {{ $attributes['original_document_number'] ?? 'Number unavailable' }}
+                    @if($attributes['document_series'] ?? null) <span class="text-sm font-normal text-slate-500">(series {{ $attributes['document_series'] }})</span> @endif
+                </p>
             </div>
-            <p class="text-lg font-semibold text-slate-800 mt-2">
-                {{ $attributes['original_document_number'] ?? 'Number unavailable' }}
-                @if($attributes['document_series'] ?? null) <span class="text-sm font-normal text-slate-500">(series {{ $attributes['document_series'] }})</span> @endif
-            </p>
-            <p class="text-sm text-amber-700 mt-1">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
-        </div>
+            <div class="border-t border-amber-200 bg-amber-50 px-4 py-3 sm:px-6">
+                <p class="text-sm text-amber-800">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
+            </div>
+        </section>
 
         {{-- Warnings and blockers are visually separated by severity, and blockers
              are shown first — Confirm Save is not disabled client-side (it always
@@ -64,8 +68,8 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" data-historical-preview-layout>
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-2">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Document</h2>
                 <dl class="text-sm grid grid-cols-2 gap-x-3 gap-y-4">
                     <dt class="text-slate-500">Date</dt><dd class="text-slate-800">{{ $attributes['document_date'] ?? '—' }}</dd>
@@ -99,7 +103,7 @@
                 @endif
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-2">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Tax and making / labour charge</h2>
                 <dl class="text-sm grid grid-cols-2 gap-x-3 gap-y-4">
                     <dt class="text-slate-500">Tax</dt><dd class="text-slate-800">{{ $attributes['tax_mode'] ?? '—' }} ({{ $attributes['tax_completeness'] ?? '—' }})</dd>
@@ -127,34 +131,52 @@
             </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 mt-4">
+        <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden mt-4">
+            <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                <h2 class="text-lg font-semibold text-slate-900">Item lines <span class="text-sm font-normal text-slate-500">({{ count($lines) }})</span></h2>
+                <p class="mt-1 text-sm text-slate-500">Read-only normalized values from the bill you entered.</p>
+            </div>
             @if($lines !== [])
-                <h2 class="text-base font-semibold text-slate-800 mb-3">Item lines ({{ count($lines) }})</h2>
+                <div class="hidden md:block" data-historical-preview-register="lines-desktop">
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-full text-sm">
                         <thead>
-                            <tr class="text-left">
-                                <th>Item</th><th class="text-right">Qty</th><th class="text-right">Net wt</th><th class="text-right">Gross wt</th><th class="text-right">Stone wt</th><th class="text-right">Total</th>
+                            <tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
+                                <th class="px-4 py-3 sm:px-6">Item</th><th class="px-4 py-3 text-right sm:px-6">Qty</th><th class="px-4 py-3 text-right sm:px-6">Net wt</th><th class="px-4 py-3 text-right sm:px-6">Gross wt</th><th class="px-4 py-3 text-right sm:px-6">Stone wt</th><th class="px-4 py-3 text-right sm:px-6">Total</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @foreach($lines as $line)
-                                <tr>
-                                    <td>{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</td>
-                                    <td class="text-right tabular-nums">{{ $line['quantity'] ?? '—' }}</td>
-                                    <td class="text-right tabular-nums">{{ $line['net_weight'] ?? '—' }}</td>
-                                    <td class="text-right tabular-nums">{{ $line['gross_weight'] ?? '—' }}</td>
-                                    <td class="text-right tabular-nums">{{ $line['stone_weight'] ?? '—' }}</td>
-                                    <td class="text-right tabular-nums">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</td>
+                                <tr class="transition-colors hover:bg-slate-50">
+                                    <td class="px-4 py-4 text-sm font-semibold text-slate-900 sm:px-6">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</td>
+                                    <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['quantity'] ?? '—' }}</td>
+                                    <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['net_weight'] ?? '—' }}</td>
+                                    <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['gross_weight'] ?? '—' }}</td>
+                                    <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['stone_weight'] ?? '—' }}</td>
+                                    <td class="px-4 py-4 text-right font-semibold tabular-nums text-slate-900 sm:px-6">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
+                </div>
+                <div class="grid gap-3 bg-slate-50 p-3 md:hidden" data-historical-preview-register="lines-mobile">
+                    @foreach($lines as $line)
+                        <article class="rounded-xl border border-slate-200 bg-white p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <h3 class="text-sm font-semibold text-slate-900">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</h3>
+                                    <p class="mt-1 text-xs text-slate-500">Qty {{ $line['quantity'] ?? '—' }} · Net {{ $line['net_weight'] ?? '—' }} · Gross {{ $line['gross_weight'] ?? '—' }}</p>
+                                </div>
+                                <span class="shrink-0 text-sm font-semibold text-slate-900 tabular-nums">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</span>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
             @else
-                <p class="text-sm text-slate-500">Header only — no item lines.</p>
+                <div class="p-4 sm:p-6"><p class="text-sm text-slate-500">Header only — no item lines.</p></div>
             @endif
-        </div>
+        </section>
 
         {{-- The same fields, prefilled from what was submitted (flashed as old input).
              Edit them and Preview again, or Confirm Save to post these exact values —
@@ -165,14 +187,17 @@
              redirects and would work under Turbo either way — data-turbo="false" on the
              whole form is harmless for it and keeps both buttons' behavior consistent. --}}
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
-              x-data="{ lines: [] }" class="grid gap-5 mt-4">
+              x-data="{ lines: [] }" class="grid gap-4 mt-4" data-historical-form="manual-preview">
             @csrf
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
-            <div class="flex gap-3 flex-wrap">
-                <button class="btn min-h-[44px]" type="submit">Edit / Recalculate preview</button>
-                <button class="btn btn-primary min-h-[44px]" type="submit" formaction="{{ route('historical.manual.store') }}">Confirm Save</button>
+            <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <p class="text-xs text-slate-500">Recalculate to review edits, or confirm once the historical record is correct.</p>
+                <div class="flex gap-3 flex-wrap">
+                    <button class="btn min-h-[44px]" type="submit">Edit / Recalculate preview</button>
+                    <button class="btn btn-primary min-h-[44px]" type="submit" formaction="{{ route('historical.manual.store') }}">Confirm Save</button>
+                </div>
             </div>
         </form>
     </div>

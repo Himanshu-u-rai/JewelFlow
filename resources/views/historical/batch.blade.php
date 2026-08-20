@@ -42,9 +42,17 @@
 
         @include('historical._workflow-steps', ['currentStep' => $workflowStep])
 
-        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $batchStatusColors[$batch->status] ?? 'bg-slate-100 text-slate-700' }}">
-            {{ ucfirst($batch->status) }}
-        </span>
+        <section class="rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs font-semibold normal-case tracking-normal text-slate-500">Historical import batch</p>
+                    <p class="mt-1 text-sm text-slate-700">Review normalized records and findings before publishing immutable evidence.</p>
+                </div>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $batchStatusColors[$batch->status] ?? 'bg-slate-100 text-slate-700' }}">
+                    {{ ucfirst($batch->status) }}
+                </span>
+            </div>
+        </section>
 
         {{-- Blocking messages carried back from a failed manual save / import. --}}
         @if(session('historical_messages'))
@@ -216,21 +224,22 @@
             <div class="px-4 sm:px-6 py-4 border-b border-slate-200">
                 <h2 class="text-base font-semibold text-slate-800">Staged rows</h2>
             </div>
+            <div class="hidden md:block" data-historical-register="staged-desktop">
             <div class="overflow-x-auto">
                 <table class="w-full min-w-full text-sm">
                     <thead class="bg-slate-50 border-b border-slate-200">
-                        <tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
                             <th class="px-4 sm:px-6 py-3">Sheet</th><th class="px-4 sm:px-6 py-3 text-center">Row</th><th class="px-4 sm:px-6 py-3">Severity</th><th class="px-4 sm:px-6 py-3">Findings</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                     @forelse($rows as $row)
                         @php [$severityColor, $severityLabel] = $sev($row->severity === 'error' ? 'error' : ($row->severity === 'warning' ? 'warning' : 'info')); @endphp
-                        <tr>
-                            <td class="px-4 sm:px-6 py-3 text-slate-600">{{ $row->source_sheet ?? '—' }}</td>
-                            <td class="px-4 sm:px-6 py-3 text-center tabular-nums text-slate-600">{{ $row->source_row_number }}</td>
-                            <td class="px-4 sm:px-6 py-3 {{ $severityColor }}">{{ ucfirst($row->severity ?? 'ok') }}</td>
-                            <td class="px-4 sm:px-6 py-3 text-slate-700">
+                        <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-4 sm:px-6 py-4 text-sm font-semibold text-slate-900">{{ $row->source_sheet ?? '—' }}</td>
+                            <td class="px-4 sm:px-6 py-4 text-center tabular-nums text-slate-600">{{ $row->source_row_number }}</td>
+                            <td class="px-4 sm:px-6 py-4 {{ $severityColor }}">{{ ucfirst($row->severity ?? 'ok') }}</td>
+                            <td class="px-4 sm:px-6 py-4 text-slate-700">
                                 @foreach($row->messages ?: [] as $m){{ $m['text'] }}@if(!$loop->last)<br>@endif @endforeach
                             </td>
                         </tr>
@@ -240,26 +249,71 @@
                     </tbody>
                 </table>
             </div>
+            </div>
+            <div class="grid gap-3 bg-slate-50 p-3 md:hidden" data-historical-register="staged-mobile">
+                @forelse($rows as $row)
+                    @php [$severityColor, $severityLabel] = $sev($row->severity === 'error' ? 'error' : ($row->severity === 'warning' ? 'warning' : 'info')); @endphp
+                    <article class="rounded-xl border border-slate-200 bg-white p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h3 class="text-sm font-semibold text-slate-900">{{ $row->source_sheet ?? '—' }}</h3>
+                                <p class="mt-1 text-xs text-slate-500">Source row <span class="tabular-nums">{{ $row->source_row_number }}</span></p>
+                            </div>
+                            <span class="shrink-0 text-xs font-semibold {{ $severityColor }}">{{ ucfirst($row->severity ?? 'ok') }}</span>
+                        </div>
+                        <div class="mt-3 text-sm text-slate-700">
+                            @forelse($row->messages ?: [] as $m)<p>{{ $m['text'] }}</p>@empty<p class="text-slate-500">No findings.</p>@endforelse
+                        </div>
+                    </article>
+                @empty
+                    <p class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">No staged rows.</p>
+                @endforelse
+            </div>
             <div class="px-4 sm:px-6 py-4 border-t border-slate-200">{{ $rows->links() }}</div>
         </div>
 
         {{-- Documents produced. --}}
         @if($documents->isNotEmpty())
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                <h2 class="text-base font-semibold text-slate-800 mb-3">Documents in this batch ({{ $documents->count() }})</h2>
-                <ul class="grid gap-1.5 text-sm">
+            <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                    <h2 class="text-base font-semibold text-slate-900">Documents in this batch <span class="text-sm font-normal text-slate-500">({{ $documents->count() }})</span></h2>
+                </div>
+                <div class="hidden md:block" data-historical-batch-register="documents-desktop">
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-full text-sm">
+                            <thead class="bg-slate-50 border-b border-slate-200"><tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
+                                <th class="px-4 py-3 sm:px-6">Document</th><th class="px-4 py-3 sm:px-6">Date</th><th class="px-4 py-3 text-right sm:px-6">Total</th>
+                            </tr></thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @foreach($documents as $doc)
+                                    <tr class="transition-colors hover:bg-slate-50">
+                                        <td class="px-4 py-4 sm:px-6"><a href="{{ route('historical.documents.show', $doc) }}" class="text-teal-700 hover:text-teal-800 font-semibold">{{ $doc->displayNumber() }}</a></td>
+                                        <td class="px-4 py-4 text-slate-600 sm:px-6">{{ $doc->document_date?->toDateString() ?? 'no date' }}</td>
+                                        <td class="px-4 py-4 text-right font-semibold tabular-nums text-slate-900 sm:px-6">{{ number_format((float) $doc->grand_total, 2) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="grid gap-3 bg-slate-50 p-3 md:hidden" data-historical-batch-register="documents-mobile">
                     @foreach($documents as $doc)
-                        <li>
-                            <a href="{{ route('historical.documents.show', $doc) }}" class="text-teal-700 hover:text-teal-800 font-medium">{{ $doc->displayNumber() }}</a>
-                            <span class="text-slate-500"> — {{ $doc->document_date?->toDateString() ?? 'no date' }}, {{ number_format((float) $doc->grand_total, 2) }}</span>
-                        </li>
+                        <article class="rounded-xl border border-slate-200 bg-white p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <a href="{{ route('historical.documents.show', $doc) }}" class="inline-flex min-h-[44px] items-center text-sm font-semibold text-teal-700 hover:text-teal-800">{{ $doc->displayNumber() }}</a>
+                                    <p class="text-xs text-slate-500">{{ $doc->document_date?->toDateString() ?? 'no date' }}</p>
+                                </div>
+                                <span class="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{{ number_format((float) $doc->grand_total, 2) }}</span>
+                            </div>
+                        </article>
                     @endforeach
-                </ul>
-            </div>
+                </div>
+            </section>
         @endif
 
         {{-- Actions. --}}
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:px-6">
             @can('historical.import')
                 @unless($batch->isPublished())
                     @if($batch->profile)

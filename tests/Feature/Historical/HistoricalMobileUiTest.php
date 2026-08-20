@@ -5,6 +5,7 @@ namespace Tests\Feature\Historical;
 use App\Models\Historical\HistoricalImportBatch;
 use App\Models\Historical\HistoricalImportRow;
 use App\Models\Historical\HistoricalSalesDocument;
+use App\Models\Historical\HistoricalSalesLine;
 use App\Services\Historical\HistoricalDuplicateDetector;
 use App\Support\TenantContext;
 use DOMDocument;
@@ -205,6 +206,26 @@ class HistoricalMobileUiTest extends TestCase
         });
     }
 
+    private function makeLine(int $shopId, int $documentId, array $attributes = []): HistoricalSalesLine
+    {
+        return TenantContext::runFor($shopId, function () use ($shopId, $documentId, $attributes): HistoricalSalesLine {
+            $line = new HistoricalSalesLine();
+            $line->forceFill(array_merge([
+                'shop_id' => $shopId,
+                'historical_sales_document_id' => $documentId,
+                'line_number' => 1,
+                'item_snapshot' => ['name' => 'Archive Gold Ring'],
+                'source_sku' => 'OLD-RING-1',
+                'hsn_snapshot' => '7113',
+                'quantity' => 2,
+                'net_weight' => 4.250,
+                'line_total' => 9876.50,
+            ], $attributes))->save();
+
+            return $line;
+        });
+    }
+
     public function test_layout_c_mapping_has_complete_shrink_chain_and_keeps_sheet_options(): void
     {
         Storage::fake('local');
@@ -396,6 +417,115 @@ class HistoricalMobileUiTest extends TestCase
 
         $response = $this->actingAs($owner)->get(route('historical.batches.show', $batch))->assertOk();
         $this->assertTapTargets($response->getContent());
+    }
+
+    public function test_batch_review_keeps_equivalent_staged_rows_and_document_links_across_breakpoints(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'BATCH-HIST-88',
+            'grand_total' => 7654.25,
+        ]);
+
+        TenantContext::runFor($shop->id, function () use ($shop, $batch): void {
+            $row = new HistoricalImportRow();
+            $row->forceFill([
+                'shop_id' => $shop->id,
+                'historical_import_batch_id' => $batch->id,
+                'source_sheet' => 'Legacy Sales',
+                'source_row_number' => 17,
+                'grouping_key' => 'review-mobile-row',
+                'original_payload' => ['InvoiceNo' => 'BATCH-HIST-88'],
+                'normalized_payload' => ['original_document_number' => 'BATCH-HIST-88'],
+                'severity' => HistoricalImportRow::SEVERITY_WARNING,
+                'validation_status' => HistoricalImportRow::VALIDATION_VALID,
+                'messages' => [[
+                    'severity' => HistoricalImportRow::SEVERITY_WARNING,
+                    'code' => 'review_fixture',
+                    'text' => 'Check the archived tax summary.',
+                    'field' => null,
+                ]],
+            ])->save();
+        });
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.show', $batch))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+
+        foreach (['staged-desktop', 'staged-mobile'] as $surface) {
+            $node = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}']");
+            $this->assertStringContainsString('Legacy Sales', $node->textContent);
+            $this->assertStringContainsString('17', $node->textContent);
+            $this->assertStringContainsString('Check the archived tax summary.', $node->textContent);
+        }
+        foreach (['documents-desktop', 'documents-mobile'] as $surface) {
+            $node = $this->firstNode($xpath, "//*[@data-historical-batch-register='{$surface}']");
+            $this->assertStringContainsString('BATCH-HIST-88', $node->textContent);
+            $this->assertStringContainsString('7,654.25', $node->textContent);
+            $this->assertSame(1, $xpath->query(".//a[@href='" . route('historical.documents.show', $document) . "']", $node)?->length);
+        }
+
+        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-register='staged-desktop']", ['hidden', 'md:block']);
+        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-register='staged-mobile']", ['md:hidden']);
+    }
+
+    public function test_preview_and_document_keep_reference_hierarchy_and_single_mutation_controls(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'PREVIEW-HIST-9',
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'customer_name' => 'Preview Customer',
+            'grand_total' => 9876.50,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'lines' => [[
+                'line_item_name' => 'Archive Gold Ring',
+                'line_quantity' => 2,
+                'line_net_weight' => 4.25,
+                'line_total' => 9876.50,
+            ]],
+        ])->assertOk();
+        $previewXpath = $this->xpath($preview->getContent());
+        $this->firstNode($previewXpath, "//*[@data-historical-preview-layout]");
+        foreach (['lines-desktop', 'lines-mobile'] as $surface) {
+            $node = $this->firstNode($previewXpath, "//*[@data-historical-preview-register='{$surface}']");
+            $this->assertStringContainsString('Archive Gold Ring', $node->textContent);
+            $this->assertStringContainsString('9,876.50', $node->textContent);
+        }
+        $previewForm = $this->firstNode($previewXpath, "//form[@data-historical-form='manual-preview']");
+        $this->assertSame(route('historical.manual.preview'), $previewForm->getAttribute('action'));
+        $this->assertSame('false', $previewForm->getAttribute('data-turbo'));
+        $this->assertSame(1, $previewXpath->query("//button[@formaction='" . route('historical.manual.store') . "']")?->length);
+
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'DOC-HIST-55',
+            'grand_total' => 9876.50,
+        ]);
+        $this->makeLine($shop->id, $document->id);
+
+        $documentPage = $this->actingAs($owner)->get(route('historical.documents.show', $document))->assertOk();
+        $documentXpath = $this->xpath($documentPage->getContent());
+        $layout = $this->firstNode($documentXpath, "//*[@data-historical-document-layout]");
+        $this->assertContains('lg:grid-cols-3', preg_split('/\s+/', trim($layout->getAttribute('class'))) ?: []);
+        $this->assertStringContainsString(HistoricalSalesDocument::RECORD_DISCLAIMER, $documentPage->getContent());
+        foreach (['lines-desktop', 'lines-mobile'] as $surface) {
+            $node = $this->firstNode($documentXpath, "//*[@data-historical-document-register='{$surface}']");
+            $this->assertStringContainsString('Archive Gold Ring', $node->textContent);
+            $this->assertStringContainsString('OLD-RING-1', $node->textContent);
+            $this->assertStringContainsString('9,876.50', $node->textContent);
+        }
+
+        $published = $this->makeDocument($shop->id, $batch->id, [
+            'status' => HistoricalSalesDocument::STATUS_PUBLISHED,
+            'original_document_number' => 'DOC-PUBLISHED-56',
+        ]);
+        $publishedPage = $this->actingAs($owner)->get(route('historical.documents.show', $published))->assertOk();
+        $publishedXpath = $this->xpath($publishedPage->getContent());
+        $this->assertSame(1, $publishedXpath->query("//form[@action='" . route('historical.documents.void', $published) . "']")?->length);
+        $this->assertSame(1, $publishedXpath->query("//form[@action='" . route('historical.documents.supersede', $published) . "']")?->length);
     }
 
     public function test_document_action_tap_targets_preserve_permission_and_terminal_gates(): void
