@@ -5,7 +5,8 @@
      group name) — only the visual wrapper changed to match the shared
      card system used across the app. --}}
 <div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" data-historical-manual-layout>
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="document">
+<div class="grid grid-cols-1 gap-4 lg:col-span-2" data-historical-primary-column>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="document">
     <legend class="sr-only">Document identity</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Document identity</h2>
@@ -30,7 +31,63 @@
     </div>
 </fieldset>
 
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="customer">
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="amounts">
+    <legend class="sr-only">Amount / payment (display snapshot — no ledger, no receivable)</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Amount / payment <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 sm:p-6">
+        @foreach($money as $f => $label)
+            <div>
+                <label for="{{ $f }}">{{ $label }}</label>
+                <input type="number" step="any" id="{{ $f }}" name="{{ $f }}" value="{{ old($f) }}" class="w-full">
+            </div>
+        @endforeach
+        <div>
+            <label for="grand_total">Grand total <span class="text-rose-600">*</span></label>
+            <input type="number" step="any" id="grand_total" name="grand_total" value="{{ old('grand_total') }}" required aria-required="true" class="w-full">
+        </div>
+    </div>
+</fieldset>
+
+{{-- Optional item lines. Header-only is a valid bill, so lines start empty.
+     Each field carries an aria-label since the row layout has no room for a
+     visible per-cell label — the same reason a spreadsheet uses a header row
+     instead of repeating labels per cell. --}}
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="items">
+    <legend class="sr-only">Item lines (optional)</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
+        <h2 class="text-base font-semibold text-slate-900">Item lines <span class="text-slate-400 font-normal text-sm">(optional)</span></h2>
+    </div>
+    <div class="p-4 sm:p-6">
+    <template x-for="(line, i) in lines" :key="i">
+        <div class="rounded-lg border border-slate-200 p-3 mt-3">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                <input :name="`lines[${i}][line_item_name]`" placeholder="Item name" aria-label="Item name" class="w-full">
+                <input :name="`lines[${i}][line_sku]`" placeholder="SKU" aria-label="SKU" class="w-full">
+                <input :name="`lines[${i}][line_hsn]`" placeholder="HSN" aria-label="HSN" class="w-full">
+                <input :name="`lines[${i}][line_quantity]`" placeholder="Qty" aria-label="Quantity" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_purity]`" placeholder="Purity" aria-label="Purity" class="w-full">
+                <input :name="`lines[${i}][line_gross_weight]`" placeholder="Gross wt" aria-label="Gross weight" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_net_weight]`" placeholder="Net wt" aria-label="Net weight" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_stone_weight]`" placeholder="Stone wt" aria-label="Stone weight" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_metal_value]`" placeholder="Metal value" aria-label="Metal value" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_stone_value]`" placeholder="Stone value" aria-label="Stone value" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_making_label]`" placeholder="Making label" aria-label="Making charge label" class="w-full">
+                <input :name="`lines[${i}][line_making_value]`" placeholder="Making value" aria-label="Making charge value" class="w-full">
+                <input :name="`lines[${i}][line_rate]`" placeholder="Rate" aria-label="Rate" type="number" step="any" class="w-full">
+                <input :name="`lines[${i}][line_total]`" placeholder="Line total" aria-label="Line total" type="number" step="any" class="w-full">
+            </div>
+            <button type="button" class="btn btn-danger btn-sm mt-2 min-h-[44px]" @click="lines.splice(i,1)">Remove line</button>
+        </div>
+    </template>
+    <button type="button" class="btn btn-sm mt-3 min-h-[44px]" @click="lines.push({})">+ Add line</button>
+    </div>
+</fieldset>
+</div>
+
+<div class="grid grid-cols-1 gap-4 lg:col-span-1" data-historical-supporting-column>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="customer">
     <legend class="sr-only">Customer snapshot (never linked automatically)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Customer snapshot</h2>
@@ -60,26 +117,7 @@
     </div>
 </fieldset>
 
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="amounts">
-    <legend class="sr-only">Amount / payment (display snapshot — no ledger, no receivable)</legend>
-    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
-        <h2 class="text-base font-semibold text-slate-900">Amount / payment <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
-    </div>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 sm:p-6">
-        @foreach($money as $f => $label)
-            <div>
-                <label for="{{ $f }}">{{ $label }}</label>
-                <input type="number" step="any" id="{{ $f }}" name="{{ $f }}" value="{{ old($f) }}" class="w-full">
-            </div>
-        @endforeach
-        <div>
-            <label for="grand_total">Grand total <span class="text-rose-600">*</span></label>
-            <input type="number" step="any" id="grand_total" name="grand_total" value="{{ old('grand_total') }}" required aria-required="true" class="w-full">
-        </div>
-    </div>
-</fieldset>
-
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="tax-making">
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="tax-making">
     <legend class="sr-only">Tax and making / labour charge</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Tax and making / labour charge</h2>
@@ -128,43 +166,8 @@
     </div>
 </fieldset>
 
-{{-- Optional item lines. Header-only is a valid bill, so lines start empty.
-     Each field carries an aria-label since the row layout has no room for a
-     visible per-cell label — the same reason a spreadsheet uses a header row
-     instead of repeating labels per cell. --}}
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="items">
-    <legend class="sr-only">Item lines (optional)</legend>
-    <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
-        <h2 class="text-base font-semibold text-slate-900">Item lines <span class="text-slate-400 font-normal text-sm">(optional)</span></h2>
-    </div>
-    <div class="p-4 sm:p-6">
-    <template x-for="(line, i) in lines" :key="i">
-        <div class="rounded-lg border border-slate-200 p-3 mt-3">
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                <input :name="`lines[${i}][line_item_name]`" placeholder="Item name" aria-label="Item name" class="w-full">
-                <input :name="`lines[${i}][line_sku]`" placeholder="SKU" aria-label="SKU" class="w-full">
-                <input :name="`lines[${i}][line_hsn]`" placeholder="HSN" aria-label="HSN" class="w-full">
-                <input :name="`lines[${i}][line_quantity]`" placeholder="Qty" aria-label="Quantity" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_purity]`" placeholder="Purity" aria-label="Purity" class="w-full">
-                <input :name="`lines[${i}][line_gross_weight]`" placeholder="Gross wt" aria-label="Gross weight" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_net_weight]`" placeholder="Net wt" aria-label="Net weight" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_stone_weight]`" placeholder="Stone wt" aria-label="Stone weight" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_metal_value]`" placeholder="Metal value" aria-label="Metal value" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_stone_value]`" placeholder="Stone value" aria-label="Stone value" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_making_label]`" placeholder="Making label" aria-label="Making charge label" class="w-full">
-                <input :name="`lines[${i}][line_making_value]`" placeholder="Making value" aria-label="Making charge value" class="w-full">
-                <input :name="`lines[${i}][line_rate]`" placeholder="Rate" aria-label="Rate" type="number" step="any" class="w-full">
-                <input :name="`lines[${i}][line_total]`" placeholder="Line total" aria-label="Line total" type="number" step="any" class="w-full">
-            </div>
-            <button type="button" class="btn btn-danger btn-sm mt-2 min-h-[44px]" @click="lines.splice(i,1)">Remove line</button>
-        </div>
-    </template>
-    <button type="button" class="btn btn-sm mt-3 min-h-[44px]" @click="lines.push({})">+ Add line</button>
-    </div>
-</fieldset>
-
 {{-- Cutover acknowledgement (Phase 4): a date after go-live needs a reason. --}}
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="cutover">
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="cutover">
     <legend class="sr-only">Cutover (only if this bill is dated after JewelFlow went live)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Cutover</h2>
@@ -188,4 +191,5 @@
         </div>
     </div>
 </fieldset>
+</div>
 </div>

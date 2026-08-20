@@ -336,7 +336,7 @@ class HistoricalMobileUiTest extends TestCase
         }
     }
 
-    public function test_manual_form_uses_a_quick_bill_style_primary_and_supporting_grid(): void
+    public function test_manual_form_uses_independent_columns_to_avoid_short_card_row_gaps(): void
     {
         [$owner] = $this->createRetailerTenant();
 
@@ -349,16 +349,28 @@ class HistoricalMobileUiTest extends TestCase
             $this->assertContains($class, $layoutClasses);
         }
 
+        $primary = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-primary-column]");
+        $supporting = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-supporting-column]");
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:col-span-2'] as $class) {
+            $this->assertContains($class, preg_split('/\s+/', trim($primary->getAttribute('class'))) ?: []);
+        }
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:col-span-1'] as $class) {
+            $this->assertContains($class, preg_split('/\s+/', trim($supporting->getAttribute('class'))) ?: []);
+        }
+
+        $this->assertSame(3, $xpath->query("//*[@data-historical-primary-column]/fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(3, $xpath->query("//*[@data-historical-supporting-column]/fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(0, $xpath->query("//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]")?->length);
+
         foreach (['document', 'amounts', 'items'] as $section) {
-            $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='{$section}']", ['lg:col-span-2']);
+            $this->firstNode($xpath, "//*[@data-historical-primary-column]/fieldset[@data-historical-section='{$section}']");
         }
         foreach (['customer', 'tax-making', 'cutover'] as $section) {
-            $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='{$section}']", ['lg:col-span-1']);
+            $this->firstNode($xpath, "//*[@data-historical-supporting-column]/fieldset[@data-historical-section='{$section}']");
         }
 
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='tax-making']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='cutover']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
-        $this->assertSame(6, $xpath->query("//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]")?->length);
     }
 
     public function test_upload_manual_preview_and_index_actions_have_mobile_tap_targets(): void
