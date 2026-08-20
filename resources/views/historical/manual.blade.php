@@ -12,7 +12,7 @@
 <x-app-layout>
     <x-page-header title="Enter a historical bill" subtitle="Records a sale made before JewelFlow. Not a live invoice — no number issued, no stock moved.">
         <x-slot:actions>
-            <a href="{{ route('historical.index') }}" class="btn btn-sm">← Historical sales</a>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm min-h-[44px]">← Historical sales</a>
         </x-slot:actions>
     </x-page-header>
 
@@ -41,7 +41,7 @@
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
             <div>
-                <button class="btn btn-primary" type="submit">Preview</button>
+                <button class="btn btn-primary min-h-[44px]" type="submit">Preview</button>
                 <p class="text-xs text-slate-500 mt-2">Nothing is saved yet — the next screen is a read-only preview to review before Confirm Save.</p>
             </div>
         </form>

@@ -34,8 +34,8 @@
     <x-page-header title="Historical Sales" subtitle="Records of sales made before JewelFlow. Not live invoices — no numbers issued, no stock moved.">
         <x-slot:actions>
             @can('historical.import')
-                <a href="{{ route('historical.manual.create') }}" class="btn btn-sm">Enter a bill</a>
-                <a href="{{ route('historical.upload.create') }}" class="btn btn-primary btn-sm">Import a file</a>
+                <a href="{{ route('historical.manual.create') }}" class="btn btn-sm min-h-[44px]">Enter a bill</a>
+                <a href="{{ route('historical.upload.create') }}" class="btn btn-primary btn-sm min-h-[44px]">Import a file</a>
             @endcan
         </x-slot:actions>
     </x-page-header>
@@ -74,7 +74,7 @@
                                 <td class="px-6 py-4 text-sm text-right tabular-nums text-slate-600">{{ number_format($batch->rows_count) }}</td>
                                 <td class="px-6 py-4 text-sm text-right tabular-nums text-slate-600">{{ number_format($batch->documents_count) }}</td>
                                 <td class="px-6 py-4 text-center">
-                                    <a href="{{ route('historical.batches.show', $batch) }}" class="text-teal-700 hover:text-teal-900 text-sm font-medium">Open</a>
+                                    <a href="{{ route('historical.batches.show', $batch) }}" class="inline-flex items-center min-h-[44px] text-teal-700 hover:text-teal-900 text-sm font-medium">Open</a>
                                 </td>
                             </tr>
                         @empty
@@ -137,7 +137,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    <a href="{{ route('historical.documents.show', $document) }}" class="text-teal-700 hover:text-teal-900 text-sm font-medium" aria-label="View {{ $document->displayNumber() }}">View</a>
+                                    <a href="{{ route('historical.documents.show', $document) }}" class="inline-flex items-center min-h-[44px] text-teal-700 hover:text-teal-900 text-sm font-medium" aria-label="View {{ $document->displayNumber() }}">View</a>
                                 </td>
                             </tr>
                         @empty

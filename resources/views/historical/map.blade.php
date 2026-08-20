@@ -16,7 +16,7 @@
 <x-app-layout>
     <x-page-header title="Confirm column mapping" subtitle="{{ $batch->label }} · {{ $batch->source_file_name }}">
         <x-slot:actions>
-            <a href="{{ route('historical.batches.show', $batch) }}" class="btn btn-sm">← Batch</a>
+            <a href="{{ route('historical.batches.show', $batch) }}" class="btn btn-sm min-h-[44px]">← Batch</a>
         </x-slot:actions>
     </x-page-header>
 
@@ -30,28 +30,28 @@
                 {{ $error }}
             </div>
         @else
-        <form method="POST" action="{{ route('historical.batches.map.save', $batch) }}" class="grid gap-5">
+        <form method="POST" action="{{ route('historical.batches.map.save', $batch) }}" class="grid gap-5 min-w-0 max-w-full">
             @csrf
 
             {{-- Profile basics --}}
-            <fieldset class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                 <legend class="text-base font-semibold text-slate-800 px-1">Profile</legend>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                    <div>
-                        <label for="map_name">Profile name</label>
-                        <input type="text" id="map_name" name="name" required aria-required="true" class="w-full"
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 min-w-0 max-w-full">
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_name" class="min-w-0 max-w-full">Profile name</label>
+                        <input type="text" id="map_name" name="name" required aria-required="true" class="w-full min-w-0 max-w-full"
                                value="{{ old('name', $profile?->name ?? $batch->source_system.' mapping') }}">
                     </div>
-                    <div>
-                        <label for="map_source_system">Source system</label>
-                        <input type="text" id="map_source_system" name="source_system" class="w-full"
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_source_system" class="min-w-0 max-w-full">Source system</label>
+                        <input type="text" id="map_source_system" name="source_system" class="w-full min-w-0 max-w-full"
                                value="{{ old('source_system', $profile?->source_system ?? $batch->source_system) }}">
                     </div>
-                    <div>
-                        <label for="map_layout_type">Layout
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_layout_type" class="min-w-0 max-w-full">Layout
                             <span class="block text-xs font-normal normal-case tracking-normal text-slate-500">Layout A: one sheet, one row per bill. Layout C: a header sheet (one row per bill) joined to a detail sheet (one row per item line).</span>
                         </label>
-                        <select id="map_layout_type" name="layout_type" required aria-required="true" class="w-full">
+                        <select id="map_layout_type" name="layout_type" required aria-required="true" class="w-full min-w-0 max-w-full min-h-[44px]">
                             @foreach($layouts as $layout)
                                 <option value="{{ $layout }}" @selected(old('layout_type', $profile?->layout_type) === $layout)>
                                     {{ ucfirst(str_replace('_', ' ', $layout)) }}
@@ -59,38 +59,38 @@
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label for="map_header_row">Header row</label>
-                        <input type="number" id="map_header_row" name="header_row" min="1" required aria-required="true" class="w-full"
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_header_row" class="min-w-0 max-w-full">Header row</label>
+                        <input type="number" id="map_header_row" name="header_row" min="1" required aria-required="true" class="w-full min-w-0 max-w-full"
                                value="{{ old('header_row', $profile?->header_row ?? 1) }}">
                     </div>
-                    <div>
-                        <label for="map_date_format">Date format</label>
-                        <select id="map_date_format" name="date_format" required aria-required="true" class="w-full">
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_date_format" class="min-w-0 max-w-full">Date format</label>
+                        <select id="map_date_format" name="date_format" required aria-required="true" class="w-full min-w-0 max-w-full min-h-[44px]">
                             @foreach($formats as $key => $desc)
                                 <option value="{{ $key }}" @selected(old('date_format', $profile?->date_format) === $key)>{{ $desc }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label for="map_tax_mode">Tax mode</label>
-                        <select id="map_tax_mode" name="tax_mode" required aria-required="true" class="w-full">
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_tax_mode" class="min-w-0 max-w-full">Tax mode</label>
+                        <select id="map_tax_mode" name="tax_mode" required aria-required="true" class="w-full min-w-0 max-w-full min-h-[44px]">
                             @foreach($taxModes as $val => $label)
                                 <option value="{{ $val }}" @selected(old('tax_mode', $profile?->tax_mode) === $val)>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label for="map_decimal_separator">Decimal separator</label>
-                        <select id="map_decimal_separator" name="decimal_separator" required aria-required="true" class="w-full">
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_decimal_separator" class="min-w-0 max-w-full">Decimal separator</label>
+                        <select id="map_decimal_separator" name="decimal_separator" required aria-required="true" class="w-full min-w-0 max-w-full min-h-[44px]">
                             @foreach(HistoricalImportProfile::SEPARATORS as $s)
                                 <option value="{{ $s }}" @selected(old('decimal_separator', $profile?->decimal_separator ?? '.') === $s)>{{ $sepLabel[$s] }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label for="map_thousands_separator">Thousands separator</label>
-                        <select id="map_thousands_separator" name="thousands_separator" class="w-full">
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_thousands_separator" class="min-w-0 max-w-full">Thousands separator</label>
+                        <select id="map_thousands_separator" name="thousands_separator" class="w-full min-w-0 max-w-full min-h-[44px]">
                             @foreach(HistoricalImportProfile::SEPARATORS as $s)
                                 <option value="{{ $s }}" @selected(old('thousands_separator', $profile?->thousands_separator ?? ',') === $s)>{{ $sepLabel[$s] }}</option>
                             @endforeach
@@ -101,21 +101,21 @@
 
             {{-- Sheets. Layout C joins a header sheet to a detail sheet. --}}
             @if(count($sheets) > 0)
-                <fieldset class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                     <legend class="text-base font-semibold text-slate-800 px-1">Sheets</legend>
                     <p class="text-sm text-slate-500 mt-1 mb-2">Workbook sheets: {{ implode(', ', array_column($sheets, 'name')) }}</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="map_sheet_header">Data / header sheet</label>
-                            <select id="map_sheet_header" name="sheets[header]" class="w-full">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0 max-w-full">
+                        <div class="min-w-0 max-w-full">
+                            <label for="map_sheet_header" class="min-w-0 max-w-full">Data / header sheet</label>
+                            <select id="map_sheet_header" name="sheets[header]" class="w-full min-w-0 max-w-full min-h-[44px]">
                                 @foreach($sheets as $sheet)
                                     <option value="{{ $sheet['name'] }}" @selected($headerSheet === $sheet['name'])>{{ $sheet['name'] }}</option>
                                 @endforeach
                             </select>
                         </div>
-                        <div>
-                            <label for="map_sheet_detail">Detail sheet <span class="text-slate-400 font-normal">(Layout C only)</span></label>
-                            <select id="map_sheet_detail" name="sheets[detail]" class="w-full">
+                        <div class="min-w-0 max-w-full">
+                            <label for="map_sheet_detail" class="min-w-0 max-w-full">Detail sheet <span class="text-slate-400 font-normal">(Layout C only)</span></label>
+                            <select id="map_sheet_detail" name="sheets[detail]" class="w-full min-w-0 max-w-full min-h-[44px]">
                                 <option value="" @selected($detailSheet === null)>—</option>
                                 @foreach($sheets as $sheet)
                                     <option value="{{ $sheet['name'] }}" @selected($detailSheet === $sheet['name'])>{{ $sheet['name'] }}</option>
@@ -140,15 +140,15 @@
                         $role    = $group === 'Line' ? 'detail' : 'header';
                         $options = $group === 'Line' ? $detailHeaders : $headers;
                     @endphp
-                    <fieldset class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                    <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                         <legend class="text-base font-semibold text-slate-800 px-1">{{ $group }}</legend>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 min-w-0 max-w-full">
                             @foreach($fields as $field => $g)
-                                <div>
-                                    <label for="map_field_{{ $field }}">{{ str_replace('_', ' ', $field) }}
+                                <div class="min-w-0 max-w-full">
+                                    <label for="map_field_{{ $field }}" class="min-w-0 max-w-full">{{ str_replace('_', ' ', $field) }}
                                         @if(in_array($field, HistoricalFields::REQUIRED, true))<span class="text-rose-600">*</span>@endif
                                     </label>
-                                    <select id="map_field_{{ $field }}" name="mapping[{{ $field }}]" class="js-mapping-field w-full" data-sheet-role="{{ $role }}">
+                                    <select id="map_field_{{ $field }}" name="mapping[{{ $field }}]" class="js-mapping-field w-full min-w-0 max-w-full min-h-[44px]" data-sheet-role="{{ $role }}">
                                         <option value="">— unmapped —</option>
                                         @foreach($options as $header)
                                             <option value="{{ $header }}" @selected($current($field) === $header)>{{ $header }}</option>
@@ -162,21 +162,21 @@
             @endforeach
 
             {{-- Layout C join key columns. --}}
-            <fieldset class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                 <legend class="text-base font-semibold text-slate-800 px-1">Link column <span class="text-slate-400 font-normal text-sm">(Layout C only)</span></legend>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                    <div>
-                        <label for="map_join_header">Header sheet key</label>
-                        <select id="map_join_header" name="mapping[{{ HistoricalFields::JOIN_KEY }}]" class="js-mapping-field w-full" data-sheet-role="header">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 min-w-0 max-w-full">
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_join_header" class="min-w-0 max-w-full">Header sheet key</label>
+                        <select id="map_join_header" name="mapping[{{ HistoricalFields::JOIN_KEY }}]" class="js-mapping-field w-full min-w-0 max-w-full min-h-[44px]" data-sheet-role="header">
                             <option value="">—</option>
                             @foreach($headers as $header)
                                 <option value="{{ $header }}" @selected($current(HistoricalFields::JOIN_KEY) === $header)>{{ $header }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label for="map_join_detail">Detail sheet key</label>
-                        <select id="map_join_detail" name="mapping[{{ HistoricalFields::DETAIL_JOIN_KEY }}]" class="js-mapping-field w-full" data-sheet-role="detail">
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_join_detail" class="min-w-0 max-w-full">Detail sheet key</label>
+                        <select id="map_join_detail" name="mapping[{{ HistoricalFields::DETAIL_JOIN_KEY }}]" class="js-mapping-field w-full min-w-0 max-w-full min-h-[44px]" data-sheet-role="detail">
                             <option value="">—</option>
                             @foreach($detailHeaders as $header)
                                 <option value="{{ $header }}" @selected($current(HistoricalFields::DETAIL_JOIN_KEY) === $header)>{{ $header }}</option>
@@ -188,14 +188,14 @@
 
             {{-- Unmapped columns must be a decision, never a silent drop (Phase 9). --}}
             @if($suggestion['unmapped'] ?? [])
-                <fieldset class="rounded-2xl border border-amber-300 bg-white p-4 sm:p-6">
+                <fieldset class="min-w-0 max-w-full rounded-2xl border border-amber-300 bg-white p-4 sm:p-6">
                     <legend class="text-base font-semibold text-slate-800 px-1">Unrecognized columns</legend>
                     <p class="text-sm text-slate-500 mt-1 mb-2">Map these above, or mark each as ignored or informational — nothing is silently dropped.</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0 max-w-full">
                         @foreach($suggestion['unmapped'] as $header)
-                            <div>
-                                <label for="map_decision_{{ $loop->index }}">{{ $header }}</label>
-                                <select id="map_decision_{{ $loop->index }}" name="column_decisions[{{ $header }}]" class="w-full">
+                            <div class="min-w-0 max-w-full">
+                                <label for="map_decision_{{ $loop->index }}" class="min-w-0 max-w-full">{{ $header }}</label>
+                                <select id="map_decision_{{ $loop->index }}" name="column_decisions[{{ $header }}]" class="w-full min-w-0 max-w-full min-h-[44px]">
                                     <option value="{{ HistoricalImportProfile::DECISION_IGNORED }}" @selected(($profile?->column_decisions[$header] ?? '') === HistoricalImportProfile::DECISION_IGNORED)>Ignore</option>
                                     <option value="{{ HistoricalImportProfile::DECISION_INFORMATIONAL }}" @selected(($profile?->column_decisions[$header] ?? '') === HistoricalImportProfile::DECISION_INFORMATIONAL)>Keep (informational)</option>
                                 </select>
@@ -206,21 +206,21 @@
             @endif
 
             {{-- Making / labour defaults + zero-tax confirmation. --}}
-            <fieldset class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                 <legend class="text-base font-semibold text-slate-800 px-1">Making / labour charge defaults</legend>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                    <div>
-                        <label for="map_making_category">Category</label>
-                        <select id="map_making_category" name="making_defaults[category]" class="w-full">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 min-w-0 max-w-full">
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_making_category" class="min-w-0 max-w-full">Category</label>
+                        <select id="map_making_category" name="making_defaults[category]" class="w-full min-w-0 max-w-full min-h-[44px]">
                             <option value="">—</option>
                             @foreach($makingCategories as $cat)
                                 <option value="{{ $cat }}" @selected(($profile?->making_defaults['category'] ?? '') === $cat)>{{ str_replace('_', ' ', $cat) }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label for="map_making_basis">Basis</label>
-                        <select id="map_making_basis" name="making_defaults[basis]" class="w-full">
+                    <div class="min-w-0 max-w-full">
+                        <label for="map_making_basis" class="min-w-0 max-w-full">Basis</label>
+                        <select id="map_making_basis" name="making_defaults[basis]" class="w-full min-w-0 max-w-full min-h-[44px]">
                             <option value="">—</option>
                             @foreach($makingBases as $b)
                                 <option value="{{ $b }}" @selected(($profile?->making_defaults['basis'] ?? '') === $b)>{{ str_replace('_', ' ', $b) }}</option>
@@ -228,7 +228,7 @@
                         </select>
                     </div>
                 </div>
-                <label class="flex items-center gap-2 min-h-[44px] mt-2" for="map_zero_confirmed">
+                <label class="flex items-center gap-2 min-h-[44px] mt-2 min-w-0 max-w-full" for="map_zero_confirmed">
                     <input type="hidden" name="tax_defaults[zero_confirmed]" value="0">
                     <input type="checkbox" id="map_zero_confirmed" name="tax_defaults[zero_confirmed]" value="1" @checked($profile?->tax_defaults['zero_confirmed'] ?? false)>
                     <span class="font-normal normal-case tracking-normal text-sm text-slate-700">A blank/zero tax column means genuinely no tax (not applicable), not missing data.</span>
@@ -237,7 +237,7 @@
 
             {{-- Sample rows so the operator sees what they're mapping. --}}
             @if($samples ?? [])
-                <fieldset class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+                <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
                     <legend class="text-base font-semibold text-slate-800 px-1">Sample rows</legend>
                     <div class="overflow-x-auto mt-2">
                         <table class="w-full text-sm">
@@ -256,7 +256,7 @@
                  repeated at the very top of the workflow-steps bar's scroll
                  position is not guaranteed — instead it stays a normal
                  in-flow primary button, which every other historical form uses. --}}
-            <div><button class="btn btn-primary" type="submit">Save mapping &amp; normalize</button></div>
+            <div><button class="btn btn-primary min-h-[44px]" type="submit">Save mapping &amp; normalize</button></div>
         </form>
 
         <script>

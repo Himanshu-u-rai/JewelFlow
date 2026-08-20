@@ -33,7 +33,7 @@
 <x-app-layout>
     <x-page-header title="{{ $batch->label }}" subtitle="{{ $batch->source_system ?? 'Manual' }}{{ $batch->source_file_name ? ' · '.$batch->source_file_name : '' }}{{ $batch->profile ? ' · profile “'.$batch->profile->name.'”' : '' }}">
         <x-slot:actions>
-            <a href="{{ route('historical.index') }}" class="btn btn-sm">← Historical sales</a>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm min-h-[44px]">← Historical sales</a>
         </x-slot:actions>
     </x-page-header>
 
@@ -61,7 +61,7 @@
                 <p class="text-sm text-slate-500 mb-3">No reconciliation preview yet. Confirm the column mapping to normalize this batch.</p>
                 @can('historical.import')
                     @if($batch->source_file_name)
-                        <a class="btn btn-primary btn-sm" href="{{ route('historical.batches.map', $batch) }}">Map columns</a>
+                        <a class="btn btn-primary btn-sm min-h-[44px]" href="{{ route('historical.batches.map', $batch) }}">Map columns</a>
                     @endif
                 @endcan
             </div>
@@ -189,7 +189,7 @@
                                 <input type="hidden" name="grouping_key" value="{{ $key }}">
                                 <div>
                                     <label for="dup_action_{{ $loop->index }}">Resolution</label>
-                                    <select id="dup_action_{{ $loop->index }}" name="action" required class="w-full">
+                                    <select id="dup_action_{{ $loop->index }}" name="action" required class="w-full min-h-[44px]">
                                         @foreach(HistoricalDuplicateDetector::RESOLUTIONS as $r)
                                             <option value="{{ $r }}">{{ ucfirst(str_replace('_', ' ', $r)) }}</option>
                                         @endforeach
@@ -203,7 +203,7 @@
                                     <label for="dup_reason_{{ $loop->index }}">Reason <span class="text-slate-400 font-normal">(recorded)</span></label>
                                     <input type="text" id="dup_reason_{{ $loop->index }}" name="reason" class="w-full">
                                 </div>
-                                <div class="sm:col-span-2"><button class="btn btn-sm" type="submit">Apply &amp; re-normalize</button></div>
+                                <div class="sm:col-span-2"><button class="btn btn-sm min-h-[44px]" type="submit">Apply &amp; re-normalize</button></div>
                             </form>
                         </div>
                     @endforeach
@@ -264,20 +264,20 @@
                 @unless($batch->isPublished())
                     @if($batch->profile)
                         <form method="POST" action="{{ route('historical.batches.normalize', $batch) }}">
-                            @csrf <button class="btn btn-sm" type="submit">Re-normalize</button>
+                            @csrf <button class="btn btn-sm min-h-[44px]" type="submit">Re-normalize</button>
                         </form>
                     @endif
 
                     @if(($batch->warning_count ?? 0) > 0 && ! $batch->warningsAcknowledged())
                         <form method="POST" action="{{ route('historical.batches.acknowledge', $batch) }}">
-                            @csrf <button class="btn btn-sm" type="submit">Acknowledge {{ $batch->warning_count }} warning(s)</button>
+                            @csrf <button class="btn btn-sm min-h-[44px]" type="submit">Acknowledge {{ $batch->warning_count }} warning(s)</button>
                         </form>
                     @endif
 
                     <form method="POST" action="{{ route('historical.batches.destroy', $batch) }}"
                           onsubmit="return confirm('Roll back this draft batch? Everything it created is discarded.');">
                         @csrf @method('DELETE')
-                        <button class="btn btn-danger btn-sm" type="submit">Roll back draft</button>
+                        <button class="btn btn-danger btn-sm min-h-[44px]" type="submit">Roll back draft</button>
                     </form>
                 @endunless
             @endcan
@@ -289,7 +289,7 @@
                     @else
                         <form method="POST" action="{{ route('historical.batches.publish', $batch) }}"
                               onsubmit="return confirm('Publish this batch? Its records become immutable evidence.');">
-                            @csrf <button class="btn btn-primary btn-sm" type="submit">Publish batch</button>
+                            @csrf <button class="btn btn-primary btn-sm min-h-[44px]" type="submit">Publish batch</button>
                         </form>
                     @endif
                 @endunless

@@ -19,7 +19,7 @@
 <x-app-layout>
     <x-page-header title="Preview historical bill" subtitle="Nothing has been saved yet — this is a computed preview. Review it, then Confirm Save.">
         <x-slot:actions>
-            <a href="{{ route('historical.index') }}" class="btn btn-sm">← Historical sales</a>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm min-h-[44px]">← Historical sales</a>
         </x-slot:actions>
     </x-page-header>
 
@@ -171,8 +171,8 @@
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
             <div class="flex gap-3 flex-wrap">
-                <button class="btn" type="submit">Edit / Recalculate preview</button>
-                <button class="btn btn-primary" type="submit" formaction="{{ route('historical.manual.store') }}">Confirm Save</button>
+                <button class="btn min-h-[44px]" type="submit">Edit / Recalculate preview</button>
+                <button class="btn btn-primary min-h-[44px]" type="submit" formaction="{{ route('historical.manual.store') }}">Confirm Save</button>
             </div>
         </form>
     </div>

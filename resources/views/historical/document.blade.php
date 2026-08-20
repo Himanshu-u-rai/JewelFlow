@@ -12,7 +12,7 @@
 <x-app-layout>
     <x-page-header title="{{ $document->displayNumber() }}" subtitle="{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}">
         <x-slot:actions>
-            <a href="{{ route('historical.index') }}" class="btn btn-sm">← Historical sales</a>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm min-h-[44px]">← Historical sales</a>
         </x-slot:actions>
     </x-page-header>
 
@@ -131,7 +131,7 @@
                                         </label>
                                     @endforeach
                                 </div>
-                                <button class="btn btn-sm" type="submit">Link selected customer</button>
+                                <button class="btn btn-sm min-h-[44px]" type="submit">Link selected customer</button>
                             </form>
                         @endif
 
@@ -141,12 +141,12 @@
                                 <label for="doc_customer_id" class="text-xs">Customer ID</label>
                                 <input type="number" id="doc_customer_id" name="customer_id" placeholder="Customer ID" class="w-32">
                             </div>
-                            <button class="btn btn-sm" type="submit">Link by ID</button>
+                            <button class="btn btn-sm min-h-[44px]" type="submit">Link by ID</button>
                         </form>
 
                         <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="mt-2">
                             @csrf
-                            <button class="btn btn-sm" type="submit">{{ $document->customer_id ? 'Unlink — keep snapshot only' : 'Keep historical snapshot only' }}</button>
+                            <button class="btn btn-sm min-h-[44px]" type="submit">{{ $document->customer_id ? 'Unlink — keep snapshot only' : 'Keep historical snapshot only' }}</button>
                         </form>
                     @endcan
                 @endif
@@ -199,7 +199,7 @@
                                 <input type="radio" name="resolution" value="{{ HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE }}" required>
                                 <span class="text-sm text-slate-700">Separate from opening balance</span>
                             </label>
-                            <div><button class="btn btn-sm" type="submit">Confirm resolution</button></div>
+                            <div><button class="btn btn-sm min-h-[44px]" type="submit">Confirm resolution</button></div>
                         </form>
                     @endcan
                 @elseif($obSeverity === HistoricalOpeningBalanceEvaluator::MEDIUM)
@@ -267,7 +267,7 @@
                             <label for="void_reason" class="text-sm font-medium text-slate-700">Void</label>
                             <input type="text" id="void_reason" name="reason" placeholder="Reason for voiding (required)" required class="w-full">
                             <p class="text-xs text-slate-500">Marks this document void and frees its original number for reuse. Cannot be undone from here.</p>
-                            <div><button class="btn btn-danger btn-sm" type="submit">Void document</button></div>
+                            <div><button class="btn btn-danger btn-sm min-h-[44px]" type="submit">Void document</button></div>
                         </form>
 
                         <form method="POST" action="{{ route('historical.documents.supersede', $document) }}"
@@ -277,7 +277,7 @@
                             <input type="number" id="supersede_replacement_id" name="replacement_id" placeholder="Replacement document ID" required class="w-full">
                             <input type="text" id="supersede_reason" name="reason" placeholder="Reason (optional, recorded)" maxlength="500" class="w-full">
                             <p class="text-xs text-slate-500">Marks this document superseded and points it to the replacement, which becomes published in its place. Cannot be undone from here.</p>
-                            <div><button class="btn btn-danger btn-sm" type="submit">Supersede document</button></div>
+                            <div><button class="btn btn-danger btn-sm min-h-[44px]" type="submit">Supersede document</button></div>
                         </form>
                     </div>
                 </div>

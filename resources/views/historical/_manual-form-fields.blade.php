@@ -73,7 +73,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
         <div>
             <label for="tax_mode">Tax mode</label>
-            <select id="tax_mode" name="tax_mode" class="w-full">
+            <select id="tax_mode" name="tax_mode" class="w-full min-h-[44px]">
                 @foreach($taxModes as $v => $l)<option value="{{ $v }}" @selected(old('tax_mode') === $v)>{{ $l }}</option>@endforeach
             </select>
         </div>
@@ -97,14 +97,14 @@
         </div>
         <div>
             <label for="making_category">Category</label>
-            <select id="making_category" name="making_category" class="w-full">
+            <select id="making_category" name="making_category" class="w-full min-h-[44px]">
                 <option value="">—</option>
                 @foreach($makingCategories as $c)<option value="{{ $c }}" @selected(old('making_category')===$c)>{{ str_replace('_',' ',$c) }}</option>@endforeach
             </select>
         </div>
         <div>
             <label for="making_basis">Basis</label>
-            <select id="making_basis" name="making_basis" class="w-full">
+            <select id="making_basis" name="making_basis" class="w-full min-h-[44px]">
                 <option value="">—</option>
                 @foreach($makingBases as $b)<option value="{{ $b }}" @selected(old('making_basis')===$b)>{{ str_replace('_',' ',$b) }}</option>@endforeach
             </select>
@@ -136,10 +136,10 @@
                 <input :name="`lines[${i}][line_rate]`" placeholder="Rate" aria-label="Rate" type="number" step="any" class="w-full">
                 <input :name="`lines[${i}][line_total]`" placeholder="Line total" aria-label="Line total" type="number" step="any" class="w-full">
             </div>
-            <button type="button" class="btn btn-danger btn-sm mt-2" @click="lines.splice(i,1)">Remove line</button>
+            <button type="button" class="btn btn-danger btn-sm mt-2 min-h-[44px]" @click="lines.splice(i,1)">Remove line</button>
         </div>
     </template>
-    <button type="button" class="btn btn-sm mt-3" @click="lines.push({})">+ Add line</button>
+    <button type="button" class="btn btn-sm mt-3 min-h-[44px]" @click="lines.push({})">+ Add line</button>
 </fieldset>
 
 {{-- Cutover acknowledgement (Phase 4): a date after go-live needs a reason. --}}

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-page-header title="Import a historical file" subtitle="Upload a CSV or XLSX export. Nothing is read yet — you confirm the column mapping on the next screen.">
         <x-slot:actions>
-            <a href="{{ route('historical.index') }}" class="btn btn-sm">← Historical sales</a>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm min-h-[44px]">← Historical sales</a>
         </x-slot:actions>
     </x-page-header>
 
@@ -21,13 +21,13 @@
 
                     <div>
                         <label for="file">File</label>
-                        <input type="file" id="file" name="file" accept=".csv,.txt,.xlsx" required aria-required="true" class="w-full">
+                        <input type="file" id="file" name="file" accept=".csv,.txt,.xlsx" required aria-required="true" class="w-full min-h-[44px]">
                         <p class="text-xs text-slate-500 mt-1">Accepted formats: .csv or .xlsx. Maximum size: 20 MB. This file is stored privately for your shop only — no one outside your team can read it.</p>
                     </div>
 
                     <div>
                         <label for="historical_import_profile_id">Reuse a saved mapping profile <span class="text-slate-400 font-normal">(optional)</span></label>
-                        <select id="historical_import_profile_id" name="historical_import_profile_id" class="w-full">
+                        <select id="historical_import_profile_id" name="historical_import_profile_id" class="w-full min-h-[44px]">
                             <option value="">— New mapping —</option>
                             @foreach($profiles as $profile)
                                 <option value="{{ $profile->id }}" @selected(old('historical_import_profile_id') == $profile->id)>
@@ -51,7 +51,7 @@
                 </div>
             </div>
 
-            <div><button class="btn btn-primary" type="submit">Upload &amp; continue to mapping</button></div>
+            <div><button class="btn btn-primary min-h-[44px]" type="submit">Upload &amp; continue to mapping</button></div>
         </form>
     </div>
 </x-app-layout>
