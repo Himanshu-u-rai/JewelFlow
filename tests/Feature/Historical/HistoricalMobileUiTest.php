@@ -405,7 +405,18 @@ class HistoricalMobileUiTest extends TestCase
             "//*[@data-historical-manual-layout]/fieldset[@data-historical-section='items']/following-sibling::*[1][@data-historical-financial-row]"
         );
 
-        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='tax-making']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
+        $taxSection = "//*[@data-historical-section='tax-making']";
+        $this->assertNodesHaveClasses($xpath, "{$taxSection}//*[@data-historical-supporting-grid][.//*[@id='tax_mode']]", ['lg:grid-cols-1']);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "{$taxSection}//*[@data-historical-supporting-grid][.//*[@id='making_category'] and .//*[@id='making_basis']]",
+            ['lg:grid-cols-2']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "{$taxSection}//*[@data-historical-supporting-grid]/*[.//*[@id='making_label'] or .//*[@id='making_value']]",
+            ['lg:col-span-2']
+        );
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='cutover']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
     }
 
