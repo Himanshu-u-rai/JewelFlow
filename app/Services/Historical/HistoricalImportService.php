@@ -711,7 +711,7 @@ class HistoricalImportService
             'document_count'  => $document === null ? 0 : 1,
             'blocking_count'  => $messages->countOf(HistoricalMessages::ERROR),
             'warning_count'   => $messages->countOf(HistoricalMessages::WARNING),
-            'preview_summary' => ['manual' => true, 'messages' => $messages->all()],
+            'preview_summary' => $this->manualPreviewSummary($batch, $messages),
             'preview_generated_at' => now(),
             'status'          => HistoricalImportBatch::STATUS_REVIEW,
         ])->save();
@@ -797,36 +797,129 @@ class HistoricalImportService
             ->with('lines:id,historical_sales_document_id')
             ->get();
 
-        $counts = ['error' => 0, 'warning' => 0, 'info' => 0];
-        $codes  = [];
-
-        foreach ($rows as $row) {
-            // `messages` is cast to `array` on the model — already decoded, never a JSON string.
-            foreach ($row->messages ?: [] as $message) {
-                $severity = (string) ($message['severity'] ?? HistoricalMessages::INFO);
-
-                if (isset($counts[$severity])) {
-                    $counts[$severity]++;
+        // `messages` is cast to `array` on the model — already decoded, never a JSON string.
+        [$counts, $codes] = $this->aggregateMessages((function () use ($rows) {
+            foreach ($rows as $row) {
+                foreach ($row->messages ?: [] as $message) {
+                    yield $message;
                 }
-
-                $codes[(string) ($message['code'] ?? 'unknown')] ??= [
-                    'severity' => $severity,
-                    'count'    => 0,
-                    'text'     => (string) ($message['text'] ?? ''),
-                ];
-                $codes[(string) ($message['code'] ?? 'unknown')]['count']++;
             }
-        }
-
-        $dates = $documents->pluck('document_date')->filter()->sort()->values();
+        })());
 
         $summary = [
-            'source_file'        => $batch->source_file_name,
-            'source_system'      => $batch->source_system,
-            'layout_type'        => $batch->layout_type,
-            'profile'            => $profile?->name,
-            'date_format'        => $batch->date_format,
-            'row_count'          => $rows->count(),
+            'source_file'   => $batch->source_file_name,
+            'source_system' => $batch->source_system,
+            'layout_type'   => $batch->layout_type,
+            'profile'       => $profile?->name,
+            'date_format'   => $batch->date_format,
+            'row_count'     => $rows->count(),
+        ]
+            + $this->documentSummary($documents)
+            + [
+                'duplicate_count'    => $this->countCode($codes, [
+                    HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
+                    HistoricalDuplicateDetector::CODE_DUPLICATE_FINGERPRINT,
+                ]),
+                'cutover_warnings'   => $this->countCode($codes, [HistoricalDocumentNormalizer::CODE_DATE_AFTER_CUTOVER]),
+                'blocking_count'     => $counts['error'],
+                'warning_count'      => $counts['warning'],
+                'informational_count' => $counts['info'],
+                'ignored_columns'    => array_keys(array_filter(
+                    $profile?->column_decisions ?? [],
+                    fn ($d) => $d === HistoricalImportProfile::DECISION_IGNORED
+                )),
+                'informational_columns' => array_keys(array_filter(
+                    $profile?->column_decisions ?? [],
+                    fn ($d) => $d === HistoricalImportProfile::DECISION_INFORMATIONAL
+                )),
+                'messages' => $codes,
+            ];
+
+        $batch->forceFill([
+            'preview_summary'      => $summary,
+            'preview_generated_at' => now(),
+            'blocking_count'       => $counts['error'],
+            'warning_count'        => $counts['warning'],
+            'status'               => $batch->isEditable()
+                ? HistoricalImportBatch::STATUS_REVIEW
+                : $batch->status,
+            // A changed preview invalidates a previous acknowledgement: the
+            // operator acknowledged the OLD warnings, not these.
+            'warnings_acknowledged_at' => null,
+            'warnings_acknowledged_by' => null,
+        ])->save();
+
+        return $summary;
+    }
+
+    /**
+     * Manual entry's preview summary. Same document/line-derived shape
+     * refreshPreview() produces for a file import (documents, lines, totals,
+     * dates, financial years, customers) — a manual bill is persisted through
+     * the exact same HistoricalSalesDocument/HistoricalSalesLine rows, so
+     * that half of the shape is computed identically.
+     *
+     * What differs is where the blocking/warning/info counts and message
+     * codes come from: manual entry never creates HistoricalImportRow rows,
+     * so refreshPreview()'s row-scan would find nothing and silently zero out
+     * real findings. Here they come straight from the $messages the
+     * normalizer + persistDraft() already built for this bill — the same
+     * object storeManual() uses to decide document_count/blocking/warning.
+     *
+     * `row_count` is explicitly null, not 0: a manual bill legitimately has
+     * no staged import rows, which is a different fact than "we found zero
+     * rows in the data". The Blade layer decides how to present that.
+     */
+    private function manualPreviewSummary(HistoricalImportBatch $batch, HistoricalMessages $messages): array
+    {
+        $documents = HistoricalSalesDocument::query()
+            ->where('historical_import_batch_id', $batch->id)
+            ->with('lines:id,historical_sales_document_id')
+            ->get();
+
+        [$counts, $codes] = $this->aggregateMessages($messages->all());
+
+        return [
+            'source_file'             => null,
+            'source_system'           => $batch->source_system,
+            'layout_type'             => $batch->layout_type,
+            'profile'                 => null,
+            'date_format'             => $batch->date_format,
+            'row_count'               => null,
+            'is_manual'               => true,
+            'manual'                  => true,
+            'staged_rows_applicable'  => false,
+            'workflow_steps'          => ['enter', 'preview', 'review', 'publish'],
+        ]
+            + $this->documentSummary($documents)
+            + [
+                'duplicate_count'    => $this->countCode($codes, [
+                    HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
+                    HistoricalDuplicateDetector::CODE_DUPLICATE_FINGERPRINT,
+                ]),
+                'cutover_warnings'   => $this->countCode($codes, [HistoricalDocumentNormalizer::CODE_DATE_AFTER_CUTOVER]),
+                'blocking_count'     => $counts['error'],
+                'warning_count'      => $counts['warning'],
+                'informational_count' => $counts['info'],
+                'ignored_columns'    => [],
+                'informational_columns' => [],
+                'messages' => $codes,
+            ];
+    }
+
+    /**
+     * The document/line-derived half of a preview summary — identical whether
+     * the documents arrived via staged import rows or manual entry, since both
+     * are just HistoricalSalesDocument rows linked by historical_import_batch_id.
+     *
+     * @param  \Illuminate\Support\Collection<int, HistoricalSalesDocument>  $documents
+     * @return array<string, mixed>
+     */
+    private function documentSummary($documents): array
+    {
+        $dates = $documents->pluck('document_date')->filter()->sort()->values();
+
+        return [
             'document_count'     => $documents->count(),
             'line_count'         => $documents->sum(fn ($d) => $d->lines->count()),
             'header_only_count'  => $documents->filter(fn ($d) => $d->lines->isEmpty())->count(),
@@ -856,23 +949,6 @@ class HistoricalImportService
                     'basis'    => $d->making_basis,
                 ]))
                 ->filter()->unique()->values()->all(),
-            'duplicate_count'    => $this->countCode($codes, [
-                HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
-                HistoricalDuplicateDetector::CODE_DUPLICATE_FINGERPRINT,
-            ]),
-            'cutover_warnings'   => $this->countCode($codes, [HistoricalDocumentNormalizer::CODE_DATE_AFTER_CUTOVER]),
-            'blocking_count'     => $counts['error'],
-            'warning_count'      => $counts['warning'],
-            'informational_count' => $counts['info'],
-            'ignored_columns'    => array_keys(array_filter(
-                $profile?->column_decisions ?? [],
-                fn ($d) => $d === HistoricalImportProfile::DECISION_IGNORED
-            )),
-            'informational_columns' => array_keys(array_filter(
-                $profile?->column_decisions ?? [],
-                fn ($d) => $d === HistoricalImportProfile::DECISION_INFORMATIONAL
-            )),
-            'messages'           => $codes,
             'samples'            => $documents->take(5)->map(fn ($d) => [
                 'number'       => $d->displayNumber(),
                 'date'         => $d->document_date?->toDateString(),
@@ -882,22 +958,38 @@ class HistoricalImportService
                 'lines'        => $d->lines->count(),
             ])->values()->all(),
         ];
+    }
 
-        $batch->forceFill([
-            'preview_summary'      => $summary,
-            'preview_generated_at' => now(),
-            'blocking_count'       => $counts['error'],
-            'warning_count'        => $counts['warning'],
-            'status'               => $batch->isEditable()
-                ? HistoricalImportBatch::STATUS_REVIEW
-                : $batch->status,
-            // A changed preview invalidates a previous acknowledgement: the
-            // operator acknowledged the OLD warnings, not these.
-            'warnings_acknowledged_at' => null,
-            'warnings_acknowledged_by' => null,
-        ])->save();
+    /**
+     * Tallies severities and groups by code — the shape refreshPreview() has
+     * always exposed under 'messages'. Shared between the row-derived path
+     * (file import) and the HistoricalMessages-derived path (manual entry) so
+     * both produce identical output for identical inputs.
+     *
+     * @param  iterable<array{severity?: string, code?: string, text?: string}>  $messages
+     * @return array{0: array{error: int, warning: int, info: int}, 1: array<string, array{severity: string, count: int, text: string}>}
+     */
+    private function aggregateMessages(iterable $messages): array
+    {
+        $counts = ['error' => 0, 'warning' => 0, 'info' => 0];
+        $codes  = [];
 
-        return $summary;
+        foreach ($messages as $message) {
+            $severity = (string) ($message['severity'] ?? HistoricalMessages::INFO);
+
+            if (isset($counts[$severity])) {
+                $counts[$severity]++;
+            }
+
+            $codes[(string) ($message['code'] ?? 'unknown')] ??= [
+                'severity' => $severity,
+                'count'    => 0,
+                'text'     => (string) ($message['text'] ?? ''),
+            ];
+            $codes[(string) ($message['code'] ?? 'unknown')]['count']++;
+        }
+
+        return [$counts, $codes];
     }
 
     private function taxComponentTotal($documents, string $component): float

@@ -88,6 +88,23 @@ class HistoricalImportBatch extends Model
         return $this->status === self::STATUS_PUBLISHED;
     }
 
+    /**
+     * True for a batch created by manual bill entry rather than a file import.
+     * Manual batches never have staged HistoricalImportRow records — the
+     * review page and its preview_summary must be read accordingly.
+     *
+     * Deliberately NOT keyed off `source_system`: that field is a free-text
+     * label the operator can edit on the manual-entry form (it defaults to
+     * "Manual" but isn't required to stay that way), so it cannot be trusted
+     * as a discriminator. `source_file_name` is only ever populated by
+     * createBatchFromUpload() for a real uploaded file and storeManual()
+     * never sets it — that structural fact, not a label, is what's checked.
+     */
+    public function isManualBatch(): bool
+    {
+        return $this->source_file_name === null;
+    }
+
     public function hasBlockingErrors(): bool
     {
         return (int) $this->blocking_count > 0;
