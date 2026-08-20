@@ -17,7 +17,11 @@
         HistoricalImportBatch::STATUS_CANCELLED  => 'bg-rose-100 text-rose-800',
     ];
 
-    $workflowStep = $batch->isPublished() ? 'publish' : ($batch->preview_generated_at === null ? 'map' : 'review');
+    $isManual = (bool) ($preview['is_manual'] ?? ($batch->preview_generated_at === null && $batch->isManualBatch()));
+    $workflowSteps = $preview['workflow_steps'] ?? ($isManual ? ['enter', 'preview', 'review', 'publish'] : null);
+    $workflowStep = $batch->isPublished()
+        ? 'publish'
+        : ($batch->preview_generated_at === null ? ($isManual ? 'preview' : 'map') : 'review');
 
     // ponytail: duplicate review is built from the current rows page only.
     // Release 1 pages at 100 rows; a batch with duplicates past page 1 is rare
@@ -33,20 +37,29 @@
 <x-app-layout>
     <x-page-header title="{{ $batch->label }}" subtitle="{{ $batch->source_system ?? 'Manual' }}{{ $batch->source_file_name ? ' · '.$batch->source_file_name : '' }}{{ $batch->profile ? ' · profile “'.$batch->profile->name.'”' : '' }}">
         <x-slot:actions>
-            <a href="{{ route('historical.index') }}" class="btn btn-sm min-h-[44px]">← Historical sales</a>
+            <a href="{{ route('historical.index') }}" class="btn btn-sm h-11 min-h-[44px]">← Historical sales</a>
         </x-slot:actions>
     </x-page-header>
 
-    <div class="content-inner historical-batch-page grid gap-4">
+    <div class="content-inner historical-batch-page grid min-w-0 gap-4" data-historical-batch-page>
         <x-app-alerts />
 
-        @include('historical._workflow-steps', ['currentStep' => $workflowStep])
+        @include('historical._workflow-steps', [
+            'currentStep' => $workflowStep,
+            'workflowSteps' => $workflowSteps,
+            'workflowLabel' => $isManual ? 'Historical bill progress' : 'Import progress',
+        ])
 
-        <section class="rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-6">
+        <section class="rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-6" @if($isManual) data-historical-batch-context="manual" @endif>
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs font-semibold normal-case tracking-normal text-slate-500">Historical import batch</p>
-                    <p class="mt-1 text-sm text-slate-700">Review normalized records and findings before publishing immutable evidence.</p>
+                    @if($isManual)
+                        <p class="text-base font-semibold text-slate-900">Historical bill review</p>
+                        <p class="mt-1 text-sm text-slate-600">Review the saved historical draft and its findings before publishing immutable evidence.</p>
+                    @else
+                        <p class="text-xs font-semibold normal-case tracking-normal text-slate-500">Historical import batch</p>
+                        <p class="mt-1 text-sm text-slate-700">Review normalized records and findings before publishing immutable evidence.</p>
+                    @endif
                 </div>
                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $batchStatusColors[$batch->status] ?? 'bg-slate-100 text-slate-700' }}">
                     {{ ucfirst($batch->status) }}
@@ -66,15 +79,92 @@
 
         @if($batch->preview_generated_at === null)
             <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                <p class="text-sm text-slate-500 mb-3">No reconciliation preview yet. Confirm the column mapping to normalize this batch.</p>
+                <p class="mb-3 text-sm text-slate-500">
+                    {{ $isManual
+                        ? 'The saved historical draft is not ready for review yet.'
+                        : 'No reconciliation preview yet. Confirm the column mapping to normalize this batch.' }}
+                </p>
                 @can('historical.import')
                     @if($batch->source_file_name)
-                        <a class="btn btn-primary btn-sm min-h-[44px]" href="{{ route('historical.batches.map', $batch) }}">Map columns</a>
+                        <a class="btn btn-primary btn-sm h-11 min-h-[44px]" href="{{ route('historical.batches.map', $batch) }}">Map columns</a>
                     @endif
                 @endcan
             </div>
         @else
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            @if($isManual)
+                @php
+                    $manualMetrics = [
+                        ['documents', 'Documents', $preview['document_count'] ?? 0, false],
+                        ['item-lines', 'Item lines', $preview['line_count'] ?? 0, false],
+                        ['grand-total', 'Grand total', $preview['grand_total'] ?? 0, true],
+                        ['taxable-total', 'Taxable total', $preview['taxable_total'] ?? 0, true],
+                        ['tax-total', 'Tax total', $preview['tax_total'] ?? 0, true],
+                        ['paid', 'Paid', $preview['paid_total'] ?? 0, true],
+                        ['outstanding', 'Outstanding', $preview['outstanding_total'] ?? 0, true],
+                        ['blocking-errors', 'Blocking errors', $preview['blocking_count'] ?? 0, false],
+                        ['warnings', 'Warnings', $preview['warning_count'] ?? 0, false],
+                        ['informational-findings', 'Informational findings', $preview['informational_count'] ?? 0, false],
+                        ['date', 'Date', $preview['date_from'] ?? '—', false],
+                        ['financial-year', 'Financial year', implode(', ', $preview['financial_years'] ?? []) ?: '—', false],
+                    ];
+                    $manualMakingMappings = collect($preview['making_mappings'] ?? [])->filter(fn ($mapping) =>
+                        filled($mapping['label'] ?? null)
+                        || ! in_array($mapping['category'] ?? null, [null, 'uncategorised', 'uncategorized'], true)
+                        || ! in_array($mapping['basis'] ?? null, [null, 'unknown'], true)
+                    );
+                @endphp
+                <section class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-batch-summary="manual">
+                    <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                        <h2 class="text-base font-semibold text-slate-900">Saved bill summary</h2>
+                        <p class="mt-1 text-sm text-slate-500">Document totals and review findings from the saved historical draft.</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:p-6 lg:grid-cols-4 xl:grid-cols-6">
+                        @foreach($manualMetrics as [$key, $label, $value, $isMoney])
+                            <div class="min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3" data-historical-metric="{{ $key }}">
+                                <div class="text-xs font-medium text-slate-500">{{ $label }}</div>
+                                <div class="mt-1 truncate text-lg font-semibold tabular-nums text-slate-900" data-historical-metric-value>
+                                    {{ $isMoney ? number_format((float) $value, 2) : $value }}
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    @if($manualMakingMappings->isNotEmpty() || ($preview['messages'] ?? []))
+                        <div class="grid gap-5 border-t border-slate-200 px-4 py-4 sm:px-6 {{ $manualMakingMappings->isNotEmpty() ? 'lg:grid-cols-2' : '' }}">
+                            @if($manualMakingMappings->isNotEmpty())
+                                <div class="min-w-0">
+                                    <h3 class="text-sm font-semibold text-slate-800">Making / labour interpretation</h3>
+                                    <ul class="mt-2 grid gap-2 text-sm text-slate-700">
+                                        @foreach($manualMakingMappings as $mk)
+                                            <li class="rounded-lg bg-slate-50 px-3 py-2">
+                                                <span class="font-medium">“{{ $mk['label'] ?? '—' }}”</span>
+                                                <span class="text-slate-500"> · {{ $mk['category'] ?? 'uncategorised' }} · {{ $mk['basis'] ?? 'unknown' }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
+                            @if($preview['messages'] ?? [])
+                                <div class="min-w-0">
+                                    <h3 class="text-sm font-semibold text-slate-800">Findings</h3>
+                                    <div class="mt-2 grid gap-2">
+                                        @foreach($preview['messages'] as $code => $m)
+                                            @php [$severityColor, $severityLabel] = $sev($m['severity']); @endphp
+                                            <div class="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                                                <div class="font-semibold {{ $severityColor }}">{{ $severityLabel }} ×{{ $m['count'] ?? 1 }}</div>
+                                                <p class="mt-0.5 text-slate-700">{{ $m['text'] }}</p>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                </section>
+            @else
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6" data-historical-batch-summary="import">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Reconciliation preview</h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
                     @php
@@ -175,6 +265,7 @@
                     </div>
                 @endif
             </div>
+            @endif
         @endif
 
         {{-- Duplicate / conflict review (Phase 12). Number collisions never auto-suffix. --}}
@@ -211,7 +302,7 @@
                                     <label for="dup_reason_{{ $loop->index }}">Reason <span class="text-slate-400 font-normal">(recorded)</span></label>
                                     <input type="text" id="dup_reason_{{ $loop->index }}" name="reason" class="w-full">
                                 </div>
-                                <div class="sm:col-span-2"><button class="btn btn-sm min-h-[44px]" type="submit">Apply &amp; re-normalize</button></div>
+                                <div class="sm:col-span-2"><button class="btn btn-sm h-11 min-h-[44px]" type="submit">Apply &amp; re-normalize</button></div>
                             </form>
                         </div>
                     @endforeach
@@ -219,7 +310,8 @@
             @endif
         @endcan
 
-        {{-- Staged rows. --}}
+        {{-- Staged rows belong to file imports only. --}}
+        @unless($isManual)
         <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
             <div class="px-4 sm:px-6 py-4 border-b border-slate-200">
                 <h2 class="text-base font-semibold text-slate-800">Staged rows</h2>
@@ -271,12 +363,16 @@
             </div>
             <div class="px-4 sm:px-6 py-4 border-t border-slate-200">{{ $rows->links() }}</div>
         </div>
+        @endunless
 
         {{-- Documents produced. --}}
         @if($documents->isNotEmpty())
-            <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden" @if($isManual) data-historical-batch-documents="manual" @endif>
                 <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
-                    <h2 class="text-base font-semibold text-slate-900">Documents in this batch <span class="text-sm font-normal text-slate-500">({{ $documents->count() }})</span></h2>
+                    <h2 class="text-base font-semibold text-slate-900">
+                        {{ $isManual ? 'Saved historical bill' : 'Documents in this batch' }}
+                        <span class="text-sm font-normal text-slate-500">({{ $documents->count() }})</span>
+                    </h2>
                 </div>
                 <div class="hidden md:block" data-historical-batch-register="documents-desktop">
                     <div class="overflow-x-auto">
@@ -313,25 +409,25 @@
         @endif
 
         {{-- Actions. --}}
-        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:px-6">
+        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:px-6" data-historical-batch-actions>
             @can('historical.import')
                 @unless($batch->isPublished())
                     @if($batch->profile)
                         <form method="POST" action="{{ route('historical.batches.normalize', $batch) }}">
-                            @csrf <button class="btn btn-sm min-h-[44px]" type="submit">Re-normalize</button>
+                            @csrf <button class="btn btn-sm h-11 min-h-[44px]" type="submit">Re-normalize</button>
                         </form>
                     @endif
 
                     @if(($batch->warning_count ?? 0) > 0 && ! $batch->warningsAcknowledged())
                         <form method="POST" action="{{ route('historical.batches.acknowledge', $batch) }}">
-                            @csrf <button class="btn btn-sm min-h-[44px]" type="submit">Acknowledge {{ $batch->warning_count }} warning(s)</button>
+                            @csrf <button class="btn btn-sm h-11 min-h-[44px]" type="submit">Acknowledge {{ $batch->warning_count }} warning(s)</button>
                         </form>
                     @endif
 
                     <form method="POST" action="{{ route('historical.batches.destroy', $batch) }}"
                           onsubmit="return confirm('Roll back this draft batch? Everything it created is discarded.');">
                         @csrf @method('DELETE')
-                        <button class="btn btn-danger btn-sm min-h-[44px]" type="submit">Roll back draft</button>
+                        <button class="btn btn-danger btn-sm h-11 min-h-[44px]" type="submit">Roll back draft</button>
                     </form>
                 @endunless
             @endcan
@@ -339,11 +435,11 @@
             @can('historical.publish')
                 @unless($batch->isPublished())
                     @if($blocker)
-                        <span class="text-sm text-amber-700">Cannot publish yet: {{ $blocker }}</span>
+                        <span class="text-sm text-amber-700" data-historical-publish-blocker>Cannot publish yet: {{ $blocker }}</span>
                     @else
                         <form method="POST" action="{{ route('historical.batches.publish', $batch) }}"
                               onsubmit="return confirm('Publish this batch? Its records become immutable evidence.');">
-                            @csrf <button class="btn btn-primary btn-sm min-h-[44px]" type="submit">Publish batch</button>
+                            @csrf <button class="btn btn-primary btn-sm h-11 min-h-[44px]" type="submit">Publish batch</button>
                         </form>
                     @endif
                 @endunless
