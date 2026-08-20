@@ -243,6 +243,52 @@ class HistoricalMobileUiTest extends TestCase
         $response->assertDontSee('<option value="Line Items Archive"', false);
     }
 
+    public function test_entry_and_mapping_forms_use_native_sections_without_changing_contracts(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $upload = $this->actingAs($owner)->get(route('historical.upload.create'))->assertOk();
+        $uploadXpath = $this->xpath($upload->getContent());
+        $uploadForm = $this->firstNode($uploadXpath, "//form[@data-historical-form='upload']");
+        $this->assertSame('post', strtolower($uploadForm->getAttribute('method')));
+        $this->assertSame(route('historical.upload.store'), $uploadForm->getAttribute('action'));
+        $this->assertSame('multipart/form-data', $uploadForm->getAttribute('enctype'));
+        $this->firstNode($uploadXpath, "//form[@data-historical-form='upload']//*[@data-historical-card-header]");
+        $this->firstNode($uploadXpath, "//form[@data-historical-form='upload']//*[@data-historical-card-body]");
+        $this->firstNode($uploadXpath, "//form[@data-historical-form='upload']//*[@data-historical-card-footer]");
+
+        $manual = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $manualXpath = $this->xpath($manual->getContent());
+        $manualForm = $this->firstNode($manualXpath, "//form[@data-historical-form='manual']");
+        $this->assertSame(route('historical.manual.preview'), $manualForm->getAttribute('action'));
+        $this->assertSame('false', $manualForm->getAttribute('data-turbo'));
+        $this->assertSame('{ lines: [] }', $manualForm->getAttribute('x-data'));
+        $this->assertGreaterThanOrEqual(6, $manualXpath->query("//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]")?->length);
+        $this->assertStringContainsString('@click="lines.push({})"', $manual->getContent());
+
+        $batch = $this->uploadFile(
+            $owner,
+            $shop->id,
+            UploadedFile::fake()->createWithContent('native-layout-c.xlsx', $this->buildTwoSheetXlsx())
+        );
+        $mapping = $this->actingAs($owner)->get(route('historical.batches.map', $batch))->assertOk();
+        $mappingXpath = $this->assertMapShrinkContract($mapping->getContent());
+        $mappingForm = $this->firstNode($mappingXpath, "//form[@data-historical-form='mapping']");
+        $this->assertSame(route('historical.batches.map.save', $batch), $mappingForm->getAttribute('action'));
+        $this->assertGreaterThanOrEqual(8, $mappingXpath->query("//form[@data-historical-form='mapping']//fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(1, $mappingXpath->query("//select[@id='map_sheet_header' and @name='sheets[header]']")?->length);
+        $this->assertSame(1, $mappingXpath->query("//select[@id='map_sheet_detail' and @name='sheets[detail]']")?->length);
+        $this->assertGreaterThan(0, $mappingXpath->query("//select[contains(concat(' ', normalize-space(@class), ' '), ' js-mapping-field ') and @data-sheet-role]")?->length);
+        $this->assertStringContainsString("refresh('header', this.value);", $mapping->getContent());
+        $this->assertStringContainsString("refresh('detail', this.value);", $mapping->getContent());
+
+        $workflow = $this->firstNode($mappingXpath, "//ol[@data-historical-workflow]");
+        $this->assertContains('sm:grid-cols-4', preg_split('/\s+/', trim($workflow->getAttribute('class'))) ?: []);
+        $this->assertSame(4, $mappingXpath->query("//ol[@data-historical-workflow]/li")?->length);
+        $this->assertSame(1, $mappingXpath->query("//ol[@data-historical-workflow]//*[@aria-current='step' and contains(normalize-space(.), 'Map')]")?->length);
+    }
+
     public function test_upload_manual_preview_and_index_actions_have_mobile_tap_targets(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();

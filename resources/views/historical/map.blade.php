@@ -30,13 +30,13 @@
                 {{ $error }}
             </div>
         @else
-        <form method="POST" action="{{ route('historical.batches.map.save', $batch) }}" class="grid gap-5 min-w-0 max-w-full">
+        <form method="POST" action="{{ route('historical.batches.map.save', $batch) }}" class="grid gap-4 min-w-0 max-w-full" data-historical-form="mapping">
             @csrf
 
             {{-- Profile basics --}}
-            <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                <legend class="text-base font-semibold text-slate-800 px-1">Profile</legend>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 min-w-0 max-w-full">
+            <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+                <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Profile</legend>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6 min-w-0 max-w-full">
                     <div class="min-w-0 max-w-full">
                         <label for="map_name" class="min-w-0 max-w-full">Profile name</label>
                         <input type="text" id="map_name" name="name" required aria-required="true" class="w-full min-w-0 max-w-full"
@@ -101,9 +101,10 @@
 
             {{-- Sheets. Layout C joins a header sheet to a detail sheet. --}}
             @if(count($sheets) > 0)
-                <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                    <legend class="text-base font-semibold text-slate-800 px-1">Sheets</legend>
-                    <p class="text-sm text-slate-500 mt-1 mb-2">Workbook sheets: {{ implode(', ', array_column($sheets, 'name')) }}</p>
+                <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+                    <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Sheets</legend>
+                    <div class="p-4 sm:p-6 min-w-0 max-w-full">
+                    <p class="text-sm text-slate-500 mb-4">Workbook sheets: {{ implode(', ', array_column($sheets, 'name')) }}</p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0 max-w-full">
                         <div class="min-w-0 max-w-full">
                             <label for="map_sheet_header" class="min-w-0 max-w-full">Data / header sheet</label>
@@ -123,6 +124,7 @@
                             </select>
                         </div>
                     </div>
+                    </div>
                 </fieldset>
             @endif
 
@@ -140,9 +142,9 @@
                         $role    = $group === 'Line' ? 'detail' : 'header';
                         $options = $group === 'Line' ? $detailHeaders : $headers;
                     @endphp
-                    <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                        <legend class="text-base font-semibold text-slate-800 px-1">{{ $group }}</legend>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 min-w-0 max-w-full">
+                    <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+                        <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">{{ $group }}</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 sm:p-6 min-w-0 max-w-full">
                             @foreach($fields as $field => $g)
                                 <div class="min-w-0 max-w-full">
                                     <label for="map_field_{{ $field }}" class="min-w-0 max-w-full">{{ str_replace('_', ' ', $field) }}
@@ -162,9 +164,9 @@
             @endforeach
 
             {{-- Layout C join key columns. --}}
-            <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                <legend class="text-base font-semibold text-slate-800 px-1">Link column <span class="text-slate-400 font-normal text-sm">(Layout C only)</span></legend>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 min-w-0 max-w-full">
+            <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+                <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Link column <span class="text-slate-400 font-normal text-sm">(Layout C only)</span></legend>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 sm:p-6 min-w-0 max-w-full">
                     <div class="min-w-0 max-w-full">
                         <label for="map_join_header" class="min-w-0 max-w-full">Header sheet key</label>
                         <select id="map_join_header" name="mapping[{{ HistoricalFields::JOIN_KEY }}]" class="js-mapping-field w-full min-w-0 max-w-full min-h-[44px]" data-sheet-role="header">
@@ -188,9 +190,10 @@
 
             {{-- Unmapped columns must be a decision, never a silent drop (Phase 9). --}}
             @if($suggestion['unmapped'] ?? [])
-                <fieldset class="min-w-0 max-w-full rounded-2xl border border-amber-300 bg-white p-4 sm:p-6">
-                    <legend class="text-base font-semibold text-slate-800 px-1">Unrecognized columns</legend>
-                    <p class="text-sm text-slate-500 mt-1 mb-2">Map these above, or mark each as ignored or informational — nothing is silently dropped.</p>
+                <fieldset class="min-w-0 max-w-full rounded-2xl border border-amber-300 bg-white overflow-hidden" data-historical-form-section>
+                    <legend class="block w-full border-b border-amber-200 bg-amber-50 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Unrecognized columns</legend>
+                    <div class="p-4 sm:p-6 min-w-0 max-w-full">
+                    <p class="text-sm text-slate-500 mb-4">Map these above, or mark each as ignored or informational — nothing is silently dropped.</p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0 max-w-full">
                         @foreach($suggestion['unmapped'] as $header)
                             <div class="min-w-0 max-w-full">
@@ -202,13 +205,15 @@
                             </div>
                         @endforeach
                     </div>
+                    </div>
                 </fieldset>
             @endif
 
             {{-- Making / labour defaults + zero-tax confirmation. --}}
-            <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                <legend class="text-base font-semibold text-slate-800 px-1">Making / labour charge defaults</legend>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 min-w-0 max-w-full">
+            <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+                <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Making / labour charge defaults</legend>
+                <div class="p-4 sm:p-6 min-w-0 max-w-full">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0 max-w-full">
                     <div class="min-w-0 max-w-full">
                         <label for="map_making_category" class="min-w-0 max-w-full">Category</label>
                         <select id="map_making_category" name="making_defaults[category]" class="w-full min-w-0 max-w-full min-h-[44px]">
@@ -233,13 +238,15 @@
                     <input type="checkbox" id="map_zero_confirmed" name="tax_defaults[zero_confirmed]" value="1" @checked($profile?->tax_defaults['zero_confirmed'] ?? false)>
                     <span class="font-normal normal-case tracking-normal text-sm text-slate-700">A blank/zero tax column means genuinely no tax (not applicable), not missing data.</span>
                 </label>
+                </div>
             </fieldset>
 
             {{-- Sample rows so the operator sees what they're mapping. --}}
             @if($samples ?? [])
-                <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-                    <legend class="text-base font-semibold text-slate-800 px-1">Sample rows</legend>
-                    <div class="overflow-x-auto mt-2">
+                <fieldset class="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section>
+                    <legend class="block w-full border-b border-slate-200 px-4 py-4 text-base font-semibold text-slate-900 sm:px-6">Sample rows</legend>
+                    <div class="p-4 sm:p-6 min-w-0 max-w-full">
+                    <div class="overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead><tr class="text-left">@foreach($headers as $h)<th>{{ $h }}</th>@endforeach</tr></thead>
                             <tbody class="divide-y divide-slate-100">
@@ -249,6 +256,7 @@
                             </tbody>
                         </table>
                     </div>
+                    </div>
                 </fieldset>
             @endif
 
@@ -256,7 +264,10 @@
                  repeated at the very top of the workflow-steps bar's scroll
                  position is not guaranteed — instead it stays a normal
                  in-flow primary button, which every other historical form uses. --}}
-            <div><button class="btn btn-primary min-h-[44px]" type="submit">Save mapping &amp; normalize</button></div>
+            <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-historical-card-footer>
+                <p class="text-xs text-slate-500">Saving validates the mapping and prepares a review batch. It does not publish documents.</p>
+                <button class="btn btn-primary min-h-[44px]" type="submit">Save mapping &amp; normalize</button>
+            </div>
         </form>
 
         <script>

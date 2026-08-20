@@ -19,7 +19,12 @@
     <div class="content-inner historical-manual-page">
         <x-app-alerts />
 
-        <p class="text-sm text-amber-700 mb-4">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <div class="flex items-start gap-3">
+                <span class="inline-flex shrink-0 items-center rounded bg-teal-700 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">{{ HistoricalSalesDocument::BADGE }}</span>
+                <p class="text-sm text-amber-800">{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}</p>
+            </div>
+        </div>
 
         {{-- Blocking findings from a rejected save. --}}
         @if(session('historical_messages'))
@@ -35,14 +40,14 @@
              so it must be opted out here — see resources/views/export/index.blade.php
              and super-admin/account/index.blade.php for the same pattern. --}}
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
-              x-data="{ lines: [] }" class="grid gap-5">
+              x-data="{ lines: [] }" class="grid gap-4" data-historical-form="manual">
             @csrf
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
-            <div>
-                <button class="btn btn-primary min-h-[44px]" type="submit">Preview</button>
-                <p class="text-xs text-slate-500 mt-2">Nothing is saved yet — the next screen is a read-only preview to review before Confirm Save.</p>
+            <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-historical-card-footer>
+                <p class="text-xs text-slate-500">Nothing is saved yet — the next screen is a read-only preview to review before Confirm Save.</p>
+                <button class="btn btn-primary min-h-[44px]" type="submit">Preview historical bill</button>
             </div>
         </form>
     </div>
