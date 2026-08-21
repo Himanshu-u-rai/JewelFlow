@@ -4922,7 +4922,7 @@
                                         </span>
                                         <div class="dash-row-copy">
                                             <div class="dash-row-title">{{ \Illuminate\Support\Str::limit($rep->item_description, 36) }}</div>
-                                            <div class="dash-row-meta">Ticket #{{ $rep->id }}</div>
+                                            <div class="dash-row-meta">{{ $rep->repair_number ? 'REP-' . str_pad($rep->repair_number, 3, '0', STR_PAD_LEFT) : 'Ticket —' }}</div>
                                         </div>
                                     </div>
                                     <div class="dash-row-mid">{{ $rep->created_at->format('d M') }}</div>

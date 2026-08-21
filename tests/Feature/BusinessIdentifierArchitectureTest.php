@@ -101,8 +101,30 @@ class BusinessIdentifierArchitectureTest extends TestCase
             'status' => Invoice::STATUS_DRAFT,
         ]));
 
-        $this->assertStringEndsWith('-0000000001', $invoiceA->invoice_number);
-        $this->assertStringEndsWith('-0000000001', $invoiceB->invoice_number);
+        // Each shop counts in its own sequence, so two shops issuing their first
+        // invoice both land on the same opening number. Asserted on the sequence
+        // and on that collision rather than a literal format: the number is now
+        // prefix + sequence + suffix, all owner-configurable per shop, so pinning
+        // the rendered string would test the default settings, not the isolation.
+        $this->assertSame($invoiceA->invoice_sequence, $invoiceB->invoice_sequence);
+        $this->assertSame($invoiceA->invoice_number, $invoiceB->invoice_number);
+
+        // And the sequence advances within a shop without touching the other.
+        $this->actingAs($userA);
+        $invoiceA2 = TenantContext::runFor($shopA->id, fn () => Invoice::issue([
+            'shop_id' => $shopA->id,
+            'customer_id' => $customerA->id,
+            'gold_rate' => 0,
+            'subtotal' => 0,
+            'gst' => 0,
+            'gst_rate' => 3,
+            'wastage_charge' => 0,
+            'total' => 0,
+            'status' => Invoice::STATUS_DRAFT,
+        ]));
+
+        $this->assertSame($invoiceA->invoice_sequence + 1, $invoiceA2->invoice_sequence);
+        $this->assertSame($invoiceB->invoice_sequence, $invoiceB->fresh()->invoice_sequence);
     }
 
     public function test_duplicate_shop_lot_number_is_rejected_by_db_constraint(): void
