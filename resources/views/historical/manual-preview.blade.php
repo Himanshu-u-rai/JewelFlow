@@ -53,16 +53,16 @@
                                 <span class="text-sm font-normal text-slate-500">Series {{ $attributes['document_series'] }}</span>
                             @endif
                         </p>
-                        <dl class="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-                            <div class="rounded-xl bg-slate-50 px-3 py-3">
+                        <dl class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+                            <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
                                 <dt class="text-xs font-medium text-slate-500">Document date</dt>
                                 <dd class="mt-1 font-semibold text-slate-800">{{ $documentDateDisplay }}</dd>
                             </div>
-                            <div class="rounded-xl bg-slate-50 px-3 py-3">
+                            <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
                                 <dt class="text-xs font-medium text-slate-500">Financial year</dt>
                                 <dd class="mt-1 font-semibold text-slate-800">{{ $attributes['financial_year'] ?? '—' }}</dd>
                             </div>
-                            <div class="col-span-2 rounded-xl bg-slate-50 px-3 py-3 sm:col-span-1">
+                            <div class="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
                                 <dt class="text-xs font-medium text-slate-500">Source</dt>
                                 <dd class="mt-1 font-semibold text-slate-800">{{ $attributes['source_system'] ?? '—' }}</dd>
                             </div>
@@ -92,7 +92,7 @@
             {{-- Findings remain informational until the server re-validates on save. --}}
             <div class="grid gap-3" data-historical-preview-messages>
                 @if($errors !== [])
-                    <section class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3" role="alert">
+                    <section class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3" role="alert" data-historical-preview-finding="blocking">
                         <h2 class="text-sm font-semibold text-rose-800">Blocking issues</h2>
                         <p class="mt-1 text-xs text-rose-700">This bill cannot be saved until these are fixed.</p>
                         <div class="mt-2 grid gap-1">
@@ -102,16 +102,23 @@
                 @endif
 
                 @if($warnings !== [])
-                    <section class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <section class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3" data-historical-preview-finding="warnings">
                         <h2 class="text-sm font-semibold text-amber-800">Review warnings</h2>
                         <div class="mt-2 grid gap-1">
                             @foreach($warnings as $m)<p class="text-sm text-amber-800">{{ $m['text'] }}</p>@endforeach
                         </div>
+                        @if (! empty($warningDigest))
+                            <label class="mt-3 flex min-h-[44px] items-start gap-3 border-t border-amber-200 pt-3 text-sm text-amber-900">
+                                <input type="checkbox" name="acknowledge_warnings" value="1" form="historical-manual-preview-form" class="mt-0.5 h-4 w-4 rounded border-amber-300">
+                                <span>I have read the {{ count($warnings) }} warning(s) above and want to record this bill as it stands.</span>
+                            </label>
+                            <input type="hidden" name="acknowledged_warning_digest" value="{{ $warningDigest }}" form="historical-manual-preview-form">
+                        @endif
                     </section>
                 @endif
 
                 @if($infos !== [])
-                    <section class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                    <section class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3" data-historical-preview-finding="informational">
                         <h2 class="text-sm font-semibold text-blue-800">Record notes</h2>
                         <div class="mt-2 grid gap-1">
                             @foreach($infos as $m)<p class="text-sm text-blue-800">{{ $m['text'] }}</p>@endforeach
@@ -121,29 +128,62 @@
             </div>
 
             <div class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-historical-preview-layout>
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white lg:col-span-2" data-historical-preview-card="amounts">
+                    <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                        <h2 class="text-base font-semibold text-slate-900">Financial summary</h2>
+                        <p class="mt-1 text-xs text-slate-500">Computed review values; nothing here is trusted as input.</p>
+                    </div>
+                    <dl class="grid grid-cols-1 gap-3 p-4 text-sm sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="taxable">
+                            <dt class="text-xs font-medium text-slate-500">Taxable</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['taxable_amount'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="discount">
+                            <dt class="text-xs font-medium text-slate-500">Discount</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['discount_snapshot'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="rounding">
+                            <dt class="text-xs font-medium text-slate-500">Rounding</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['rounding_snapshot'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3" data-historical-preview-field="grand-total">
+                            <dt class="text-xs font-medium text-amber-700">Grand total</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="paid">
+                            <dt class="text-xs font-medium text-slate-500">Paid</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['paid_amount_snapshot'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="outstanding">
+                            <dt class="text-xs font-medium text-slate-500">Outstanding</dt>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['outstanding_amount_snapshot'] ?? 0), 2) }}</dd>
+                        </div>
+                    </dl>
+                </section>
+
                 <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-preview-card="customer">
                     <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
                         <h2 class="text-base font-semibold text-slate-900">Customer snapshot</h2>
                         <p class="mt-1 text-xs text-slate-500">Stored as entered and never linked automatically.</p>
                     </div>
-                    <dl class="grid grid-cols-1 gap-4 p-4 text-sm sm:grid-cols-2 sm:p-6">
-                        <div>
+                    <dl class="grid grid-cols-1 gap-3 p-4 text-sm sm:grid-cols-2 sm:p-6">
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="customer-name">
                             <dt class="text-xs font-medium text-slate-500">Name</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $customer['name'] ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="customer-mobile">
                             <dt class="text-xs font-medium text-slate-500">Mobile</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $customer['mobile'] ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="customer-gstin">
                             <dt class="text-xs font-medium text-slate-500">GSTIN</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $customer['gstin'] ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="place-of-supply">
                             <dt class="text-xs font-medium text-slate-500">Place of supply</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $customer['place_of_supply'] ?? '—' }}</dd>
                         </div>
-                        <div class="sm:col-span-2">
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:col-span-2" data-historical-preview-field="customer-address">
                             <dt class="text-xs font-medium text-slate-500">Address</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $customer['address'] ?? '—' }}</dd>
                         </div>
@@ -172,86 +212,38 @@
                         <h2 class="text-base font-semibold text-slate-900">Tax and making / labour</h2>
                         <p class="mt-1 text-xs text-slate-500">Normalized display values from the submitted record.</p>
                     </div>
-                    <dl class="grid grid-cols-2 gap-4 p-4 text-sm sm:p-6">
-                        <div>
+                    <dl class="grid grid-cols-1 gap-3 p-4 text-sm sm:grid-cols-2 sm:p-6">
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="tax-mode">
                             <dt class="text-xs font-medium text-slate-500">Tax mode</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $attributes['tax_mode'] ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="tax-completeness">
                             <dt class="text-xs font-medium text-slate-500">Completeness</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $attributes['tax_completeness'] ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="making-label">
                             <dt class="text-xs font-medium text-slate-500">Charge label</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $attributes['making_label_original'] ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="making-value">
                             <dt class="text-xs font-medium text-slate-500">Charge value</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $attributes['making_value_original'] ?? '—' }}</dd>
                         </div>
-                        <div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="making-category">
                             <dt class="text-xs font-medium text-slate-500">Category</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $attributes['making_category'] ?? 'Uncategorized' }}</dd>
                         </div>
-                        <div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="making-basis">
                             <dt class="text-xs font-medium text-slate-500">Basis</dt>
                             <dd class="mt-1 font-medium text-slate-800">{{ $attributes['making_basis'] ?? 'Unknown' }}</dd>
                         </div>
-                        <div class="col-span-2 border-t border-slate-200 pt-4">
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 sm:col-span-2" data-historical-preview-field="making-amount">
                             <dt class="text-xs font-medium text-slate-500">Computed making / labour amount</dt>
                             <dd class="mt-1 text-lg font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['making_amount'] ?? 0), 2) }}</dd>
                         </div>
                     </dl>
                 </section>
 
-                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white lg:col-span-2" data-historical-preview-card="amounts">
-                    <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
-                        <h2 class="text-base font-semibold text-slate-900">Financial summary</h2>
-                        <p class="mt-1 text-xs text-slate-500">Computed review values; nothing here is trusted as input.</p>
-                    </div>
-                    <dl class="grid grid-cols-2 gap-3 p-4 text-sm sm:grid-cols-3 sm:p-6 md:hidden">
-                        <div class="rounded-xl bg-slate-50 p-3">
-                            <dt class="text-xs font-medium text-slate-500">Taxable</dt>
-                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['taxable_amount'] ?? 0), 2) }}</dd>
-                        </div>
-                        <div class="rounded-xl bg-slate-50 p-3">
-                            <dt class="text-xs font-medium text-slate-500">Discount</dt>
-                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['discount_snapshot'] ?? 0), 2) }}</dd>
-                        </div>
-                        <div class="rounded-xl bg-slate-50 p-3">
-                            <dt class="text-xs font-medium text-slate-500">Rounding</dt>
-                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['rounding_snapshot'] ?? 0), 2) }}</dd>
-                        </div>
-                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3">
-                            <dt class="text-xs font-medium text-amber-700">Grand total</dt>
-                            <dd class="mt-1 font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</dd>
-                        </div>
-                        <div class="rounded-xl bg-slate-50 p-3">
-                            <dt class="text-xs font-medium text-slate-500">Paid</dt>
-                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['paid_amount_snapshot'] ?? 0), 2) }}</dd>
-                        </div>
-                        <div class="rounded-xl bg-slate-50 p-3">
-                            <dt class="text-xs font-medium text-slate-500">Outstanding</dt>
-                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['outstanding_amount_snapshot'] ?? 0), 2) }}</dd>
-                        </div>
-                    </dl>
-                    <div class="hidden overflow-x-auto p-4 sm:p-6 md:block">
-                        <table class="w-full text-sm">
-                            <tbody class="divide-y divide-slate-200">
-                                <tr>
-                                    <td class="py-3 text-slate-500">Taxable</td><td class="py-3 pr-8 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['taxable_amount'] ?? 0), 2) }}</td>
-                                    <td class="py-3 text-slate-500">Discount</td><td class="py-3 pr-8 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['discount_snapshot'] ?? 0), 2) }}</td>
-                                    <td class="py-3 text-slate-500">Rounding</td><td class="py-3 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['rounding_snapshot'] ?? 0), 2) }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="py-3 text-slate-500">Grand total</td><td class="py-3 pr-8 text-right font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</td>
-                                    <td class="py-3 text-slate-500">Paid</td><td class="py-3 pr-8 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['paid_amount_snapshot'] ?? 0), 2) }}</td>
-                                    <td class="py-3 text-slate-500">Outstanding</td><td class="py-3 text-right font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['outstanding_amount_snapshot'] ?? 0), 2) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
             </div>
 
             <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-preview-items>
@@ -265,12 +257,13 @@
                             <table class="w-full min-w-full text-sm">
                                 <thead class="bg-slate-50">
                                     <tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
-                                        <th class="border-b border-slate-200 px-4 py-3 sm:px-6">Item</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Qty</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Net wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Gross wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Stone wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Total</th>
+                                        <th class="w-16 border-b border-slate-200 px-4 py-3 text-center">No.</th><th class="border-b border-slate-200 px-4 py-3 sm:px-6">Item</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Qty</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Net wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Gross wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Stone wt</th><th class="border-b border-slate-200 px-4 py-3 text-right sm:px-6">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
                                     @foreach($lines as $line)
                                         <tr class="transition-colors hover:bg-slate-50">
+                                            <td class="w-16 px-4 py-4 text-center text-sm font-medium tabular-nums text-slate-500" data-historical-row-number="line">{{ $loop->iteration }}</td>
                                             <td class="px-4 py-4 text-sm font-semibold text-slate-900 sm:px-6">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</td>
                                             <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['quantity'] ?? '—' }}</td>
                                             <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['net_weight'] ?? '—' }}</td>
@@ -287,7 +280,10 @@
                         @foreach($lines as $line)
                             <article class="rounded-xl border border-slate-200 bg-white p-4">
                                 <div class="flex items-start justify-between gap-3">
-                                    <h3 class="min-w-0 text-sm font-semibold text-slate-900">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</h3>
+                                    <div class="flex min-w-0 items-center gap-2">
+                                        <span class="inline-flex w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold tabular-nums text-slate-500" data-historical-row-number="line">{{ $loop->iteration }}</span>
+                                        <h3 class="min-w-0 text-sm font-semibold text-slate-900">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</h3>
+                                    </div>
                                     <span class="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</span>
                                 </div>
                                 <dl class="mt-4 grid grid-cols-2 gap-3 text-xs">
@@ -322,7 +318,7 @@
              HistoricalManualEntryController::preview() puts the just-submitted
              lines into old() before this view renders, so Edit/Recalculate
              reloads exactly what was typed instead of starting empty. --}}
-        <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
+        <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false" id="historical-manual-preview-form"
               x-data="{ lines: [] }"
               x-init="lines = historicalPadLines(historicalSeedLines(@js(old('lines', []))))"
               class="grid gap-4" data-historical-form="manual-preview" aria-labelledby="historical-preview-editor-title">
@@ -330,30 +326,17 @@
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
-            {{-- Warning acknowledgement for a direct publish. The digest pins this tick
-                 to the exact warning set shown above: edit the bill so its warnings
-                 change and the server recomputes a different digest and refuses the
-                 stale acknowledgement instead of carrying it over. --}}
-            @if (! empty($warningDigest))
-                <label class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:px-6">
-                    <input type="checkbox" name="acknowledge_warnings" value="1" class="mt-0.5 h-4 w-4 rounded border-amber-300">
-                    <span>I have read the {{ $messages->countOf(\App\Support\Historical\HistoricalMessages::WARNING) }}
-                        warning(s) above and want to record this bill as it stands.</span>
-                </label>
-                <input type="hidden" name="acknowledged_warning_digest" value="{{ $warningDigest }}">
-            @endif
-
-            <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <p class="text-xs text-slate-500">Recalculate to review edits, or save once the historical record is correct.</p>
+            <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-historical-preview-actions>
+                <p class="text-xs text-slate-500">Save draft is reversible. Save &amp; publish makes the historical record permanent.</p>
                 <div class="flex gap-3 flex-wrap">
                     <button class="btn min-h-[44px]" type="submit">Edit / Recalculate preview</button>
                     <button class="btn btn-primary min-h-[44px]" type="submit"
                             name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT }}"
-                            formaction="{{ route('historical.manual.store') }}">Save draft</button>
+                            formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="draft">Save draft</button>
                     @can('historical.publish')
-                        <button class="btn btn-primary min-h-[44px]" type="submit"
+                        <button class="btn min-h-[44px]" type="submit"
                                 name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH }}"
-                                formaction="{{ route('historical.manual.store') }}">Save &amp; publish</button>
+                                formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="publish">Save &amp; publish</button>
                     @endcan
                 </div>
             </div>

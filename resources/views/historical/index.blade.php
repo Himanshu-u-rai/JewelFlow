@@ -66,6 +66,7 @@
                     <table class="w-full min-w-[720px]">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th class="w-16 px-4 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600">No.</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600">Label</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600">Source</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600">Status</th>
@@ -77,6 +78,7 @@
                     <tbody class="divide-y divide-slate-100 bg-white">
                         @forelse($batches as $batch)
                             <tr class="transition-colors hover:bg-slate-50">
+                                <td class="w-16 px-4 py-4 text-center text-sm font-medium tabular-nums text-slate-500" data-historical-row-number="batch">{{ $loop->iteration }}</td>
                                 <td class="px-6 py-4 text-sm font-semibold text-slate-900">{{ $batch->label }}</td>
                                 <td class="px-6 py-4 text-sm text-slate-600">{{ $batch->source_system ?? '—' }}</td>
                                 <td class="px-6 py-4">
@@ -92,8 +94,8 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-10 text-center text-slate-500 text-sm">
-                                    No import batches yet. Import a file or enter a bill to start one.
+                                <td colspan="7" class="px-6 py-10 text-center text-slate-500 text-sm">
+                                    No file imports yet. Import a CSV or XLSX file to begin.
                                 </td>
                             </tr>
                         @endforelse
@@ -107,7 +109,10 @@
                     <article class="rounded-xl border border-slate-200 bg-white p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <h3 class="text-sm font-semibold text-slate-900">{{ $batch->label }}</h3>
+                                <div class="flex items-center gap-2">
+                                    <span class="inline-flex w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold tabular-nums text-slate-500" data-historical-row-number="batch">{{ $loop->iteration }}</span>
+                                    <h3 class="min-w-0 text-sm font-semibold text-slate-900">{{ $batch->label }}</h3>
+                                </div>
                                 <p class="mt-1 text-xs text-slate-500">{{ $batch->source_system ?? 'Source unavailable' }}</p>
                             </div>
                             <span class="inline-flex shrink-0 items-center rounded-full px-2 py-1 text-xs font-medium {{ $batchStatusColors[$batch->status] ?? 'bg-slate-100 text-slate-700' }}">
@@ -127,7 +132,7 @@
                         <a href="{{ route('historical.batches.show', $batch) }}" class="mt-4 inline-flex w-full items-center justify-center min-h-[44px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">Open batch</a>
                     </article>
                 @empty
-                    <x-empty-state compact title="No import batches yet" description="Import a file or enter a bill to start one." />
+                    <x-empty-state compact title="No file imports yet" description="Import a CSV or XLSX file to begin." />
                 @endforelse
             </div>
         </section>
@@ -146,6 +151,7 @@
                     <table class="w-full min-w-[960px]">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
+                            <th class="w-16 px-4 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600">No.</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600">{{ HistoricalSalesDocument::NUMBER_LABEL }}</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600">Source</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600">Date</th>
@@ -160,6 +166,7 @@
                     <tbody class="divide-y divide-slate-100 bg-white">
                         @forelse($documents as $document)
                             <tr class="transition-colors hover:bg-slate-50">
+                                <td class="w-16 px-4 py-4 text-center text-sm font-medium tabular-nums text-slate-500" data-historical-row-number="document">{{ number_format(($documents->firstItem() ?? 1) + $loop->index) }}</td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-2">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-teal-700 text-white shrink-0">
@@ -191,7 +198,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="px-6 py-10 text-center text-slate-500 text-sm">
+                                <td colspan="10" class="px-6 py-10 text-center text-slate-500 text-sm">
                                     No historical documents yet.
                                 </td>
                             </tr>
@@ -207,6 +214,7 @@
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
+                                    <span class="inline-flex w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold tabular-nums text-slate-500" data-historical-row-number="document">{{ number_format(($documents->firstItem() ?? 1) + $loop->index) }}</span>
                                     <span class="inline-flex shrink-0 items-center rounded bg-teal-700 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">{{ HistoricalSalesDocument::BADGE }}</span>
                                     <h3 class="min-w-0 text-sm font-semibold text-slate-900">{{ $document->displayNumber() }}</h3>
                                 </div>

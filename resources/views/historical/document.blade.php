@@ -37,7 +37,7 @@
 
         {{-- Lifecycle: revises/supersededBy are already eager-loaded by the
              controller but were never rendered before this. Read-only, links only. --}}
-        @if($document->revises || $document->supersededBy || $document->status === HistoricalSalesDocument::STATUS_VOID)
+        @if($document->revises || $document->supersededBy || $lifecycle['is_void'])
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-6">
                 <h2 class="text-base font-semibold text-slate-800 mb-2">Lifecycle</h2>
                 <ul class="text-sm text-slate-700 grid gap-1">
@@ -51,7 +51,7 @@
                             <a href="{{ route('historical.documents.show', $document->supersededBy) }}" class="text-teal-700 hover:text-teal-800 font-medium">{{ $document->supersededBy->displayNumber() }}</a>
                         </li>
                     @endif
-                    @if($document->status === HistoricalSalesDocument::STATUS_VOID)
+                    @if($lifecycle['is_void'])
                         <li>
                             Voided{{ $document->voider?->name ? ' by '.$document->voider->name : '' }}{{ $document->voided_at ? ' on '.$document->voided_at->format('d M Y, H:i') : '' }}
                             @if($document->void_reason)<br><span class="text-slate-500">Reason: {{ $document->void_reason }}</span>@endif
@@ -61,33 +61,166 @@
             </div>
         @endif
 
+        @if($lifecycle['is_manual'])
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-manual-lifecycle>
+                <div class="flex flex-col items-start gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:justify-between sm:px-6">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Manual bill review</p>
+                        <h2 class="mt-1 text-lg font-semibold text-slate-900">Review findings and lifecycle</h2>
+                        <p class="mt-1 text-sm text-slate-600">This document is reviewed and managed individually. File-import batch controls do not apply.</p>
+                    </div>
+                    <span class="inline-flex shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                        {{ ucfirst((string) ($lifecycle['batch_status'] ?? 'unknown')) }}
+                    </span>
+                </div>
+
+                <div class="grid gap-4 p-4 sm:p-6">
+                    @if($lifecycle['is_published'])
+                        <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-historical-manual-terminal="published">
+                            Published record — findings remain visible for reference. No manual review action is available.
+                        </div>
+                    @elseif($lifecycle['is_void'])
+                        <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" data-historical-manual-terminal="void">
+                            Void record — findings remain visible for reference. No manual review action is available.
+                        </div>
+                    @elseif($lifecycle['is_superseded'])
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700" data-historical-manual-terminal="superseded">
+                            Superseded record — findings remain visible for reference. No manual review action is available.
+                        </div>
+                    @endif
+
+                    @if($lifecycle['blocking'] !== [])
+                        <section class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3" data-historical-findings="blocking" role="alert">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <h3 class="text-sm font-semibold text-rose-800">Blocking issues</h3>
+                                <span class="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-rose-800">{{ $lifecycle['blocking_count'] }}</span>
+                            </div>
+                            <div class="mt-2 grid gap-1">
+                                @foreach($lifecycle['blocking'] as $finding)
+                                    <p class="text-sm text-rose-700">{{ $finding['text'] }}</p>
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+
+                    @if($lifecycle['warnings'] !== [])
+                        <section class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3" data-historical-findings="warnings">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <h3 class="text-sm font-semibold text-amber-800">Review warnings</h3>
+                                <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-amber-800">{{ $lifecycle['warning_count'] }}</span>
+                            </div>
+                            <div class="mt-2 grid gap-1">
+                                @foreach($lifecycle['warnings'] as $finding)
+                                    <p class="text-sm text-amber-800">{{ $finding['text'] }}</p>
+                                @endforeach
+                            </div>
+
+                            @if($lifecycle['warnings_acknowledged'])
+                                <p class="mt-3 border-t border-amber-200 pt-3 text-sm font-medium text-amber-900" data-historical-acknowledgement="complete">
+                                    Warnings acknowledged{{ $lifecycle['acknowledged_at'] ? ' on '.$lifecycle['acknowledged_at']->format('d M Y, H:i') : '' }}.
+                                </p>
+                            @else
+                                <p class="mt-3 border-t border-amber-200 pt-3 text-sm text-amber-900" data-historical-acknowledgement="pending">Warnings still need acknowledgement.</p>
+                                @if($lifecycle['is_draft'])
+                                    @can('historical.import')
+                                        <form method="POST" action="{{ route('historical.documents.acknowledge', $document) }}" class="mt-3" data-historical-manual-action="acknowledge">
+                                            @csrf
+                                            <button class="btn min-h-[44px]" type="submit">Acknowledge warnings</button>
+                                        </form>
+                                    @endcan
+                                @endif
+                            @endif
+                        </section>
+                    @endif
+
+                    @if($lifecycle['informational'] !== [])
+                        <section class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3" data-historical-findings="informational">
+                            <h3 class="text-sm font-semibold text-blue-800">Record notes</h3>
+                            <div class="mt-2 grid gap-1">
+                                @foreach($lifecycle['informational'] as $finding)
+                                    <p class="text-sm text-blue-800">{{ $finding['text'] }}</p>
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+
+                    @if($lifecycle['is_draft'])
+                        <section class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4" data-historical-manual-next-actions>
+                            <h3 class="text-sm font-semibold text-slate-900">Next action</h3>
+                            @if($lifecycle['can_publish'])
+                                <p class="mt-1 text-sm text-slate-600">Review complete. Publishing makes this historical record permanent.</p>
+                                @can('historical.publish')
+                                    <form method="POST" action="{{ route('historical.documents.publish', $document) }}" class="mt-3" data-historical-manual-action="publish">
+                                        @csrf
+                                        <button class="btn btn-primary min-h-[44px]" type="submit">Publish historical bill</button>
+                                    </form>
+                                @endcan
+                            @elseif($lifecycle['publish_blocker'] !== null)
+                                <p class="mt-1 text-sm text-slate-700" data-historical-publish-blocker>{{ $lifecycle['publish_blocker'] }}</p>
+                            @endif
+                        </section>
+                    @endif
+                </div>
+            </section>
+        @endif
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" data-historical-document-layout>
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-2">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-2" data-historical-document-card="identity">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Document</h2>
-                <dl class="grid grid-cols-2 gap-x-3 gap-y-4 text-sm">
-                    <dt class="text-slate-500">{{ HistoricalSalesDocument::NUMBER_LABEL }}</dt><dd class="text-slate-800 font-medium">{{ $document->displayNumber() }}</dd>
-                    <dt class="text-slate-500">Series</dt><dd class="text-slate-800">{{ $document->document_series ?? '—' }}</dd>
-                    <dt class="text-slate-500">Date</dt><dd class="text-slate-800">{{ $document->document_date?->toDateString() ?? '—' }}</dd>
-                    <dt class="text-slate-500">Financial year</dt><dd class="text-slate-800">{{ $document->financial_year ?? '—' }}</dd>
-                    <dt class="text-slate-500">Source system</dt><dd class="text-slate-800">{{ $document->source_system ?? '—' }}</dd>
-                    <dt class="text-slate-500">Status</dt><dd class="text-slate-800">{{ ucfirst($document->status) }}</dd>
+                <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="number">
+                        <dt class="text-xs font-medium text-slate-500">{{ HistoricalSalesDocument::NUMBER_LABEL }}</dt>
+                        <dd class="mt-1 font-medium text-slate-800">{{ $document->displayNumber() }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="series">
+                        <dt class="text-xs font-medium text-slate-500">Series</dt>
+                        <dd class="mt-1 text-slate-800">{{ $document->document_series ?? '—' }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="date">
+                        <dt class="text-xs font-medium text-slate-500">Date</dt>
+                        <dd class="mt-1 text-slate-800">{{ $document->document_date?->toDateString() ?? '—' }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="financial-year">
+                        <dt class="text-xs font-medium text-slate-500">Financial year</dt>
+                        <dd class="mt-1 text-slate-800">{{ $document->financial_year ?? '—' }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="source-system">
+                        <dt class="text-xs font-medium text-slate-500">Source system</dt>
+                        <dd class="mt-1 text-slate-800">{{ $document->source_system ?? '—' }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="status">
+                        <dt class="text-xs font-medium text-slate-500">Status</dt>
+                        <dd class="mt-1 text-slate-800">{{ ucfirst($document->status) }}</dd>
+                    </div>
                 </dl>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6" data-historical-document-card="customer">
                 <h2 class="text-base font-semibold text-slate-800 mb-3">Customer snapshot</h2>
-                <dl class="grid grid-cols-2 gap-x-3 gap-y-4 text-sm mb-4">
-                    <dt class="text-slate-500">Name</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'name', '—') }}</dd>
-                    <dt class="text-slate-500">Mobile</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'mobile', '—') }}</dd>
-                    <dt class="text-slate-500">GSTIN</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'gstin', '—') }}</dd>
-                    <dt class="text-slate-500">Place of supply</dt><dd class="text-slate-800">{{ data_get($document->customer_snapshot, 'place_of_supply', '—') }}</dd>
+                <dl class="mb-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="customer-name">
+                        <dt class="text-xs font-medium text-slate-500">Name</dt>
+                        <dd class="mt-1 text-slate-800">{{ data_get($document->customer_snapshot, 'name', '—') }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="customer-mobile">
+                        <dt class="text-xs font-medium text-slate-500">Mobile</dt>
+                        <dd class="mt-1 text-slate-800">{{ data_get($document->customer_snapshot, 'mobile', '—') }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="customer-gstin">
+                        <dt class="text-xs font-medium text-slate-500">GSTIN</dt>
+                        <dd class="mt-1 text-slate-800">{{ data_get($document->customer_snapshot, 'gstin', '—') }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="place-of-supply">
+                        <dt class="text-xs font-medium text-slate-500">Place of supply</dt>
+                        <dd class="mt-1 text-slate-800">{{ data_get($document->customer_snapshot, 'place_of_supply', '—') }}</dd>
+                    </div>
                 </dl>
 
                 <h3 class="text-sm font-semibold text-slate-700 mb-1">Linked customer <span class="font-normal text-slate-500">(the snapshot above never changes)</span></h3>
-                @if($document->customer)
+                @if($lifecycle['customer_linked'])
                     <p class="text-sm text-slate-700 flex items-center gap-2 flex-wrap">
-                        {{ $document->customer->name }}
-                        @if($document->customer->isArchived())
+                        {{ $document->customer?->name ?? 'Linked customer unavailable' }}
+                        @if($document->customer?->isArchived())
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">archived — link kept, no longer eligible for new links</span>
                         @endif
                     </p>
@@ -95,7 +228,7 @@
                     <p class="text-sm text-slate-500">Not linked — snapshot only.</p>
                 @endif
 
-                @if($document->status === HistoricalSalesDocument::STATUS_DRAFT)
+                @if($lifecycle['is_draft'])
                     @can('historical.import')
                         @php
                             $bases = ['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'];
@@ -164,8 +297,8 @@
              right now, not at the time the document was linked or last resolved. --}}
         @php
             $obSeverity = $openingBalanceSeverity ?? HistoricalOpeningBalanceEvaluator::NONE;
-            $obResolved = $document->opening_balance_resolution !== null;
-            $obIsDraft = $document->status === HistoricalSalesDocument::STATUS_DRAFT;
+            $obResolved = $lifecycle['opening_balance_resolution'] !== null;
+            $obIsDraft = $lifecycle['is_draft'];
             // Alarm styling and the "publishing is blocked" claim are only true
             // while the document is still draft and the block is actionable.
             // A HIGH severity on a terminal (published/void/superseded) document
@@ -179,7 +312,7 @@
                 @if($obResolved)
                     <p class="text-sm text-slate-700">
                         <strong>Resolved:</strong>
-                        {{ $document->opening_balance_resolution === HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED ? 'Already included in opening balance' : 'Separate from opening balance' }}
+                        {{ $lifecycle['opening_balance_resolution'] === HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED ? 'Already included in opening balance' : 'Separate from opening balance' }}
                         <br>
                         <span class="text-slate-500">by {{ $document->openingBalanceResolver->name ?? 'unknown' }} on {{ $document->opening_balance_resolved_at?->format('d M Y, H:i') }}</span>
                     </p>
@@ -213,23 +346,50 @@
             </div>
         @endif
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6" data-historical-document-card="amounts">
             <h2 class="text-base font-semibold text-slate-800 mb-3">Amounts <span class="font-normal text-slate-500 text-sm">(display snapshot — creates no ledger or receivable)</span></h2>
-            <table class="w-full text-sm">
-                <tbody class="divide-y divide-slate-100">
-                    <tr><td class="py-1.5 text-slate-600">Taxable</td><td class="py-1.5 text-right tabular-nums">{{ $document->taxable_amount === null ? 'unavailable' : number_format((float) $document->taxable_amount, 2) }}</td></tr>
-                    <tr><td class="py-1.5 text-slate-600">Tax completeness</td><td class="py-1.5 text-right">{{ $document->tax_completeness }}</td></tr>
-                    <tr><td class="py-1.5 text-slate-600">Metal value</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->metal_value, 2) }}</td></tr>
-                    <tr><td class="py-1.5 text-slate-600">Stone value</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->stone_value, 2) }}</td></tr>
-                    <tr><td class="py-1.5 text-slate-600">Making / labour charge ({{ $document->making_category ?? 'uncategorised' }}, {{ $document->making_basis ?? 'unknown' }})</td>
-                        <td class="py-1.5 text-right tabular-nums">{{ $document->making_amount === null ? ($document->making_value_original ?? '—').' (amount unknown)' : number_format((float) $document->making_amount, 2) }}</td></tr>
-                    <tr><td class="py-1.5 text-slate-600">Discount</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->discount_snapshot, 2) }}</td></tr>
-                    <tr><td class="py-1.5 text-slate-600">Rounding</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->rounding_snapshot, 2) }}</td></tr>
-                    <tr class="font-semibold"><td class="py-1.5 text-slate-800">Grand total</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) $document->grand_total, 2) }}</td></tr>
-                    <tr><td class="py-1.5 text-slate-600">Paid</td><td class="py-1.5 text-right tabular-nums">{{ $document->paid_amount_snapshot === null ? 'unknown' : number_format((float) $document->paid_amount_snapshot, 2) }}</td></tr>
-                    <tr><td class="py-1.5 text-slate-600">Outstanding</td><td class="py-1.5 text-right tabular-nums">{{ $document->outstanding_amount_snapshot === null ? 'unknown' : number_format((float) $document->outstanding_amount_snapshot, 2) }}</td></tr>
-                </tbody>
-            </table>
+            <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="taxable">
+                    <dt class="text-xs font-medium text-slate-500">Taxable</dt>
+                    <dd class="mt-1 font-medium tabular-nums text-slate-800">{{ $document->taxable_amount === null ? 'unavailable' : number_format((float) $document->taxable_amount, 2) }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="tax-completeness">
+                    <dt class="text-xs font-medium text-slate-500">Tax completeness</dt>
+                    <dd class="mt-1 font-medium text-slate-800">{{ $document->tax_completeness }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="metal-value">
+                    <dt class="text-xs font-medium text-slate-500">Metal value</dt>
+                    <dd class="mt-1 font-medium tabular-nums text-slate-800">{{ number_format((float) $document->metal_value, 2) }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="stone-value">
+                    <dt class="text-xs font-medium text-slate-500">Stone value</dt>
+                    <dd class="mt-1 font-medium tabular-nums text-slate-800">{{ number_format((float) $document->stone_value, 2) }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:col-span-2" data-historical-document-field="making-charge">
+                    <dt class="text-xs font-medium text-slate-500">Making / labour charge ({{ $document->making_category ?? 'uncategorised' }}, {{ $document->making_basis ?? 'unknown' }})</dt>
+                    <dd class="mt-1 font-medium tabular-nums text-slate-800">{{ $document->making_amount === null ? ($document->making_value_original ?? '—').' (amount unknown)' : number_format((float) $document->making_amount, 2) }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="discount">
+                    <dt class="text-xs font-medium text-slate-500">Discount</dt>
+                    <dd class="mt-1 font-medium tabular-nums text-slate-800">{{ number_format((float) $document->discount_snapshot, 2) }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="rounding">
+                    <dt class="text-xs font-medium text-slate-500">Rounding</dt>
+                    <dd class="mt-1 font-medium tabular-nums text-slate-800">{{ number_format((float) $document->rounding_snapshot, 2) }}</dd>
+                </div>
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3" data-historical-document-field="grand-total">
+                    <dt class="text-xs font-medium text-amber-700">Grand total</dt>
+                    <dd class="mt-1 font-semibold tabular-nums text-slate-900">{{ number_format((float) $document->grand_total, 2) }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="paid">
+                    <dt class="text-xs font-medium text-slate-500">Paid</dt>
+                    <dd class="mt-1 font-medium tabular-nums text-slate-800">{{ $document->paid_amount_snapshot === null ? 'unknown' : number_format((float) $document->paid_amount_snapshot, 2) }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-document-field="outstanding">
+                    <dt class="text-xs font-medium text-slate-500">Outstanding</dt>
+                    <dd class="mt-1 font-medium tabular-nums text-slate-800">{{ $document->outstanding_amount_snapshot === null ? 'unknown' : number_format((float) $document->outstanding_amount_snapshot, 2) }}</dd>
+                </div>
+            </dl>
         </div>
 
         <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden">
@@ -242,11 +402,12 @@
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-full text-sm">
                         <thead class="bg-slate-50 border-b border-slate-200"><tr class="text-left text-xs font-semibold normal-case tracking-normal text-slate-600">
-                            <th class="px-4 py-3 sm:px-6">Item</th><th class="px-4 py-3 sm:px-6">SKU</th><th class="px-4 py-3 sm:px-6">HSN</th><th class="px-4 py-3 text-right sm:px-6">Qty</th><th class="px-4 py-3 text-right sm:px-6">Net wt</th><th class="px-4 py-3 text-right sm:px-6">Line total</th>
+                            <th class="w-16 px-4 py-3 text-center">No.</th><th class="px-4 py-3 sm:px-6">Item</th><th class="px-4 py-3 sm:px-6">SKU</th><th class="px-4 py-3 sm:px-6">HSN</th><th class="px-4 py-3 text-right sm:px-6">Qty</th><th class="px-4 py-3 text-right sm:px-6">Net wt</th><th class="px-4 py-3 text-right sm:px-6">Line total</th>
                         </tr></thead>
                         <tbody class="divide-y divide-slate-100">
                         @foreach($document->lines as $line)
                             <tr class="transition-colors hover:bg-slate-50">
+                                <td class="w-16 px-4 py-4 text-center text-sm font-medium tabular-nums text-slate-500" data-historical-row-number="line">{{ $loop->iteration }}</td>
                                 <td class="px-4 py-4 text-sm font-semibold text-slate-900 sm:px-6">{{ data_get($line->item_snapshot, 'name', '—') }}</td>
                                 <td class="px-4 py-4 text-slate-600 sm:px-6">{{ $line->source_sku ?? '—' }}</td>
                                 <td class="px-4 py-4 text-slate-600 sm:px-6">{{ $line->hsn_snapshot ?? '—' }}</td>
@@ -263,10 +424,13 @@
                     @foreach($document->lines as $line)
                         <article class="rounded-xl border border-slate-200 bg-white p-4">
                             <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
+                                <div class="flex min-w-0 items-start gap-2">
+                                    <span class="inline-flex w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold tabular-nums text-slate-500" data-historical-row-number="line">{{ $loop->iteration }}</span>
+                                    <div class="min-w-0">
                                     <h3 class="text-sm font-semibold text-slate-900">{{ data_get($line->item_snapshot, 'name', '—') }}</h3>
                                     <p class="mt-1 text-xs text-slate-500">SKU {{ $line->source_sku ?? '—' }} · HSN {{ $line->hsn_snapshot ?? '—' }}</p>
                                     <p class="mt-1 text-xs text-slate-500">Qty {{ $line->quantity ?? '—' }} · Net wt {{ $line->net_weight ?? '—' }}</p>
+                                    </div>
                                 </div>
                                 <span class="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{{ number_format((float) $line->line_total, 2) }}</span>
                             </div>
@@ -279,7 +443,7 @@
         </section>
 
         @can('historical.publish')
-            @if($document->status === HistoricalSalesDocument::STATUS_PUBLISHED)
+            @if($lifecycle['is_published'])
                 <div class="rounded-2xl border border-rose-200 bg-white p-4 sm:p-6">
                     <h2 class="text-base font-semibold text-rose-800 mb-1">Danger zone</h2>
                     <p class="text-sm text-rose-700 mb-4">These actions change the lifecycle of a published record. Neither deletes it — the record and its number stay as evidence.</p>

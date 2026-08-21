@@ -52,8 +52,8 @@
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
             <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-historical-card-footer>
-                <p class="text-xs text-slate-500">Nothing is saved yet — the next screen is a read-only preview to review before Confirm Save.</p>
-                <button class="btn btn-primary min-h-[44px]" type="submit">Preview historical bill</button>
+                <p class="text-xs text-slate-500">Preview saves nothing. Save a draft or, if permitted, save and publish from the preview.</p>
+                <button class="btn btn-primary min-h-[44px]" type="submit" data-historical-manual-next-step>Preview historical bill</button>
             </div>
         </form>
     </div>

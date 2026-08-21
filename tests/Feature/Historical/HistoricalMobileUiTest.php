@@ -627,6 +627,91 @@ class HistoricalMobileUiTest extends TestCase
         );
     }
 
+    public function test_index_registers_render_continuous_row_numbers_across_pagination_and_breakpoints(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+
+        foreach (range(1, 26) as $number) {
+            $this->makeDocument($shop->id, $batch->id, [
+                'original_document_number' => "HIST-PAGE-{$number}",
+            ]);
+        }
+
+        $response = $this->actingAs($owner)->get(route('historical.index', ['page' => 2]))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+
+        foreach (['batches-desktop', 'batches-mobile'] as $surface) {
+            $number = $this->firstNode(
+                $xpath,
+                "//*[@data-historical-register='{$surface}']//*[@data-historical-row-number='batch'][1]"
+            );
+            $this->assertSame('1', trim($number->textContent));
+        }
+
+        foreach (['documents-desktop', 'documents-mobile'] as $surface) {
+            $number = $this->firstNode(
+                $xpath,
+                "//*[@data-historical-register='{$surface}']//*[@data-historical-row-number='document'][1]"
+            );
+            $this->assertSame('26', trim($number->textContent));
+        }
+    }
+
+    public function test_preview_and_document_item_registers_render_matching_row_numbers(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'NUMBERED-PREVIEW',
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'grand_total' => 3000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'lines' => [
+                ['line_item_name' => 'First archived item', 'line_total' => 1000],
+                ['line_item_name' => 'Second archived item', 'line_total' => 2000],
+            ],
+        ])->assertOk();
+        $previewXpath = $this->xpath($preview->getContent());
+
+        foreach (['lines-desktop', 'lines-mobile'] as $surface) {
+            $numbers = $previewXpath->query(
+                "//*[@data-historical-preview-register='{$surface}']//*[@data-historical-row-number='line']"
+            );
+            $this->assertNotFalse($numbers);
+            $this->assertSame(['1', '2'], array_map(
+                static fn (DOMElement $node): string => trim($node->textContent),
+                iterator_to_array($numbers)
+            ));
+        }
+
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'NUMBERED-DOCUMENT',
+        ]);
+        $this->makeLine($shop->id, $document->id);
+        $this->makeLine($shop->id, $document->id, [
+            'line_number' => 2,
+            'item_snapshot' => ['name' => 'Second archived item'],
+            'source_sku' => 'OLD-RING-2',
+        ]);
+
+        $documentPage = $this->actingAs($owner)->get(route('historical.documents.show', $document))->assertOk();
+        $documentXpath = $this->xpath($documentPage->getContent());
+
+        foreach (['lines-desktop', 'lines-mobile'] as $surface) {
+            $numbers = $documentXpath->query(
+                "//*[@data-historical-document-register='{$surface}']//*[@data-historical-row-number='line']"
+            );
+            $this->assertNotFalse($numbers);
+            $this->assertSame(['1', '2'], array_map(
+                static fn (DOMElement $node): string => trim($node->textContent),
+                iterator_to_array($numbers)
+            ));
+        }
+    }
+
     public function test_batch_review_controls_have_mobile_tap_targets(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
