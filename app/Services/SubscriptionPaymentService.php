@@ -170,11 +170,20 @@ class SubscriptionPaymentService
      *  - Current TRIAL                                 → trial.ends_at (keep free days)
      *  - Current live PAID (active/grace/read_only)    → throws (no stacked term)
      *
+     * All three are judged PER PRODUCT. One shop holds many product
+     * subscriptions, so a live ERP term must not block buying Dhiran — being
+     * product-blind here charged the card and then refused to activate,
+     * leaving the owner paid-up with no service and a support ticket. Product
+     * identity comes from Plan::grantsEdition(), the same mapping
+     * ShopSubscription::entitlesAccessToday() uses. A plan that maps to no
+     * edition falls back to the shop-wide check, keeping the money guard strict
+     * when the product cannot be identified.
+     *
      * Trial end dates are stored at start-of-day; max(ends_at, today) guards the
      * (rare) case of paying on the trial's final day so the paid term never
      * backdates before now.
      */
-    private function paidTermStartsAt(?User $actor): Carbon
+    private function paidTermStartsAt(?User $actor, Plan $plan): Carbon
     {
         $now    = Carbon::now();
         $shopId = $actor?->shop_id;
@@ -183,14 +192,24 @@ class SubscriptionPaymentService
             return $now; // pay-before-shop onboarding: first-ever purchase
         }
 
-        $current = ShopSubscription::where('shop_id', $shopId)->latest('id')->first();
+        $edition = $plan->grantsEdition();
+
+        $current = ShopSubscription::where('shop_id', $shopId)
+            ->with('plan.platformProduct')
+            ->latest('id')
+            ->get()
+            ->first(fn (ShopSubscription $sub) => $edition === null || $sub->plan?->grantsEdition() === $edition);
 
         if (! $current) {
             return $now;
         }
 
         if (in_array($current->status, ['active', 'grace', 'read_only'], true)) {
-            throw new \LogicException('Shop already has an active paid subscription; cannot start a second paid term.');
+            throw new \LogicException(
+                'Shop already has an active paid subscription for '
+                . ($edition ?? 'this shop')
+                . '; cannot start a second paid term.'
+            );
         }
 
         if ($current->status === 'trial' && $current->ends_at) {
@@ -237,11 +256,12 @@ class SubscriptionPaymentService
         //  - Shop currently on TRIAL: the paid term starts when the trial ENDS, so
         //    the customer keeps every free trial day they have left and there is no
         //    read-only gap at the seam.
-        //  - Shop already holds a LIVE PAID subscription (active/grace/read_only):
-        //    refuse — never stack a second paid term. This is the authoritative
-        //    money guard; the controller gates block reaching here, this is the
-        //    last line of defence.
-        $startsAt = $this->paidTermStartsAt($actor);
+        //  - Shop already holds a LIVE PAID subscription FOR THIS PRODUCT
+        //    (active/grace/read_only): refuse — never stack a second paid term
+        //    of the same product. This is the authoritative money guard; the
+        //    controller gates block reaching here, this is the last line of
+        //    defence. A different product is a separate purchase and is allowed.
+        $startsAt = $this->paidTermStartsAt($actor, $plan);
 
         $endsAt = SubscriptionTerm::endsAtFor($billingCycle, $startsAt);
         $graceEndsAt = SubscriptionTerm::graceEndsAtFor($endsAt, $plan);
