@@ -26,6 +26,20 @@ class HistoricalManualEntryController extends Controller
         private readonly HistoricalCustomerMatcher $matcher,
     ) {}
 
+    /**
+     * Where every refusal goes: the entry form, carrying the typed bill.
+     *
+     * Never back(). The operator reaches store()/preview() from the preview
+     * screen, so the referer is the POST-only preview URL — and a redirect is a
+     * GET, which lands on previewExpired() and redirects a second time. That
+     * second hop consumes the flashed input and overwrites the real reason with
+     * "preview has expired", losing the bill and explaining nothing.
+     */
+    private function backToForm(): RedirectResponse
+    {
+        return redirect()->route('historical.manual.create')->withInput();
+    }
+
     public function create(): View
     {
         return view('historical.manual', [
@@ -53,7 +67,7 @@ class HistoricalManualEntryController extends Controller
                 $request->options(),
             );
         } catch (Throwable $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+            return $this->backToForm()->with('error', $e->getMessage());
         }
 
         // Flashes the submitted input into the session so the same old()-backed
@@ -140,15 +154,14 @@ class HistoricalManualEntryController extends Controller
                 $request->options(),
             );
         } catch (Throwable $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+            return $this->backToForm()->with('error', $e->getMessage());
         }
 
         $messages = $result['messages'];
 
         // Blocking errors mean nothing was written — surface them, keep the form.
         if ($result['document'] === null && $messages->hasBlocking()) {
-            return back()
-                ->withInput()
+            return $this->backToForm()
                 ->with('historical_messages', $messages->all())
                 ->with('error', 'This bill has blocking problems and was not saved. Correct the highlighted fields.');
         }
@@ -157,8 +170,7 @@ class HistoricalManualEntryController extends Controller
         // operator's decision was honoured and there is no document to open.
         // `error` channel for the same reason as previewExpired() above.
         if ($result['document'] === null) {
-            return back()
-                ->withInput()
+            return $this->backToForm()
                 ->with('historical_messages', $messages->all())
                 ->with('error', 'This bill was not recorded. Review the duplicate decision above.');
         }
@@ -186,11 +198,11 @@ class HistoricalManualEntryController extends Controller
                 $request->acknowledgedWarningDigest(),
             );
         } catch (HistoricalManualPublishRejected $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+            return $this->backToForm()->with('error', $e->getMessage());
         } catch (Throwable $e) {
             report($e);
 
-            return back()->withInput()->with(
+            return $this->backToForm()->with(
                 'error',
                 'This bill could not be published and nothing was saved. Try again, or save it as a draft first.'
             );
