@@ -111,7 +111,8 @@ class HistoricalIndexRenderTest extends TestCase
         $response = $this->actingAs($owner)->get(route('historical.index'));
 
         $response->assertOk();
-        $response->assertSee('No import batches yet', false);
+        $response->assertSee('No file imports yet', false);
+        $response->assertSee('Import a CSV or XLSX file to begin.', false);
         $response->assertSee('No historical documents yet', false);
     }
 

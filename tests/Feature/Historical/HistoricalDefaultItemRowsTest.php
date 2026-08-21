@@ -264,7 +264,7 @@ class HistoricalDefaultItemRowsTest extends TestCase
         ]))->assertOk()->getContent();
 
         $extract = function (string $html): string {
-            preg_match('/Grand total<\/td><td[^>]*>([\d,.]+)<\/td>/', $html, $m);
+            preg_match('/data-historical-preview-field="grand-total"[^>]*>.*?<dd[^>]*>([\d,.]+)<\/dd>/s', $html, $m);
             return $m[1] ?? '';
         };
 

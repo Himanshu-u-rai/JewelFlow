@@ -37,7 +37,14 @@
 <x-app-layout>
     <x-page-header title="{{ $batch->label }}" subtitle="{{ $batch->source_system ?? 'Manual' }}{{ $batch->source_file_name ? ' · '.$batch->source_file_name : '' }}{{ $batch->profile ? ' · profile “'.$batch->profile->name.'”' : '' }}">
         <x-slot:actions>
-            <a href="{{ route('historical.index') }}" class="btn btn-sm h-11 min-h-[44px]">← Historical sales</a>
+            <a href="{{ route('historical.index') }}"
+               class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:border-amber-400 hover:bg-amber-50 hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+               data-historical-back>
+                <svg class="h-4 w-4 shrink-0 text-amber-700" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                    <path d="M12.5 5 7.5 10l5 5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span>Back to historical sales</span>
+            </a>
         </x-slot:actions>
     </x-page-header>
 
@@ -164,9 +171,13 @@
                     @endif
                 </section>
             @else
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6" data-historical-batch-summary="import">
-                <h2 class="text-base font-semibold text-slate-800 mb-3">Reconciliation preview</h2>
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-batch-summary="import">
+                <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">Step 3 of 4</p>
+                    <h2 class="mt-1 text-base font-semibold text-slate-900">Reconciliation preview</h2>
+                    <p class="mt-1 text-sm text-slate-500">Check the normalized totals, findings and sample records before publishing.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:p-6 lg:grid-cols-5" data-historical-import-metrics>
                     @php
                         $tiles = [
                             'Rows'              => $preview['row_count'] ?? 0,
@@ -182,69 +193,77 @@
                         ];
                     @endphp
                     @foreach($tiles as $label => $value)
-                        <div class="rounded-xl border border-slate-200 px-3 py-2">
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
                             <div class="text-xs text-slate-500">{{ $label }}</div>
-                            <div class="text-xl font-bold text-slate-800 tabular-nums">{{ $value }}</div>
+                            <div class="mt-1 text-xl font-semibold text-slate-900 tabular-nums">{{ $value }}</div>
                         </div>
                     @endforeach
                 </div>
 
-                <table class="w-full text-sm">
-                    <tbody class="divide-y divide-slate-100">
-                        <tr><td class="py-1.5 text-slate-600">Date range</td><td class="py-1.5 text-right">{{ $preview['date_from'] ?? '—' }} → {{ $preview['date_to'] ?? '—' }}</td></tr>
-                        <tr><td class="py-1.5 text-slate-600">Financial years</td><td class="py-1.5 text-right">{{ implode(', ', $preview['financial_years'] ?? []) ?: '—' }}</td></tr>
-                        <tr><td class="py-1.5 text-slate-600">Header total</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($preview['grand_total'] ?? 0), 2) }}</td></tr>
-                        <tr><td class="py-1.5 text-slate-600">Taxable total</td><td class="py-1.5 text-right tabular-nums">{{ number_format((float) ($preview['taxable_total'] ?? 0), 2) }}</td></tr>
-                        <tr><td class="py-1.5 text-slate-600">Tax total (CGST/SGST/IGST/Cess)</td><td class="py-1.5 text-right tabular-nums">
-                            {{ number_format((float) ($preview['cgst_total'] ?? 0), 2) }} /
-                            {{ number_format((float) ($preview['sgst_total'] ?? 0), 2) }} /
-                            {{ number_format((float) ($preview['igst_total'] ?? 0), 2) }} /
-                            {{ number_format((float) ($preview['cess_total'] ?? 0), 2) }}
-                        </td></tr>
-                        <tr><td class="py-1.5 text-slate-600">Paid / Outstanding</td><td class="py-1.5 text-right tabular-nums">
-                            {{ number_format((float) ($preview['paid_total'] ?? 0), 2) }} /
-                            {{ number_format((float) ($preview['outstanding_total'] ?? 0), 2) }}
-                        </td></tr>
-                        <tr><td class="py-1.5 text-slate-600">Tax completeness</td><td class="py-1.5 text-right">
-                            @foreach(($preview['tax_completeness'] ?? []) as $k => $v){{ $k }}: {{ $v }}@if(!$loop->last) · @endif @endforeach
-                        </td></tr>
-                        <tr><td class="py-1.5 text-slate-600">Ignored / informational columns</td><td class="py-1.5 text-right">
-                            {{ implode(', ', $preview['ignored_columns'] ?? []) ?: '—' }}
-                            @if($preview['informational_columns'] ?? []) · info: {{ implode(', ', $preview['informational_columns']) }} @endif
-                        </td></tr>
-                    </tbody>
-                </table>
+                <div class="grid border-t border-slate-200 lg:grid-cols-2">
+                    <div class="min-w-0 px-4 py-4 sm:px-6">
+                        <h3 class="text-sm font-semibold text-slate-900">Normalized totals</h3>
+                        <dl class="mt-3 grid divide-y divide-slate-100" data-historical-import-details>
+                            <div class="flex items-start justify-between gap-4 py-3"><dt class="text-sm text-slate-500">Date range</dt><dd class="text-right text-sm font-medium text-slate-900">{{ $preview['date_from'] ?? '—' }} → {{ $preview['date_to'] ?? '—' }}</dd></div>
+                            <div class="flex items-start justify-between gap-4 py-3"><dt class="text-sm text-slate-500">Financial years</dt><dd class="text-right text-sm font-medium text-slate-900">{{ implode(', ', $preview['financial_years'] ?? []) ?: '—' }}</dd></div>
+                            <div class="flex items-start justify-between gap-4 py-3"><dt class="text-sm text-slate-500">Header total</dt><dd class="text-right text-sm font-semibold tabular-nums text-slate-900">{{ number_format((float) ($preview['grand_total'] ?? 0), 2) }}</dd></div>
+                            <div class="flex items-start justify-between gap-4 py-3"><dt class="text-sm text-slate-500">Taxable total</dt><dd class="text-right text-sm font-semibold tabular-nums text-slate-900">{{ number_format((float) ($preview['taxable_total'] ?? 0), 2) }}</dd></div>
+                            <div class="flex items-start justify-between gap-4 py-3">
+                                <dt class="text-sm text-slate-500">Tax total <span class="block text-xs">CGST / SGST / IGST / Cess</span></dt>
+                                <dd class="text-right text-sm font-medium tabular-nums text-slate-900">
+                                    {{ number_format((float) ($preview['cgst_total'] ?? 0), 2) }} /
+                                    {{ number_format((float) ($preview['sgst_total'] ?? 0), 2) }} /
+                                    {{ number_format((float) ($preview['igst_total'] ?? 0), 2) }} /
+                                    {{ number_format((float) ($preview['cess_total'] ?? 0), 2) }}
+                                </dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4 py-3">
+                                <dt class="text-sm text-slate-500">Paid / outstanding</dt>
+                                <dd class="text-right text-sm font-medium tabular-nums text-slate-900">{{ number_format((float) ($preview['paid_total'] ?? 0), 2) }} / {{ number_format((float) ($preview['outstanding_total'] ?? 0), 2) }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4 py-3">
+                                <dt class="text-sm text-slate-500">Tax completeness</dt>
+                                <dd class="text-right text-sm font-medium text-slate-900">@foreach(($preview['tax_completeness'] ?? []) as $k => $v){{ $k }}: {{ $v }}@if(!$loop->last) · @endif @endforeach</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4 py-3">
+                                <dt class="text-sm text-slate-500">Ignored / informational</dt>
+                                <dd class="max-w-xs text-right text-sm font-medium text-slate-900">{{ implode(', ', $preview['ignored_columns'] ?? []) ?: '—' }}@if($preview['informational_columns'] ?? []) · info: {{ implode(', ', $preview['informational_columns']) }} @endif</dd>
+                            </div>
+                        </dl>
+                    </div>
 
-                {{-- Making/labour interpretations shown, never assumed (Phase 11). --}}
-                @if($preview['making_mappings'] ?? [])
-                    <h3 class="text-sm font-semibold text-slate-700 mt-4 mb-1">Making / labour charge interpretations</h3>
-                    <ul class="text-sm text-slate-700 list-disc pl-5">
-                        @foreach($preview['making_mappings'] as $mk)
-                            <li>“{{ $mk['label'] ?? '—' }}” → {{ $mk['category'] ?? 'uncategorised' }} ({{ $mk['basis'] ?? 'unknown' }})</li>
-                        @endforeach
-                    </ul>
-                @endif
+                    <div class="min-w-0 border-t border-slate-200 px-4 py-4 sm:px-6">
+                        <h3 class="text-sm font-semibold text-slate-900">Interpretation and findings</h3>
+                        <div class="mt-3 grid gap-3">
+                            @if($preview['making_mappings'] ?? [])
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <h4 class="text-sm font-semibold text-slate-800">Making / labour charges</h4>
+                                    <ul class="mt-2 grid gap-2 text-sm text-slate-700">
+                                        @foreach($preview['making_mappings'] as $mk)
+                                            <li>“{{ $mk['label'] ?? '—' }}” → {{ $mk['category'] ?? 'uncategorised' }} ({{ $mk['basis'] ?? 'unknown' }})</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
 
-                {{-- Message breakdown by code. --}}
-                @if($preview['messages'] ?? [])
-                    <h3 class="text-sm font-semibold text-slate-700 mt-4 mb-1">Findings</h3>
-                    <table class="w-full text-sm">
-                        <tbody class="divide-y divide-slate-100">
-                        @foreach($preview['messages'] as $code => $m)
-                            @php [$severityColor, $severityLabel] = $sev($m['severity']); @endphp
-                            <tr>
-                                <td class="py-1.5 whitespace-nowrap {{ $severityColor }}"><strong>{{ $severityLabel }}</strong> ×{{ $m['count'] ?? 1 }}</td>
-                                <td class="py-1.5 text-slate-700">{{ $m['text'] }}</td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                @endif
+                            @forelse($preview['messages'] ?? [] as $code => $m)
+                                @php [$severityColor, $severityLabel] = $sev($m['severity']); @endphp
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <div class="text-sm font-semibold {{ $severityColor }}">{{ $severityLabel }} ×{{ $m['count'] ?? 1 }}</div>
+                                    <p class="mt-1 text-sm text-slate-700">{{ $m['text'] }}</p>
+                                </div>
+                            @empty
+                                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">No reconciliation findings need attention.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
 
                 {{-- Sample normalized records. --}}
                 @if($preview['samples'] ?? [])
-                    <h3 class="text-sm font-semibold text-slate-700 mt-4 mb-1">Sample records</h3>
-                    <div class="overflow-x-auto">
+                    <div class="border-t border-slate-200 px-4 py-4 sm:px-6">
+                    <h3 class="text-sm font-semibold text-slate-900">Sample normalized records</h3>
+                    <div class="mt-3 overflow-x-auto">
                         <table class="w-full min-w-full text-sm">
                             <thead><tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                                 <th class="py-2">Number</th><th class="py-2">Date</th><th class="py-2">Customer</th><th class="py-2 text-right">Total</th><th class="py-2">Tax</th><th class="py-2 text-center">Lines</th>
@@ -263,8 +282,9 @@
                             </tbody>
                         </table>
                     </div>
+                    </div>
                 @endif
-            </div>
+            </section>
             @endif
         @endif
 
@@ -409,41 +429,71 @@
         @endif
 
         {{-- Actions. --}}
-        <div class="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:px-6" data-historical-batch-actions>
-            @can('historical.import')
-                @unless($batch->isPublished())
-                    @if($batch->profile)
-                        <form method="POST" action="{{ route('historical.batches.normalize', $batch) }}">
-                            @csrf <button class="btn btn-sm h-11 min-h-[44px]" type="submit">Re-normalize</button>
-                        </form>
-                    @endif
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-historical-batch-actions>
+            <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">{{ $batch->isPublished() ? 'Step 4 complete' : 'Step 4 of 4' }}</p>
+                <h2 class="mt-1 text-base font-semibold text-slate-900">Review decision</h2>
+                <p class="mt-1 text-sm text-slate-500">Resolve draft concerns first, then publish the verified historical evidence.</p>
+            </div>
 
-                    @if(($batch->warning_count ?? 0) > 0 && ! $batch->warningsAcknowledged())
-                        <form method="POST" action="{{ route('historical.batches.acknowledge', $batch) }}">
-                            @csrf <button class="btn btn-sm h-11 min-h-[44px]" type="submit">Acknowledge {{ $batch->warning_count }} warning(s)</button>
-                        </form>
-                    @endif
+            <div class="grid gap-4 p-4 sm:p-6 lg:grid-cols-2">
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <h3 class="text-sm font-semibold text-slate-900">Draft controls</h3>
+                    <p class="mt-1 text-sm text-slate-500">Re-run normalization, acknowledge warnings or discard this draft batch.</p>
+                    <div class="mt-4 flex flex-wrap items-center gap-3">
+                        @can('historical.import')
+                            @unless($batch->isPublished())
+                                @if($batch->profile)
+                                    <form method="POST" action="{{ route('historical.batches.normalize', $batch) }}">
+                                        @csrf <button class="btn btn-sm h-11 min-h-[44px]" type="submit">Re-normalize</button>
+                                    </form>
+                                @endif
 
-                    <form method="POST" action="{{ route('historical.batches.destroy', $batch) }}"
-                          onsubmit="return confirm('Roll back this draft batch? Everything it created is discarded.');">
-                        @csrf @method('DELETE')
-                        <button class="btn btn-danger btn-sm h-11 min-h-[44px]" type="submit">Roll back draft</button>
-                    </form>
-                @endunless
-            @endcan
+                                @if(($batch->warning_count ?? 0) > 0 && ! $batch->warningsAcknowledged())
+                                    <form method="POST" action="{{ route('historical.batches.acknowledge', $batch) }}">
+                                        @csrf <button class="btn btn-sm h-11 min-h-[44px]" type="submit">Acknowledge {{ $batch->warning_count }} warning(s)</button>
+                                    </form>
+                                @endif
 
-            @can('historical.publish')
-                @unless($batch->isPublished())
-                    @if($blocker)
-                        <span class="text-sm text-amber-700" data-historical-publish-blocker>Cannot publish yet: {{ $blocker }}</span>
+                                <form method="POST" action="{{ route('historical.batches.destroy', $batch) }}"
+                                      onsubmit="return confirm('Roll back this draft batch? Everything it created is discarded.');">
+                                    @csrf @method('DELETE')
+                                    <button class="btn btn-danger btn-sm h-11 min-h-[44px]" type="submit">Roll back draft</button>
+                                </form>
+                            @else
+                                <span class="text-sm font-medium text-slate-600">Draft controls are closed after publication.</span>
+                            @endunless
+                        @else
+                            <span class="text-sm text-slate-500">Import controls are not available for your role.</span>
+                        @endcan
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4" data-historical-publish-panel>
+                    <h3 class="text-sm font-semibold text-amber-900">Publish batch</h3>
+                    @if($batch->isPublished())
+                        <div class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800" data-historical-batch-complete>
+                            Published successfully. These historical records are now permanent evidence.
+                        </div>
                     @else
-                        <form method="POST" action="{{ route('historical.batches.publish', $batch) }}"
-                              onsubmit="return confirm('Publish this batch? Its records become immutable evidence.');">
-                            @csrf <button class="btn btn-primary btn-sm h-11 min-h-[44px]" type="submit">Publish batch</button>
-                        </form>
+                        <p class="mt-1 text-sm text-amber-800">Publishing makes every document in this batch permanent historical evidence.</p>
+                        <div class="mt-4">
+                            @can('historical.publish')
+                                @if($blocker)
+                                    <span class="text-sm font-medium text-amber-800" data-historical-publish-blocker>Cannot publish yet: {{ $blocker }}</span>
+                                @else
+                                    <form method="POST" action="{{ route('historical.batches.publish', $batch) }}"
+                                          onsubmit="return confirm('Publish this batch? Its records become immutable evidence.');">
+                                        @csrf <button class="btn btn-primary btn-sm h-11 min-h-[44px]" type="submit">Publish batch</button>
+                                    </form>
+                                @endif
+                            @else
+                                <span class="text-sm text-amber-800">Publishing is not available for your role.</span>
+                            @endcan
+                        </div>
                     @endif
-                @endunless
-            @endcan
-        </div>
+                </div>
+            </div>
+        </section>
     </div>
 </x-app-layout>

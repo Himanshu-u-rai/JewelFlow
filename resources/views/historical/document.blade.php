@@ -12,7 +12,14 @@
 <x-app-layout>
     <x-page-header title="{{ $document->displayNumber() }}" subtitle="{{ HistoricalSalesDocument::RECORD_DISCLAIMER }}">
         <x-slot:actions>
-            <a href="{{ route('historical.index') }}" class="btn btn-sm min-h-[44px]">← Historical sales</a>
+            <a href="{{ route('historical.index') }}"
+               class="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:border-amber-400 hover:bg-amber-50 hover:text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+               data-historical-back>
+                <svg class="h-4 w-4 shrink-0 text-amber-700" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                    <path d="M12.5 5 7.5 10l5 5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span>Back to historical sales</span>
+            </a>
         </x-slot:actions>
     </x-page-header>
 
@@ -228,68 +235,91 @@
                     <p class="text-sm text-slate-500">Not linked — snapshot only.</p>
                 @endif
 
-                @if($lifecycle['is_draft'])
-                    @can('historical.import')
-                        @php
-                            $bases = ['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'];
-                            $candidates = collect();
-                            foreach ($bases as $key => $basisLabel) {
-                                $match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()];
-                                if ($match['status'] !== 'match') {
-                                    continue;
-                                }
-                                foreach ($match['customers'] as $candidate) {
-                                    $entry = $candidates->get($candidate->id, ['candidate' => $candidate, 'bases' => []]);
-                                    $entry['bases'][] = $basisLabel;
-                                    $candidates->put($candidate->id, $entry);
-                                }
-                            }
-                        @endphp
+            </div>
+        </div>
 
+        @if($lifecycle['is_draft'])
+            @can('historical.import')
+                @php
+                    $bases = ['mobile' => 'Mobile match', 'gstin' => 'GSTIN match', 'name' => 'Possible name match'];
+                    $candidates = collect();
+                    foreach ($bases as $key => $basisLabel) {
+                        $match = $suggestions[$key] ?? ['status' => 'none', 'customers' => collect()];
+                        if ($match['status'] !== 'match') {
+                            continue;
+                        }
+                        foreach ($match['customers'] as $candidate) {
+                            $entry = $candidates->get($candidate->id, ['candidate' => $candidate, 'bases' => []]);
+                            $entry['bases'][] = $basisLabel;
+                            $candidates->put($candidate->id, $entry);
+                        }
+                    }
+                @endphp
+
+                <section class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50" data-historical-customer-link-panel>
+                    <div class="flex items-start gap-3 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+                        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700" aria-hidden="true">
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75">
+                                <path d="M7.75 12.25l4.5-4.5M6.25 14.75l-1 1a2.12 2.12 0 0 1-3-3l3-3a2.12 2.12 0 0 1 3 0M13.75 5.25l1-1a2.12 2.12 0 1 1 3 3l-3 3a2.12 2.12 0 0 1-3 0" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </span>
+                        <div class="min-w-0">
+                            <h3 class="text-sm font-semibold text-slate-900">Customer link</h3>
+                            <p class="mt-1 text-xs leading-5 text-slate-500">Optional account reference. The historical snapshot never changes.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 p-4 sm:p-6 lg:grid-cols-2" data-historical-customer-link-actions>
                         @if($suggestions)
                             @foreach(['gstin' => 'GSTIN'] as $key => $label)
                                 @php $match = $suggestions[$key]; @endphp
                                 @if($match['status'] === 'ambiguous')
-                                    <p class="text-sm text-amber-700 font-medium mt-3">⚠ {{ $label }} match is ambiguous — {{ $match['customers']->count() }} customers share this GSTIN. Not linked automatically; review manually.</p>
+                                    <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 lg:col-span-2">{{ $label }} match is ambiguous — {{ $match['customers']->count() }} customers share this GSTIN. Review manually.</p>
                                 @endif
                             @endforeach
                         @endif
 
                         @if($candidates->isNotEmpty())
-                            <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="mt-3">
+                            <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2" data-historical-customer-link-action="suggested">
                                 @csrf
-                                <p class="text-sm text-slate-500 mb-2">Possible existing customers — nothing selected by default:</p>
-                                <div class="grid gap-2 mb-2">
+                                <p class="text-sm font-semibold text-slate-800">Possible existing customers</p>
+                                <p class="mt-1 text-xs text-slate-500">Choose one only after confirming the match.</p>
+                                <div class="mt-3 grid gap-2 sm:grid-cols-2">
                                     @foreach($candidates as $entry)
                                         @php $candidate = $entry['candidate']; @endphp
-                                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50">
+                                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-3 hover:bg-slate-50">
                                             <input type="radio" name="customer_id" value="{{ $candidate->id }}" required>
                                             <span class="text-sm text-slate-700">{{ $candidate->name }} — {{ Str::mask($candidate->mobile ?? '—', '*', 2, -2) }}
                                                 <span class="text-slate-500">({{ implode(', ', $entry['bases']) }})</span></span>
                                         </label>
                                     @endforeach
                                 </div>
-                                <button class="btn btn-sm min-h-[44px]" type="submit">Link selected customer</button>
+                                <button class="btn btn-primary mt-3 min-h-[44px]" type="submit">Link selected customer</button>
                             </form>
                         @endif
 
-                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="flex items-end gap-2 mt-3">
+                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="grid gap-3 rounded-xl border border-slate-200 bg-white p-4" data-historical-customer-link-action="by-id">
                             @csrf
-                            <div>
-                                <label for="doc_customer_id" class="text-xs">Customer ID</label>
-                                <input type="number" id="doc_customer_id" name="customer_id" placeholder="Customer ID" class="w-32">
+                            <div class="min-w-0">
+                                <label for="doc_customer_id" class="block text-sm font-semibold text-slate-800">Customer ID</label>
+                                <p class="mt-1 text-xs text-slate-500">Use this when you know the existing JewelFlow customer ID.</p>
+                                <input type="number" id="doc_customer_id" name="customer_id" placeholder="Enter customer ID" class="mt-3 min-h-[44px] w-full rounded-lg border-slate-300 bg-white">
                             </div>
-                            <button class="btn btn-sm min-h-[44px]" type="submit">Link by ID</button>
+                            <button class="btn btn-primary min-h-[44px] w-full" type="submit">Link customer by ID</button>
                         </form>
 
-                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="mt-2">
+                        <form method="POST" action="{{ route('historical.documents.link-customer', $document) }}" class="grid gap-3 rounded-xl border border-slate-200 bg-white p-4" data-historical-customer-link-action="snapshot-only">
                             @csrf
-                            <button class="btn btn-sm min-h-[44px]" type="submit">{{ $document->customer_id ? 'Unlink — keep snapshot only' : 'Keep historical snapshot only' }}</button>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-800">Snapshot only</p>
+                                <p class="mt-1 text-xs leading-5 text-slate-500">Do not connect this record to a customer account. Its saved customer details remain unchanged.</p>
+                            </div>
+                            <button class="btn min-h-[44px] w-full" type="submit">{{ $document->customer_id ? 'Unlink — keep snapshot only' : 'Keep historical snapshot only' }}</button>
                         </form>
-                    @endcan
-                @endif
-            </div>
-        </div>
+                    </div>
+                </section>
+            @endcan
+        @endif
 
         {{-- Opening-balance overlap: metadata-only, never touches the customer's
              actual opening balance/ledger/receivables. Severity is recomputed live
