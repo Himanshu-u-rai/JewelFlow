@@ -330,6 +330,12 @@ class AdminBillingTermTest extends TestCase
     // 9 — scheduler still downgrades a genuinely expired term.
     public function test_scheduler_downgrades_genuinely_expired_term(): void
     {
+        // The scheduler transitions the SUBSCRIPTION status unconditionally, but
+        // only touches shop.access_mode when enforcement is on — which is off by
+        // default so a lapse can never lock a shop out of the ERP by accident.
+        // This test is about the downgrade, so it opts in.
+        config(['platform.enforce_subscriptions' => true]);
+
         $admin = $this->verifiedAdmin();
         $shop  = $this->createShop('retailer');
         $plan  = $this->retailPlan();
@@ -528,6 +534,9 @@ class AdminBillingTermTest extends TestCase
     public function test_day_after_grace_lapses_per_plan_policy(): void
     {
         Carbon::setTestNow(Carbon::create(2026, 7, 18, 12, 0, 0, 'Asia/Kolkata'));
+        // access_mode is only touched under enforcement (off by default), and the
+        // per-plan suspend-vs-read-only split below is asserted on access_mode.
+        config(['platform.enforce_subscriptions' => true]);
 
         $suspendShop = $this->createShop('retailer');
         $this->makeSub($suspendShop, $this->suspendPlan(), 'active', '2026-07-10', '2026-07-17');

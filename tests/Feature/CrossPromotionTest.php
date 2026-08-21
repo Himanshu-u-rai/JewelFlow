@@ -30,6 +30,12 @@ class CrossPromotionTest extends TestCase
     {
         parent::setUp();
 
+        // Realm::dhiranRegisterUrl() derives from the request host only in
+        // production/local, so under `testing` it is null and the Dhiran promo is
+        // correctly hidden. Set the documented config override to the value host
+        // derivation would produce, rather than widening that guard in Realm.
+        config(['platform.cross_promotion.dhiran_register_url' => self::DHIRAN_REGISTER]);
+
         // Dhiran yearly plan for the Dhiran onboarding path (RefreshDatabase has no plans).
         Plan::create([
             'code' => 'dhiran_yearly', 'name' => 'Dhiran Yearly',

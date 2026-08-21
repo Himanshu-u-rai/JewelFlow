@@ -38,6 +38,11 @@ trait CreatesTestTenant
             'password' => Hash::make('password'),
             'role' => 'super_admin',
             'is_active' => true,
+            // The admin.mfa gate bounces any admin with a null email_verified_at to
+            // the verify-email screen, so an unverified default silently redirected
+            // every admin POST away from its controller. Tests that exercise that
+            // gate build their own admin instead of using this helper.
+            'email_verified_at' => now(),
         ]);
     }
 
