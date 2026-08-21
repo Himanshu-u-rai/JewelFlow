@@ -32,7 +32,18 @@ class HistoricalSalesController extends Controller
             ->orderByDesc('id')
             ->paginate(25);
 
+        // File imports only. A manually typed bill also owns a HistoricalImportBatch
+        // — the publish gate, the finding counters and the acknowledgement stamp all
+        // live on that row — but the operator never asked for it and its URL now
+        // forwards to the document (showBatch below). Listing it here would put an
+        // implementation detail in a panel about imports.
+        //
+        // Keyed off source_file_name, the same structural discriminator
+        // HistoricalImportBatch::isManualBatch() uses: only createBatchFromUpload()
+        // ever writes it, and storeManual() never does. Deliberately NOT source_system,
+        // which is free text the operator can edit on the manual form.
         $batches = HistoricalImportBatch::query()
+            ->whereNotNull('source_file_name')
             ->withCount(['documents', 'rows'])
             ->orderByDesc('id')
             ->limit(20)

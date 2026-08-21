@@ -39,6 +39,14 @@ class HistoricalIndexRenderTest extends TestCase
                 'shop_id' => $shopId,
                 'label' => 'FY 2022-23 ledger',
                 'source_system' => 'Tally',
+                // This fixture hand-rolls the row instead of going through
+                // createBatchFromUpload(), so it has to stamp the one column that
+                // makes a batch a file import. Without it the batch is structurally
+                // manual (isManualBatch() === source_file_name === null) no matter
+                // what its label and source_system say, and the Import-batches
+                // register correctly refuses to list it. The label is not the
+                // discriminator — the file name is.
+                'source_file_name' => 'fy-2022-23-tally.csv',
                 'status' => HistoricalImportBatch::STATUS_REVIEW,
                 'created_by' => $actorId,
             ], $batchOverride))->save();

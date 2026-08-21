@@ -579,4 +579,123 @@ class HistoricalManualFlowSeparationTest extends TestCase
             'Empty padded form rows were saved as item lines.'
         ));
     }
+
+    // ------------------------------------------------- 19. the index register
+    //
+    // The last place the two workflows were still fused. /historical listed every
+    // batch, so a manually typed bill appeared as a row in a panel about file
+    // imports — and twenty typed bills would push every real import off the list
+    // entirely, because the limit is applied to the whole set.
+    //
+    // These assert view data rather than markup: the query is the contract, and
+    // Codex owns how the register is drawn.
+
+    /** A single-sheet workbook — enough to be a genuine .xlsx upload, nothing more. */
+    private function singleSheetXlsxContent(): string
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Invoices');
+        $sheet->fromArray(['InvoiceNo', 'InvoiceDate', 'CustomerName', 'GrandTotal'], null, 'A1');
+        $sheet->fromArray(['XLS-SEP-1', '2024-06-15', 'Asha Traders', 15000], null, 'A2');
+
+        $path = tempnam(sys_get_temp_dir(), 'jf_sep_xlsx_');
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($path);
+        $content = (string) file_get_contents($path);
+        unlink($path);
+
+        return $content;
+    }
+
+    /** The batch ids the Import-batches register actually offered. */
+    private function registerBatchIds(User $owner): array
+    {
+        $response = $this->actingAs($owner)->get(route('historical.index'));
+        $response->assertOk();
+
+        return $response->viewData('batches')->pluck('id')->all();
+    }
+
+    public function test_a_manual_batch_is_absent_from_the_import_register(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->actingAs($owner)->post(route('historical.manual.store'), $this->cleanPayload())->assertRedirect();
+        [$manualBatch, $document] = $this->savedManualRecord($shop->id);
+
+        $this->assertNotContains(
+            $manualBatch->id,
+            $this->registerBatchIds($owner),
+            'A manually typed bill is still listed as an import batch.'
+        );
+
+        // Requirement 3: hidden from the batch register, NOT from the module. The
+        // document register is a separate query and must be untouched.
+        $documentIds = $this->actingAs($owner)->get(route('historical.index'))
+            ->viewData('documents')->pluck('id')->all();
+
+        $this->assertContains(
+            $document->id,
+            $documentIds,
+            'Hiding the internal batch also hid the bill itself.'
+        );
+    }
+
+    public function test_csv_and_xlsx_batches_remain_in_the_import_register(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $csvBatch = $this->importCsvBatch($owner, $shop->id);
+
+        $this->actingAs($owner)->post(route('historical.upload.store'), [
+            'file'          => UploadedFile::fake()->createWithContent('legacy-separation.xlsx', $this->singleSheetXlsxContent()),
+            'source_system' => 'Legacy POS',
+        ])->assertRedirect();
+
+        $xlsxBatch = TenantContext::runFor($shop->id, fn () => HistoricalImportBatch::query()->latest('id')->firstOrFail());
+
+        // Guard the fixture itself: if the upload path ever stopped stamping
+        // source_file_name, the register would empty out and this test would
+        // otherwise pass by proving nothing.
+        $this->assertNotNull($csvBatch->source_file_name, 'CSV upload did not stamp source_file_name.');
+        $this->assertNotNull($xlsxBatch->source_file_name, 'XLSX upload did not stamp source_file_name.');
+
+        $listed = $this->registerBatchIds($owner);
+
+        $this->assertContains($csvBatch->id, $listed, 'A CSV import batch vanished from the register.');
+        $this->assertContains($xlsxBatch->id, $listed, 'An XLSX import batch vanished from the register.');
+    }
+
+    public function test_the_import_register_never_leaks_another_shops_batches(): void
+    {
+        [$ownerA, $shopA] = $this->createRetailerTenant();
+        [$ownerB] = $this->createRetailerTenant();
+
+        $csvBatchA = $this->importCsvBatch($ownerA, $shopA->id);
+        $this->actingAs($ownerA)->post(route('historical.manual.store'), $this->cleanPayload())->assertRedirect();
+        [$manualBatchA, $documentA] = $this->savedManualRecord($shopA->id);
+
+        $listedForB = $this->registerBatchIds($ownerB);
+
+        $this->assertNotContains($csvBatchA->id, $listedForB, 'Shop A CSV batch leaked into shop B.');
+        $this->assertNotContains($manualBatchA->id, $listedForB, 'Shop A manual batch leaked into shop B.');
+
+        $documentIdsForB = $this->actingAs($ownerB)->get(route('historical.index'))
+            ->viewData('documents')->pluck('id')->all();
+
+        $this->assertNotContains($documentA->id, $documentIdsForB, 'Shop A document leaked into shop B.');
+    }
+
+    /** Requirement 4: hiding the batch must not resurrect the batch page for it. */
+    public function test_a_hidden_manual_batch_url_still_redirects_to_its_document(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->actingAs($owner)->post(route('historical.manual.store'), $this->cleanPayload())->assertRedirect();
+        [$manualBatch, $document] = $this->savedManualRecord($shop->id);
+
+        $this->actingAs($owner)
+            ->get(route('historical.batches.show', $manualBatch->id))
+            ->assertRedirect(route('historical.documents.show', $document->id));
+    }
 }
