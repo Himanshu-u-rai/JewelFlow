@@ -30,7 +30,11 @@ class Phase2PdfDocumentTest extends TestCase
     use RefreshDatabase;
     use CreatesTestTenant;
 
-    private const SAMPLE_DIR = '/var/www/jewelflow/storage/app/reporting-samples';
+    /** Resolved per-environment: the server path was hardcoded here, so the dump failed anywhere else. */
+    private function sampleDir(): string
+    {
+        return storage_path('app/reporting-samples');
+    }
 
     protected function setUp(): void
     {
@@ -39,7 +43,7 @@ class Phase2PdfDocumentTest extends TestCase
         if (! app(HtmlToPdf::class)->isAvailable()) {
             $this->markTestSkipped('Chromium binary not available.');
         }
-        @mkdir(self::SAMPLE_DIR, 0777, true);
+        @mkdir($this->sampleDir(), 0777, true);
     }
 
     private function seedData(int $shopId, int $userId): void
@@ -153,7 +157,7 @@ class Phase2PdfDocumentTest extends TestCase
             $this->assertStringStartsWith('%PDF', $output->contents, "$key: real Chromium PDF (%PDF header)");
             $this->assertGreaterThan(2000, $output->byteSize(), "$key: non-trivial PDF size");
 
-            file_put_contents(self::SAMPLE_DIR . "/{$key}.pdf", $output->contents);
+            file_put_contents($this->sampleDir() . "/{$key}.pdf", $output->contents);
         }
     }
 }
