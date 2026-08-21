@@ -23,6 +23,8 @@ class BusinessIdentifierService
     public const KEY_JOB_RECEIPT = 'job_receipt';
     public const KEY_PLATFORM_INVOICE = 'platform_invoice';
     public const KEY_SHOP_CODE = 'shop_code';
+    public const KEY_RETURN = 'return';
+    public const KEY_EXCHANGE = 'exchange';
 
     public static function nextCounter(int $shopId, string $counterKey): int
     {

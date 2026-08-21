@@ -200,7 +200,7 @@
                         <article class="returns-inbox-mobile-card">
                             <div class="returns-inbox-mobile-head">
                                 <div>
-                                    <h3>Exchange #{{ $exchange->id }}</h3>
+                                    <h3>{{ $exchange->display_number }}</h3>
                                     <p>{{ $exchange->created_at->format('d M Y, h:i A') }}</p>
                                 </div>
                                 <span class="returns-inbox-status returns-inbox-status--{{ $tone }}">{{ $statusLabel($exchange->status) }}</span>

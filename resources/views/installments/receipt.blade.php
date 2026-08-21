@@ -387,7 +387,9 @@
                 <div>
                     <h1 class="receipt-title">EMI Payment Receipt</h1>
                     <div class="receipt-sub">Generated on {{ now()->format('d M Y') }}, {{ $paymentTime }}</div>
-                    <span class="receipt-pill">Plan #{{ $plan->id }}</span>
+                    {{-- A plan is 1:1 with its invoice (unique shop_id+invoice_id, invoice_id NOT NULL),
+                         so the invoice number identifies the plan without a second counter. --}}
+                    <span class="receipt-pill">{{ $plan->invoice->invoice_number }}</span>
                 </div>
             </header>
 

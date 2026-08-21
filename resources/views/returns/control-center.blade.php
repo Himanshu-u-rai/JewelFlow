@@ -984,7 +984,7 @@
                                             @if($ro)
                                                 <a href="{{ route('returns.show', $ro->id) }}"
                                                    class="text-xs font-semibold text-amber-700 hover:underline">
-                                                    RO#{{ $ro->id }}
+                                                    {{ $ro->display_number }}
                                                 </a>
                                             @endif
                                         </td>
@@ -1139,7 +1139,7 @@
                                             @if($ro)
                                                 <a href="{{ route('returns.show', $ro->id) }}"
                                                    class="text-sm font-semibold text-amber-700 hover:underline">
-                                                    RO#{{ $ro->id }}
+                                                    {{ $ro->display_number }}
                                                 </a>
                                             @else
                                                 <span class="text-sm text-slate-400">—</span>
