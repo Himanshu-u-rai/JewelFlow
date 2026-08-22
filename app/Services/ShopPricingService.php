@@ -311,7 +311,10 @@ class ShopPricingService
             return $dailyRate;
         });
 
-        RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
+        RepriceRetailerInventoryJob::dispatch(
+            (int) $shop->id,
+            $dailyRate->business_date->toDateString()
+        )->afterCommit();
 
         // Live-rate alert: broadcast the new rates to the shop's mobile devices.
         // Service-layer hook so it fires for BOTH web and mobile rate entry.
@@ -356,7 +359,10 @@ class ShopPricingService
         }
 
         $rate = $this->recordResolvedRate($profile, $dailyRate->business_date->toDateString(), $ratePerGram, true);
-        RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
+        RepriceRetailerInventoryJob::dispatch(
+            (int) $shop->id,
+            $dailyRate->business_date->toDateString()
+        )->afterCommit();
 
         return $rate;
     }
@@ -587,14 +593,14 @@ class ShopPricingService
         return [$resolved, $type, $value];
     }
 
-    public function repriceInStockItems(int $shopId): int
+    public function repriceInStockItems(int $shopId, ?CarbonInterface $now = null): int
     {
         if (! $this->hasPricingSchema() || ! $this->hasRetailerPricingItemColumns()) {
             return 0;
         }
 
         $shop = Shop::query()->find($shopId);
-        if (! $shop || ! $shop->isRetailer() || ! $this->hasCurrentDailyRates($shop)) {
+        if (! $shop || ! $shop->isRetailer() || ! $this->hasCurrentDailyRates($shop, $now)) {
             return 0;
         }
 
@@ -609,7 +615,7 @@ class ShopPricingService
             ->where('shop_id', $shopId)
             ->where('status', 'in_stock')
             ->orderBy('id')
-            ->chunkById(200, function ($items) use ($shop, &$updated): void {
+            ->chunkById(200, function ($items) use ($shop, $now, &$updated): void {
                 foreach ($items as $item) {
                     try {
                         if (! $item->metal_type) {
@@ -626,7 +632,7 @@ class ShopPricingService
                             'hallmark_charges' => $item->hallmark_charges ?? 0,
                             'rhodium_charges'  => $item->rhodium_charges  ?? 0,
                             'other_charges'    => $item->other_charges    ?? 0,
-                        ]);
+                        ], $now);
                     } catch (\Throwable $e) {
                         DB::table('items')->where('id', $item->id)->update([
                             'pricing_review_required' => $this->databaseBoolean(true),

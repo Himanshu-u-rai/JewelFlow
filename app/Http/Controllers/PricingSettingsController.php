@@ -127,7 +127,10 @@ class PricingSettingsController extends Controller
 
         if ($dailyRate = $pricing->currentDailyRate($shop)) {
             $pricing->resolveAndRecordCurrentDayRates($dailyRate, true);
-            RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
+            RepriceRetailerInventoryJob::dispatch(
+                (int) $shop->id,
+                $dailyRate->business_date->toDateString()
+            )->afterCommit();
         }
 
         return redirect()->route('settings.edit', ['tab' => 'pricing'])
@@ -164,7 +167,10 @@ class PricingSettingsController extends Controller
 
         if ($dailyRate = $pricing->currentDailyRate($shop)) {
             $pricing->resolveAndRecordCurrentDayRates($dailyRate, true);
-            RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
+            RepriceRetailerInventoryJob::dispatch(
+                (int) $shop->id,
+                $dailyRate->business_date->toDateString()
+            )->afterCommit();
         }
 
         return redirect()->route('settings.edit', ['tab' => 'pricing'])
