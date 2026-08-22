@@ -229,8 +229,13 @@ php artisan test        # or ./vendor/bin/phpunit for exact per-test output
 
 **There is no allowlist of acceptable failures. A red suite blocks the deploy.**
 
-Latest full run: **2297 passed, 7 skipped, 0 failed** (11,809 assertions, ~3.6 min).
-The skips are environment guards (`skipIfNotPostgres` and friends), not failures.
+Latest full run: **2297 tests, 2290 passed, 7 skipped, 0 failed** (11,809
+assertions, 3m39s). The skips are environment guards (`skipIfNotPostgres` and
+friends), not failures.
+
+`php artisan test` reports one fewer passing test than `./vendor/bin/phpunit`
+for the same run — an artisan-side counting quirk, not a missing test. Take
+phpunit's total as the real one.
 
 Run it as `./vendor/bin/phpunit --display-phpunit-deprecations` at least once per
 release: PHPUnit 11 only *warns* about docblock metadata (`@dataProvider`) that
