@@ -114,6 +114,63 @@ class DeployStagingTemplatesTest extends TestCase
             'no production path in a staging template');
     }
 
+    // ── Runbook: no runnable command may point at the production install ────
+
+    /**
+     * Every executable line in STAGING_DEPLOY.md, comments stripped.
+     *
+     * Prose and `#` comments are allowed to name the production path (the doc
+     * has to say which directory to avoid); a line you can paste into a shell
+     * is not.
+     *
+     * @return list<array{int, string}> [line number, code]
+     */
+    private function runbookCommands(): array
+    {
+        $lines = explode("\n", file_get_contents(base_path('STAGING_DEPLOY.md')));
+        $inFence = false;
+        $commands = [];
+
+        foreach ($lines as $i => $line) {
+            if (str_starts_with(trim($line), '```')) {
+                $inFence = ! $inFence;
+                continue;
+            }
+            if (! $inFence) {
+                continue;
+            }
+            $code = trim(preg_replace('/#.*$/', '', $line));
+            if ($code !== '') {
+                $commands[] = [$i + 1, $code];
+            }
+        }
+
+        $this->assertNotEmpty($commands, 'no fenced commands found — did the runbook move?');
+
+        return $commands;
+    }
+
+    public function test_staging_runbook_never_targets_the_production_directory(): void
+    {
+        foreach ($this->runbookCommands() as [$lineNo, $code]) {
+            $this->assertDoesNotMatchRegularExpression(
+                '#/var/www/jewelflow(?!-staging)\b#',
+                $code,
+                "STAGING_DEPLOY.md:{$lineNo} runs against the PRODUCTION path: {$code}",
+            );
+        }
+    }
+
+    public function test_staging_runbook_refuses_to_run_against_a_production_env(): void
+    {
+        $doc = file_get_contents(base_path('STAGING_DEPLOY.md'));
+
+        $this->assertStringContainsString('export APP_DIR=/var/www/jewelflow-staging', $doc,
+            'the runbook must set APP_DIR to staging up front');
+        $this->assertStringContainsString("grep -qE '^APP_ENV=(production|prod)\$' \"\$APP_DIR/.env\"", $doc,
+            'the runbook must hard-stop on a production .env, not just warn in prose');
+    }
+
     // ── /etc/cron.d grammar: 5 timing fields + user field + command ─────────
 
     public function test_reconcile_cron_uses_full_etc_crond_grammar_with_user(): void
@@ -136,5 +193,38 @@ class DeployStagingTemplatesTest extends TestCase
 
         // File must end with a trailing newline (cron ignores a final unterminated line).
         $this->assertStringEndsWith("\n", $this->cron(), 'cron file needs a final newline');
+    }
+
+    // ── the asset build must be verified, not just run ──────────────────────
+
+    /**
+     * `npm run build` cannot fail on a stale bundle; `npm run build:verify` can.
+     *
+     * assets:verify-fresh exists precisely to catch a Vite build that produced
+     * nothing while new Blade shipped — its own failure message says "Run npm
+     * run build:verify before deploying". The runbook told the operator to run
+     * plain `npm run build`, so that check was never on the deploy path.
+     */
+    public function test_the_runbook_builds_assets_with_the_freshness_check(): void
+    {
+        foreach ($this->runbookCommands() as [$lineNo, $code]) {
+            $this->assertDoesNotMatchRegularExpression(
+                '/\bnpm run build\b(?!:verify)/',
+                $code,
+                "STAGING_DEPLOY.md:{$lineNo} builds assets without the staleness check "
+                . "— use `npm run build:verify`: {$code}",
+            );
+        }
+    }
+
+    /** The script the runbook now depends on has to actually exist. */
+    public function test_build_verify_is_a_real_npm_script_that_runs_the_check(): void
+    {
+        $package = json_decode(file_get_contents(base_path('package.json')), true);
+
+        $this->assertArrayHasKey('build:verify', $package['scripts'] ?? [],
+            'the runbook calls npm run build:verify');
+        $this->assertStringContainsString('assets:verify-fresh', $package['scripts']['build:verify'],
+            'build:verify must run the freshness check, not just vite build');
     }
 }
