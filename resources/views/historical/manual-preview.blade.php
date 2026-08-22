@@ -324,18 +324,34 @@
 
             @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
 
+            {{-- Both Save buttons are hidden while this bill has a blocking finding.
+                 The server already refuses (storeManual returns a null document,
+                 publishManual throws HistoricalManualPublishRejected), so offering
+                 the buttons only bought the operator a round trip that ends back
+                 on this page. The condition is $messages->hasBlocking() — the exact
+                 call the service makes — rather than a re-derived one, so the screen
+                 and the refusal cannot drift apart. Edit / Recalculate always stays:
+                 it is the only way out of a blocked bill. --}}
             <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-historical-preview-actions>
-                <p class="text-xs text-slate-500">Save draft is reversible. Save &amp; publish makes the historical record permanent.</p>
+                <p class="text-xs text-slate-500">
+                    @if($messages->hasBlocking())
+                        Fix the blocking issues above, then recalculate the preview to enable saving.
+                    @else
+                        Save draft is reversible. Save &amp; publish makes the historical record permanent.
+                    @endif
+                </p>
                 <div class="flex gap-3 flex-wrap">
                     <button class="btn min-h-[44px]" type="submit">Edit / Recalculate preview</button>
-                    <button class="btn btn-primary min-h-[44px]" type="submit"
-                            name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT }}"
-                            formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="draft">Save draft</button>
-                    @can('historical.publish')
-                        <button class="btn min-h-[44px]" type="submit"
-                                name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH }}"
-                                formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="publish">Save &amp; publish</button>
-                    @endcan
+                    @unless($messages->hasBlocking())
+                        <button class="btn btn-primary min-h-[44px]" type="submit"
+                                name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT }}"
+                                formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="draft">Save draft</button>
+                        @can('historical.publish')
+                            <button class="btn min-h-[44px]" type="submit"
+                                    name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH }}"
+                                    formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="publish">Save &amp; publish</button>
+                        @endcan
+                    @endunless
                 </div>
             </div>
         </form>
