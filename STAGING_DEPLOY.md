@@ -15,9 +15,30 @@ scheduler running, and a clean demo shop to log into.
 
 ---
 
+## ⚠ Before anything — pick the target
+
+Every command in this runbook uses `$APP_DIR`. Set it once per shell, and let the
+guard refuse to continue if you are pointed at the live install.
+
+```bash
+export APP_DIR=/var/www/jewelflow-staging       # staging. Production is /var/www/jewelflow
+cd "$APP_DIR" || { echo "no such install: $APP_DIR"; exit 1; }
+
+# Hard stop: never run this runbook against a production .env.
+grep -qE '^APP_ENV=(production|prod)$' "$APP_DIR/.env" \
+  && { echo "REFUSING — $APP_DIR is PRODUCTION. This runbook is staging-only."; exit 1; }
+echo "target OK: $APP_DIR ($(grep '^APP_ENV=' "$APP_DIR/.env"))"
+```
+
+> This section exists because the runbook used to hardcode `/var/www/jewelflow`
+> in every command — the **production** directory — while telling the reader it
+> was staging-only. Copy-pasting the guide deployed to the live shop.
+
+---
+
 ## 2. Pre-deploy checks
 
-- [ ] Target is **staging**, not production.
+- [ ] The target guard above ran and printed `target OK` with a non-production `APP_ENV`.
 - [ ] Working tree clean; deploying a known commit (`git rev-parse HEAD`).
 - [ ] A database backup exists (Section 4) before any `migrate`.
 - [ ] `.env` prepared with the values in Section 3 (no local-dev defaults).
@@ -62,7 +83,7 @@ Keep the archive off-server (download or sync to object storage) before migratin
 ## 5. Code pull / build
 
 ```bash
-cd /var/www/jewelflow
+cd "$APP_DIR"
 git fetch --all
 git checkout <release-commit-or-tag>            # immutable history; deploy a pinned ref
 ```
@@ -77,8 +98,15 @@ composer install --no-dev --optimize-autoloader
 
 ```bash
 npm ci
-npm run build                                   # builds the Vite asset bundle
+npm run build:verify                            # builds the bundle, then fails if it is stale
 ```
+
+> `build:verify` is `vite build && php artisan assets:verify-fresh`. The verify
+> step compares the oldest compiled asset in `public/build` against the newest
+> file in `resources/{css,js,views}` and the build configs, and exits non-zero if
+> a source file is newer — the case where Vite silently produced nothing and the
+> old bundle got shipped over new Blade. Plain `npm run build` cannot fail that
+> way, which is why every "deploy ok but UI broken" ticket started here.
 
 ## 8. Laravel cache commands — **run as `www-data`**
 
@@ -119,8 +147,10 @@ sudo -u www-data php artisan migrate --force
 # Only needed if QUEUE_CONNECTION != sync.
 sudo -u www-data php artisan queue:restart       # graceful reload after deploy
 # Supervisor program (example): one worker is plenty for a pilot
-# command=php /var/www/jewelflow/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+# command=php /var/www/jewelflow-staging/artisan queue:work --sleep=3 --tries=3 --max-time=3600
 # user=www-data  autostart=true  autorestart=true  numprocs=1
+# Supervisor/systemd files cannot expand $APP_DIR — write the absolute staging
+# path. A committed systemd unit already exists: deploy/staging/*.service
 ```
 
 Monitor `failed_jobs`: `php artisan queue:failed`, retry with `queue:retry all`.
@@ -133,15 +163,18 @@ One crontab line drives all 17 scheduled jobs (daily backup, `scan:cleanup`,
 checks, etc.):
 
 ```cron
-* * * * * cd /var/www/jewelflow && sudo -u www-data php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /var/www/jewelflow-staging && sudo -u www-data php artisan schedule:run >> /dev/null 2>&1
 ```
+
+> crontab does not expand `$APP_DIR` — the absolute staging path is deliberate.
+> Double-check it before installing; this line runs every minute forever.
 
 ## 13. Permissions / ownership
 
 ```bash
-sudo chown -R www-data:www-data /var/www/jewelflow/storage /var/www/jewelflow/bootstrap/cache
-sudo find /var/www/jewelflow/storage -type d -exec chmod 775 {} \;
-sudo find /var/www/jewelflow/storage -type f -exec chmod 664 {} \;
+sudo chown -R www-data:www-data "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+sudo find "$APP_DIR/storage" -type d -exec chmod 775 {} \;
+sudo find "$APP_DIR/storage" -type f -exec chmod 664 {} \;
 ```
 
 ## 14. Demo data (pilot shop)
@@ -182,21 +215,40 @@ accounting triggers). Walk them live on the demo shop — this is also the demo:
 
 ## 15. Rollback
 
-- **Deploy failed (assets/app):** `git checkout <previous-tag>` → `composer install --no-dev -o` → `npm ci && npm run build` → re-cache (Section 8) → `queue:restart`.
+- **Deploy failed (assets/app):** `git checkout <previous-tag>` → `composer install --no-dev -o` → `npm ci && npm run build:verify` → re-cache (Section 8) → `queue:restart`.
 - **Migration failed:** restore the Section-4 backup, then `migrate:rollback` the last batch if partially applied. Never edit ledger rows by hand.
 - **Deploy ok but UI broken:** `php artisan optimize:clear`, rebuild assets; if still broken, revert the branch to the last known-good commit and redeploy.
 
 ---
 
-## 16. Known non-blocking test failures
+## 16. Test suite — green is the bar
 
-Full suite (`php artisan test`, testing DB): **1420 passed, 6 skipped, 11 failed**.
-The 11 are pre-existing and unrelated to ERP demo flows — do **not** treat as deploy blockers:
+```bash
+php artisan test        # or ./vendor/bin/phpunit for exact per-test output
+```
 
-- 6 × DhiranOnboardingTest (Dhiran is a separate product, out of scope here).
-- 2 × BusinessIdentifierArchitecture (invoice-number format test expectation; a `#id` cosmetic on the dashboard).
-- 2 × ProfileTest (account-deletion route returns 405).
-- 1 × ServicesBuyNowTest (subscription callback).
+**There is no allowlist of acceptable failures. A red suite blocks the deploy.**
+
+Latest full run: **2297 passed, 7 skipped, 0 failed** (11,809 assertions, ~3.6 min).
+The skips are environment guards (`skipIfNotPostgres` and friends), not failures.
+
+Run it as `./vendor/bin/phpunit --display-phpunit-deprecations` at least once per
+release: PHPUnit 11 only *warns* about docblock metadata (`@dataProvider`) that
+PHPUnit 12 removes outright, so those turn into hard errors on the next upgrade
+while the suite still looks green today. Currently zero.
+
+> This section used to list 11 "known non-blocking failures" — DhiranOnboardingTest,
+> BusinessIdentifierArchitecture, ProfileTest, ServicesBuyNowTest — and told the
+> operator to deploy over them. All 11 have since been fixed (verified: those four
+> classes are 46/46 green), but the list stayed, so the runbook was training whoever
+> ran it to wave off red tests. A standing "ignore these failures" list is a place for
+> real regressions to hide: the next genuine break in one of those classes would have
+> been read as expected. Do not re-add one. If a test legitimately cannot pass in an
+> environment, mark it skipped in code with the reason, where the suite can see it —
+> not in prose here, where it silently outlives the problem.
+
+> The count above is a smoke signal for "did the suite actually run", not a target to
+> match — it moves with every commit. The rule that does not move is: zero failures.
 
 ---
 
