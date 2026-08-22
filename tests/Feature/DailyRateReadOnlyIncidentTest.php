@@ -286,7 +286,19 @@ class DailyRateReadOnlyIncidentTest extends TestCase
             ->assertSee('action="'.route('settings.pricing.save-rates').'"', false);
     }
 
-    public function test_active_plain_numeric_save_keeps_the_original_success_redirect_and_units(): void
+    /**
+     * The active-path counterpart to the read-only cases above: a good save
+     * still succeeds, still converts per-kg silver to per-gram, and still
+     * queues exactly one reprice.
+     *
+     * This asserted a redirect to Settings > Pricing until the gate modal
+     * learned to send owners back where they came from. `context=modal` means
+     * the save came from the dashboard gate, so Settings is now the wrong
+     * destination — the owner never asked to go there. The settings-form path
+     * still lands on the pricing tab; that is covered separately in
+     * DailyRateBusinessDateTest.
+     */
+    public function test_active_plain_numeric_modal_save_returns_to_the_dashboard_with_converted_units(): void
     {
         Bus::fake();
         [$user, $shop] = $this->createRetailerTenant();
@@ -297,7 +309,7 @@ class DailyRateReadOnlyIncidentTest extends TestCase
                 'gold_24k_rate_per_gram' => '5500',
                 'silver_999_rate_per_kg' => '92000',
             ])
-            ->assertRedirect(route('settings.edit', ['tab' => 'pricing']))
+            ->assertRedirect(route('dashboard'))
             ->assertSessionHasNoErrors();
 
         $row = ShopDailyMetalRate::withoutTenant()
