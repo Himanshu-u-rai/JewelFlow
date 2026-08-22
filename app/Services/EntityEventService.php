@@ -5,22 +5,60 @@ namespace App\Services;
 use App\Models\EntityEvent;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class EntityEventService
 {
     /**
+     * Run one audit statement so that its failure can never take down the
+     * business operation that triggered it.
+     *
+     * That guarantee needs two things, and only one of them is a try/catch.
+     * Observers fire inside the caller's DB::transaction() (ReturnService,
+     * ExchangeService, CreditNoteService, …), and on Postgres a failed
+     * statement poisons the entire transaction — every later statement, COMMIT
+     * included, is refused until a rollback. Catching the exception on its own
+     * is therefore a placebo: the audit row is lost AND the sale still dies,
+     * just further downstream with a mystifying 25P02. Wrapping the statement
+     * in DB::transaction() opens a SAVEPOINT when we are already nested, and
+     * unwinding to it hands the caller back a healthy transaction.
+     *
+     * Everywhere except production the failure is rethrown: swallowing it in CI
+     * is exactly how a missing `snapshot` cast survived unnoticed while every
+     * return, sale and job order silently dropped its event. The allow-list is
+     * deliberate — staging must stay as forgiving as production, or an audit
+     * bug takes the sale down there too.
+     *
+     * @template TValue
+     * @param  callable():TValue  $statement
+     * @param  TValue  $fallback  returned in production once the failure is logged
+     * @return TValue
+     */
+    private function guarded(callable $statement, mixed $fallback, string $context, array $meta = []): mixed
+    {
+        try {
+            return DB::transaction($statement);
+        } catch (Throwable $e) {
+            if (app()->environment('local', 'testing')) {
+                throw $e;
+            }
+
+            Log::error("EntityEventService: {$context}", $meta + ['exception' => $e]);
+
+            return $fallback;
+        }
+    }
+
+    /**
      * Record an event against a single entity.
      *
      * Low-level method — all writes must go through here; never raw
      * EntityEvent::create() in observers or controllers.
      *
-     * A failed audit write must never break the business operation that
-     * triggered it, so in production the failure is logged and null returned.
-     * Everywhere else it is rethrown: swallowing it in CI is exactly how a
-     * missing `snapshot` cast survived unnoticed while every return, sale and
-     * job order silently dropped its event.
+     * Failure handling lives in guarded(); see the note there for why a bare
+     * try/catch is not enough on Postgres.
      */
     public function record(
         int $shopId,
@@ -51,27 +89,21 @@ class EntityEventService
             'snapshot'      => $snapshot,
         ]);
 
-        try {
-            $event->saveQuietly();
-        } catch (Throwable $e) {
-            // Allow-list rather than "not production": staging must stay as
-            // forgiving as production, or an audit bug takes the sale down.
-            if (app()->environment('local', 'testing')) {
-                throw $e;
-            }
+        return $this->guarded(
+            function () use ($event): EntityEvent {
+                $event->saveQuietly();
 
-            Log::error("EntityEventService: failed to record {$eventType} ({$entityType})", [
+                return $event;
+            },
+            fallback: null,
+            context:  "failed to record {$eventType} ({$entityType})",
+            meta:     [
                 'shop_id'     => $shopId,
                 'entity_type' => $entityType,
                 'entity_id'   => $entityId,
                 'event_type'  => $eventType,
-                'exception'   => $e,
-            ]);
-
-            return null;
-        }
-
-        return $event;
+            ],
+        );
     }
 
     /**
@@ -116,6 +148,16 @@ class EntityEventService
      *
      * Only returns events at or below $maxLevel so callers can control
      * disclosure depth (0 = operational summary only, 2 = full detail).
+     *
+     * Guarded like the write paths, for a reason that is not obvious from the
+     * signature: the sole caller, ReturnsController::show(), is the redirect
+     * target of the settle action. The refund has already committed by the time
+     * this runs, so an unguarded failure here shows the operator a 500 on the
+     * page that is supposed to confirm the refund — and they will reasonably
+     * conclude the money did not move and refund again. Rendering the return
+     * with an empty timeline is the lesser evil; the failure is in the log.
+     *
+     * Outside production this still throws, so a broken feed cannot hide in CI.
      */
     public function feedFor(
         int $shopId,
@@ -124,14 +166,23 @@ class EntityEventService
         int $maxLevel = 0,
         int $perPage = 20,
     ): LengthAwarePaginator {
-        return EntityEvent::withoutTenant()
-            ->where('shop_id', $shopId)
-            ->where('entity_type', $entityType)
-            ->where('entity_id', $entityId)
-            ->where('level', '<=', $maxLevel)
-            ->orderByDesc('occurred_at')
-            ->orderByDesc('id')
-            ->paginate($perPage);
+        return $this->guarded(
+            fn (): LengthAwarePaginator => EntityEvent::withoutTenant()
+                ->where('shop_id', $shopId)
+                ->where('entity_type', $entityType)
+                ->where('entity_id', $entityId)
+                ->where('level', '<=', $maxLevel)
+                ->orderByDesc('occurred_at')
+                ->orderByDesc('id')
+                ->paginate($perPage),
+            fallback: new LengthAwarePaginator([], 0, $perPage),
+            context:  "failed to read the {$entityType} event feed",
+            meta:     [
+                'shop_id'     => $shopId,
+                'entity_type' => $entityType,
+                'entity_id'   => $entityId,
+            ],
+        );
     }
 
     /**
@@ -139,6 +190,11 @@ class EntityEventService
      *
      * Observers call this before inserting to avoid duplicate rows when the
      * Eloquent saved hook fires multiple times in the same request.
+     *
+     * Guarded on the same terms as record(): this runs inside the caller's
+     * transaction too, so an unguarded read here is every bit as fatal as an
+     * unguarded write. On failure production answers "not recorded" — the
+     * worst case is a duplicate audit row, never a lost sale.
      */
     public function alreadyRecorded(
         int $shopId,
@@ -147,12 +203,22 @@ class EntityEventService
         string $eventType,
         Carbon $occurredAt,
     ): bool {
-        return EntityEvent::withoutTenant()
-            ->where('shop_id', $shopId)
-            ->where('entity_type', $entityType)
-            ->where('entity_id', $entityId)
-            ->where('event_type', $eventType)
-            ->where('occurred_at', $occurredAt)
-            ->exists();
+        return $this->guarded(
+            fn (): bool => EntityEvent::withoutTenant()
+                ->where('shop_id', $shopId)
+                ->where('entity_type', $entityType)
+                ->where('entity_id', $entityId)
+                ->where('event_type', $eventType)
+                ->where('occurred_at', $occurredAt)
+                ->exists(),
+            fallback: false,
+            context:  "failed idempotency check for {$eventType} ({$entityType})",
+            meta:     [
+                'shop_id'     => $shopId,
+                'entity_type' => $entityType,
+                'entity_id'   => $entityId,
+                'event_type'  => $eventType,
+            ],
+        );
     }
 }
