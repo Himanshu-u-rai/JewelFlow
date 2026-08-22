@@ -201,10 +201,12 @@ class DailyRateBusinessDateTest extends TestCase
      * cheap enough that always doing it beats explaining why it sometimes
      * didn't.
      *
-     * So the app asks twice, on purpose. Collapsing the duplicate is the
-     * queue's job, via ShouldBeUnique keyed on shop+business-date, which is
-     * what the matching uniqueId assertion below pins down. Bus::fake() does
-     * not apply that lock, which is exactly why the dispatch count here is 2.
+     * So the app asks twice, on purpose, and the collapse happens underneath
+     * it. Note *where*: PendingDispatch::shouldDispatch() takes the uniqueness
+     * lock before the dispatcher — real or faked — is ever reached, so the
+     * second ask never becomes a job at all. Only one is recorded here, keyed
+     * on shop+business-date, and the test cache store is `array` with no
+     * worker to release the lock, so that stays true for the whole test.
      */
     public function test_immediate_duplicate_submits_create_one_row_and_reprice_under_one_unique_key(): void
     {
@@ -227,11 +229,11 @@ class DailyRateBusinessDateTest extends TestCase
             ->count());
 
         $dispatched = Bus::dispatched(RepriceRetailerInventoryJob::class);
-        $this->assertCount(2, $dispatched, 'both saves should ask for a reprice');
+        $this->assertCount(1, $dispatched, 'the duplicate ask is collapsed at dispatch, not queued twice');
         $this->assertSame(
             [$shop->id.':2026-07-19'],
-            $dispatched->map(fn ($job) => $job->uniqueId())->unique()->values()->all(),
-            'both reprices share one uniqueness key, so the queue runs one'
+            $dispatched->map(fn ($job) => $job->uniqueId())->values()->all(),
+            'the surviving reprice is keyed on this shop and this business date'
         );
     }
 
@@ -269,10 +271,10 @@ class DailyRateBusinessDateTest extends TestCase
         $this->assertDatabaseCount('shop_daily_metal_rates', 1);
 
         $dispatched = Bus::dispatched(RepriceRetailerInventoryJob::class);
-        $this->assertCount(2, $dispatched);
+        $this->assertCount(1, $dispatched);
         $this->assertSame(
             [$shop->id.':2026-07-19'],
-            $dispatched->map(fn ($job) => $job->uniqueId())->unique()->values()->all()
+            $dispatched->map(fn ($job) => $job->uniqueId())->values()->all()
         );
     }
 

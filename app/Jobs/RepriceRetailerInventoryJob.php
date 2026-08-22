@@ -6,23 +6,30 @@ use App\Services\ShopPricingService;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class RepriceRetailerInventoryJob implements ShouldBeUnique, ShouldQueue
+class RepriceRetailerInventoryJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * Ceiling on the uniqueness lock, not the dedupe window.
+     * UntilProcessing, not plain ShouldBeUnique, and the distinction matters.
      *
-     * Laravel releases the lock as soon as the job finishes, so a genuine
-     * correction ("I typed 5500, I meant 5600") a minute later still reprices.
-     * This only bounds how long a worker that died mid-job can block its
-     * successors.
+     * The lock is taken at *dispatch* time — PendingDispatch::shouldDispatch()
+     * acquires it before the dispatcher ever sees the job — so a double-submit
+     * that lands while an identical reprice is still queued is dropped, which
+     * is what we want.
+     *
+     * Plain ShouldBeUnique holds that lock until handle() *finishes*. On a real
+     * worker a reprice over a large stock takes a while, and an owner
+     * correcting a typo in that window ("5500, I meant 5600") would have the
+     * second reprice silently discarded — the rate row updates but the item
+     * costs keep the wrong rate. UntilProcessing releases the lock the moment
+     * the job starts, so the correction always gets its own run.
      */
     public int $uniqueFor = 300;
 

@@ -304,8 +304,10 @@ class ShopPricingService
             // owner asks for a refresh, and answering that with a success toast
             // and no recomputation is the kind of silent no-op that costs more
             // support time than the recompute costs CPU. Duplicate *work* is
-            // suppressed properly by RepriceRetailerInventoryJob's ShouldBeUnique
-            // lock, which is keyed on shop+business-date.
+            // suppressed one layer down, by RepriceRetailerInventoryJob's
+            // uniqueness lock keyed on shop+business-date: a second ask that
+            // arrives while the first is still waiting in the queue is dropped,
+            // and the one run that survives reads whatever we wrote here.
             $this->resolveAndRecordCurrentDayRates($dailyRate, true);
 
             return $dailyRate;
