@@ -42,7 +42,17 @@ class PricingSettingsController extends Controller
             'silver_999_rate_per_gram' => round(((float) $validated['silver_999_rate_per_kg']) / 1000, 4),
         ]);
 
-        return redirect()->route('settings.edit', ['tab' => 'pricing'])
+        // Return the owner to where they were. The gate modal is raised over
+        // the dashboard, and the same `context=modal` field that picks the
+        // error bag above tells us the save came from there — so send them
+        // back to the dashboard rather than stranding them in Settings, a
+        // page they never asked for. Saving from the Settings > Pricing tab
+        // still returns to that tab.
+        $redirectRoute = $request->input('context') === 'modal'
+            ? route('dashboard')
+            : route('settings.edit', ['tab' => 'pricing']);
+
+        return redirect($redirectRoute)
             ->with('success', 'Today\'s pricing rates were saved and stock repricing has been queued.');
     }
 
