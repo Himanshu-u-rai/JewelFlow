@@ -6,8 +6,8 @@ use App\Jobs\RepriceRetailerInventoryJob;
 use App\Models\Item;
 use App\Models\ShopMetalPurityProfile;
 use App\Models\ShopPreferences;
-use App\Services\ShopPricingService;
 use App\Services\MetalRegistry;
+use App\Services\ShopPricingService;
 use DateTimeZone;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -21,9 +21,17 @@ class PricingSettingsController extends Controller
     {
         $bag = $request->input('context') === 'modal' ? 'pricingModal' : 'pricing';
 
-        $validated = Validator::make($request->all(), [
-            'gold_24k_rate_per_gram' => 'required|numeric|min:0.0001|max:999999.9999',
-            'silver_999_rate_per_kg' => 'required|numeric|min:0.0001|max:999999999.9999',
+        $input = $request->all();
+        foreach (['gold_24k_rate_per_gram', 'silver_999_rate_per_kg'] as $field) {
+            $input[$field] = $this->normalizeRateInput($input[$field] ?? null);
+        }
+
+        $validated = Validator::make($input, [
+            'gold_24k_rate_per_gram' => ['bail', 'required', 'regex:/^\d+(?:\.\d+)?$/', 'numeric', 'min:0.0001', 'max:999999.9999'],
+            'silver_999_rate_per_kg' => ['bail', 'required', 'regex:/^\d+(?:\.\d+)?$/', 'numeric', 'min:0.0001', 'max:999999999.9999'],
+        ], [
+            'gold_24k_rate_per_gram.regex' => 'Enter a valid gold rate using digits and an optional decimal point.',
+            'silver_999_rate_per_kg.regex' => 'Enter a valid silver rate using digits and an optional decimal point.',
         ])->validateWithBag($bag);
 
         $shop = $request->user()->shop;
@@ -36,6 +44,34 @@ class PricingSettingsController extends Controller
 
         return redirect()->route('settings.edit', ['tab' => 'pricing'])
             ->with('success', 'Today\'s pricing rates were saved and stock repricing has been queued.');
+    }
+
+    /**
+     * Accept the way a jeweller actually types a rate.
+     *
+     * Owners paste or type grouped numbers — "5,500" and, more often here,
+     * the Indian grouping "1,00,000". Laravel's `numeric` rejects both, so the
+     * save failed with a validation error on input that was perfectly valid to
+     * the person entering it. Strip the separators only when the whole string
+     * is a well-formed grouped number; anything else is passed through
+     * untouched so the regex rule below still rejects it rather than us
+     * silently "repairing" a typo like "5,50" into 550.
+     */
+    private function normalizeRateInput(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $trimmed = trim($value);
+        $westernGrouping = '\d{1,3}(?:,\d{3})+';
+        $indianGrouping = '\d{1,2}(?:,\d{2})+,\d{3}';
+
+        if (preg_match('/^(?:'.$westernGrouping.'|'.$indianGrouping.')(?:\.\d+)?$/', $trimmed) === 1) {
+            return str_replace(',', '', $trimmed);
+        }
+
+        return $trimmed;
     }
 
     public function updateTimezone(Request $request): RedirectResponse
