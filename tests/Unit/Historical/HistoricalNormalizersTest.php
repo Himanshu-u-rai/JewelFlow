@@ -300,9 +300,39 @@ class HistoricalNormalizersTest extends TestCase
         ]);
     }
 
-    /** @return array<string, array{0: string}> */
+    /**
+     * Name each dataset after the value it carries, without letting PHP turn
+     * the name into an integer.
+     *
+     * A bare array_combine($values, ...) looks right and even keeps all the
+     * datasets, but PHP casts a canonical integer string used as an array key:
+     * '-500' becomes int(-500). PHPUnit then renders integer-keyed datasets
+     * positionally, so '-500' and '+0' both came out as "data set #0" — two
+     * tests with one identity. Every runner handles that differently, which is
+     * exactly the confusion it caused: phpunit and the JUnit log counted 2297
+     * tests while `php artisan test` reported 2289 passing, and chasing the
+     * missing one cost a full suite run.
+     *
+     * The `= ` prefix cannot be cast to an int, so the key stays a string and
+     * every dataset keeps a distinct, readable name. Control characters are
+     * escaped so a tab- or CR-led value is legible in test output instead of
+     * silently eating the rest of the line.
+     *
+     * @param  array<int, string>  $values
+     * @return array<string, array{0: string}>
+     */
     private static function named(array $values): array
     {
-        return array_combine($values, array_map(fn ($v) => [$v], $values));
+        $keys = array_map(
+            static fn (string $v): string => '= ' . addcslashes($v, "\0..\37"),
+            $values,
+        );
+
+        $named = array_combine($keys, array_map(static fn ($v) => [$v], $values));
+
+        // A collision here would silently drop a case from the suite.
+        self::assertCount(count($values), $named, 'dataset names collided');
+
+        return $named;
     }
 }
