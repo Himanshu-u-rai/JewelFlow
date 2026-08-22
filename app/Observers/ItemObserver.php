@@ -5,7 +5,6 @@ namespace App\Observers;
 use App\Models\Item;
 use App\Services\EntityEventService;
 use Carbon\Carbon;
-use Throwable;
 
 class ItemObserver
 {
@@ -52,25 +51,21 @@ class ItemObserver
             return;
         }
 
-        try {
-            $this->entityEventService->record(
-                shopId:      $shopId,
-                entityType:  'item',
-                entityId:    (int) $item->id,
-                eventType:   $eventType,
-                summary:     $summary,
-                level:       0,
-                detail:      [
-                    'from'    => $oldStatus,
-                    'to'      => $newStatus,
-                    'barcode' => $item->barcode,
-                ],
-                actorUserId: $actorId ? (int) $actorId : null,
-                occurredAt:  $occurredAt,
-            );
-        } catch (Throwable $e) {
-            \Log::warning('ItemObserver: failed to record status change event for item #' . $item->id . ': ' . $e->getMessage());
-        }
+        $this->entityEventService->record(
+            shopId:      $shopId,
+            entityType:  'item',
+            entityId:    (int) $item->id,
+            eventType:   $eventType,
+            summary:     $summary,
+            level:       0,
+            detail:      [
+                'from'    => $oldStatus,
+                'to'      => $newStatus,
+                'barcode' => $item->barcode,
+            ],
+            actorUserId: $actorId ? (int) $actorId : null,
+            occurredAt:  $occurredAt,
+        );
     }
 
     /**

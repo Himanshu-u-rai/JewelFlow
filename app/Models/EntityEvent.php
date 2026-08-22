@@ -24,12 +24,17 @@ class EntityEvent extends Model
         'level',
         'summary',
         'detail',
+        'snapshot',
         'actor_user_id',
         'occurred_at',
     ];
 
     protected $casts = [
         'detail'      => 'array',
+        // Both detail and snapshot are jsonb. Without this cast Eloquent binds
+        // the raw PHP array, which stringifies to the literal 'Array' and
+        // Postgres rejects the whole insert.
+        'snapshot'    => 'array',
         'occurred_at' => 'datetime',
         'created_at'  => 'datetime',
         'level'       => 'integer',

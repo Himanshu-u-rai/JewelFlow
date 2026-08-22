@@ -66,25 +66,21 @@ class ReturnOrderObserver
             eventType:  'return_settled',
             occurredAt: $occurredAt,
         )) {
-            try {
-                $this->entityEventService->record(
-                    shopId:      $shopId,
-                    entityType:  'return_order',
-                    entityId:    (int) $returnOrder->id,
-                    eventType:   'return_settled',
-                    summary:     'Return settled' . $cnSuffix,
-                    level:       0,
-                    detail:      $detail,
-                    actorUserId: $actorId ? (int) $actorId : null,
-                    occurredAt:  $occurredAt,
-                    snapshot:    [
-                        'return_order_id'    => $returnOrder->id,
-                        'credit_note_number' => $cn?->credit_note_number,
-                    ],
-                );
-            } catch (Throwable $e) {
-                \Log::warning('EntityEventService: failed to record return_settled (return_order): ' . $e->getMessage());
-            }
+            $this->entityEventService->record(
+                shopId:      $shopId,
+                entityType:  'return_order',
+                entityId:    (int) $returnOrder->id,
+                eventType:   'return_settled',
+                summary:     'Return settled' . $cnSuffix,
+                level:       0,
+                detail:      $detail,
+                actorUserId: $actorId ? (int) $actorId : null,
+                occurredAt:  $occurredAt,
+                snapshot:    [
+                    'return_order_id'    => $returnOrder->id,
+                    'credit_note_number' => $cn?->credit_note_number,
+                ],
+            );
         }
 
         // Record against the customer entity (named customers only)
@@ -102,21 +98,17 @@ class ReturnOrderObserver
             return;
         }
 
-        try {
-            $this->entityEventService->record(
-                shopId:      $shopId,
-                entityType:  'customer',
-                entityId:    (int) $returnOrder->customer_id,
-                eventType:   'return_settled',
-                summary:     'Return order #' . $returnOrder->id . ' settled' . $cnSuffix,
-                level:       0,
-                detail:      $detail,
-                actorUserId: $actorId ? (int) $actorId : null,
-                occurredAt:  $occurredAt,
-            );
-        } catch (Throwable $e) {
-            \Log::warning('EntityEventService: failed to record return_settled (customer): ' . $e->getMessage());
-        }
+        $this->entityEventService->record(
+            shopId:      $shopId,
+            entityType:  'customer',
+            entityId:    (int) $returnOrder->customer_id,
+            eventType:   'return_settled',
+            summary:     'Return order #' . $returnOrder->id . ' settled' . $cnSuffix,
+            level:       0,
+            detail:      $detail,
+            actorUserId: $actorId ? (int) $actorId : null,
+            occurredAt:  $occurredAt,
+        );
     }
 
     /**

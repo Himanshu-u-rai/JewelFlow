@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\EntityEvent;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class EntityEventService
 {
@@ -13,6 +15,12 @@ class EntityEventService
      *
      * Low-level method — all writes must go through here; never raw
      * EntityEvent::create() in observers or controllers.
+     *
+     * A failed audit write must never break the business operation that
+     * triggered it, so in production the failure is logged and null returned.
+     * Everywhere else it is rethrown: swallowing it in CI is exactly how a
+     * missing `snapshot` cast survived unnoticed while every return, sale and
+     * job order silently dropped its event.
      */
     public function record(
         int $shopId,
@@ -25,7 +33,7 @@ class EntityEventService
         ?int $actorUserId = null,
         ?Carbon $occurredAt = null,
         ?array $snapshot = null,
-    ): EntityEvent {
+    ): ?EntityEvent {
         // Bypass the global shop scope so the service can write on behalf of any
         // shop (e.g. from a queued job or observer that has no auth context).
         // shop_id is always supplied explicitly.
@@ -42,7 +50,26 @@ class EntityEventService
             'occurred_at'   => $occurredAt ?? Carbon::now(),
             'snapshot'      => $snapshot,
         ]);
-        $event->saveQuietly();
+
+        try {
+            $event->saveQuietly();
+        } catch (Throwable $e) {
+            // Allow-list rather than "not production": staging must stay as
+            // forgiving as production, or an audit bug takes the sale down.
+            if (app()->environment('local', 'testing')) {
+                throw $e;
+            }
+
+            Log::error("EntityEventService: failed to record {$eventType} ({$entityType})", [
+                'shop_id'     => $shopId,
+                'entity_type' => $entityType,
+                'entity_id'   => $entityId,
+                'event_type'  => $eventType,
+                'exception'   => $e,
+            ]);
+
+            return null;
+        }
 
         return $event;
     }

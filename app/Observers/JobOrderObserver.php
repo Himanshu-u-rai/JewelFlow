@@ -5,7 +5,6 @@ namespace App\Observers;
 use App\Models\JobOrder;
 use App\Services\EntityEventService;
 use Carbon\Carbon;
-use Throwable;
 
 class JobOrderObserver
 {
@@ -56,30 +55,26 @@ class JobOrderObserver
             $summary .= ' — ' . number_format((float) $jobOrder->issued_fine_weight, 3) . 'g fine';
         }
 
-        try {
-            $this->entityEventService->record(
-                shopId:      $shopId,
-                entityType:  'karigar',
-                entityId:    (int) $jobOrder->karigar_id,
-                eventType:   'job_issued',
-                summary:     $summary,
-                level:       0,
-                detail:      [
-                    'job_order_id'       => $jobOrder->id,
-                    'job_order_number'   => $jobOrder->job_order_number,
-                    'issued_fine_weight' => (float) ($jobOrder->issued_fine_weight ?? 0),
-                    'metal_type'         => $jobOrder->metal_type,
-                ],
-                actorUserId: $actorId ? (int) $actorId : null,
-                occurredAt:  $occurredAt,
-                snapshot:    [
-                    'karigar_name' => $jobOrder->karigar?->name,
-                    'job_number'   => $jobOrder->job_order_number,
-                ],
-            );
-        } catch (Throwable $e) {
-            \Log::warning('EntityEventService: failed to record job_issued: ' . $e->getMessage());
-        }
+        $this->entityEventService->record(
+            shopId:      $shopId,
+            entityType:  'karigar',
+            entityId:    (int) $jobOrder->karigar_id,
+            eventType:   'job_issued',
+            summary:     $summary,
+            level:       0,
+            detail:      [
+                'job_order_id'       => $jobOrder->id,
+                'job_order_number'   => $jobOrder->job_order_number,
+                'issued_fine_weight' => (float) ($jobOrder->issued_fine_weight ?? 0),
+                'metal_type'         => $jobOrder->metal_type,
+            ],
+            actorUserId: $actorId ? (int) $actorId : null,
+            occurredAt:  $occurredAt,
+            snapshot:    [
+                'karigar_name' => $jobOrder->karigar?->name,
+                'job_number'   => $jobOrder->job_order_number,
+            ],
+        );
     }
 
     private function recordJobCompleted(JobOrder $jobOrder, int $shopId, ?int $actorId, Carbon $occurredAt): void
@@ -102,32 +97,28 @@ class JobOrderObserver
             $summary .= ' — ' . number_format((float) $jobOrder->issued_fine_weight, 3) . 'g fine';
         }
 
-        try {
-            $this->entityEventService->record(
-                shopId:      $shopId,
-                entityType:  'karigar',
-                entityId:    (int) $jobOrder->karigar_id,
-                eventType:   'job_completed',
-                summary:     $summary,
-                level:       0,
-                detail:      [
-                    'job_order_id'         => $jobOrder->id,
-                    'job_order_number'     => $jobOrder->job_order_number,
-                    'metal_type'           => $jobOrder->metal_type,
-                    'issued_fine_weight'   => (float) $jobOrder->issued_fine_weight,
-                    'returned_fine_weight' => (float) $jobOrder->returned_fine_weight,
-                    'actual_wastage_fine'  => (float) $jobOrder->actual_wastage_fine,
-                ],
-                actorUserId: $actorId ? (int) $actorId : null,
-                occurredAt:  $completedAt,
-                snapshot:    [
-                    'karigar_name' => $jobOrder->karigar?->name,
-                    'job_number'   => $jobOrder->job_order_number,
-                ],
-            );
-        } catch (Throwable $e) {
-            \Log::warning('EntityEventService: failed to record job_completed: ' . $e->getMessage());
-        }
+        $this->entityEventService->record(
+            shopId:      $shopId,
+            entityType:  'karigar',
+            entityId:    (int) $jobOrder->karigar_id,
+            eventType:   'job_completed',
+            summary:     $summary,
+            level:       0,
+            detail:      [
+                'job_order_id'         => $jobOrder->id,
+                'job_order_number'     => $jobOrder->job_order_number,
+                'metal_type'           => $jobOrder->metal_type,
+                'issued_fine_weight'   => (float) $jobOrder->issued_fine_weight,
+                'returned_fine_weight' => (float) $jobOrder->returned_fine_weight,
+                'actual_wastage_fine'  => (float) $jobOrder->actual_wastage_fine,
+            ],
+            actorUserId: $actorId ? (int) $actorId : null,
+            occurredAt:  $completedAt,
+            snapshot:    [
+                'karigar_name' => $jobOrder->karigar?->name,
+                'job_number'   => $jobOrder->job_order_number,
+            ],
+        );
     }
 
     private function recordJobCancelled(JobOrder $jobOrder, int $shopId, ?int $actorId, Carbon $occurredAt): void
@@ -142,27 +133,23 @@ class JobOrderObserver
             return;
         }
 
-        try {
-            $this->entityEventService->record(
-                shopId:      $shopId,
-                entityType:  'karigar',
-                entityId:    (int) $jobOrder->karigar_id,
-                eventType:   'job_cancelled',
-                summary:     "Job {$jobOrder->job_order_number} cancelled",
-                level:       0,
-                detail:      [
-                    'job_order_id'     => $jobOrder->id,
-                    'job_order_number' => $jobOrder->job_order_number,
-                ],
-                actorUserId: $actorId ? (int) $actorId : null,
-                occurredAt:  $occurredAt,
-                snapshot:    [
-                    'karigar_name' => $jobOrder->karigar?->name,
-                    'job_number'   => $jobOrder->job_order_number,
-                ],
-            );
-        } catch (Throwable $e) {
-            \Log::warning('EntityEventService: failed to record job_cancelled: ' . $e->getMessage());
-        }
+        $this->entityEventService->record(
+            shopId:      $shopId,
+            entityType:  'karigar',
+            entityId:    (int) $jobOrder->karigar_id,
+            eventType:   'job_cancelled',
+            summary:     "Job {$jobOrder->job_order_number} cancelled",
+            level:       0,
+            detail:      [
+                'job_order_id'     => $jobOrder->id,
+                'job_order_number' => $jobOrder->job_order_number,
+            ],
+            actorUserId: $actorId ? (int) $actorId : null,
+            occurredAt:  $occurredAt,
+            snapshot:    [
+                'karigar_name' => $jobOrder->karigar?->name,
+                'job_number'   => $jobOrder->job_order_number,
+            ],
+        );
     }
 }
