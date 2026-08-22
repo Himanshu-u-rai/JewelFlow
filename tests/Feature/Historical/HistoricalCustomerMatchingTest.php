@@ -117,6 +117,56 @@ class HistoricalCustomerMatchingTest extends TestCase
         });
     }
 
+    /**
+     * The write side must produce what the read side searches for.
+     *
+     * Quick Bill validates customer_mobile as `nullable|string|max:20` and hands
+     * it to Customer::findOrCreateByMobile(). That used to store the raw string,
+     * so a walk-in billed as '+91 98123 00099' was a customer this matcher could
+     * never find by any spelling of their own number — and the (shop_id, mobile)
+     * unique index happily allowed a second row for the same human, because the
+     * two strings differ.
+     */
+    public function test_a_quick_bill_walk_in_is_stored_in_the_form_the_matcher_searches(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            $created = Customer::findOrCreateByMobile('Ramesh Kumar', '+91 98123 00099');
+
+            $this->assertNotNull($created);
+            $this->assertSame('9812300099', $created->mobile,
+                'the stored mobile must be the canonical last-10-digit form');
+
+            $result = app(HistoricalCustomerMatcher::class)->byMobile($shop->id, '+91 98123 00099');
+            $this->assertSame('match', $result['status'],
+                'a Quick Bill walk-in must be findable by historical matching');
+            $this->assertSame([$created->id], $result['customers']->pluck('id')->all());
+        });
+    }
+
+    /** Same human, four spellings, one customer record — not four. */
+    public function test_differently_spelled_mobiles_reuse_one_customer_record(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            $spellings = ['9812300099', '+91 98123 00099', '098123-00099', ' +919812300099 '];
+
+            $ids = [];
+            foreach ($spellings as $spelling) {
+                $ids[] = Customer::findOrCreateByMobile('Ramesh Kumar', $spelling)?->id;
+            }
+
+            $this->assertCount(1, array_unique($ids), 'every spelling must resolve to one customer');
+            $this->assertSame(
+                1,
+                Customer::withoutTenant()->where('shop_id', $shop->id)->where('mobile', '9812300099')->count(),
+                'no duplicate row may be created for the same number',
+            );
+        });
+    }
+
     // ---------------------------------------------------------- 2. gstin ambiguity
 
     public function test_duplicate_gstin_is_reported_ambiguous_not_resolved(): void

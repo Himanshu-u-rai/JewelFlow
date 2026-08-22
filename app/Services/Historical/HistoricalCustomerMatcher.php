@@ -104,11 +104,15 @@ class HistoricalCustomerMatcher
         ];
     }
 
+    /**
+     * Delegates to the model so the read side of matching and the write side of
+     * Customer::findOrCreateByMobile() can never disagree about what a mobile
+     * number looks like — which is exactly how Quick Bill customers became
+     * invisible to this matcher.
+     */
     public static function normalizeMobile(?string $mobile): ?string
     {
-        $digits = preg_replace('/\D+/', '', (string) $mobile) ?? '';
-
-        return strlen($digits) >= 10 ? substr($digits, -10) : null;
+        return Customer::normalizeMobile($mobile);
     }
 
     public static function normalizeGstin(?string $gstin): ?string

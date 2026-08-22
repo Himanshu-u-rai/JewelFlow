@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Csv;
 use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\OnboardingBatch;
@@ -388,7 +389,7 @@ class OnboardingController extends Controller
             return back()->withErrors(['file' => 'Could not read the uploaded file.']);
         }
 
-        $header = fgetcsv($handle);
+        $header = Csv::get($handle);
         if ($header === false) {
             fclose($handle);
             return back()->withErrors(['file' => 'The file is empty.']);
@@ -397,12 +398,16 @@ class OnboardingController extends Controller
 
         $created = 0;
         $skipped = 0;
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = Csv::get($handle)) !== false) {
             if (count($row) === 1 && trim((string) $row[0]) === '') {
                 continue; // blank line
             }
             $data   = array_combine($header, array_pad(array_slice($row, 0, count($header)), count($header), null));
-            $mobile = trim((string) ($data['mobile'] ?? ''));
+            // Canonical form (see Customer::storableMobile) for both the dedupe
+            // and the insert: an exported CSV spells numbers however the shop's
+            // old system did, so '+91 98123 00099' would otherwise import as a
+            // second row for a buyer who is already in the directory.
+            $mobile = Customer::storableMobile($data['mobile'] ?? null);
 
             // Dedupe by mobile within the shop; nameless/numberless rows skipped.
             if ($mobile === '' || Customer::where('mobile', $mobile)->exists()) {
@@ -442,6 +447,11 @@ class OnboardingController extends Controller
             'email'      => ['nullable', 'email', 'max:150'],
             'address'    => ['nullable', 'string', 'max:500'],
         ]);
+
+        // `mobile` here is max:20 free text, not digits:10 like the customer
+        // form — canonicalise before the duplicate check and the insert so the
+        // same buyer cannot enter the directory twice under two spellings.
+        $data['mobile'] = Customer::storableMobile($data['mobile']);
 
         if (Customer::where('mobile', $data['mobile'])->exists()) {
             return back()->withErrors(['mobile' => 'A customer with this mobile already exists.'])->withInput();
@@ -737,7 +747,7 @@ class OnboardingController extends Controller
             return back()->withErrors(['file' => 'Could not read the uploaded file.']);
         }
 
-        $header = fgetcsv($handle);
+        $header = Csv::get($handle);
         if ($header === false) {
             fclose($handle);
             return back()->withErrors(['file' => 'The file is empty.']);
@@ -747,7 +757,7 @@ class OnboardingController extends Controller
         $modes   = ['cash', 'bank', 'upi', 'wallet'];
         $created = 0;
         $skipped = 0;
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = Csv::get($handle)) !== false) {
             if (count($row) === 1 && trim((string) $row[0]) === '') {
                 continue;
             }
@@ -811,7 +821,7 @@ class OnboardingController extends Controller
             return back()->withErrors(['file' => 'Could not read the uploaded file.']);
         }
 
-        $header = fgetcsv($handle);
+        $header = Csv::get($handle);
         if ($header === false) {
             fclose($handle);
             return back()->withErrors(['file' => 'The file is empty.']);
@@ -822,7 +832,7 @@ class OnboardingController extends Controller
         $fields  = ['metal_type', 'gross_weight', 'stone_weight', 'purity', 'making_charges', 'stone_charges', 'cost_price', 'selling_price', 'barcode', 'design', 'category', 'sub_category', 'huid', 'hallmark_date'];
         $created = 0;
         $skipped = 0;
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = Csv::get($handle)) !== false) {
             if (count($row) === 1 && trim((string) $row[0]) === '') {
                 continue;
             }
@@ -885,7 +895,7 @@ class OnboardingController extends Controller
             return back()->withErrors(['file' => 'Could not read the uploaded file.']);
         }
 
-        $header = fgetcsv($handle);
+        $header = Csv::get($handle);
         if ($header === false) {
             fclose($handle);
             return back()->withErrors(['file' => 'The file is empty.']);
@@ -894,7 +904,7 @@ class OnboardingController extends Controller
 
         $created = 0;
         $skipped = 0;
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = Csv::get($handle)) !== false) {
             if (count($row) === 1 && trim((string) $row[0]) === '') {
                 continue;
             }

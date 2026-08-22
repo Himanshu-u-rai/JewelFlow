@@ -73,6 +73,38 @@ class Customer extends Model
     }
 
     /**
+     * The one canonical spelling of a customer mobile: last 10 digits.
+     *
+     * Every surface that reads or writes `customers.mobile` must agree on this,
+     * or the (shop_id, mobile) unique index enforces nothing useful — it only
+     * makes the *stored string* unique, not the human. The customer form already
+     * enforces `digits:10`; Quick Bill accepts `max:20` free text and relies on
+     * this. Returns null for anything that cannot be a mobile number.
+     */
+    public static function normalizeMobile(?string $mobile): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $mobile) ?? '';
+
+        return strlen($digits) >= 10 ? substr($digits, -10) : null;
+    }
+
+    /**
+     * What to actually store in `customers.mobile`, for the write paths that
+     * accept free text (Quick Bill, onboarding CSV import, onboarding manual
+     * add) instead of validating `digits:10` like every other form.
+     *
+     * Canonical form when the value can be a mobile; otherwise as typed, since
+     * dropping the only contact detail on a bill is worse than storing a number
+     * matching will not recognise. Use this for the dedupe LOOKUP as well as the
+     * insert — normalising only one of the two turns a silent duplicate into a
+     * unique-index 500.
+     */
+    public static function storableMobile(?string $mobile): string
+    {
+        return static::normalizeMobile($mobile) ?? trim((string) $mobile);
+    }
+
+    /**
      * Find an existing customer by mobile within the current shop, or create one
      * from a typed walk-in name. Returns null when no mobile is supplied (we do
      * not create directory records for nameless/numberless one-off walk-ins).
@@ -83,7 +115,13 @@ class Customer extends Model
      */
     public static function findOrCreateByMobile(?string $name, ?string $mobile, ?string $address = null): ?self
     {
-        $mobile = trim((string) $mobile);
+        // Normalise before both the lookup AND the insert. The (shop_id, mobile)
+        // unique index only guarantees "one string, one customer" — it cannot
+        // know that '+91 98123 00099' and '9812300099' are the same human. Quick
+        // Bill validates this field as `max:20`, so without this the same buyer
+        // gets a second record and neither the customer form (digits:10) nor
+        // historical matching can ever find the Quick Bill copy.
+        $mobile = static::storableMobile($mobile);
         if ($mobile === '') {
             return null;
         }
