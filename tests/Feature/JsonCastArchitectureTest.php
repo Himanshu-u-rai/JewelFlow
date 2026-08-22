@@ -36,6 +36,17 @@ class JsonCastArchitectureTest extends TestCase
         AsArrayObject::class, AsCollection::class,
     ];
 
+    /**
+     * Tables with a json column that deliberately have no Eloquent model.
+     *
+     * Nothing writes to these through Eloquent, so there is no $casts array to
+     * get wrong. Anything else missing a model means the scan lost it.
+     */
+    private const MODEL_LESS_JSON_TABLES = [
+        // Written by raw SQL from the audit-log archiver; read-only thereafter.
+        'platform_audit_logs_archive',
+    ];
+
     protected function setUp(): void
     {
         $this->skipIfNotPostgres();
@@ -52,8 +63,9 @@ class JsonCastArchitectureTest extends TestCase
             $jsonColumns[$row->table_name][] = $row->column_name;
         }
 
-        $checked = 0;
-        $drift   = [];
+        $modelsChecked = [];
+        $coveredTables = [];
+        $drift         = [];
 
         foreach ($this->modelClasses() as $class) {
             try {
@@ -64,7 +76,8 @@ class JsonCastArchitectureTest extends TestCase
             }
 
             foreach ($jsonColumns[$table] ?? [] as $column) {
-                $checked++;
+                $modelsChecked[$class] = true;
+                $coveredTables[$table] = true;
 
                 $cast = $model->getCasts()[$column] ?? null;
 
@@ -80,8 +93,31 @@ class JsonCastArchitectureTest extends TestCase
             }
         }
 
-        // Guard against the scan silently matching nothing (e.g. a namespace move).
-        $this->assertGreaterThan(25, $checked, 'json column scan found suspiciously few columns.');
+        // Guard against the scan silently matching nothing (e.g. a namespace move,
+        // a Models/ subdirectory that stops autoloading, a renamed table).
+        //
+        // The old floor counted (model, column) PAIRS, which is not the quantity
+        // that goes wrong: models carrying several json columns each — Shop,
+        // EntityEvent, Subscription — inflate it enough that most of the model
+        // layer could drop out of the scan and 25 would still be cleared. Count
+        // distinct models instead, and — the assertion that actually closes the
+        // hole — require every json table to be reached by SOME model. A model
+        // the scan loses takes its table's coverage with it and is named in the
+        // failure, instead of being absorbed by a sibling's extra columns.
+        $uncovered = array_values(array_diff(
+            array_keys($jsonColumns),
+            array_keys($coveredTables),
+            self::MODEL_LESS_JSON_TABLES,
+        ));
+
+        $this->assertSame([], $uncovered,
+            "json/jsonb tables no Eloquent model claims — the model scan lost them,\n"
+            . "or they are new and need a model (or a MODEL_LESS_JSON_TABLES entry):\n"
+            . implode("\n", $uncovered));
+
+        $this->assertGreaterThan(30, count($modelsChecked),
+            'json cast scan reached suspiciously few models.');
+
         $this->assertSame([], $drift, "Uncast json columns will bind as the literal 'Array':\n" . implode("\n", $drift));
     }
 
