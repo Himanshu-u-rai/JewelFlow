@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\Csv;
 use App\Http\Controllers\Controller;
 use App\Models\Platform\Plan;
 use App\Models\Platform\ShopSubscription;
@@ -61,7 +62,7 @@ class SubscriptionManagementController extends Controller
         return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');
 
-            fputcsv($handle, [
+            Csv::put($handle, [
                 'ID', 'Shop', 'Plan', 'Status', 'Billing Cycle',
                 'Price Paid', 'Starts At', 'Ends At', 'Created At',
             ]);
@@ -69,7 +70,7 @@ class SubscriptionManagementController extends Controller
             ShopSubscription::with(['shop:id,name', 'plan:id,name'])
                 ->orderBy('id')
                 ->each(function (ShopSubscription $sub) use ($handle) {
-                    fputcsv($handle, [
+                    Csv::put($handle, [
                         $sub->id,
                         $sub->shop?->name,
                         $sub->plan?->name,

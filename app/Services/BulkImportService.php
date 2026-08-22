@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Csv;
 use App\Models\Category;
 use App\Models\Import;
 use App\Models\ImportRow;
@@ -880,7 +881,7 @@ class BulkImportService
 
         $headers = null;
         $rows = [];
-        while (($raw = fgetcsv($stream)) !== false) {
+        while (($raw = Csv::get($stream)) !== false) {
             if ($headers === null) {
                 $headers = array_map(fn ($h) => $this->normalizeHeader($h), $raw);
                 continue;
