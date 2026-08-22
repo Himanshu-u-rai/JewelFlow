@@ -37,3 +37,21 @@ Thumbs.db
 
 # Local-only SaaS marketing assets — NEVER commit, push, or deploy to VPS.
 /marketing/
+
+# Env backups. `.env.backup` was already listed, but a backup taken by tooling
+# is named .env.bak.<timestamp> and slipped straight past it — same secrets,
+# same rule, so match the shapes they actually get written in.
+.env.bak
+.env.bak.*
+.env.*.bak
+
+# Local tooling + QA artifacts. These sit in the repo root next to real
+# untracked work, which is exactly how a `git add -A` sweeps them up.
+/output/
+/.playwright-cli/
+/.playwright-mcp/
+/.claude/launch.json
+
+# Screenshots dumped at the repo root during UI verification. Root-scoped on
+# purpose: images under public/ and resources/ are real assets and stay tracked.
+/*.png
