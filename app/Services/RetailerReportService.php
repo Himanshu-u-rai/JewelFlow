@@ -12,12 +12,23 @@ class RetailerReportService
     /**
      * Stock aging report — items grouped into aging buckets.
      * Cached for 10 minutes per shop.
+     *
+     * Returns ['buckets' => <label => bucket>, 'summary' => [...]]. The summary
+     * used to be stuffed into the bucket map under a '__summary' key, which made
+     * every consumer responsible for stripping it before iterating. One of the
+     * two forgot and /report/stock-aging 500'd on a colour lookup for a bucket
+     * label that was never a bucket. Keeping the two apart makes that class of
+     * bug unrepresentable rather than merely fixed.
+     *
+     * @return array{buckets: array<string, array{count:int, value:float, items:array}>, summary: array{avg_days:int, aged_pct:float, aged_count:int}}
      */
     public function stockAging(): array
     {
         $shopId = auth()->user()->shop_id;
 
-        return Cache::remember("shop:{$shopId}:stock_aging", 600, function () use ($shopId) {
+        // Key is versioned: a cache entry written in the old flat shape would be
+        // replayed into the new consumers for up to 10 minutes after deploy.
+        return Cache::remember("shop:{$shopId}:stock_aging:v2", 600, function () use ($shopId) {
             return $this->computeStockAging($shopId);
         });
     }
@@ -69,13 +80,15 @@ class RetailerReportService
         }
 
         $totalItems = $items->count();
-        $buckets['__summary'] = [
-            'avg_days'   => $totalItems > 0 ? (int) round($totalDays / $totalItems) : 0,
-            'aged_pct'   => $totalItems > 0 ? round(($agedCount / $totalItems) * 100, 1) : 0.0,
-            'aged_count' => $agedCount,
-        ];
 
-        return $buckets;
+        return [
+            'buckets' => $buckets,
+            'summary' => [
+                'avg_days'   => $totalItems > 0 ? (int) round($totalDays / $totalItems) : 0,
+                'aged_pct'   => $totalItems > 0 ? round(($agedCount / $totalItems) * 100, 1) : 0.0,
+                'aged_count' => $agedCount,
+            ],
+        ];
     }
 
     /**
@@ -142,17 +155,5 @@ class RetailerReportService
 
         return $byCategory;
         });
-    }
-
-    /**
-     * Combined analytics dashboard data.
-     */
-    public function dashboardData(string $period = '30'): array
-    {
-        return [
-            'stock_aging' => $this->stockAging(),
-            'best_sellers' => $this->bestSellers(10, $period),
-            'worst_sellers' => $this->worstSellers(10, $period),
-        ];
     }
 }
