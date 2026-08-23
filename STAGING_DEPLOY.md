@@ -229,10 +229,10 @@ php artisan test        # or ./vendor/bin/phpunit for exact per-test output
 
 **There is no allowlist of acceptable failures. A red suite blocks the deploy.**
 
-Latest full run: **2297 tests, 2290 passed, 7 skipped, 0 failed** (11,809
-assertions, ~3.5 min). The skips are environment guards (`skipIfNotPostgres`
-and friends), not failures. `php artisan test` and `./vendor/bin/phpunit` agree
-on all four numbers — if they ever stop agreeing, see below.
+Latest full run: **2297 passed, 7 skipped, 0 failed** (11,828 assertions,
+~3.3 min). The skips are environment guards (`skipIfNotPostgres` and friends),
+not failures. `php artisan test` and `./vendor/bin/phpunit` agree on all four
+numbers — if they ever stop agreeing, see below.
 
 > A previous revision of this section claimed artisan "counts one fewer passing
 > test than phpunit — an artisan-side counting quirk". That was wrong. Two

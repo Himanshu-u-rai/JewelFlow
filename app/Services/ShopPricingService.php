@@ -268,29 +268,55 @@ class ShopPricingService
                 throw new LogicException('Gold and silver base rates must be greater than zero.');
             }
 
-            $dailyRate = ShopDailyMetalRate::withoutTenant()
-                ->firstOrNew([
-                    'shop_id' => (int) $shop->id,
-                    'business_date' => $businessDate,
-                ]);
+            $key = [
+                'shop_id' => (int) $shop->id,
+                'business_date' => $businessDate,
+            ];
+            $values = [
+                'timezone' => $timezone,
+                'gold_24k_rate_per_gram' => $goldRate,
+                'silver_999_rate_per_gram' => $silverRate,
+                'entered_by_user_id' => $userId,
+            ];
 
-            if (! $dailyRate->exists) {
-                $dailyRate->entered_at = now();
+            // Two owners (or a double-submit) saving the same shop+day used to
+            // interleave: both read the row, both wrote, and the resolved
+            // per-purity rates could end up derived from one save while the
+            // base row held the other's numbers. firstOrCreate settles the
+            // does-not-exist-yet race on the unique index
+            // (shop_daily_metal_rates_shop_business_date_unique) rather than on
+            // a read; the loser falls through and re-reads under a row lock, so
+            // the second save is applied on top of the first instead of beside
+            // it.
+            $dailyRate = ShopDailyMetalRate::withoutTenant()->firstOrCreate($key, $values);
+
+            if (! $dailyRate->wasRecentlyCreated) {
+                $dailyRate = ShopDailyMetalRate::withoutTenant()
+                    ->where($key)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $dailyRate->fill($values)->save();
             }
 
-            $dailyRate->timezone = $timezone;
-            $dailyRate->gold_24k_rate_per_gram = $goldRate;
-            $dailyRate->silver_999_rate_per_gram = $silverRate;
-            $dailyRate->entered_by_user_id = $userId;
-            $dailyRate->updated_at = now();
-            $dailyRate->save();
-
+            // Deliberately unconditional, even when the rates are byte-identical
+            // to what is already stored. Re-saving the same numbers is how an
+            // owner asks for a refresh, and answering that with a success toast
+            // and no recomputation is the kind of silent no-op that costs more
+            // support time than the recompute costs CPU. Duplicate *work* is
+            // suppressed one layer down, by RepriceRetailerInventoryJob's
+            // uniqueness lock keyed on shop+business-date: a second ask that
+            // arrives while the first is still waiting in the queue is dropped,
+            // and the one run that survives reads whatever we wrote here.
             $this->resolveAndRecordCurrentDayRates($dailyRate, true);
 
             return $dailyRate;
         });
 
-        RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
+        RepriceRetailerInventoryJob::dispatch(
+            (int) $shop->id,
+            $dailyRate->business_date->toDateString()
+        )->afterCommit();
 
         // Live-rate alert: broadcast the new rates to the shop's mobile devices.
         // Service-layer hook so it fires for BOTH web and mobile rate entry.
@@ -303,7 +329,7 @@ class ShopPricingService
                     . number_format((float) $dailyRate->silver_999_rate_per_gram * 1000, 2) . '/kg',
                 [
                     'type'          => 'daily_rate',
-                    'business_date' => $this->businessDateString($shop),
+                    'business_date' => $dailyRate->business_date->toDateString(),
                 ],
             );
         } catch (\Throwable $e) {
@@ -335,7 +361,10 @@ class ShopPricingService
         }
 
         $rate = $this->recordResolvedRate($profile, $dailyRate->business_date->toDateString(), $ratePerGram, true);
-        RepriceRetailerInventoryJob::dispatch((int) $shop->id)->afterCommit();
+        RepriceRetailerInventoryJob::dispatch(
+            (int) $shop->id,
+            $dailyRate->business_date->toDateString()
+        )->afterCommit();
 
         return $rate;
     }
@@ -566,14 +595,14 @@ class ShopPricingService
         return [$resolved, $type, $value];
     }
 
-    public function repriceInStockItems(int $shopId): int
+    public function repriceInStockItems(int $shopId, ?CarbonInterface $now = null): int
     {
         if (! $this->hasPricingSchema() || ! $this->hasRetailerPricingItemColumns()) {
             return 0;
         }
 
         $shop = Shop::query()->find($shopId);
-        if (! $shop || ! $shop->isRetailer() || ! $this->hasCurrentDailyRates($shop)) {
+        if (! $shop || ! $shop->isRetailer() || ! $this->hasCurrentDailyRates($shop, $now)) {
             return 0;
         }
 
@@ -588,7 +617,7 @@ class ShopPricingService
             ->where('shop_id', $shopId)
             ->where('status', 'in_stock')
             ->orderBy('id')
-            ->chunkById(200, function ($items) use ($shop, &$updated): void {
+            ->chunkById(200, function ($items) use ($shop, $now, &$updated): void {
                 foreach ($items as $item) {
                     try {
                         if (! $item->metal_type) {
@@ -605,7 +634,7 @@ class ShopPricingService
                             'hallmark_charges' => $item->hallmark_charges ?? 0,
                             'rhodium_charges'  => $item->rhodium_charges  ?? 0,
                             'other_charges'    => $item->other_charges    ?? 0,
-                        ]);
+                        ], $now);
                     } catch (\Throwable $e) {
                         DB::table('items')->where('id', $item->id)->update([
                             'pricing_review_required' => $this->databaseBoolean(true),
