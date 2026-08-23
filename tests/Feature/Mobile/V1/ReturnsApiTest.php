@@ -269,6 +269,47 @@ class ReturnsApiTest extends TestCase
         $this->assertArrayHasKey('errors', $response->json());
     }
 
+    /**
+     * A return order must arrive with the number a human is meant to read.
+     *
+     * The presenter used to send `id` and nothing else, so the app had no
+     * choice but to label the document with its raw database id — while the
+     * credit note and invoice in the very same payload each carried a proper
+     * business number, and ReturnOrder::$display_number ("RET-001") had existed
+     * unused since the business-identifier migration.
+     */
+    public function test_a_return_carries_its_shop_document_number_not_just_a_row_id(): void
+    {
+        [$owner, $shop, , $line] = $this->soldInvoice();
+        $this->configureReturnPolicy($shop);
+
+        Sanctum::actingAs($owner);
+        TenantContext::set((int) $shop->id);
+
+        $created = $this->withHeaders($this->idempotency('doc-number'))
+            ->postJson('/api/mobile/v1/returns', $this->createPayload($line));
+
+        $created->assertStatus(201);
+
+        $number = $created->json('data.return_number');
+        $this->assertIsInt($number);
+        $this->assertGreaterThan(0, $number, 'per-shop counter starts at 1, never 0');
+
+        // Formatted exactly as the model defines it — one spelling of the
+        // number, so mobile and web can never disagree about what to print.
+        $this->assertSame(
+            'RET-' . str_pad((string) $number, 3, '0', STR_PAD_LEFT),
+            $created->json('data.display_number'),
+        );
+
+        // The list shares presentSummary(), so it must carry the number too —
+        // that is the screen where the operator picks a return out of many.
+        $listed = $this->getJson('/api/mobile/v1/returns');
+        $listed->assertOk();
+        $this->assertSame($number, $listed->json('data.data.0.return_number'));
+        $this->assertSame($created->json('data.display_number'), $listed->json('data.data.0.display_number'));
+    }
+
     public function test_returns_show_404_for_non_existent_order(): void
     {
         [$userA, $shopA] = $this->createRetailerTenant();

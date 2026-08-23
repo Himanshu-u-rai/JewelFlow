@@ -154,7 +154,10 @@ class DhiranController extends Controller
         ]);
 
         // Dedupe within THIS shop (BelongsToShop scope keeps the lookup tenant-local).
-        $existing = Customer::where('mobile', $data['mobile'])->first();
+        // resolveByMobile, not an exact match: a borrower added before mobiles
+        // were canonicalised is stored as typed, and an exact lookup would miss
+        // them and hand this shop a second loan account for the same person.
+        $existing = Customer::resolveByMobile($data['mobile']);
         if ($existing) {
             return response()->json([
                 'ok'        => true,

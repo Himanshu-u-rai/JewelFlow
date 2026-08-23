@@ -37,11 +37,26 @@ class HistoricalCustomerMatcher
             return ['status' => 'none', 'customers' => collect()];
         }
 
-        $customers = Customer::withoutTenant()
-            ->active()
-            ->where('shop_id', $shopId)
-            ->where('mobile', $normalized)
-            ->get();
+        $base = fn () => Customer::withoutTenant()->active()->where('shop_id', $shopId);
+
+        $customers = $base()->where('mobile', $normalized)->get();
+
+        // Normalising only the needle is half a lookup. byGstin and byName both
+        // normalise the COLUMN too (UPPER(TRIM(...))); mobile was the one that
+        // did not, so a customer stored before canonicalisation was reported as
+        // 'none' — and "no match" on this screen is how the operator gets told
+        // to create the duplicate by hand.
+        //
+        // Same rule as Customer::resolveByMobile, and same reason it is safe to
+        // skip 10-character rows: they either ARE the canonical form (matched
+        // above) or hold too few digits to normalise to anything.
+        if ($customers->isEmpty()) {
+            $customers = $base()
+                ->whereRaw('LENGTH(mobile) <> 10')
+                ->get()
+                ->filter(fn (Customer $c): bool => self::normalizeMobile($c->mobile) === $normalized)
+                ->values();
+        }
 
         return [
             'status'    => $customers->isEmpty() ? 'none' : 'match',
@@ -104,11 +119,15 @@ class HistoricalCustomerMatcher
         ];
     }
 
+    /**
+     * Delegates to the model so the read side of matching and the write side of
+     * Customer::findOrCreateByMobile() can never disagree about what a mobile
+     * number looks like — which is exactly how Quick Bill customers became
+     * invisible to this matcher.
+     */
     public static function normalizeMobile(?string $mobile): ?string
     {
-        $digits = preg_replace('/\D+/', '', (string) $mobile) ?? '';
-
-        return strlen($digits) >= 10 ? substr($digits, -10) : null;
+        return Customer::normalizeMobile($mobile);
     }
 
     public static function normalizeGstin(?string $gstin): ?string

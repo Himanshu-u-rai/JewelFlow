@@ -2,6 +2,7 @@
 
 namespace App\Services\Historical;
 
+use App\Support\Csv;
 use App\Support\Historical\HistoricalParseException;
 use Generator;
 use PhpOffice\PhpSpreadsheet\Reader\IReadFilter;
@@ -49,6 +50,14 @@ class HistoricalSourceFileReader
 
     /** Values that look like a spreadsheet formula. Stored literally, flagged. */
     private const FORMULA_LIKE = '/^[=+\-@\t\r]/';
+
+    /**
+     * A signed plain number — a value, not a formula, whatever the leading
+     * character says. Tolerates both '.' and ',' as the decimal mark, and
+     * comma/space grouping, because the normalizer's decimal and thousands
+     * separators are configurable per import.
+     */
+    private const SIGNED_NUMBER = '/^[+\-]?\s*\d[\d,\s]*(?:[.,]\d+)?$/';
 
     /**
      * Sheet metadata, cheap: read from the workbook's own index, no cells loaded.
@@ -232,10 +241,28 @@ class HistoricalSourceFileReader
         }
     }
 
-    /** True when a cell's text would be interpreted as a formula by a spreadsheet. */
+    /**
+     * True when a cell's text would be interpreted as a formula by a spreadsheet.
+     *
+     * A leading `+` or `-` is only suspicious when what follows is not simply a
+     * number. `-500` in a discount column is a negative amount — Excel renders it
+     * as -500, and flagging it told operators their own valid input "looks like a
+     * spreadsheet formula". `-1+1`, `+SUM(A1)` and `=`/`@`/control-char leads are
+     * still caught, because those are not numbers.
+     */
     public static function looksLikeFormula(mixed $value): bool
     {
-        return is_string($value) && $value !== '' && preg_match(self::FORMULA_LIKE, $value) === 1;
+        if (! is_string($value) || $value === '' || preg_match(self::FORMULA_LIKE, $value) !== 1) {
+            return false;
+        }
+
+        // Only the sign characters get the benefit of the doubt. A leading '=',
+        // '@', tab or CR is never a number and stays flagged unconditionally.
+        if ($value[0] !== '+' && $value[0] !== '-') {
+            return true;
+        }
+
+        return preg_match(self::SIGNED_NUMBER, $value) !== 1;
     }
 
     // ------------------------------------------------------------------- csv
@@ -246,7 +273,7 @@ class HistoricalSourceFileReader
         $number = 0;
 
         try {
-            while (($values = fgetcsv($handle, 0, ',', '"', '')) !== false) {
+            while (($values = Csv::get($handle)) !== false) {
                 if (++$number === $headerRow) {
                     return $values === [null] ? [] : array_map(static fn ($v) => (string) ($v ?? ''), $values);
                 }
@@ -265,7 +292,7 @@ class HistoricalSourceFileReader
         $number = 0;
 
         try {
-            while (($values = fgetcsv($handle, 0, ',', '"', '')) !== false) {
+            while (($values = Csv::get($handle)) !== false) {
                 $number++;
 
                 if ($number <= $headerRow) {
@@ -292,7 +319,7 @@ class HistoricalSourceFileReader
         $count  = 0;
 
         try {
-            while (fgetcsv($handle, 0, ',', '"', '') !== false) {
+            while (Csv::get($handle) !== false) {
                 $count++;
             }
         } finally {

@@ -2,6 +2,7 @@
 
 namespace App\Services\Reporting\Render;
 
+use App\Support\Csv;
 use App\Services\Reporting\Dataset\ReportDataset;
 use App\Services\Reporting\Dataset\ReportMeta;
 use App\Services\Reporting\Dataset\ReportRequest;
@@ -111,7 +112,7 @@ final class CsvRenderer implements ReportRenderer
         $columns = $section->columns;
 
         // Single header row.
-        fputcsv($handle, array_map(static fn (ColumnDefinition $c): string => $c->label, $columns));
+        Csv::put($handle, array_map(static fn (ColumnDefinition $c): string => $c->label, $columns));
 
         // Raw-value rows — nothing else.
         foreach ($section->rows as $row) {
@@ -119,7 +120,7 @@ final class CsvRenderer implements ReportRenderer
             foreach ($columns as $column) {
                 $line[] = $this->raw($row[$column->key] ?? null, $column->type);
             }
-            fputcsv($handle, $line);
+            Csv::put($handle, $line);
         }
 
         rewind($handle);

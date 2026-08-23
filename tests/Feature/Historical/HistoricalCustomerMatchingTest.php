@@ -117,6 +117,98 @@ class HistoricalCustomerMatchingTest extends TestCase
         });
     }
 
+    /**
+     * The write side must produce what the read side searches for.
+     *
+     * Quick Bill validates customer_mobile as `nullable|string|max:20` and hands
+     * it to Customer::findOrCreateByMobile(). That used to store the raw string,
+     * so a walk-in billed as '+91 98123 00099' was a customer this matcher could
+     * never find by any spelling of their own number — and the (shop_id, mobile)
+     * unique index happily allowed a second row for the same human, because the
+     * two strings differ.
+     */
+    public function test_a_quick_bill_walk_in_is_stored_in_the_form_the_matcher_searches(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            $created = Customer::findOrCreateByMobile('Ramesh Kumar', '+91 98123 00099');
+
+            $this->assertNotNull($created);
+            $this->assertSame('9812300099', $created->mobile,
+                'the stored mobile must be the canonical last-10-digit form');
+
+            $result = app(HistoricalCustomerMatcher::class)->byMobile($shop->id, '+91 98123 00099');
+            $this->assertSame('match', $result['status'],
+                'a Quick Bill walk-in must be findable by historical matching');
+            $this->assertSame([$created->id], $result['customers']->pluck('id')->all());
+        });
+    }
+
+    /** Same human, four spellings, one customer record — not four. */
+    public function test_differently_spelled_mobiles_reuse_one_customer_record(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            $spellings = ['9812300099', '+91 98123 00099', '098123-00099', ' +919812300099 '];
+
+            $ids = [];
+            foreach ($spellings as $spelling) {
+                $ids[] = Customer::findOrCreateByMobile('Ramesh Kumar', $spelling)?->id;
+            }
+
+            $this->assertCount(1, array_unique($ids), 'every spelling must resolve to one customer');
+            $this->assertSame(
+                1,
+                Customer::withoutTenant()->where('shop_id', $shop->id)->where('mobile', '9812300099')->count(),
+                'no duplicate row may be created for the same number',
+            );
+        });
+    }
+
+    /**
+     * Every other test above seeds a row that is ALREADY canonical, so they all
+     * pass whether the column is normalised or not — they only ever exercise
+     * the needle. This one seeds the row the shops actually have: written
+     * before canonicalisation, stored exactly as typed, and never rewritten.
+     *
+     * byGstin and byName normalise the column (UPPER(TRIM(...))); mobile did
+     * not. So this returned 'none' — and 'none' on the historical import screen
+     * is what tells the operator to create the duplicate by hand.
+     */
+    public function test_a_customer_stored_before_canonicalisation_is_still_suggested(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            // Not findOrCreateByMobile(): that normalises, which is the very
+            // thing this row predates. Straight create, stored as typed.
+            $legacy = Customer::create(['first_name' => 'Legacy', 'mobile' => '+91 98123 00099']);
+
+            $result = app(HistoricalCustomerMatcher::class)->byMobile($shop->id, '9812300099');
+
+            $this->assertSame('match', $result['status'],
+                'a pre-canonicalisation customer was reported as no-match');
+            $this->assertSame([$legacy->id], $result['customers']->pluck('id')->all());
+            $this->assertSame('+91 98123 00099', $legacy->fresh()->mobile,
+                'matching must not rewrite the stored spelling');
+        });
+    }
+
+    /** The legacy scan must stay a match, not become a fuzzy grab. */
+    public function test_the_legacy_scan_does_not_suggest_a_different_number(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            Customer::create(['first_name' => 'Legacy', 'mobile' => '+91 98123 00098']);
+
+            $this->assertSame('none',
+                app(HistoricalCustomerMatcher::class)->byMobile($shop->id, '9812300099')['status']);
+        });
+    }
+
     // ---------------------------------------------------------- 2. gstin ambiguity
 
     public function test_duplicate_gstin_is_reported_ambiguous_not_resolved(): void

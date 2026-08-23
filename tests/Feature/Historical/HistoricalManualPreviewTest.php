@@ -270,4 +270,76 @@ class HistoricalManualPreviewTest extends TestCase
             false
         );
     }
+
+    // ============================================ save buttons on a blocked bill
+
+    /** A payload the tax normalizer must reject: an intra-state split AND igst. */
+    private function blockedPayload(string $number): array
+    {
+        return $this->manualPayload([
+            'original_document_number' => $number,
+            'grand_total'              => 1180,
+            'tax_mode'                 => HistoricalSalesDocument::TAX_MODE_EXCLUSIVE,
+            'cgst'                     => 90,
+            'sgst'                     => 90,
+            'igst'                     => 180,
+        ]);
+    }
+
+    /**
+     * The preview screen must not offer an action the server will refuse.
+     *
+     * Both Save buttons used to render regardless, so a blocked bill invited the
+     * operator to click Save, wait for a round trip, and land back on the same
+     * page with the same errors. Edit / Recalculate stays — it is the only way
+     * out of a blocked bill.
+     */
+    public function test_a_blocked_bill_offers_no_save_buttons(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)
+            ->post(route('historical.manual.preview'), $this->blockedPayload('BLOCKED-0001'));
+
+        $response->assertOk();
+        $response->assertSee('Blocking issues', false);
+
+        $response->assertDontSee('data-historical-preview-action="draft"', false);
+        $response->assertDontSee('data-historical-preview-action="publish"', false);
+        $response->assertSee('Edit / Recalculate preview', false);
+        $response->assertSee('Fix the blocking issues above', false);
+    }
+
+    /** The buttons must come back the moment the bill is clean — not be lost. */
+    public function test_a_clean_bill_still_offers_both_save_buttons(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)
+            ->post(route('historical.manual.preview'), $this->manualPayload([
+                'original_document_number' => 'CLEAN-0001',
+            ]));
+
+        $response->assertOk();
+        $response->assertDontSee('Blocking issues', false);
+        $response->assertSee('data-historical-preview-action="draft"', false);
+        $response->assertSee('data-historical-preview-action="publish"', false);
+    }
+
+    /**
+     * Hiding the buttons is a courtesy, not the control. Posting the intent by
+     * hand must still be refused by the server and must still write nothing.
+     */
+    public function test_hiding_the_buttons_did_not_become_the_only_guard(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $before = TenantContext::runFor($shop->id, fn () => $this->snapshotCounts());
+
+        $this->actingAs($owner)->post(route('historical.manual.store'), $this->blockedPayload('BLOCKED-0002') + [
+            'intent' => \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH,
+        ])->assertRedirect();
+
+        $after = TenantContext::runFor($shop->id, fn () => $this->snapshotCounts());
+        $this->assertSame($before, $after, 'A blocked bill was written despite the server refusal.');
+    }
 }

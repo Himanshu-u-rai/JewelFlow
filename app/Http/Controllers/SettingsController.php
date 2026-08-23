@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Csv;
 use App\Models\Shop;
 use App\Models\Role;
 use App\Models\Permission;
@@ -1013,12 +1014,12 @@ class SettingsController extends Controller
             $out = fopen('php://output', 'w');
             // UTF-8 BOM so Excel renders ₹ and accented names correctly.
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Date & Time', 'User', 'Action', 'What happened', 'Sensitive', 'Entity', 'Verification hash']);
+            Csv::put($out, ['Date & Time', 'User', 'Action', 'What happened', 'Sensitive', 'Entity', 'Verification hash']);
 
             // chunk to keep memory flat on large logs
             $build()->chunk(500, function ($rows) use ($out): void {
                 foreach ($rows as $log) {
-                    fputcsv($out, [
+                    Csv::put($out, [
                         optional($log->created_at)->format('Y-m-d H:i:s'),
                         $log->user->name ?? $log->user->mobile_number ?? 'System',
                         $log->action,

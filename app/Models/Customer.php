@@ -73,6 +73,86 @@ class Customer extends Model
     }
 
     /**
+     * The one canonical spelling of a customer mobile: last 10 digits.
+     *
+     * Every surface that reads or writes `customers.mobile` must agree on this,
+     * or the (shop_id, mobile) unique index enforces nothing useful — it only
+     * makes the *stored string* unique, not the human. The customer form already
+     * enforces `digits:10`; Quick Bill accepts `max:20` free text and relies on
+     * this. Returns null for anything that cannot be a mobile number.
+     */
+    public static function normalizeMobile(?string $mobile): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $mobile) ?? '';
+
+        return strlen($digits) >= 10 ? substr($digits, -10) : null;
+    }
+
+    /**
+     * What to actually store in `customers.mobile`, for the write paths that
+     * accept free text (Quick Bill, onboarding CSV import, onboarding manual
+     * add) instead of validating `digits:10` like every other form.
+     *
+     * Canonical form when the value can be a mobile; otherwise as typed, since
+     * dropping the only contact detail on a bill is worse than storing a number
+     * matching will not recognise. Use this for the dedupe LOOKUP as well as the
+     * insert — normalising only one of the two turns a silent duplicate into a
+     * unique-index 500.
+     */
+    public static function storableMobile(?string $mobile): string
+    {
+        return static::normalizeMobile($mobile) ?? trim((string) $mobile);
+    }
+
+    /**
+     * The one way to look a customer up by mobile. Canonical first, legacy second.
+     *
+     * Canonicalising the write side alone would have been half a fix: rows
+     * written before it still hold '+91 98123 00099', and an exact lookup for
+     * '9812300099' cannot see them — so the same buyer gets a second record,
+     * which is the very bug canonicalisation was meant to end.
+     *
+     * The obvious fix is a backfill. We do not rewrite customer data, so this
+     * closes the gap on the READ side only: the stored spelling is left exactly
+     * as the shop typed it, forever, and the lookup is taught to see through it.
+     * Nothing here writes.
+     *
+     * ponytail: the fallback is a per-shop scan of non-canonical rows only, and
+     * it is permanent rather than draining, because nothing repairs the rows it
+     * finds. That is the deliberate trade for not touching stored data. If it
+     * ever shows up in a profile, the upgrade is a STORED generated column on
+     * last-10-digits plus an index — which is derived data, not a rewrite of
+     * anything the shop typed.
+     */
+    public static function resolveByMobile(?string $mobile): ?self
+    {
+        $canonical = static::normalizeMobile($mobile);
+        $stored = static::storableMobile($mobile);
+
+        if ($stored === '') {
+            return null;
+        }
+
+        // Index hit. Every row written since canonicalisation lands here, as
+        // does every legacy row that was already stored clean.
+        $exact = static::query()->where('mobile', $stored)->first();
+        if ($exact || $canonical === null) {
+            // No canonical form means there is nothing to match loosely against
+            // — an unparseable mobile is only ever equal to itself.
+            return $exact;
+        }
+
+        // Only rows that cannot already be canonical are worth comparing. A
+        // stored value of exactly ten characters either IS the canonical form
+        // (found above) or has too few digits to normalise to anything, so
+        // skipping it is correctness, not just an optimisation.
+        return static::query()
+            ->whereRaw('LENGTH(mobile) <> 10')
+            ->get()
+            ->first(fn (self $c): bool => static::normalizeMobile($c->mobile) === $canonical);
+    }
+
+    /**
      * Find an existing customer by mobile within the current shop, or create one
      * from a typed walk-in name. Returns null when no mobile is supplied (we do
      * not create directory records for nameless/numberless one-off walk-ins).
@@ -83,12 +163,18 @@ class Customer extends Model
      */
     public static function findOrCreateByMobile(?string $name, ?string $mobile, ?string $address = null): ?self
     {
-        $mobile = trim((string) $mobile);
+        // Normalise before both the lookup AND the insert. The (shop_id, mobile)
+        // unique index only guarantees "one string, one customer" — it cannot
+        // know that '+91 98123 00099' and '9812300099' are the same human. Quick
+        // Bill validates this field as `max:20`, so without this the same buyer
+        // gets a second record and neither the customer form (digits:10) nor
+        // historical matching can ever find the Quick Bill copy.
+        $mobile = static::storableMobile($mobile);
         if ($mobile === '') {
             return null;
         }
 
-        $existing = static::query()->where('mobile', $mobile)->first();
+        $existing = static::resolveByMobile($mobile);
         if ($existing) {
             return $existing;
         }

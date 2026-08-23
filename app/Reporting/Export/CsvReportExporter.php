@@ -2,6 +2,7 @@
 
 namespace App\Reporting\Export;
 
+use App\Support\Csv;
 use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -21,9 +22,9 @@ class CsvReportExporter
         return response()->streamDownload(function () use ($headers, $rows): void {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM
-            fputcsv($out, $headers);
+            Csv::put($out, $headers);
             foreach ($rows as $row) {
-                fputcsv($out, $row);
+                Csv::put($out, $row);
             }
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
@@ -35,10 +36,10 @@ class CsvReportExporter
         return response()->streamDownload(function () use ($headers, $query, $rowMapper, $chunkSize): void {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, $headers);
+            Csv::put($out, $headers);
             $query->chunk($chunkSize, function ($records) use ($out, $rowMapper) {
                 foreach ($records as $record) {
-                    fputcsv($out, $rowMapper($record));
+                    Csv::put($out, $rowMapper($record));
                 }
             });
             fclose($out);

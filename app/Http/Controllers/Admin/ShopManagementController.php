@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\Csv;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -207,7 +208,7 @@ class ShopManagementController extends Controller
         return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');
 
-            fputcsv($handle, [
+            Csv::put($handle, [
                 'ID', 'Name', 'Shop Type', 'Owner Mobile', 'Phone',
                 'City', 'Access Mode', 'Users', 'Created At',
             ]);
@@ -216,7 +217,7 @@ class ShopManagementController extends Controller
                 ->withCount('users')
                 ->orderBy('id')
                 ->each(function (Shop $shop) use ($handle) {
-                    fputcsv($handle, [
+                    Csv::put($handle, [
                         $shop->id,
                         $shop->name,
                         $shop->shop_type,

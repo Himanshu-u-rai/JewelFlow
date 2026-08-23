@@ -686,9 +686,11 @@
         @if($isRetailer && $stockAgingData)
         <div x-show="view === 'aging'" x-cloak class="items-analytics-tab items-aging-register">
             @php
-                $buckets = $stockAgingData;
-                $agingSummary = $buckets['__summary'] ?? ['avg_days' => 0, 'aged_pct' => 0, 'aged_count' => 0];
-                $buckets = collect($buckets)->except('__summary')->toArray();
+                // Direct access on purpose: stockAging() always returns both keys,
+                // and a ?? fallback here would paper over a shape change with a
+                // silently empty analytics tab instead of a visible failure.
+                $buckets = $stockAgingData['buckets'];
+                $agingSummary = $stockAgingData['summary'];
                 $agingTones = [
                     '0-30 days' => ['class' => 'is-fresh', 'label' => 'Fresh arrivals'],
                     '31-60 days' => ['class' => 'is-watch', 'label' => 'Watch list'],

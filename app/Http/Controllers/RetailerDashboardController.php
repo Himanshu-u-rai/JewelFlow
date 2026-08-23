@@ -18,7 +18,8 @@ class RetailerDashboardController extends Controller
      */
     public function stockAging()
     {
-        $buckets = $this->reportService->stockAging();
+        // ponytail: this view only renders buckets; summary is computed but unused here.
+        $buckets = $this->reportService->stockAging()['buckets'];
 
         return view('retailer-reports.stock-aging', compact('buckets'));
     }

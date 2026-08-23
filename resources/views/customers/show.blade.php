@@ -104,6 +104,16 @@
                         <strong>₹{{ number_format($totalSpent, 2) }}</strong>
                         <small>{{ $invoices->count() }} recent {{ Str::plural('invoice', $invoices->count()) }}</small>
                     </div>
+                    @if(($openingBalance ?? 0) != 0)
+                    {{-- Pre-go-live money, posted at onboarding batch lock. This card
+                         used to exist only in the manufacturer layout below, so every
+                         retailer's opening balance was computed and then never shown. --}}
+                    <div class="customers-show-retailer-stat">
+                        <span>Opening Balance</span>
+                        <strong>₹{{ number_format(abs($openingBalance), 2) }} {{ $openingBalance > 0 ? 'Dr' : 'Cr' }}</strong>
+                        <small>{{ $openingBalance > 0 ? 'Customer owes the shop' : 'Shop owes the customer' }}</small>
+                    </div>
+                    @endif
                     <div class="customers-show-retailer-stat">
                         <span>Loyalty Points</span>
                         <strong>{{ number_format($customer->loyalty_points ?? 0) }}</strong>
