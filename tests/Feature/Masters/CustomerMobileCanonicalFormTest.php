@@ -194,4 +194,121 @@ class CustomerMobileCanonicalFormTest extends TestCase
 
         $this->assertSame(2, $this->rows($shop->id)->count());
     }
+
+    // ------------------------------------------------- Legacy rows (no backfill)
+
+    /**
+     * A row written before canonicalisation, stored the way it was typed. This
+     * is what every existing tenant's table is full of, and no migration is
+     * going to rewrite it — so the lookup has to cope.
+     */
+    private function legacyRow(int $shopId, string $asTyped): Customer
+    {
+        // Created inside the tenant, not via withoutTenant()->create([...]):
+        // `shop_id` is not fillable, so mass assignment drops it and the row
+        // reaches the customers_business_identifier_assign trigger with a null
+        // shop — which is a not-null violation, not a test.
+        //
+        // Nothing normalises on insert, so `mobile` lands exactly as typed.
+        // That is the point: this is a row from before canonicalisation.
+        return TenantContext::runFor($shopId, fn () => Customer::create([
+            'first_name' => 'Legacy',
+            'mobile'     => $asTyped,
+        ]));
+    }
+
+    public function test_a_legacy_spelling_is_found_without_a_backfill(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $legacy = $this->legacyRow($shop->id, '+91 98123 00099');
+
+        $found = TenantContext::runFor($shop->id,
+            fn () => Customer::resolveByMobile(self::CANONICAL));
+
+        $this->assertNotNull($found, 'canonical lookup could not see the pre-canonicalisation row');
+        $this->assertSame($legacy->id, $found->id, 'matched some other customer entirely');
+    }
+
+    /**
+     * Matching a legacy row must not "helpfully" tidy it. We do not rewrite
+     * customer data — not in a migration, and not lazily on read either, which
+     * is the same rewrite wearing a smaller hat.
+     */
+    public function test_finding_a_legacy_row_never_rewrites_it(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $legacy = $this->legacyRow($shop->id, '98123-00099');
+        $before = $legacy->fresh()->only(['mobile', 'updated_at']);
+
+        TenantContext::runFor($shop->id, fn () => Customer::resolveByMobile(self::CANONICAL));
+
+        $this->assertSame('98123-00099', $legacy->fresh()->mobile,
+            'the lookup rewrote a stored mobile; reads must not mutate customer data');
+        $this->assertEquals($before, $legacy->fresh()->only(['mobile', 'updated_at']),
+            'the row was touched even if the value looks unchanged');
+        $this->assertSame(1, $this->rows($shop->id)->count());
+    }
+
+    /** Repeat lookups must keep working — the scan is permanent, so it must be stable. */
+    public function test_a_legacy_row_is_still_found_on_the_second_lookup(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $legacy = $this->legacyRow($shop->id, '+91 98123 00099');
+
+        [$first, $second] = TenantContext::runFor($shop->id, fn () => [
+            Customer::resolveByMobile(self::CANONICAL),
+            Customer::resolveByMobile(self::CANONICAL),
+        ]);
+
+        $this->assertSame($legacy->id, $first?->id);
+        $this->assertSame($legacy->id, $second?->id, 'the fallback only worked once');
+    }
+
+    public function test_billing_a_legacy_customer_reuses_the_row_instead_of_duplicating(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+        $this->seedRetailerPricing($shop, $user);
+        $legacy = $this->legacyRow($shop->id, '+91-98123-00099');
+
+        TenantContext::runFor($shop->id, fn () => $this->post(
+            route('quick-bills.store'), $this->quickBill(self::CANONICAL)
+        ))->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $this->rows($shop->id)->count(),
+            'the legacy row was invisible to Quick Bill, so the same human now has two records');
+        $this->assertSame($legacy->id, $this->rows($shop->id)->first()->id);
+    }
+
+    /** The fallback must not match loosely across two different people. */
+    public function test_the_legacy_fallback_does_not_match_a_different_number(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $this->legacyRow($shop->id, '+91 98123 00098');
+
+        $found = TenantContext::runFor($shop->id,
+            fn () => Customer::resolveByMobile(self::CANONICAL));
+
+        $this->assertNull($found, 'the scan matched a customer who is not this customer');
+    }
+
+    /**
+     * An unparseable value has no canonical form, so there is nothing to scan
+     * for — it must stay an exact-match lookup rather than fuzzily grabbing
+     * whichever short string happens to sit nearby.
+     */
+    public function test_a_value_too_short_to_normalise_only_matches_itself(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $short = $this->legacyRow($shop->id, '98123');
+
+        [$exact, $other] = TenantContext::runFor($shop->id, fn () => [
+            Customer::resolveByMobile('98123'),
+            Customer::resolveByMobile('98124'),
+        ]);
+
+        $this->assertSame($short->id, $exact?->id);
+        $this->assertNull($other);
+        $this->assertSame('98123', $short->fresh()->mobile, 'an unparseable value must not be rewritten');
+    }
 }

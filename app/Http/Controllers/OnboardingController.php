@@ -999,7 +999,12 @@ class OnboardingController extends Controller
             if (! isset($kinds[$type])) {
                 return false;
             }
-            $customer = Customer::where('mobile', trim((string) ($r['mobile'] ?? '')))->first();
+            // resolveByMobile, not a trimmed exact match: this column comes from
+            // the shop's own spreadsheet, where '+91 98123 00099' and
+            // '98123-00099' are ordinary. An exact match drops those rows
+            // silently — and a dropped row here is a missing opening balance,
+            // which nobody notices until the ledger is already wrong.
+            $customer = Customer::resolveByMobile($r['mobile'] ?? null);
             if (! $customer) {
                 return false;
             }

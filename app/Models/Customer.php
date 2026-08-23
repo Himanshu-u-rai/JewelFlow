@@ -105,6 +105,54 @@ class Customer extends Model
     }
 
     /**
+     * The one way to look a customer up by mobile. Canonical first, legacy second.
+     *
+     * Canonicalising the write side alone would have been half a fix: rows
+     * written before it still hold '+91 98123 00099', and an exact lookup for
+     * '9812300099' cannot see them — so the same buyer gets a second record,
+     * which is the very bug canonicalisation was meant to end.
+     *
+     * The obvious fix is a backfill. We do not rewrite customer data, so this
+     * closes the gap on the READ side only: the stored spelling is left exactly
+     * as the shop typed it, forever, and the lookup is taught to see through it.
+     * Nothing here writes.
+     *
+     * ponytail: the fallback is a per-shop scan of non-canonical rows only, and
+     * it is permanent rather than draining, because nothing repairs the rows it
+     * finds. That is the deliberate trade for not touching stored data. If it
+     * ever shows up in a profile, the upgrade is a STORED generated column on
+     * last-10-digits plus an index — which is derived data, not a rewrite of
+     * anything the shop typed.
+     */
+    public static function resolveByMobile(?string $mobile): ?self
+    {
+        $canonical = static::normalizeMobile($mobile);
+        $stored = static::storableMobile($mobile);
+
+        if ($stored === '') {
+            return null;
+        }
+
+        // Index hit. Every row written since canonicalisation lands here, as
+        // does every legacy row that was already stored clean.
+        $exact = static::query()->where('mobile', $stored)->first();
+        if ($exact || $canonical === null) {
+            // No canonical form means there is nothing to match loosely against
+            // — an unparseable mobile is only ever equal to itself.
+            return $exact;
+        }
+
+        // Only rows that cannot already be canonical are worth comparing. A
+        // stored value of exactly ten characters either IS the canonical form
+        // (found above) or has too few digits to normalise to anything, so
+        // skipping it is correctness, not just an optimisation.
+        return static::query()
+            ->whereRaw('LENGTH(mobile) <> 10')
+            ->get()
+            ->first(fn (self $c): bool => static::normalizeMobile($c->mobile) === $canonical);
+    }
+
+    /**
      * Find an existing customer by mobile within the current shop, or create one
      * from a typed walk-in name. Returns null when no mobile is supplied (we do
      * not create directory records for nameless/numberless one-off walk-ins).
@@ -126,7 +174,7 @@ class Customer extends Model
             return null;
         }
 
-        $existing = static::query()->where('mobile', $mobile)->first();
+        $existing = static::resolveByMobile($mobile);
         if ($existing) {
             return $existing;
         }
