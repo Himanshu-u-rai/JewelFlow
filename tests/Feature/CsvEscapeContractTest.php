@@ -122,6 +122,66 @@ class CsvEscapeContractTest extends TestCase
             'the shared helper must round-trip what the legacy escape mangled');
     }
 
+    /**
+     * The quadrant a migration forgets: old writer, new reader.
+     *
+     * legacy->legacy and new->new are the two coherent worlds, and both are
+     * covered above. Deploy day is neither — it is every CSV this app already
+     * wrote, read back by the new escape. That mixed window lasts exactly as
+     * long as those files do.
+     *
+     * Two shapes matter, and they fail in opposite directions:
+     *
+     *   'C:\exports\'  legacy wrote it corrupt; the new reader recovers it.
+     *   '10\"'         legacy wrote it fine; the new reader mis-parses it.
+     *
+     * The second is real jewellery data — `18\"` is an 18-inch chain. This test
+     * does not fix that; nothing can, short of guessing which escape wrote a
+     * file. It pins the boundary so the next person meets a failing assertion
+     * instead of a support ticket about a shifted column.
+     */
+    public function test_a_file_written_by_the_legacy_escape_is_only_partly_readable_by_the_new_one(): void
+    {
+        // Written corrupt by the legacy escape — the new reader recovers it,
+        // because the bytes on disk were never quoted the way legacy assumed.
+        $this->assertSame(
+            ['C:\\exports\\', 'next column'],
+            $this->readBack(['C:\\exports\\', 'next column'], "\\"),
+            'the new reader should recover the case the legacy writer mangled'
+        );
+
+        // Written cleanly by the legacy escape — and the new reader cannot get
+        // it back: `\"` on the wire is "escaped quote" to legacy and "backslash,
+        // then end of field" under RFC 4180. Known, accepted, bounded.
+        $this->assertNotSame(
+            ['10\\"', 'next column'],
+            $this->readBack(['10\\"', 'next column'], "\\"),
+            'if this ever round-trips, the mixed-escape window closed and this test can go'
+        );
+
+        // The two only collide when a backslash sits directly before a quote.
+        // Everything else in a jeweller's export crosses the boundary intact.
+        foreach ([['25mm \\ 3g', 'x'], ['he said "hi"', 'x'], ['plain', 'x']] as $row) {
+            $this->assertSame($row, $this->readBack($row, "\\"),
+                'ordinary values must survive the escape change: '.$row[0]);
+        }
+    }
+
+    /**
+     * Write a row with an arbitrary escape, read it back with the app's one.
+     *
+     * @param  array<int, string>  $row
+     * @return array<int, string|null>|false
+     */
+    private function readBack(array $row, string $writeEscape): array|false
+    {
+        $handle = $this->buffer();
+        fputcsv($handle, $row, ',', '"', $writeEscape);
+        rewind($handle);
+
+        return Csv::get($handle);
+    }
+
     public function test_no_csv_call_in_the_app_bypasses_the_shared_escape(): void
     {
         $helper = realpath(app_path('Support/Csv.php'));
