@@ -218,11 +218,15 @@
                                 <label for="rm-gold">{{ __('24K Gold Price / Gram') }}</label>
                                 <div class="rate-input-wrap">
                                     <span class="cur">₹</span>
+                                    {{-- text, not number: a number input silently discards any value the
+                                         browser cannot parse, so "1,00,000" reaches value="" and `required`
+                                         blocks the save with "Please fill in this field" — the grouped rate
+                                         never reaches normalizeRateInput(). step/min are dropped with it;
+                                         the controller already enforces min/max/format, and two copies of
+                                         one rule that disagree is how this got missed. --}}
                                     <input
                                         id="rm-gold"
-                                        type="number"
-                                        step="0.0001"
-                                        min="0.0001"
+                                        type="text"
                                         inputmode="decimal"
                                         autocomplete="off"
                                         placeholder="0.00"
@@ -238,9 +242,7 @@
                                     <span class="cur">₹</span>
                                     <input
                                         id="rm-silver"
-                                        type="number"
-                                        step="0.0001"
-                                        min="0.0001"
+                                        type="text"
                                         inputmode="decimal"
                                         autocomplete="off"
                                         placeholder="0.00"

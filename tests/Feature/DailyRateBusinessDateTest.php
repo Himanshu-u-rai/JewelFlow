@@ -428,4 +428,82 @@ class DailyRateBusinessDateTest extends TestCase
             ])
             ->assertRedirect(route('dashboard'));
     }
+
+    /**
+     * The controller's grouping normalizer was correct and completely unreachable.
+     *
+     * Both rate forms rendered `type="number"`, and a number input throws away any
+     * value the browser cannot parse — "1,00,000" became the empty string before
+     * the request was built, so `required` blocked the save with "Please fill in
+     * this field" and normalizeRateInput() never ran. Every server-side test
+     * passed the whole time, because they POST the string straight at the route
+     * and never render an input.
+     *
+     * So assert on the markup. preg_match_all deliberately catches *every* rate
+     * input on the page — the settings tab's pair and, when the gate modal is up,
+     * the layout's pair too — because one blade regressing is enough to break it.
+     */
+    public function test_no_rate_input_discards_a_grouped_numeral_before_submit(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-19 01:00:00 UTC'));
+        [$user] = $this->createRetailerTenant();
+
+        $html = $this->actingAs($user)
+            ->get(route('settings.edit', ['tab' => 'pricing']))
+            ->assertOk()
+            ->getContent();
+
+        foreach (['gold_24k_rate_per_gram', 'silver_999_rate_per_kg'] as $field) {
+            preg_match_all('/<input\b[^>]*\bname="'.$field.'"[^>]*>/s', $html, $matches);
+
+            $this->assertNotEmpty($matches[0], "no input rendered for {$field}");
+
+            foreach ($matches[0] as $tag) {
+                $this->assertStringNotContainsString(
+                    'type="number"',
+                    $tag,
+                    "{$field} is a number input, which silently drops \"1,00,000\" before it can reach the server"
+                );
+            }
+        }
+    }
+
+    /**
+     * Making the inputs accept commas is only half a fix.
+     *
+     * The settings form validates into the `pricing` bag, and that bag was never
+     * rendered anywhere — a rejected rate bounced back with the typo repopulated
+     * by old() and no reason given. That was invisible while `type="number"`
+     * blocked bad values client-side; once the input accepts anything, a silent
+     * rejection is exactly what an owner would hit after fat-fingering "5,50".
+     */
+    public function test_a_rejected_rate_tells_the_owner_why_on_the_settings_tab(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-19 01:00:00 UTC'));
+        Bus::fake();
+        [$user] = $this->createRetailerTenant();
+
+        $settings = route('settings.edit', ['tab' => 'pricing']);
+
+        $this->actingAs($user)
+            ->from($settings)
+            ->post(route('settings.pricing.save-rates'), [
+                'context' => 'settings',
+                'gold_24k_rate_per_gram' => '5,50',
+                'silver_999_rate_per_kg' => '92000',
+            ])
+            ->assertRedirect($settings)
+            ->assertSessionHasErrors(['gold_24k_rate_per_gram'], null, 'pricing');
+
+        // "5,50" is a typo, not Indian grouping, so it must be refused rather
+        // than quietly "repaired" into 550 — and the refusal has to be legible.
+        $this->assertDatabaseMissing('shop_daily_metal_rates', [
+            'gold_24k_rate_per_gram' => 550,
+        ]);
+
+        $this->actingAs($user)
+            ->get($settings)
+            ->assertOk()
+            ->assertSee('Enter a valid gold rate using digits and an optional decimal point.');
+    }
 }
