@@ -161,6 +161,34 @@ class CustomerMobileCanonicalFormTest extends TestCase
         $this->assertSame(1, $this->rows($shop->id)->count());
     }
 
+    // ------------------------------------------------- Onboarding: manual EDIT
+
+    /**
+     * The fourth free-text path, and the one the original fix walked past.
+     *
+     * `mobile` is `max:20` here exactly as it is on the add form eighty lines
+     * up, and `mobile` IS fillable — so `$customer->update($data)` writes
+     * whatever was typed. Canonicalising only the add form means the edit form
+     * can put a spelling straight back into the column the add form had just
+     * cleaned, and every claim the rest of this file makes stops being true the
+     * first time someone corrects a typo.
+     */
+    public function test_onboarding_edit_stores_the_canonical_mobile(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+        $batch    = $this->openBatch($shop->id);
+        $customer = $this->createCustomer($shop->id, ['mobile' => '9800000000']);
+
+        TenantContext::set($shop->id);
+        $this->put(route('onboarding.customers.update', [$batch, $customer]), [
+            'first_name' => 'Ramesh',
+            'mobile'     => '+91 98123 00099',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(self::CANONICAL, $customer->fresh()->mobile);
+    }
+
     // ------------------------------------------------------------- edge cases
 
     /**
@@ -278,6 +306,74 @@ class CustomerMobileCanonicalFormTest extends TestCase
         $this->assertSame(1, $this->rows($shop->id)->count(),
             'the legacy row was invisible to Quick Bill, so the same human now has two records');
         $this->assertSame($legacy->id, $this->rows($shop->id)->first()->id);
+    }
+
+    /**
+     * Canonicalising the value we are about to INSERT while looking it up
+     * EXACTLY is the worst of both: the needle is clean, the haystack is not,
+     * so a legacy row can never be found and the import silently adds a second
+     * record for a customer the shop already has.
+     */
+    public function test_onboarding_csv_import_does_not_duplicate_a_legacy_row(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+        $batch  = $this->openBatch($shop->id);
+        $legacy = $this->legacyRow($shop->id, '+91 98123 00099');
+
+        $csv = "first_name,last_name,mobile,email,address\nRamesh,Kumar," . self::CANONICAL . ",,\n";
+
+        TenantContext::set($shop->id);
+        $this->post(route('onboarding.customers.import', $batch), [
+            'file' => UploadedFile::fake()->createWithContent('customers.csv', $csv),
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $this->rows($shop->id)->count(),
+            'the import could not see the pre-canonicalisation row and duplicated the customer');
+        $this->assertSame('+91 98123 00099', $legacy->fresh()->mobile, 'the import rewrote a stored mobile');
+    }
+
+    /** Same blind spot, reached through the manual add form instead of a file. */
+    public function test_onboarding_manual_add_rejects_a_legacy_duplicate(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+        $batch = $this->openBatch($shop->id);
+        $this->legacyRow($shop->id, '098123-00099');
+
+        TenantContext::set($shop->id);
+        $this->post(route('onboarding.customers.store', $batch), [
+            'first_name' => 'Ramesh',
+            'mobile'     => self::CANONICAL,
+        ])->assertSessionHasErrors('mobile');
+
+        $this->assertSame(1, $this->rows($shop->id)->count());
+    }
+
+    /** The clash check on edit must see legacy rows too — but not the row being edited. */
+    public function test_onboarding_edit_sees_a_legacy_clash_but_not_itself(): void
+    {
+        [$user, $shop] = $this->createManufacturerTenant();
+        $this->actingAs($user);
+        $batch  = $this->openBatch($shop->id);
+        $legacy = $this->legacyRow($shop->id, '+91 98123 00099');
+        $other  = $this->createCustomer($shop->id, ['mobile' => '9800000000']);
+
+        TenantContext::set($shop->id);
+        $this->put(route('onboarding.customers.update', [$batch, $other]), [
+            'first_name' => 'Ramesh',
+            'mobile'     => self::CANONICAL,
+        ])->assertSessionHasErrors('mobile');
+
+        // Re-canonicalising a legacy row's own number must not make it collide
+        // with itself, or the row can never be edited again.
+        TenantContext::set($shop->id);
+        $this->put(route('onboarding.customers.update', [$batch, $legacy]), [
+            'first_name' => 'Ramesh',
+            'mobile'     => self::CANONICAL,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(self::CANONICAL, $legacy->fresh()->mobile);
     }
 
     /** The fallback must not match loosely across two different people. */

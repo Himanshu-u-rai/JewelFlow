@@ -167,6 +167,48 @@ class HistoricalCustomerMatchingTest extends TestCase
         });
     }
 
+    /**
+     * Every other test above seeds a row that is ALREADY canonical, so they all
+     * pass whether the column is normalised or not — they only ever exercise
+     * the needle. This one seeds the row the shops actually have: written
+     * before canonicalisation, stored exactly as typed, and never rewritten.
+     *
+     * byGstin and byName normalise the column (UPPER(TRIM(...))); mobile did
+     * not. So this returned 'none' — and 'none' on the historical import screen
+     * is what tells the operator to create the duplicate by hand.
+     */
+    public function test_a_customer_stored_before_canonicalisation_is_still_suggested(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            // Not findOrCreateByMobile(): that normalises, which is the very
+            // thing this row predates. Straight create, stored as typed.
+            $legacy = Customer::create(['first_name' => 'Legacy', 'mobile' => '+91 98123 00099']);
+
+            $result = app(HistoricalCustomerMatcher::class)->byMobile($shop->id, '9812300099');
+
+            $this->assertSame('match', $result['status'],
+                'a pre-canonicalisation customer was reported as no-match');
+            $this->assertSame([$legacy->id], $result['customers']->pluck('id')->all());
+            $this->assertSame('+91 98123 00099', $legacy->fresh()->mobile,
+                'matching must not rewrite the stored spelling');
+        });
+    }
+
+    /** The legacy scan must stay a match, not become a fuzzy grab. */
+    public function test_the_legacy_scan_does_not_suggest_a_different_number(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            Customer::create(['first_name' => 'Legacy', 'mobile' => '+91 98123 00098']);
+
+            $this->assertSame('none',
+                app(HistoricalCustomerMatcher::class)->byMobile($shop->id, '9812300099')['status']);
+        });
+    }
+
     // ---------------------------------------------------------- 2. gstin ambiguity
 
     public function test_duplicate_gstin_is_reported_ambiguous_not_resolved(): void

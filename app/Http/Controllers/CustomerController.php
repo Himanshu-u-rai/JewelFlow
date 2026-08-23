@@ -240,19 +240,19 @@ class CustomerController extends Controller
         $data['shop_id'] = $shopId;
 
         // Duplicate check — non-blocking: warn but do not prevent creation
+        // resolveByMobile so the warning also fires against a customer stored
+        // before mobiles were canonicalised. This form validates digits:10, so
+        // the needle is always canonical — it is the COLUMN that may not be,
+        // and an exact match would tell the operator "no duplicate" about the
+        // very row they are about to duplicate.
         $duplicates = [];
         if (!empty($data['mobile'])) {
-            $duplicates = Customer::where('shop_id', $shopId)
-                ->where('mobile', $data['mobile'])
-                ->limit(3)
-                ->get(['id', 'first_name', 'last_name', 'mobile'])
-                ->map(fn ($c) => [
-                    'id'     => $c->id,
-                    'name'   => trim($c->first_name . ' ' . ($c->last_name ?? '')),
-                    'mobile' => $c->mobile,
-                ])
-                ->values()
-                ->all();
+            $existing = Customer::resolveByMobile($data['mobile']);
+            $duplicates = $existing && $existing->shop_id === $shopId ? [[
+                'id'     => $existing->id,
+                'name'   => trim($existing->first_name . ' ' . ($existing->last_name ?? '')),
+                'mobile' => $existing->mobile,
+            ]] : [];
         }
 
         if (!empty($duplicates) && !$request->boolean('confirm_duplicate')) {

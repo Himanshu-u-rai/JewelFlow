@@ -410,7 +410,11 @@ class OnboardingController extends Controller
             $mobile = Customer::storableMobile($data['mobile'] ?? null);
 
             // Dedupe by mobile within the shop; nameless/numberless rows skipped.
-            if ($mobile === '' || Customer::where('mobile', $mobile)->exists()) {
+            // resolveByMobile, not an exact match: canonicalising the value we
+            // are about to insert while looking it up exactly means a legacy row
+            // stored '+91 98123 00099' is invisible, and the import quietly adds
+            // a second record for a customer who is already in the directory.
+            if ($mobile === '' || Customer::resolveByMobile($mobile)) {
                 $skipped++;
                 continue;
             }
@@ -453,7 +457,7 @@ class OnboardingController extends Controller
         // same buyer cannot enter the directory twice under two spellings.
         $data['mobile'] = Customer::storableMobile($data['mobile']);
 
-        if (Customer::where('mobile', $data['mobile'])->exists()) {
+        if (Customer::resolveByMobile($data['mobile'])) {
             return back()->withErrors(['mobile' => 'A customer with this mobile already exists.'])->withInput();
         }
 
@@ -537,7 +541,14 @@ class OnboardingController extends Controller
             'address'    => ['nullable', 'string', 'max:500'],
         ]);
 
-        if (Customer::where('mobile', $data['mobile'])->where('id', '!=', $customer->id)->exists()) {
+        // The FOURTH free-text mobile write path. `mobile` is max:20 here, same
+        // as storeCustomer above — so editing a customer could put a spelling
+        // back into the column that the add form had just canonicalised out of
+        // it, and `mobile` is fillable, so update() writes it verbatim.
+        $data['mobile'] = Customer::storableMobile($data['mobile']);
+
+        $clash = Customer::resolveByMobile($data['mobile']);
+        if ($clash && $clash->id !== $customer->id) {
             return back()->withErrors(['mobile' => 'Another customer already uses this mobile.'])->withInput();
         }
 
