@@ -3,12 +3,16 @@
 namespace App\Models;
 
 use App\Models\Concerns\ArchivableParty;
+use App\Models\Concerns\CanonicalisesMobileNumbers;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 
 class Vendor extends Model
 {
-    use BelongsToShop, ArchivableParty;
+    use BelongsToShop, ArchivableParty, CanonicalisesMobileNumbers;
+
+    /** @var array<int, string> */
+    protected static array $mobileColumns = ['mobile'];
 
     /**
      * MASTERS PART 3: `is_active` is deliberately NOT fillable. Lifecycle is

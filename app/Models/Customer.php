@@ -4,12 +4,17 @@ namespace App\Models;
 
 use App\Models\Concerns\ArchivableParty;
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\CanonicalisesMobileNumbers;
 use App\Services\BusinessIdentifierService;
+use App\Support\Mobile;
 use Illuminate\Database\Eloquent\Model;
 
 class Customer extends Model
 {
-    use BelongsToShop, ArchivableParty;
+    use BelongsToShop, ArchivableParty, CanonicalisesMobileNumbers;
+
+    /** @var array<int, string> */
+    protected static array $mobileColumns = ['mobile'];
 
     /**
      * MASTERS PART 3: `is_active` is deliberately NOT fillable. Lifecycle is
@@ -73,35 +78,39 @@ class Customer extends Model
     }
 
     /**
-     * The one canonical spelling of a customer mobile: last 10 digits.
+     * The one canonical spelling of a customer mobile: the ten-digit national
+     * number, per App\Support\Mobile — which is where the rules and the reasons
+     * for them live. Kept here as the name every call site already uses.
      *
      * Every surface that reads or writes `customers.mobile` must agree on this,
      * or the (shop_id, mobile) unique index enforces nothing useful — it only
-     * makes the *stored string* unique, not the human. The customer form already
-     * enforces `digits:10`; Quick Bill accepts `max:20` free text and relies on
-     * this. Returns null for anything that cannot be a mobile number.
+     * makes the *stored string* unique, not the human.
      */
     public static function normalizeMobile(?string $mobile): ?string
     {
-        $digits = preg_replace('/\D+/', '', (string) $mobile) ?? '';
-
-        return strlen($digits) >= 10 ? substr($digits, -10) : null;
+        return Mobile::normalize($mobile);
     }
 
     /**
-     * What to actually store in `customers.mobile`, for the write paths that
-     * accept free text (Quick Bill, onboarding CSV import, onboarding manual
-     * add) instead of validating `digits:10` like every other form.
+     * What to actually store in `customers.mobile`.
      *
-     * Canonical form when the value can be a mobile; otherwise as typed, since
-     * dropping the only contact detail on a bill is worse than storing a number
-     * matching will not recognise. Use this for the dedupe LOOKUP as well as the
-     * insert — normalising only one of the two turns a silent duplicate into a
-     * unique-index 500.
+     * Canonical form, or EMPTY for anything that is not a mobile number. It used
+     * to fall back to the raw string on the argument that dropping a walk-in's
+     * only contact detail was worse than storing a number matching would not
+     * recognise. That argument does not survive contact with the column: a value
+     * stored there is indistinguishable from a real one, so "at least we kept it"
+     * means a permanent unmatched row, a duplicate customer, and an SMS that
+     * silently goes nowhere.
+     *
+     * Every form path now validates with IndianMobileRule, so this returns ''
+     * only for the file-driven paths (CSV import), where the caller is expected
+     * to skip the row rather than insert junk. Use it for the dedupe LOOKUP as
+     * well as the insert — normalising only one of the two turns a silent
+     * duplicate into a unique-index 500.
      */
     public static function storableMobile(?string $mobile): string
     {
-        return static::normalizeMobile($mobile) ?? trim((string) $mobile);
+        return static::normalizeMobile($mobile) ?? '';
     }
 
     /**
@@ -127,15 +136,21 @@ class Customer extends Model
     public static function resolveByMobile(?string $mobile): ?self
     {
         $canonical = static::normalizeMobile($mobile);
-        $stored = static::storableMobile($mobile);
 
-        if ($stored === '') {
+        // Deliberately NOT storableMobile(): storing is strict now (a value that
+        // is not a mobile number stores as nothing), but LOOKING UP has to stay
+        // lenient, or a legacy row holding a nine-digit scrap becomes permanently
+        // unreachable — searchable only by a value the search refuses to accept.
+        // Reads do not create bad data; refusing to read it only hides it.
+        $needle = $canonical ?? trim((string) $mobile);
+
+        if ($needle === '') {
             return null;
         }
 
         // Index hit. Every row written since canonicalisation lands here, as
         // does every legacy row that was already stored clean.
-        $exact = static::query()->where('mobile', $stored)->first();
+        $exact = static::query()->where('mobile', $needle)->first();
         if ($exact || $canonical === null) {
             // No canonical form means there is nothing to match loosely against
             // — an unparseable mobile is only ever equal to itself.

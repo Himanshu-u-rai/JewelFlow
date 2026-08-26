@@ -182,9 +182,11 @@ class HistoricalCustomerMatchingTest extends TestCase
         [, $shop] = $this->createRetailerTenant();
 
         TenantContext::runFor($shop->id, function () use ($shop) {
-            // Not findOrCreateByMobile(): that normalises, which is the very
-            // thing this row predates. Straight create, stored as typed.
-            $legacy = Customer::create(['first_name' => 'Legacy', 'mobile' => '+91 98123 00099']);
+            // Written BEHIND the model on purpose. Every Eloquent write now
+            // canonicalises (CanonicalisesMobileNumbers), so a plain create()
+            // can no longer produce the row this test is about — the raw
+            // spelling has to go straight into the column, as the old code did.
+            $legacy = $this->legacyMobileRow('Legacy', '+91 98123 00099');
 
             $result = app(HistoricalCustomerMatcher::class)->byMobile($shop->id, '9812300099');
 
@@ -202,11 +204,28 @@ class HistoricalCustomerMatchingTest extends TestCase
         [, $shop] = $this->createRetailerTenant();
 
         TenantContext::runFor($shop->id, function () use ($shop) {
-            Customer::create(['first_name' => 'Legacy', 'mobile' => '+91 98123 00098']);
+            $this->legacyMobileRow('Legacy', '+91 98123 00098');
 
             $this->assertSame('none',
                 app(HistoricalCustomerMatcher::class)->byMobile($shop->id, '9812300099')['status']);
         });
+    }
+
+    /**
+     * A customer row holding a pre-canonicalisation spelling. Created through
+     * the model (so `shop_id` and the identifier trigger behave), then the
+     * mobile column is overwritten directly — the mutator would canonicalise
+     * anything written the normal way, which is exactly what these tests must
+     * not have happen.
+     */
+    private function legacyMobileRow(string $firstName, string $asTyped): Customer
+    {
+        $customer = Customer::create(['first_name' => $firstName, 'mobile' => '9000000000']);
+
+        DB::table('customers')->where('id', $customer->id)->update(['mobile' => $asTyped]);
+
+        // fresh() hydrates via setRawAttributes, which skips the mutator.
+        return $customer->fresh();
     }
 
     // ---------------------------------------------------------- 2. gstin ambiguity
