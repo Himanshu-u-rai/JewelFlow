@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Platform\PlatformAdmin;
 use App\Services\PlatformAuditService;
+use App\Support\Mobile;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -35,6 +36,15 @@ class PlatformAdminUpdateContact extends Command
             return self::FAILURE;
         }
 
+        // CanonicaliseMobileInput only runs on HTTP requests, so the canonical
+        // form has to be taken by hand here: `unique:` below compares the raw
+        // string while the model writes the canonical one, so '+91 98123 00099'
+        // would pass the check and then collide on the index. Anything that is
+        // not a mobile is left as typed for IndianMobileRule to explain.
+        if ($mobile !== null) {
+            $mobile = Mobile::normalize($mobile) ?? $mobile;
+        }
+
         $rules = [];
         $data = [];
         if ($email !== null) {
@@ -42,7 +52,7 @@ class PlatformAdminUpdateContact extends Command
             $data['email'] = $email;
         }
         if ($mobile !== null) {
-            $rules['mobile'] = ['digits:10', 'unique:platform_admins,mobile_number,' . $admin->id];
+            $rules['mobile'] = [new \App\Rules\IndianMobileRule(), 'unique:platform_admins,mobile_number,' . $admin->id];
             $data['mobile'] = $mobile;
         }
         $validator = Validator::make($data, $rules);

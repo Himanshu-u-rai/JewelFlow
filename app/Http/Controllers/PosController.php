@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\IndianMobileRule;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Models\Category;
@@ -514,11 +515,7 @@ class PosController extends Controller
                 Customer::activeExistsRule((int) auth()->user()->shop_id),
             ],
             'pan'        => ['nullable', 'string', 'max:10', new PanFormatRule()],
-            'mobile'     => ['nullable', 'digits:10', function ($attr, $val, $fail) {
-                if ($val !== null && !preg_match('/^[6-9][0-9]{9}$/', (string) $val)) {
-                    $fail('Mobile number must be 10 digits starting with 6, 7, 8, or 9.');
-                }
-            }],
+            'mobile'     => ['nullable', new IndianMobileRule()],
             'address'    => ['nullable', 'string', 'max:1000'],
             'id_number'  => ['nullable', 'string', 'max:20'],
             'consent'    => ['required', 'accepted'],

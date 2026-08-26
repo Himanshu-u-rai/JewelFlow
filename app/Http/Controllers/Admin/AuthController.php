@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsurePlatformAdminMfa;
 use App\Models\Platform\PlatformAdmin;
+use App\Rules\IndianMobileRule;
 use App\Services\PlatformAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,7 +45,7 @@ class AuthController extends Controller
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'max:255'],
-            'mobile_number' => ['required', 'string', 'digits:10', 'unique:platform_admins,mobile_number'],
+            'mobile_number' => ['required', 'string', new IndianMobileRule(), 'unique:platform_admins,mobile_number'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -94,6 +95,16 @@ class AuthController extends Controller
     public function login(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
+            // DELIBERATELY digits:10, not IndianMobileRule.
+            //
+            // Every WRITE path is strict now, but a login is a lookup against
+            // rows that already exist. A shop whose owner account was created
+            // years ago may hold a number the strict rule refuses — starting
+            // with a 1-5, say — and tightening the login form would lock that
+            // account out of its own data with an error the operator cannot act
+            // on. Strictness belongs where data is created, not where it is
+            // proven. Rejecting a login for format buys nothing anyway: a wrong
+            // format simply matches no user.
             'mobile_number' => ['required', 'string', 'digits:10'],
             'password' => ['required', 'string'],
         ]);

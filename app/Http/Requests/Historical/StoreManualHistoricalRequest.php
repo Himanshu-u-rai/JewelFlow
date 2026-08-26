@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Historical;
 
 use App\Models\Historical\HistoricalSalesDocument;
+use App\Rules\IndianMobileRule;
 use App\Support\Historical\HistoricalFields;
 use App\Support\Historical\HistoricalMakingCharge;
 use Illuminate\Foundation\Http\FormRequest;
@@ -51,7 +52,7 @@ class StoreManualHistoricalRequest extends FormRequest
 
             // customer snapshot — all optional, never linked in Batch 2.
             'customer_name'            => ['nullable', 'string', 'max:180'],
-            'customer_mobile'          => ['nullable', 'string', 'max:40'],
+            'customer_mobile'          => ['nullable', 'string', new IndianMobileRule()],
             'customer_gstin'           => ['nullable', 'string', 'max:20'],
             'customer_address'         => ['nullable', 'string', 'max:500'],
             'place_of_supply'          => ['nullable', 'string', 'max:120'],

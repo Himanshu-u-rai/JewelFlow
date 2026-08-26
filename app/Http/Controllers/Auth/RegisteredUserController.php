@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\IndianMobileRule;
 use App\Support\Realm;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -38,10 +39,9 @@ class RegisteredUserController extends Controller
         $realm = Realm::current($request);
 
         $request->validate([
-            'mobile_number' => ['required', 'string', 'digits:10', Realm::uniqueMobileRule($realm)],
+            'mobile_number' => ['required', 'string', new IndianMobileRule(), Realm::uniqueMobileRule($realm)],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], [
-            'mobile_number.digits' => 'Mobile number must be exactly 10 digits.',
         ]);
 
         DB::beginTransaction();

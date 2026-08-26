@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\QuickBill;
+use App\Rules\IndianMobileRule;
 use App\Services\QuickBillService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -219,7 +220,7 @@ class QuickBillController extends Controller
             // customer is rejected.
             'customer_id' => ['nullable', Customer::activeOrCurrentExistsRule((int) auth()->user()->shop_id, $quickBill?->customer_id ? (int) $quickBill->customer_id : null)],
             'customer_name' => 'nullable|string|max:255',
-            'customer_mobile' => 'nullable|string|max:20',
+            'customer_mobile' => ['nullable', 'string', new IndianMobileRule()],
             'customer_address' => 'nullable|string|max:1000',
             'bill_date' => 'required|date',
             'pricing_mode' => 'required|in:no_gst,gst_exclusive,gst_inclusive',

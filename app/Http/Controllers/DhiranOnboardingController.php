@@ -6,6 +6,7 @@ use App\Models\Dhiran\DhiranSettings;
 use App\Models\Platform\Plan;
 use App\Models\Platform\ShopSubscription;
 use App\Models\Shop;
+use App\Rules\IndianMobileRule;
 use App\Services\OnboardingResumeService;
 use App\Services\TenantRoleService;
 use App\Support\Realm;
@@ -201,7 +202,7 @@ class DhiranOnboardingController extends Controller
         $data = $request->validate([
             'name'           => 'required|string|max:255',
             'owner_name'     => 'required|string|max:255',
-            'phone'          => 'required|string|digits:10',
+            'phone'          => ['required', 'string', new IndianMobileRule()],
             'address'        => 'required|string|max:500',
             'city'           => 'required|string|max:100',
             'state'          => 'required|string|max:100',

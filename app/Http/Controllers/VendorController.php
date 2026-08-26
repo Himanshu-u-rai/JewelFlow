@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Concerns\ArchivesParties;
 use App\Http\Concerns\RespondsDynamically;
 use App\Models\Vendor;
+use App\Rules\IndianMobileRule;
 use Illuminate\Http\Request;
 
 class VendorController extends Controller
@@ -183,7 +184,7 @@ class VendorController extends Controller
         return $request->validate([
             'name'           => 'required|string|max:255',
             'contact_person' => 'nullable|string|max:255',
-            'mobile'         => ['nullable', 'string', 'max:15', 'regex:/^[0-9+\-\s()]{7,15}$/'],
+            'mobile'         => ['nullable', 'string', new IndianMobileRule()],
             'email'          => 'nullable|email|max:255',
             'address'        => 'nullable|string|max:1000',
             'city'           => 'nullable|string|max:100',
@@ -196,7 +197,6 @@ class VendorController extends Controller
             ],
             'notes'          => 'nullable|string|max:2000',
         ], [
-            'mobile.regex'      => 'Mobile number must be 7–15 digits and may include +, -, spaces, or parentheses.',
             'gst_number.size'   => 'GST number must be exactly 15 characters.',
             'gst_number.regex'  => 'GST number format is invalid (e.g. 22AAAAA0000A1Z5).',
         ]);

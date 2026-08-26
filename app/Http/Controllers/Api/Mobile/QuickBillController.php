@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\QuickBill;
+use App\Rules\IndianMobileRule;
 use App\Services\QuickBillService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -169,7 +170,7 @@ class QuickBillController extends Controller
             // editable after its customer is archived.
             'customer_id' => ['nullable', Customer::activeOrCurrentExistsRule($shopId, $quickBill?->customer_id ? (int) $quickBill->customer_id : null)],
             'customer_name' => 'nullable|string|max:255',
-            'customer_mobile' => 'nullable|string|max:20',
+            'customer_mobile' => ['nullable', 'string', new IndianMobileRule()],
             'customer_address' => 'nullable|string|max:1000',
             'bill_date' => 'required|date',
             'pricing_mode' => 'required|in:no_gst,gst_exclusive,gst_inclusive',

@@ -10,6 +10,7 @@ use App\Models\KycDocument;
 use App\Models\LoyaltyTransaction;
 use App\Models\Repair;
 use App\Models\ShopPreferences;
+use App\Rules\IndianMobileRule;
 use App\Rules\PanFormatRule;
 use App\Services\ComplianceService;
 use App\Services\KycDocumentService;
@@ -72,7 +73,7 @@ class CustomerController extends Controller
             'first_name' => 'required|string|max:100',
             'last_name' => 'nullable|string|max:100',
             'mobile' => [
-                'required', 'digits:10',
+                'required', new IndianMobileRule(),
                 Rule::unique('customers', 'mobile')->where('shop_id', $shopId),
             ],
         ]);
@@ -264,7 +265,7 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'pan' => ['nullable', 'string', 'max:10', new PanFormatRule()],
             'aadhaar' => ['nullable', 'digits:12'],
-            'mobile' => ['nullable', 'digits:10'],
+            'mobile' => ['nullable', new IndianMobileRule()],
             'address' => ['nullable', 'string', 'max:255'],
             'consent' => ['required', 'accepted'],
         ]);
@@ -419,7 +420,7 @@ class CustomerController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'nullable|string|max:255',
             'mobile' => [
-                'required', 'digits:10',
+                'required', new IndianMobileRule(),
                 Rule::unique('customers', 'mobile')->ignore($customer->id)->where('shop_id', $shopId),
             ],
             'email' => 'nullable|email|max:255',
@@ -429,7 +430,6 @@ class CustomerController extends Controller
             'wedding_date' => 'nullable|date',
             'notes' => 'nullable|string|max:2000',
         ], [
-            'mobile.digits' => 'Mobile number must be exactly 10 digits.',
         ]);
 
         $customer->update($validated);

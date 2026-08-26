@@ -88,12 +88,6 @@ class ComplianceService
             $input['address'] = $data['address'] ?? null;
         }
 
-        $mobileFormat = function (string $attribute, mixed $value, \Closure $fail) {
-            if (!preg_match('/^[6-9][0-9]{9}$/', (string) $value)) {
-                $fail('Mobile number must be 10 digits starting with 6, 7, 8, or 9.');
-            }
-        };
-
         $rules = [
             'consent'   => 'required|accepted',
             'id_number' => ['nullable', 'string', 'max:20'],
@@ -105,8 +99,8 @@ class ComplianceService
         }
         if (array_key_exists('mobile', $input)) {
             $rules['mobile'] = $needsMobile
-                ? ['required', 'digits:10', $mobileFormat]
-                : ['nullable', 'digits:10', $mobileFormat];
+                ? ['required', new \App\Rules\IndianMobileRule()]
+                : ['nullable', new \App\Rules\IndianMobileRule()];
         }
         if (array_key_exists('address', $input)) {
             $rules['address'] = $needsAddress
@@ -118,7 +112,6 @@ class ComplianceService
             'pan.required'     => 'PAN number is required for this transaction.',
             'pan.max'          => 'PAN number cannot exceed 10 characters.',
             'mobile.required'  => 'Mobile number is required for this transaction.',
-            'mobile.digits'    => 'Mobile number must be exactly 10 digits.',
             'address.required' => 'Address is required for this transaction.',
             'consent.required' => 'Customer consent is required.',
             'consent.accepted' => 'Customer consent must be confirmed.',

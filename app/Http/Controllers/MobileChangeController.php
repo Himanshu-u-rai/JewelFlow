@@ -6,6 +6,7 @@ use App\Mail\MobileChangedNotificationMail;
 use App\Mail\MobileChangeOtpMail;
 use App\Models\MobileChangeRequest;
 use App\Models\User;
+use App\Rules\IndianMobileRule;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -56,7 +57,7 @@ class MobileChangeController extends Controller
 
         $validated = $request->validate([
             'current_password'    => ['required', 'string'],
-            'new_mobile_number'   => ['required', 'string', 'digits:10'],
+            'new_mobile_number'   => ['required', 'string', new IndianMobileRule()],
         ]);
 
         $pwRlKey = 'mobile-change-password:' . $user->id;
