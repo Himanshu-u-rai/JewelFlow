@@ -48,7 +48,7 @@
         {{-- MOBILE --}}
         <div class="admin-panel p-5">
             <h2 class="text-lg font-medium text-slate-100">Mobile number</h2>
-            <p class="mt-1 text-sm"><span class="text-slate-400">Current:</span> <span class="text-slate-100">{{ $admin->mobile_number }}</span> <span class="text-xs text-slate-500">(login id)</span></p>
+            <p class="mt-1 text-sm"><span class="text-slate-400">Current:</span> <span class="text-slate-100">{{ \App\Support\Mobile::forDisplay($admin->mobile_number) }}</span> <span class="text-xs text-slate-500">(login id)</span></p>
 
             @if ($admin->pending_mobile)
                 <p class="mt-4 text-sm text-amber-200">Pending change to <strong>{{ $admin->pending_mobile }}</strong>. Enter the code we emailed to your address.</p>

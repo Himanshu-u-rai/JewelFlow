@@ -1785,7 +1785,7 @@
                                         <td>
                                             @if($customerName)
                                                 <span class="ri-customer-name">{{ $customerName }}</span>
-                                                <span class="ri-cell-sub">{{ $customer->mobile ?: '' }}</span>
+                                                <span class="ri-cell-sub">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: '' }}</span>
                                             @else
                                                 <span class="ri-muted">Walk-in</span>
                                             @endif

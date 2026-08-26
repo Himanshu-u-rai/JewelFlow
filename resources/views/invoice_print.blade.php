@@ -508,7 +508,7 @@
                 @if($showAddr)
                 <div class="kv"><div class="k">Address</div><div class="v">: {{ $customer?->address ?: '—' }}</div></div>
                 @endif
-                <div class="kv"><div class="k">Mobile</div><div class="v">: {{ $customer?->mobile ?: '—' }}</div></div>
+                <div class="kv"><div class="k">Mobile</div><div class="v">: {{ \App\Support\Mobile::forDisplay($customer?->mobile) ?: '—' }}</div></div>
                 @if($showIdPan)
                 @php $snap = $invoice->complianceSnapshot; @endphp
                 <div class="kv"><div class="k">ID</div><div class="v">: {{ ($snap?->snapshot_id_number ?: $customer?->id_number) ?: '—' }}</div></div>

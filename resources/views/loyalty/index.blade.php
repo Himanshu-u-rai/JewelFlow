@@ -78,7 +78,7 @@
                         @forelse($customers as $customer)
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $customer->name }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-500">{{ $customer->mobile }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">{{ \App\Support\Mobile::forDisplay($customer->mobile) }}</td>
                             <td class="px-6 py-4 text-sm text-right">
                                 <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800">
                                     {{ number_format($customer->loyalty_points) }} pts

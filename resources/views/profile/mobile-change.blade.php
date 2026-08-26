@@ -26,7 +26,7 @@
         <div class="flex items-start justify-between gap-4 mb-5 pb-5 border-b border-gray-100">
             <div>
                 <div class="text-xs font-semibold uppercase tracking-wider text-gray-500">{{ __('Current mobile') }}</div>
-                <div class="mt-1 text-lg font-semibold text-gray-900">{{ $user->mobile_number }}</div>
+                <div class="mt-1 text-lg font-semibold text-gray-900">{{ \App\Support\Mobile::forDisplay($user->mobile_number) }}</div>
             </div>
             <div>
                 <div class="text-xs font-semibold uppercase tracking-wider text-gray-500">{{ __('Verified email') }}</div>

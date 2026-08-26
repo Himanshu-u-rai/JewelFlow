@@ -1056,7 +1056,7 @@
                                     </td>
                                     <td>
                                         <p class="vendors-name text-[14px]">{{ $vendor->contact_person ?: 'Not added' }}</p>
-                                        <p class="vendors-subtext">{{ $vendor->mobile ?: 'No mobile number' }}</p>
+                                        <p class="vendors-subtext">{{ \App\Support\Mobile::forDisplay($vendor->mobile) ?: 'No mobile number' }}</p>
                                     </td>
                                     <td class="vendors-muted">{{ $vendor->gst_number ?: 'Not available' }}</td>
                                     <td class="text-center">
@@ -1128,7 +1128,7 @@
                                 </div>
                                 <div>
                                     <dt>Mobile</dt>
-                                    <dd>{{ $vendor->mobile ?: 'Not available' }}</dd>
+                                    <dd>{{ \App\Support\Mobile::forDisplay($vendor->mobile) ?: 'Not available' }}</dd>
                                 </div>
                                 <div>
                                     <dt>GST</dt>

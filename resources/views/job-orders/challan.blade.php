@@ -66,7 +66,7 @@
                 <div class="small">GSTIN: {{ $jobOrder->karigar->gst_number }}</div>
             @endif
             @if($jobOrder->karigar?->mobile)
-                <div class="small">Ph: {{ $jobOrder->karigar->mobile }}</div>
+                <div class="small">Ph: {{ \App\Support\Mobile::forDisplay($jobOrder->karigar->mobile) }}</div>
             @endif
         </div>
     </div>

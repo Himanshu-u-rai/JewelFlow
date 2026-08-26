@@ -59,7 +59,7 @@
                     <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Owner</dt><dd class="text-gray-800">{{ $karigar->name }}</dd></div>
                     <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Workshop / Shop</dt><dd class="text-gray-800">{{ $karigar->shop_name ?? '—' }}</dd></div>
                     <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Day-to-day Contact</dt><dd class="text-gray-800">{{ $karigar->contact_person ?? '—' }}</dd></div>
-                    <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Mobile</dt><dd class="text-gray-800">{{ $karigar->mobile ?? '—' }}</dd></div>
+                    <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Mobile</dt><dd class="text-gray-800">{{ \App\Support\Mobile::forDisplay($karigar->mobile) ?: '—' }}</dd></div>
                     <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">Email</dt><dd class="text-gray-800">{{ $karigar->email ?? '—' }}</dd></div>
                     <div class="sm:col-span-2"><dt class="text-[10px] uppercase tracking-wide text-gray-500">Workshop address</dt><dd class="text-gray-800">{{ $karigar->address ?: '—' }}{{ $karigar->city ? ', ' . $karigar->city : '' }}{{ $karigar->state ? ', ' . $karigar->state : '' }} {{ $karigar->pincode }}</dd></div>
                     <div><dt class="text-[10px] uppercase tracking-wide text-gray-500">PAN</dt><dd class="text-gray-800 font-mono">{{ $karigar->pan_number ?? '—' }}</dd></div>

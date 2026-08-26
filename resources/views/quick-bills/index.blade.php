@@ -1241,7 +1241,7 @@
                                         </td>
                                         <td>
                                             <div class="qb-name">{{ $quickBill->customer_name ?: ($quickBill->customer?->name ?: 'Walk-in customer') }}</div>
-                                            <div class="qb-sub">{{ $quickBill->customer_mobile ?: ($quickBill->customer?->mobile ?: 'No mobile') }}</div>
+                                            <div class="qb-sub">{{ \App\Support\Mobile::forDisplay($quickBill->customer_mobile) ?: (\App\Support\Mobile::forDisplay($quickBill->customer?->mobile) ?: 'No mobile') }}</div>
                                         </td>
                                         <td>{{ $quickBill->bill_date?->format('d M Y') }}</td>
                                         <td class="is-right">
@@ -1291,7 +1291,7 @@
 
                                     <div class="qb-card__customer">
                                         <div class="qb-name">{{ $quickBill->customer_name ?: ($quickBill->customer?->name ?: 'Walk-in customer') }}</div>
-                                        <div class="qb-sub">{{ $quickBill->customer_mobile ?: ($quickBill->customer?->mobile ?: 'No mobile') }}</div>
+                                        <div class="qb-sub">{{ \App\Support\Mobile::forDisplay($quickBill->customer_mobile) ?: (\App\Support\Mobile::forDisplay($quickBill->customer?->mobile) ?: 'No mobile') }}</div>
                                     </div>
 
                                     <div class="qb-card__amounts">

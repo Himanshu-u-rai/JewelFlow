@@ -55,8 +55,8 @@
                                 </td>
                                 <td class="px-4 py-3 font-medium">{{ ucfirst($req->edition) }}</td>
                                 <td class="px-4 py-3 text-slate-300">
-                                    <div>{{ $req->user?->name ?? $req->user?->mobile_number ?? '—' }}</div>
-                                    <div class="text-xs text-slate-500">{{ $req->user?->mobile_number }}</div>
+                                    <div>{{ $req->user?->name ?? (\App\Support\Mobile::forDisplay($req->user?->mobile_number) ?: '—') }}</div>
+                                    <div class="text-xs text-slate-500">{{ \App\Support\Mobile::forDisplay($req->user?->mobile_number) }}</div>
                                 </td>
                                 <td class="px-4 py-3 text-slate-300 max-w-md">{{ $req->reason }}</td>
                                 <td class="px-4 py-3 text-xs text-slate-400">{{ $req->created_at->format('d M Y, H:i') }}</td>

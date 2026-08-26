@@ -120,7 +120,7 @@
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-slate-700">{{ $loan->customer->name ?? '---' }}</div>
-                                    <div class="text-xs text-slate-500">{{ $loan->customer->mobile ?? '' }}</div>
+                                    <div class="text-xs text-slate-500">{{ \App\Support\Mobile::forDisplay($loan->customer?->mobile) ?: '' }}</div>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">
                                     {{ $currencySymbol ?? '₹' }}{{ number_format($loan->principal_amount, 2) }}

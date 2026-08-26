@@ -90,7 +90,7 @@
             <article class="returns-show-stat">
                 <span>Customer</span>
                 <strong>{{ $customerName ?: '-' }}</strong>
-                <small>{{ $customer?->mobile ?: 'No mobile number' }}</small>
+                <small>{{ \App\Support\Mobile::forDisplay($customer?->mobile) ?: 'No mobile number' }}</small>
             </article>
         </section>
 

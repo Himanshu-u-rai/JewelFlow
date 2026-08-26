@@ -161,7 +161,7 @@
                     <tr class="border-t border-slate-800 text-slate-200">
                         <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                         <td class="px-4 py-2 font-medium">{{ $shop->name }}</td>
-                        <td class="px-4 py-2 text-sm text-slate-300">{{ $shop->owner_mobile ?? '—' }}</td>
+                        <td class="px-4 py-2 text-sm text-slate-300">{{ \App\Support\Mobile::forDisplay($shop->owner_mobile) ?: '—' }}</td>
                         <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?? '—' }}</td>
                         <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspended_at?->format('d M Y, H:i') ?? '—' }}</td>
                         <td class="px-4 py-2">
@@ -182,7 +182,7 @@
                     <tr class="border-t border-slate-800 text-slate-200">
                         <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                         <td class="px-4 py-2 font-medium">{{ $shop->name }}</td>
-                        <td class="px-4 py-2 text-sm text-slate-300">{{ $shop->owner_mobile ?? '—' }}</td>
+                        <td class="px-4 py-2 text-sm text-slate-300">{{ \App\Support\Mobile::forDisplay($shop->owner_mobile) ?: '—' }}</td>
                         <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?? '—' }}</td>
                         <td class="px-4 py-2">
                             <a href="{{ route('admin.shops.show', ['shop' => $shop->id]) }}" class="admin-btn admin-btn-xs admin-btn-secondary">Inspect</a>

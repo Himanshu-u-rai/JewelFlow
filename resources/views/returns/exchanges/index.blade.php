@@ -133,7 +133,7 @@
                                     <td>
                                         @if($customerName)
                                             <span class="returns-inbox-customer">{{ $customerName }}</span>
-                                            <small>{{ $customer->mobile ?: 'No mobile' }}</small>
+                                            <small>{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: 'No mobile' }}</small>
                                         @else
                                             <span class="returns-inbox-muted">Walk-in customer</span>
                                         @endif
@@ -248,7 +248,7 @@
                             <div class="returns-inbox-mobile-customer">
                                 <span>{{ $customerName }}</span>
                                 @if($customer?->mobile)
-                                    <small>{{ $customer->mobile }}</small>
+                                    <small>{{ \App\Support\Mobile::forDisplay($customer->mobile) }}</small>
                                 @endif
                             </div>
 

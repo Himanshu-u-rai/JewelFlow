@@ -99,7 +99,7 @@
                     <span>Customer</span>
                     <strong>{{ $customer->name }}</strong>
                     @if($customer->mobile)
-                        <small>{{ $customer->mobile }}</small>
+                        <small>{{ \App\Support\Mobile::forDisplay($customer->mobile) }}</small>
                     @endif
                 </div>
 

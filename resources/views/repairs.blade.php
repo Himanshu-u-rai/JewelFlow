@@ -762,7 +762,7 @@
                                         @foreach($customers as $c)
                                             <div class="r-dd-opt" data-id="{{ $c->id }}" data-name="{{ $c->name }}" data-mobile="{{ $c->mobile }}" onclick="selectCust(this)">
                                                 <div class="r-dd-opt-name">{{ $c->name }}</div>
-                                                <div class="r-dd-opt-sub">{{ $c->mobile }}</div>
+                                                <div class="r-dd-opt-sub">{{ \App\Support\Mobile::forDisplay($c->mobile) }}</div>
                                             </div>
                                         @endforeach
                                     </div>
@@ -959,7 +959,7 @@
                                         </td>
                                         <td class="px-3 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900">{{ $r->customer->name }}</div>
-                                            <div class="text-sm text-gray-500">{{ $r->customer->mobile }}</div>
+                                            <div class="text-sm text-gray-500">{{ \App\Support\Mobile::forDisplay($r->customer->mobile) }}</div>
                                         </td>
                                         <td class="px-3 py-4 repairs-item-col">
                                             <div class="text-sm font-medium text-gray-900">{{ $r->item_description }}</div>
@@ -1072,7 +1072,7 @@
                                     <span class="repairs-chip {{ $mobileStatusBadge[0] }}">{{ $mobileStatusBadge[1] }}</span>
                                 </div>
                                 <div class="repairs-mobile-title">{{ $r->customer->name }}</div>
-                                <div class="repairs-mobile-sub">{{ $r->customer->mobile }}</div>
+                                <div class="repairs-mobile-sub">{{ \App\Support\Mobile::forDisplay($r->customer->mobile) }}</div>
                                 <div class="mt-3">
                                     <div class="repairs-mobile-title">{{ $r->item_description }}</div>
                                     @if($r->description)

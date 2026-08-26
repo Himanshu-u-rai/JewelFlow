@@ -135,7 +135,7 @@
                                             @endif
                                         </div>
                                     </td>
-                                    <td>{{ $k->mobile ?? '—' }}</td>
+                                    <td>{{ \App\Support\Mobile::forDisplay($k->mobile) ?: '—' }}</td>
                                     <td class="karigars-mono">{{ $k->gst_number ?? '—' }}</td>
                                     <td>{{ $k->city ?? '—' }}</td>
                                     <td class="text-right karigars-mono">{{ $k->job_orders_count }}</td>
@@ -195,7 +195,7 @@
                             <dl class="karigars-mobile-meta">
                                 <div>
                                     <dt>Mobile</dt>
-                                    <dd>{{ $k->mobile ?? '—' }}</dd>
+                                    <dd>{{ \App\Support\Mobile::forDisplay($k->mobile) ?: '—' }}</dd>
                                 </div>
                                 <div>
                                     <dt>City</dt>

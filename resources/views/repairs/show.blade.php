@@ -123,7 +123,7 @@
                     <dl class="repairs-show-customer-grid">
                         <div>
                             <dt>Mobile</dt>
-                            <dd>{{ $repair->customer?->mobile ?? 'Not recorded' }}</dd>
+                            <dd>{{ \App\Support\Mobile::forDisplay($repair->customer?->mobile) ?: 'Not recorded' }}</dd>
                         </div>
                         <div>
                             <dt>Received</dt>

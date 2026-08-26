@@ -49,7 +49,7 @@
                                             <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">{{ $borrower->pending_evidence_count }} awaiting evidence</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-4 text-sm text-slate-600 whitespace-nowrap">{{ $borrower->mobile ?? '—' }}</td>
+                                    <td class="px-4 py-4 text-sm text-slate-600 whitespace-nowrap">{{ \App\Support\Mobile::forDisplay($borrower->mobile) ?: '—' }}</td>
                                     <td class="px-4 py-4 text-center text-sm font-medium text-emerald-700">{{ $borrower->active_loans_count }}</td>
                                     <td class="px-4 py-4 text-center text-sm text-slate-500">{{ $borrower->closed_loans_count }}</td>
                                     <td class="px-4 py-4 text-center text-sm text-red-600">{{ $borrower->forfeited_loans_count }}</td>

@@ -159,7 +159,7 @@
                             @php $selCust = $customers->firstWhere('id', old('customer_id', $repair->customer_id)); @endphp
                             @if($selCust)
                                 <span style="font-weight:600;color:var(--r-ink)">{{ $selCust->name }}</span>
-                                <span style="font-size:11px;color:var(--r-muted);margin-left:4px">{{ $selCust->mobile }}</span>
+                                <span style="font-size:11px;color:var(--r-muted);margin-left:4px">{{ \App\Support\Mobile::forDisplay($selCust->mobile) }}</span>
                             @else
                                 <span class="r-dd-placeholder">Select Customer</span>
                             @endif
@@ -173,7 +173,7 @@
                                 @foreach($customers as $c)
                                     <div class="r-dd-opt" data-id="{{ $c->id }}" data-name="{{ $c->name }}" data-mobile="{{ $c->mobile }}" onclick="selectCust(this)">
                                         <div class="r-dd-opt-name">{{ $c->name }}</div>
-                                        <div class="r-dd-opt-sub">{{ $c->mobile }}</div>
+                                        <div class="r-dd-opt-sub">{{ \App\Support\Mobile::forDisplay($c->mobile) }}</div>
                                     </div>
                                 @endforeach
                             </div>

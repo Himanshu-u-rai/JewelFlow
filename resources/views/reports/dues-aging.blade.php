@@ -47,7 +47,7 @@
                         @forelse($data->rows as $r)
                             <tr>
                                 <td class="px-4 py-2 text-gray-800">{{ $r->customer_name }}</td>
-                                <td class="px-4 py-2 text-gray-500 font-mono">{{ $r->mobile ?? '—' }}</td>
+                                <td class="px-4 py-2 text-gray-500 font-mono">{{ \App\Support\Mobile::forDisplay($r->mobile) ?: '—' }}</td>
                                 <td class="px-4 py-2 text-right text-gray-600">{{ $r->invoice_count }}</td>
                                 <td class="px-4 py-2 text-right">{{ $r->current > 0 ? '₹' . number_format($r->current, 2) : '—' }}</td>
                                 <td class="px-4 py-2 text-right {{ $r->d3160 > 0 ? 'text-amber-600' : '' }}">{{ $r->d3160 > 0 ? '₹' . number_format($r->d3160, 2) : '—' }}</td>

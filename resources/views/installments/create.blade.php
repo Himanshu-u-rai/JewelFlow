@@ -70,7 +70,7 @@
                                 <option value="">Select customer</option>
                                 @foreach($customers as $customer)
                                     <option value="{{ $customer->id }}">
-                                        {{ $customer->name }} ({{ $customer->mobile }})
+                                        {{ $customer->name }} ({{ \App\Support\Mobile::forDisplay($customer->mobile) }})
                                     </option>
                                 @endforeach
                             </select>

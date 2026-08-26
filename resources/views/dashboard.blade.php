@@ -4339,7 +4339,7 @@
                 </div>
 
                 <div class="dash-shop-info">
-                    <p class="dash-meta" style="font-size: 11px;"><strong>Owner</strong>{{ $ownerName !== '' ? $ownerName : ($shop?->owner_mobile ?? '—') }}</p>
+                    <p class="dash-meta" style="font-size: 11px;"><strong>Owner</strong>{{ $ownerName !== '' ? $ownerName : (\App\Support\Mobile::forDisplay($shop?->owner_mobile) ?: '—') }}</p>
                     <p class="dash-meta" style="font-size: 11px;"><strong>Phone</strong>{{ $shop?->phone ?? '—' }}</p>
                     @if($shop?->city || $shop?->state)
                         <p class="dash-meta" style="font-size: 11px;"><strong>Location</strong>{{ $shop?->city }}{{ $shop?->state ? ', ' . $shop->state : '' }}</p>
@@ -4978,7 +4978,7 @@
                                         </span>
                                         <div class="dash-row-copy">
                                             <div class="dash-row-title">{{ $displayName }}</div>
-                                            <div class="dash-row-meta">{{ $customer->mobile ?: 'No mobile' }}</div>
+                                            <div class="dash-row-meta">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: 'No mobile' }}</div>
                                         </div>
                                     </div>
                                     <div class="dash-row-mid">{{ $invoiceCount }} {{ \Illuminate\Support\Str::plural('invoice', $invoiceCount) }}</div>

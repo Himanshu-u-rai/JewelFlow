@@ -67,7 +67,7 @@
                         <p class="detail-label">Borrower</p>
                         <p class="detail-name">{{ $customer?->name ?? 'Walk-in Customer' }}</p>
                         <p class="detail-text">
-                            {{ $customer?->mobile ?? 'No mobile available' }}
+                            {{ \App\Support\Mobile::forDisplay($customer?->mobile) ?: 'No mobile available' }}
                             @if($customer?->address)
                                 <br>{{ $customer->address }}
                             @endif

@@ -889,7 +889,7 @@
             <a href="/pos" class="pos-back">&larr; Back</a>
             <div>
                 <div class="pos-customer-name">{{ $customer->first_name }} {{ $customer->last_name }}</div>
-                <div class="pos-customer-phone">{{ $customer->mobile }} &middot; #{{ $customer->customer_code ?? '—' }}</div>
+                <div class="pos-customer-phone">{{ \App\Support\Mobile::forDisplay($customer->mobile) }} &middot; #{{ $customer->customer_code ?? '—' }}</div>
             </div>
         </div>
         <span class="pos-badge">POS Sale</span>

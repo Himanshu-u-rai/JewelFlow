@@ -48,7 +48,7 @@
                                     <option value="">Select customer...</option>
                                     @foreach($customers as $customer)
                                         <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
-                                            {{ $customer->name }} — {{ $customer->mobile }}
+                                            {{ $customer->name }} — {{ \App\Support\Mobile::forDisplay($customer->mobile) }}
                                         </option>
                                     @endforeach
                                 </select>

@@ -2,7 +2,7 @@
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">{{ $customer->name }} &mdash; Pledge Loans</h1>
-            <p class="text-sm text-gray-500 mt-1">{{ $customer->mobile ?? '' }} {{ $customer->email ? '/ ' . $customer->email : '' }}</p>
+            <p class="text-sm text-gray-500 mt-1">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: '' }} {{ $customer->email ? '/ ' . $customer->email : '' }}</p>
         </div>
         <div class="page-actions">
             <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-dark btn-sm">

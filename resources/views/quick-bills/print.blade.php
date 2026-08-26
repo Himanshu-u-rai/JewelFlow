@@ -324,7 +324,7 @@
                 @if($showAddr)
                 <div class="kv"><div class="k">Address</div><div class="v">: {{ $quickBill->customer_address ?: ($quickBill->customer?->address ?: '-') }}</div></div>
                 @endif
-                <div class="kv"><div class="k">Mobile</div><div class="v">: {{ $quickBill->customer_mobile ?: ($quickBill->customer?->mobile ?: '-') }}</div></div>
+                <div class="kv"><div class="k">Mobile</div><div class="v">: {{ \App\Support\Mobile::forDisplay($quickBill->customer_mobile) ?: (\App\Support\Mobile::forDisplay($quickBill->customer?->mobile) ?: '-') }}</div></div>
             </div>
             <div class="bill-col right">
                 <div class="kv"><div class="k">Bill No.</div><div class="v">: {{ $quickBill->bill_number }}</div></div>

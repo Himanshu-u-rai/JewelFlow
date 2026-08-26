@@ -192,7 +192,7 @@
                         </div>
                         <div class="invoice-show-customer-meta">
                             @if($invoice->customer)
-                                <span>{{ $invoice->customer->mobile }}</span>
+                                <span>{{ \App\Support\Mobile::forDisplay($invoice->customer->mobile) }}</span>
                                 @if($invoice->customer->address)
                                     <span>{{ $invoice->customer->address }}</span>
                                 @endif

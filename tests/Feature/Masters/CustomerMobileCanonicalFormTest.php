@@ -7,11 +7,13 @@ use App\Models\OnboardingBatch;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * `customers.mobile` has exactly one legal spelling: the last 10 digits.
+ * `customers.mobile` has exactly one legal spelling: the ten-digit national
+ * number, per App\Support\Mobile.
  *
  * The (shop_id, mobile) unique index makes the STORED STRING unique, not the
  * human. So any write path that stores a number as typed silently defeats it:
@@ -19,14 +21,18 @@ use Tests\TestCase;
  * splits across both, and historical customer matching — which normalises on
  * read — can never find the un-normalised copy.
  *
- * Most write paths validate `digits:10` and are safe by construction. Three do
- * not, and each is exercised here through its REAL route rather than by calling
- * the helper directly, because the bug is never in the helper — it is in a call
- * site that forgot to use it:
+ * Every form path now validates with IndianMobileRule and every model write
+ * canonicalises through CanonicalisesMobileNumbers. These routes are still
+ * exercised end to end rather than by calling the helper directly, because the
+ * bug was never in the helper — it was in a call site that forgot to use it,
+ * and only a real request proves a call site is wired:
  *
- *   - Quick Bill              (`customer_mobile` is `max:20` free text)
- *   - Onboarding CSV import   (mobile column is whatever the shop's old system wrote)
- *   - Onboarding manual add   (`mobile` is `max:20` free text)
+ *   - Quick Bill              (was `max:20` free text)
+ *   - Onboarding CSV import   (no validator at all — the file holds whatever
+ *                              the shop's old system wrote, so a junk row is
+ *                              skipped rather than inserted)
+ *   - Onboarding manual add   (was `max:20` free text)
+ *   - Onboarding manual edit  (the one the first pass walked past)
  */
 class CustomerMobileCanonicalFormTest extends TestCase
 {
@@ -193,11 +199,16 @@ class CustomerMobileCanonicalFormTest extends TestCase
 
     /**
      * Anything shorter than 10 digits cannot be an Indian mobile, so there is
-     * no canonical form to convert it to. It is stored as typed rather than
-     * dropped: losing the only contact detail on the bill would be worse than
-     * storing a number the matcher will not recognise.
+     * no canonical form to convert it to.
+     *
+     * This used to be stored as typed, on the argument that losing a walk-in's
+     * only contact detail was worse than storing a scrap. It is now REJECTED at
+     * the form: a scrap in `mobile` is indistinguishable from a real number, so
+     * "at least we kept it" buys a permanently unmatchable row, a duplicate
+     * customer and an SMS that goes nowhere. Refusing it costs the operator one
+     * correction; accepting it costs the shop a wrong record forever.
      */
-    public function test_a_value_too_short_to_be_a_mobile_is_kept_as_typed(): void
+    public function test_a_value_too_short_to_be_a_mobile_is_rejected(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
         $this->actingAs($user);
@@ -205,9 +216,10 @@ class CustomerMobileCanonicalFormTest extends TestCase
 
         TenantContext::runFor($shop->id, fn () => $this->post(
             route('quick-bills.store'), $this->quickBill('  98123  ')
-        ))->assertSessionHasNoErrors();
+        ))->assertSessionHasErrors('customer_mobile');
 
-        $this->assertSame(['98123'], $this->rows($shop->id)->pluck('mobile')->all());
+        $this->assertSame(0, $this->rows($shop->id)->count(),
+            'a rejected mobile still created a customer');
     }
 
     /** Normalising must not turn a 13-digit landline-ish blob into a match for a real mobile. */
@@ -221,6 +233,139 @@ class CustomerMobileCanonicalFormTest extends TestCase
         });
 
         $this->assertSame(2, $this->rows($shop->id)->count());
+    }
+
+    // ------------------------------------------- Uniqueness vs canonical form
+
+    /**
+     * The duplicate only resolveByMobile can see.
+     *
+     * The column holds '+91 98123 00099' and the operator types '9812300099'.
+     * Rule::unique compares strings, so it finds nothing; the unique index
+     * compares the same two strings and lets the insert through. Two rows, one
+     * human, no error anywhere. This check is the only thing standing between an
+     * un-backfilled table and a split customer history.
+     */
+    public function test_a_legacy_row_in_another_spelling_is_refused_as_a_duplicate(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+        $this->legacyRow($shop->id, '+91 98123 00099');
+
+        TenantContext::runFor($shop->id, fn () => $this->post(route('customers.store'), [
+            'first_name' => 'Ramesh',
+            'last_name'  => 'Kumar',
+            'mobile'     => self::CANONICAL,
+        ]))->assertSessionHasErrors('mobile');
+
+        $this->assertSame(1, $this->rows($shop->id)->count());
+    }
+
+    /**
+     * The message has to name the customer, because "already taken" is useless
+     * when the operator cannot find the row: they searched '9812300099' and the
+     * column says '+91 98123 00099', so search did not show it to them either.
+     */
+    public function test_the_duplicate_message_names_the_customer_holding_the_number(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+        $this->legacyRow($shop->id, '+91 98123 00099')->update(['first_name' => 'Sunita']);
+
+        TenantContext::runFor($shop->id, fn () => $this->postJson(route('customers.store'), [
+            'first_name' => 'Ramesh',
+            'last_name'  => 'Kumar',
+            'mobile'     => self::CANONICAL,
+        ]))->assertStatus(422)->assertJsonFragment([
+            'mobile' => ['This number is already saved for Sunita. Open that customer instead of creating a second one.'],
+        ]);
+    }
+
+    /** "Already exists" must never confirm a number's presence in another shop. */
+    public function test_the_same_number_in_another_shop_is_not_a_duplicate(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        [, $other]     = $this->createRetailerTenant();
+        $this->actingAs($user);
+        $this->createCustomer($other->id, ['mobile' => self::CANONICAL]);
+
+        TenantContext::runFor($shop->id, fn () => $this->post(route('customers.store'), [
+            'first_name' => 'Ramesh',
+            'last_name'  => 'Kumar',
+            'mobile'     => self::CANONICAL,
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $this->rows($shop->id)->count());
+    }
+
+    /**
+     * The ordinary case, and the one the operator sees most: a plain duplicate is
+     * refused by Rule::unique before the warning is ever reached. Confirming is
+     * not offered, because there is nothing ambiguous to confirm.
+     */
+    public function test_a_duplicate_in_the_same_spelling_is_a_plain_validation_error(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+        $this->createCustomer($shop->id, ['mobile' => self::CANONICAL]);
+
+        TenantContext::runFor($shop->id, fn () => $this->post(route('customers.store'), [
+            'first_name' => 'Ramesh',
+            'last_name'  => 'Kumar',
+            'mobile'     => self::CANONICAL,
+        ]))->assertSessionHasErrors('mobile');
+
+        $this->assertSame(1, $this->rows($shop->id)->count());
+    }
+
+    /**
+     * The hole that opens the moment a form stops being `digits:10`.
+     *
+     * Past the warning, `Rule::unique` is the only thing standing between the
+     * operator and the (shop_id, mobile) index — and it compares the RAW
+     * submitted string, while the model canonicalises on the way in. So
+     * '+91 98123 00099' finds no match against a stored '9812300099', passes
+     * validation, and reaches the index as '9812300099': a 500 on a form filled
+     * in correctly, differently. Typing the same number the same way gets a
+     * clean 422, so the operator's punishment for using spaces is a crash.
+     *
+     * Widening what the form accepts and canonicalising the write are only safe
+     * together if the uniqueness check sees the same string the insert will.
+     */
+    public function test_a_duplicate_in_another_spelling_is_a_validation_error_not_a_500(): void
+    {
+        // confirm_duplicate is sent deliberately: it was the escape hatch past
+        // the duplicate check, no client ever sent it, and it is gone. If it
+        // ever comes back it must not be able to reach the unique index.
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+        $this->createCustomer($shop->id, ['mobile' => self::CANONICAL]);
+
+        TenantContext::runFor($shop->id, fn () => $this->post(route('customers.store'), [
+            'first_name'        => 'Ramesh',
+            'last_name'         => 'Kumar',
+            'mobile'            => '+91 98123 00099',
+            'confirm_duplicate' => 1,
+        ]))->assertSessionHasErrors('mobile');
+
+        $this->assertSame(1, $this->rows($shop->id)->count(),
+            'a second row was created for the same human');
+    }
+
+    /** Same gap on the edit form: the row being edited must not clash with itself. */
+    public function test_editing_a_customer_without_changing_the_number_is_not_a_clash(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+        $customer = $this->createCustomer($shop->id, ['mobile' => self::CANONICAL]);
+
+        TenantContext::runFor($shop->id, fn () => $this->put(route('customers.update', $customer), [
+            'first_name' => 'Ramesh',
+            'last_name'  => 'Kumar',
+            'mobile'     => '+91 98123 00099',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame(self::CANONICAL, $customer->fresh()->mobile);
     }
 
     // ------------------------------------------------- Legacy rows (no backfill)
@@ -237,12 +382,62 @@ class CustomerMobileCanonicalFormTest extends TestCase
         // reaches the customers_business_identifier_assign trigger with a null
         // shop — which is a not-null violation, not a test.
         //
-        // Nothing normalises on insert, so `mobile` lands exactly as typed.
-        // That is the point: this is a row from before canonicalisation.
-        return TenantContext::runFor($shopId, fn () => Customer::create([
+        // The spelling has to go in BEHIND the model. Every write through
+        // Eloquent now canonicalises (CanonicalisesMobileNumbers) — which is
+        // the fix — so the only honest way to simulate a row written before it
+        // is to put the raw string in the column the way the old code did.
+        $customer = TenantContext::runFor($shopId, fn () => Customer::create([
             'first_name' => 'Legacy',
-            'mobile'     => $asTyped,
+            'mobile'     => '9000000000',
         ]));
+
+        DB::table('customers')->where('id', $customer->id)->update(['mobile' => $asTyped]);
+
+        // fresh() hydrates via setRawAttributes, which does not pass through
+        // the mutator, so the raw spelling survives the reload.
+        return $customer->fresh();
+    }
+
+    // ------------------------------------------------ Display (the read half)
+
+    /**
+     * E.123 splits the job in two: store one bare canonical string, group it for
+     * the human reading it. The storage half landed first and Mobile::forDisplay
+     * sat there with zero callers for a while — a formatter nobody calls formats
+     * nothing, and the unit test on the helper passed the whole time it was dead.
+     *
+     * So this asserts through a rendered page, not the helper: the only thing
+     * that can fail here is the wiring.
+     */
+    public function test_a_customer_list_groups_the_number_for_reading(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+
+        TenantContext::runFor($shop->id, fn () => Customer::create([
+            'first_name' => 'Ramesh',
+            'mobile'     => self::CANONICAL,
+        ]));
+
+        TenantContext::runFor($shop->id, fn () => $this->get(route('customers.index')))
+            ->assertOk()
+            ->assertSee('98123 00099');
+    }
+
+    /**
+     * A value that never normalised has no canonical shape to group, so it is
+     * printed exactly as stored. Display must never hide a digit from the
+     * operator — that number is how they find the row.
+     */
+    public function test_a_legacy_spelling_is_displayed_as_stored(): void
+    {
+        [$user, $shop] = $this->createRetailerTenant();
+        $this->actingAs($user);
+        $this->legacyRow($shop->id, '0221-234-5678');
+
+        TenantContext::runFor($shop->id, fn () => $this->get(route('customers.index')))
+            ->assertOk()
+            ->assertSee('0221-234-5678');
     }
 
     public function test_a_legacy_spelling_is_found_without_a_backfill(): void

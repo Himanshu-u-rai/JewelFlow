@@ -41,7 +41,7 @@
         <div id="msg"></div>
 
         <div class="foot">
-            <span class="dh-verify-mobile">{{ $user->mobile_number }}</span>
+            <span class="dh-verify-mobile">{{ \App\Support\Mobile::forDisplay($user->mobile_number) }}</span>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit">Sign out</button>

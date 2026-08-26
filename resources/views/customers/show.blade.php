@@ -45,7 +45,7 @@
                         <div class="customers-show-retailer-profile-meta">
                             <div>
                                 <span>Mobile</span>
-                                <strong>{{ $customer->mobile }}</strong>
+                                <strong>{{ \App\Support\Mobile::forDisplay($customer->mobile) }}</strong>
                             </div>
                             <div>
                                 <span>Email</span>
@@ -149,7 +149,7 @@
                             </div>
                             <div>
                                 <dt>Mobile</dt>
-                                <dd>{{ $customer->mobile }}</dd>
+                                <dd>{{ \App\Support\Mobile::forDisplay($customer->mobile) }}</dd>
                             </div>
                             <div>
                                 <dt>Email</dt>
@@ -394,7 +394,7 @@
                             </div>
                             <div>
                                 <p class="text-gray-500">Mobile</p>
-                                <p class="font-medium text-gray-900">{{ $customer->mobile }}</p>
+                                <p class="font-medium text-gray-900">{{ \App\Support\Mobile::forDisplay($customer->mobile) }}</p>
                             </div>
                             <div>
                                 <p class="text-gray-500">Email</p>

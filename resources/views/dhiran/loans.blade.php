@@ -77,7 +77,7 @@
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-slate-700">{{ $loan->customer->name ?? '---' }}</div>
-                                    <div class="text-xs text-slate-500">{{ $loan->customer->mobile ?? '' }}</div>
+                                    <div class="text-xs text-slate-500">{{ \App\Support\Mobile::forDisplay($loan->customer?->mobile) ?: '' }}</div>
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-right text-slate-700">
                                     {{ $currencySymbol ?? '₹' }}{{ number_format($loan->principal_amount, 2) }}
@@ -139,7 +139,7 @@
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <a href="{{ route('dhiran.show', $loan) }}" class="dh-mobile-title font-mono">{{ $loan->loan_number }}</a>
-                                <p class="dh-mobile-meta">{{ $loan->customer->name ?? '---' }}{{ $loan->customer?->mobile ? ' · '.$loan->customer->mobile : '' }}</p>
+                                <p class="dh-mobile-meta">{{ $loan->customer->name ?? '---' }}{{ \App\Support\Mobile::forDisplay($loan->customer?->mobile) ? ' · '.\App\Support\Mobile::forDisplay($loan->customer?->mobile) : '' }}</p>
                             </div>
                             @php
                                 $mobileStatusColors = [
