@@ -46,8 +46,18 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\CheckMaintenanceMode::class,
         ], append: [
             \App\Http\Middleware\NormalizeHumanTextInput::class,
+            \App\Http\Middleware\CanonicaliseMobileInput::class,
             \App\Http\Middleware\SetShopLocale::class,
             \App\Http\Middleware\ForceDhiranSubdomain::class,
+        ]);
+
+        // Both groups: `Rule::unique` compares the raw submitted string while the
+        // model mutator writes the canonical one, so a number typed '+91 98123
+        // 00099' slips past a uniqueness check and lands on the index as a
+        // duplicate. The mobile API has the same customer/staff uniqueness rules
+        // as the web forms, so it needs the same rewrite. See the middleware.
+        $middleware->api(append: [
+            \App\Http\Middleware\CanonicaliseMobileInput::class,
         ]);
 
         // Middleware execution priority.
