@@ -183,7 +183,7 @@
 
     <label class="kf-field">
         <span class="kf-label">Mobile</span>
-        <input type="text" name="mobile" value="{{ old('mobile', $k?->mobile) }}" class="kf-input">
+        <input type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" name="mobile" value="{{ old('mobile', $k?->mobile) }}" placeholder="10-digit mobile" class="kf-input">
     </label>
 
     <label class="kf-field">

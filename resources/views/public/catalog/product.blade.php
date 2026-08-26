@@ -392,7 +392,7 @@
 
                 {{-- CTA --}}
                 @php
-                    $waNum = preg_replace('/\D/', '', $shop->shop_whatsapp ?? $shop->phone ?? '');
+                    $waNum = \App\Support\Mobile::forWhatsApp($shop->shop_whatsapp ?? $shop->phone ?? '');
                     $waText = urlencode("Hi! I'm interested in " . ($item->design ?? $item->barcode) . " (" . $item->barcode . "). Could you share more details?");
                 @endphp
 

@@ -88,7 +88,7 @@
         </div>
         <div>
             <label for="customer_mobile">Mobile</label>
-            <input type="text" id="customer_mobile" name="customer_mobile" value="{{ old('customer_mobile') }}" class="w-full">
+            <input type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" id="customer_mobile" name="customer_mobile" value="{{ old('customer_mobile') }}" placeholder="10-digit mobile" class="w-full">
         </div>
         <div>
             <label for="customer_gstin">GSTIN</label>

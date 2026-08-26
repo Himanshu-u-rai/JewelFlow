@@ -54,7 +54,8 @@
 
                 <div>
                     <label for="mobile_number" class="block text-sm font-medium text-gray-700 mb-2">Mobile Number *</label>
-                    <input type="text" name="mobile_number" id="mobile_number"
+                    <input type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}"
+                           name="mobile_number" id="mobile_number"
                            value="{{ old('mobile_number') }}"
                            placeholder="e.g., 9876543210"
                            class="w-full border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500"

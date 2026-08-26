@@ -642,7 +642,7 @@
                                 </div>
                                 <div class="xl:col-span-6">
                                     <label class="mb-2 block text-sm font-medium text-slate-600">Mobile</label>
-                                    <input type="text" name="customer_mobile" x-model="customerMobile" placeholder="Customer mobile number" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
+                                    <input type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" name="customer_mobile" x-model="customerMobile" placeholder="10-digit mobile number" class="w-full rounded-xl border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-900 focus:ring-slate-900/10">
                                 </div>
                                 <div class="sm:col-span-2 xl:col-span-12">
                                     <label class="mb-2 block text-sm font-medium text-slate-600">Address</label>

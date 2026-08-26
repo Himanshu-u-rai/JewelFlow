@@ -345,8 +345,8 @@
             <div class="form-row">
                 <div class="field">
                     <label class="field-label">{{ __('WhatsApp Number') }}</label>
-                    <input type="text" name="social_whatsapp" value="{{ old('social_whatsapp', $ws?->social_whatsapp) }}" class="field-input" placeholder="919876543210">
-                    <span class="field-hint">{{ __('Country code + number, no spaces') }}</span>
+                    <input type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" name="social_whatsapp" value="{{ old('social_whatsapp', $ws?->social_whatsapp) }}" class="field-input" placeholder="9876543210">
+                    <span class="field-hint">{{ __('10-digit mobile number, no country code') }}</span>
                 </div>
                 <div class="field">
                     <label class="field-label">{{ __('Instagram URL') }}</label>

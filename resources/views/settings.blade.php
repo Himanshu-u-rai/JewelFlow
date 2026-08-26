@@ -2278,7 +2278,7 @@
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-gray-600">{{ __('Logged in as') }}</span>
-                            <span class="font-semibold text-gray-900">{{ auth()->user()->mobile_number }}</span>
+                            <span class="font-semibold text-gray-900">{{ \App\Support\Mobile::forDisplay(auth()->user()?->mobile_number) }}</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-gray-600">{{ __('Role') }}</span>
@@ -2326,7 +2326,7 @@
                         <p class="mt-1 text-sm text-gray-600">{{ __('Your registered mobile number used to log in.') }}</p>
                     </header>
                     <div class="mt-4 flex items-center justify-between gap-4">
-                        <span class="text-sm font-medium text-gray-800">{{ auth()->user()->mobile_number ?? '—' }}</span>
+                        <span class="text-sm font-medium text-gray-800">{{ \App\Support\Mobile::forDisplay(auth()->user()?->mobile_number) ?: '—' }}</span>
                         <a href="{{ route('profile.mobile.change') }}" data-turbo-frame="_top" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">{{ __('Change') }}</a>
                     </div>
                 </section>
@@ -2357,14 +2357,14 @@
                         </div>
                         <div class="field">
                             <label class="field-label">{{ __('Phone') }}</label>
-                            <input type="text" name="phone" value="{{ old('phone', $shop->phone) }}" class="field-input" maxlength="10" required>
+                            <input type="tel" inputmode="numeric" pattern="[0-9]{10}" name="phone" value="{{ old('phone', $shop->phone) }}" class="field-input" maxlength="10" required>
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="field">
                             <label class="field-label">{{ __('WhatsApp Number') }}</label>
-                            <input type="text" name="shop_whatsapp" value="{{ old('shop_whatsapp', $shop->shop_whatsapp) }}" class="field-input" maxlength="10" placeholder="{{ __('Optional') }}">
+                            <input type="tel" inputmode="numeric" pattern="[0-9]{10}" name="shop_whatsapp" value="{{ old('shop_whatsapp', $shop->shop_whatsapp) }}" class="field-input" maxlength="10" placeholder="{{ __('Optional') }}">
                         </div>
                         <div class="field">
                             <label class="field-label">{{ __('Shop Email') }}</label>
@@ -2541,7 +2541,7 @@
                         </div>
                         <div class="field">
                             <label class="field-label">{{ __('Mobile') }}</label>
-                            <input type="text" name="owner_mobile" value="{{ old('owner_mobile', $shop->owner_mobile) }}" class="field-input" maxlength="10" required>
+                            <input type="tel" inputmode="numeric" pattern="[0-9]{10}" name="owner_mobile" value="{{ old('owner_mobile', $shop->owner_mobile) }}" class="field-input" maxlength="10" required>
                         </div>
                         <div class="field">
                             <label class="field-label">{{ __('Email') }}</label>
@@ -3577,9 +3577,9 @@
                                         {{ strtoupper(substr($member->name ?? $member->mobile_number, 0, 1)) }}
                                     </div>
                                     <div>
-                                        <p class="font-semibold text-gray-900 text-sm">{{ $member->name ?? $member->mobile_number }}</p>
+                                        <p class="font-semibold text-gray-900 text-sm">{{ $member->name ?? \App\Support\Mobile::forDisplay($member->mobile_number) }}</p>
                                         @if($member->name)
-                                            <p class="text-xs text-gray-500">{{ $member->mobile_number }}</p>
+                                            <p class="text-xs text-gray-500">{{ \App\Support\Mobile::forDisplay($member->mobile_number) }}</p>
                                         @endif
                                         @if($member->email)
                                             <p class="text-xs text-gray-400">{{ $member->email }}</p>
@@ -4941,7 +4941,7 @@
                                     @if($person?->name && $person?->mobile_number)
                                         <div class="flex items-center justify-between gap-3">
                                             <span class="text-gray-500">{{ __('Mobile') }}</span>
-                                            <span class="text-gray-600">{{ $person->mobile_number }}</span>
+                                            <span class="text-gray-600">{{ \App\Support\Mobile::forDisplay($person->mobile_number) }}</span>
                                         </div>
                                     @endif
                                     <div class="flex items-center justify-between gap-3">
