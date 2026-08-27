@@ -54,13 +54,23 @@ class EnsureAccountIsActive
         if ($accessMode === 'suspended') {
             $until = $shop->suspended_until;
             if ($until && now()->greaterThan($until)) {
-                // Auto-clear expired suspension
+                // Auto-clear an expired TIME-BOXED suspension. suspended_by must be
+                // cleared with it: the restriction it attributes no longer exists, and
+                // a surviving stamp classifies the shop as administratively held
+                // FOREVER — which blocks every purchase entry point through
+                // ShopSubscription::blocksNewPaidTerm() and freezes the subscription
+                // reconciler (it refuses to touch an administrative row), so the owner
+                // can never renew.
+                //
+                // A PERMANENT administrator hold carries suspended_until = null and
+                // never reaches this branch, so its stamp is untouchable here.
                 $shop->forceFill([
                     'access_mode' => 'active',
                     'is_active' => true,
                     'suspended_at' => null,
                     'suspension_reason' => null,
                     'suspended_until' => null,
+                    'suspended_by' => null,
                 ])->save();
                 return $next($request);
             }

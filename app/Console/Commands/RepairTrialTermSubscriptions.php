@@ -94,10 +94,19 @@ class RepairTrialTermSubscriptions extends Command
 
                     // If a shop was wrongly downgraded and the corrected status is
                     // active, restore full access. Mirror CheckSubscriptionExpiry's
-                    // forceFill approach.
+                    // applyShopModeUnderLock(): take the row lock INSIDE this
+                    // transaction — a lockForUpdate() outside one is released the
+                    // instant the statement ends and guards nothing — then refuse to
+                    // touch an administrative hold.
+                    //
+                    // A data repair owns the ENTITLEMENT axis only. Lifting a
+                    // JewelFlows administrator's read-only/suspension here would
+                    // silently undo a compliance or fraud hold with no admin acting,
+                    // and suspended_by (the only record of who imposed it) is left
+                    // strictly alone.
                     if ($subscription->shop_id && $correctStatus === 'active') {
-                        $shop = Shop::find($subscription->shop_id);
-                        if ($shop && $shop->access_mode !== 'active') {
+                        $shop = Shop::whereKey($subscription->shop_id)->lockForUpdate()->first();
+                        if ($shop && $shop->access_mode !== 'active' && ! $shop->suspensionIsAdministrative()) {
                             $shop->forceFill([
                                 'access_mode' => 'active',
                                 'is_active' => true,

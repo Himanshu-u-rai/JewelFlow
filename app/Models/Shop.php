@@ -207,6 +207,23 @@ class Shop extends Model
             return false;
         }
 
+        // UNATTRIBUTED LEGACY read_only (the JF-0001 incident state). `read_only`
+        // on the ACCESS axis is exclusively an administrator restriction, and every
+        // administrative writer stamps suspended_by. A read_only shop with NO stamp
+        // therefore cannot be an admin hold — it can only be a row minted by the old
+        // expiry fork: a subscription lapse wearing the wrong mode. The oldest of
+        // those rows carry a NULL suspension_reason as well, so the reason text below
+        // can never classify them, and they fall through to EnsureAccountIsActive's
+        // 423 with no recovery path at all. Recognising them here is what lets both
+        // middlewares reconcile the row onto the entitlement axis (enforcement on) or
+        // heal it outright (enforcement off).
+        //
+        // Deliberately keyed on the read_only MODE, never on "suspended_by is null":
+        // an unattributed `suspended` shop still needs its reason corroborated.
+        if (($this->access_mode ?? '') === 'read_only') {
+            return true;
+        }
+
         $reason = (string) ($this->suspension_reason ?? '');
 
         return str_starts_with($reason, 'Subscription')

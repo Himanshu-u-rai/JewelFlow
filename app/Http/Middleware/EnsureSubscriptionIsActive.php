@@ -138,6 +138,17 @@ class EnsureSubscriptionIsActive
         }
 
         if ($shouldBlock) {
+            // ADMINISTRATIVE READ-ONLY WINS. The two axes are separate, and this
+            // shop's administrative one has already been applied above: reads pass,
+            // writes were bounced. Layering the entitlement block on top would log
+            // the owner out of a shop a JewelFlows admin deliberately left browsable
+            // — and it fires for every admin read-only hold, because the admin
+            // billing writer stores `read_only` on the subscription row too and the
+            // resolver (correctly) reads that as a lapse.
+            if ($shop->access_mode === 'read_only' && $shop->suspensionIsAdministrative()) {
+                return $next($request);
+            }
+
             // Subscription lapse (as opposed to an admin block) is recoverable:
             // the resolver only ever emits "Subscription …" reasons here, and
             // modeUpdates() has just written the same reason to the shop (with
@@ -200,6 +211,10 @@ class EnsureSubscriptionIsActive
                 'deactivated_at' => null,
                 'suspended_at' => null,
                 'suspension_reason' => null,
+                // A restore leaves NO attribution behind. Unreachable with a stamp
+                // set today (the caller is guarded by ! suspensionIsAdministrative()),
+                // written explicitly so the invariant survives that guard moving.
+                'suspended_by' => null,
             ];
         }
 
@@ -247,6 +262,11 @@ class EnsureSubscriptionIsActive
             'suspended_at' => null,
             'suspension_reason' => null,
             'suspended_until' => null,
+            // Same invariant as modeUpdates(): a restore leaves no attribution.
+            // Only reachable for a NON-administrative row (the classifier above
+            // returns false whenever suspended_by is set), so this can never lift
+            // a live administrator hold.
+            'suspended_by' => null,
         ])->save();
 
         $this->audit->log(
