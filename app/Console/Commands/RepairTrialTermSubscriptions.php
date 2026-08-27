@@ -165,6 +165,11 @@ class RepairTrialTermSubscriptions extends Command
     /**
      * Mirror CheckSubscriptionExpiry's status resolution given a corrected term.
      *
+     * A repair must never mint an administrative state. `read_only` belongs to
+     * platform-admin holds only, so a term that has run past its grace resolves
+     * to `expired` + `suspended` — exactly what the scheduler now writes. The
+     * plan's downgrade_to_read_only_on_due column is deliberately not read.
+     *
      * @return array{0: string, 1: string} [status, shopMode]
      */
     private function resolveStatus(Carbon $now, Carbon $correctEndsAt, Carbon $correctGraceEndsAt, $plan): array
@@ -175,10 +180,6 @@ class RepairTrialTermSubscriptions extends Command
 
         if ($now->lte($correctGraceEndsAt)) {
             return ['grace', 'active'];
-        }
-
-        if ($plan && $plan->downgrade_to_read_only_on_due) {
-            return ['read_only', 'read_only'];
         }
 
         return ['expired', 'suspended'];
