@@ -63,7 +63,20 @@ class EnsureSubscriptionIsActive
             // enforcement flag. Payment can never lift it.
             return SubscriptionRecovery::denyAdministrative($request);
         }
-        if ($shop->access_mode === 'read_only') {
+        // `read_only` is reserved EXCLUSIVELY for a JewelFlows administrator hold,
+        // and `suspended_by` is the proof-positive discriminator (every
+        // administrative writer stamps it, every administrative restore nulls it).
+        //
+        // A shop wearing read_only WITHOUT that stamp is a LEGACY row minted by the
+        // old expiry fork — a lapse dressed up as an administrative decision. It
+        // must not get the read-only treatment (browsable ERP, writes bounced with
+        // a validation error and no way out). Fall through instead: the reconciler
+        // below rewrites it onto the correct axis (suspended) and routes the owner
+        // to the plan picker, for reads AND writes alike. With enforcement OFF the
+        // fall-through lands on restoreIfSubscriptionManagedSuspension() instead,
+        // which heals the row back to active — a lapse never locks ERP access when
+        // the platform is not enforcing.
+        if ($shop->access_mode === 'read_only' && $shop->suspensionIsAdministrative()) {
             if (!in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true)) {
                 if ($request->expectsJson() || $request->is('api/*')) {
                     return response()->json(['message' => 'Shop is in read-only mode. Write operations are not allowed.'], Response::HTTP_FORBIDDEN);
@@ -99,7 +112,15 @@ class EnsureSubscriptionIsActive
 
         [$mode, $shouldBlock, $reason] = $this->resolveSubscriptionAccess($subscription);
 
-        if ($mode !== $shop->access_mode) {
+        // An administrator restriction is NEVER reconciled away. Without this guard
+        // a shop under a compliance hold with a perfectly healthy subscription
+        // resolves to `active`, and the very first page view force-fills
+        // access_mode / suspended_at / suspension_reason back to active — silently
+        // lifting a JewelFlows admin's hold with no admin ever acting, and (because
+        // the same row backs the write gate above) handing the shop full write
+        // access. Subscription reconciliation owns the entitlement axis only; the
+        // administrative axis is the platform admin's alone.
+        if ($mode !== $shop->access_mode && ! $shop->suspensionIsAdministrative()) {
             $before = $shop->only(['access_mode', 'is_active', 'suspended_at', 'suspension_reason']);
             $updates = $this->modeUpdates($mode, $reason);
             $shop->forceFill($updates)->save();
@@ -143,14 +164,23 @@ class EnsureSubscriptionIsActive
             return ['active', false, null];
         }
 
+        // A `read_only` subscription row is a LEGACY artefact of the old expiry
+        // fork, never a live entitlement. It means the term lapsed, so it resolves
+        // exactly like `expired`: suspend and route to recovery. Reconciling it
+        // this way is what lets a stranded shop reach the plan picker again.
+        // The reason must keep its "Subscription" prefix — that string is what
+        // Shop::suspensionIsSubscriptionManaged() reads to decide the block below
+        // is recoverable (owner → plan picker) rather than a logout dead end.
         if ($status === 'read_only') {
-            return ['read_only', false, 'Subscription placed in read-only mode.'];
+            return ['suspended', true, 'Subscription lapsed; legacy read-only state reconciled.'];
         }
 
+        // Grace is a first-class status written by the scheduler and is handled
+        // above as full access. An `expired` row therefore has no grace left to
+        // grant, and must never be softened into read-only — that state belongs to
+        // administrators only, and it is precisely what stranded lapsed shops in a
+        // browsable ERP with no renewal path.
         if ($status === 'expired') {
-            if ($subscription->grace_ends_at && now()->toDateString() <= $subscription->grace_ends_at->toDateString()) {
-                return ['read_only', false, 'Subscription expired; grace period read-only access is active.'];
-            }
             return ['suspended', true, 'Subscription expired and grace period ended.'];
         }
 

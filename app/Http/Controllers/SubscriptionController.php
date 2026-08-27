@@ -54,9 +54,9 @@ class SubscriptionController extends Controller
         $shopType = $user->shop?->shop_type ?? session('onboarding_shop_type') ?? $user->onboarding_shop_type;
 
         // A shop on a TRIAL may upgrade early (it keeps its free days; the paid
-        // term begins when the trial ends). Only a shop that already holds a live
-        // PAID subscription is blocked from buying again.
-        if ($this->hasLivePaidSubscription()) {
+        // term begins when the trial ends), and a LAPSED shop must always be able
+        // to reach this page — renewal is its only way out. See blocksNewPaidTerm().
+        if ($this->blocksNewPaidTerm()) {
             return redirect()->route('subscription.status')
                 ->with('error', 'Your shop already has an active paid subscription.');
         }
@@ -146,25 +146,37 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Live PAID subscription states — a shop in one of these has already paid
-     * for a current term and must NOT be allowed to start another purchase
-     * (no double-charge, no stacked term). A `trial` is NOT here on purpose:
-     * a trialing shop may upgrade early (it keeps its free days; the paid term
-     * begins when the trial ends — see SubscriptionPaymentService::createSubscription).
+     * The ONE purchase gate, shared by every entry point on this controller so
+     * the plan picker, the plan choice, the payment page and the order-creation
+     * endpoint can never disagree about whether this shop may buy.
+     *
+     * Delegates to ShopSubscription::blocksNewPaidTerm(), which blocks exactly
+     * two things: a JewelFlows administrator restriction (money must not buy
+     * its way out of a compliance hold) and a term that still covers today (no
+     * double-charge, no stacked term).
+     *
+     * This replaces the old status-list check, which treated a legacy
+     * `read_only` row as a live paid term and so left a lapsed shop with no way
+     * to renew — the very dead end this P0 exists to remove. It also fixes the
+     * mirror-image hole: none of these sites previously checked the
+     * administrative discriminator except initiatePayment().
+     *
+     * No shop yet (onboarding) means nothing to duplicate and no hold to
+     * respect, so the purchase proceeds.
      */
-    private const LIVE_PAID_STATUSES = ['active', 'grace', 'read_only'];
-
-    /** True when the shop already holds a live paid subscription (blocks buying). */
-    private function hasLivePaidSubscription(): bool
+    private function blocksNewPaidTerm(): bool
     {
-        $sub = $this->currentSubscription();
+        $shop = Auth::user()?->shop;
+        if (! $shop) {
+            return false;
+        }
 
-        return $sub !== null && in_array($sub->status, self::LIVE_PAID_STATUSES, true);
+        return ShopSubscription::blocksNewPaidTerm($this->currentSubscription(), $shop);
     }
 
     public function choosePlan(Request $request)
     {
-        if ($this->hasLivePaidSubscription()) {
+        if ($this->blocksNewPaidTerm()) {
             return redirect()->route('subscription.status')
                 ->with('error', 'Your shop already has an active paid subscription.');
         }
@@ -199,15 +211,15 @@ class SubscriptionController extends Controller
         $user = Auth::user();
 
         // Already has a live subscription? Don't start a trial on top of it.
-        if ($user?->shop_id) {
-            $current = ShopSubscription::query()
-                ->where('shop_id', $user->shop_id)
-                ->latest('id')
-                ->first();
-            if ($current && in_array($current->status, ['active', 'trial', 'grace', 'read_only'], true)) {
-                return redirect()->route('subscription.status')
-                    ->with('error', 'Your shop already has an active subscription.');
-            }
+        // Same single gate as every purchase entry point, plus `trial` itself —
+        // a trial may be upgraded to a paid term early, but never restarted.
+        // A LAPSED row (expired / cancelled / legacy read_only) is deliberately
+        // not a blocker here: the once-per-product rule is enforced inside
+        // SubscriptionPaymentService::startTrial(), which throws LogicException
+        // and is caught below.
+        if ($this->blocksNewPaidTerm() || $this->currentSubscription()?->status === 'trial') {
+            return redirect()->route('subscription.status')
+                ->with('error', 'Your shop already has an active subscription.');
         }
 
         $validated = $request->validate([
@@ -255,7 +267,7 @@ class SubscriptionController extends Controller
     public function payment()
     {
         // Trial shops may proceed to pay (early upgrade); only live paid shops are blocked.
-        if ($this->hasLivePaidSubscription()) {
+        if ($this->blocksNewPaidTerm()) {
             return redirect()->route('subscription.status')
                 ->with('error', 'Your shop already has an active paid subscription.');
         }
@@ -323,7 +335,7 @@ class SubscriptionController extends Controller
         // Defence in depth: this endpoint previously had no subscription gate and
         // relied on the upstream pages. Block a live PAID shop from creating a
         // Razorpay order here directly (a trial shop is allowed — early upgrade).
-        if ($this->hasLivePaidSubscription()) {
+        if ($this->blocksNewPaidTerm()) {
             return response()->json([
                 'error' => 'Your shop already has an active paid subscription.',
                 'redirect' => route('subscription.status'),

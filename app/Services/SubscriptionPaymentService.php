@@ -168,7 +168,15 @@ class SubscriptionPaymentService
      *
      *  - No shop yet / no current sub / fully lapsed  → now()  (fresh term today)
      *  - Current TRIAL                                 → trial.ends_at (keep free days)
-     *  - Current live PAID (active/grace/read_only)    → throws (no stacked term)
+     *  - A paid term still covering today              → throws (no stacked term)
+     *
+     * "Still covering today" is ShopSubscription::hasLivePaidTermToday(), the same
+     * rule the controller's purchase gate uses, so this last line of defence can
+     * never disagree with the page that sent the customer here. It replaces a
+     * status list that counted a legacy `read_only` row as a live paid term (which
+     * made a lapsed shop's renewal throw instead of starting a fresh term) and that
+     * counted an `active` row whose ends_at had already passed but which the
+     * midnight scheduler had not yet transitioned.
      *
      * Trial end dates are stored at start-of-day; max(ends_at, today) guards the
      * (rare) case of paying on the trial's final day so the paid term never
@@ -189,7 +197,7 @@ class SubscriptionPaymentService
             return $now;
         }
 
-        if (in_array($current->status, ['active', 'grace', 'read_only'], true)) {
+        if (ShopSubscription::hasLivePaidTermToday($current)) {
             throw new \LogicException('Shop already has an active paid subscription; cannot start a second paid term.');
         }
 
