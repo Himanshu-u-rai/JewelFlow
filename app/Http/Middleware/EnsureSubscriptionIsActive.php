@@ -107,6 +107,19 @@ class EnsureSubscriptionIsActive
             if ($request->routeIs('subscription.plans') || $request->routeIs('subscription.choose')) {
                 return $next($request);
             }
+
+            // …unless a JewelFlows administrator is holding this shop. The plan
+            // picker refuses a held shop (a purchase must never lift a hold), so
+            // sending it there is an infinite bounce. The administrative axis has
+            // already been applied above — read_only reads pass, read_only writes
+            // were rejected, and `suspended` never reaches this line — so simply
+            // let the request continue on that axis. This is the SECOND loop
+            // source: fixing only the controller would still bounce every
+            // ERP-group GET (the dashboard included) back into the picker.
+            if ($shop->suspensionIsAdministrative()) {
+                return $next($request);
+            }
+
             return redirect()->route('subscription.plans');
         }
 

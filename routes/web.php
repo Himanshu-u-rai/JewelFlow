@@ -216,7 +216,22 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         ->middleware(['realm:erp', 'edition:retailer,manufacturer'])
         ->name('masters.index');
 
-    Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])->name('subscription.status');
+    // Renders the shop's full PlatformInvoice history, so it is owner-only on the
+    // same rule as /billing below — but the guard is SubscriptionController's
+    // abortUnlessOwner(), not `role:owner` middleware, and deliberately so.
+    //
+    // RoleMiddleware aborts 403 on a role-less user. ShopController assigns the
+    // owner role as `$ownerRole?->id`, so a shop's only human can legitimately
+    // hold role_id = null — and EVERY failure path in paymentCallback() redirects
+    // here, which is where refund references and signature errors are read. A
+    // route-level 403 would make those invisible again to the one person able to
+    // renew. The controller guard denies a proven non-owner role instead, which
+    // blocks every real cashier (StaffController requires role_id) without
+    // rebuilding that dead end. Proven by
+    // OwnerOnlySubscriptionCommerceTest::test_a_role_less_owner_is_not_locked_out_of_renewal
+    // and ::test_staff_cannot_read_the_shops_platform_invoice_history.
+    Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])
+        ->name('subscription.status');
 
     // ======= BILLING INVOICES (platform-billing portal — strictly shop owner) =======
     Route::get('/billing', [\App\Http\Controllers\BillingController::class, 'index'])

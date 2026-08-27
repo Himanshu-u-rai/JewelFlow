@@ -9,6 +9,7 @@ use App\Models\Platform\ShopSubscription;
 use App\Services\OnboardingResumeService;
 use App\Services\SubscriptionPaymentService;
 use App\Services\SubscriptionWebhookService;
+use App\Support\SubscriptionRecovery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -52,6 +53,8 @@ class SubscriptionController extends Controller
 
     public function showPlans()
     {
+        $this->abortUnlessOwner();
+
         $user = Auth::user();
         $shopType = $user->shop?->shop_type ?? session('onboarding_shop_type') ?? $user->onboarding_shop_type;
 
@@ -59,8 +62,7 @@ class SubscriptionController extends Controller
         // term begins when the trial ends), and a LAPSED shop must always be able
         // to reach this page — renewal is its only way out. See blocksNewPaidTerm().
         if ($this->blocksNewPaidTerm()) {
-            return redirect()->route('subscription.status')
-                ->with('error', 'Your shop already has an active paid subscription.');
+            return $this->purchaseBlockedResponse();
         }
 
         // If user already has a pending (paid) subscription, skip to shop creation
@@ -176,11 +178,98 @@ class SubscriptionController extends Controller
         return ShopSubscription::blocksNewPaidTerm($this->currentSubscription(), $shop);
     }
 
+    /**
+     * Subscription COMMERCE is the shop owner's alone. A cashier must not be able
+     * to pick a plan, open checkout, create a Razorpay order, start a trial, or
+     * read the shop's PlatformInvoice history off the status page.
+     *
+     * This lives in the controller rather than as `role:owner` route middleware
+     * because RoleMiddleware redirects any user with a null shop_id to
+     * shops.create, and plan selection comes BEFORE shop creation in onboarding —
+     * a blanket route guard would bounce every new signup out of the funnel. The
+     * guard therefore bites only once a shop (and therefore a role) exists, which
+     * is exactly when "staff" becomes a meaningful concept.
+     *
+     * isShopOwner() is the tenant-safe predicate (unscoped role read plus an
+     * explicit shop_id ownership match), so this is correct on the payment routes
+     * too, which are bypass-listed by both middlewares.
+     *
+     * It DENIES on a proven non-owner role rather than on "not proven owner".
+     * That distinction is the whole safety argument:
+     *   • Staff always have a role — StaffController requires role_id and
+     *     explicitly excludes the owner role — so every real cashier is denied.
+     *   • A ROLE-LESS user is never staff. It can only be an owner whose role
+     *     assignment did not land (ShopController writes `$ownerRole?->id`, so a
+     *     failed ensureDefaultsForShop() leaves null), or a legacy/admin-created
+     *     row. That user is their shop's only human, and denying them renewal
+     *     would rebuild the exact payment dead end this P0 exists to remove.
+     * So a missing role fails OPEN and a wrong role fails CLOSED.
+     */
+    private function abortUnlessOwner(): void
+    {
+        $user = Auth::user();
+
+        // Onboarding: no shop yet means no role yet. Nothing to own, nothing to
+        // leak — the shop's first user becomes its owner at creation time.
+        if (! $user || $user->shop_id === null) {
+            return;
+        }
+
+        if ($user->role_id === null) {
+            return;
+        }
+
+        if (! $user->isShopOwner()) {
+            abort(403, 'Unauthorized - You do not have permission to access this page.');
+        }
+    }
+
+    /**
+     * The single TERMINAL response for "this shop may not buy right now".
+     *
+     * blocksNewPaidTerm() returns true for two very different reasons, and every
+     * caller used to collapse both into one redirect to subscription.status with
+     * "Your shop already has an active paid subscription."
+     *
+     * That was wrong twice over. It is a LIE during an administrative hold (the
+     * shop may have no subscription at all), and it is an infinite REDIRECT LOOP:
+     * status() forwards to plans whenever there is no subscription to render, and
+     * plans forwarded straight back here.
+     *
+     * So an administrative hold terminates on its own axis instead:
+     *   • read_only  → the dashboard, which an admin deliberately left browsable.
+     *                  It renders flash messages and carries logout in the nav,
+     *                  and exposes no purchase control.
+     *   • suspended  → the established contact-support deny.
+     * Neither path enables a purchase, and neither exposes billing history.
+     *
+     * A live paid term keeps the original honest message.
+     */
+    private function purchaseBlockedResponse()
+    {
+        $shop = Auth::user()?->shop;
+
+        if ($shop && $shop->suspensionIsAdministrative()) {
+            $message = 'Your shop is under an administrative hold by JewelFlows. '
+                . 'A subscription purchase cannot lift it — please contact support.';
+
+            if (($shop->access_mode ?? '') === 'read_only') {
+                return redirect()->route('dashboard')->with('error', $message);
+            }
+
+            return SubscriptionRecovery::denyAdministrative(request(), $message);
+        }
+
+        return redirect()->route('subscription.status')
+            ->with('error', 'Your shop already has an active paid subscription.');
+    }
+
     public function choosePlan(Request $request)
     {
+        $this->abortUnlessOwner();
+
         if ($this->blocksNewPaidTerm()) {
-            return redirect()->route('subscription.status')
-                ->with('error', 'Your shop already has an active paid subscription.');
+            return $this->purchaseBlockedResponse();
         }
 
         $validated = $request->validate([
@@ -210,6 +299,8 @@ class SubscriptionController extends Controller
      */
     public function startTrial(Request $request)
     {
+        $this->abortUnlessOwner();
+
         $user = Auth::user();
 
         // Already has a live subscription? Don't start a trial on top of it.
@@ -219,7 +310,11 @@ class SubscriptionController extends Controller
         // not a blocker here: the once-per-product rule is enforced inside
         // SubscriptionPaymentService::startTrial(), which throws LogicException
         // and is caught below.
-        if ($this->blocksNewPaidTerm() || $this->currentSubscription()?->status === 'trial') {
+        if ($this->blocksNewPaidTerm()) {
+            return $this->purchaseBlockedResponse();
+        }
+
+        if ($this->currentSubscription()?->status === 'trial') {
             return redirect()->route('subscription.status')
                 ->with('error', 'Your shop already has an active subscription.');
         }
@@ -268,10 +363,11 @@ class SubscriptionController extends Controller
 
     public function payment()
     {
+        $this->abortUnlessOwner();
+
         // Trial shops may proceed to pay (early upgrade); only live paid shops are blocked.
         if ($this->blocksNewPaidTerm()) {
-            return redirect()->route('subscription.status')
-                ->with('error', 'Your shop already has an active paid subscription.');
+            return $this->purchaseBlockedResponse();
         }
 
         $planId = session('pending_plan_id');
@@ -321,6 +417,8 @@ class SubscriptionController extends Controller
 
     public function initiatePayment(Request $request)
     {
+        $this->abortUnlessOwner();
+
         // An administratively suspended shop can NEVER buy its way out — a plan
         // purchase must not lift an admin suspension. Block checkout here because
         // the payment routes are deliberately bypass-listed by both middlewares
@@ -423,6 +521,12 @@ class SubscriptionController extends Controller
 
     public function paymentCallback(Request $request)
     {
+        // The owner-return leg of checkout. Staff never open checkout, so they
+        // can never legitimately arrive here. The UNAUTHENTICATED, signature-
+        // verified webhook() is the machine leg and is deliberately untouched —
+        // it is how a captured payment still lands if the browser never returns.
+        $this->abortUnlessOwner();
+
         $paymentId = $request->input('razorpay_payment_id');
         $orderId = $request->input('razorpay_order_id');
         $signature = $request->input('razorpay_signature');
@@ -623,6 +727,10 @@ class SubscriptionController extends Controller
 
     public function status()
     {
+        // The status page renders the shop's full PlatformInvoice history, so it
+        // is owner-only for the same reason /billing is.
+        $this->abortUnlessOwner();
+
         $shop = Auth::user()?->shop;
         $subscription = $shop
             ? ShopSubscription::where('shop_id', $shop->id)->with('plan')->latest('id')->first()
@@ -631,7 +739,16 @@ class SubscriptionController extends Controller
         // Nothing to show yet (no shop, or a first-ever purchase that never
         // completed). The plan picker is both the correct destination and a page
         // that renders flash messages, so nothing is lost on the way.
+        //
+        // EXCEPT under an administrative hold, where forwarding there is a LOOP:
+        // plans refuses a held shop (money cannot lift a hold) and used to forward
+        // straight back here. purchaseBlockedResponse() is the terminal answer for
+        // exactly this state, so serve it directly instead of bouncing.
         if (! $shop || ! $subscription || ! $subscription->plan) {
+            if ($shop && $shop->suspensionIsAdministrative()) {
+                return $this->purchaseBlockedResponse();
+            }
+
             return redirect()->route('subscription.plans');
         }
 
