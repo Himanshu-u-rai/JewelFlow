@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Platform\Plan;
+use App\Models\Platform\PlatformInvoice;
 use App\Models\Platform\PlatformSetting;
 use App\Models\Platform\ShopSubscription;
 use App\Services\OnboardingResumeService;
 use App\Services\SubscriptionPaymentService;
 use App\Services\SubscriptionWebhookService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -621,12 +623,51 @@ class SubscriptionController extends Controller
 
     public function status()
     {
-        // The subscription status display now lives inside the Settings tab
-        // system as the "Plan & Billing" tab. The data is loaded by
-        // SettingsController::edit(); this method only forwards the old
-        // /subscription URL (and any bookmark) to the new tab. Payment flows
-        // (showPlans/choosePlan/payment/initiatePayment/paymentCallback/webhook)
-        // are unchanged.
+        $shop = Auth::user()?->shop;
+        $subscription = $shop
+            ? ShopSubscription::where('shop_id', $shop->id)->with('plan')->latest('id')->first()
+            : null;
+
+        // Nothing to show yet (no shop, or a first-ever purchase that never
+        // completed). The plan picker is both the correct destination and a page
+        // that renders flash messages, so nothing is lost on the way.
+        if (! $shop || ! $subscription || ! $subscription->plan) {
+            return redirect()->route('subscription.plans');
+        }
+
+        // A shop that cannot reach the ERP is served HERE rather than forwarded.
+        // The "Plan & Billing" tab lives inside the ERP middleware group, so
+        // forwarding a locked shop there bounces it straight back out to the plan
+        // picker — and the flash message dies on that second hop. Every failure
+        // path in paymentCallback() redirects to this route, so that bounce is
+        // precisely why refund references and signature errors were invisible to
+        // the one person who needed to quote them to support.
+        if (($shop->access_mode ?? 'active') !== 'active') {
+            $daysRemaining = $subscription->daysRemaining();
+            $isExpired     = $daysRemaining !== null && $daysRemaining < 0;
+            $isInGrace     = $isExpired
+                && $subscription->grace_ends_at
+                && Carbon::now()->lte($subscription->grace_ends_at);
+
+            // Same data contract as SettingsController::edit()'s subscription tab,
+            // so the shared status view renders identically on both routes.
+            return view('subscription.status', [
+                'subscription'  => $subscription,
+                'plan'          => $subscription->plan,
+                'daysRemaining' => $daysRemaining,
+                'isInGrace'     => $isInGrace,
+                'isExpired'     => $isExpired,
+                'featureLabels' => self::featureLabels(),
+                'invoices'      => PlatformInvoice::where('shop_id', $shop->id)
+                    ->with('plan')
+                    ->latest('issued_at')
+                    ->paginate(10)
+                    ->withQueryString(),
+            ]);
+        }
+
+        // Entitled shop: the status display lives inside the Settings tab system,
+        // so the old /subscription URL (and any bookmark) forwards there.
         return redirect()->route('settings.edit', ['tab' => 'subscription']);
     }
 }
