@@ -547,7 +547,18 @@ class AdminBillingTermTest extends TestCase
     // 21 — a grace-status row survives its final grace day, then lapses the next day (block 2).
     public function test_grace_status_row_is_inclusive_of_final_grace_day(): void
     {
+        // Enforcement is on so the SHOP axis is observable at all: with it off the
+        // scheduler deliberately transitions the subscription as pure bookkeeping
+        // and leaves the shop row untouched, so there would be nothing to assert
+        // about access_mode. The calendar boundary under test is unaffected —
+        // the grace branch resolves to an active shop either way.
+        config(['platform.enforce_subscriptions' => true]);
+
         $shop = $this->createShop('retailer');
+
+        // retailPlan() carries downgrade_to_read_only_on_due = true. That flag is
+        // now inert by design: `read_only` is reserved exclusively for a
+        // JewelFlows administrator hold, so no plan setting may mint one.
         $this->makeSub($shop, $this->retailPlan(), 'grace', '2026-07-10', '2026-07-17');
 
         Carbon::setTestNow(Carbon::create(2026, 7, 17, 12, 0, 0, 'Asia/Kolkata'));
@@ -557,8 +568,15 @@ class AdminBillingTermTest extends TestCase
 
         Carbon::setTestNow(Carbon::create(2026, 7, 18, 12, 0, 0, 'Asia/Kolkata'));
         $this->artisan('subscription:check-expiry')->assertExitCode(0);
-        $this->assertSame('read_only', ShopSubscription::where('shop_id', $shop->id)->latest('id')->first()->status,
-            'Grace row lapses the day after grace ends.');
+
+        $this->assertSame('expired', ShopSubscription::where('shop_id', $shop->id)->latest('id')->first()->status,
+            'Grace row lapses the day after grace ends — to expired, never read_only.');
+
+        $fresh = $shop->fresh();
+        $this->assertSame('suspended', $fresh->access_mode,
+            'A fully lapsed term suspends the shop: the recoverable state the owner can buy out of.');
+        $this->assertNull($fresh->suspended_by,
+            'A lapse must never look administrative — read_only belongs to platform admins alone.');
     }
 
     // 22 — scheduler and enforcement middleware AGREE on the final grace day: both keep access.
