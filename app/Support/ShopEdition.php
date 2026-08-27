@@ -305,7 +305,8 @@ class ShopEdition
      * Whether ANY active source (other than the given lapsed subscription)
      * still justifies the edition: an active admin_grant / seed on the edition
      * row, or another paid subscription for the same product still in a
-     * writable state (active / trial / grace / read_only).
+     * writable state (active / trial / grace — plus `read_only` ONLY when an
+     * administrator is holding the shop; see the note at the status list).
      */
     public static function hasOtherActiveSource(Shop $shop, string $edition, ?int $excludeSubscriptionId = null): bool
     {
@@ -323,9 +324,28 @@ class ShopEdition
         }
 
         // 2) Any OTHER subscription for the same product still entitling?
-        //    Statuses that still grant access: active / trial / grace, and
-        //    read_only (still a paid-but-overdue state, not a full lapse).
-        $entitlingStatuses = ['active', 'trial', 'grace', 'read_only'];
+        //    Statuses that still grant access: active / trial / grace.
+        //
+        //    `read_only` is CONDITIONAL, because the token means two opposite
+        //    things on a subscription row:
+        //      • LEGACY — the old expiry fork wrote it when a term ran out. It
+        //        is a lapse. Counting it here kept a lapsed shop's edition alive
+        //        forever, so the shop stayed entitled by edition after expiry.
+        //      • ADMINISTRATIVE — a JewelFlows admin set it deliberately to
+        //        leave the shop browsable-but-not-writable. Dropping it here
+        //        would revoke the edition, and edition gating is what makes that
+        //        browsing work at all — so the admin's decision would collapse
+        //        into no access, which is the opposite of what they chose.
+        //
+        //    The discriminator is not on the subscription; it is the shop's
+        //    administrative marker, the same proof-positive suspended_by every
+        //    other gate in this hotfix reads. ponytail: reuses the existing
+        //    predicate — no new column, no new concept.
+        $entitlingStatuses = ['active', 'trial', 'grace'];
+
+        if ($shop->suspensionIsAdministrative()) {
+            $entitlingStatuses[] = 'read_only';
+        }
 
         $query = \App\Models\Platform\ShopSubscription::query()
             ->where('shop_id', $shop->id)

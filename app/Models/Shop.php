@@ -362,17 +362,29 @@ class Shop extends Model
 
     /**
      * The most-recent subscription for a given platform product code that is
-     * still entitling (active / trial / grace / read_only).
+     * still entitling (active / trial / grace).
      *
      * This is the multi-product-aware lookup new code should use instead of the
      * legacy singular subscription() (which is just ->latest('id') and assumes
      * one-subscription-per-shop). Returns null if the shop has no entitling
      * subscription for that product.
+     *
+     * `read_only` is CONDITIONAL for the same reason as
+     * ShopEdition::hasOtherActiveSource(): a LEGACY read_only row is a lapse the
+     * old expiry fork mislabelled, and treating it as live kept a lapsed shop
+     * resolving a plan (and therefore its staff seats) indefinitely. An
+     * ADMINISTRATIVE read_only hold is real, deliberate access, and erasing the
+     * resolved plan under it would silently drop the shop's seat count during a
+     * compliance review. suspended_by is the discriminator.
      */
     public function activeSubscriptionForProduct(string $productCode): ?ShopSubscription
     {
         $edition = \App\Models\Platform\PlatformProduct::editionStringFor($productCode);
-        $entitling = ['active', 'trial', 'grace', 'read_only'];
+        $entitling = ['active', 'trial', 'grace'];
+
+        if ($this->suspensionIsAdministrative()) {
+            $entitling[] = 'read_only';
+        }
 
         return $this->subscriptions()
             ->whereIn('status', $entitling)
