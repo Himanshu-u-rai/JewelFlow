@@ -157,7 +157,60 @@ class PlatformBoundaryHardeningTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_read_only_shop_blocks_writes_but_allows_reads(): void
+    /**
+     * `read_only` is reserved EXCLUSIVELY for a JewelFlows administrator hold,
+     * identified by the `suspended_by` stamp. Under a genuine hold the shop stays
+     * browsable and writes are refused — the admin wants to inspect a live shop,
+     * not take it offline.
+     *
+     * The subscription underneath is deliberately healthy: this proves the hold is
+     * honoured on its own axis and that subscription reconciliation (which resolves
+     * a healthy row to `active`) can never lift it.
+     */
+    public function test_administrative_read_only_shop_blocks_writes_but_allows_reads(): void
+    {
+        [$tenant, $shop] = $this->createTenantWithShop();
+        $admin = $this->createPlatformAdmin();
+        $plan = $this->createPlan();
+
+        ShopSubscription::create([
+            'shop_id' => $shop->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'ends_at' => now()->addMonth()->toDateString(),
+            'updated_by_admin_id' => $admin->id,
+        ]);
+
+        $shop->forceFill([
+            'access_mode'       => 'read_only',
+            'is_active'         => true,
+            'suspended_at'      => now(),
+            'suspension_reason' => 'Compliance review by platform admin',
+            'suspended_by'      => $admin->id,
+        ])->save();
+
+        $read = $this->actingAs($tenant)->getJson('/api/_control/read');
+        $write = $this->actingAs($tenant)->postJson('/api/_control/write', ['x' => 1]);
+
+        $read->assertOk();
+        // App convention: EnsureSubscriptionIsActive blocks read-only writes on
+        // api/JSON routes with 403 (it runs before account.active).
+        $write->assertStatus(403);
+
+        $fresh = $shop->fresh();
+        $this->assertSame('read_only', $fresh->access_mode);
+        $this->assertSame($admin->id, $fresh->suspended_by, 'The admin hold must survive a read.');
+    }
+
+    /**
+     * A `read_only` SUBSCRIPTION row carries no administrator stamp — it is a
+     * legacy artefact of the old expiry fork, i.e. a lapsed term. It must not buy
+     * the shop a browsable read-only ERP; it is reconciled onto the entitlement
+     * axis (suspended) and the request is refused with the recoverable code, so
+     * the owner is pushed toward renewal instead of being stranded.
+     */
+    public function test_legacy_read_only_subscription_is_treated_as_a_lapse(): void
     {
         [$tenant, $shop] = $this->createTenantWithShop();
         $admin = $this->createPlatformAdmin();
@@ -168,19 +221,17 @@ class PlatformBoundaryHardeningTest extends TestCase
             'plan_id' => $plan->id,
             'status' => 'read_only',
             'starts_at' => now()->subMonth()->toDateString(),
-            'ends_at' => now()->addMonth()->toDateString(),
+            'ends_at' => now()->subDay()->toDateString(),
             'updated_by_admin_id' => $admin->id,
         ]);
 
-        $read = $this->actingAs($tenant)->getJson('/api/_control/read');
-        $write = $this->actingAs($tenant)->postJson('/api/_control/write', ['x' => 1]);
+        $this->actingAs($tenant)->getJson('/api/_control/read')
+            ->assertStatus(403)
+            ->assertJsonPath('code', 'SUBSCRIPTION_REQUIRED');
 
-        $read->assertOk();
-        // App convention: EnsureSubscriptionIsActive blocks read-only writes on
-        // api/JSON routes with 403 (it runs before account.active), so 403 is the
-        // effective status for a subscription-driven read-only shop.
-        $write->assertStatus(403);
-        $this->assertSame('read_only', $shop->fresh()->access_mode);
+        $fresh = $shop->fresh();
+        $this->assertSame('suspended', $fresh->access_mode);
+        $this->assertNull($fresh->suspended_by, 'A lapse must never look administrative.');
     }
 
     private function createPlatformAdmin(): PlatformAdmin

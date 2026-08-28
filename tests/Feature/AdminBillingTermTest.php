@@ -327,15 +327,22 @@ class AdminBillingTermTest extends TestCase
         $this->assertSame('active', $shop->fresh()->access_mode);
     }
 
-    // 9 — scheduler still downgrades a genuinely expired term.
-    public function test_scheduler_downgrades_genuinely_expired_term(): void
+    // 9 — a genuinely lapsed term expires; with enforcement off the shop row is untouched.
+    //
+    // Two separate contracts are pinned here, and they are separate on purpose:
+    //   (a) The lapse lands on the ENTITLEMENT axis: status becomes 'expired'.
+    //       'read_only' is reserved exclusively for a JewelFlows administrator
+    //       hold, so no expiry path may ever mint it.
+    //   (b) This test never enables platform.enforce_subscriptions, so the
+    //       documented kill switch applies: the scheduler does the status
+    //       bookkeeping and returns without writing to the shop at all. The
+    //       shop therefore keeps the access_mode it was created with. The flag
+    //       is deliberately left off — the expectation is derived from the
+    //       configuration, not the configuration bent to fit an expectation.
+    //       Coverage for the enforcement-ON lock (lapse => suspended) lives in
+    //       test_grace_status_row_is_inclusive_of_final_grace_day.
+    public function test_scheduler_expires_a_lapsed_term_and_leaves_the_shop_alone_when_enforcement_is_off(): void
     {
-        // The scheduler transitions the SUBSCRIPTION status unconditionally, but
-        // only touches shop.access_mode when enforcement is on — which is off by
-        // default so a lapse can never lock a shop out of the ERP by accident.
-        // This test is about the downgrade, so it opts in.
-        config(['platform.enforce_subscriptions' => true]);
-
         $admin = $this->verifiedAdmin();
         $shop  = $this->createShop('retailer');
         $plan  = $this->retailPlan();
@@ -354,8 +361,22 @@ class AdminBillingTermTest extends TestCase
 
         $this->artisan('subscription:check-expiry')->assertExitCode(0);
 
-        $this->assertSame('read_only', ShopSubscription::where('shop_id', $shop->id)->latest('id')->first()->status);
-        $this->assertSame('read_only', $shop->fresh()->access_mode);
+        $this->assertSame(
+            'expired',
+            ShopSubscription::where('shop_id', $shop->id)->latest('id')->first()->status,
+            'A lapsed paid term must expire. read_only is an administrator hold, not an unpaid bill.'
+        );
+
+        $fresh = $shop->fresh();
+        $this->assertSame(
+            'active',
+            $fresh->access_mode,
+            'platform.enforce_subscriptions is off, so the kill switch must leave the shop row untouched.'
+        );
+        $this->assertNull(
+            $fresh->suspended_by,
+            'No expiry path may ever forge the administrative marker.'
+        );
     }
 
     // 10 — enforcement middleware does not override a valid active subscription.
@@ -530,33 +551,70 @@ class AdminBillingTermTest extends TestCase
             'The last grace day must remain in grace, not lapse early at midday.');
     }
 
-    // 20 — the day after grace: a suspend-on-due plan is suspended; a downgrade plan is read-only.
-    public function test_day_after_grace_lapses_per_plan_policy(): void
+    // 20 — the day after grace, both plans lapse IDENTICALLY: plan.downgrade_to_read_only_on_due is inert.
+    //
+    // This test used to pin the opposite: that the flag forked the outcome, so a
+    // downgrade plan produced a read_only subscription on a read_only shop. That
+    // fork is exactly the P0 defect — it let an unpaid bill mint the state
+    // reserved for a JewelFlows administrator hold, leaving the shop with a
+    // fully browsable ERP and no renewal path. The fork is gone, so the two
+    // fixtures below are kept precisely to prove the flag can never be wired
+    // back in: they differ ONLY in downgrade_to_read_only_on_due (false vs
+    // true) and must now converge on the identical lapse.
+    //
+    // Enforcement is left off here, matching the surrounding date-boundary block
+    // whose subject is the calendar transition rather than the lock. Under the
+    // documented kill switch the scheduler does status bookkeeping only and
+    // never writes to either shop row.
+    public function test_day_after_grace_lapses_identically_regardless_of_plan_downgrade_flag(): void
     {
         Carbon::setTestNow(Carbon::create(2026, 7, 18, 12, 0, 0, 'Asia/Kolkata'));
-        // access_mode is only touched under enforcement (off by default), and the
-        // per-plan suspend-vs-read-only split below is asserted on access_mode.
-        config(['platform.enforce_subscriptions' => true]);
 
+        // downgrade_to_read_only_on_due = false
         $suspendShop = $this->createShop('retailer');
         $this->makeSub($suspendShop, $this->suspendPlan(), 'active', '2026-07-10', '2026-07-17');
 
-        $readOnlyShop = $this->createShop('retailer');
-        $this->makeSub($readOnlyShop, $this->retailPlan(), 'active', '2026-07-10', '2026-07-17');
+        // downgrade_to_read_only_on_due = true — historically the read_only fork.
+        $downgradeShop = $this->createShop('retailer');
+        $this->makeSub($downgradeShop, $this->retailPlan(), 'active', '2026-07-10', '2026-07-17');
 
         $this->artisan('subscription:check-expiry')->assertExitCode(0);
 
-        $this->assertSame('expired', ShopSubscription::where('shop_id', $suspendShop->id)->latest('id')->first()->status);
-        $this->assertSame('suspended', $suspendShop->fresh()->access_mode);
+        foreach ([$suspendShop, $downgradeShop] as $shop) {
+            $this->assertSame(
+                'expired',
+                ShopSubscription::where('shop_id', $shop->id)->latest('id')->first()->status,
+                'The day after grace lapses to expired for BOTH plans — the downgrade flag must not fork this.'
+            );
 
-        $this->assertSame('read_only', ShopSubscription::where('shop_id', $readOnlyShop->id)->latest('id')->first()->status);
-        $this->assertSame('read_only', $readOnlyShop->fresh()->access_mode);
+            $fresh = $shop->fresh();
+            $this->assertSame(
+                'active',
+                $fresh->access_mode,
+                'platform.enforce_subscriptions is off, so the kill switch must leave the shop row untouched.'
+            );
+            $this->assertNull(
+                $fresh->suspended_by,
+                'No expiry path may ever forge the administrative marker.'
+            );
+        }
     }
 
     // 21 — a grace-status row survives its final grace day, then lapses the next day (block 2).
     public function test_grace_status_row_is_inclusive_of_final_grace_day(): void
     {
+        // Enforcement is on so the SHOP axis is observable at all: with it off the
+        // scheduler deliberately transitions the subscription as pure bookkeeping
+        // and leaves the shop row untouched, so there would be nothing to assert
+        // about access_mode. The calendar boundary under test is unaffected —
+        // the grace branch resolves to an active shop either way.
+        config(['platform.enforce_subscriptions' => true]);
+
         $shop = $this->createShop('retailer');
+
+        // retailPlan() carries downgrade_to_read_only_on_due = true. That flag is
+        // now inert by design: `read_only` is reserved exclusively for a
+        // JewelFlows administrator hold, so no plan setting may mint one.
         $this->makeSub($shop, $this->retailPlan(), 'grace', '2026-07-10', '2026-07-17');
 
         Carbon::setTestNow(Carbon::create(2026, 7, 17, 12, 0, 0, 'Asia/Kolkata'));
@@ -566,8 +624,15 @@ class AdminBillingTermTest extends TestCase
 
         Carbon::setTestNow(Carbon::create(2026, 7, 18, 12, 0, 0, 'Asia/Kolkata'));
         $this->artisan('subscription:check-expiry')->assertExitCode(0);
-        $this->assertSame('read_only', ShopSubscription::where('shop_id', $shop->id)->latest('id')->first()->status,
-            'Grace row lapses the day after grace ends.');
+
+        $this->assertSame('expired', ShopSubscription::where('shop_id', $shop->id)->latest('id')->first()->status,
+            'Grace row lapses the day after grace ends — to expired, never read_only.');
+
+        $fresh = $shop->fresh();
+        $this->assertSame('suspended', $fresh->access_mode,
+            'A fully lapsed term suspends the shop: the recoverable state the owner can buy out of.');
+        $this->assertNull($fresh->suspended_by,
+            'A lapse must never look administrative — read_only belongs to platform admins alone.');
     }
 
     // 22 — scheduler and enforcement middleware AGREE on the final grace day: both keep access.
