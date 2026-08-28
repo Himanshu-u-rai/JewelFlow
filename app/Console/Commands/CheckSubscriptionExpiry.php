@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 class CheckSubscriptionExpiry extends Command
 {
     protected $signature = 'subscription:check-expiry';
-    protected $description = 'Check for expired subscriptions and transition shops to read-only/suspended mode';
+    protected $description = 'Check for expired subscriptions and suspend the shops whose term has fully lapsed';
 
     public function handle(): int
     {
@@ -35,19 +35,27 @@ class CheckSubscriptionExpiry extends Command
 
         foreach ($expired as $subscription) {
             try {
-                $plan = $subscription->plan;
                 $graceEndsAt = $subscription->grace_ends_at;
 
                 // Determine new status. Compare CALENDAR dates: the final grace day
                 // (businessDate == grace_ends_at) is still within grace; suspension
                 // begins the following business day. Using afternoon $now here would
                 // drop the last grace day (midnight ends_at < afternoon now).
+                //
+                // Grace is a deliberate, plan-configured entitlement and grants FULL
+                // ERP access. Once it is over the term has simply lapsed: `expired`
+                // + a suspended shop, which is the RECOVERABLE state (owner → plan
+                // picker, staff → logout message).
+                //
+                // The plan's downgrade_to_read_only_on_due column is deliberately
+                // NOT read here. `read_only` is reserved exclusively for a
+                // JewelFlows administrator hold (stamped with suspended_by); a
+                // subscription lapse must never mint or preserve one, otherwise a
+                // non-paying shop keeps a full read-only ERP and an admin hold
+                // becomes indistinguishable from an unpaid bill.
                 if ($graceEndsAt && $today->lte(Carbon::parse($graceEndsAt)->startOfDay())) {
                     $newStatus = 'grace';
                     $shopMode = 'active';
-                } elseif ($plan && $plan->downgrade_to_read_only_on_due) {
-                    $newStatus = 'read_only';
-                    $shopMode = 'read_only';
                 } else {
                     $newStatus = 'expired';
                     $shopMode = 'suspended';
@@ -82,8 +90,8 @@ class CheckSubscriptionExpiry extends Command
                 ]);
 
                 // A full lapse (expired) revokes the subscription-backed edition
-                // unless another active source still justifies it. grace and
-                // read_only are still entitling states — editions stay. Do this
+                // unless another active source still justifies it. grace is still
+                // an entitling state — editions stay. Do this
                 // BEFORE deciding shop access_mode so the "other entitled product"
                 // check below reflects the post-revoke state.
                 // Skip entirely when superseded: a newer live row of the same
@@ -121,9 +129,10 @@ class CheckSubscriptionExpiry extends Command
 
         foreach ($graceExpired as $subscription) {
             try {
-                $plan = $subscription->plan;
-                $newStatus = ($plan && $plan->downgrade_to_read_only_on_due) ? 'read_only' : 'expired';
-                $shopMode = $newStatus === 'read_only' ? 'read_only' : 'suspended';
+                // Grace is over, so the term has fully lapsed. Same rule as above:
+                // never read downgrade_to_read_only_on_due, never mint read_only.
+                $newStatus = 'expired';
+                $shopMode = 'suspended';
 
                 $before = $subscription->toArray();
                 $subscription->update(['status' => $newStatus]);
@@ -138,9 +147,7 @@ class CheckSubscriptionExpiry extends Command
                     'reason' => "Grace period ended, transitioned to {$newStatus}",
                 ]);
 
-                if ($newStatus === 'expired') {
-                    $this->revokeEditionForLapsed($subscription);
-                }
+                $this->revokeEditionForLapsed($subscription);
 
                 if ($subscription->shop_id) {
                     $this->applyShopModeUnderLock(
@@ -230,9 +237,13 @@ class CheckSubscriptionExpiry extends Command
 
     /**
      * Whether a NEWER subscription row for the same shop is in a live state
-     * (trial / active / grace / read_only). When true, the lapsing of an older
-     * row is bookkeeping only — the newer row already covers the shop, so the
-     * shop must not be downgraded and the edition must not be revoked.
+     * (trial / active / grace). When true, the lapsing of an older row is
+     * bookkeeping only — the newer row already covers the shop, so the shop
+     * must not be downgraded and the edition must not be revoked.
+     *
+     * `read_only` is NOT a live state. It is either a legacy row minted by the
+     * old expiry fork (a lapse, not coverage) or an administrator hold — neither
+     * entitles the shop, so neither may shield another row from lapsing.
      *
      * This is what makes an early trial→paid upgrade seamless: the paid row is
      * created with a higher id while the trial is still live, so when the trial
@@ -246,7 +257,7 @@ class CheckSubscriptionExpiry extends Command
 
         return ShopSubscription::where('shop_id', $subscription->shop_id)
             ->where('id', '>', $subscription->id)
-            ->whereIn('status', ['trial', 'active', 'grace', 'read_only'])
+            ->whereIn('status', ['trial', 'active', 'grace'])
             ->exists();
     }
 

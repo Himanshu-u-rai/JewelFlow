@@ -207,6 +207,72 @@ class Shop extends Model
             return false;
         }
 
+        // UNATTRIBUTED LEGACY read_only (the JF-0001 incident state). The buggy
+        // expiry fork wrote access_mode=read_only with NO attribution at all — no
+        // admin id, and in the oldest rows no reason text either — so the reason
+        // match below can never classify them and they fall through to
+        // EnsureAccountIsActive's 423 with no recovery path. Recognising them here
+        // is what lets the middlewares reconcile the row onto the entitlement axis
+        // (enforcement on) or heal it outright (enforcement off).
+        //
+        // CORROBORATION IS MANDATORY. `read_only` access on its own is NOT evidence
+        // of a lapse: it is also how an ordinary read-only hold looks, and it is how
+        // every read-only fixture in this suite is built. Keying on the mode alone
+        // classified all of them as lapses, and because enforce_subscriptions
+        // defaults to FALSE, restoreIfSubscriptionManagedSuspension() then healed
+        // them to access_mode=active — handing full write access to every read-only
+        // shop, including admin holds old enough to predate suspended_by stamping.
+        // The lapse must be corroborated by the subscription row that the fork wrote
+        // alongside it. Both live writers of read_only (ShopManagementController::
+        // updateStatus, BillingManagementController) stamp suspended_by and are
+        // already excluded above, so this query only ever narrows the legacy set.
+        //
+        // Deliberately keyed on the read_only MODE, never on "suspended_by is null":
+        // an unattributed `suspended` shop still needs its reason corroborated.
+        //
+        // The corroboration must describe the shop's CURRENT entitlement, never its
+        // history. "Has this shop ever held a read_only row?" is a false positive on
+        // every shop that lapsed once and renewed: the dead row survives forever, so
+        // a shop with a perfectly live term today still classified as lapsed, and
+        // (enforcement being off by default) got healed to access_mode=active on its
+        // very next page view — silently lifting the read-only hold it is actually
+        // under. Two bounded, order-aware checks replace that existence scan; either
+        // one failing means "not a legacy lapse", so ambiguity fails closed.
+        if (($this->access_mode ?? '') === 'read_only') {
+            // (1) The LATEST subscription row must itself be the legacy artefact.
+            //     An `active`/`trial`/`grace`/`expired`/`cancelled` row written after
+            //     it supersedes it, and no row at all is not evidence of anything.
+            //     Ordered single-column read — `order by id desc limit 1`.
+            if ($this->subscriptions()->orderByDesc('id')->value('status') !== 'read_only') {
+                return false;
+            }
+
+            // (2) No LIVE entitling term may stand behind it. A shop can carry a
+            //     legacy read_only row for one product while a different product's
+            //     term is still running (the cross-product case); healing on the
+            //     strength of the dead row would hand write access to a shop that is
+            //     currently entitled and deliberately frozen. Checked by liveness
+            //     (dated), not by presence: a genuine JF-0001 shop still owns the
+            //     long-expired `active` row from before its lapse, and that row must
+            //     not block its recovery. NULL dates never match, so they fail closed.
+            //     ponytail: product-agnostic on purpose — any live term anywhere on
+            //     the shop blocks healing, which is stricter than per-product scoping
+            //     and needs no plan->product resolution inside a predicate.
+            $today = now()->toDateString();
+
+            return ! $this->subscriptions()
+                ->where(function ($q) use ($today) {
+                    $q->where(function ($w) use ($today) {
+                        $w->whereIn('status', ['active', 'trial'])
+                            ->whereDate('ends_at', '>=', $today);
+                    })->orWhere(function ($w) use ($today) {
+                        $w->where('status', 'grace')
+                            ->whereDate('grace_ends_at', '>=', $today);
+                    });
+                })
+                ->exists();
+        }
+
         $reason = (string) ($this->suspension_reason ?? '');
 
         return str_starts_with($reason, 'Subscription')
@@ -345,17 +411,29 @@ class Shop extends Model
 
     /**
      * The most-recent subscription for a given platform product code that is
-     * still entitling (active / trial / grace / read_only).
+     * still entitling (active / trial / grace).
      *
      * This is the multi-product-aware lookup new code should use instead of the
      * legacy singular subscription() (which is just ->latest('id') and assumes
      * one-subscription-per-shop). Returns null if the shop has no entitling
      * subscription for that product.
+     *
+     * `read_only` is CONDITIONAL for the same reason as
+     * ShopEdition::hasOtherActiveSource(): a LEGACY read_only row is a lapse the
+     * old expiry fork mislabelled, and treating it as live kept a lapsed shop
+     * resolving a plan (and therefore its staff seats) indefinitely. An
+     * ADMINISTRATIVE read_only hold is real, deliberate access, and erasing the
+     * resolved plan under it would silently drop the shop's seat count during a
+     * compliance review. suspended_by is the discriminator.
      */
     public function activeSubscriptionForProduct(string $productCode): ?ShopSubscription
     {
         $edition = \App\Models\Platform\PlatformProduct::editionStringFor($productCode);
-        $entitling = ['active', 'trial', 'grace', 'read_only'];
+        $entitling = ['active', 'trial', 'grace'];
+
+        if ($this->suspensionIsAdministrative()) {
+            $entitling[] = 'read_only';
+        }
 
         return $this->subscriptions()
             ->whereIn('status', $entitling)

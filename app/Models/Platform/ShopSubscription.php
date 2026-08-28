@@ -123,4 +123,71 @@ class ShopSubscription extends Model
             default => false,
         };
     }
+
+    /**
+     * THE single predicate deciding whether a shop may start a NEW paid term.
+     *
+     * Every purchase entry point (plan picker, plan choice, payment page,
+     * payment initiate, and the term-start computation in
+     * SubscriptionPaymentService) must ask this and nothing else, so a shop can
+     * never be told "renew" on one screen and "you already have a plan" on the
+     * next.
+     *
+     * Two things — and only these two — block a purchase:
+     *
+     *   1. A JewelFlows administrator restriction. `suspended_by` is the
+     *      proof-positive discriminator (every administrative writer stamps it,
+     *      every administrative restore nulls it, nothing else in the
+     *      application ever touches it). Money must never be able to buy its
+     *      way out of a compliance hold, so this is checked FIRST and applies
+     *      even with no subscription row at all.
+     *
+     *   2. A term that still covers today. Buying again would silently
+     *      duplicate a live entitlement the shop has already paid for.
+     *
+     * Everything else — no subscription, expired, cancelled, a legacy
+     * `read_only` row minted by the old expiry fork, or an `active` row whose
+     * ends_at has already passed but which the midnight scheduler has not yet
+     * caught — is a LAPSE, and renewal is precisely the recovery path. A trial
+     * is deliberately not a blocker: upgrading early is a supported flow, and
+     * CheckSubscriptionExpiry's superseded-row guard keeps it seamless.
+     *
+     * Dates are compared as calendar dates in the business timezone, matching
+     * entitlesAccessToday() and the scheduler — ends_at / grace_ends_at are
+     * inclusive.
+     */
+    public static function blocksNewPaidTerm(?self $subscription, Shop $shop): bool
+    {
+        return $shop->suspensionIsAdministrative()
+            || static::hasLivePaidTermToday($subscription);
+    }
+
+    /**
+     * The duplicate-term half of blocksNewPaidTerm(), on its own because
+     * SubscriptionPaymentService::paidTermStartsAt() needs exactly this half and
+     * NOT the administrative one: by design a payment that reaches the service
+     * under an administrator hold still records its term (the money is real) and
+     * simply does not reactivate the shop. Admin holds are stopped earlier, at
+     * initiatePayment(), before a Razorpay order is ever created.
+     *
+     * Dates are inclusive calendar dates in the business timezone, matching the
+     * scheduler. An `active` row whose ends_at is already in the past is a lapse
+     * the midnight job has not caught yet — it does NOT cover today, and must not
+     * stand between the owner and a renewal.
+     */
+    public static function hasLivePaidTermToday(?self $subscription): bool
+    {
+        if (! $subscription) {
+            return false;
+        }
+
+        $today = now()->toDateString();
+
+        return match ($subscription->status) {
+            'trial' => false,
+            'active' => (bool) $subscription->ends_at && $subscription->ends_at->toDateString() >= $today,
+            'grace' => (bool) $subscription->grace_ends_at && $subscription->grace_ends_at->toDateString() >= $today,
+            default => false,
+        };
+    }
 }
