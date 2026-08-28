@@ -220,15 +220,25 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // same rule as /billing below — but the guard is SubscriptionController's
     // abortUnlessOwner(), not `role:owner` middleware, and deliberately so.
     //
-    // RoleMiddleware aborts 403 on a role-less user. ShopController assigns the
-    // owner role as `$ownerRole?->id`, so a shop's only human can legitimately
-    // hold role_id = null — and EVERY failure path in paymentCallback() redirects
-    // here, which is where refund references and signature errors are read. A
-    // route-level 403 would make those invisible again to the one person able to
-    // renew. The controller guard denies a proven non-owner role instead, which
-    // blocks every real cashier (StaffController requires role_id) without
-    // rebuilding that dead end. Proven by
-    // OwnerOnlySubscriptionCommerceTest::test_a_role_less_owner_is_not_locked_out_of_renewal
+    // Ownership FAILS CLOSED. A shop-attached caller must prove ownership through
+    // User::isShopOwner(), which requires role_id to resolve to a role named
+    // `owner` scoped to that same shop. Staff are denied. A role-less shop user is
+    // denied too — a missing role is the absence of proof, never proof itself. No
+    // mobile-number equality and no user-ordering heuristic is consulted: a shop's
+    // owner_mobile can be stale or transferred, and "first user" is not a right.
+    //
+    // The guard lives in the controller rather than `role:owner` middleware for one
+    // reason only — the pre-shop onboarding funnel. Checkout PRECEDES shop creation
+    // (STEP_SELECT_PLAN → STEP_PAYMENT → STEP_CREATE_SHOP), so a signup legitimately
+    // has shop_id = NULL and therefore no role to be measured against. Middleware
+    // cannot draw that distinction; abortUnlessOwnerOrOnboarding() can, and exempts
+    // ONLY shop_id === NULL, which owns no tenant data to leak. Every shop-attached
+    // caller falls through to the strict abortUnlessOwner(). subscription.trial.start
+    // skips the exemption entirely and stays strict shop-owner-only, because it
+    // attaches editions to an existing shop.
+    //
+    // Proven by OwnerIdentityFailClosedTest::test_a_role_less_user_is_denied_every_subscription_route,
+    // OwnerOnlySubscriptionCommerceTest::test_a_role_less_user_is_denied_renewal_because_ownership_is_unproven
     // and ::test_staff_cannot_read_the_shops_platform_invoice_history.
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])
         ->name('subscription.status');
