@@ -451,52 +451,265 @@ class FreeTrialEligibilityTest extends TestCase
         $this->assertStringContainsString('Promotional win-back', (string) $event->reason);
     }
 
+    // ── 15. administrative holds survive every entitling grant ──────────────
+
     /**
-     * POLICY ITEM 15 — administrative hold must survive a promotional grant.
-     *
-     * DIVERGENCE, REPORTED NOT PATCHED. BillingManagementController treats every
-     * entitling status (trial|active|grace) as a reason to write the shop back
-     * to access_mode='active', suspended_by=null — so granting a promotional
-     * trial to an administratively-held shop silently lifts the hold. Correcting
-     * that requires editing BillingManagementController, which this task's brief
-     * explicitly gates behind a STOP-and-report.
-     *
-     * This test therefore PINS THE CURRENT BEHAVIOUR rather than the policy, so
-     * that (a) the divergence is documented in the suite itself and (b) whoever
-     * fixes it gets a failing test the moment they do. The policy assertion it
-     * should eventually make is spelled out inline.
+     * Fixture for a shop the platform administrator has restricted for a reason
+     * that has NOTHING to do with billing — compliance review, abuse, a legal
+     * hold. `suspended_by` being non-null is the whole discriminator: the
+     * subscription lifecycle never writes it, so its presence is proof a human
+     * administrator acted.
      */
-    public function test_admin_promotional_grant_does_not_clear_an_administrative_hold(): void
+    private function heldShop(string $mode, PlatformAdmin $admin, string $reason): array
+    {
+        return $this->shopAndUser('retailer', [
+            'access_mode'       => $mode,
+            'is_active'         => false,
+            'deactivated_at'    => now()->subDays(3),
+            'suspended_at'      => now()->subDays(3),
+            'suspended_until'   => now()->addDays(10),
+            'suspended_by'      => $admin->id,
+            'suspension_reason' => $reason,
+        ]);
+    }
+
+    /**
+     * Every entitling status the admin billing flow can write, crossed with both
+     * administrative restriction modes. The bug was scoped to `trial` only in the
+     * original report, but the controller branch is keyed on $entitling — so
+     * `active` and `grace` grants wiped holds identically.
+     */
+    public static function entitlingStatuses(): array
+    {
+        return ['trial grant' => ['trial'], 'active grant' => ['active'], 'grace grant' => ['grace']];
+    }
+
+    public static function heldGrants(): array
+    {
+        $cases = [];
+        foreach (['read_only', 'suspended'] as $mode) {
+            foreach (['trial', 'active', 'grace'] as $status) {
+                $cases["admin {$mode} + {$status} grant"] = [$mode, $status];
+            }
+        }
+
+        return $cases;
+    }
+
+    /**
+     * POLICY ITEM 15 — the two axes must not leak into each other.
+     *
+     * A subscription grant is a statement about ENTITLEMENT. An administrative
+     * hold is a statement about ACCESS. Recording the former must never retract
+     * the latter: the administrator who granted a win-back trial has not
+     * reviewed the compliance case, and nothing in the billing form asks them
+     * to. The entitlement is recorded and audited; the restriction stands until
+     * someone lifts it deliberately through the access-management action.
+     *
+     * @dataProvider heldGrants
+     */
+    public function test_administrative_hold_survives_an_admin_entitling_grant(string $mode, string $status): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin  = $this->platformAdmin;
+        $reason = 'Administrative hold — compliance review';
+        [$shop, $user] = $this->heldShop($mode, $admin, $reason);
+        $this->history($shop, $user, 'expired', true);
+
+        $this->grantAsAdmin($admin, $shop, $this->plan(), ['status' => $status])->assertRedirect();
+
+        // The entitlement IS recorded — the grant is not refused, only narrowed.
+        $granted = ShopSubscription::where('shop_id', $shop->id)->where('status', $status)->latest('id')->first();
+        $this->assertNotNull($granted, "the {$status} grant must still be recorded");
+        $event = SubscriptionEvent::where('shop_subscription_id', $granted->id)->latest('id')->first();
+        $this->assertNotNull($event, 'the grant must remain audited');
+        $this->assertSame($admin->id, $event->admin_id, 'the audit row must attribute the granting administrator');
+
+        // The access axis is untouched — mode, actor AND reason, all verbatim.
+        $fresh = $shop->fresh();
+        $this->assertSame($mode, $fresh->access_mode, 'the administrative access mode must be preserved');
+        $this->assertSame($admin->id, $fresh->suspended_by, 'suspended_by must be preserved — it is the origin proof');
+        $this->assertSame($reason, $fresh->suspension_reason, 'the administrative reason must not be overwritten');
+        $this->assertFalse((bool) $fresh->is_active, 'a held shop must not be re-enabled by a billing grant');
+        $this->assertNotNull($fresh->suspended_at, 'the hold timestamp must survive');
+        $this->assertNotNull($fresh->suspended_until, 'a time-boxed hold must keep its expiry — clearing it makes it permanent');
+    }
+
+    /**
+     * THE FAIL-OPEN TRAP, and the reason this guard tests for positive proof of a
+     * subscription-managed lapse instead of merely the absence of an admin actor.
+     *
+     * The 2026-02-18 control-plane migration backfilled access_mode='suspended'
+     * with the reason 'Legacy deactivation migration' for every shop that was
+     * already deactivated, and never stamped suspended_by — there was no actor to
+     * attribute. Such a row is neither administrative (no actor) nor
+     * subscription-managed (the reason does not corroborate a lapse): its origin
+     * is simply unknown. A guard keyed on `! suspensionIsAdministrative()` would
+     * read "not an admin hold" as "safe to reopen" and hand full access back to a
+     * shop somebody deliberately closed.
+     *
+     * @dataProvider legacyUnattributedRestrictions
+     */
+    public function test_unattributed_legacy_restriction_is_not_reopened_by_a_grant(string $mode, string $reason): void
     {
         config(['platform.enforce_subscriptions' => true]);
         $admin = $this->platformAdmin;
         [$shop, $user] = $this->shopAndUser('retailer', [
-            'access_mode'       => 'read_only',
-            'suspended_by'      => $admin->id,
-            'suspension_reason' => 'Administrative hold — compliance review',
+            'access_mode'       => $mode,
+            'is_active'         => false,
+            'deactivated_at'    => now()->subYear(),
+            'suspended_at'      => now()->subYear(),
+            'suspended_by'      => null,     // ← no actor: unknown origin, not a lapse
+            'suspension_reason' => $reason,
         ]);
-        $this->history($shop, $user, 'expired', true);
+
+        // Precondition: this really is the ambiguous third category.
+        $this->assertFalse($shop->suspensionIsAdministrative(), 'fixture must have no admin actor');
+        $this->assertFalse($shop->suspensionIsSubscriptionManaged(), 'fixture must not corroborate as a lapse');
 
         $this->grantAsAdmin($admin, $shop, $this->plan())->assertRedirect();
 
         $fresh = $shop->fresh();
+        $this->assertSame($mode, $fresh->access_mode, 'unknown-origin restrictions must fail closed, not reopen');
+        $this->assertFalse((bool) $fresh->is_active);
+        $this->assertSame($reason, $fresh->suspension_reason);
 
-        // POLICY (not yet enforced — needs BillingManagementController):
-        //   $this->assertSame('read_only', $fresh->access_mode);
-        //   $this->assertNotNull($fresh->suspended_by);
-        //
-        // CHARACTERISATION of what the shipped controller actually does today:
-        $this->assertSame('active', $fresh->access_mode,
-            'CHARACTERISATION: the entitling-status branch currently reactivates the shop');
-        $this->assertNull($fresh->suspended_by,
-            'CHARACTERISATION: the administrative hold is currently cleared by an entitling grant. '
-            . 'See BillingManagementController::updateShopSubscription() — reported, not patched.');
+        // The entitlement is still recorded — we narrow the grant, never refuse it.
+        $this->assertNotNull(ShopSubscription::where('shop_id', $shop->id)->where('status', 'trial')->latest('id')->first());
+    }
 
-        // Whatever the controller does to the shop, the grant must remain
-        // attributable. That part of policy 15 IS enforceable here.
-        $granted = ShopSubscription::where('shop_id', $shop->id)->where('status', 'trial')->latest('id')->first();
-        $this->assertNotNull($granted);
-        $this->assertNotNull(SubscriptionEvent::where('shop_subscription_id', $granted->id)->first());
+    public static function legacyUnattributedRestrictions(): array
+    {
+        return [
+            'legacy deactivation migration' => ['suspended', 'Legacy deactivation migration'],
+            'legacy missing subscription'   => ['suspended', 'Legacy shop missing subscription record'],
+            'unattributed read-only'        => ['read_only', 'Legacy deactivation migration'],
+        ];
+    }
+
+    /**
+     * The other half of the same branch, and the reason it cannot simply be
+     * deleted: when the shop is down ONLY because its subscription lapsed, a
+     * grant is exactly the thing that should bring it back. suspended_by is
+     * null here — the scheduler never stamps it — so the restriction is
+     * subscription-managed and self-service recoverable by definition.
+     *
+     * Provided over all three entitling statuses, mirroring heldGrants: the branch
+     * is keyed on $entitling, so recovery must work for every status that reaches
+     * it, not just the promotional-trial one the original report named.
+     *
+     * @dataProvider entitlingStatuses
+     */
+    public function test_expiry_managed_suspension_is_restored_by_an_admin_entitling_grant(string $status): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->platformAdmin;
+        [$shop, $user] = $this->shopAndUser('retailer', [
+            'access_mode'       => 'suspended',
+            'is_active'         => false,
+            'deactivated_at'    => now()->subDays(3),
+            'suspended_at'      => now()->subDays(3),
+            'suspended_by'      => null,                 // ← lifecycle, not a human
+            'suspension_reason' => 'Subscription expired',
+        ]);
+        $this->history($shop, $user, 'expired', true);
+
+        $this->grantAsAdmin($admin, $shop, $this->plan(), ['status' => $status])->assertRedirect();
+
+        $fresh = $shop->fresh();
+        $this->assertSame('active', $fresh->access_mode, 'a purely subscription-managed lapse must be recoverable by a grant');
+        $this->assertTrue((bool) $fresh->is_active);
+        $this->assertNull($fresh->suspended_by);
+        $this->assertNull($fresh->suspension_reason, 'the subscription-managed reason must be cleared on recovery');
+        $this->assertNull($fresh->suspended_at);
+        $this->assertNull($fresh->deactivated_at);
+    }
+
+    /** An unrestricted, already-active shop simply stays active. */
+    public function test_unrestricted_shop_remains_active_after_an_admin_entitling_grant(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->platformAdmin;
+        [$shop, $user] = $this->shopAndUser();
+
+        $this->grantAsAdmin($admin, $shop, $this->plan(), ['status' => 'active'])->assertRedirect();
+
+        $fresh = $shop->fresh();
+        $this->assertSame('active', $fresh->access_mode);
+        $this->assertTrue((bool) $fresh->is_active);
+        $this->assertNull($fresh->suspended_by);
+    }
+
+    /**
+     * Closure is just another administrative restriction wearing different
+     * words: the shop is disabled by a human and `suspended_by` records it. A
+     * billing grant must not re-open a closed shop, and it must not resurrect
+     * the closed owner account either — the billing flow has no business
+     * writing to users at all.
+     */
+    public function test_account_and_shop_closure_are_not_reopened_by_an_admin_entitling_grant(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->platformAdmin;
+        [$shop, $user] = $this->heldShop('suspended', $admin, 'Shop closed at owner request');
+        $user->forceFill(['is_active' => false])->save();
+        $this->history($shop, $user, 'cancelled', true);
+
+        $this->grantAsAdmin($admin, $shop, $this->plan())->assertRedirect();
+
+        $fresh = $shop->fresh();
+        $this->assertSame('suspended', $fresh->access_mode, 'a closed shop must stay closed');
+        $this->assertFalse((bool) $fresh->is_active);
+        $this->assertSame($admin->id, $fresh->suspended_by);
+        $this->assertSame('Shop closed at owner request', $fresh->suspension_reason);
+        $this->assertFalse((bool) $user->fresh()->is_active, 'the billing flow must never re-enable a closed account');
+    }
+
+    /**
+     * ITEM 7 — the hold is liftable, just not as a side effect. The existing,
+     * separately-audited access-management action still does it, which is what
+     * keeps "preserve the hold" from meaning "trap the shop forever".
+     */
+    public function test_administrator_lifts_a_hold_only_through_the_access_management_action(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->platformAdmin;
+        [$shop, $user] = $this->heldShop('read_only', $admin, 'Administrative hold — compliance review');
+
+        // Grant first: activation requires a term that covers today, and this is
+        // also the ordering a real win-back follows.
+        $this->grantAsAdmin($admin, $shop, $this->plan())->assertRedirect();
+        $this->assertSame('read_only', $shop->fresh()->access_mode, 'still held after the grant');
+
+        // Now the explicit, separate access decision.
+        $this->actingAs($admin, 'platform_admin')
+            ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
+            ->patch(route('admin.shops.status', $shop), [
+                'access_mode' => 'active',
+                'reason'      => 'Compliance review closed',
+            ])->assertRedirect();
+
+        $fresh = $shop->fresh();
+        $this->assertSame('active', $fresh->access_mode, 'the supported access action must still be able to lift the hold');
+        $this->assertNull($fresh->suspended_by);
+    }
+
+    /** A grant on one shop must not disturb another shop's hold. */
+    public function test_admin_grant_on_one_shop_leaves_another_shops_hold_intact(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->platformAdmin;
+        [$held, $heldUser] = $this->heldShop('suspended', $admin, 'Administrative hold — abuse report');
+        [$other, $otherUser] = $this->shopAndUser();
+
+        $this->grantAsAdmin($admin, $other, $this->plan())->assertRedirect();
+
+        $freshHeld = $held->fresh();
+        $this->assertSame('suspended', $freshHeld->access_mode);
+        $this->assertSame($admin->id, $freshHeld->suspended_by);
+        $this->assertSame('Administrative hold — abuse report', $freshHeld->suspension_reason);
+        $this->assertSame(0, ShopSubscription::where('shop_id', $held->id)->count(),
+            'the grant must not have landed on the wrong tenant');
     }
 
     /**

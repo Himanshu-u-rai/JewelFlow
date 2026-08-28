@@ -256,12 +256,28 @@ class AdminBillingStatusAxisTest extends TestCase
 
     // ── Returning to an entitled state clears every stale field ─────────────
 
-    public function test_switching_back_to_an_entitled_status_clears_stale_suspension_fields(): void
+    /**
+     * RETARGETED. This test used to suspend via the billing form and then assert
+     * that submitting `active` through the SAME form wiped suspended_by. That is
+     * now forbidden: an entitling grant records entitlement and nothing else, so
+     * it can no longer lift an administrative hold — not even one this form
+     * imposed. See test_billing_cannot_lift_its_own_administrative_hold below.
+     *
+     * The behaviour this test actually exists to protect is unchanged and still
+     * asserted here: a shop that is down purely because its subscription lapsed
+     * must come all the way back, with no stale field left behind to re-block it.
+     * `expired` is the honest fixture for that — the non-entitling branch writes
+     * suspended_by = null, exactly as the expiry scheduler does.
+     */
+    public function test_switching_back_to_an_entitled_status_clears_stale_subscription_managed_fields(): void
     {
         [, $shop, $plan, $admin] = $this->tenant();
 
-        $this->submit($admin, $shop, $this->payload($plan, 'suspended'))->assertSessionHasNoErrors();
-        $this->assertSame($admin->id, $shop->fresh()->suspended_by);
+        $this->submit($admin, $shop, $this->payload($plan, 'expired'))->assertSessionHasNoErrors();
+        $lapsed = $shop->fresh();
+        $this->assertSame('suspended', $lapsed->access_mode);
+        $this->assertNull($lapsed->suspended_by, 'a lapse is not an administrative act');
+        $this->assertTrue($lapsed->suspensionIsSubscriptionManaged());
 
         $this->submit($admin, $shop, $this->payload($plan, 'active'))->assertSessionHasNoErrors();
 
@@ -273,5 +289,47 @@ class AdminBillingStatusAxisTest extends TestCase
         $this->assertNull($fresh->suspension_reason);
         $this->assertNull($fresh->suspended_until);
         $this->assertNull($fresh->deactivated_at);
+    }
+
+    /**
+     * DELIBERATE BEHAVIOUR CHANGE. Picking the literal `suspended` / `read_only`
+     * status on the billing form is an ADMINISTRATIVE act — the controller says
+     * so itself, and stamps suspended_by to prove it. Once stamped, the hold is
+     * indistinguishable from one imposed through Shops → Status, because
+     * suspended_by is the only origin signal there is. So the billing form can no
+     * longer undo it either: entitlement grants do not adjudicate access.
+     *
+     * The hold is not permanent — it is just no longer a side effect. The
+     * separate, separately-audited access action lifts it.
+     */
+    public function test_billing_cannot_lift_its_own_administrative_hold(): void
+    {
+        [, $shop, $plan, $admin] = $this->tenant();
+
+        $this->submit($admin, $shop, $this->payload($plan, 'suspended'))->assertSessionHasNoErrors();
+        $this->assertSame($admin->id, $shop->fresh()->suspended_by);
+
+        // An entitling grant records the term but leaves the hold standing.
+        $this->submit($admin, $shop, $this->payload($plan, 'active'))->assertSessionHasNoErrors();
+        $held = $shop->fresh();
+        $this->assertSame('suspended', $held->access_mode, 'the administrative hold must survive the grant');
+        $this->assertSame($admin->id, $held->suspended_by);
+        $this->assertNotNull(
+            ShopSubscription::where('shop_id', $shop->id)->where('status', 'active')->latest('id')->first(),
+            'the entitlement itself must still be recorded'
+        );
+
+        // The supported access action is the way out.
+        $this->actingAs($admin, 'platform_admin')
+            ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
+            ->patch(route('admin.shops.status', $shop), [
+                'access_mode' => 'active',
+                'reason'      => 'Hold reviewed and lifted',
+            ])->assertSessionHasNoErrors();
+
+        $lifted = $shop->fresh();
+        $this->assertSame('active', $lifted->access_mode);
+        $this->assertTrue((bool) $lifted->is_active);
+        $this->assertNull($lifted->suspended_by);
     }
 }

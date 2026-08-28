@@ -100,6 +100,19 @@ class BillingManagementController extends Controller
                 'shop_sub:' . $shop->id . ':' . ($newEdition ?? 'none'),
             ]);
 
+            // Row-lock the shop and re-read it, because the access decision at the
+            // bottom of this transaction depends on its administrative fields. The
+            // $shop we were handed came from route-model binding, resolved when the
+            // request was matched — before this transaction, and long after the
+            // operator loaded the form. An administrator imposing a hold in that
+            // window would be invisible to a stale copy, and the branch below would
+            // clear a restriction it never saw. The advisory lock above only
+            // serialises this shop+edition; a hold can arrive from an entirely
+            // different controller, so the shop row itself has to be locked.
+            // Reassignment is closure-local and deliberate: every use of $shop from
+            // here down is the locked, authoritative row.
+            $shop = Shop::query()->whereKey($shop->id)->lockForUpdate()->firstOrFail();
+
             // Re-read the latest SAME-edition row under the lock and repeat the
             // idempotency comparison. An identical resubmit is a no-op: no new
             // subscription, invoice, email, activation or supersession event.
@@ -226,15 +239,52 @@ class BillingManagementController extends Controller
                 // $entitling axis (declared before the transaction) and locking a shop
                 // that is still inside its paid grace window — with a suspended_by
                 // stamp that left it no self-service way out.
-                $shop->update([
-                    'access_mode' => 'active',
-                    'is_active' => $this->dbBool(true),
-                    'deactivated_at' => null,
-                    'suspended_at' => null,
-                    'suspended_by' => null,
-                    'suspension_reason' => null,
-                    'suspended_until' => null,
-                ]);
+                //
+                // But entitlement restores access only when the LACK of entitlement is
+                // what removed it. This branch used to reactivate unconditionally, so
+                // recording a term — a promotional win-back trial, a manually keyed
+                // renewal, a grace extension — silently lifted whatever administrative
+                // hold the shop was under: compliance review, abuse, closure. The
+                // operator filling in a billing form has not adjudicated that case and
+                // is not being asked to. Granting entitlement is not an access ruling.
+                //
+                // The test is POSITIVE PROOF that the restriction is subscription-
+                // managed — not merely the absence of proof that it is administrative.
+                // `! suspensionIsAdministrative()` would be the latter, and it fails
+                // OPEN on a third category that genuinely exists in production data:
+                // restrictions with no attribution at all. The 2026-02-18 control-plane
+                // migration backfilled access_mode='suspended' with the reason 'Legacy
+                // deactivation migration' for every already-deactivated shop and never
+                // stamped suspended_by; 'Legacy shop missing subscription record' has
+                // the same shape. Those are neither administrative (no actor) nor
+                // subscription-managed (the reason does not corroborate), so their
+                // origin is UNKNOWN — and silently reopening a shop somebody
+                // deliberately closed is exactly the failure this branch is being fixed
+                // for. Unknown origin therefore keeps the restriction; recovering one
+                // is a deliberate access decision, not a billing side effect.
+                //
+                // suspensionIsSubscriptionManaged() is the existing single source of
+                // truth for "recoverable by paying" — it already backs the recovery
+                // gates in AuthenticatedSessionController, EnsureSubscriptionIsActive
+                // and EnsureAccountIsActive — and it internally gives an administrative
+                // hold precedence over whatever free text an admin may have typed. Read
+                // from the LOCKED row above, never the route-bound snapshot.
+                $restricted = $shop->access_mode !== 'active' || ! $shop->is_active;
+
+                if (! $restricted || $shop->suspensionIsSubscriptionManaged()) {
+                    $shop->update([
+                        'access_mode' => 'active',
+                        'is_active' => $this->dbBool(true),
+                        'deactivated_at' => null,
+                        'suspended_at' => null,
+                        'suspended_by' => null,
+                        'suspension_reason' => null,
+                        'suspended_until' => null,
+                    ]);
+                }
+                // Administrative hold: the subscription row and its audit trail are
+                // already written above, so the entitlement IS recorded. The access
+                // axis is left byte-identical — mode, actor, reason, dates, all of it.
             } else {
                 // expired / cancelled: a LAPSE, not a hold. Recoverable by renewal, so
                 // suspended_by stays null and the reason keeps the "Subscription "
