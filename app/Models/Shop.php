@@ -207,21 +207,30 @@ class Shop extends Model
             return false;
         }
 
-        // UNATTRIBUTED LEGACY read_only (the JF-0001 incident state). `read_only`
-        // on the ACCESS axis is exclusively an administrator restriction, and every
-        // administrative writer stamps suspended_by. A read_only shop with NO stamp
-        // therefore cannot be an admin hold — it can only be a row minted by the old
-        // expiry fork: a subscription lapse wearing the wrong mode. The oldest of
-        // those rows carry a NULL suspension_reason as well, so the reason text below
-        // can never classify them, and they fall through to EnsureAccountIsActive's
-        // 423 with no recovery path at all. Recognising them here is what lets both
-        // middlewares reconcile the row onto the entitlement axis (enforcement on) or
-        // heal it outright (enforcement off).
+        // UNATTRIBUTED LEGACY read_only (the JF-0001 incident state). The buggy
+        // expiry fork wrote access_mode=read_only with NO attribution at all — no
+        // admin id, and in the oldest rows no reason text either — so the reason
+        // match below can never classify them and they fall through to
+        // EnsureAccountIsActive's 423 with no recovery path. Recognising them here
+        // is what lets the middlewares reconcile the row onto the entitlement axis
+        // (enforcement on) or heal it outright (enforcement off).
+        //
+        // CORROBORATION IS MANDATORY. `read_only` access on its own is NOT evidence
+        // of a lapse: it is also how an ordinary read-only hold looks, and it is how
+        // every read-only fixture in this suite is built. Keying on the mode alone
+        // classified all of them as lapses, and because enforce_subscriptions
+        // defaults to FALSE, restoreIfSubscriptionManagedSuspension() then healed
+        // them to access_mode=active — handing full write access to every read-only
+        // shop, including admin holds old enough to predate suspended_by stamping.
+        // The lapse must be corroborated by the subscription row that the fork wrote
+        // alongside it. Both live writers of read_only (ShopManagementController::
+        // updateStatus, BillingManagementController) stamp suspended_by and are
+        // already excluded above, so this query only ever narrows the legacy set.
         //
         // Deliberately keyed on the read_only MODE, never on "suspended_by is null":
         // an unattributed `suspended` shop still needs its reason corroborated.
         if (($this->access_mode ?? '') === 'read_only') {
-            return true;
+            return $this->subscriptions()->where('status', 'read_only')->exists();
         }
 
         $reason = (string) ($this->suspension_reason ?? '');
