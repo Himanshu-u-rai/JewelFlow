@@ -311,8 +311,16 @@
             // startTrial() actually grants. 30→"30-day", 60→"60-day", etc.
             $trialDays = $trialDays ?? 30;
             $trialLabel = $trialDays . '-day';
+            // Automatic-trial eligibility is decided ONCE, in
+            // SubscriptionPaymentService::automaticTrialRefusalReason(), and
+            // handed to this view by the controller. Never re-derive it here:
+            // $upgradingFromTrial only means "mid-trial right now", so gating on
+            // it showed the free-trial card to every shop whose trial had ended
+            // and to every lapsed paying customer. Default false — an unset flag
+            // must hide the offer, not reveal it.
+            $showTrial = $trialPlan && ! empty($trialEligible ?? false);
           @endphp
-          @if($trialPlan && empty($upgradingFromTrial))
+          @if($showTrial)
             <button type="button" class="md-opt md-opt-trial" role="tab" aria-selected="false" data-plan="trial">
               <div class="md-opt-main">
                 <div class="md-opt-title">Free trial</div>
@@ -352,7 +360,7 @@
             </div>
           @endforeach
 
-          @if($trialPlan && empty($upgradingFromTrial))
+          @if($showTrial)
             <div class="md-pane md-pane-trial" data-pane="trial">
               <div class="md-pane-name">{{ $trialLabel }} free trial</div>
               <div class="md-pane-price">₹0<span class="md-pane-per">for the first {{ $trialDays }} days</span></div>
@@ -367,7 +375,7 @@
               <div class="md-trial-points">
                 <div class="md-trial-point">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                  <div><strong>Full 1 month, free</strong><span>No card, no charge upfront.</span></div>
+                  <div><strong>Full {{ $trialLabel }}, free</strong><span>No card, no charge upfront.</span></div>
                 </div>
                 <div class="md-trial-point">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2m-2 4h.01M5 12a7 7 0 1114 0 7 7 0 01-14 0z"/></svg>
@@ -375,7 +383,7 @@
                 </div>
                 <div class="md-trial-point">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  <div><strong>Your data stays safe</strong><span>When the trial ends it turns read-only, never deleted.</span></div>
+                  <div><strong>Your data stays safe</strong><span>When the trial ends your data is kept, never deleted — pick a plan whenever you are ready and carry on where you left off.</span></div>
                 </div>
                 <div class="md-trial-point">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 12h14M5 16h10"/></svg>
