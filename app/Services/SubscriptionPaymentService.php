@@ -168,7 +168,15 @@ class SubscriptionPaymentService
      *
      *  - No shop yet / no current sub / fully lapsed  → now()  (fresh term today)
      *  - Current TRIAL                                 → trial.ends_at (keep free days)
-     *  - Current live PAID (active/grace/read_only)    → throws (no stacked term)
+     *  - A paid term still covering today              → throws (no stacked term)
+     *
+     * "Still covering today" is ShopSubscription::hasLivePaidTermToday(), the same
+     * rule the controller's purchase gate uses, so this last line of defence can
+     * never disagree with the page that sent the customer here. It replaces a
+     * status list that counted a legacy `read_only` row as a live paid term (which
+     * made a lapsed shop's renewal throw instead of starting a fresh term) and that
+     * counted an `active` row whose ends_at had already passed but which the
+     * midnight scheduler had not yet transitioned.
      *
      * All three are judged PER PRODUCT. One shop holds many product
      * subscriptions, so a live ERP term must not block buying Dhiran — being
@@ -204,7 +212,13 @@ class SubscriptionPaymentService
             return $now;
         }
 
-        if (in_array($current->status, ['active', 'grace', 'read_only'], true)) {
+        // The two corrections here are orthogonal and both must survive: WHICH
+        // subscription is examined is per-product (current code), and WHETHER it
+        // still counts as a live paid term is hasLivePaidTermToday() (the P0
+        // hotfix). Keeping the old status list would let a legacy `read_only`
+        // row block a lapsed shop's renewal; dropping the per-product lookup
+        // would let a live ERP term block buying Dhiran.
+        if (ShopSubscription::hasLivePaidTermToday($current)) {
             throw new \LogicException(
                 'Shop already has an active paid subscription for '
                 . ($edition ?? 'this shop')

@@ -707,13 +707,27 @@
             <p class="text-sm text-gray-600 mt-1">View your current plan, billing cycle, renewal date, and included features.</p>
         </div>
         <div class="page-actions" style="display:flex; gap:10px; flex-wrap:wrap;">
-            <a href="{{ route('subscription.plans') }}" class="sub-btn primary">Change Plan</a>
+            {{-- A lapsed shop needs an unambiguous way back in. "Change Plan" reads
+                 as optional housekeeping; "Renew Plan" names the one action that
+                 restores access. Same destination, honest label. --}}
+            <a href="{{ route('subscription.plans') }}" class="sub-btn primary">{{ ($isExpired && ! $isInGrace) ? 'Renew Plan' : 'Change Plan' }}</a>
             <a href="mailto:{{ config('app.support_email') }}" class="sub-btn secondary">Contact Support</a>
         </div>
     </x-page-header>
 
     <div class="content-inner sub-status-page">
         <div class="sub-status-wrap">
+            {{-- Every failure path in SubscriptionController::paymentCallback()
+                 redirects here with a flash — a signature mismatch, a price
+                 mismatch, a refund reference to quote to support. This page never
+                 rendered them, so the owner saw a silent bounce and support had no
+                 reference to trace. Show them. --}}
+            @if (session('error'))
+                <div role="alert" style="margin-bottom:16px; padding:14px 16px; border:1px solid #fca5a5; background:#fef2f2; color:#991b1b; border-radius:10px; font-size:14px;">{{ session('error') }}</div>
+            @endif
+            @if (session('success'))
+                <div role="status" style="margin-bottom:16px; padding:14px 16px; border:1px solid #86efac; background:#f0fdf4; color:#166534; border-radius:10px; font-size:14px;">{{ session('success') }}</div>
+            @endif
 <section class="sub-hero">
                 <div class="sub-hero-top">
                     <div>
