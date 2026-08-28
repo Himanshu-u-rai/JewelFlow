@@ -121,6 +121,14 @@ class SubscriptionController extends Controller
         $upgradingFromTrial = $current && $current->status === 'trial';
         $trialEndsAt = $upgradingFromTrial ? $current->ends_at : null;
 
+        // Automatic-trial eligibility comes from the SERVICE — the same call
+        // startTrial() makes — so the card the owner is shown and the POST the
+        // server will honour are one decision, not two that drift apart.
+        // `$upgradingFromTrial` is NOT a proxy for it: that flag only means
+        // "mid-trial right now", which an expired or cancelled trial — and any
+        // lapsed paid term — trivially passes. The view must not re-derive this.
+        $trialEligible = $this->paymentService->canStartAutomaticTrial($yearlyPlan ?? $monthlyPlan);
+
         return view('subscription.plans', compact(
             'plans',
             'shopType',
@@ -129,7 +137,8 @@ class SubscriptionController extends Controller
             'featureLabels',
             'trialDays',
             'upgradingFromTrial',
-            'trialEndsAt'
+            'trialEndsAt',
+            'trialEligible'
         ));
     }
 
