@@ -229,8 +229,48 @@ class Shop extends Model
         //
         // Deliberately keyed on the read_only MODE, never on "suspended_by is null":
         // an unattributed `suspended` shop still needs its reason corroborated.
+        //
+        // The corroboration must describe the shop's CURRENT entitlement, never its
+        // history. "Has this shop ever held a read_only row?" is a false positive on
+        // every shop that lapsed once and renewed: the dead row survives forever, so
+        // a shop with a perfectly live term today still classified as lapsed, and
+        // (enforcement being off by default) got healed to access_mode=active on its
+        // very next page view — silently lifting the read-only hold it is actually
+        // under. Two bounded, order-aware checks replace that existence scan; either
+        // one failing means "not a legacy lapse", so ambiguity fails closed.
         if (($this->access_mode ?? '') === 'read_only') {
-            return $this->subscriptions()->where('status', 'read_only')->exists();
+            // (1) The LATEST subscription row must itself be the legacy artefact.
+            //     An `active`/`trial`/`grace`/`expired`/`cancelled` row written after
+            //     it supersedes it, and no row at all is not evidence of anything.
+            //     Ordered single-column read — `order by id desc limit 1`.
+            if ($this->subscriptions()->orderByDesc('id')->value('status') !== 'read_only') {
+                return false;
+            }
+
+            // (2) No LIVE entitling term may stand behind it. A shop can carry a
+            //     legacy read_only row for one product while a different product's
+            //     term is still running (the cross-product case); healing on the
+            //     strength of the dead row would hand write access to a shop that is
+            //     currently entitled and deliberately frozen. Checked by liveness
+            //     (dated), not by presence: a genuine JF-0001 shop still owns the
+            //     long-expired `active` row from before its lapse, and that row must
+            //     not block its recovery. NULL dates never match, so they fail closed.
+            //     ponytail: product-agnostic on purpose — any live term anywhere on
+            //     the shop blocks healing, which is stricter than per-product scoping
+            //     and needs no plan->product resolution inside a predicate.
+            $today = now()->toDateString();
+
+            return ! $this->subscriptions()
+                ->where(function ($q) use ($today) {
+                    $q->where(function ($w) use ($today) {
+                        $w->whereIn('status', ['active', 'trial'])
+                            ->whereDate('ends_at', '>=', $today);
+                    })->orWhere(function ($w) use ($today) {
+                        $w->where('status', 'grace')
+                            ->whereDate('grace_ends_at', '>=', $today);
+                    });
+                })
+                ->exists();
         }
 
         $reason = (string) ($this->suspension_reason ?? '');
