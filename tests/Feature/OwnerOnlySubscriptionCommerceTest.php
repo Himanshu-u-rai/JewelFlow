@@ -221,43 +221,43 @@ class OwnerOnlySubscriptionCommerceTest extends TestCase
     }
 
     /**
-     * ROLE-LESS OWNER TRAP. ShopController assigns the owner role as
-     * `$ownerRole?->id`, so a failed ensureDefaultsForShop() (or a legacy /
-     * admin-created row) leaves a shop's ONLY human with role_id = null.
+     * ROLE-LESS TRAP — RE-SPECIFIED BY THE FINAL AUDIT (F2).
      *
-     * Staff can never be in that state — StaffController requires role_id and
-     * excludes the owner role — so a role-less user is always the owner. Denying
-     * them commerce would rebuild the exact payment dead end this P0 removes, on
-     * the one person able to pay. The owner-only guard must therefore fail OPEN
-     * on a missing role and CLOSED only on a proven non-owner role.
+     * This test previously asserted that a role-less user KEEPS commerce, on the
+     * premise that "staff always have a role, so a role-less user must be the
+     * owner". That premise is false. The RBAC migration
+     * (2026_02_04_100000_create_rbac_tables) added users.role_id as nullable and
+     * dropped the old users.role string WITHOUT backfilling, so every user who
+     * predates it — cashiers included — carries role_id = NULL. Failing OPEN on a
+     * missing role therefore handed plan selection, checkout, Razorpay order
+     * creation, trial start and PlatformInvoice history to legacy staff.
      *
-     * subscription.status is included deliberately: every failure path in
-     * paymentCallback() lands there, so a 403 would make refund references and
-     * signature errors invisible again — the very regression commit c9190aa fixed.
+     * A missing role is now treated as what it is: absence of evidence. Ownership
+     * must be PROVEN by the role or it is denied. Mobile equality is deliberately
+     * NOT used as a substitute — users.mobile_number and shops.owner_mobile are
+     * independently writable and legitimately diverge (see
+     * OwnerIdentityFailClosedTest for the full writer trace and the equality
+     * case, which also asserts denial).
+     *
+     * Legacy role-less OWNERS are repaired by granting them the owner role. That
+     * repair is a separate follow-up, not a hole in the payment boundary.
      */
-    public function test_a_role_less_owner_is_not_locked_out_of_renewal(): void
+    public function test_a_role_less_user_is_denied_renewal_because_ownership_is_unproven(): void
     {
         [, $shop, $plan] = $this->tenant();
         $this->subscription($shop, $plan, ['status' => 'expired', 'ends_at' => now()->subDays(40)->toDateString()]);
 
-        $owner = User::factory()->create([
+        $unproven = User::factory()->create([
             'shop_id'   => $shop->id,
             'role_id'   => null,
             'is_active' => true,
         ]);
 
-        $this->actingAs($owner)->get(route('subscription.plans'))->assertOk();
-        $this->actingAs($owner)
+        $this->actingAs($unproven)->get(route('subscription.plans'))->assertForbidden();
+        $this->actingAs($unproven)
             ->post(route('subscription.choose'), ['plan_id' => $plan->id, 'billing_cycle' => 'monthly'])
-            ->assertRedirect(route('subscription.payment'));
-        // The invariant is "not DENIED", not a particular destination: an entitled
-        // shop legitimately forwards status to the Settings tab, a locked one
-        // renders in place. Either is fine; 403 is not.
-        $this->assertNotSame(
-            403,
-            $this->actingAs($owner)->get(route('subscription.status'))->getStatusCode(),
-            'A role-less owner must never be denied the renewal-feedback page.'
-        );
+            ->assertForbidden();
+        $this->actingAs($unproven)->get(route('subscription.status'))->assertForbidden();
     }
 
     /** The unauthenticated, signature-verified webhook must stay reachable. */

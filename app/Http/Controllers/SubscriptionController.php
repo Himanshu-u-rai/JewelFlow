@@ -53,7 +53,7 @@ class SubscriptionController extends Controller
 
     public function showPlans()
     {
-        $this->abortUnlessOwner();
+        $this->abortUnlessOwnerOrOnboarding();
 
         $user = Auth::user();
         $shopType = $user->shop?->shop_type ?? session('onboarding_shop_type') ?? $user->onboarding_shop_type;
@@ -194,34 +194,60 @@ class SubscriptionController extends Controller
      * explicit shop_id ownership match), so this is correct on the payment routes
      * too, which are bypass-listed by both middlewares.
      *
-     * It DENIES on a proven non-owner role rather than on "not proven owner".
-     * That distinction is the whole safety argument:
-     *   • Staff always have a role — StaffController requires role_id and
-     *     explicitly excludes the owner role — so every real cashier is denied.
-     *   • A ROLE-LESS user is never staff. It can only be an owner whose role
-     *     assignment did not land (ShopController writes `$ownerRole?->id`, so a
-     *     failed ensureDefaultsForShop() leaves null), or a legacy/admin-created
-     *     row. That user is their shop's only human, and denying them renewal
-     *     would rebuild the exact payment dead end this P0 exists to remove.
-     * So a missing role fails OPEN and a wrong role fails CLOSED.
+     * IT FAILS CLOSED. Ownership must be PROVEN; absence of evidence is not
+     * evidence. An earlier cut returned early on `role_id === null`, arguing that
+     * a role-less user could only be an owner whose role assignment did not land,
+     * because "staff always have a role". That premise is false: the RBAC
+     * migration (2026_02_04_100000_create_rbac_tables) added users.role_id as
+     * NULLABLE and dropped the old users.role string WITHOUT backfilling, so every
+     * user predating it — cashiers included — carries role_id = NULL. The early
+     * return handed those legacy cashiers plan selection, checkout, Razorpay order
+     * creation, trial start and the shop's PlatformInvoice history.
+     *
+     * OWNERSHIP IS NOT INFERRED FROM users.mobile_number. Equality with
+     * shops.owner_mobile was considered and rejected: the columns are
+     * independently writable and legitimately diverge. MobileChangeController::
+     * confirm() and Admin\UserMobileController::update() both rewrite
+     * users.mobile_number without touching shops.owner_mobile, and
+     * SettingsController rewrites shops.owner_mobile while syncing only the
+     * owner's NAME back — "the two are independent (login identity vs registered
+     * shop owner)". So equality would deny a real owner who changed their login
+     * mobile, and would promote a cashier whose login happens to match a stale or
+     * transferred owner_mobile. Neither direction is proof.
+     *
+     * A legacy role-less OWNER is repaired by granting them the owner role, which
+     * is a separate follow-up — not a hole left open in the payment boundary.
      */
     private function abortUnlessOwner(): void
     {
-        $user = Auth::user();
-
-        // Onboarding: no shop yet means no role yet. Nothing to own, nothing to
-        // leak — the shop's first user becomes its owner at creation time.
-        if (! $user || $user->shop_id === null) {
-            return;
-        }
-
-        if ($user->role_id === null) {
-            return;
-        }
-
-        if (! $user->isShopOwner()) {
+        if (! Auth::user()?->isShopOwner()) {
             abort(403, 'Unauthorized - You do not have permission to access this page.');
         }
+    }
+
+    /**
+     * The SAME proof of ownership, with the one narrow exception the onboarding
+     * funnel requires: a signup that has no shop yet.
+     *
+     * Checkout deliberately PRECEDES shop creation — OnboardingResumeService runs
+     * STEP_SELECT_PLAN → STEP_PAYMENT → STEP_CREATE_SHOP, and
+     * findPendingSubscription() looks for a term with shop_id IS NULL — so plan
+     * selection and payment must stay reachable before any tenant exists. A
+     * shop-less user has no role to prove anything with and, crucially, no tenant
+     * data to leak: there is no shop, no subscription and no invoice to read.
+     *
+     * Deliberately NOT folded back into abortUnlessOwner(): the exception is for
+     * the pre-tenant funnel only. Entry points that act on an existing shop —
+     * startTrial(), which attaches editions to one — keep the strict guard, so a
+     * shop-less caller is refused there.
+     */
+    private function abortUnlessOwnerOrOnboarding(): void
+    {
+        if (Auth::user()?->shop_id === null) {
+            return;
+        }
+
+        $this->abortUnlessOwner();
     }
 
     /**
@@ -266,7 +292,7 @@ class SubscriptionController extends Controller
 
     public function choosePlan(Request $request)
     {
-        $this->abortUnlessOwner();
+        $this->abortUnlessOwnerOrOnboarding();
 
         if ($this->blocksNewPaidTerm()) {
             return $this->purchaseBlockedResponse();
@@ -363,7 +389,7 @@ class SubscriptionController extends Controller
 
     public function payment()
     {
-        $this->abortUnlessOwner();
+        $this->abortUnlessOwnerOrOnboarding();
 
         // Trial shops may proceed to pay (early upgrade); only live paid shops are blocked.
         if ($this->blocksNewPaidTerm()) {
@@ -417,7 +443,7 @@ class SubscriptionController extends Controller
 
     public function initiatePayment(Request $request)
     {
-        $this->abortUnlessOwner();
+        $this->abortUnlessOwnerOrOnboarding();
 
         // An administratively suspended shop can NEVER buy its way out — a plan
         // purchase must not lift an admin suspension. Block checkout here because
@@ -525,7 +551,7 @@ class SubscriptionController extends Controller
         // can never legitimately arrive here. The UNAUTHENTICATED, signature-
         // verified webhook() is the machine leg and is deliberately untouched —
         // it is how a captured payment still lands if the browser never returns.
-        $this->abortUnlessOwner();
+        $this->abortUnlessOwnerOrOnboarding();
 
         $paymentId = $request->input('razorpay_payment_id');
         $orderId = $request->input('razorpay_order_id');
@@ -729,7 +755,7 @@ class SubscriptionController extends Controller
     {
         // The status page renders the shop's full PlatformInvoice history, so it
         // is owner-only for the same reason /billing is.
-        $this->abortUnlessOwner();
+        $this->abortUnlessOwnerOrOnboarding();
 
         $shop = Auth::user()?->shop;
         $subscription = $shop

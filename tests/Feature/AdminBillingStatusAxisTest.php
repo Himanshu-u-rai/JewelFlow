@@ -97,18 +97,50 @@ class AdminBillingStatusAxisTest extends TestCase
         return [['trial'], ['active'], ['grace']];
     }
 
-    /** @dataProvider entitledStatuses */
+    /**
+     * @dataProvider entitledStatuses
+     *
+     * STRENGTHENED BY THE FINAL AUDIT. Every shop-state assertion at the bottom
+     * of this test is already satisfied by CreatesTestTenant::createShop()'s own
+     * defaults (access_mode = 'active', is_active = true, the rest null), so for
+     * `trial` and `active` the test used to pass even if the request had done
+     * NOTHING AT ALL — a 500, an MFA/auth bounce, a validation rejection or a
+     * rolled-back transaction would each have left the fixture untouched and
+     * still gone green. It proved the shop was entitled, never that the writer
+     * ran. The request outcome and the persisted row are asserted FIRST, so the
+     * shop-axis assertions only ever run on a request that genuinely committed.
+     */
     public function test_entitled_status_leaves_the_shop_entitled(string $status): void
     {
         [, $shop, $plan, $admin] = $this->tenant();
+        $this->assertSame(
+            0,
+            ShopSubscription::where('shop_id', $shop->id)->count(),
+            'fixture: the row asserted below must be the one this request writes'
+        );
 
         // `grace` is a live term whose paid window closed TODAY — the inclusive
         // boundary the controller's own validation accepts for an entitling status.
         $overrides = $status === 'grace' ? ['ends_at' => now()->toDateString()] : [];
 
-        $this->submit($admin, $shop, $this->payload($plan, $status, $overrides))
-            ->assertSessionHasNoErrors();
+        $response = $this->submit($admin, $shop, $this->payload($plan, $status, $overrides));
 
+        // 1. The request SUCCEEDED. back() + a success flash is the writer's only
+        //    happy path, so this rules out the 500 / auth-redirect / validation
+        //    outcomes that would otherwise leave the defaults below looking right.
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+        $this->assertSame(302, $response->getStatusCode());
+
+        // 2. The write COMMITTED, carrying the status actually requested. A
+        //    rolled-back transaction leaves no row here at all.
+        $sub = ShopSubscription::where('shop_id', $shop->id)->latest('id')->first();
+        $this->assertNotNull($sub, "Status {$status} must persist a subscription row; nothing was committed.");
+        $this->assertSame($status, $sub->status, 'The latest row must carry the REQUESTED entitlement status.');
+        $this->assertSame($plan->id, $sub->plan_id);
+
+        // 3. Only now is the shop axis meaningful.
         $fresh = $shop->fresh();
         $this->assertSame('active', $fresh->access_mode, "Status {$status} is entitling and must not restrict shop access.");
         $this->assertTrue((bool) $fresh->is_active);

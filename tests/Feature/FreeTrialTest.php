@@ -44,9 +44,13 @@ class FreeTrialTest extends TestCase
             'owner_mobile' => fake()->unique()->numerify('9########'),
             'is_active' => true, 'access_mode' => 'active',
         ]);
+        // The owner role is not decoration here: subscription commerce PROVES
+        // ownership from users.role_id and denies an unproven identity, so a
+        // fixture that drives the HTTP trial/checkout routes must carry one.
         $user = User::create([
             'name' => 'Owner', 'mobile_number' => fake()->unique()->numerify('9########'),
-            'shop_id' => $shop->id, 'password' => bcrypt('x'), 'is_active' => true,
+            'shop_id' => $shop->id, 'role_id' => $this->createOwnerRole($shop->id)->id,
+            'password' => bcrypt('x'), 'is_active' => true,
         ]);
         return [$shop, $user];
     }
