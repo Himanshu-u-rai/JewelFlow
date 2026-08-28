@@ -87,7 +87,7 @@ class BillingManagementController extends Controller
         $invoiceId = null;
         $deduped   = false;
 
-        DB::transaction(function () use ($validated, $shop, $admin, $before, $plan, $request, $startsAt, $endsAt, $graceEndsAt, &$invoiceId, &$deduped) {
+        DB::transaction(function () use ($validated, $shop, $admin, $before, $plan, $request, $startsAt, $endsAt, $graceEndsAt, $entitling, &$invoiceId, &$deduped) {
             $newEdition = $plan->grantsEdition();
 
             // Concurrency-safe idempotency. Serialize writes for THIS shop+edition
@@ -197,25 +197,35 @@ class BillingManagementController extends Controller
             ]);
 
             $shopBefore = $shop->only(['access_mode', 'is_active']);
-            if (in_array($subscription->status, ['suspended', 'cancelled', 'expired'], true)) {
+
+            // TWO AXES, never conflated:
+            //   ENTITLEMENT   trial | active | grace | expired | cancelled
+            //   ADMIN ACCESS  active | read_only | suspended
+            //
+            // Only the operator explicitly picking `read_only` or `suspended` is an
+            // ADMINISTRATIVE act, and only that stamps suspended_by. An entitlement
+            // change must never become an administrative hold: suspended_by is the
+            // proof-positive discriminator, and once stamped it blocks every purchase
+            // entry point (ShopSubscription::blocksNewPaidTerm) and freezes the
+            // reconciler — so an ordinary expiry recorded here used to leave the owner
+            // permanently unable to renew.
+            if (in_array($subscription->status, ['read_only', 'suspended'], true)) {
                 $shop->update([
-                    'access_mode' => 'suspended',
+                    'access_mode' => $subscription->status,
                     'is_active' => $this->dbBool(false),
                     'deactivated_at' => now(),
                     'suspended_at' => $shop->suspended_at ?: now(),
                     'suspended_by' => $admin->id,
-                    'suspension_reason' => $validated['reason'] ?? 'Suspended by subscription status',
+                    'suspension_reason' => $validated['reason'] ?? ($subscription->status === 'read_only'
+                        ? 'Read-only by platform administrator'
+                        : 'Suspended by platform administrator'),
                 ]);
-            } elseif (in_array($subscription->status, ['read_only', 'grace'], true)) {
-                $shop->update([
-                    'access_mode' => 'read_only',
-                    'is_active' => $this->dbBool(false),
-                    'deactivated_at' => now(),
-                    'suspended_at' => $shop->suspended_at ?: now(),
-                    'suspended_by' => $admin->id,
-                    'suspension_reason' => $validated['reason'] ?? 'Read-only by subscription status',
-                ]);
-            } else {
+            } elseif ($entitling) {
+                // trial / active / grace all ENTITLE the shop. `grace` previously fell
+                // into the read-only branch above, contradicting this controller's own
+                // $entitling axis (declared before the transaction) and locking a shop
+                // that is still inside its paid grace window — with a suspended_by
+                // stamp that left it no self-service way out.
                 $shop->update([
                     'access_mode' => 'active',
                     'is_active' => $this->dbBool(true),
@@ -223,6 +233,21 @@ class BillingManagementController extends Controller
                     'suspended_at' => null,
                     'suspended_by' => null,
                     'suspension_reason' => null,
+                    'suspended_until' => null,
+                ]);
+            } else {
+                // expired / cancelled: a LAPSE, not a hold. Recoverable by renewal, so
+                // suspended_by stays null and the reason keeps the "Subscription "
+                // prefix that Shop::suspensionIsSubscriptionManaged() reads to route
+                // the owner to the plan picker instead of a Contact-Support dead end.
+                $shop->update([
+                    'access_mode' => 'suspended',
+                    'is_active' => $this->dbBool(false),
+                    'deactivated_at' => now(),
+                    'suspended_at' => $shop->suspended_at ?: now(),
+                    'suspended_by' => null,
+                    'suspension_reason' => 'Subscription ' . $subscription->status
+                        . (blank($validated['reason'] ?? null) ? '' : " — {$validated['reason']}"),
                     'suspended_until' => null,
                 ]);
             }
