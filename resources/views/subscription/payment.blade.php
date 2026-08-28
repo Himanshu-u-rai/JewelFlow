@@ -493,6 +493,14 @@
             $renewalDate = $billingCycle === 'yearly' ? now()->addYear()->format('d M Y') : now()->addMonth()->format('d M Y');
             $shopTypeLabel = ucfirst((string) ($shopType ?? 'business'));
         @endphp
+        {{-- paymentCallback() bounces every failure back to this page with a flash
+             — signature verification failed, amount mismatch, capture failed, a
+             refund reference to quote to support. The checkout re-rendered as if
+             nothing had happened, so the customer retried blind and support had no
+             reference to trace. Show the message before the pay button. --}}
+        @if (session('error'))
+            <div role="alert" style="max-width:1100px; margin:0 auto 18px; padding:14px 16px; border:1px solid #fca5a5; background:#fef2f2; color:#991b1b; border-radius:10px; font-size:14px; line-height:1.5;">{{ session('error') }}</div>
+        @endif
         <div class="sub-pay-grid">
             <section class="sub-pay-card sub-pay-card-summary" aria-label="Order summary">
                 <div class="sub-pay-title">Subscription invoice</div>
