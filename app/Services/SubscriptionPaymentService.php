@@ -760,11 +760,55 @@ class SubscriptionPaymentService
      */
     public function hasUsedTrialForFamily(?int $shopId, string $edition, ?int $userId = null): bool
     {
+        // The narrow shape: FREE rows only. Deliberately identical to the
+        // predicate behind the partial unique index
+        // (price_paid = 0 AND razorpay_payment_id IS NULL), because the
+        // concurrent-start race recovery in startTrial() re-queries on it.
+        return $this->familyHistoryExists(
+            $shopId,
+            $edition,
+            $userId,
+            fn ($q) => $q->whereNull('razorpay_payment_id')->where('price_paid', 0),
+        );
+    }
+
+    /**
+     * Whether this shop OR user has EVER held any entitlement — free or paid,
+     * live, expired or cancelled — for the family the given edition belongs to.
+     *
+     * This is the automatic free-trial eligibility question, and it is broader
+     * than hasUsedTrialForFamily() on purpose. "Free trial" means new customer.
+     * A shop that paid for a year and lapsed is not a new customer, even though
+     * it never held a single price_paid = 0 row — and under a trial-only
+     * predicate it was being handed a free month on every lapse.
+     *
+     * Authoritative HISTORY, not latest status: no status filter is applied. A
+     * cancelled or superseded row still proves the product was once entitled,
+     * and cancelling must never be a way to reset eligibility.
+     *
+     * Same identity scoping and same fail-safe as the trial predicate: with
+     * neither a shop nor a user to key on, this matches NOTHING rather than
+     * everything, so a scoping bug can only ever deny a trial, never grant one.
+     *
+     * @param int|null $shopId  the shop (null in pre-shop onboarding)
+     * @param int|null $userId  the user
+     */
+    public function hasPriorEntitlementForFamily(?int $shopId, string $edition, ?int $userId = null): bool
+    {
+        return $this->familyHistoryExists($shopId, $edition, $userId, null);
+    }
+
+    /**
+     * Shared scan behind both predicates above: every subscription this identity
+     * has ever held, mapped plan → edition → family, compared to the target
+     * family. `$narrow` optionally restricts the row shape (the trial predicate
+     * uses it to look at free rows only).
+     */
+    private function familyHistoryExists(?int $shopId, string $edition, ?int $userId, ?callable $narrow): bool
+    {
         $family = $this->trialFamilyFor($edition);
 
         $query = ShopSubscription::query()
-            ->whereNull('razorpay_payment_id')
-            ->where('price_paid', 0)
             ->where(function ($q) use ($shopId, $userId) {
                 $matched = false;
                 if ($shopId !== null) {
@@ -782,6 +826,10 @@ class SubscriptionPaymentService
             })
             ->with('plan.platformProduct');
 
+        if ($narrow) {
+            $narrow($query);
+        }
+
         foreach ($query->get() as $sub) {
             $grantEdition = $sub->plan?->grantsEdition();
             if ($grantEdition && $this->trialFamilyFor($grantEdition) === $family) {
@@ -793,16 +841,90 @@ class SubscriptionPaymentService
     }
 
     /**
+     * THE single automatic-trial gate. Returns null when the self-service free
+     * trial may be offered and started, or the customer-facing reason it may not.
+     *
+     * Both the display path (SubscriptionController::showPlans → the plans view)
+     * and the write path (startTrial) call this, so the card the owner sees and
+     * the POST the server honours can never disagree. Re-deriving an
+     * approximation in the view is what shipped the original defect: the card
+     * was gated on "not mid-trial", which an EXPIRED trial trivially satisfies.
+     *
+     * Enforcement (platform.enforce_subscriptions) is deliberately not consulted.
+     * That flag decides who blocks a lapsed shop from the ERP; it has no bearing
+     * on whether that shop is a new customer.
+     *
+     * This does NOT govern the administrator promotional (win-back) grant, which
+     * is a separate, audited instrument on the admin billing flow.
+     */
+    public function automaticTrialRefusalReason(?Plan $plan): ?string
+    {
+        $authUser = Auth::user();
+        if (! $authUser) {
+            return 'You must be signed in to start a trial.';
+        }
+        if (! $plan) {
+            return 'No trial plan is available for your business type.';
+        }
+
+        $edition = $plan->grantsEdition();
+        if (! $edition) {
+            return 'This plan is not linked to a product, so a trial cannot be started.';
+        }
+
+        $shopId = $authUser->shop_id;
+        $userId = $authUser->id;
+        $shop   = $authUser->shop ?? ($shopId ? Shop::find($shopId) : null);
+
+        if ($shop) {
+            // ADMINISTRATIVE axis first, and origin-aware: `read_only` is
+            // exclusively a JewelFlows-administrator restriction, so a shop under
+            // one must not be able to trade it away for a free trial. Checking
+            // access_mode alone would have missed read_only entirely.
+            if ($shop->suspensionIsAdministrative()) {
+                return 'Your shop is under an administrative hold by JewelFlows. Starting a free trial cannot lift it — please contact support.';
+            }
+            // A lapse-driven suspension (suspended_by NULL) is the entitlement
+            // axis, not an admin act, and is refused too: the way out of a lapse
+            // is to pay, never to mint another free month.
+            if ($shop->access_mode === 'suspended') {
+                return 'Your shop is suspended. Please contact support.';
+            }
+        }
+
+        if ($this->hasUsedTrialForFamily($shopId, $edition, $userId)) {
+            return 'You have already used your free trial for this product.';
+        }
+
+        if ($this->hasPriorEntitlementForFamily($shopId, $edition, $userId)) {
+            return 'This product has already been subscribed on this account, so the free trial no longer applies. Choose a paid plan to continue.';
+        }
+
+        return null;
+    }
+
+    /** Convenience for the display path. */
+    public function canStartAutomaticTrial(?Plan $plan): bool
+    {
+        return $this->automaticTrialRefusalReason($plan) === null;
+    }
+
+    /**
      * Start a free trial of a product for the current shop — no payment, no card.
      *
      * Creates a 'trial'-status subscription that grants the product's edition and
      * is fully writable for config('business.subscription_trial_days') days. There
      * is NO extra grace window on top of the trial (grace_ends_at = ends_at), so
-     * when the trial ends the scheduler drops the shop straight to READ-ONLY
-     * (data preserved, writes blocked) — the owner sees their data and buys a plan
-     * to continue. A shop may trial each family (erp / dhiran) only once.
+     * when the trial ends the scheduler lands the shop on EXPIRED — the
+     * entitlement axis — and the owner buys a plan to continue. It never lands on
+     * `read_only`: that state is reserved exclusively for a JewelFlows
+     * administrator hold, and a lapsed bill must stay distinguishable from one.
      *
-     * @throws \LogicException if the shop already trialed this family.
+     * Eligibility is NOT decided here. automaticTrialRefusalReason() is the one
+     * gate, shared with the plans view, so what the owner is shown and what the
+     * server will honour are the same decision.
+     *
+     * @throws \LogicException if this identity is not eligible for an automatic trial.
      */
     public function startTrial(Plan $plan): ShopSubscription
     {
@@ -818,19 +940,10 @@ class SubscriptionPaymentService
             throw new \LogicException('This plan is not linked to a product, so a trial cannot be started.');
         }
 
-        // Keyed on user AND shop — so the cap holds even pre-shop (shop_id null).
-        if ($this->hasUsedTrialForFamily($shopId, $edition, $userId)) {
-            throw new \LogicException('You have already used your free trial for this product.');
-        }
-
-        // A shop a platform admin deliberately SUSPENDED must not be able to lift
-        // its own suspension by starting a free trial. Only paying (or an admin)
-        // restores a suspended shop — never a self-service trial.
-        if ($shopId) {
-            $shopRow = $authUser->shop ?? Shop::find($shopId);
-            if ($shopRow && $shopRow->access_mode === 'suspended') {
-                throw new \LogicException('Your shop is suspended. Please contact support.');
-            }
+        // THE gate — prior trial, prior paid entitlement, and the administrative
+        // axis (read_only as well as suspended). Runs before anything is created.
+        if ($reason = $this->automaticTrialRefusalReason($plan)) {
+            throw new \LogicException($reason);
         }
 
         $admin = $this->systemAdmin();
@@ -853,7 +966,8 @@ class SubscriptionPaymentService
                 'status'              => 'trial',
                 'starts_at'           => $startsAt,
                 'ends_at'             => $endsAt,
-                // No bonus grace on a trial: trial end → read-only immediately.
+                // No bonus grace on a trial: at trial end the shop lands on
+                // `expired` (the entitlement axis), never on `read_only`.
                 'grace_ends_at'       => $endsAt,
                 'billing_cycle'       => null,
                 'price_paid'          => 0,
@@ -873,14 +987,17 @@ class SubscriptionPaymentService
                 'reason'               => 'Free ' . $trialDays . '-day trial of ' . ($plan->grantsEdition() ?? 'product'),
             ]);
 
-            // Grant the edition + make the shop writable for the trial. We never
-            // flip a SUSPENDED shop active here (the suspended guard above already
-            // refuses), so a self-service trial can never lift an admin suspension.
+            // Grant the edition + make the shop writable for the trial. The gate
+            // above already refuses every administrative hold, so this branch is
+            // unreachable for one; the condition repeats the check anyway
+            // (origin-aware, so read_only counts) because "a self-service trial
+            // can never lift an administrator's hold" is worth two lines of
+            // belt-and-braces rather than one assumption about call order.
             if ($shopId) {
                 $this->grantEditionForSubscription($subscription, $plan);
 
                 $shop = Auth::user()->shop;
-                if ($shop && $shop->access_mode !== 'suspended') {
+                if ($shop && ! $shop->suspensionIsAdministrative() && $shop->access_mode !== 'suspended') {
                     $shop->forceFill([
                         'access_mode' => 'active',
                         'is_active'   => true,
