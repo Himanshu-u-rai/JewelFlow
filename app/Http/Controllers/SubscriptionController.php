@@ -608,6 +608,37 @@ class SubscriptionController extends Controller
                 ->with('error', 'Payment not confirmed. Contact support with ref: ' . $paymentId);
         }
 
+        // Step 4b: bind the (server-issued) order to the initiating user.
+        //
+        // Steps 1-4 prove the PAYMENT is genuine; none of them proves the PAYER is
+        // whoever holds the session now. createSubscription() below binds
+        // $actor = Auth::user(), so without this an unprocessed callback triple
+        // belonging to B could be replayed by A and mint A's paid term — after
+        // which B's own callback hits idempotency and B can never claim what they
+        // paid for. Same L1 guard as ShopServicesController::addCallback(); the
+        // machine leg (finalizeCapturedPayment) has always resolved its actor
+        // from notes.user_id rather than from a session.
+        //
+        // It runs BEFORE the idempotency check on purpose: the duplicate branch
+        // seeds pending_subscription_id into the caller's session, which would
+        // hand A a subscription that is B's.
+        //
+        // ponytail: enforced only when the note is present, matching the sibling.
+        // Every order this codebase mints carries it (createRazorpayOrder), and
+        // refusing a noteless legacy order would discard a real customer's
+        // captured money rather than protect anyone.
+        $orderUserId = $rzpOrder->notes['user_id'] ?? null;
+        if ($orderUserId !== null && (int) $orderUserId !== (int) Auth::id()) {
+            Log::warning('Subscription callback: order user mismatch', [
+                'payment_id' => $paymentId,
+                'order_user_id' => $orderUserId,
+                'auth_user_id' => Auth::id(),
+            ]);
+
+            return redirect()->route('subscription.payment')
+                ->with('error', 'This payment does not match your account. Contact support with ref: ' . $paymentId);
+        }
+
         // Step 5: Idempotency check
         $existingSubscription = $this->paymentService->findExistingSubscription($paymentId);
         if ($existingSubscription) {
