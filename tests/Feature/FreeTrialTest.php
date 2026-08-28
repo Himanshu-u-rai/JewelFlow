@@ -44,9 +44,13 @@ class FreeTrialTest extends TestCase
             'owner_mobile' => fake()->unique()->numerify('9########'),
             'is_active' => true, 'access_mode' => 'active',
         ]);
+        // The owner role is not decoration here: subscription commerce PROVES
+        // ownership from users.role_id and denies an unproven identity, so a
+        // fixture that drives the HTTP trial/checkout routes must carry one.
         $user = User::create([
             'name' => 'Owner', 'mobile_number' => fake()->unique()->numerify('9########'),
-            'shop_id' => $shop->id, 'password' => bcrypt('x'), 'is_active' => true,
+            'shop_id' => $shop->id, 'role_id' => $this->createOwnerRole($shop->id)->id,
+            'password' => bcrypt('x'), 'is_active' => true,
         ]);
         return [$shop, $user];
     }
@@ -73,7 +77,17 @@ class FreeTrialTest extends TestCase
         $this->assertTrue(true);
     }
 
-    public function test_trial_end_drops_shop_to_read_only_data_preserved(): void
+    /**
+     * A trial that runs out is a LAPSE, so it lands on the entitlement axis:
+     * `expired` + a suspended shop, which is the recoverable state the owner can
+     * buy their way out of.
+     *
+     * It must NOT land on `read_only` — that state is reserved exclusively for a
+     * JewelFlows administrator hold. Minting it here was what left non-paying
+     * shops with a fully browsable ERP and made an admin hold indistinguishable
+     * from an unpaid bill.
+     */
+    public function test_trial_end_expires_and_suspends_data_preserved(): void
     {
         [$shop, $user] = $this->shopAndUser('retailer');
         $this->actingAs($user);
@@ -90,17 +104,32 @@ class FreeTrialTest extends TestCase
 
         $sub->refresh();
         $shop->refresh();
-        $this->assertSame('read_only', $sub->status, 'trial end → read_only, not expired/suspended');
-        $this->assertSame('read_only', $shop->access_mode);
+        $this->assertSame('expired', $sub->status, 'trial end → expired, never read_only');
+        $this->assertSame('suspended', $shop->access_mode);
+        $this->assertNull($shop->suspended_by, 'A lapse must never look administrative.');
 
-        // Read-only blocks writes...
+        // A lapsed shop cannot write...
         $blocked = false;
         try { SubscriptionGateService::assertShopWritable($shop->id); }
         catch (LogicException $e) { $blocked = true; }
-        $this->assertTrue($blocked, 'read-only shop cannot write');
+        $this->assertTrue($blocked, 'lapsed shop cannot write');
 
-        // ...but the edition row is preserved (data still belongs to the shop).
-        $this->assertTrue($shop->hasEdition('retailer'), 'edition not removed — data preserved');
+        // ...yet NOTHING is deleted. The lapse is enforced at the WRITE GATE
+        // (asserted above), not by tearing down the shop's edition row: this
+        // shop's retailer edition is the `seed` row every shop is born with
+        // (Shop::created), and a seed/admin_grant row is deliberately immune to
+        // lapse revocation (ShopEdition::revokeFromLapsedSubscription). It is
+        // access the shop holds independently of any one payment, so renewing
+        // lights the same row back up and the shop's data was never at risk.
+        $assignment = \App\Models\ShopEditionAssignment::where('shop_id', $shop->id)
+            ->where('edition', 'retailer')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($assignment, 'the edition assignment row survives the lapse');
+        $this->assertSame('seed', $assignment->source, 'the onboarding row, not a paid grant');
+        $this->assertNull($assignment->deactivated_at, 'a seed row is immune to lapse revocation');
+        $this->assertNull($assignment->deactivated_by, 'no admin acted — this was a lapse');
     }
 
     public function test_buying_a_plan_during_trial_converts_to_active(): void
