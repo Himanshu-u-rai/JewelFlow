@@ -290,16 +290,47 @@ class BillingManagementController extends Controller
                 // suspended_by stays null and the reason keeps the "Subscription "
                 // prefix that Shop::suspensionIsSubscriptionManaged() reads to route
                 // the owner to the plan picker instead of a Contact-Support dead end.
-                $shop->update([
-                    'access_mode' => 'suspended',
-                    'is_active' => $this->dbBool(false),
-                    'deactivated_at' => now(),
-                    'suspended_at' => $shop->suspended_at ?: now(),
-                    'suspended_by' => null,
-                    'suspension_reason' => 'Subscription ' . $subscription->status
-                        . (blank($validated['reason'] ?? null) ? '' : " — {$validated['reason']}"),
-                    'suspended_until' => null,
-                ]);
+                //
+                // Gated by the SAME POSITIVE PROOF as the entitling branch above, for
+                // the mirror-image reason. There the danger was clearing a hold; here
+                // it is OVERWRITING one — and this write is strictly worse, because it
+                // does not merely lose the administrative reason, it manufactures the
+                // exact row shape the platform treats as proof of a lapse:
+                // suspended_by=null plus a "Subscription " prefix. An administrative or
+                // unknown-origin restriction rewritten that way is LAUNDERED into a
+                // subscription-managed one, and since platform.enforce_subscriptions
+                // ships FALSE, EnsureSubscriptionIsActive::restoreIfSubscriptionManaged
+                // Suspension() then heals it to access_mode='active' on the shop's very
+                // next page view. A compliance hold becomes full write access, with an
+                // audit trail that says a lapse did it.
+                //
+                // The lapse is real and IS still recorded: the subscription row and its
+                // audit are written above, on the entitlement axis where they belong.
+                // Only the access-axis write is withheld.
+                //
+                // Positive proof, never `! suspensionIsAdministrative()` — that reads
+                // "no admin actor" as "safe to rewrite" and fails OPEN on the
+                // unattributed third category the 2026-02-18 backfill left behind
+                // ('Legacy deactivation migration' / 'Legacy shop missing subscription
+                // record': no actor, no corroborating reason, unknown origin). Read from
+                // the LOCKED row above, never the route-bound snapshot.
+                $restricted = $shop->access_mode !== 'active' || ! $shop->is_active;
+
+                if (! $restricted || $shop->suspensionIsSubscriptionManaged()) {
+                    $shop->update([
+                        'access_mode' => 'suspended',
+                        'is_active' => $this->dbBool(false),
+                        'deactivated_at' => now(),
+                        'suspended_at' => $shop->suspended_at ?: now(),
+                        'suspended_by' => null,
+                        'suspension_reason' => 'Subscription ' . $subscription->status
+                            . (blank($validated['reason'] ?? null) ? '' : " — {$validated['reason']}"),
+                        'suspended_until' => null,
+                    ]);
+                }
+                // Administrative or unknown-origin restriction: already at least as
+                // restrictive as the lapse would make it, and only an administrator may
+                // decide otherwise. Every access column is left byte-identical.
             }
 
             $this->audit->log(
