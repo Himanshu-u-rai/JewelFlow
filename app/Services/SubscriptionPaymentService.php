@@ -795,7 +795,8 @@ class SubscriptionPaymentService
      */
     public function hasPriorEntitlementForFamily(?int $shopId, string $edition, ?int $userId = null): bool
     {
-        return $this->familyHistoryExists($shopId, $edition, $userId, null);
+        // Unresolvable plans DISQUALIFY here. See familyHistoryExists().
+        return $this->familyHistoryExists($shopId, $edition, $userId, null, true);
     }
 
     /**
@@ -803,9 +804,40 @@ class SubscriptionPaymentService
      * has ever held, mapped plan → edition → family, compared to the target
      * family. `$narrow` optionally restricts the row shape (the trial predicate
      * uses it to look at free rows only).
+     *
+     * `$unresolvableDisqualifies` decides what happens to a row whose plan will
+     * not map to a family at all. Plan::grantsEdition() prefers the platform
+     * product, falls back to a `retailer_|manufacturer_|dhiran_` code prefix, and
+     * otherwise returns null — so rows predating the platform-product table, and
+     * any bespoke or enterprise plan code, resolve to nothing. Skipping them made
+     * a shop that had genuinely paid read as a virgin account and collect a free
+     * month: the strongest possible evidence of prior entitlement, silently
+     * discarded because it could not be classified.
+     *
+     * The two callers want opposite things from that row, which is why this is an
+     * explicit argument rather than something inferred from `$narrow`:
+     *
+     *   BROAD  (hasPriorEntitlementForFamily) is a POLICY question — "has this
+     *          identity ever been entitled?" Ambiguity must fail CLOSED, so an
+     *          unresolvable row disqualifies. The cost of a false positive is one
+     *          owner told to pick a paid plan; the cost of a false negative is
+     *          free product.
+     *
+     *   NARROW (hasUsedTrialForFamily) is NOT a policy question. It mirrors the
+     *          partial unique index `shop_subscriptions_trial_unique`
+     *          (user_id, plan_id) WHERE price_paid = 0 AND razorpay_payment_id IS
+     *          NULL, so the concurrent-trial race recovery in startTrial() can
+     *          re-find the exact row Postgres just rejected. Widening it to count
+     *          rows the index does not cover would desynchronise the two and make
+     *          the recovery return the wrong subscription. It stays byte-aligned.
      */
-    private function familyHistoryExists(?int $shopId, string $edition, ?int $userId, ?callable $narrow): bool
-    {
+    private function familyHistoryExists(
+        ?int $shopId,
+        string $edition,
+        ?int $userId,
+        ?callable $narrow,
+        bool $unresolvableDisqualifies = false
+    ): bool {
         $family = $this->trialFamilyFor($edition);
 
         $query = ShopSubscription::query()
@@ -832,7 +864,18 @@ class SubscriptionPaymentService
 
         foreach ($query->get() as $sub) {
             $grantEdition = $sub->plan?->grantsEdition();
-            if ($grantEdition && $this->trialFamilyFor($grantEdition) === $family) {
+
+            if ($grantEdition === null) {
+                // Unclassifiable history. Under the broad predicate this is prior
+                // entitlement we merely cannot name, so it counts.
+                if ($unresolvableDisqualifies) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ($this->trialFamilyFor($grantEdition) === $family) {
                 return true;
             }
         }
@@ -884,11 +927,26 @@ class SubscriptionPaymentService
             if ($shop->suspensionIsAdministrative()) {
                 return 'Your shop is under an administrative hold by JewelFlows. Starting a free trial cannot lift it — please contact support.';
             }
+            // Then the MODE, for restrictions with no attribution at all. Checking
+            // suspensionIsAdministrative() alone leaves the third category open:
+            // the 2026-02-18 backfill wrote restricted rows with no actor and no
+            // corroborating reason, and the buggy expiry fork wrote unattributed
+            // `read_only`. Neither is provably an admin act, so neither is caught
+            // above — and neither is provably a lapse either, so neither may be
+            // traded away for a free month. Both modes are refused explicitly.
+
             // A lapse-driven suspension (suspended_by NULL) is the entitlement
             // axis, not an admin act, and is refused too: the way out of a lapse
             // is to pay, never to mint another free month.
             if ($shop->access_mode === 'suspended') {
                 return 'Your shop is suspended. Please contact support.';
+            }
+
+            // read_only with no actor. startTrial() force-fills access_mode
+            // ='active' on success, so allowing this would turn a self-service
+            // trial into a self-service UNLOCK of a restriction somebody imposed.
+            if ($shop->access_mode === 'read_only') {
+                return 'Your shop is restricted to read-only access. Starting a free trial cannot lift that restriction — please contact support.';
             }
         }
 
@@ -988,20 +1046,33 @@ class SubscriptionPaymentService
             ]);
 
             // Grant the edition + make the shop writable for the trial. The gate
-            // above already refuses every administrative hold, so this branch is
-            // unreachable for one; the condition repeats the check anyway
-            // (origin-aware, so read_only counts) because "a self-service trial
-            // can never lift an administrator's hold" is worth two lines of
-            // belt-and-braces rather than one assumption about call order.
+            // above already refuses every restricted access_mode, so this branch
+            // is unreachable for one; the condition repeats the check anyway
+            // because "a self-service trial can never lift a restriction somebody
+            // imposed" is worth four lines of belt-and-braces rather than one
+            // assumption about call order.
+            //
+            // POSITIVE PROOF, the same rule the admin billing branches use.
+            // `! suspensionIsAdministrative()` reads "no admin actor" as "safe to
+            // unlock" and fails OPEN on unattributed restrictions. A shop still
+            // flagged is_active=false is only reactivated when it is genuinely
+            // unrestricted, or when suspensionIsSubscriptionManaged() positively
+            // corroborates a lapse — which is the case this reactivation exists
+            // for. Unknown origin keeps its restriction; lifting one is a
+            // deliberate access decision, not a side effect of starting a trial.
             if ($shopId) {
                 $this->grantEditionForSubscription($subscription, $plan);
 
                 $shop = Auth::user()->shop;
-                if ($shop && ! $shop->suspensionIsAdministrative() && $shop->access_mode !== 'suspended') {
-                    $shop->forceFill([
-                        'access_mode' => 'active',
-                        'is_active'   => true,
-                    ])->save();
+                if ($shop) {
+                    $restricted = $shop->access_mode !== 'active' || ! $shop->is_active;
+
+                    if (! $restricted || $shop->suspensionIsSubscriptionManaged()) {
+                        $shop->forceFill([
+                            'access_mode' => 'active',
+                            'is_active'   => true,
+                        ])->save();
+                    }
                 }
             }
 
