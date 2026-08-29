@@ -1079,26 +1079,171 @@ class FreeTrialEligibilityTest extends TestCase
         $this->assertTrue((bool) $fresh->is_active, 'a proven subscription-managed shop must be reactivated');
     }
 
-    /** Same shape, unprovable origin → the trial may proceed, the unlock may not. */
-    public function test_automatic_trial_does_not_restore_an_unknown_origin_inactive_shop(): void
+    // ── 20. eligibility and recoverability must be ONE decision ─────────────
+
+    /**
+     * THE GAP THIS SECTION CLOSES.
+     *
+     * A shop can be restricted without either restricted MODE: access_mode
+     * stays 'active' while is_active goes false. That is the flag the expiry
+     * scheduler sets, and the shape the 2026-02-18 backfill left behind.
+     *
+     * The refusal gate used to test the mode only, while the reactivation guard
+     * in startTrial() tests mode AND is_active. Two different definitions of
+     * "restricted" in one flow, so this shape passed the first and failed the
+     * second: the card was shown, the trial was minted, the term started
+     * counting down — and the shop stayed locked out, because the reactivation
+     * guard (correctly) refuses to lift a restriction it cannot attribute.
+     *
+     * The customer's one automatic trial, ever, spent on nothing. Worse than
+     * refusing it: a refusal routes them to support, this routes them nowhere
+     * and quietly burns the entitlement on the way.
+     *
+     * Eligibility must therefore ask exactly what recoverability asks. Never
+     * grant a trial that cannot restore usable access.
+     *
+     * @dataProvider enforcementModes
+     */
+    public function test_unknown_origin_inactive_shop_cannot_see_or_start_an_automatic_trial(bool $enforce): void
     {
-        config(['platform.enforce_subscriptions' => true]);
+        config(['platform.enforce_subscriptions' => $enforce]);
         [$shop, $user] = $this->shopAndUser('retailer', [
-            'access_mode'       => 'active',
-            'is_active'         => false,
+            'access_mode'       => 'active',     // ← mode looks fine…
+            'is_active'         => false,        // ← …the flag does not
             'deactivated_at'    => now()->subYear(),
             'suspended_at'      => now()->subYear(),
             'suspended_by'      => null,
             'suspension_reason' => 'Legacy deactivation migration',
         ]);
 
-        $this->assertFalse($shop->suspensionIsSubscriptionManaged());
+        $this->assertFalse($shop->suspensionIsAdministrative(), 'fixture must have no admin actor');
+        $this->assertFalse($shop->suspensionIsSubscriptionManaged(), 'fixture must not corroborate as a lapse');
+
+        $fields = ['access_mode', 'is_active', 'deactivated_at', 'suspended_at',
+            'suspended_by', 'suspension_reason', 'suspended_until'];
+        $before = $shop->fresh()->only($fields);
+        // Shop::created auto-seeds one shop_editions row from shop_type, so the
+        // invariant is "unchanged", not "zero".
+        $editionsBefore = \DB::table('shop_editions')->where('shop_id', $shop->id)->count();
 
         $this->actingAs($user);
+        $svc = app(SubscriptionPaymentService::class);
+
+        $this->assertFalse($svc->canStartAutomaticTrial($this->plan()),
+            'a shop that cannot be restored is not eligible for a trial');
+
+        try {
+            $svc->startTrial($this->plan());
+            $this->fail('startTrial() must refuse an unknown-origin inactive shop');
+        } catch (LogicException $e) {
+            $this->assertMatchesRegularExpression('/restrict|hold|support/i', $e->getMessage());
+        }
+
+        // The UI inherits the same decision — one authoritative eligibility API.
+        $this->getPlans($user)->assertDontSee($this->trialFormMarker(), false);
+        $this->postTrial($user)->assertRedirect();
+
+        // Nothing was consumed on any axis.
+        $this->assertSame(0, ShopSubscription::where('shop_id', $shop->id)->count(),
+            'no subscription may be created');
+        $this->assertSame($editionsBefore, \DB::table('shop_editions')->where('shop_id', $shop->id)->count(),
+            'no new edition may be granted');
+        $this->assertSame(0, \DB::table('platform_invoices')->where('shop_id', $shop->id)->count(),
+            'no invoice may be raised');
+        $this->assertEquals($before, $shop->fresh()->only($fields), 'shop state must be unchanged');
+    }
+
+    /**
+     * Same shape, with an administrator marker. Hidden, rejected, hold verbatim.
+     *
+     * @dataProvider enforcementModes
+     */
+    public function test_administrator_marked_inactive_shop_cannot_start_an_automatic_trial(bool $enforce): void
+    {
+        config(['platform.enforce_subscriptions' => $enforce]);
+        $admin = $this->platformAdmin;
+        [$shop, $user] = $this->shopAndUser('retailer', [
+            'access_mode'       => 'active',
+            'is_active'         => false,
+            'deactivated_at'    => now()->subDays(3),
+            'suspended_at'      => now()->subDays(3),
+            'suspended_until'   => now()->addDays(10),
+            'suspended_by'      => $admin->id,
+            'suspension_reason' => 'Administrative hold — compliance review',
+        ]);
+
+        $fields = ['access_mode', 'is_active', 'deactivated_at', 'suspended_at',
+            'suspended_by', 'suspension_reason', 'suspended_until'];
+        $before = $shop->fresh()->only($fields);
+
+        $this->actingAs($user);
+        $this->assertFalse(app(SubscriptionPaymentService::class)->canStartAutomaticTrial($this->plan()));
+
+        try {
+            app(SubscriptionPaymentService::class)->startTrial($this->plan());
+            $this->fail('startTrial() must refuse an administrative hold');
+        } catch (LogicException) {
+            // expected
+        }
+
+        $this->getPlans($user)->assertDontSee($this->trialFormMarker(), false);
+        $this->postTrial($user)->assertRedirect();
+
+        $this->assertSame(0, ShopSubscription::where('shop_id', $shop->id)->count());
+        $this->assertEquals($before, $shop->fresh()->only($fields));
+        $this->assertSame($admin->id, $shop->fresh()->suspended_by);
+    }
+
+    /**
+     * The supported recovery, under both enforcement values. Tightening the gate
+     * must not cost a proven lapse its documented way back.
+     *
+     * @dataProvider enforcementModes
+     */
+    public function test_subscription_managed_inactive_shop_keeps_its_trial_recovery(bool $enforce): void
+    {
+        config(['platform.enforce_subscriptions' => $enforce]);
+        [$shop, $user] = $this->shopAndUser('retailer', [
+            'access_mode'       => 'active',
+            'is_active'         => false,
+            'deactivated_at'    => now()->subDays(2),
+            'suspended_at'      => now()->subDays(2),
+            'suspended_by'      => null,
+            'suspension_reason' => 'Subscription expired',
+        ]);
+
+        $this->assertTrue($shop->suspensionIsSubscriptionManaged(), 'fixture must be a proven lapse');
+
+        $this->actingAs($user);
+        $this->assertTrue(app(SubscriptionPaymentService::class)->canStartAutomaticTrial($this->plan()));
         app(SubscriptionPaymentService::class)->startTrial($this->plan());
 
-        $this->assertFalse((bool) $shop->fresh()->is_active,
-            'an unknown-origin deactivation must not be lifted by starting a trial');
+        $this->assertSame(1, $this->trialRowCount($shop));
+        $fresh = $shop->fresh();
+        $this->assertSame('active', $fresh->access_mode);
+        $this->assertTrue((bool) $fresh->is_active,
+            'the trial it was allowed to start must actually restore access');
+    }
+
+    /** One shop's unrecoverable state must not deny an unrelated shop. */
+    public function test_an_inactive_shop_does_not_deny_another_shops_trial(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $this->shopAndUser('retailer', [
+            'access_mode'       => 'active',
+            'is_active'         => false,
+            'suspended_by'      => null,
+            'suspension_reason' => 'Legacy deactivation migration',
+        ]);
+
+        [$shopB, $userB] = $this->shopAndUser();
+
+        $this->actingAs($userB);
+        $this->assertTrue(app(SubscriptionPaymentService::class)->canStartAutomaticTrial($this->plan()));
+        $this->getPlans($userB)->assertOk()->assertSee($this->trialFormMarker(), false);
+
+        $this->postTrial($userB)->assertRedirect();
+        $this->assertSame(1, $this->trialRowCount($shopB));
     }
 
     /** Control: tightening the guard must not cost a genuinely new shop its trial. */
