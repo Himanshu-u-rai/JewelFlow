@@ -733,4 +733,500 @@ class FreeTrialEligibilityTest extends TestCase
         $this->postTrial($user)->assertRedirect();
         $this->assertSame($before, ShopSubscription::where('shop_id', $shop->id)->count());
     }
+
+    // ── 17. CORRECTION 1 — recording a LAPSE must not launder a hold ─────────
+
+    /**
+     * The entitling branch was fixed to require positive proof before it reopens
+     * a shop. The non-entitling branch below it was not: recording `expired` or
+     * `cancelled` overwrites access_mode, suspended_by AND suspension_reason
+     * unconditionally.
+     *
+     * That is not merely "loses the reason text". It is an ESCALATION. The
+     * overwrite sets suspended_by=null and a reason beginning "Subscription ",
+     * which is exactly the shape Shop::suspensionIsSubscriptionManaged() reads as
+     * proof of a lapse — so an administrative hold, or a legacy restriction of
+     * unknown origin, is laundered into a subscription-managed one. And because
+     * platform.enforce_subscriptions defaults to FALSE,
+     * EnsureSubscriptionIsActive::restoreIfSubscriptionManagedSuspension() then
+     * heals it to access_mode=active on the shop's very next page view.
+     *
+     * The lapse is real and must still be recorded on the entitlement axis. What
+     * must not happen is the access axis being rewritten on the strength of it.
+     */
+    public static function lapseStatuses(): array
+    {
+        return ['expired lapse' => ['expired'], 'cancelled lapse' => ['cancelled']];
+    }
+
+    public static function heldLapses(): array
+    {
+        $cases = [];
+        foreach (['read_only', 'suspended'] as $mode) {
+            foreach (['expired', 'cancelled'] as $status) {
+                $cases["admin {$mode} + {$status}"] = [$mode, $status];
+            }
+        }
+
+        return $cases;
+    }
+
+    public static function unattributedLapses(): array
+    {
+        $cases = [];
+        foreach (['read_only', 'suspended'] as $mode) {
+            foreach (['expired', 'cancelled'] as $status) {
+                $cases["unknown-origin {$mode} + {$status}"] = [$mode, $status];
+            }
+        }
+
+        return $cases;
+    }
+
+    /** The same admin billing form, recording a lapse instead of an entitlement. */
+    private function lapseAsAdmin(PlatformAdmin $admin, Shop $shop, string $status)
+    {
+        return $this->grantAsAdmin($admin, $shop, $this->plan(), [
+            'status'        => $status,
+            'billing_cycle' => null,
+            'starts_at'     => now()->subYear()->toDateString(),
+            'ends_at'       => now()->subMonth()->toDateString(),
+            'reason'        => 'Recording the lapse',
+        ]);
+    }
+
+    /**
+     * The behaviour that must SURVIVE the fix: an ordinary, unrestricted shop
+     * whose term lapsed is suspended on the entitlement axis, attributed to
+     * nobody, and stays self-service recoverable.
+     *
+     * @dataProvider lapseStatuses
+     */
+    public function test_lapse_recording_suspends_an_unrestricted_shop_as_subscription_managed(string $status): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->platformAdmin;
+        [$shop] = $this->shopAndUser();
+
+        $this->lapseAsAdmin($admin, $shop, $status)->assertRedirect();
+
+        $fresh = $shop->fresh();
+        $this->assertSame('suspended', $fresh->access_mode, 'a lapse on an unrestricted shop still suspends it');
+        $this->assertFalse((bool) $fresh->is_active);
+        $this->assertNull($fresh->suspended_by, 'a lapse has no human actor');
+        $this->assertStringStartsWith('Subscription ', (string) $fresh->suspension_reason);
+        $this->assertTrue($fresh->suspensionIsSubscriptionManaged(),
+            'the owner must still be routed to the plan picker, not to Contact Support');
+    }
+
+    /**
+     * A shop already down for a lapse, lapsing again (renewal recorded then
+     * expired, or a second product). Positively subscription-managed, so the
+     * branch may still write — recovery must not regress into a dead end.
+     *
+     * @dataProvider lapseStatuses
+     */
+    public function test_lapse_recording_leaves_a_subscription_managed_restriction_recoverable(string $status): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->platformAdmin;
+        [$shop, $user] = $this->shopAndUser('retailer', [
+            'access_mode'       => 'suspended',
+            'is_active'         => false,
+            'deactivated_at'    => now()->subDays(5),
+            'suspended_at'      => now()->subDays(5),
+            'suspended_by'      => null,
+            'suspension_reason' => 'Subscription expired',
+        ]);
+        $this->history($shop, $user, 'expired', true);
+
+        $this->assertTrue($shop->suspensionIsSubscriptionManaged(), 'fixture must be a proven lapse');
+
+        $this->lapseAsAdmin($admin, $shop, $status)->assertRedirect();
+
+        $fresh = $shop->fresh();
+        $this->assertSame('suspended', $fresh->access_mode);
+        $this->assertNull($fresh->suspended_by);
+        $this->assertTrue($fresh->suspensionIsSubscriptionManaged(),
+            'a proven lapse must stay recoverable after a second lapse is recorded');
+    }
+
+    /**
+     * THE BLOCKER. An administrative hold, crossed with both lapse statuses and
+     * both restriction modes. Every access column must come back byte-identical —
+     * the actor especially, because it is the only origin proof the system has.
+     *
+     * @dataProvider heldLapses
+     */
+    public function test_administrative_hold_survives_a_lapse_recording(string $mode, string $status): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin  = $this->platformAdmin;
+        $reason = 'Administrative hold — compliance review';
+        [$shop, $user] = $this->heldShop($mode, $admin, $reason);
+        $this->history($shop, $user, 'expired', true);
+
+        $fields = ['access_mode', 'is_active', 'deactivated_at', 'suspended_at',
+            'suspended_by', 'suspension_reason', 'suspended_until'];
+        $before = $shop->fresh()->only($fields);
+
+        $this->lapseAsAdmin($admin, $shop, $status)->assertRedirect();
+
+        // The entitlement IS recorded — we narrow the write, never refuse it.
+        $this->assertNotNull(
+            ShopSubscription::where('shop_id', $shop->id)->where('status', $status)->latest('id')->first(),
+            "the {$status} lapse must still be recorded on the entitlement axis"
+        );
+
+        $this->assertEquals($before, $shop->fresh()->only($fields),
+            'recording a lapse must leave every administrative access column verbatim');
+        $this->assertSame($admin->id, $shop->fresh()->suspended_by,
+            'suspended_by must survive — nulling it launders the hold into a lapse');
+    }
+
+    /**
+     * The fail-open trap again, on this branch. `! suspensionIsAdministrative()`
+     * would read "no admin actor" as "safe to overwrite" and convert a legacy
+     * restriction nobody can attribute into a self-healing one.
+     *
+     * @dataProvider unattributedLapses
+     */
+    public function test_unattributed_restriction_survives_a_lapse_recording(string $mode, string $status): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->platformAdmin;
+        [$shop] = $this->shopAndUser('retailer', [
+            'access_mode'       => $mode,
+            'is_active'         => false,
+            'deactivated_at'    => now()->subYear(),
+            'suspended_at'      => now()->subYear(),
+            'suspended_until'   => null,
+            'suspended_by'      => null,
+            'suspension_reason' => 'Legacy deactivation migration',
+        ]);
+
+        $this->assertFalse($shop->suspensionIsAdministrative(), 'fixture must have no admin actor');
+        $this->assertFalse($shop->suspensionIsSubscriptionManaged(), 'fixture must not corroborate as a lapse');
+
+        $fields = ['access_mode', 'is_active', 'deactivated_at', 'suspended_at',
+            'suspended_by', 'suspension_reason', 'suspended_until'];
+        $before = $shop->fresh()->only($fields);
+
+        $this->lapseAsAdmin($admin, $shop, $status)->assertRedirect();
+
+        $this->assertNotNull(
+            ShopSubscription::where('shop_id', $shop->id)->where('status', $status)->latest('id')->first(),
+            'the lapse must still be recorded'
+        );
+        $this->assertEquals($before, $shop->fresh()->only($fields),
+            'an unknown-origin restriction must fail closed, not be rewritten as a lapse');
+    }
+
+    /**
+     * Why the overwrite matters, demonstrated end to end. Enforcement defaults to
+     * OFF, and with it off the middleware HEALS anything it classifies as
+     * subscription-managed. So laundering the reason is not cosmetic — the next
+     * page view turns it into full write access.
+     *
+     * @dataProvider heldLapses
+     */
+    public function test_a_preserved_hold_cannot_be_auto_healed_by_the_next_request(string $mode, string $status): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin  = $this->platformAdmin;
+        $reason = 'Administrative hold — abuse report';
+        [$shop, $user] = $this->heldShop($mode, $admin, $reason);
+
+        $this->lapseAsAdmin($admin, $shop, $status)->assertRedirect();
+
+        // The kill switch in its shipped default position.
+        config(['platform.enforce_subscriptions' => false]);
+        $this->actingAs($user)->get(route('dashboard'));
+
+        $fresh = $shop->fresh();
+        $this->assertSame($mode, $fresh->access_mode, 'the middleware must not heal a preserved hold');
+        $this->assertFalse((bool) $fresh->is_active);
+        $this->assertSame($admin->id, $fresh->suspended_by);
+        $this->assertSame($reason, $fresh->suspension_reason);
+    }
+
+    /**
+     * An audit row that says the shop was suspended when it was left read_only is
+     * worse than no audit row: it is a record the next administrator will trust.
+     */
+    public function test_lapse_audit_reports_the_preserved_access_state(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        $admin = $this->platformAdmin;
+        [$shop] = $this->heldShop('read_only', $admin, 'Administrative hold — compliance review');
+
+        $this->lapseAsAdmin($admin, $shop, 'expired')->assertRedirect();
+
+        $audit = \App\Models\Platform\PlatformAuditLog::where('target_type', Shop::class)
+            ->where('target_id', $shop->id)
+            ->where('action', 'billing.subscription_changed')
+            ->latest('id')->first();
+
+        $this->assertNotNull($audit, 'the lapse must be audited');
+        $this->assertSame('read_only', data_get($audit->after, 'shop.access_mode'),
+            'the audit must describe the state that was actually left behind');
+        $this->assertSame('read_only', data_get($audit->before, 'shop.access_mode'),
+            'and the before-snapshot must not claim the shop was unrestricted');
+    }
+
+    // ── 18. CORRECTION 2 — an automatic trial must not clear unknown read-only ─
+
+    /**
+     * The service gate refuses `suspended` literally and any shop with an admin
+     * actor, but says nothing about `read_only` with no actor. That row is the
+     * unknown-origin third category again: not provably a lapse, not provably an
+     * admin act. Minting a trial on it and force-filling access_mode=active turns
+     * a restriction somebody imposed into full write access.
+     *
+     * @dataProvider enforcementModes
+     */
+    public function test_unattributed_read_only_shop_cannot_see_or_start_an_automatic_trial(bool $enforce): void
+    {
+        config(['platform.enforce_subscriptions' => $enforce]);
+        [$shop, $user] = $this->shopAndUser('retailer', [
+            'access_mode'       => 'read_only',
+            'is_active'         => false,
+            'deactivated_at'    => now()->subYear(),
+            'suspended_at'      => now()->subYear(),
+            'suspended_by'      => null,
+            'suspension_reason' => 'Legacy deactivation migration',
+        ]);
+
+        $this->assertFalse($shop->suspensionIsAdministrative());
+        $this->assertFalse($shop->suspensionIsSubscriptionManaged());
+
+        $this->actingAs($user);
+        $svc = app(SubscriptionPaymentService::class);
+
+        $this->assertFalse($svc->canStartAutomaticTrial($this->plan()),
+            'an unknown-origin read-only shop is not a genuinely new shop');
+
+        // Service boundary — below any middleware, so this is the real gate.
+        try {
+            $svc->startTrial($this->plan());
+            $this->fail('startTrial() must refuse an unknown-origin read-only shop');
+        } catch (LogicException $e) {
+            $this->assertMatchesRegularExpression('/hold|read-only|read only|restricted|support/i', $e->getMessage());
+        }
+
+        $this->assertSame(0, $this->trialRowCount($shop));
+
+        // Display and HTTP write paths agree with the service.
+        $this->getPlans($user)->assertDontSee($this->trialFormMarker(), false);
+        $this->postTrial($user)->assertRedirect();
+        $this->assertSame(0, $this->trialRowCount($shop));
+
+        $fresh = $shop->fresh();
+        $this->assertSame('read_only', $fresh->access_mode, 'a refused trial must not touch the access axis');
+        $this->assertFalse((bool) $fresh->is_active);
+        $this->assertSame('Legacy deactivation migration', $fresh->suspension_reason);
+    }
+
+    /** The attributed variant, for completeness: state untouched by the refusal. */
+    public function test_administrator_read_only_shop_state_is_unchanged_by_a_refused_trial(): void
+    {
+        config(['platform.enforce_subscriptions' => false]);
+        $admin = $this->platformAdmin;
+        [$shop, $user] = $this->heldShop('read_only', $admin, 'Administrative hold — compliance review');
+
+        $fields = ['access_mode', 'is_active', 'deactivated_at', 'suspended_at',
+            'suspended_by', 'suspension_reason', 'suspended_until'];
+        $before = $shop->fresh()->only($fields);
+
+        $this->actingAs($user);
+        try {
+            app(SubscriptionPaymentService::class)->startTrial($this->plan());
+            $this->fail('startTrial() must refuse an administrative hold');
+        } catch (LogicException) {
+            // expected
+        }
+
+        $this->assertSame(0, $this->trialRowCount($shop));
+        $this->assertEquals($before, $shop->fresh()->only($fields));
+    }
+
+    /**
+     * The other half of the guard, and the reason it cannot just be deleted: a
+     * shop that is nominally active but flagged inactive by the subscription
+     * lifecycle is exactly the case the reactivation exists for. Positively
+     * proven subscription-managed → recovery still works.
+     */
+    public function test_automatic_trial_restores_a_subscription_managed_inactive_shop(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        [$shop, $user] = $this->shopAndUser('retailer', [
+            'access_mode'       => 'active',
+            'is_active'         => false,
+            'deactivated_at'    => now()->subDays(2),
+            'suspended_at'      => now()->subDays(2),
+            'suspended_by'      => null,
+            'suspension_reason' => 'Subscription expired',
+        ]);
+
+        $this->assertTrue($shop->suspensionIsSubscriptionManaged(), 'fixture must be a proven lapse');
+
+        $this->actingAs($user);
+        app(SubscriptionPaymentService::class)->startTrial($this->plan());
+
+        $this->assertSame(1, $this->trialRowCount($shop));
+        $fresh = $shop->fresh();
+        $this->assertSame('active', $fresh->access_mode);
+        $this->assertTrue((bool) $fresh->is_active, 'a proven subscription-managed shop must be reactivated');
+    }
+
+    /** Same shape, unprovable origin → the trial may proceed, the unlock may not. */
+    public function test_automatic_trial_does_not_restore_an_unknown_origin_inactive_shop(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        [$shop, $user] = $this->shopAndUser('retailer', [
+            'access_mode'       => 'active',
+            'is_active'         => false,
+            'deactivated_at'    => now()->subYear(),
+            'suspended_at'      => now()->subYear(),
+            'suspended_by'      => null,
+            'suspension_reason' => 'Legacy deactivation migration',
+        ]);
+
+        $this->assertFalse($shop->suspensionIsSubscriptionManaged());
+
+        $this->actingAs($user);
+        app(SubscriptionPaymentService::class)->startTrial($this->plan());
+
+        $this->assertFalse((bool) $shop->fresh()->is_active,
+            'an unknown-origin deactivation must not be lifted by starting a trial');
+    }
+
+    /** Control: tightening the guard must not cost a genuinely new shop its trial. */
+    public function test_genuinely_new_active_shop_still_receives_its_first_trial(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        [$shop, $user] = $this->shopAndUser();
+
+        $this->actingAs($user);
+        app(SubscriptionPaymentService::class)->startTrial($this->plan());
+
+        $this->assertSame(1, $this->trialRowCount($shop));
+        $fresh = $shop->fresh();
+        $this->assertSame('active', $fresh->access_mode);
+        $this->assertTrue((bool) $fresh->is_active);
+    }
+
+    // ── 19. CORRECTION 3 — an unresolvable historical plan must fail closed ──
+
+    /**
+     * A plan whose product family cannot be resolved. Plan::grantsEdition()
+     * prefers the platform product, then falls back to a code prefix, then
+     * returns null. `plans` rows predating the platform-product table — and any
+     * bespoke/enterprise code — land here.
+     */
+    private function unresolvablePlan(): Plan
+    {
+        $plan = Plan::create([
+            'code'          => 'legacy_bundle_2019',
+            'name'          => 'Legacy Bundle 2019',
+            'price_monthly' => 0,
+            'price_yearly'  => 0,
+            'is_active'     => true,
+        ]);
+
+        $this->assertNull($plan->grantsEdition(), 'fixture must be genuinely unresolvable');
+
+        return $plan;
+    }
+
+    private function unresolvableHistory(Shop $shop, User $user, bool $paid): ShopSubscription
+    {
+        return ShopSubscription::create([
+            'shop_id'             => $shop->id,
+            'user_id'             => $user->id,
+            'plan_id'             => $this->unresolvablePlan()->id,
+            'status'              => 'expired',
+            'starts_at'           => now()->subYears(2),
+            'ends_at'             => now()->subYear(),
+            'grace_ends_at'       => now()->subYear(),
+            'billing_cycle'       => $paid ? 'yearly' : null,
+            'price_paid'          => $paid ? 50000 : 0,
+            'razorpay_payment_id' => $paid ? 'pay_legacy_' . fake()->unique()->numerify('##########') : null,
+            'actor_type'          => 'self_service',
+        ]);
+    }
+
+    /**
+     * The revenue hole: familyHistoryExists() skips any row whose plan will not
+     * resolve, so a shop that paid for a bundle nobody can classify reads as a
+     * virgin account and is handed a free month.
+     *
+     * @dataProvider enforcementModes
+     */
+    public function test_prior_paid_row_with_an_unresolvable_plan_denies_the_automatic_trial(bool $enforce): void
+    {
+        config(['platform.enforce_subscriptions' => $enforce]);
+        [$shop, $user] = $this->shopAndUser();
+        $this->unresolvableHistory($shop, $user, true);
+
+        $svc = app(SubscriptionPaymentService::class);
+        $this->assertTrue($svc->hasPriorEntitlementForFamily($shop->id, \App\Support\ShopEdition::RETAILER, $user->id),
+            'an unclassifiable entitlement must disqualify, not disappear');
+
+        $this->getPlans($user)->assertOk()->assertDontSee($this->trialFormMarker(), false);
+        $this->postTrial($user)->assertRedirect();
+        $this->assertSame(0, $this->trialRowCount($shop));
+    }
+
+    /**
+     * @dataProvider enforcementModes
+     */
+    public function test_prior_free_row_with_an_unresolvable_plan_denies_the_automatic_trial(bool $enforce): void
+    {
+        config(['platform.enforce_subscriptions' => $enforce]);
+        [$shop, $user] = $this->shopAndUser();
+        $this->unresolvableHistory($shop, $user, false);
+
+        $this->getPlans($user)->assertOk()->assertDontSee($this->trialFormMarker(), false);
+        $this->postTrial($user)->assertRedirect();
+        $this->assertSame(0, $this->trialRowCount($shop));
+    }
+
+    /**
+     * The narrow predicate is NOT a policy question — it mirrors the partial
+     * unique index `shop_subscriptions_trial_unique` so the concurrent-trial race
+     * recovery can re-find the row the database just rejected. Widening it to
+     * count unresolvable plans would make it describe rows the index does not
+     * cover, and the recovery would return the wrong subscription.
+     *
+     * Broad = policy, fails closed. Narrow = index mirror, unchanged.
+     */
+    public function test_the_narrow_trial_predicate_is_unchanged_by_an_unresolvable_plan(): void
+    {
+        [$shop, $user] = $this->shopAndUser();
+        $this->unresolvableHistory($shop, $user, false);
+
+        $svc = app(SubscriptionPaymentService::class);
+
+        $this->assertFalse($svc->hasUsedTrialForFamily($shop->id, \App\Support\ShopEdition::RETAILER, $user->id),
+            'the index-mirroring predicate must keep its exact existing meaning');
+        $this->assertTrue($svc->hasPriorEntitlementForFamily($shop->id, \App\Support\ShopEdition::RETAILER, $user->id),
+            'the policy predicate is the one that fails closed');
+    }
+
+    /** Failing closed must fail closed on the RIGHT tenant. */
+    public function test_an_unresolvable_plan_on_another_shop_does_not_deny_this_shop(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+        [$shopA, $userA] = $this->shopAndUser();
+        $this->unresolvableHistory($shopA, $userA, true);
+
+        [$shopB, $userB] = $this->shopAndUser();
+
+        $svc = app(SubscriptionPaymentService::class);
+        $this->assertFalse($svc->hasPriorEntitlementForFamily($shopB->id, \App\Support\ShopEdition::RETAILER, $userB->id),
+            'one tenant\'s unclassifiable history must not consume another tenant\'s trial');
+
+        $this->getPlans($userB)->assertOk()->assertSee($this->trialFormMarker(), false);
+    }
 }
