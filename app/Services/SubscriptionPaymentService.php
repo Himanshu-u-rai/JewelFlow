@@ -948,6 +948,35 @@ class SubscriptionPaymentService
             if ($shop->access_mode === 'read_only') {
                 return 'Your shop is restricted to read-only access. Starting a free trial cannot lift that restriction — please contact support.';
             }
+
+            // Finally the GENERAL restriction test, which the three checks above
+            // are only special cases of. A shop can be restricted without either
+            // restricted mode: access_mode stays 'active' while is_active goes
+            // false. That is the flag CheckSubscriptionExpiry sets, and the shape
+            // the 2026-02-18 control-plane backfill left behind.
+            //
+            // This gate used to look at the MODE alone while the reactivation
+            // guard at the end of startTrial() looks at the mode AND is_active —
+            // two different definitions of "restricted" inside one flow. A shop
+            // in this shape passed the first and failed the second: the card was
+            // shown, the trial was minted, the 30 days started counting, and the
+            // shop stayed locked out, because that guard (correctly) refuses to
+            // lift a restriction it cannot attribute. The customer's one
+            // automatic trial, ever, spent on nothing — strictly worse than a
+            // refusal, which at least routes them to support.
+            //
+            // So eligibility asks exactly what recoverability asks, and the two
+            // now share one predicate. Positive proof again: a restriction is
+            // only tradeable for a trial when suspensionIsSubscriptionManaged()
+            // corroborates a lapse, which is the documented recovery path the
+            // reactivation below will actually be able to complete. Unknown
+            // origin and administrative both fail closed.
+            //
+            // NEVER grant an automatic trial that cannot restore usable access.
+            if (($shop->access_mode !== 'active' || ! $shop->is_active)
+                && ! $shop->suspensionIsSubscriptionManaged()) {
+                return 'Your shop\'s access is currently restricted, and starting a free trial would not restore it — please contact support.';
+            }
         }
 
         if ($this->hasUsedTrialForFamily($shopId, $edition, $userId)) {
