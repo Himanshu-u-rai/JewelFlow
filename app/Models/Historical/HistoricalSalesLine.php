@@ -21,6 +21,25 @@ class HistoricalSalesLine extends Model
     use BelongsToShop;
     use ImmutableWhenPublished;
 
+    /** V2 §4 — no default; the operator must decide before a metal value can be suggested. */
+    public const BILLABLE_WEIGHT_GROSS  = 'gross';
+    public const BILLABLE_WEIGHT_NET    = 'net';
+    public const BILLABLE_WEIGHT_MANUAL = 'manual';
+    public const BILLABLE_WEIGHT_BASES = [
+        self::BILLABLE_WEIGHT_GROSS,
+        self::BILLABLE_WEIGHT_NET,
+        self::BILLABLE_WEIGHT_MANUAL,
+    ];
+
+    /** V2 §6 — the operator's explicit choice; never auto-applied from a shop setting. */
+    public const WASTAGE_BASIS_PERCENT = 'percent';
+    public const WASTAGE_BASIS_FLAT    = 'flat';
+    public const WASTAGE_BASES = [self::WASTAGE_BASIS_PERCENT, self::WASTAGE_BASIS_FLAT];
+
+    public const DISCOUNT_TYPE_FIXED   = 'fixed';
+    public const DISCOUNT_TYPE_PERCENT = 'percent';
+    public const DISCOUNT_TYPES = [self::DISCOUNT_TYPE_FIXED, self::DISCOUNT_TYPE_PERCENT];
+
     protected $guarded = ['*'];
 
     protected $casts = [
@@ -34,6 +53,14 @@ class HistoricalSalesLine extends Model
         'making_amount'  => 'decimal:2',
         'rate_snapshot'  => 'decimal:2',
         'line_total'     => 'decimal:2',
+        // Batch 3 calculation-contract columns (V2 §11).
+        'billable_weight'      => 'decimal:3',
+        'hallmark_charge'      => 'decimal:2',
+        'rhodium_charge'       => 'decimal:2',
+        'other_charge'         => 'decimal:2',
+        'wastage_value'        => 'decimal:2',
+        'line_discount_value'  => 'decimal:2',
+        'calculation_state'    => 'array',
     ];
 
     /**

@@ -54,6 +54,19 @@ class HistoricalSalesDocument extends Model
     public const OPENING_BALANCE_RESOLUTION_INCLUDED = 'included_in_opening_balance';
     public const OPENING_BALANCE_RESOLUTION_SEPARATE = 'separate_from_opening_balance';
 
+    /** V2 §11/§6 — bill-level discount, mirrors the line-level enum below. */
+    public const DISCOUNT_TYPE_FIXED   = 'fixed';
+    public const DISCOUNT_TYPE_PERCENT = 'percent';
+    public const DISCOUNT_TYPES = [self::DISCOUNT_TYPE_FIXED, self::DISCOUNT_TYPE_PERCENT];
+
+    /**
+     * No real interstate CGST/SGST/IGST logic exists anywhere live (Agent B/E) —
+     * this is a mechanical operator choice, not a place-of-supply computation.
+     */
+    public const TAX_SPLIT_CGST_SGST = 'cgst_sgst';
+    public const TAX_SPLIT_IGST      = 'igst';
+    public const TAX_SPLIT_TYPES = [self::TAX_SPLIT_CGST_SGST, self::TAX_SPLIT_IGST];
+
     /**
      * UI contract, kept beside the data so no screen can invent its own wording.
      * A historical record is never presented as a JewelFlow-issued invoice.
@@ -85,6 +98,15 @@ class HistoricalSalesDocument extends Model
         'voided_at'                    => 'datetime',
         'imported_at'                  => 'datetime',
         'published_at'                 => 'datetime',
+        // Batch 3 calculation-contract columns (V2 §11).
+        'bill_discount_value'          => 'decimal:2',
+        'cgst_amount'                  => 'decimal:2',
+        'sgst_amount'                  => 'decimal:2',
+        'igst_amount'                  => 'decimal:2',
+        'cess_amount'                  => 'decimal:2',
+        'offer_discount_snapshot'      => 'decimal:2',
+        'advance_credit_amount'        => 'decimal:2',
+        'calculation_state'            => 'array',
     ];
 
     // ---------------------------------------------------------------- lifecycle
@@ -165,6 +187,15 @@ class HistoricalSalesDocument extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(HistoricalSalesLine::class, 'historical_sales_document_id');
+    }
+
+    /**
+     * Per-tender payment rows (V2 §7). Never confuse with `InvoicePayment`:
+     * these rows never touch the cashbook, bank ledger or store credit.
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(HistoricalSalesPayment::class, 'historical_sales_document_id');
     }
 
     public function revises(): BelongsTo
