@@ -127,12 +127,13 @@ class HistoricalCalculationSchemaTest extends TestCase
     private function makePayment(HistoricalSalesDocument $document, array $attrs = []): HistoricalSalesPayment
     {
         $payment = new HistoricalSalesPayment();
-        $payment->forceFill(array_merge([
+        $merged = array_merge([
             'shop_id'                      => $document->shop_id,
             'historical_sales_document_id' => $document->getKey(),
             'mode'                         => HistoricalSalesPayment::MODE_CASH,
             'amount'                       => 1000.00,
-        ], $attrs));
+        ], $attrs);
+        $payment->forceFill($merged);
         $payment->save();
 
         return $payment;
@@ -368,16 +369,34 @@ class HistoricalCalculationSchemaTest extends TestCase
         [, $shopA] = $this->createRetailerTenant();
         [, $shopB] = $this->createRetailerTenant();
 
-        TenantContext::runFor($shopB->id, function () use ($shopB): void {
+        $payment = TenantContext::runFor($shopB->id, function () use ($shopB) {
             $batch = $this->makeBatch($shopB->id);
             $doc   = $this->makeDocument($shopB->id, $batch->id);
-            $this->makePayment($doc);
+
+            return $this->makePayment($doc);
         });
 
+        // Load-bearing proof #1: the row genuinely exists. Without this, a
+        // vacuous "0 rows visible" result below could just as easily mean
+        // "nothing was ever written" as "the leak was correctly blocked".
+        $this->assertSame(
+            1,
+            HistoricalSalesPayment::withoutTenant()->whereKey($payment->id)->count()
+        );
+
+        // Load-bearing proof #2: shop A, INSIDE its own tenant context, sees
+        // zero of shop B's rows. This is the actual cross-shop-leak assertion.
         TenantContext::runFor($shopA->id, function (): void {
             $this->assertSame(0, HistoricalSalesPayment::query()->count());
         });
 
+        // NOT load-bearing. Outside any tenant context, BelongsToShop's
+        // `WHERE 1=0` global scope makes every count() zero unconditionally —
+        // this passes even if cross-shop leakage were completely broken, which
+        // is exactly why the original version of this test was a false green
+        // (its only cross-shop assertion was this line). Kept purely as a
+        // sanity check that the "no context => see nothing" half of the scope
+        // is itself wired up; the real proof is the block above.
         $this->assertSame(0, HistoricalSalesPayment::query()->count());
     }
 
@@ -451,6 +470,378 @@ class HistoricalCalculationSchemaTest extends TestCase
             $this->assertQueryFails(fn () => DB::table('historical_sales_documents')
                 ->where('id', $doc->id)
                 ->update(['cgst_amount' => 999.00]));
+        });
+    }
+
+    // ---------------------------------------------------- payment immutability (D1)
+
+    public function test_eloquent_update_of_a_payment_is_rejected_once_the_document_is_published(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch   = $this->makeBatch($shop->id);
+            $doc     = $this->makeDocument($shop->id, $batch->id);
+            $payment = $this->makePayment($doc);
+
+            $doc->forceFill([
+                'status'       => HistoricalSalesDocument::STATUS_PUBLISHED,
+                'published_at' => now(),
+            ])->save();
+
+            $this->expectException(LogicException::class);
+            $this->expectExceptionMessage('cannot be modified or deleted once the parent document is published');
+            $payment->amount = 2000.00;
+            $payment->save();
+        });
+    }
+
+    public function test_eloquent_delete_of_a_payment_is_rejected_once_the_document_is_published(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch   = $this->makeBatch($shop->id);
+            $doc     = $this->makeDocument($shop->id, $batch->id);
+            $payment = $this->makePayment($doc);
+
+            $doc->forceFill([
+                'status'       => HistoricalSalesDocument::STATUS_PUBLISHED,
+                'published_at' => now(),
+            ])->save();
+
+            $this->expectException(LogicException::class);
+            $this->expectExceptionMessage('cannot be modified or deleted once the parent document is published');
+            $payment->delete();
+        });
+    }
+
+    public function test_raw_sql_update_of_a_payment_is_rejected_by_the_trigger_once_the_document_is_published(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch   = $this->makeBatch($shop->id);
+            $doc     = $this->makeDocument($shop->id, $batch->id);
+            $payment = $this->makePayment($doc);
+
+            $doc->forceFill([
+                'status'       => HistoricalSalesDocument::STATUS_PUBLISHED,
+                'published_at' => now(),
+            ])->save();
+
+            // Bypasses the Eloquent `saving` guard entirely — only the DB
+            // trigger `historical_sales_payments_guard()` stands here.
+            $this->assertQueryFails(fn () => DB::table('historical_sales_payments')
+                ->where('id', $payment->id)
+                ->update(['amount' => 2000.00]));
+        });
+    }
+
+    public function test_raw_sql_delete_of_a_payment_is_rejected_by_the_trigger_once_the_document_is_published(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch   = $this->makeBatch($shop->id);
+            $doc     = $this->makeDocument($shop->id, $batch->id);
+            $payment = $this->makePayment($doc);
+
+            $doc->forceFill([
+                'status'       => HistoricalSalesDocument::STATUS_PUBLISHED,
+                'published_at' => now(),
+            ])->save();
+
+            $this->assertQueryFails(fn () => DB::table('historical_sales_payments')
+                ->where('id', $payment->id)
+                ->delete());
+        });
+    }
+
+    public function test_eloquent_insert_of_a_payment_into_an_already_published_document_is_rejected(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch = $this->makeBatch($shop->id);
+            $doc   = $this->makeDocument($shop->id, $batch->id, [
+                'status'       => HistoricalSalesDocument::STATUS_PUBLISHED,
+                'published_at' => now(),
+            ]);
+
+            $this->expectException(LogicException::class);
+            $this->expectExceptionMessage('cannot be inserted once the parent document is published');
+            $this->makePayment($doc);
+        });
+    }
+
+    public function test_raw_sql_insert_of_a_payment_into_an_already_published_document_is_rejected_by_the_trigger(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch = $this->makeBatch($shop->id);
+            $doc   = $this->makeDocument($shop->id, $batch->id, [
+                'status'       => HistoricalSalesDocument::STATUS_PUBLISHED,
+                'published_at' => now(),
+            ]);
+
+            // `was_linked_to_payment_method` is deliberately the DB-safe
+            // string '0', not the PHP bool `false`: this is a raw query
+            // builder write bypassing Eloquent entirely, so the app-wide
+            // `eloquent.saving: *` boolean normalizer (AppServiceProvider)
+            // never sees it — a real PHP bool here is independently rejected
+            // by Postgres (`...boolean but expression is of type integer`)
+            // regardless of what the trigger does, which would make this
+            // assertQueryFails() pass for the wrong reason. Every raw insert
+            // below in this file follows the same convention.
+            $this->assertQueryFails(fn () => DB::table('historical_sales_payments')->insert([
+                'shop_id'                      => $shop->id,
+                'historical_sales_document_id' => $doc->id,
+                'mode'                         => HistoricalSalesPayment::MODE_CASH,
+                'amount'                       => 1000.00,
+                'account_label_snapshot'       => 'Cash',
+                'was_linked_to_payment_method' => '0',
+                'created_at'                   => now(),
+                'updated_at'                   => now(),
+            ]));
+        });
+    }
+
+    public function test_trigger_forbids_reassigning_a_payment_to_a_different_document(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch   = $this->makeBatch($shop->id);
+            $docOne  = $this->makeDocument($shop->id, $batch->id, ['original_document_number' => 'A-6']);
+            $docTwo  = $this->makeDocument($shop->id, $batch->id, ['original_document_number' => 'A-7']);
+            $payment = $this->makePayment($docOne);
+
+            // Both documents are still draft — this exercises the
+            // reassignment-specific branch of the trigger independently of
+            // the published-status branch (the composite FK from migration 3
+            // would happily allow this same-shop reassignment; only the new
+            // trigger's explicit check rejects it).
+            $this->assertQueryFails(fn () => DB::table('historical_sales_payments')
+                ->where('id', $payment->id)
+                ->update(['historical_sales_document_id' => $docTwo->id]));
+        });
+    }
+
+    public function test_composite_foreign_key_rejects_a_payment_whose_shop_id_does_not_match_its_document(): void
+    {
+        [, $shopA] = $this->createRetailerTenant();
+        [, $shopB] = $this->createRetailerTenant();
+
+        $docA = TenantContext::runFor($shopA->id, function () use ($shopA) {
+            $batch = $this->makeBatch($shopA->id);
+
+            return $this->makeDocument($shopA->id, $batch->id);
+        });
+
+        // No new trigger logic guards this — the pre-existing composite FK
+        // `historical_payments_document_shop_foreign` (untouched migration 3)
+        // already has no matching (id, shop_id) tuple for this combination.
+        $this->assertQueryFails(fn () => DB::table('historical_sales_payments')->insert([
+            'shop_id'                      => $shopB->id,
+            'historical_sales_document_id' => $docA->id,
+            'mode'                         => HistoricalSalesPayment::MODE_CASH,
+            'amount'                       => 1000.00,
+            'account_label_snapshot'       => 'Cash',
+            'was_linked_to_payment_method' => '0',
+            'created_at'                   => now(),
+            'updated_at'                   => now(),
+        ]));
+    }
+
+    public function test_trigger_rejects_a_cross_shop_payment_method_reference_inserted_via_raw_sql(): void
+    {
+        [, $shopA] = $this->createRetailerTenant();
+        [, $shopB] = $this->createRetailerTenant();
+
+        $methodB = TenantContext::runFor($shopB->id, fn () => $this->makePaymentMethod($shopB->id));
+
+        $docA = TenantContext::runFor($shopA->id, function () use ($shopA) {
+            $batch = $this->makeBatch($shopA->id);
+
+            return $this->makeDocument($shopA->id, $batch->id);
+        });
+
+        // Bypasses HistoricalSalesPayment::assertPaymentMethodBelongsToOwnShop()
+        // entirely (raw query builder, no Eloquent guard) — only the DB
+        // trigger stands between this write and a cross-shop account
+        // reference.
+        $this->assertQueryFails(fn () => DB::table('historical_sales_payments')->insert([
+            'shop_id'                      => $shopA->id,
+            'historical_sales_document_id' => $docA->id,
+            'shop_payment_method_id'       => $methodB->id,
+            'mode'                         => HistoricalSalesPayment::MODE_BANK,
+            'amount'                       => 1000.00,
+            'account_label_snapshot'       => 'HDFC Current',
+            'was_linked_to_payment_method' => '1',
+            'created_at'                   => now(),
+            'updated_at'                   => now(),
+        ]));
+    }
+
+    // ------------------------------------------------ account label snapshot (D3)
+
+    public function test_db_rejects_a_null_account_label_snapshot_inserted_via_raw_sql(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch = $this->makeBatch($shop->id);
+            $doc   = $this->makeDocument($shop->id, $batch->id);
+
+            $this->assertQueryFails(fn () => DB::table('historical_sales_payments')->insert([
+                'shop_id'                      => $shop->id,
+                'historical_sales_document_id' => $doc->id,
+                'mode'                         => HistoricalSalesPayment::MODE_CASH,
+                'amount'                       => 1000.00,
+                'account_label_snapshot'       => null,
+                'was_linked_to_payment_method' => '0',
+                'created_at'                   => now(),
+                'updated_at'                   => now(),
+            ]));
+        });
+    }
+
+    public function test_db_rejects_a_blank_account_label_snapshot_inserted_via_raw_sql(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch = $this->makeBatch($shop->id);
+            $doc   = $this->makeDocument($shop->id, $batch->id);
+
+            $this->assertQueryFails(fn () => DB::table('historical_sales_payments')->insert([
+                'shop_id'                      => $shop->id,
+                'historical_sales_document_id' => $doc->id,
+                'mode'                         => HistoricalSalesPayment::MODE_CASH,
+                'amount'                       => 1000.00,
+                'account_label_snapshot'       => '   ',
+                'was_linked_to_payment_method' => '0',
+                'created_at'                   => now(),
+                'updated_at'                   => now(),
+            ]));
+        });
+    }
+
+    public function test_model_guard_rejects_a_blank_account_label_snapshot_via_eloquent(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch  = $this->makeBatch($shop->id);
+            $doc    = $this->makeDocument($shop->id, $batch->id);
+            $method = $this->makePaymentMethod($shop->id);
+
+            // A linked payment method must supply its own real label —
+            // normalizeAccountLabelSnapshot() deliberately does not
+            // substitute a mode-derived fallback for a linked row, so a
+            // blank caller-supplied snapshot must be rejected here, at the
+            // app layer, before it ever reaches the DB constraint.
+            $this->expectException(LogicException::class);
+            $this->expectExceptionMessage('non-blank account_label_snapshot');
+            $this->makePayment($doc, [
+                'shop_payment_method_id' => $method->id,
+                'account_label_snapshot' => '  ',
+            ]);
+        });
+    }
+
+    public function test_accountless_payment_gets_a_mode_derived_label_automatically(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch = $this->makeBatch($shop->id);
+            $doc   = $this->makeDocument($shop->id, $batch->id);
+
+            $payment = $this->makePayment($doc, [
+                'mode'                   => HistoricalSalesPayment::MODE_OLD_GOLD,
+                'account_label_snapshot' => null,
+            ]);
+
+            $this->assertSame('Old gold', $payment->fresh()->account_label_snapshot);
+            $this->assertFalse($payment->was_linked_to_payment_method);
+        });
+    }
+
+    /**
+     * The real defect behind this session's debug investigation: creating a
+     * payment WITH a live `shop_payment_method_id` and WITHOUT the caller
+     * separately passing `was_linked_to_payment_method` must still derive
+     * `true` at INSERT time — not silently keep the DB column default
+     * (`false`). This is exercised end-to-end (not just the marker column)
+     * in `test_deleting_a_live_payment_method_nulls_the_reference_but_snapshot_survives`
+     * below; this test isolates the derivation itself.
+     */
+    public function test_was_linked_to_payment_method_is_derived_true_when_a_method_is_linked_at_creation(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch  = $this->makeBatch($shop->id);
+            $doc    = $this->makeDocument($shop->id, $batch->id);
+            $method = $this->makePaymentMethod($shop->id);
+
+            $payment = $this->makePayment($doc, [
+                'shop_payment_method_id' => $method->id,
+                'account_label_snapshot' => 'HDFC Current (****1234)',
+            ]);
+
+            $this->assertTrue($payment->was_linked_to_payment_method);
+            $this->assertTrue($payment->fresh()->was_linked_to_payment_method);
+        });
+    }
+
+    /**
+     * An explicitly caller-supplied value (whichever direction) must win over
+     * the derive-if-absent default — the derivation only fills the attribute
+     * in when the caller left it unset, it never overwrites.
+     */
+    public function test_was_linked_to_payment_method_explicit_value_is_never_overridden_by_derivation(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch = $this->makeBatch($shop->id);
+            $doc   = $this->makeDocument($shop->id, $batch->id);
+
+            // Explicit true with no linked method at all.
+            $linkless = $this->makePayment($doc, ['was_linked_to_payment_method' => true]);
+            $this->assertTrue($linkless->fresh()->was_linked_to_payment_method);
+
+            // Explicit false, also with no linked method — the ordinary case,
+            // proven not to be disturbed by the derivation.
+            $unlinked = $this->makePayment($doc, ['was_linked_to_payment_method' => false]);
+            $this->assertFalse($unlinked->fresh()->was_linked_to_payment_method);
+        });
+    }
+
+    public function test_a_never_linked_custom_payment_never_shows_no_longer_active(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch = $this->makeBatch($shop->id);
+            $doc   = $this->makeDocument($shop->id, $batch->id);
+
+            // Genuinely accountless from the start — no shop_payment_method_id
+            // was ever set on this row. Before the D3 fix, displayAccountLabel()
+            // treated "no active method" as sufficient for the "(No longer
+            // active)" suffix, mislabelling a row that was never linked to
+            // anything in the first place.
+            $payment = $this->makePayment($doc, [
+                'mode'                   => HistoricalSalesPayment::MODE_CASH,
+                'account_label_snapshot' => null,
+            ]);
+
+            $this->assertFalse($payment->was_linked_to_payment_method);
+            $this->assertSame('Cash', $payment->displayAccountLabel());
         });
     }
 }

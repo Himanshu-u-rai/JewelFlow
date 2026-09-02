@@ -28,16 +28,52 @@ class HistoricalCalculationSuggesterTest extends TestCase
     public function test_gold_metal_value_uses_karat_fine_weight_multiplier(): void
     {
         // 10g billable, rate 6000/g, 22K gold => multiplier 22/24.
+        // Independently pre-computed literal (not mirrored from the production
+        // formula): 10 * 6000 * (22/24) = 55000.0.
         $value = $this->suggester->suggestMetalValue('gold', 22.0, 10.0, 6000.0);
 
-        $this->assertSame(round(10.0 * 6000.0 * (22 / 24), 2), $value);
+        $this->assertSame(55000.0, $value);
     }
 
     public function test_silver_metal_value_uses_millesimal_fine_weight_multiplier(): void
     {
+        // Independently pre-computed literal: 100 * 80 * (925/1000) = 7400.0.
         $value = $this->suggester->suggestMetalValue('silver', 925.0, 100.0, 80.0);
 
-        $this->assertSame(round(100.0 * 80.0 * (925 / 1000), 2), $value);
+        $this->assertSame(7400.0, $value);
+    }
+
+    /**
+     * Foundation-audit D2 — the exact gap the audit named. A gold line with no
+     * purity set is a valid intermediate data-entry state; the suggester must
+     * fail closed (null) rather than silently pricing it as 24K pure.
+     */
+    public function test_missing_gold_purity_never_silently_becomes_24k(): void
+    {
+        $this->assertNull($this->suggester->suggestMetalValue('gold', null, 10.0, 6000.0));
+    }
+
+    /** Positive control alongside the D2 negative test — explicit 24K still works. */
+    public function test_explicit_24k_gold_purity_still_calculates_correctly(): void
+    {
+        // multiplier = 24/24 = 1.0 exactly, so metal_value = billable * rate.
+        $this->assertSame(60000.0, $this->suggester->suggestMetalValue('gold', 24.0, 10.0, 6000.0));
+    }
+
+    /** Silver is also `purity_accounting` (Tier 1) — same fail-closed rule as gold. */
+    public function test_missing_silver_purity_never_silently_becomes_999(): void
+    {
+        $this->assertNull($this->suggester->suggestMetalValue('silver', null, 100.0, 80.0));
+    }
+
+    /**
+     * Boundary case unaffected by D2: a custom/free-text metal (Tier 3, not
+     * `purity_accounting`) with a missing purity must still get the `1.0`
+     * passthrough — D2 only closes the gap for gold/silver.
+     */
+    public function test_missing_purity_on_a_custom_free_text_metal_still_gets_passthrough_multiplier(): void
+    {
+        $this->assertSame(5000.0, $this->suggester->suggestMetalValue('antique brass', null, 10.0, 500.0));
     }
 
     public function test_platinum_metal_value_has_no_multiplier_applied(): void
@@ -109,18 +145,20 @@ class HistoricalCalculationSuggesterTest extends TestCase
 
     public function test_making_per_gram_multiplies_by_net_weight_never_gross(): void
     {
+        // Independently pre-computed literal: 450 * 9.5 = 4275.0.
         $amount = $this->suggester->suggestMakingAmount(
             HistoricalMakingCharge::BASIS_PER_GRAM, 450.0, null, 9.5, null
         );
-        $this->assertSame(round(450.0 * 9.5, 2), $amount);
+        $this->assertSame(4275.0, $amount);
     }
 
     public function test_making_percent_is_of_metal_value(): void
     {
+        // Independently pre-computed literal: 55000 * 12 / 100 = 6600.0.
         $amount = $this->suggester->suggestMakingAmount(
             HistoricalMakingCharge::BASIS_PERCENT, 12.0, 55000.0, null, null
         );
-        $this->assertSame(round(55000.0 * 12 / 100, 2), $amount);
+        $this->assertSame(6600.0, $amount);
     }
 
     public function test_making_fixed_invoice_and_fixed_line_are_flat(): void
@@ -164,7 +202,8 @@ class HistoricalCalculationSuggesterTest extends TestCase
         $amount = $this->suggester->suggestWastageAmount(
             HistoricalSalesLine::WASTAGE_BASIS_PERCENT, 5.0, 55000.0
         );
-        $this->assertSame(round(55000.0 * 5 / 100, 2), $amount);
+        // Independently pre-computed literal (5% of 55000.0), not the production formula echoed back.
+        $this->assertSame(2750.0, $amount);
     }
 
     public function test_wastage_flat_is_a_flat_amount(): void

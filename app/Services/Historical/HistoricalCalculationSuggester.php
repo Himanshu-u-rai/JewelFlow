@@ -46,7 +46,10 @@ class HistoricalCalculationSuggester
     /**
      * `metal_value = billable_weight × rate_per_gram × fine_multiplier(metal, purity)`
      * per §4. Returns null when any required input is missing — never
-     * fabricates a value from an incomplete line.
+     * fabricates a value from an incomplete line. This includes a missing
+     * purity on a `purity_accounting` Tier 1 metal (gold/silver): a null
+     * multiplier there means the value genuinely cannot be suggested, not
+     * that it should be priced as though 24K/999 pure (foundation-audit D2).
      */
     public function suggestMetalValue(
         ?string $metal,
@@ -60,6 +63,10 @@ class HistoricalCalculationSuggester
 
         $multiplier = $this->fineMultiplier($metal, $purity);
 
+        if ($multiplier === null) {
+            return null;
+        }
+
         return round($billableWeight * $ratePerGram * $multiplier, 2);
     }
 
@@ -70,15 +77,32 @@ class HistoricalCalculationSuggester
      * unscaled (multiplier 1.0) because `fineWeightMultiplier()` either
      * returns null (platinum/copper — purity isn't accounting truth) or would
      * throw outright for a metal the registry has never heard of.
+     *
+     * Foundation-audit D2 correction: for a Tier 1 `purity_accounting` metal
+     * (gold, silver — `MetalRegistry::purityIsAccountingTruth()`), a MISSING
+     * purity must return null, never `1.0`. Returning `1.0` there would
+     * silently price an unspecified-purity line as if it were 24K/999 pure —
+     * exactly the class of "missing operator decision resolved by a silent
+     * favourable default" the whole calculation-contract exists to prevent.
+     * The `1.0` passthrough is preserved unchanged for every other case:
+     * Tier 2 (`purity_spec`, e.g. platinum), Tier 3/manual-grade (e.g.
+     * copper), and free-text/unsupported metals — none of those have an
+     * accounting-truth purity to be missing in the first place. This method
+     * never consults current item/shop settings to fill a missing purity —
+     * it stays a pure function, exactly like the rest of this class.
      */
-    private function fineMultiplier(?string $metal, ?float $purity): float
+    private function fineMultiplier(?string $metal, ?float $purity): ?float
     {
-        if ($metal === null || trim($metal) === '' || $purity === null) {
+        if ($metal === null || trim($metal) === '') {
             return 1.0;
         }
 
         if (! MetalRegistry::isSupported($metal)) {
             return 1.0;
+        }
+
+        if ($purity === null) {
+            return MetalRegistry::purityIsAccountingTruth($metal) ? null : 1.0;
         }
 
         $multiplier = MetalRegistry::fineWeightMultiplier($metal, $purity);
