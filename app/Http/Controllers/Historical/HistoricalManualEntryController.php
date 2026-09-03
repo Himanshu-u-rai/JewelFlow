@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Historical;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Historical\StoreManualHistoricalRequest;
+use App\Models\Customer;
 use App\Services\Historical\HistoricalCustomerMatcher;
 use App\Services\Historical\HistoricalImportService;
 use App\Support\Historical\HistoricalFields;
 use App\Support\Historical\HistoricalMakingCharge;
 use App\Support\Historical\HistoricalManualPublishRejected;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Throwable;
 
@@ -48,6 +51,71 @@ class HistoricalManualEntryController extends Controller
             'makingCategories' => HistoricalMakingCharge::CATEGORIES,
             'makingBases'     => HistoricalMakingCharge::BASES,
         ]);
+    }
+
+    /**
+     * Active, tenant-scoped candidates for the manual-entry combobox. The
+     * response is intentionally not a Customer serialization: selection needs
+     * only an id, display name, masked mobile, and optional business type.
+     */
+    public function searchCustomers(Request $request): JsonResponse
+    {
+        $query = trim((string) $request->query('q', ''));
+
+        if (mb_strlen($query) < 2) {
+            return response()->json(['status' => 'snapshot_only', 'results' => []]);
+        }
+
+        $shopId = (int) $request->user()->shop_id;
+        $digits = preg_replace('/\D+/', '', $query) ?? '';
+
+        $customers = Customer::withoutTenant()
+            ->where('shop_id', $shopId)
+            ->active()
+            ->where(function ($builder) use ($query, $digits): void {
+                $builder->where('first_name', 'ilike', "%{$query}%")
+                    ->orWhere('last_name', 'ilike', "%{$query}%")
+                    ->orWhereRaw("CONCAT_WS(' ', first_name, last_name) ILIKE ?", ["%{$query}%"])
+                    ->orWhere('gstin', 'ilike', "%{$query}%");
+
+                if (strlen($digits) >= 3) {
+                    $builder->orWhere('mobile', 'like', "%{$digits}%");
+                }
+            })
+            ->orderByDesc('updated_at')
+            ->limit(8)
+            ->get(['id', 'first_name', 'last_name', 'mobile', 'customer_type']);
+
+        if ($customers->isNotEmpty()) {
+            return response()->json([
+                'status' => 'matches',
+                'results' => $customers->map(fn (Customer $customer): array => [
+                    'id' => (int) $customer->id,
+                    'name' => $customer->name,
+                    'mobile_masked' => self::maskedMobile($customer->mobile),
+                    'customer_type' => $customer->customer_type,
+                ])->values(),
+            ]);
+        }
+
+        $mobile = Customer::normalizeMobile($query);
+        $archived = $mobile !== null && Customer::withoutTenant()
+            ->where('shop_id', $shopId)
+            ->archived()
+            ->where('mobile', $mobile)
+            ->exists();
+
+        return response()->json([
+            'status' => $archived ? 'archived_action_required' : ($mobile === null ? 'snapshot_only' : 'new'),
+            'results' => [],
+        ]);
+    }
+
+    private static function maskedMobile(?string $mobile): string
+    {
+        $mobile = Customer::normalizeMobile($mobile);
+
+        return $mobile === null ? 'Mobile unavailable' : substr($mobile, 0, 2) . '******' . substr($mobile, -2);
     }
 
     /**

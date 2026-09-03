@@ -319,6 +319,8 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         // --- manual entry (historical.import) ---
         Route::get('/manual', [HistoricalManualEntryController::class, 'create'])
             ->middleware('can:historical.import')->name('manual.create');
+        Route::get('/customers/search', [HistoricalManualEntryController::class, 'searchCustomers'])
+            ->middleware('can:historical.import')->name('customers.search');
         Route::post('/manual/preview', [HistoricalManualEntryController::class, 'preview'])
             ->middleware('can:historical.import')->name('manual.preview');
         // The preview page is a POST result, so browser Back / reload / a bookmark

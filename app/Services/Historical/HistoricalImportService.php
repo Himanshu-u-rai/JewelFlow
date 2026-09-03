@@ -735,15 +735,23 @@ class HistoricalImportService
         $normalizedLines = $this->applyLineCalculationState($result['lines'], $messages);
         $attributes      = $this->applyPaymentSettlement($result['attributes'], $payments, $options['paid_amount_mode'] ?? null, $messages);
 
-        $document = DB::transaction(fn (): ?HistoricalSalesDocument => $this->persistDraft(
-            $batch,
-            $attributes,
-            $normalizedLines,
-            $messages,
-            'manual',
-            $actorId,
-            $payments
-        ));
+        $document = DB::transaction(function () use ($batch, $attributes, $normalizedLines, $messages, $actorId, $payments, $options): ?HistoricalSalesDocument {
+            $document = $this->persistDraft(
+                $batch,
+                $attributes,
+                $normalizedLines,
+                $messages,
+                'manual',
+                $actorId,
+                $payments
+            );
+
+            if ($document !== null && ! empty($options['customer_id'])) {
+                $document = $this->lifecycle->linkCustomer($document, (int) $options['customer_id']);
+            }
+
+            return $document;
+        });
 
         $batch->forceFill([
             'document_count'  => $document === null ? 0 : 1,

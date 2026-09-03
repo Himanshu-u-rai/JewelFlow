@@ -429,7 +429,7 @@ class HistoricalMobileUiTest extends TestCase
         $identity = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-identity-row]");
         $financial = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-financial-row]");
         $identityClasses = preg_split('/\s+/', trim($identity->getAttribute('class'))) ?: [];
-        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:grid-cols-2'] as $class) {
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:grid-cols-12'] as $class) {
             $this->assertContains($class, $identityClasses);
         }
         $this->assertNotContains('items-start', $identityClasses);
@@ -442,12 +442,12 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertNodesHaveClasses(
             $xpath,
             "//*[@data-historical-identity-row]/fieldset[@data-historical-section='document']",
-            ['lg:col-span-1']
+            ['lg:col-span-4']
         );
         $this->assertNodesHaveClasses(
             $xpath,
             "//*[@data-historical-identity-row]/fieldset[@data-historical-section='customer']",
-            ['lg:col-span-1']
+            ['lg:col-span-8']
         );
         $this->assertNodesHaveClasses(
             $xpath,

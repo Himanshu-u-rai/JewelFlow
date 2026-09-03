@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Historical;
 
+use App\Models\Customer;
 use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\Historical\HistoricalSalesLine;
 use App\Models\Historical\HistoricalSalesPayment;
@@ -57,7 +58,7 @@ class StoreManualHistoricalRequest extends FormRequest
      * is NOT in the shared HistoricalFields::HEADER catalog, so a bulk-import
      * spreadsheet column can never map onto it. Manual entry alone needs it.
      */
-    private const MANUAL_HEADER_FIELDS = ['customer_pan'];
+    private const MANUAL_HEADER_FIELDS = ['customer_pan', 'customer_type'];
 
     public function authorize(): bool
     {
@@ -93,6 +94,12 @@ class StoreManualHistoricalRequest extends FormRequest
             'customer_pan'             => ['nullable', 'string', 'max:20'],
             'customer_address'         => ['nullable', 'string', 'max:500'],
             'place_of_supply'          => ['nullable', 'string', 'max:120'],
+            'customer_type'            => ['nullable', Rule::in(['b2b', 'b2c'])],
+            'customer_id'              => [
+                'nullable',
+                'integer',
+                Customer::activeExistsRule((int) $this->user()?->shop_id),
+            ],
 
             // Batch 3 §B — explicit, operator-submitted choice for THIS publish
             // only. Never defaulted server-side; the UI may default the checkbox
@@ -258,6 +265,7 @@ class StoreManualHistoricalRequest extends FormRequest
             'paid_amount_mode'     => $this->input('paid_amount_mode'),
             // Batch 3 §B — see the `add_customer_on_publish` rule above.
             'add_customer_on_publish' => $this->boolean('add_customer_on_publish'),
+            'customer_id' => $this->filled('customer_id') ? (int) $this->input('customer_id') : null,
         ];
     }
 

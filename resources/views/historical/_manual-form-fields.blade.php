@@ -49,8 +49,8 @@
 </script>
 @endonce
 <div class="grid grid-cols-1 gap-4 items-start" style="--app-control-bg: #ffffff; --app-control-border: #cbd5e1; --app-control-border-focus: #b45309;" data-historical-manual-layout>
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-2" data-historical-identity-row>
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="document">
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-12" data-historical-identity-row>
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-4" data-historical-form-section data-historical-section="document">
     <legend class="sr-only">Document identity</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Document identity</h2>
@@ -75,13 +75,55 @@
     </div>
 </fieldset>
 
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="customer">
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-visible lg:col-span-8"
+          x-data="historicalCustomerPicker({
+              searchUrl: @js(route('historical.customers.search')),
+              customerId: @js(old('customer_id', '')),
+              selectedLabel: @js(old('selected_customer_label', '')),
+              addOnPublish: @js((string) old('add_customer_on_publish', '1') === '1'),
+          })"
+          data-historical-customer-picker data-historical-form-section data-historical-section="customer">
     <legend class="sr-only">Customer snapshot (never linked automatically)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Customer snapshot</h2>
         <p class="mt-1 text-xs text-slate-500">Never linked automatically.</p>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6" @input="updateStatus()">
+        <div class="relative sm:col-span-2" @click.outside="close()">
+            <label for="historical_customer_search">Find an existing customer <span class="font-normal text-slate-400">(optional)</span></label>
+            <input type="search" id="historical_customer_search" x-model="search"
+                   @input.debounce.250ms="findCustomers()"
+                   @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)"
+                   @keydown.enter.prevent="chooseActive()" @keydown.escape.prevent="close()"
+                   role="combobox" aria-autocomplete="list" :aria-expanded="open"
+                   data-customer-search-input data-customer-search-url="{{ route('historical.customers.search') }}"
+                   placeholder="Search name, mobile or GSTIN" autocomplete="off" class="w-full">
+            <input type="hidden" name="customer_id" x-model="customerId">
+            <input type="hidden" name="selected_customer_label" x-model="selectedLabel">
+
+            <div x-cloak x-show="open" role="listbox"
+                 class="absolute inset-x-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+                <p x-show="loading" class="px-3 py-3 text-sm text-slate-500">Searching…</p>
+                <template x-for="(customer, index) in results" :key="customer.id">
+                    <button type="button" role="option" @click="select(customer)"
+                            :aria-selected="activeIndex === index" :class="activeIndex === index ? 'bg-amber-50' : ''"
+                            class="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left hover:bg-amber-50">
+                        <span><span class="block text-sm font-semibold text-slate-900" x-text="customer.name"></span><span class="block text-xs text-slate-500" x-text="customer.mobile_masked"></span></span>
+                        <span x-show="customer.customer_type" class="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase text-slate-600" x-text="customer.customer_type"></span>
+                    </button>
+                </template>
+                <p x-show="!loading && results.length === 0" class="px-3 py-3 text-sm text-slate-500">No active customer matches.</p>
+            </div>
+
+            <div class="mt-2 flex min-h-[28px] flex-wrap items-center gap-2" data-customer-status aria-live="polite">
+                <span x-show="status === 'existing'" class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Existing customer</span>
+                <span x-show="status === 'new'" class="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">New customer</span>
+                <span x-show="status === 'snapshot'" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Snapshot only</span>
+                <span x-show="status === 'archived'" class="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">Archived — action required</span>
+                <span x-show="selectedLabel" x-text="selectedLabel" class="text-xs font-medium text-slate-600"></span>
+                <button x-show="customerId" type="button" @click="clearSelection()" class="min-h-[32px] text-xs font-semibold text-rose-700">Clear selection</button>
+            </div>
+        </div>
         <div>
             <label for="customer_name">Name</label>
             <input type="text" id="customer_name" name="customer_name" value="{{ old('customer_name') }}" class="w-full">
@@ -99,6 +141,14 @@
             <input type="text" id="place_of_supply" name="place_of_supply" value="{{ old('place_of_supply') }}" class="w-full">
         </div>
         <div>
+            <label for="customer_type">Customer type</label>
+            <select id="customer_type" name="customer_type" class="w-full min-h-[44px]">
+                <option value="">—</option>
+                <option value="b2c" @selected(old('customer_type') === 'b2c')>B2C</option>
+                <option value="b2b" @selected(old('customer_type') === 'b2b')>B2B</option>
+            </select>
+        </div>
+        <div>
             <label for="customer_pan">PAN</label>
             <input type="text" id="customer_pan" name="customer_pan" value="{{ old('customer_pan') }}" class="w-full" maxlength="20">
         </div>
@@ -106,8 +156,9 @@
             <label for="customer_address">Address</label>
             <input type="text" id="customer_address" name="customer_address" value="{{ old('customer_address') }}" class="w-full">
         </div>
-        <div class="sm:col-span-2 flex items-start gap-2">
-            <input type="checkbox" id="add_customer_on_publish" name="add_customer_on_publish" value="1" @checked(old('add_customer_on_publish'))>
+        <div class="sm:col-span-2 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <input type="hidden" name="add_customer_on_publish" value="0">
+            <input type="checkbox" id="add_customer_on_publish" name="add_customer_on_publish" value="1" @checked((string) old('add_customer_on_publish', '1') === '1')>
             <label for="add_customer_on_publish" class="text-sm text-slate-700">
                 Add as a live customer when this bill is published
                 <span class="block text-xs text-slate-500">Only applies to Save &amp; publish. Never links automatically to an existing customer suggestion — checked here, decided fresh every time.</span>

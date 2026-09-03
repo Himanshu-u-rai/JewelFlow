@@ -525,6 +525,7 @@ class HistoricalDocumentNormalizer
             // Batch 3 §E — snapshot only, same as gstin above. Never rendered
             // in any typeahead/suggestion list; see HistoricalCustomerMatcher.
             'pan'             => self::text($header['customer_pan'] ?? null),
+            'customer_type'   => self::text($header['customer_type'] ?? null),
             'address'         => self::text($header['customer_address'] ?? null),
             'place_of_supply' => self::text($header['place_of_supply'] ?? null),
         ], static fn ($v) => $v !== null);
