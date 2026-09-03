@@ -91,14 +91,14 @@ class HistoricalSalesPayment extends Model
     }
 
     /**
-     * `was_linked_to_payment_method` is write-once, captured only at first
-     * write time (never recomputed on update — see the class docblock and
-     * the corrective migration's docblock for why a persisted marker
-     * replaces the now-invalidated "null snapshot" heuristic).
+     * `was_linked_to_payment_method` is MONOTONIC, not write-once (foundation-
+     * reaudit §7 CONCERN, closed here). See the class docblock and the
+     * corrective migration's docblock for why a persisted marker replaces the
+     * now-invalidated "null snapshot" heuristic.
      *
-     * TWO distinct bugs were found and fixed here (chased with ad-hoc debug
-     * output before this session — both are now confirmed root-caused, not
-     * just symptom-silenced):
+     * THREE distinct bugs were found and fixed here across two sessions
+     * (chased with ad-hoc debug output — all three are now confirmed
+     * root-caused, not just symptom-silenced):
      *
      * Bug 1 — missing derivation. `$guarded = ['*']` on this model means a
      * caller almost always constructs rows via `forceFill()`/mass-assignment,
@@ -109,13 +109,6 @@ class HistoricalSalesPayment extends Model
      * `shop_payment_method_id` set but without the caller separately/
      * explicitly setting `was_linked_to_payment_method` silently kept the DB
      * column default (`false`), which is wrong: it WAS linked.
-     * `displayAccountLabel()` would then never show "(No longer active)" for
-     * such a row after its method was deleted, even though it has a real
-     * preserved account snapshot. Fixed by this method: derive `true`/`false`
-     * from `shop_payment_method_id !== null`, but only when the caller has
-     * not already set the attribute explicitly (raw `DB::table()->insert()`
-     * and tests that set it directly must not be overridden — this is a
-     * derive-if-absent default, not an unconditional overwrite).
      *
      * Bug 2 — event-ordering vs. the app-wide Postgres boolean normalizer.
      * `AppServiceProvider::boot()` registers a wildcard `Event::listen(
@@ -135,14 +128,50 @@ class HistoricalSalesPayment extends Model
      * `static::saving()` closure instead (see that method for the ordering
      * rationale) so the freshly-derived value is dirty and visible to the
      * global normalizer before it runs.
+     *
+     * Bug 3 — the "derive-if-absent" guard was write-once, not monotonic.
+     * `array_key_exists('was_linked_to_payment_method', $this->getAttributes())`
+     * is true from the SECOND `save()` onward regardless of what the first
+     * save actually derived — Eloquent's attribute array already carries the
+     * column once it has round-tripped through one insert. A payment created
+     * genuinely accountless (`shop_payment_method_id === null`, marker
+     * correctly derived `false`) and later attached to a real
+     * `ShopPaymentMethod` WHILE STILL DRAFT therefore never got the marker
+     * flipped on that second `save()`: the guard saw the attribute already
+     * present and skipped re-deriving, leaving the marker latched at its
+     * first-write value even though the row had just become genuinely
+     * linked. `displayAccountLabel()` would then never show "(No longer
+     * active)" for such a row after the method was later deleted, despite it
+     * carrying a real preserved account snapshot.
+     *
+     * Fixed by making the rule MONOTONIC instead of write-once: a non-null
+     * `shop_payment_method_id` FORCES the marker `true` on every single
+     * `saving`, unconditionally — attaching a method always means "this was
+     * linked", so there is nothing to preserve by skipping. The
+     * derive-if-absent behaviour is kept, but narrowed to exactly the case it
+     * exists for: `shop_payment_method_id === null` AND the caller has not
+     * already set the attribute explicitly (raw `DB::table()->insert()` and
+     * tests that set it directly must not be overridden). Once
+     * `shop_payment_method_id` goes back to `null` (a live method being
+     * deleted nulls the FK, never runs through this `saving` hook, and must
+     * NOT flip the marker back — that is the entire point of the marker)
+     * there is nothing here to un-force: the forcing branch only fires when
+     * the id is non-null, so a already-true marker on a since-nulled
+     * reference is left exactly as it was by the two branches below.
      */
     private function deriveWasLinkedToPaymentMethod(): void
     {
+        if ($this->shop_payment_method_id !== null) {
+            $this->was_linked_to_payment_method = true;
+
+            return;
+        }
+
         if (array_key_exists('was_linked_to_payment_method', $this->getAttributes())) {
             return;
         }
 
-        $this->was_linked_to_payment_method = $this->shop_payment_method_id !== null;
+        $this->was_linked_to_payment_method = false;
     }
 
     /**

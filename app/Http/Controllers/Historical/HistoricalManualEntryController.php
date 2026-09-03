@@ -65,6 +65,7 @@ class HistoricalManualEntryController extends Controller
                 $request->lines(),
                 (int) $request->user()->id,
                 $request->options(),
+                $request->payments(),
             );
         } catch (Throwable $e) {
             return $this->backToForm()->with('error', $e->getMessage());
@@ -152,6 +153,7 @@ class HistoricalManualEntryController extends Controller
                 $request->lines(),
                 (int) $request->user()->id,
                 $request->options(),
+                $request->payments(),
             );
         } catch (Throwable $e) {
             return $this->backToForm()->with('error', $e->getMessage());
@@ -196,6 +198,7 @@ class HistoricalManualEntryController extends Controller
                 (int) $request->user()->id,
                 $request->options(),
                 $request->acknowledgedWarningDigest(),
+                $request->payments(),
             );
         } catch (HistoricalManualPublishRejected $e) {
             return $this->backToForm()->with('error', $e->getMessage());

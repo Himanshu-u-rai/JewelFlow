@@ -7,7 +7,9 @@ use App\Models\Historical\HistoricalImportProfile;
 use App\Models\Historical\HistoricalImportRow;
 use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\Historical\HistoricalSalesLine;
+use App\Models\Historical\HistoricalSalesPayment;
 use App\Models\Shop;
+use App\Models\ShopPaymentMethod;
 use App\Support\Historical\HistoricalFields;
 use App\Support\Historical\HistoricalManualPublishRejected;
 use App\Support\Historical\HistoricalMessages;
@@ -50,6 +52,9 @@ class HistoricalImportService
         private readonly HistoricalDocumentNormalizer $normalizer,
         private readonly HistoricalDuplicateDetector $duplicates,
         private readonly HistoricalDocumentLifecycleService $lifecycle,
+        private readonly HistoricalCalculationSuggester $suggester = new HistoricalCalculationSuggester(),
+        private readonly HistoricalCalculationStateService $calculationState = new HistoricalCalculationStateService(),
+        private readonly HistoricalPaymentSettlementService $settlement = new HistoricalPaymentSettlementService(),
     ) {}
 
     // ------------------------------------------------------------- uploading
@@ -518,6 +523,7 @@ class HistoricalImportService
         HistoricalMessages $messages,
         string $groupingKey,
         int $actorId,
+        array $payments = [],
     ): ?HistoricalSalesDocument {
         $resolution = ($batch->duplicate_resolutions ?? [])[$groupingKey] ?? null;
 
@@ -572,6 +578,30 @@ class HistoricalImportService
         foreach ($lines as $line) {
             $model = new HistoricalSalesLine();
             $model->forceFill($line + [
+                'shop_id'                       => $batch->shop_id,
+                'historical_sales_document_id'  => $document->id,
+            ])->save();
+        }
+
+        // Batch 3 §7/§8 — manual entry's payment rows only; a bulk file import
+        // never passes $payments (default []), so this loop is a byte-for-byte
+        // no-op for normalize()'s call site. Always via Eloquent, never a raw
+        // insert, so HistoricalSalesPayment's own `saving` guards (tenant
+        // ownership, mandatory account-label snapshot, the monotonic linked
+        // marker) run for every row exactly as they do everywhere else.
+        foreach ($payments as $payment) {
+            // A linked row must carry its own real label — the model
+            // deliberately refuses to invent one (see
+            // HistoricalSalesPayment::normalizeAccountLabelSnapshot()) — so the
+            // only place that can supply it is here, where the tenant-scoped
+            // method id is still trustworthy input, not yet a foreign key.
+            if (! empty($payment['shop_payment_method_id']) && empty($payment['account_label_snapshot'])) {
+                $method = ShopPaymentMethod::withoutTenant()->find($payment['shop_payment_method_id']);
+                $payment['account_label_snapshot'] = $method?->name;
+            }
+
+            $model = new HistoricalSalesPayment();
+            $model->forceFill($payment + [
                 'shop_id'                       => $batch->shop_id,
                 'historical_sales_document_id'  => $document->id,
             ])->save();
@@ -677,9 +707,10 @@ class HistoricalImportService
      *
      * @param  array<string, mixed>  $header
      * @param  array<int, array<string, mixed>>  $lines
+     * @param  array<int, array<string, mixed>>  $payments
      * @return array{batch: HistoricalImportBatch, document: ?HistoricalSalesDocument, messages: HistoricalMessages}
      */
-    public function storeManual(Shop $shop, array $header, array $lines, int $actorId, array $options = []): array
+    public function storeManual(Shop $shop, array $header, array $lines, int $actorId, array $options = [], array $payments = []): array
     {
         $batch = new HistoricalImportBatch();
         $batch->forceFill([
@@ -698,15 +729,18 @@ class HistoricalImportService
 
         $result = $this->normalizer->normalize($shop, $header, $lines, $this->manualNormalizerOptions($options, $actorId));
 
-        $messages = $result['messages'];
+        $messages        = $result['messages'];
+        $normalizedLines = $this->applyLineCalculationState($result['lines'], $messages);
+        $attributes      = $this->applyPaymentSettlement($result['attributes'], $payments, $options['paid_amount_mode'] ?? null, $messages);
 
         $document = DB::transaction(fn (): ?HistoricalSalesDocument => $this->persistDraft(
             $batch,
-            $result['attributes'],
-            $result['lines'],
+            $attributes,
+            $normalizedLines,
             $messages,
             'manual',
-            $actorId
+            $actorId,
+            $payments
         ));
 
         $batch->forceFill([
@@ -755,6 +789,7 @@ class HistoricalImportService
      *
      * @param  array<string, mixed>  $header
      * @param  array<int, array<string, mixed>>  $lines
+     * @param  array<int, array<string, mixed>>  $payments
      * @return array{batch: HistoricalImportBatch, document: HistoricalSalesDocument, messages: HistoricalMessages}
      *
      * @throws HistoricalManualPublishRejected
@@ -766,11 +801,12 @@ class HistoricalImportService
         int $actorId,
         array $options = [],
         ?string $acknowledgedWarningDigest = null,
+        array $payments = [],
     ): array {
-        return DB::transaction(function () use ($shop, $header, $lines, $actorId, $options, $acknowledgedWarningDigest): array {
+        return DB::transaction(function () use ($shop, $header, $lines, $actorId, $options, $acknowledgedWarningDigest, $payments): array {
             // Full re-validation and re-normalisation from the raw input, not from
             // anything the preview computed. This is the same call Save-draft makes.
-            $result   = $this->storeManual($shop, $header, $lines, $actorId, $options);
+            $result   = $this->storeManual($shop, $header, $lines, $actorId, $options, $payments);
             $batch    = $result['batch'];
             $document = $result['document'];
             $messages = $result['messages'];
@@ -850,6 +886,186 @@ class HistoricalImportService
     }
 
     /**
+     * Batch 3 §4/§5/§9/§10 Section A — the manual-entry-only calculation
+     * layer. Reads the raw Batch-3 fields StoreManualHistoricalRequest keeps
+     * alive in each normalized line's `raw_payload` and turns them into a
+     * persisted `calculation_state.metal_value` entry, or a blocking error
+     * when the figure genuinely cannot be determined — never a silently
+     * favourable default (foundation-audit D2).
+     *
+     * A line with neither `line_metal_type` nor `line_billable_weight_basis`
+     * in its raw payload is left completely untouched. That is what keeps
+     * bulk import and every pre-Batch-3 manual test byte-identical: neither
+     * call site ever submits those fields, so this method is a no-op for them.
+     *
+     * @param  array<int, array<string, mixed>>  $lines  normalizer-output lines
+     * @return array<int, array<string, mixed>>
+     */
+    private function applyLineCalculationState(array $lines, HistoricalMessages $messages): array
+    {
+        foreach ($lines as $i => $line) {
+            $raw = $line['raw_payload'] ?? [];
+
+            $metalType = self::rawText($raw, 'line_metal_type');
+            $basis     = self::rawText($raw, 'line_billable_weight_basis');
+
+            if ($metalType === null && $basis === null) {
+                continue;
+            }
+
+            $lineNumber = $line['line_number'] ?? ($i + 1);
+
+            $billableWeight = match ($basis) {
+                HistoricalSalesLine::BILLABLE_WEIGHT_GROSS,
+                HistoricalSalesLine::BILLABLE_WEIGHT_NET => $this->suggester->suggestBillableWeight(
+                    (string) $basis,
+                    $line['gross_weight'] ?? null,
+                    $line['net_weight'] ?? null,
+                ),
+                HistoricalSalesLine::BILLABLE_WEIGHT_MANUAL => self::rawFloat($raw, 'line_billable_weight_manual'),
+                default => null,
+            };
+
+            $lines[$i]['line_metal_type']       = $metalType;
+            $lines[$i]['billable_weight_basis'] = $basis;
+
+            if ($billableWeight === null) {
+                $messages->error(
+                    'billable_weight_undetermined',
+                    sprintf(
+                        'Line %d: choose gross, net, or a manual weight before a metal value can be suggested.',
+                        $lineNumber
+                    ),
+                    'lines'
+                );
+
+                $lines[$i]['calculation_state'] = ['metal_value' => $this->calculationState->autoState(null)];
+
+                continue;
+            }
+
+            $lines[$i]['billable_weight'] = $billableWeight;
+
+            $purity = self::rawFloat($raw, 'line_purity_value');
+            $rate   = $line['rate_snapshot'] ?? null;
+
+            $suggestion = $this->suggester->suggestMetalValue($metalType, $purity, $billableWeight, $rate);
+
+            if ($suggestion === null) {
+                $messages->error(
+                    'metal_value_undetermined',
+                    sprintf('Line %d: metal value could not be determined — check purity and rate.', $lineNumber),
+                    'lines'
+                );
+            }
+
+            $inputs = [
+                'metal'           => $metalType,
+                'purity'          => $purity,
+                'billable_weight' => $billableWeight,
+                'rate_per_gram'   => $rate,
+            ];
+
+            $submittedValue = self::rawFloat($raw, 'line_metal_value');
+            $claimedMode    = self::rawText($raw, 'line_metal_value_mode');
+            $recalculate    = self::rawBool($raw, 'line_metal_value_recalculate');
+
+            $state = match (true) {
+                $recalculate => $this->calculationState->recalculate($suggestion, $inputs),
+                $submittedValue !== null => $this->calculationState->applyClientSubmission(
+                    $claimedMode ?? HistoricalCalculationStateService::MANUAL,
+                    $submittedValue,
+                    $suggestion,
+                    $inputs
+                ),
+                default => $this->calculationState->autoState($suggestion, $inputs),
+            };
+
+            $lines[$i]['calculation_state'] = ['metal_value' => $state];
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Batch 3 §7/§8 Section B — payment-row settlement, manual-entry only.
+     * Neither call site of normalize() (the file-import path) ever passes
+     * `$payments`, and a bill with no payment rows and no manual override
+     * leaves `$attributes['paid_amount_snapshot']` exactly as the normalizer
+     * already set it from the header `paid_amount` field — this is what keeps
+     * every pre-Batch-3 manual/import test byte-identical.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @param  array<int, array<string, mixed>>  $payments
+     * @return array<string, mixed>
+     */
+    private function applyPaymentSettlement(
+        array $attributes,
+        array $payments,
+        ?string $paidAmountMode,
+        HistoricalMessages $messages,
+    ): array {
+        if ($payments === [] && $paidAmountMode !== 'manual') {
+            return $attributes;
+        }
+
+        $rowSum          = $this->settlement->suggestedPaidTotal($payments);
+        $typedPaidAmount = $attributes['paid_amount_snapshot'] ?? null;
+
+        if ($paidAmountMode === 'manual' && $typedPaidAmount !== null) {
+            $paidTotal = (float) $typedPaidAmount;
+
+            if ($this->settlement->hasMismatch($rowSum, $paidTotal)) {
+                $messages->warning(
+                    'paid_amount_mismatch',
+                    sprintf(
+                        'The payment rows total ₹%s but the manually entered paid amount is ₹%s. '
+                        . 'Confirm this is correct before publishing.',
+                        number_format($rowSum, 2),
+                        number_format($paidTotal, 2)
+                    ),
+                    'paid_amount'
+                );
+            }
+        } else {
+            $paidTotal = $rowSum;
+        }
+
+        $settled = $this->settlement->settle((float) ($attributes['grand_total'] ?? 0), $paidTotal);
+
+        $attributes['paid_amount_snapshot']        = $paidTotal;
+        $attributes['outstanding_amount_snapshot'] = $settled['outstanding'];
+        $attributes['advance_credit_amount']       = $settled['advance_credit'];
+
+        return $attributes;
+    }
+
+    private static function rawText(array $raw, string $key): ?string
+    {
+        $value = $raw[$key] ?? null;
+
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    private static function rawFloat(array $raw, string $key): ?float
+    {
+        $value = self::rawText($raw, $key);
+
+        return $value === null ? null : (float) $value;
+    }
+
+    private static function rawBool(array $raw, string $key): bool
+    {
+        return in_array($raw[$key] ?? null, ['1', 1, true, 'true', 'on'], true);
+    }
+
+    /**
      * Zero-write preview of a manual entry. Same normalizer, same fingerprint,
      * same duplicate detector as storeManual() — nothing here opens a
      * transaction or calls persistDraft(). What the operator sees in preview
@@ -857,18 +1073,20 @@ class HistoricalImportService
      *
      * @param  array<string, mixed>  $header
      * @param  array<int, array<string, mixed>>  $lines
+     * @param  array<int, array<string, mixed>>  $payments
      * @return array{attributes: array, lines: array, messages: HistoricalMessages, fingerprint: ?string}
      */
-    public function previewManual(Shop $shop, array $header, array $lines, int $actorId, array $options = []): array
+    public function previewManual(Shop $shop, array $header, array $lines, int $actorId, array $options = [], array $payments = []): array
     {
         $result = $this->normalizer->normalize($shop, $header, $lines, $this->manualNormalizerOptions($options, $actorId));
 
-        $messages   = $result['messages'];
-        $attributes = $result['attributes'];
-        $fingerprint = null;
+        $messages        = $result['messages'];
+        $normalizedLines = $this->applyLineCalculationState($result['lines'], $messages);
+        $attributes      = $this->applyPaymentSettlement($result['attributes'], $payments, $options['paid_amount_mode'] ?? null, $messages);
+        $fingerprint     = null;
 
         if (! $messages->hasBlocking() && $attributes['grand_total'] !== null && $attributes['document_date'] !== null) {
-            $fingerprint = $this->normalizer->fingerprint($shop->id, $attributes, $result['lines']);
+            $fingerprint = $this->normalizer->fingerprint($shop->id, $attributes, $normalizedLines);
             $conflict    = $this->duplicates->detect($shop->id, $attributes, $fingerprint);
 
             if ($conflict !== null) {
@@ -878,7 +1096,7 @@ class HistoricalImportService
 
         return [
             'attributes'  => $attributes,
-            'lines'       => $result['lines'],
+            'lines'       => $normalizedLines,
             'messages'    => $messages,
             'fingerprint' => $fingerprint,
         ];

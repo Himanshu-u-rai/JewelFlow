@@ -844,4 +844,63 @@ class HistoricalCalculationSchemaTest extends TestCase
             $this->assertSame('Cash', $payment->displayAccountLabel());
         });
     }
+
+    /**
+     * Foundation-reaudit §7 CONCERN, closed here. The pre-fix
+     * `deriveWasLinkedToPaymentMethod()` was write-once, keyed off "has this
+     * attribute EVER been assigned before" rather than the payment's actual
+     * link state: a payment created accountless (marker correctly `false`)
+     * and later attached to a real `ShopPaymentMethod` WHILE STILL DRAFT never
+     * got the marker flipped, because by the second `save()` the attribute
+     * was already present in `getAttributes()` from the first save, so the
+     * derive-if-absent guard silently skipped re-deriving even though
+     * `shop_payment_method_id` had just become non-null. `displayAccountLabel()`
+     * would then never show "(No longer active)" for such a row after the
+     * method was later deleted, despite it carrying a real preserved account
+     * snapshot. The fix makes the marker MONOTONIC: any `saving` with a
+     * non-null `shop_payment_method_id` forces the marker `true`
+     * unconditionally, regardless of what was persisted before.
+     */
+    public function test_marker_is_forced_true_when_a_method_is_attached_to_a_previously_accountless_draft_row(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+
+        TenantContext::runFor($shop->id, function () use ($shop): void {
+            $batch  = $this->makeBatch($shop->id);
+            $doc    = $this->makeDocument($shop->id, $batch->id);
+            $method = $this->makePaymentMethod($shop->id);
+
+            // Step 1 — genuinely accountless at creation.
+            $payment = $this->makePayment($doc, [
+                'mode'                   => HistoricalSalesPayment::MODE_CASH,
+                'account_label_snapshot' => null,
+            ]);
+            $this->assertFalse($payment->fresh()->was_linked_to_payment_method);
+
+            // Step 2 — attached to a real method while the document is still a
+            // draft. The pre-fix code left the marker `false` here.
+            $payment->shop_payment_method_id = $method->id;
+            $payment->account_label_snapshot = $method->name;
+            $payment->save();
+
+            $this->assertTrue(
+                $payment->fresh()->was_linked_to_payment_method,
+                'The marker must flip to true the moment a real method is attached, not stay latched at its first-write value.'
+            );
+
+            // Step 3 — the method is later deleted (FK ON DELETE SET NULL).
+            $method->delete();
+            $payment->refresh();
+
+            $this->assertNull($payment->shop_payment_method_id);
+            $this->assertTrue(
+                $payment->was_linked_to_payment_method,
+                'Deleting the method must not un-link history — the marker must stay true.'
+            );
+            $this->assertSame(
+                $method->name . ' (No longer active)',
+                $payment->displayAccountLabel()
+            );
+        });
+    }
 }

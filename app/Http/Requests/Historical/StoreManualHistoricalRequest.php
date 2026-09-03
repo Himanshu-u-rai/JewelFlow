@@ -3,7 +3,10 @@
 namespace App\Http\Requests\Historical;
 
 use App\Models\Historical\HistoricalSalesDocument;
+use App\Models\Historical\HistoricalSalesLine;
+use App\Models\Historical\HistoricalSalesPayment;
 use App\Rules\IndianMobileRule;
+use App\Services\Historical\HistoricalCalculationStateService;
 use App\Support\Historical\HistoricalFields;
 use App\Support\Historical\HistoricalMakingCharge;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,6 +28,28 @@ class StoreManualHistoricalRequest extends FormRequest
 
     /** Save and immediately publish it, without ever showing the batch page. */
     public const INTENT_PUBLISH = 'publish';
+
+    /**
+     * Batch 3 §4/§9/§10 calculation fields — deliberately NOT part of the
+     * shared HistoricalFields::LINE catalog (that catalog also drives the
+     * bulk-import mapping screen; adding these there would let a spreadsheet
+     * column accidentally map onto them). Manual entry alone needs them, so
+     * they are merged in locally by lines() instead.
+     *
+     * `line_metal_value` itself is NOT listed here — it is already a
+     * HistoricalFields::LINE catalog field (the legacy making-charge
+     * base-amount input) and survives request filtering on its own; Batch 3
+     * reuses that same field name for the operator's submitted/overridden
+     * metal value, so no second entry is needed.
+     */
+    private const MANUAL_CALCULATION_LINE_FIELDS = [
+        'line_metal_type',
+        'line_purity_value',
+        'line_billable_weight_basis',
+        'line_billable_weight_manual',
+        'line_metal_value_mode',
+        'line_metal_value_recalculate',
+    ];
 
     public function authorize(): bool
     {
@@ -71,6 +96,11 @@ class StoreManualHistoricalRequest extends FormRequest
             'grand_total'              => ['required', 'numeric'],
             'paid_amount'              => $money,
             'outstanding_amount'       => $money,
+            // Batch 3 §7 — which figure wins when payment rows and a typed
+            // aggregate disagree. Absent/unknown means "trust the rows" (the
+            // normalizer's existing header-driven paid_amount stays untouched
+            // unless this is explicitly 'manual').
+            'paid_amount_mode'         => ['nullable', Rule::in(['auto', 'manual'])],
 
             // making / labour — value free text ("12%", "450/gm"); meaning confirmed.
             'making_label'             => ['nullable', 'string', 'max:120'],
@@ -106,6 +136,32 @@ class StoreManualHistoricalRequest extends FormRequest
             'lines.*.line_making_value'   => ['nullable', 'string', 'max:60'],
             'lines.*.line_rate'           => ['nullable', 'numeric'],
             'lines.*.line_total'          => ['nullable', 'numeric'],
+
+            // Batch 3 §4/§9/§10 — manual-entry-only calculation fields (see
+            // MANUAL_CALCULATION_LINE_FIELDS docblock above).
+            'lines.*.line_metal_type'                 => ['nullable', 'string', 'max:40'],
+            'lines.*.line_purity_value'                => ['nullable', 'numeric'],
+            'lines.*.line_billable_weight_basis'       => ['nullable', Rule::in(HistoricalSalesLine::BILLABLE_WEIGHT_BASES)],
+            'lines.*.line_billable_weight_manual'      => ['nullable', 'numeric'],
+            'lines.*.line_metal_value_mode'            => ['nullable', Rule::in([
+                HistoricalCalculationStateService::AUTO,
+                HistoricalCalculationStateService::MANUAL,
+            ])],
+            'lines.*.line_metal_value_recalculate'     => ['nullable', 'boolean'],
+
+            // Batch 3 §7/§8 — payment rows. shop_payment_method_id is checked
+            // against THIS shop only, so a cross-tenant reference is a clean
+            // 422/302 validation error, never a 500 from the model-layer guard.
+            'payments'                            => ['nullable', 'array'],
+            'payments.*.mode'                     => ['required', Rule::in(HistoricalSalesPayment::VALID_MODES)],
+            'payments.*.amount'                   => ['required', 'numeric', 'min:0.01'],
+            'payments.*.reference'                => ['nullable', 'string', 'max:120'],
+            'payments.*.shop_payment_method_id'   => [
+                'nullable',
+                'integer',
+                Rule::exists('shop_payment_methods', 'id')
+                    ->where(fn ($query) => $query->where('shop_id', $this->user()?->shop?->id)),
+            ],
         ];
     }
 
@@ -153,8 +209,10 @@ class StoreManualHistoricalRequest extends FormRequest
     {
         $lines = [];
 
+        $allowed = HistoricalFields::LINE + array_fill_keys(self::MANUAL_CALCULATION_LINE_FIELDS, true);
+
         foreach ((array) $this->input('lines', []) as $line) {
-            $line = array_intersect_key((array) $line, HistoricalFields::LINE);
+            $line = array_intersect_key((array) $line, $allowed);
 
             // Drop a wholly blank line row — a form always POSTs its empty template.
             if (array_filter($line, static fn ($v) => $v !== null && trim((string) $v) !== '') !== []) {
@@ -177,6 +235,19 @@ class StoreManualHistoricalRequest extends FormRequest
             'cutover_date'         => $this->input('cutover_date'),
             'cutover_acknowledged' => $this->boolean('cutover_acknowledged'),
             'cutover_reason'       => $this->input('cutover_reason'),
+            'paid_amount_mode'     => $this->input('paid_amount_mode'),
         ];
+    }
+
+    /**
+     * Validated payment rows only — never raw input. Absent/empty when the
+     * bill has no typed payment breakdown, which is the normal case for a
+     * bill entered before Batch 3 shipped.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function payments(): array
+    {
+        return (array) $this->validated('payments', []);
     }
 }
