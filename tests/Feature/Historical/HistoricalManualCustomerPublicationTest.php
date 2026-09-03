@@ -728,4 +728,22 @@ class HistoricalManualCustomerPublicationTest extends TestCase
             $this->assertSame(0, HistoricalImportBatch::query()->count());
         });
     }
+
+    // ------------------------------------------------- reachability (minimal Phase B)
+    // Both fields were validated and normalizer-safe server-side but had zero
+    // view-layer wiring — the manual entry form had no way to submit them,
+    // so an operator could never actually trigger the D1/D2 paths above
+    // through the UI. This only proves the two fields are reachable; it is
+    // not the full customer entry UX (typeahead, suggestion selection,
+    // status badge) that Batch 3 still needs.
+    public function test_customer_pan_and_add_customer_on_publish_are_reachable_on_the_manual_entry_form(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $html = $this->actingAs($owner)->get(route('historical.manual.create'))->getContent();
+
+        $this->assertStringContainsString('name="customer_pan"', $html);
+        $this->assertStringContainsString('name="add_customer_on_publish"', $html);
+        $this->assertStringContainsString('value="1"', $html);
+    }
 }

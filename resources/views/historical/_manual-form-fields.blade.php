@@ -98,9 +98,20 @@
             <label for="place_of_supply">Place of supply</label>
             <input type="text" id="place_of_supply" name="place_of_supply" value="{{ old('place_of_supply') }}" class="w-full">
         </div>
+        <div>
+            <label for="customer_pan">PAN</label>
+            <input type="text" id="customer_pan" name="customer_pan" value="{{ old('customer_pan') }}" class="w-full" maxlength="20">
+        </div>
         <div class="sm:col-span-2">
             <label for="customer_address">Address</label>
             <input type="text" id="customer_address" name="customer_address" value="{{ old('customer_address') }}" class="w-full">
+        </div>
+        <div class="sm:col-span-2 flex items-start gap-2">
+            <input type="checkbox" id="add_customer_on_publish" name="add_customer_on_publish" value="1" @checked(old('add_customer_on_publish'))>
+            <label for="add_customer_on_publish" class="text-sm text-slate-700">
+                Add as a live customer when this bill is published
+                <span class="block text-xs text-slate-500">Only applies to Save &amp; publish. Never links automatically to an existing customer suggestion — checked here, decided fresh every time.</span>
+            </label>
         </div>
     </div>
 </fieldset>
