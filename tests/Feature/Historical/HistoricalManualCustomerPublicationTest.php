@@ -568,4 +568,164 @@ class HistoricalManualCustomerPublicationTest extends TestCase
             $service->linkCustomer($document, $customer->id);
         });
     }
+
+    // ------------------------------------------------- Audit D1. blank name guard
+
+    /**
+     * Audit finding D1 (HISTORICAL-CUSTOMER-PUBLICATION-AUDIT.md §3): a bill
+     * with a real mobile but NO name at all passed the generic-name gate
+     * (isGenericCustomerName('') === false) and created a live customer
+     * literally named "Walk-in" — exactly the record the denylist exists to
+     * stop, reached through a different door. A blank/whitespace-only name is
+     * not a valid identity and must stay snapshot-only, same as Cash/Walk-in.
+     */
+    public function test_blank_customer_name_with_a_valid_mobile_stays_snapshot_only(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $payload = $this->billPayload([
+            'intent'                   => 'publish',
+            'customer_name'            => '   ',
+            'customer_mobile'          => '9876500023',
+            'add_customer_on_publish'  => '1',
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.store'), $payload);
+        $response->assertRedirect();
+
+        TenantContext::runFor($shop->id, function () {
+            $document = HistoricalSalesDocument::query()->latest('id')->firstOrFail();
+            $this->assertSame(HistoricalSalesDocument::STATUS_PUBLISHED, $document->status);
+            $this->assertNull($document->customer_id);
+            $this->assertSame(0, Customer::withoutTenant()->count(), 'a blank name must never seed a placeholder "Walk-in" customer');
+        });
+    }
+
+    // --------------------------------------------- Audit D2. archived-mobile collision
+
+    /**
+     * Audit finding D2: byMobile() is ->active()-only, so an archived
+     * customer holding the canonical mobile is invisible to the lookup and
+     * the create branch runs straight into the (shop_id, mobile) unique
+     * index — a raw QueryException the controller reports as an unactionable
+     * "try again". The correct behaviour is a clean, actionable refusal
+     * BEFORE any insert is attempted, same shape as linkCustomer()'s own
+     * archived-customer message.
+     */
+    public function test_an_archived_customer_holding_the_same_mobile_blocks_publication_with_an_actionable_message(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $archived = TenantContext::runFor($shop->id, function () use ($shop) {
+            $customer = $this->createCustomer($shop->id, ['mobile' => '9876500024']);
+            $customer->forceFill(['is_active' => false])->save();
+
+            return $customer;
+        });
+
+        $payload = $this->billPayload([
+            'intent'                   => 'publish',
+            'customer_name'            => 'Ramesh Kumar',
+            'customer_mobile'          => '9876500024',
+            'add_customer_on_publish'  => '1',
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.store'), $payload);
+        $response->assertSessionHas('error');
+        $this->assertStringContainsString('archived', strtolower((string) session('error')));
+
+        TenantContext::runFor($shop->id, function () use ($archived) {
+            $this->assertSame(0, HistoricalSalesDocument::query()->count(), 'the whole publish must roll back, not just skip the create');
+            $this->assertSame(1, Customer::withoutTenant()->count(), 'no duplicate/second row may be created');
+            $this->assertFalse($archived->fresh()->is_active, 'the archived customer must never be silently reactivated');
+        });
+    }
+
+    /**
+     * Same collision, but the archived customer belongs to ANOTHER shop —
+     * confirms the pre-create archived-lookup stays shop-scoped and a
+     * same-mobile-different-shop archived row is invisible (no cross-shop
+     * leak, no false block, this shop's create branch proceeds normally).
+     */
+    public function test_an_archived_customer_in_another_shop_never_blocks_or_is_exposed(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        [, $otherShop]  = $this->createRetailerTenant();
+        TenantContext::runFor($otherShop->id, function () use ($otherShop) {
+            $customer = $this->createCustomer($otherShop->id, ['mobile' => '9876500025']);
+            $customer->forceFill(['is_active' => false])->save();
+        });
+
+        $payload = $this->billPayload([
+            'intent'                   => 'publish',
+            'customer_name'            => 'Ramesh Kumar',
+            'customer_mobile'          => '9876500025',
+            'add_customer_on_publish'  => '1',
+        ]);
+
+        $this->actingAs($owner)->post(route('historical.manual.store'), $payload)->assertRedirect();
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            $document = HistoricalSalesDocument::query()->latest('id')->firstOrFail();
+            $this->assertSame(HistoricalSalesDocument::STATUS_PUBLISHED, $document->status);
+            $this->assertNotNull($document->customer_id, 'this shop must get its own new customer, unaffected by another shop\'s archived row');
+            $this->assertSame(1, Customer::withoutTenant()->where('shop_id', $shop->id)->count());
+        });
+    }
+
+    // --------------------------------------------- Audit D3. new-customer rollback proof
+
+    /**
+     * Audit finding D3: the shipped rollback test (#14 above) only proves
+     * that LINKING an existing customer unwinds with the transaction — the
+     * Customer::create() row itself was never exercised under failure.
+     * Contract point 11 names newly created customers explicitly.
+     *
+     * This swaps in a service double that delegates linkCustomer() to the
+     * real implementation (so the real create-then-link sequence runs
+     * unmodified) and then throws from publish() — a later, independent step
+     * in the SAME publishManual() transaction. If the transaction boundary is
+     * correct, the freshly created Customer row rolls back along with
+     * everything else.
+     */
+    public function test_a_publish_failure_after_customer_creation_rolls_back_the_new_customer_too(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $real = app(HistoricalDocumentLifecycleService::class);
+        $spy  = new class ($real) extends HistoricalDocumentLifecycleService {
+            public function __construct(private readonly HistoricalDocumentLifecycleService $real)
+            {
+            }
+
+            public function linkCustomer(HistoricalSalesDocument $document, ?int $customerId): HistoricalSalesDocument
+            {
+                // Delegate to the real implementation so Customer::create()
+                // (already run by the caller) really does get linked before
+                // the injected failure below — this must not fake success.
+                return $this->real->linkCustomer($document, $customerId);
+            }
+
+            public function publish(HistoricalImportBatch $batch, ?int $actorId = null): HistoricalImportBatch
+            {
+                throw new \RuntimeException('injected post-creation publish failure');
+            }
+        };
+        $this->app->instance(HistoricalDocumentLifecycleService::class, $spy);
+
+        $payload = $this->billPayload([
+            'intent'                   => 'publish',
+            'customer_name'            => 'Fresh Rollback Customer',
+            'customer_mobile'          => '9876500026',
+            'add_customer_on_publish'  => '1',
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.store'), $payload);
+        $response->assertSessionHas('error');
+
+        TenantContext::runFor($shop->id, function () {
+            $this->assertSame(0, Customer::withoutTenant()->count(), 'the newly created customer row must roll back');
+            $this->assertSame(0, HistoricalSalesDocument::query()->count());
+            $this->assertSame(0, HistoricalImportBatch::query()->count());
+        });
+    }
 }

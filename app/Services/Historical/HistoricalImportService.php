@@ -1106,6 +1106,30 @@ class HistoricalImportService
     }
 
     /**
+     * Audit D2 — archived-only counterpart to HistoricalCustomerMatcher::byMobile(),
+     * which is ->active()-only and so never sees this row. Same two-tier lookup
+     * (exact canonical match, then a legacy-format fallback scan) but scoped to
+     * $shopId explicitly since withoutTenant() bypasses the ambient TenantContext.
+     */
+    private static function archivedCustomerHoldingMobile(int $shopId, string $mobile): ?Customer
+    {
+        // ->archived() (ArchivableParty trait), not ->where('is_active', false) —
+        // Postgres has no implicit bool/int cast and rejects the latter outright.
+        $base = fn () => Customer::withoutTenant()->where('shop_id', $shopId)->archived();
+
+        $exact = $base()->where('mobile', $mobile)->first();
+
+        if ($exact !== null) {
+            return $exact;
+        }
+
+        return $base()
+            ->whereRaw('LENGTH(mobile) <> 10')
+            ->get()
+            ->first(fn (Customer $c): bool => HistoricalCustomerMatcher::normalizeMobile($c->mobile) === $mobile);
+    }
+
+    /**
      * Batch 3 §B — the ONLY place a historical publish may create or reuse a
      * live Customer. Gated entirely on `add_customer_on_publish`, submitted
      * with THIS publish request; a fuzzy suggestion rendered anywhere in the
@@ -1134,9 +1158,13 @@ class HistoricalImportService
         $mobile   = HistoricalCustomerMatcher::normalizeMobile($snapshot['mobile'] ?? null);
         $name     = trim((string) ($snapshot['name'] ?? ''));
 
-        // No canonical mobile, or a Cash/Walk-in/generic name: the bill still
-        // publishes, it just stays a snapshot — neither case is an error.
-        if ($mobile === null || self::isGenericCustomerName($name)) {
+        // No canonical mobile, a blank name, or a Cash/Walk-in/generic name:
+        // the bill still publishes, it just stays a snapshot — none of these
+        // is an error. A blank name is deliberately its own check, not folded
+        // into isGenericCustomerName() — an empty string is not "generic",
+        // it is simply not an identity, and letting it fall through here used
+        // to create a live customer literally named "Walk-in" (audit D1).
+        if ($mobile === null || $name === '' || self::isGenericCustomerName($name)) {
             return $document;
         }
 
@@ -1150,6 +1178,23 @@ class HistoricalImportService
         }
 
         $customer = $match['customers']->first();
+
+        // byMobile() is ->active()-only, so an archived customer sitting on
+        // this exact canonical mobile is invisible to $match above — without
+        // this check the code below falls into Customer::create() and hits
+        // the (shop_id, mobile) unique index, a raw QueryException the
+        // controller can only report as an unactionable "try again" (audit
+        // D2). Checked BEFORE create, never reactivates or modifies the row.
+        if ($customer === null) {
+            $archived = self::archivedCustomerHoldingMobile($shop->id, $mobile);
+
+            if ($archived !== null) {
+                throw new HistoricalManualPublishRejected(
+                    'A customer with this mobile already exists but is archived. '
+                    . 'Select or reactivate that customer before publishing.'
+                );
+            }
+        }
 
         if ($customer === null) {
             $parts = $name !== '' ? preg_split('/\s+/', $name, 2) : [];
