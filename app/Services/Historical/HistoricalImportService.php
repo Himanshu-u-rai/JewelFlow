@@ -2,6 +2,7 @@
 
 namespace App\Services\Historical;
 
+use App\Models\Customer;
 use App\Models\Historical\HistoricalImportBatch;
 use App\Models\Historical\HistoricalImportProfile;
 use App\Models\Historical\HistoricalImportRow;
@@ -55,6 +56,7 @@ class HistoricalImportService
         private readonly HistoricalCalculationSuggester $suggester = new HistoricalCalculationSuggester(),
         private readonly HistoricalCalculationStateService $calculationState = new HistoricalCalculationStateService(),
         private readonly HistoricalPaymentSettlementService $settlement = new HistoricalPaymentSettlementService(),
+        private readonly HistoricalCustomerMatcher $customerMatcher = new HistoricalCustomerMatcher(),
     ) {}
 
     // ------------------------------------------------------------- uploading
@@ -839,6 +841,16 @@ class HistoricalImportService
                 ])->save();
             }
 
+            // Batch 3 §B — customer creation/reuse, gated on the operator's own
+            // explicit choice for THIS publish, never on the fuzzy suggestion
+            // shown on screen (R1 stays intact). Still draft at this point, so
+            // linkCustomer()'s draft-only guard and its own opening-balance
+            // re-evaluation both run before blockedFromPublishing() below reads
+            // that freshly-computed overlap.
+            if ($document->customer_id === null) {
+                $document = $this->applyCustomerOnPublish($shop, $document, $header, $options);
+            }
+
             // The one publish gate, reused rather than reimplemented: already
             // published / not editable / no preview / blocking / unacknowledged
             // warnings / unresolved HIGH opening-balance overlap.
@@ -1063,6 +1075,100 @@ class HistoricalImportService
     private static function rawBool(array $raw, string $key): bool
     {
         return in_array($raw[$key] ?? null, ['1', 1, true, 'true', 'on'], true);
+    }
+
+    // ------------------------------------------------- customer on publish
+
+    /**
+     * ponytail: exact denylist, not fuzzy matching — a historical bill that
+     * literally says "Cash" or "Walk-in" is never a real, identifiable
+     * customer no matter what mobile happens to be attached. Upgrade path if
+     * this list proves too narrow: move it to a per-shop configurable list,
+     * not a smarter string match.
+     */
+    private const GENERIC_CUSTOMER_NAMES = [
+        'CASH', 'WALK-IN', 'WALKIN', 'WALK IN', 'COUNTER', 'COUNTER SALE',
+        'CUSTOMER', 'N/A', 'NA', 'UNKNOWN', 'GENERAL', 'GENERAL CUSTOMER',
+    ];
+
+    private static function isGenericCustomerName(string $name): bool
+    {
+        return in_array(strtoupper(trim($name)), self::GENERIC_CUSTOMER_NAMES, true);
+    }
+
+    /** Same shape App\Rules\PanFormatRule enforces; duplicated because that
+     *  class only knows how to fail a FormRequest, not answer a plain bool. */
+    private static function validPan(mixed $pan): ?string
+    {
+        $pan = strtoupper(trim((string) $pan));
+
+        return preg_match('/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/', $pan) === 1 ? $pan : null;
+    }
+
+    /**
+     * Batch 3 §B — the ONLY place a historical publish may create or reuse a
+     * live Customer. Gated entirely on `add_customer_on_publish`, submitted
+     * with THIS publish request; a fuzzy suggestion rendered anywhere in the
+     * UI is never consulted here, which is what keeps R1 (never auto-link on
+     * a suggestion alone) intact. Called only from publishManual(), only
+     * while $document is still draft, and only inside that method's single
+     * DB::transaction — a later refusal in the same call unwinds this too.
+     *
+     * `HistoricalCustomerMatcher::byMobile()` is reused for the lookup
+     * specifically because (unlike Customer::resolveByMobile(), which
+     * silently picks ->first()) it surfaces every legacy-spelling duplicate
+     * for the same canonical number — so more than one candidate is reported
+     * here, not resolved.
+     */
+    private function applyCustomerOnPublish(
+        Shop $shop,
+        HistoricalSalesDocument $document,
+        array $header,
+        array $options,
+    ): HistoricalSalesDocument {
+        if (! (bool) ($options['add_customer_on_publish'] ?? false)) {
+            return $document;
+        }
+
+        $snapshot = $document->customer_snapshot ?? [];
+        $mobile   = HistoricalCustomerMatcher::normalizeMobile($snapshot['mobile'] ?? null);
+        $name     = trim((string) ($snapshot['name'] ?? ''));
+
+        // No canonical mobile, or a Cash/Walk-in/generic name: the bill still
+        // publishes, it just stays a snapshot — neither case is an error.
+        if ($mobile === null || self::isGenericCustomerName($name)) {
+            return $document;
+        }
+
+        $match = $this->customerMatcher->byMobile($shop->id, $mobile);
+
+        if ($match['customers']->count() > 1) {
+            throw new HistoricalManualPublishRejected(
+                'More than one existing customer matches this mobile number. '
+                . 'Open the document and link the correct customer before publishing.'
+            );
+        }
+
+        $customer = $match['customers']->first();
+
+        if ($customer === null) {
+            $parts = $name !== '' ? preg_split('/\s+/', $name, 2) : [];
+
+            $customer = Customer::create([
+                // shop_id is not mass-assignable (BelongsToShop keeps it off
+                // $fillable on purpose) — it comes from the ambient
+                // TenantContext/Auth on the model's own creating() hook, same
+                // as every other Customer::create() call in this codebase
+                // (see Customer::findOrCreateByMobile()).
+                'first_name' => $parts[0] ?? 'Walk-in',
+                'last_name'  => $parts[1] ?? null,
+                'mobile'     => $mobile,
+                'address'    => self::rawText($snapshot, 'address'),
+                'pan'        => self::validPan($snapshot['pan'] ?? null),
+            ]);
+        }
+
+        return $this->lifecycle->linkCustomer($document, $customer->id);
     }
 
     /**

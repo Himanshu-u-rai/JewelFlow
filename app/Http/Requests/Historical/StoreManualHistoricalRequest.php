@@ -51,6 +51,14 @@ class StoreManualHistoricalRequest extends FormRequest
         'line_metal_value_recalculate',
     ];
 
+    /**
+     * Batch 3 §B/§E — same reasoning as MANUAL_CALCULATION_LINE_FIELDS above,
+     * applied to the header instead of a line: `customer_pan` deliberately
+     * is NOT in the shared HistoricalFields::HEADER catalog, so a bulk-import
+     * spreadsheet column can never map onto it. Manual entry alone needs it.
+     */
+    private const MANUAL_HEADER_FIELDS = ['customer_pan'];
+
     public function authorize(): bool
     {
         return true;
@@ -75,12 +83,21 @@ class StoreManualHistoricalRequest extends FormRequest
             'source_reference'         => ['nullable', 'string', 'max:120'],
             'source_system'            => ['nullable', 'string', 'max:80'],
 
-            // customer snapshot — all optional, never linked in Batch 2.
+            // customer snapshot — all optional, never linked just by being typed.
             'customer_name'            => ['nullable', 'string', 'max:180'],
             'customer_mobile'          => ['nullable', 'string', new IndianMobileRule()],
             'customer_gstin'           => ['nullable', 'string', 'max:20'],
+            // Snapshot-only, like customer_gstin above — historical data is thin,
+            // so no PanFormatRule here. A malformed PAN just never gets copied to
+            // a newly created live customer (HistoricalImportService::validPan()).
+            'customer_pan'             => ['nullable', 'string', 'max:20'],
             'customer_address'         => ['nullable', 'string', 'max:500'],
             'place_of_supply'          => ['nullable', 'string', 'max:120'],
+
+            // Batch 3 §B — explicit, operator-submitted choice for THIS publish
+            // only. Never defaulted server-side; the UI may default the checkbox
+            // to checked later, but the server persists whatever was submitted.
+            'add_customer_on_publish'  => ['nullable', 'boolean'],
 
             // amounts — taxable optional (legacy data is thin); grand_total required.
             'taxable_amount'           => $money,
@@ -166,14 +183,17 @@ class StoreManualHistoricalRequest extends FormRequest
     }
 
     /**
-     * The canonical header the normalizer expects: only the HEADER-catalog keys,
-     * so nothing extra (acknowledgements, options) leaks into the record.
+     * The canonical header the normalizer expects: the HEADER-catalog keys
+     * plus MANUAL_HEADER_FIELDS (manual-entry-only, see docblock above), so
+     * nothing extra (acknowledgements, options) leaks into the record.
      *
      * @return array<string, mixed>
      */
     public function headerFields(): array
     {
-        return array_intersect_key($this->validated(), HistoricalFields::HEADER);
+        $allowed = HistoricalFields::HEADER + array_fill_keys(self::MANUAL_HEADER_FIELDS, true);
+
+        return array_intersect_key($this->validated(), $allowed);
     }
 
     /** Defaults to the non-destructive intent for any absent or unexpected value. */
@@ -236,6 +256,8 @@ class StoreManualHistoricalRequest extends FormRequest
             'cutover_acknowledged' => $this->boolean('cutover_acknowledged'),
             'cutover_reason'       => $this->input('cutover_reason'),
             'paid_amount_mode'     => $this->input('paid_amount_mode'),
+            // Batch 3 §B — see the `add_customer_on_publish` rule above.
+            'add_customer_on_publish' => $this->boolean('add_customer_on_publish'),
         ];
     }
 

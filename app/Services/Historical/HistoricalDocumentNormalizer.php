@@ -522,6 +522,9 @@ class HistoricalDocumentNormalizer
             'name'            => self::text($header['customer_name'] ?? null),
             'mobile'          => self::text($header['customer_mobile'] ?? null),
             'gstin'           => self::text($header['customer_gstin'] ?? null),
+            // Batch 3 §E — snapshot only, same as gstin above. Never rendered
+            // in any typeahead/suggestion list; see HistoricalCustomerMatcher.
+            'pan'             => self::text($header['customer_pan'] ?? null),
             'address'         => self::text($header['customer_address'] ?? null),
             'place_of_supply' => self::text($header['place_of_supply'] ?? null),
         ], static fn ($v) => $v !== null);
@@ -529,7 +532,9 @@ class HistoricalDocumentNormalizer
         if ($snapshot !== []) {
             $messages->info(
                 self::CODE_CUSTOMER_SNAPSHOT,
-                'The customer is stored as a snapshot of the original bill. No JewelFlow customer is created or linked.',
+                'The customer is stored as a snapshot of the original bill. A JewelFlow '
+                . 'customer is linked only if explicitly selected, and created or reused '
+                . 'only when explicitly requested at publish.',
                 'customer_name'
             );
         }
