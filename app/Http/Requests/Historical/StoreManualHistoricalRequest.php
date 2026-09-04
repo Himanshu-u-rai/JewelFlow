@@ -271,6 +271,12 @@ class StoreManualHistoricalRequest extends FormRequest
             'payments.*.mode' => ['required', Rule::in(HistoricalSalesPayment::VALID_MODES)],
             'payments.*.amount' => ['required', 'numeric', 'min:0.01'],
             'payments.*.reference' => ['nullable', 'string', 'max:120'],
+            'payments.*.payment_date' => ['nullable', 'date'],
+            'payments.*.note' => ['nullable', 'string', 'max:1000'],
+            // Only meaningful for a custom/free-text account (no shop_payment_method_id);
+            // see HistoricalSalesPayment::normalizeAccountLabelSnapshot() for why a linked
+            // row's label is never sourced from here.
+            'payments.*.account_label_snapshot' => ['nullable', 'string', 'max:255'],
             'payments.*.shop_payment_method_id' => [
                 'nullable',
                 'integer',
@@ -278,6 +284,36 @@ class StoreManualHistoricalRequest extends FormRequest
                     ->where(fn ($query) => $query->where('shop_id', $this->user()?->shop?->id)),
             ],
         ];
+    }
+
+    /**
+     * Drops a wholly blank payment row before validation ever sees it.
+     *
+     * Unlike `lines()` (whose fields are all nullable, so a blank row simply
+     * passes validation trivially and is filtered out later), `mode` and
+     * `amount` above are `required` — a form always POSTs its empty payment
+     * template, and without this the untouched default row would fail
+     * validation on every submit that has no real payment breakdown, which
+     * `StoreManualHistoricalRequest::payments()`'s own docblock says is "the
+     * normal case".
+     */
+    protected function prepareForValidation(): void
+    {
+        $payments = [];
+
+        foreach ((array) $this->input('payments', []) as $payment) {
+            $payment = (array) $payment;
+            $meaningful = array_filter(
+                $payment,
+                static fn ($value): bool => $value !== null && trim((string) $value) !== '',
+            );
+
+            if ($meaningful !== []) {
+                $payments[] = $payment;
+            }
+        }
+
+        $this->merge(['payments' => $payments]);
     }
 
     /**

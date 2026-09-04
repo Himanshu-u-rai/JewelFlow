@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Historical\StoreManualHistoricalRequest;
 use App\Models\Customer;
 use App\Models\Shop;
+use App\Models\ShopPaymentMethod;
 use App\Services\Historical\HistoricalCustomerMatcher;
 use App\Services\Historical\HistoricalImportService;
 use App\Services\MetalRegistry;
@@ -80,9 +81,26 @@ class HistoricalManualEntryController extends Controller
             }
         }
 
+        // Batch 3 §7/§8 — the manual-entry payment row's account dropdown.
+        // Explicit shop_id filter (not just the tenant global scope), same
+        // style as the purity profiles above: a view-render code path stays
+        // correct regardless of what implicitly scopes the query elsewhere.
+        $shopPaymentMethods = ShopPaymentMethod::query()
+            ->where('shop_id', $shop->id)
+            ->active()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (ShopPaymentMethod $method): array => [
+                'id' => $method->id,
+                'label' => $method->account_label,
+            ])
+            ->values()
+            ->all();
+
         return [
             'enabledMetals' => $registry->enabled_metals,
             'purityProfiles' => $purityProfiles,
+            'shopPaymentMethods' => $shopPaymentMethods,
         ];
     }
 

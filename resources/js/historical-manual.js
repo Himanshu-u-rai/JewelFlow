@@ -1,6 +1,7 @@
 export function registerHistoricalManual(Alpine) {
     Alpine.data('historicalManualForm', (config) => ({
         lines: [],
+        payments: [],
         enabledMetals: config.enabledMetals || [],
         purityProfiles: config.purityProfiles || [],
         minimumRows: config.minimumRows || 1,
@@ -11,6 +12,7 @@ export function registerHistoricalManual(Alpine) {
         init() {
             this.lines = this.seedLines(config.lines || []);
             this.lines.forEach((line) => this.calculateLine(line));
+            this.payments = this.seedPayments(config.payments || []);
             this.syncDocumentTotals();
 
             this._mobileQuery = window.matchMedia('(max-width: 1279px)');
@@ -100,6 +102,68 @@ export function registerHistoricalManual(Alpine) {
             this.lines.splice(index, 1);
             this.padLines();
             this.syncDocumentTotals();
+        },
+
+        blankPayment() {
+            return {
+                mode: '', amount: '', account_choice: '', shop_payment_method_id: '',
+                account_label_snapshot: '', reference: '', payment_date: '', note: '',
+            };
+        },
+
+        seedPayments(raw) {
+            const rows = Object.values(raw || {}).map((source) => {
+                const payment = { ...this.blankPayment(), ...(source || {}) };
+                payment.account_choice = payment.shop_payment_method_id
+                    ? String(payment.shop_payment_method_id)
+                    : (payment.account_label_snapshot ? '__custom' : '');
+
+                return payment;
+            });
+
+            // Payment rows are genuinely optional (a typed bill with no payment
+            // breakdown is the normal case) — unlike item lines, an empty set
+            // stays empty. Only the very first render gets one blank starter row.
+            if (rows.length === 0) rows.push(this.blankPayment());
+
+            return rows;
+        },
+
+        isBlankPayment(payment) {
+            return ['mode', 'amount', 'reference', 'payment_date', 'note', 'account_label_snapshot', 'shop_payment_method_id']
+                .every((field) => payment[field] === null || payment[field] === undefined || String(payment[field]).trim() === '');
+        },
+
+        addPayment() {
+            this.payments.push(this.blankPayment());
+        },
+
+        removePayment(index) {
+            this.payments.splice(index, 1);
+            this.syncDocumentTotals();
+        },
+
+        accountChanged(payment) {
+            if (payment.account_choice === '__custom') {
+                payment.shop_payment_method_id = '';
+            } else {
+                payment.shop_payment_method_id = payment.account_choice;
+                payment.account_label_snapshot = '';
+            }
+        },
+
+        get paidTotal() {
+            return this.sum(this.payments.filter((payment) => !this.isBlankPayment(payment)), 'amount');
+        },
+
+        get paymentStatusLabel() {
+            const paid = this.paidTotal;
+            const grand = this.number(this.documentTotals.grand_total) || 0;
+
+            if (paid <= 0) return 'Unpaid';
+            if (grand > 0 && paid >= grand) return 'Fully paid';
+
+            return 'Partially paid';
         },
 
         lineChanged(index, event) {
@@ -315,6 +379,19 @@ export function registerHistoricalManual(Alpine) {
                 stone_value: this.sum(rows, 'line_stone_value'),
                 grand_total: this.sum(rows, 'line_total'),
             };
+
+            // Batch 3 §7/§9 — paid/outstanding follow the same auto/manual state
+            // machine as every other document total. "Effective" reads whichever
+            // value currently governs (a manual override, or the fresh auto sum)
+            // so outstanding cascades correctly even when grand_total itself is
+            // a manual override, not the just-computed line sum above.
+            const effectiveGrandTotal = this.documentModes.grand_total === 'manual'
+                ? this.number(this.documentTotals.grand_total) : sums.grand_total;
+            const effectivePaid = this.documentModes.paid_amount === 'manual'
+                ? this.number(this.documentTotals.paid_amount) : this.paidTotal;
+
+            sums.paid_amount = this.paidTotal;
+            sums.outstanding_amount = Math.max((effectiveGrandTotal || 0) - (effectivePaid || 0), 0);
 
             for (const [field, value] of Object.entries(sums)) {
                 if ((this.documentModes[field] || 'auto') === 'auto') this.documentTotals[field] = this.format(value, 2);

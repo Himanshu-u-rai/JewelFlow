@@ -8,7 +8,7 @@
         HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE => 'Not applicable',
     ];
     $money = ['taxable_amount'=>'Taxable','tax_total'=>'Tax total','cgst'=>'CGST','sgst'=>'SGST','igst'=>'IGST','cess'=>'Cess','discount'=>'Discount','rounding'=>'Rounding','metal_value'=>'Metal value','stone_value'=>'Stone value','paid_amount'=>'Paid','outstanding_amount'=>'Outstanding'];
-    $calculatedDocumentFields = ['taxable_amount', 'tax_total', 'discount', 'metal_value', 'stone_value', 'grand_total'];
+    $calculatedDocumentFields = ['taxable_amount', 'tax_total', 'discount', 'metal_value', 'stone_value', 'grand_total', 'paid_amount', 'outstanding_amount'];
     $documentTotals = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field, '')])->all();
     $documentModes = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field . '_mode', 'auto')])->all();
 @endphp
@@ -52,6 +52,7 @@
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
               x-data="historicalManualForm({
                   lines: @js(old('lines', [])),
+                  payments: @js(old('payments', [])),
                   enabledMetals: @js($enabledMetals),
                   purityProfiles: @js($purityProfiles),
                   minimumRows: 1,
@@ -61,7 +62,7 @@
               class="grid gap-4" data-historical-form="manual">
             @csrf
 
-            @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases'))
+            @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases', 'shopPaymentMethods'))
 
             <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-historical-card-footer>
                 <p class="text-xs text-slate-500">Preview saves nothing. Save a draft or, if permitted, save and publish from the preview.</p>

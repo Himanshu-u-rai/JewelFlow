@@ -24,8 +24,8 @@ use Tests\TestCase;
  */
 class HistoricalManualPaymentWiringTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesTestTenant;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -36,17 +36,17 @@ class HistoricalManualPaymentWiringTest extends TestCase
     private function paymentPayload(array $override = []): array
     {
         return array_merge([
-            'original_document_number' => 'PAY-' . fake()->unique()->numberBetween(1, 999999),
-            'document_date'            => now()->toDateString(),
-            'source_system'            => 'Manual QA',
-            'customer_name'            => 'Payment QA Customer',
-            'grand_total'              => 1000,
-            'tax_mode'                 => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
-            'zero_tax_confirmed'       => '1',
-            'lines'                    => [[
+            'original_document_number' => 'PAY-'.fake()->unique()->numberBetween(1, 999999),
+            'document_date' => now()->toDateString(),
+            'source_system' => 'Manual QA',
+            'customer_name' => 'Payment QA Customer',
+            'grand_total' => 1000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
+            'zero_tax_confirmed' => '1',
+            'lines' => [[
                 'line_item_name' => 'QA Gold Item',
-                'line_quantity'  => 1,
-                'line_total'     => 1000,
+                'line_quantity' => 1,
+                'line_total' => 1000,
             ]],
         ], $override);
     }
@@ -54,12 +54,12 @@ class HistoricalManualPaymentWiringTest extends TestCase
     private function makeShopPaymentMethod(int $shopId, array $attrs = []): ShopPaymentMethod
     {
         return TenantContext::runFor($shopId, function () use ($shopId, $attrs): ShopPaymentMethod {
-            $method = new ShopPaymentMethod();
+            $method = new ShopPaymentMethod;
             $method->forceFill(array_merge([
-                'shop_id'    => $shopId,
-                'type'       => ShopPaymentMethod::TYPE_BANK,
-                'name'       => 'HDFC Current',
-                'is_active'  => true,
+                'shop_id' => $shopId,
+                'type' => ShopPaymentMethod::TYPE_BANK,
+                'name' => 'HDFC Current',
+                'is_active' => true,
                 'sort_order' => 1,
             ], $attrs))->save();
 
@@ -72,7 +72,7 @@ class HistoricalManualPaymentWiringTest extends TestCase
         [$owner, $shop] = $this->createRetailerTenant();
 
         $payload = $this->paymentPayload([
-            'intent'   => 'draft',
+            'intent' => 'draft',
             'payments' => [
                 ['mode' => 'cash', 'amount' => 400],
                 ['mode' => 'upi',  'amount' => 600, 'reference' => 'UPI/REF/001'],
@@ -98,10 +98,10 @@ class HistoricalManualPaymentWiringTest extends TestCase
     public function test_a_payment_linked_to_a_shop_payment_method_snapshots_its_label_and_marks_the_link(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
-        $method          = $this->makeShopPaymentMethod($shop->id);
+        $method = $this->makeShopPaymentMethod($shop->id);
 
         $payload = $this->paymentPayload([
-            'intent'   => 'draft',
+            'intent' => 'draft',
             'payments' => [
                 ['mode' => 'bank', 'amount' => 1000, 'shop_payment_method_id' => $method->id],
             ],
@@ -112,7 +112,7 @@ class HistoricalManualPaymentWiringTest extends TestCase
 
         TenantContext::runFor($shop->id, function () use ($method): void {
             $document = HistoricalSalesDocument::query()->latest('id')->with('payments')->firstOrFail();
-            $payment  = $document->payments->first();
+            $payment = $document->payments->first();
 
             $this->assertSame($method->id, $payment->shop_payment_method_id);
             $this->assertTrue($payment->was_linked_to_payment_method);
@@ -123,11 +123,11 @@ class HistoricalManualPaymentWiringTest extends TestCase
     public function test_referencing_a_payment_method_from_another_shop_is_a_clean_validation_error_not_a_500(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
-        [, $otherShop]  = $this->createRetailerTenant();
-        $foreignMethod   = $this->makeShopPaymentMethod($otherShop->id, ['name' => 'Foreign Bank']);
+        [, $otherShop] = $this->createRetailerTenant();
+        $foreignMethod = $this->makeShopPaymentMethod($otherShop->id, ['name' => 'Foreign Bank']);
 
         $payload = $this->paymentPayload([
-            'intent'   => 'draft',
+            'intent' => 'draft',
             'payments' => [
                 ['mode' => 'bank', 'amount' => 1000, 'shop_payment_method_id' => $foreignMethod->id],
             ],
@@ -148,10 +148,10 @@ class HistoricalManualPaymentWiringTest extends TestCase
         [$owner] = $this->createRetailerTenant();
 
         $liveTables = ['invoice_payments', 'cash_transactions', 'customer_gold_transactions', 'loyalty_transactions'];
-        $before     = collect($liveTables)->mapWithKeys(fn ($t) => [$t => DB::table($t)->count()])->all();
+        $before = collect($liveTables)->mapWithKeys(fn ($t) => [$t => DB::table($t)->count()])->all();
 
         $payload = $this->paymentPayload([
-            'intent'   => 'draft',
+            'intent' => 'draft',
             'payments' => [['mode' => 'cash', 'amount' => 1000]],
         ]);
 
@@ -161,15 +161,86 @@ class HistoricalManualPaymentWiringTest extends TestCase
         $this->assertSame($before, $after, 'A historical payment row touched a live accounting table.');
     }
 
+    public function test_a_custom_free_text_account_label_persists_without_a_payment_method_reference(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $payload = $this->paymentPayload([
+            'intent' => 'draft',
+            'payments' => [
+                ['mode' => 'other', 'amount' => 1000, 'account_label_snapshot' => 'Barter — old scooter'],
+            ],
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.store'), $payload);
+        $response->assertRedirect();
+
+        TenantContext::runFor($shop->id, function (): void {
+            $document = HistoricalSalesDocument::query()->latest('id')->with('payments')->firstOrFail();
+            $payment = $document->payments->first();
+
+            $this->assertNull($payment->shop_payment_method_id);
+            $this->assertFalse($payment->was_linked_to_payment_method);
+            $this->assertSame('Barter — old scooter', $payment->account_label_snapshot);
+        });
+    }
+
+    public function test_payment_date_and_note_are_persisted_when_provided(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $payload = $this->paymentPayload([
+            'intent' => 'draft',
+            'payments' => [
+                ['mode' => 'cash', 'amount' => 1000, 'payment_date' => '2024-01-15', 'note' => 'Paid at counter'],
+            ],
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.store'), $payload);
+        $response->assertRedirect();
+
+        TenantContext::runFor($shop->id, function (): void {
+            $document = HistoricalSalesDocument::query()->latest('id')->with('payments')->firstOrFail();
+            $payment = $document->payments->first();
+
+            $this->assertSame('2024-01-15', $payment->payment_date->toDateString());
+            $this->assertSame('Paid at counter', $payment->note);
+        });
+    }
+
+    public function test_a_wholly_blank_payment_row_is_dropped_silently_not_treated_as_a_validation_error(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $payload = $this->paymentPayload([
+            'intent' => 'draft',
+            'payments' => [
+                ['mode' => '', 'amount' => '', 'reference' => '', 'shop_payment_method_id' => '', 'payment_date' => '', 'note' => ''],
+                ['mode' => 'cash', 'amount' => 250],
+            ],
+        ]);
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.store'), $payload);
+        $response->assertRedirect();
+        $response->assertSessionDoesntHaveErrors();
+
+        TenantContext::runFor($shop->id, function (): void {
+            $document = HistoricalSalesDocument::query()->latest('id')->with('payments')->firstOrFail();
+
+            $this->assertCount(1, $document->payments);
+            $this->assertEqualsWithDelta(250.0, (float) $document->payments->first()->amount, 0.01);
+        });
+    }
+
     public function test_a_manually_overridden_paid_total_that_mismatches_the_payment_rows_requires_acknowledgement_before_publish(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
 
         $payload = $this->paymentPayload([
-            'intent'           => 'publish',
+            'intent' => 'publish',
             'paid_amount_mode' => 'manual',
-            'paid_amount'      => 1000,
-            'payments'         => [['mode' => 'cash', 'amount' => 400]],
+            'paid_amount' => 1000,
+            'payments' => [['mode' => 'cash', 'amount' => 400]],
         ]);
 
         $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
@@ -188,7 +259,7 @@ class HistoricalManualPaymentWiringTest extends TestCase
         });
 
         $accepted = $this->actingAs($owner)->post(route('historical.manual.store'), $payload + [
-            'acknowledge_warnings'        => '1',
+            'acknowledge_warnings' => '1',
             'acknowledged_warning_digest' => $digest,
         ]);
         $accepted->assertRedirect();

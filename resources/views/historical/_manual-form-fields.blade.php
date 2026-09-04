@@ -352,4 +352,74 @@
     </div>
 </fieldset>
 </div>
+
+{{-- Payment rows (Batch 3 §7/§8). One row by default; account is either a
+     shop-configured ShopPaymentMethod or a custom free-text label — never a
+     live ledger write, see HistoricalSalesPayment's class docblock. --}}
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="payments">
+    <legend class="sr-only">Payments (display snapshot — no ledger, no receivable)</legend>
+    <div class="border-b border-slate-200 px-4 py-4 sm:px-6 flex flex-wrap items-center justify-between gap-3" data-historical-card-header aria-hidden="true">
+        <div>
+            <h2 class="text-base font-semibold text-slate-900">Payments <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
+            <p class="mt-1 text-xs text-slate-500">Optional. Add one row per tender received against this bill.</p>
+        </div>
+        <span data-historical-payment-status
+              class="rounded-full px-3 py-1 text-xs font-semibold uppercase"
+              :class="{
+                  'bg-emerald-50 text-emerald-700': paymentStatusLabel === 'Fully paid',
+                  'bg-amber-100 text-amber-800': paymentStatusLabel === 'Partially paid',
+                  'bg-slate-100 text-slate-600': paymentStatusLabel === 'Unpaid',
+              }"
+              x-text="paymentStatusLabel"></span>
+    </div>
+    <div class="p-4 sm:p-6 grid gap-3">
+        <template x-for="(payment, i) in payments" :key="`payment-${i}`">
+            <div class="grid grid-cols-1 gap-3 rounded-xl border border-slate-300 bg-white p-3 sm:grid-cols-2 lg:grid-cols-6"
+                 data-historical-payment-row
+                 @input.debounce.250ms="syncDocumentTotals()" @change="syncDocumentTotals()">
+                <div>
+                    <label :for="`payment-${i}-mode`">Mode</label>
+                    <select :id="`payment-${i}-mode`" :name="`payments[${i}][mode]`" x-model="payment.mode" class="w-full min-h-[44px]">
+                        <option value="">Select payment mode</option>
+                        @foreach(\App\Models\Historical\HistoricalSalesPayment::VALID_MODES as $mode)
+                            <option value="{{ $mode }}">{{ ucfirst(str_replace('_', ' ', $mode)) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label :for="`payment-${i}-amount`">Amount</label>
+                    <input type="number" step="any" :id="`payment-${i}-amount`" :name="`payments[${i}][amount]`" x-model="payment.amount" placeholder="Amount" class="w-full text-right tabular-nums">
+                </div>
+                <div>
+                    <label :for="`payment-${i}-account`">Account</label>
+                    <select :id="`payment-${i}-account`" x-model="payment.account_choice" @change="accountChanged(payment)" class="w-full min-h-[44px]">
+                        <option value="">Select account</option>
+                        @foreach($shopPaymentMethods as $method)
+                            <option value="{{ $method['id'] }}">{{ $method['label'] }}</option>
+                        @endforeach
+                        <option value="__custom">Custom account…</option>
+                    </select>
+                    <input type="text" x-show="payment.account_choice === '__custom'" x-model="payment.account_label_snapshot" :name="`payments[${i}][account_label_snapshot]`" placeholder="Account name" class="mt-2 w-full">
+                    <input type="hidden" :name="`payments[${i}][shop_payment_method_id]`" x-model="payment.shop_payment_method_id">
+                </div>
+                <div>
+                    <label :for="`payment-${i}-reference`">Reference</label>
+                    <input type="text" :id="`payment-${i}-reference`" :name="`payments[${i}][reference]`" x-model="payment.reference" placeholder="UPI ref, cheque no…" class="w-full">
+                </div>
+                <div>
+                    <label :for="`payment-${i}-date`">Date</label>
+                    <input type="date" :id="`payment-${i}-date`" :name="`payments[${i}][payment_date]`" x-model="payment.payment_date" class="w-full">
+                </div>
+                <div class="flex items-end gap-2">
+                    <div class="flex-1">
+                        <label :for="`payment-${i}-note`">Note</label>
+                        <input type="text" :id="`payment-${i}-note`" :name="`payments[${i}][note]`" x-model="payment.note" class="w-full">
+                    </div>
+                    <button type="button" @click="removePayment(i)" class="min-h-[44px] shrink-0 text-xs font-semibold text-rose-700">Remove</button>
+                </div>
+            </div>
+        </template>
+        <button type="button" class="btn btn-sm min-h-[44px] w-fit" @click="addPayment()">Add another payment</button>
+    </div>
+</fieldset>
 </div>

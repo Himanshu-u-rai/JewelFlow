@@ -398,9 +398,9 @@ class HistoricalMobileUiTest extends TestCase
         $sections = $xpath->query($sectionQuery);
 
         $this->assertNotFalse($sections);
-        $this->assertSame(6, $sections->length);
-        $this->assertSame(6, $xpath->query($sectionQuery."/legend[contains(concat(' ', normalize-space(@class), ' '), ' sr-only ')]")?->length);
-        $this->assertSame(6, $xpath->query($sectionQuery.'/*[@data-historical-card-header]')?->length);
+        $this->assertSame(7, $sections->length);
+        $this->assertSame(7, $xpath->query($sectionQuery."/legend[contains(concat(' ', normalize-space(@class), ' '), ' sr-only ')]")?->length);
+        $this->assertSame(7, $xpath->query($sectionQuery.'/*[@data-historical-card-header]')?->length);
         $this->assertSame(0, $xpath->query($sectionQuery."/legend[contains(concat(' ', normalize-space(@class), ' '), ' w-full ')]")?->length);
 
         $headings = $xpath->query($sectionQuery.'/*[@data-historical-card-header]');
@@ -409,7 +409,7 @@ class HistoricalMobileUiTest extends TestCase
             $headingText .= ' '.$heading->textContent;
         }
 
-        foreach (['Document identity', 'Customer snapshot', 'Amount / payment', 'Tax and making / labour charge', 'Item lines', 'Cutover'] as $title) {
+        foreach (['Document identity', 'Customer snapshot', 'Amount / payment', 'Tax and making / labour charge', 'Item lines', 'Payments', 'Cutover'] as $title) {
             $this->assertStringContainsString($title, $headingText);
         }
     }
@@ -502,7 +502,7 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertSame(2, $xpath->query('//*[@data-historical-identity-row]/fieldset[@data-historical-form-section]')?->length);
         $this->assertSame(3, $xpath->query('//*[@data-historical-financial-row]/fieldset[@data-historical-form-section]')?->length);
         $this->assertSame(0, $xpath->query('//*[@data-historical-financial-row]/*[@data-historical-supporting-column]')?->length);
-        $this->assertSame(1, $xpath->query('//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]')?->length);
+        $this->assertSame(2, $xpath->query('//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]')?->length);
 
         foreach (['tax-making', 'cutover'] as $section) {
             $this->assertNodesHaveClasses(
@@ -619,7 +619,7 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertStringContainsString('@click="removeLine(i)"', $html);
         $this->assertStringContainsString('@click="duplicateLine(i)"', $html);
         $this->assertStringContainsString('@click="addLine()"', $html);
-        $this->assertSame(6, $xpath->query("//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(7, $xpath->query("//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]")?->length);
 
         $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
             'document_date' => '2023-06-15',
@@ -633,7 +633,7 @@ class HistoricalMobileUiTest extends TestCase
             "//form[@data-historical-form='manual-preview']//*[@data-historical-item-table]"
         );
         $this->firstNode($previewXpath, "//form[@data-historical-form='manual-preview']//*[@data-historical-item-grid-mobile]//*[@data-historical-item-card]");
-        $this->assertSame(6, $previewXpath->query("//form[@data-historical-form='manual-preview']//fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(7, $previewXpath->query("//form[@data-historical-form='manual-preview']//fieldset[@data-historical-form-section]")?->length);
     }
 
     public function test_manual_form_controls_override_the_shared_page_surface_tokens(): void
