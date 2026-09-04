@@ -30,6 +30,12 @@ class StoreManualHistoricalRequest extends FormRequest
     /** Save and immediately publish it, without ever showing the batch page. */
     public const INTENT_PUBLISH = 'publish';
 
+    /** Batch 3 fast-entry: save as draft, then open a fresh form for the next bill. */
+    public const INTENT_DRAFT_AND_NEW = 'draft_and_new';
+
+    /** Batch 3 fast-entry: publish, then open a fresh form for the next bill. */
+    public const INTENT_PUBLISH_AND_NEW = 'publish_and_new';
+
     /**
      * Batch 3 §4/§9/§10 calculation fields — deliberately NOT part of the
      * shared HistoricalFields::LINE catalog (that catalog also drives the
@@ -118,7 +124,12 @@ class StoreManualHistoricalRequest extends FormRequest
 
         return [
             // which button was pressed. Absent/unknown means the safe one.
-            'intent' => ['nullable', Rule::in([self::INTENT_DRAFT, self::INTENT_PUBLISH])],
+            'intent' => ['nullable', Rule::in([
+                self::INTENT_DRAFT,
+                self::INTENT_PUBLISH,
+                self::INTENT_DRAFT_AND_NEW,
+                self::INTENT_PUBLISH_AND_NEW,
+            ])],
             // warning acknowledgement for a direct publish. The checkbox alone is not
             // enough: the digest pins the acknowledgement to the exact warning set the
             // operator was shown, so an edit that changes the warnings invalidates it.
@@ -333,14 +344,45 @@ class StoreManualHistoricalRequest extends FormRequest
     /** Defaults to the non-destructive intent for any absent or unexpected value. */
     public function intent(): string
     {
-        return $this->input('intent') === self::INTENT_PUBLISH
-            ? self::INTENT_PUBLISH
-            : self::INTENT_DRAFT;
+        return match ($this->input('intent')) {
+            self::INTENT_PUBLISH, self::INTENT_PUBLISH_AND_NEW, self::INTENT_DRAFT_AND_NEW => $this->input('intent'),
+            default => self::INTENT_DRAFT,
+        };
     }
 
     public function wantsDirectPublish(): bool
     {
-        return $this->intent() === self::INTENT_PUBLISH;
+        return in_array($this->intent(), [self::INTENT_PUBLISH, self::INTENT_PUBLISH_AND_NEW], true);
+    }
+
+    /**
+     * Batch 3 fast-entry: "Save Draft & New" / "Publish & New". A true result
+     * means store()/storeAndPublish() must redirect to a fresh create() form
+     * (carrying forward carryForwardFields()) instead of to the saved
+     * document — but only on success; a validation or publish failure always
+     * returns to backToForm() regardless of intent, so the operator's typed
+     * bill is never silently discarded.
+     */
+    public function wantsFreshFormAfterSuccess(): bool
+    {
+        return in_array($this->intent(), [self::INTENT_DRAFT_AND_NEW, self::INTENT_PUBLISH_AND_NEW], true);
+    }
+
+    /**
+     * The only state a high-volume operator re-types identically bill after
+     * bill. Everything else (customer, lines, payments, totals, notes,
+     * cutover) is bill-specific and must start blank on the next one.
+     *
+     * @return array<string, mixed>
+     */
+    public function carryForwardFields(): array
+    {
+        return [
+            'document_date' => $this->input('document_date'),
+            'document_series' => $this->input('document_series'),
+            'source_system' => $this->input('source_system'),
+            'tax_mode' => $this->input('tax_mode'),
+        ];
     }
 
     /**

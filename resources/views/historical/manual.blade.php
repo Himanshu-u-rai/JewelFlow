@@ -59,6 +59,7 @@
                   documentTotals: @js($documentTotals),
                   documentModes: @js($documentModes),
               })"
+              @submit="submitOnce($event)"
               class="grid gap-4" data-historical-form="manual">
             @csrf
 
@@ -75,7 +76,7 @@
                             <span class="block text-xs text-slate-500">Only applies to Save &amp; publish. Never links automatically to an existing customer suggestion — checked here, decided fresh every time.</span>
                         </span>
                     </label>
-                    <button class="btn btn-primary min-h-[44px]" type="submit" data-historical-manual-next-step>Preview historical bill</button>
+                    <button class="btn btn-primary min-h-[44px]" type="submit" :disabled="submitting" data-historical-manual-next-step>Preview historical bill</button>
                 </div>
             </div>
         </form>

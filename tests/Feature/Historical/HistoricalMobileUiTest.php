@@ -1178,15 +1178,19 @@ class HistoricalMobileUiTest extends TestCase
         $previewForm = $this->firstNode($previewXpath, "//form[@data-historical-form='manual-preview']");
         $this->assertSame(route('historical.manual.preview'), $previewForm->getAttribute('action'));
         $this->assertSame('false', $previewForm->getAttribute('data-turbo'));
-        // The preview now offers two DISTINCT save intents, not one Confirm Save:
-        // draft, and (for a publish-authorized user) save-and-publish. The rule this
-        // assertion has always enforced still holds — no intent may be rendered
-        // twice, so there is never an ambiguous duplicate of the same control.
+        // The preview now offers four DISTINCT save intents, not one Confirm Save:
+        // draft, draft-and-new, and (for a publish-authorized user) save-and-publish
+        // and publish-and-new — Batch 3's fast-entry "& New" pair sits alongside the
+        // original two, never replacing them. The rule this assertion has always
+        // enforced still holds — no intent may be rendered twice, so there is never
+        // an ambiguous duplicate of the same control.
         $storeAction = route('historical.manual.store');
 
         foreach ([
             \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT,
+            \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT_AND_NEW,
             \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH,
+            \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH_AND_NEW,
         ] as $intent) {
             $this->assertSame(
                 1,
@@ -1198,7 +1202,7 @@ class HistoricalMobileUiTest extends TestCase
         // …and every store control declares an intent, so none can fall back to a
         // default the operator did not choose.
         $this->assertSame(
-            2,
+            4,
             $previewXpath->query("//button[@formaction='{$storeAction}']")?->length
         );
 

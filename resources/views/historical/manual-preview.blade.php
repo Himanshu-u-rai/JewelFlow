@@ -343,6 +343,7 @@
                   documentTotals: @js($documentTotals),
                   documentModes: @js($documentModes),
               })"
+              @submit="submitOnce($event)"
               class="grid gap-4" data-historical-form="manual-preview" aria-labelledby="historical-preview-editor-title">
             @csrf
 
@@ -365,15 +366,24 @@
                     @endif
                 </p>
                 <div class="flex gap-3 flex-wrap">
-                    <button class="btn min-h-[44px]" type="submit">Edit / Recalculate preview</button>
+                    <button class="btn min-h-[44px]" type="submit" :disabled="submitting">Edit / Recalculate preview</button>
                     @unless($messages->hasBlocking())
-                        <button class="btn btn-primary min-h-[44px]" type="submit"
+                        <button class="btn btn-primary min-h-[44px]" type="submit" :disabled="submitting"
                                 name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT }}"
                                 formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="draft">Save draft</button>
+                        {{-- Batch 3 fast-entry: same store() endpoint, same validation, only
+                             the intent value differs — see StoreManualHistoricalRequest::
+                             wantsFreshFormAfterSuccess(). --}}
+                        <button class="btn min-h-[44px]" type="submit" :disabled="submitting"
+                                name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT_AND_NEW }}"
+                                formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="draft-and-new">Save draft &amp; new</button>
                         @can('historical.publish')
-                            <button class="btn min-h-[44px]" type="submit"
+                            <button class="btn min-h-[44px]" type="submit" :disabled="submitting"
                                     name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH }}"
                                     formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="publish">Save &amp; publish</button>
+                            <button class="btn min-h-[44px]" type="submit" :disabled="submitting"
+                                    name="intent" value="{{ \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH_AND_NEW }}"
+                                    formaction="{{ route('historical.manual.store') }}" data-historical-preview-action="publish-and-new">Publish &amp; new</button>
                         @endcan
                     @endunless
                 </div>

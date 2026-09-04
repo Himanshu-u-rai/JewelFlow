@@ -56,6 +56,11 @@ class HistoricalManualEntryController extends Controller
             'lineFields' => HistoricalFields::LINE,
             'makingCategories' => HistoricalMakingCharge::CATEGORIES,
             'makingBases' => HistoricalMakingCharge::BASES,
+            // Fast-entry "& New" success path only — see freshFormAfter(). A
+            // plain visit (first load, previewExpired(), or a failed submit's
+            // backToForm()) never sets this flash key, so it is null and the
+            // form renders exactly as it always has.
+            'carriedForward' => session('historical_carry_forward'),
         ]);
     }
 
@@ -296,10 +301,29 @@ class HistoricalManualEntryController extends Controller
                 ->with('error', 'This bill was not recorded. Review the duplicate decision above.');
         }
 
+        if ($request->wantsFreshFormAfterSuccess()) {
+            return $this->freshFormAfter($request, 'Historical bill saved as draft.');
+        }
+
         return redirect()
             ->route('historical.documents.show', $result['document'])
             ->with('historical_messages', $messages->all())
             ->with('success', 'Historical bill saved as draft.');
+    }
+
+    /**
+     * Batch 3 fast-entry — the "& New" success path shared by a plain draft
+     * save and a publish. Only ever reached after storeManual()/
+     * publishManual() actually wrote a document; every failure path still
+     * goes through backToForm() unchanged, so a rejected bill is never
+     * silently replaced with a blank one.
+     */
+    private function freshFormAfter(StoreManualHistoricalRequest $request, string $message): RedirectResponse
+    {
+        return redirect()
+            ->route('historical.manual.create')
+            ->with('success', $message)
+            ->with('historical_carry_forward', $request->carryForwardFields());
     }
 
     /**
@@ -328,6 +352,10 @@ class HistoricalManualEntryController extends Controller
                 'error',
                 'This bill could not be published and nothing was saved. Try again, or save it as a draft first.'
             );
+        }
+
+        if ($request->wantsFreshFormAfterSuccess()) {
+            return $this->freshFormAfter($request, 'Historical bill saved and published.');
         }
 
         return redirect()

@@ -9,24 +9,29 @@
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-4" data-historical-form-section data-historical-section="document">
     <legend class="sr-only">Document identity</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
-        <h2 class="text-base font-semibold text-slate-900">Document identity</h2>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-base font-semibold text-slate-900">Document identity</h2>
+            @if($carriedForward ?? null)
+                <span class="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-700" data-historical-carried-forward>Carried from previous bill</span>
+            @endif
+        </div>
     </div>
     <div class="grid grid-cols-1 gap-4 p-4 sm:p-6">
         <div>
             <label for="original_document_number">Original invoice number <span class="text-slate-400 font-normal">(optional)</span></label>
-            <input type="text" id="original_document_number" name="original_document_number" value="{{ old('original_document_number') }}" class="w-full max-w-full lg:w-64">
+            <input type="text" id="original_document_number" name="original_document_number" value="{{ old('original_document_number') }}" @if($carriedForward ?? null) autofocus @endif class="w-full max-w-full lg:w-64">
         </div>
         <div>
             <label for="document_series">Series <span class="text-slate-400 font-normal">(optional)</span></label>
-            <input type="text" id="document_series" name="document_series" value="{{ old('document_series') }}" class="w-full max-w-full lg:w-64">
+            <input type="text" id="document_series" name="document_series" value="{{ old('document_series', $carriedForward['document_series'] ?? null) }}" class="w-full max-w-full lg:w-64">
         </div>
         <div>
             <label for="document_date">Document date <span class="text-rose-600">*</span></label>
-            <input type="date" id="document_date" name="document_date" value="{{ old('document_date') }}" required aria-required="true" class="w-full max-w-full lg:w-64">
+            <input type="date" id="document_date" name="document_date" value="{{ old('document_date', $carriedForward['document_date'] ?? null) }}" required aria-required="true" class="w-full max-w-full lg:w-64">
         </div>
         <div>
             <label for="source_system">Source system</label>
-            <input type="text" id="source_system" name="source_system" value="{{ old('source_system', 'Manual') }}" class="w-full max-w-full lg:w-64">
+            <input type="text" id="source_system" name="source_system" value="{{ old('source_system', $carriedForward['source_system'] ?? 'Manual') }}" class="w-full max-w-full lg:w-64">
         </div>
     </div>
 </fieldset>
@@ -287,7 +292,7 @@
         <div>
             <label for="tax_mode">Tax mode</label>
             <select id="tax_mode" name="tax_mode" class="w-full min-h-[44px]">
-                @foreach($taxModes as $v => $l)<option value="{{ $v }}" @selected(old('tax_mode') === $v)>{{ $l }}</option>@endforeach
+                @foreach($taxModes as $v => $l)<option value="{{ $v }}" @selected(old('tax_mode', $carriedForward['tax_mode'] ?? null) === $v)>{{ $l }}</option>@endforeach
             </select>
         </div>
         <div class="flex items-end">

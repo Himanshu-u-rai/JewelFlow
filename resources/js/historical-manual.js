@@ -8,6 +8,19 @@ export function registerHistoricalManual(Alpine) {
         isMobile: window.matchMedia('(max-width: 1279px)').matches,
         documentTotals: { ...config.documentTotals },
         documentModes: { ...config.documentModes },
+        submitting: false,
+
+        // Fast-entry guard: one real submit per page load. The browser is about
+        // to navigate away on success (or reload the page with errors on
+        // failure) either way, so this only needs to block a second click
+        // before that happens — no reset method is needed.
+        submitOnce(event) {
+            if (this.submitting) {
+                event.preventDefault();
+                return;
+            }
+            this.submitting = true;
+        },
 
         init() {
             this.lines = this.seedLines(config.lines || []);
