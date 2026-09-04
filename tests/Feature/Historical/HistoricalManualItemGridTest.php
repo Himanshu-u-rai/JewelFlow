@@ -122,6 +122,7 @@ class HistoricalManualItemGridTest extends TestCase
             $this->assertSame(1, $xpath->query("{$advanced}//*[@x-model='line.{$textField}' and @type='text']")?->length);
         }
         $this->assertSame(0, $xpath->query("{$desktop}[contains(concat(' ', normalize-space(@class), ' '), ' overflow-x-auto ')]")?->length);
+        $this->assertSame(1, $xpath->query("{$desktop}[contains(concat(' ', normalize-space(@class), ' '), ' rounded-xl ') and contains(concat(' ', normalize-space(@class), ' '), ' overflow-hidden ') and contains(concat(' ', normalize-space(@class), ' '), ' bg-white ')]")?->length);
         $this->assertSame(1, $xpath->query("{$desktop}//table[contains(concat(' ', normalize-space(@class), ' '), ' table-fixed ')]")?->length);
         $this->assertStringContainsString('minimumRows: 1', $html);
         $this->assertStringContainsString('@click="duplicateLine(i)"', $html);
@@ -152,9 +153,10 @@ class HistoricalManualItemGridTest extends TestCase
 
         foreach (['identity', 'weight-valuation', 'stone-making', 'additional-charges', 'discount-tax', 'notes'] as $group) {
             $this->assertSame(2, $xpath->query("//*[@data-historical-advanced-group='{$group}']")?->length, "{$group} must exist in desktop and mobile Advanced Details.");
+            $this->assertSame(0, $xpath->query("//*[@data-historical-advanced-group='{$group}']//h3")?->length, "{$group} must not repeat a group title inside Advanced Details.");
         }
 
-        $this->assertStringContainsString('grid-cols-[7rem_minmax(0,1fr)]', $html);
+        $this->assertStringNotContainsString('grid-cols-[7rem_minmax(0,1fr)]', $html);
         $this->assertStringContainsString('w-[80px]', $html);
         $this->assertStringContainsString('w-[110px]', $html);
         $this->assertStringContainsString('w-[150px]', $html);
@@ -170,6 +172,57 @@ class HistoricalManualItemGridTest extends TestCase
             $this->assertStringContainsString($method, $source);
         }
         $this->assertStringContainsString('Did you intend a flat', $source);
+    }
+
+    public function test_large_desktop_advanced_panel_pairs_groups_to_use_the_available_width(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $xpath = $this->xpath($this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent());
+        $layout = "//*[@data-historical-advanced-layout='desktop']";
+
+        $this->assertSame(1, $xpath->query("{$layout}[contains(concat(' ', normalize-space(@class), ' '), ' 2xl:grid ') and contains(concat(' ', normalize-space(@class), ' '), ' 2xl:grid-cols-12 ')]")?->length);
+
+        foreach ([
+            'identity' => '2xl:col-span-4',
+            'weight-valuation' => '2xl:col-span-8',
+            'stone-making' => '2xl:col-span-7',
+            'additional-charges' => '2xl:col-span-5',
+            'discount-tax' => '2xl:col-span-8',
+            'notes' => '2xl:col-span-4',
+        ] as $group => $span) {
+            $this->assertSame(1, $xpath->query("{$layout}//*[@data-historical-advanced-group='{$group}' and contains(concat(' ', normalize-space(@class), ' '), ' {$span} ')]")?->length);
+        }
+
+        $this->assertSame(6, $xpath->query("{$layout}//*[@data-historical-advanced-group and contains(concat(' ', normalize-space(@class), ' '), ' 2xl:rounded-xl ')]")?->length);
+        $this->assertSame(0, $xpath->query("{$layout}//*[@data-historical-advanced-group and contains(@class, 'grid-cols-[')]")?->length);
+
+        $this->assertSame(0, $xpath->query("//*[@data-historical-advanced-layout='mobile'][contains(concat(' ', normalize-space(@class), ' '), ' 2xl:grid ')]")?->length);
+    }
+
+    public function test_basis_dependent_numeric_input_does_not_reserve_an_empty_unit_gutter(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $xpath = $this->xpath($this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent());
+        $input = $xpath->query("//*[@data-historical-advanced-layout='desktop']//input[@x-model='line.line_making_value']")?->item(0);
+
+        $this->assertNotNull($input);
+        $this->assertStringNotContainsString('pr-16', $input->attributes?->getNamedItem('class')?->nodeValue ?? '');
+        $padding = $input->attributes?->getNamedItem(':class')?->nodeValue ?? '';
+        $this->assertStringContainsString("'pr-3'", $padding);
+        $this->assertStringContainsString("'pr-8'", $padding);
+        $this->assertStringContainsString("'pr-16'", $padding);
+
+        $unit = $xpath->query("//*[@data-historical-advanced-layout='desktop']//input[@x-model='line.line_making_value']/following-sibling::span[1]")?->item(0);
+        $this->assertNotNull($unit);
+        $unitClass = $unit->attributes?->getNamedItem('class')?->nodeValue ?? '';
+        $this->assertStringNotContainsString('bg-white', $unitClass);
+        $this->assertStringNotContainsString('pl-1', $unitClass);
+        $this->assertStringNotContainsString('inset-y-0', $unitClass);
+        $this->assertStringContainsString('top-1', $unitClass);
+        $this->assertStringContainsString('bottom-0', $unitClass);
+        $this->assertStringContainsString('text-[11px]', $unitClass);
     }
 
     public function test_grid_reuses_enabled_platinum_hallmark_profiles_and_keeps_custom_fallback(): void

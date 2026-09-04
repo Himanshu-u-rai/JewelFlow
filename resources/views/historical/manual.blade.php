@@ -65,7 +65,17 @@
 
             <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-historical-card-footer>
                 <p class="text-xs text-slate-500">Preview saves nothing. Save a draft or, if permitted, save and publish from the preview.</p>
-                <button class="btn btn-primary min-h-[44px]" type="submit" data-historical-manual-next-step>Preview historical bill</button>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <label for="add_customer_on_publish" class="flex items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700" data-historical-publish-choice>
+                        <input type="hidden" name="add_customer_on_publish" value="0">
+                        <input type="checkbox" id="add_customer_on_publish" name="add_customer_on_publish" value="1" @checked((string) old('add_customer_on_publish', '1') === '1')>
+                        <span>
+                            Add as a live customer when this bill is published
+                            <span class="block text-xs text-slate-500">Only applies to Save &amp; publish. Never links automatically to an existing customer suggestion — checked here, decided fresh every time.</span>
+                        </span>
+                    </label>
+                    <button class="btn btn-primary min-h-[44px]" type="submit" data-historical-manual-next-step>Preview historical bill</button>
+                </div>
             </div>
         </form>
     </div>

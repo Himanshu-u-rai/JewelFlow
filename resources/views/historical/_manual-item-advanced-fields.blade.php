@@ -2,19 +2,18 @@
     $isDesktopGrid = $itemGridMode === 'desktop';
     $itemControlDisabled = $isDesktopGrid ? 'isMobile' : '!isMobile';
     $groupClass = $isDesktopGrid
-        ? 'grid grid-cols-[7rem_minmax(0,1fr)] items-start gap-3 py-1.5 first:pt-0 last:pb-0'
+        ? 'py-1.5 first:pt-0 last:pb-0 2xl:rounded-xl 2xl:border 2xl:border-slate-200 2xl:bg-white 2xl:px-3 2xl:py-2'
         : 'rounded-xl border border-slate-200 bg-white p-3';
     $fieldsClass = $isDesktopGrid
         ? 'flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1 [&_label]:text-[11px] [&_label]:leading-tight'
-        : 'mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2';
+        : 'grid grid-cols-1 gap-3 sm:grid-cols-2';
     $fieldClass = $isDesktopGrid ? 'mt-1 h-8 min-h-[44px] w-full text-sm' : 'mt-1 h-11 min-h-[44px] w-full text-sm';
-    $unitClass = 'pointer-events-none absolute inset-y-0 right-3 flex items-center bg-white pl-1 text-xs font-medium text-slate-500';
+    $unitClass = 'pointer-events-none absolute bottom-0 right-3 top-1 flex items-center text-[11px] font-medium leading-none text-slate-500';
     $width = static fn (string $desktop): string => $isDesktopGrid ? $desktop : 'w-full';
 @endphp
 
-<div class="{{ $isDesktopGrid ? 'divide-y divide-slate-200' : 'space-y-3' }}" data-historical-advanced-layout="{{ $itemGridMode }}">
-    <section class="{{ $groupClass }}" data-historical-advanced-group="identity">
-        <h3 class="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Identity</h3>
+<div class="{{ $isDesktopGrid ? 'divide-y divide-slate-200 2xl:grid 2xl:grid-cols-12 2xl:gap-2 2xl:divide-y-0' : 'space-y-3' }}" data-historical-advanced-layout="{{ $itemGridMode }}">
+    <section class="{{ $groupClass }} {{ $isDesktopGrid ? '2xl:col-span-4' : '' }}" data-historical-advanced-group="identity">
         <div class="{{ $fieldsClass }}">
             <div class="{{ $width('w-[160px]') }}">
                 <label :for="`line-${i}-sku-${@js($itemGridMode)}`">SKU</label>
@@ -27,8 +26,7 @@
         </div>
     </section>
 
-    <section class="{{ $groupClass }}" data-historical-advanced-group="weight-valuation">
-        <h3 class="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Weight &amp; valuation</h3>
+    <section class="{{ $groupClass }} {{ $isDesktopGrid ? '2xl:col-span-8' : '' }}" data-historical-advanced-group="weight-valuation">
         <div class="{{ $fieldsClass }}">
             @foreach(['gross' => 'Gross weight', 'net' => 'Net weight', 'stone-weight' => 'Stone weight'] as $key => $label)
                 @php $field = $key === 'stone-weight' ? 'line_stone_weight' : "line_{$key}_weight"; @endphp
@@ -63,20 +61,18 @@
         </div>
     </section>
 
-    <section class="{{ $groupClass }}" data-historical-advanced-group="stone-making">
-        <h3 class="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Stone &amp; making</h3>
+    <section class="{{ $groupClass }} {{ $isDesktopGrid ? '2xl:col-span-7' : '' }}" data-historical-advanced-group="stone-making">
         <div class="{{ $fieldsClass }}">
             <div class="{{ $width('w-[125px]') }}"><label :for="`line-${i}-stone-rate-${@js($itemGridMode)}`">Stone rate</label><div class="relative"><input type="number" step="any" :id="`line-${i}-stone-rate-${@js($itemGridMode)}`" :name="`lines[${i}][line_stone_rate]`" x-model="line.line_stone_rate" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }} pr-11 text-right tabular-nums"><span class="{{ $unitClass }}">₹/g</span></div></div>
             <div class="{{ $width('w-[140px]') }}"><span class="flex items-center justify-between gap-1"><label :for="`line-${i}-stone-value-${@js($itemGridMode)}`">Stone value</label><span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase" :class="line.line_stone_value_mode === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'" x-text="line.line_stone_value_mode === 'manual' ? 'Manual' : 'Auto'"></span></span><div class="relative"><input type="number" step="any" :id="`line-${i}-stone-value-${@js($itemGridMode)}`" :name="`lines[${i}][line_stone_value]`" x-model="line.line_stone_value" data-derived-field="line_stone_value" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }} pr-8 text-right tabular-nums"><span class="{{ $unitClass }}">₹</span></div><input type="hidden" :name="`lines[${i}][line_stone_value_mode]`" :value="line.line_stone_value_mode" :disabled="{{ $itemControlDisabled }}"><button x-show="line.line_stone_value_mode === 'manual'" type="button" @click="recalculate(line, 'line_stone_value')" class="mt-1 min-h-[32px] text-xs font-semibold text-amber-700">Use automatic value</button></div>
-            <div class="{{ $width('w-[160px]') }}"><label :for="`line-${i}-making-label-${@js($itemGridMode)}`">Making label</label><input type="text" :id="`line-${i}-making-label-${@js($itemGridMode)}`" :name="`lines[${i}][line_making_label]`" x-model="line.line_making_label" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }}"></div>
+            <div class="{{ $width('w-[160px]') }}"><label :for="`line-${i}-making-label-${@js($itemGridMode)}`">Making label</label><input type="text" :id="`line-${i}-making-label-${@js($itemGridMode)}`" :name="`lines[${i}][line_making_label]`" x-model="line.line_making_label" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }} text-left"></div>
             <div class="{{ $width('w-[145px]') }}"><label :for="`line-${i}-making-basis-${@js($itemGridMode)}`">Making basis</label><select :id="`line-${i}-making-basis-${@js($itemGridMode)}`" :name="`lines[${i}][line_making_basis]`" x-model="line.line_making_basis" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }}"><option value="">Choose basis</option>@foreach($makingBases as $basis)<option value="{{ $basis }}">{{ str_replace('_', ' ', ucfirst($basis)) }}</option>@endforeach</select></div>
-            <div class="{{ $width('w-[120px]') }}"><label :for="`line-${i}-making-value-${@js($itemGridMode)}`">Making value</label><div class="relative"><input type="number" step="any" :id="`line-${i}-making-value-${@js($itemGridMode)}`" :name="`lines[${i}][line_making_value]`" x-model="line.line_making_value" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }} pr-16 text-right tabular-nums"><span class="{{ $unitClass }}" x-text="makingUnit(line.line_making_basis)"></span></div></div>
+            <div class="{{ $width('w-[120px]') }}"><label :for="`line-${i}-making-value-${@js($itemGridMode)}`">Making value</label><div class="relative"><input type="number" step="any" :id="`line-${i}-making-value-${@js($itemGridMode)}`" :name="`lines[${i}][line_making_value]`" x-model="line.line_making_value" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }} text-right tabular-nums" :class="{'pr-3': !makingUnit(line.line_making_basis), 'pr-8': ['%', '₹'].includes(makingUnit(line.line_making_basis)), 'pr-11': makingUnit(line.line_making_basis) === '₹/g', 'pr-16': makingUnit(line.line_making_basis) === '₹/piece'}"><span class="{{ $unitClass }}" x-text="makingUnit(line.line_making_basis)"></span></div></div>
             <div class="{{ $width('w-[150px]') }}"><span class="flex items-center justify-between gap-1"><label :for="`line-${i}-making-amount-${@js($itemGridMode)}`">Making amount</label><span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase" :class="line.line_making_amount_mode === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'" x-text="line.line_making_amount_mode === 'manual' ? 'Manual' : 'Auto'"></span></span><div class="relative"><input type="number" step="any" :id="`line-${i}-making-amount-${@js($itemGridMode)}`" :name="`lines[${i}][line_making_amount]`" x-model="line.line_making_amount" data-derived-field="line_making_amount" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }} pr-8 text-right tabular-nums"><span class="{{ $unitClass }}">₹</span></div><input type="hidden" :name="`lines[${i}][line_making_amount_mode]`" :value="line.line_making_amount_mode" :disabled="{{ $itemControlDisabled }}"><button x-show="line.line_making_amount_mode === 'manual'" type="button" @click="recalculate(line, 'line_making_amount')" class="mt-1 min-h-[32px] text-xs font-semibold text-amber-700">Use automatic value</button></div>
         </div>
     </section>
 
-    <section class="{{ $groupClass }}" data-historical-advanced-group="additional-charges">
-        <h3 class="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Additional charges</h3>
+    <section class="{{ $groupClass }} {{ $isDesktopGrid ? '2xl:col-span-5' : '' }}" data-historical-advanced-group="additional-charges">
         <div class="{{ $fieldsClass }}">
             <div class="{{ $width('w-[145px]') }}"><label :for="`line-${i}-wastage-basis-${@js($itemGridMode)}`">Wastage basis</label><select :id="`line-${i}-wastage-basis-${@js($itemGridMode)}`" :name="`lines[${i}][line_wastage_basis]`" x-model="line.line_wastage_basis" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }}"><option value="">Choose basis</option><option value="percent">Percent of metal</option><option value="flat">Flat amount</option></select></div>
             <div class="{{ $width('w-[110px]') }}"><label :for="`line-${i}-wastage-value-${@js($itemGridMode)}`">Wastage value</label><div class="relative"><input type="number" min="0" step="any" :id="`line-${i}-wastage-value-${@js($itemGridMode)}`" :name="`lines[${i}][line_wastage_value]`" x-model="line.line_wastage_value" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }} pr-10 text-right tabular-nums"><span class="{{ $unitClass }}" x-text="wastageUnit(line.line_wastage_basis)"></span></div></div>
@@ -88,8 +84,7 @@
         </div>
     </section>
 
-    <section class="{{ $groupClass }}" data-historical-advanced-group="discount-tax">
-        <h3 class="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Discount &amp; tax</h3>
+    <section class="{{ $groupClass }} {{ $isDesktopGrid ? '2xl:col-span-8' : '' }}" data-historical-advanced-group="discount-tax">
         <div class="{{ $fieldsClass }}">
             <div class="{{ $width('w-[140px]') }}"><label :for="`line-${i}-discount-type-${@js($itemGridMode)}`">Discount type</label><select :id="`line-${i}-discount-type-${@js($itemGridMode)}`" :name="`lines[${i}][line_discount_type]`" x-model="line.line_discount_type" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }}"><option value="">No discount</option><option value="fixed">Fixed amount</option><option value="percent">Percent</option></select></div>
             <div class="{{ $width('w-[110px]') }}"><label :for="`line-${i}-discount-value-${@js($itemGridMode)}`">Discount value</label><div class="relative"><input type="number" min="0" step="any" :id="`line-${i}-discount-value-${@js($itemGridMode)}`" :name="`lines[${i}][line_discount_value]`" x-model="line.line_discount_value" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }} pr-10 text-right tabular-nums"><span class="{{ $unitClass }}" x-text="discountUnit(line.line_discount_type)"></span></div></div>
@@ -104,9 +99,8 @@
         </div>
     </section>
 
-    <section class="{{ $groupClass }}" data-historical-advanced-group="notes">
-        <h3 class="pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</h3>
-        <div class="{{ $isDesktopGrid ? 'min-w-0' : 'mt-3' }}">
+    <section class="{{ $groupClass }} {{ $isDesktopGrid ? '2xl:col-span-4' : '' }}" data-historical-advanced-group="notes">
+        <div class="min-w-0">
             <label :for="`line-${i}-notes-${@js($itemGridMode)}`" class="{{ $isDesktopGrid ? 'sr-only' : '' }}">Line notes</label>
             <textarea rows="{{ $isDesktopGrid ? 1 : 3 }}" :id="`line-${i}-notes-${@js($itemGridMode)}`" :name="`lines[${i}][line_notes]`" x-model="line.line_notes" :disabled="{{ $itemControlDisabled }}" class="w-full {{ $isDesktopGrid ? '!h-12 !min-h-0' : 'mt-1' }} text-sm"></textarea>
         </div>

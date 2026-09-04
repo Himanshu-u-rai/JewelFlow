@@ -450,24 +450,66 @@ class HistoricalMobileUiTest extends TestCase
             "//*[@data-historical-identity-row]/fieldset[@data-historical-section='customer']",
             ['lg:col-span-8']
         );
+        $documentFields = $this->firstNode(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='document']/div[2]"
+        );
+        $documentFieldClasses = preg_split('/\s+/', trim($documentFields->getAttribute('class'))) ?: [];
+        foreach (['grid', 'grid-cols-1', 'gap-4'] as $class) {
+            $this->assertContains($class, $documentFieldClasses);
+        }
+        $this->assertNotContains('sm:grid-cols-2', $documentFieldClasses);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='document']//input[not(@type='hidden')]",
+            ['w-full', 'max-w-full', 'lg:w-64']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='customer']//div[@data-historical-customer-fields]",
+            ['lg:grid-cols-4']
+        );
+        foreach ([
+            'historical_customer_search' => 'lg:col-span-4',
+            'customer_address' => 'lg:col-span-2',
+        ] as $field => $span) {
+            $this->assertNodesHaveClasses(
+                $xpath,
+                "//*[@data-historical-section='customer']//*[@id='{$field}']/ancestor::div[1]",
+                [$span]
+            );
+        }
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-section='customer']//*[@data-customer-status]",
+            ['min-h-0']
+        );
+        $this->assertSame(0, $xpath->query("//*[@data-historical-section='customer']//*[@id='add_customer_on_publish']")?->length);
+        $this->firstNode(
+            $xpath,
+            "//form[@data-historical-form='manual']//*[@data-historical-card-footer]//*[@id='add_customer_on_publish']"
+        );
+        $this->firstNode(
+            $xpath,
+            '//*[@data-historical-manual-layout]/following-sibling::*[@data-historical-card-footer]'
+        );
         $this->assertNodesHaveClasses(
             $xpath,
             "//*[@data-historical-financial-row]/fieldset[@data-historical-section='amounts']",
-            ['lg:col-span-2']
+            ['lg:col-span-1']
         );
 
-        $supporting = $this->firstNode($xpath, '//*[@data-historical-financial-row]/*[@data-historical-supporting-column]');
-        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:col-span-1'] as $class) {
-            $this->assertContains($class, preg_split('/\s+/', trim($supporting->getAttribute('class'))) ?: []);
-        }
-
         $this->assertSame(2, $xpath->query('//*[@data-historical-identity-row]/fieldset[@data-historical-form-section]')?->length);
-        $this->assertSame(1, $xpath->query('//*[@data-historical-financial-row]/fieldset[@data-historical-form-section]')?->length);
-        $this->assertSame(2, $xpath->query('//*[@data-historical-supporting-column]/fieldset[@data-historical-form-section]')?->length);
+        $this->assertSame(3, $xpath->query('//*[@data-historical-financial-row]/fieldset[@data-historical-form-section]')?->length);
+        $this->assertSame(0, $xpath->query('//*[@data-historical-financial-row]/*[@data-historical-supporting-column]')?->length);
         $this->assertSame(1, $xpath->query('//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]')?->length);
 
         foreach (['tax-making', 'cutover'] as $section) {
-            $this->firstNode($xpath, "//*[@data-historical-supporting-column]/fieldset[@data-historical-section='{$section}']");
+            $this->assertNodesHaveClasses(
+                $xpath,
+                "//*[@data-historical-financial-row]/fieldset[@data-historical-section='{$section}']",
+                ['lg:col-span-1']
+            );
         }
         $this->assertNodesHaveClasses(
             $xpath,
@@ -522,8 +564,40 @@ class HistoricalMobileUiTest extends TestCase
         $this->firstNode($xpath, "{$itemSection}//*[@data-historical-item-grid-desktop]//*[@data-historical-item-advanced-row]");
         $this->firstNode($xpath, "{$itemSection}//*[@data-historical-item-grid-mobile]//*[@data-historical-item-card]");
         $this->assertNodesHaveClasses($xpath, "{$itemSection}//table", ['table-fixed', 'w-full', 'text-sm']);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "{$itemSection}//*[@data-historical-item-core-row]//*[self::input or self::select][@x-model and not(@type='hidden')]",
+            ['rounded-none', 'border', 'border-slate-300', 'bg-white']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "{$itemSection}//*[@data-historical-item-core-row]//button[contains(@*[name()=':aria-label'], 'Toggle details for item')]",
+            ['h-11', 'w-11', 'rounded-full', 'border', 'border-amber-200', 'bg-amber-50', 'text-amber-700']
+        );
+        $this->assertStringContainsString(
+            '@click="duplicateLine(i)" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-700',
+            $html
+        );
+        $this->assertStringContainsString(
+            '@click="removeLine(i)" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700',
+            $html
+        );
+        foreach ([
+            'line_quantity' => 'Qty',
+            'line_billable_weight' => 'Weight',
+            'line_rate' => 'Rate',
+            'line_total' => 'Total',
+        ] as $field => $placeholder) {
+            $this->assertSame(
+                1,
+                $xpath->query("{$itemSection}//*[@data-historical-item-core-row]//*[@x-model='line.{$field}' and @placeholder='{$placeholder}']")?->length
+            );
+        }
         $this->assertSame(0, $xpath->query("{$itemSection}//*[contains(concat(' ', normalize-space(@class), ' '), ' overflow-x-auto ')]")?->length);
         $this->assertStringContainsString('A fresh row appears automatically.', $html);
+        foreach (['Select customer type', 'Select metal', 'Select purity', 'Select category', 'Select basis'] as $placeholder) {
+            $this->assertStringContainsString($placeholder, $html);
+        }
     }
 
     public function test_manual_item_grid_preserves_core_and_advanced_bindings_in_preview(): void

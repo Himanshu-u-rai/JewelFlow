@@ -11,22 +11,22 @@
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Document identity</h2>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6">
+    <div class="grid grid-cols-1 gap-4 p-4 sm:p-6">
         <div>
             <label for="original_document_number">Original invoice number <span class="text-slate-400 font-normal">(optional)</span></label>
-            <input type="text" id="original_document_number" name="original_document_number" value="{{ old('original_document_number') }}" class="w-full">
+            <input type="text" id="original_document_number" name="original_document_number" value="{{ old('original_document_number') }}" class="w-full max-w-full lg:w-64">
         </div>
         <div>
             <label for="document_series">Series <span class="text-slate-400 font-normal">(optional)</span></label>
-            <input type="text" id="document_series" name="document_series" value="{{ old('document_series') }}" class="w-full">
+            <input type="text" id="document_series" name="document_series" value="{{ old('document_series') }}" class="w-full max-w-full lg:w-64">
         </div>
         <div>
             <label for="document_date">Document date <span class="text-rose-600">*</span></label>
-            <input type="date" id="document_date" name="document_date" value="{{ old('document_date') }}" required aria-required="true" class="w-full">
+            <input type="date" id="document_date" name="document_date" value="{{ old('document_date') }}" required aria-required="true" class="w-full max-w-full lg:w-64">
         </div>
         <div>
             <label for="source_system">Source system</label>
-            <input type="text" id="source_system" name="source_system" value="{{ old('source_system', 'Manual') }}" class="w-full">
+            <input type="text" id="source_system" name="source_system" value="{{ old('source_system', 'Manual') }}" class="w-full max-w-full lg:w-64">
         </div>
     </div>
 </fieldset>
@@ -44,8 +44,8 @@
         <h2 class="text-base font-semibold text-slate-900">Customer snapshot</h2>
         <p class="mt-1 text-xs text-slate-500">Never linked automatically.</p>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6" @input="updateStatus()">
-        <div class="relative sm:col-span-2" @click.outside="close()">
+    <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-4" @input="updateStatus()" data-historical-customer-fields>
+        <div class="relative sm:col-span-2 lg:col-span-4" @click.outside="close()">
             <label for="historical_customer_search">Find an existing customer <span class="font-normal text-slate-400">(optional)</span></label>
             <input type="search" id="historical_customer_search" x-model="search"
                    @input.debounce.250ms="findCustomers()"
@@ -71,7 +71,7 @@
                 <p x-show="!loading && results.length === 0" class="px-3 py-3 text-sm text-slate-500">No active customer matches.</p>
             </div>
 
-            <div class="mt-2 flex min-h-[28px] flex-wrap items-center gap-2" data-customer-status aria-live="polite">
+            <div class="mt-2 flex min-h-0 flex-wrap items-center gap-2" data-customer-status aria-live="polite">
                 <span x-show="status === 'existing'" class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Existing customer</span>
                 <span x-show="status === 'new'" class="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">New customer</span>
                 <span x-show="status === 'snapshot'" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Snapshot only</span>
@@ -99,7 +99,7 @@
         <div>
             <label for="customer_type">Customer type</label>
             <select id="customer_type" name="customer_type" class="w-full min-h-[44px]">
-                <option value="">—</option>
+                <option value="">Select customer type</option>
                 <option value="b2c" @selected(old('customer_type') === 'b2c')>B2C</option>
                 <option value="b2b" @selected(old('customer_type') === 'b2b')>B2B</option>
             </select>
@@ -108,17 +108,9 @@
             <label for="customer_pan">PAN</label>
             <input type="text" id="customer_pan" name="customer_pan" value="{{ old('customer_pan') }}" class="w-full" maxlength="20">
         </div>
-        <div class="sm:col-span-2">
+        <div class="sm:col-span-2 lg:col-span-2">
             <label for="customer_address">Address</label>
             <input type="text" id="customer_address" name="customer_address" value="{{ old('customer_address') }}" class="w-full">
-        </div>
-        <div class="sm:col-span-2 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <input type="hidden" name="add_customer_on_publish" value="0">
-            <input type="checkbox" id="add_customer_on_publish" name="add_customer_on_publish" value="1" @checked((string) old('add_customer_on_publish', '1') === '1')>
-            <label for="add_customer_on_publish" class="text-sm text-slate-700">
-                Add as a live customer when this bill is published
-                <span class="block text-xs text-slate-500">Only applies to Save &amp; publish. Never links automatically to an existing customer suggestion — checked here, decided fresh every time.</span>
-            </label>
         </div>
     </div>
 </fieldset>
@@ -140,7 +132,7 @@
             <button type="button" class="btn btn-sm min-h-[44px] shrink-0" @click="addLine()">Add item</button>
         </div>
 
-        <div class="mt-4 hidden max-w-full rounded-xl border border-slate-300 xl:block" data-historical-item-grid-desktop>
+        <div class="mt-4 hidden max-w-full overflow-hidden rounded-xl border border-slate-300 bg-white xl:block" data-historical-item-grid-desktop>
             <table class="w-full table-fixed text-sm" data-historical-item-table>
                 <colgroup>
                     <col class="w-[3%]"><col class="w-[19%]"><col class="w-[11%]"><col class="w-[9%]"><col class="w-[7%]"><col class="w-[11%]"><col class="w-[13%]"><col class="w-[14%]"><col class="w-[13%]">
@@ -162,43 +154,43 @@
                     <tbody @input.debounce.250ms="lineChanged(i, $event)" @change="lineChanged(i, $event)" class="group">
                         <tr data-historical-item-core-row class="bg-white transition-colors focus-within:bg-amber-50/40 hover:bg-slate-50">
                             <th scope="row" x-text="i + 1" class="border-b border-r border-slate-300 px-1 py-2 text-center text-xs font-semibold tabular-nums text-slate-500"></th>
-                            <td class="border-b border-r border-slate-300 p-0"><input type="text" :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" :disabled="isMobile" :aria-label="`Item ${i + 1} name`" placeholder="Description" class="h-11 w-full rounded-none border-0 bg-transparent px-2 text-sm shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
+                            <td class="border-b border-r border-slate-300 p-0"><input type="text" :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" :disabled="isMobile" :aria-label="`Item ${i + 1} name`" placeholder="Description" class="h-11 w-full rounded-none border border-slate-300 bg-white px-2 text-sm shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
                             <td class="border-b border-r border-slate-300 p-0">
-                                <select x-model="line.line_metal_choice" @change="metalChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} metal`" class="h-11 min-h-[44px] w-full rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
-                                    <option value="">—</option>
+                                <select x-model="line.line_metal_choice" @change="metalChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} metal`" class="h-11 min-h-[44px] w-full rounded-none border border-slate-300 bg-white px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                    <option value="">Select metal</option>
                                     @foreach($enabledMetals as $metal)<option value="{{ $metal }}">{{ ucfirst($metal) }}</option>@endforeach
                                     <option value="__custom">Other…</option>
                                 </select>
-                                <input type="text" x-show="line.line_metal_choice === '__custom'" x-model="line.line_custom_metal" @input="customMetalChanged(line)" :disabled="isMobile" aria-label="Custom metal" placeholder="Metal" class="h-9 w-full rounded-none border-0 border-t border-slate-200 bg-transparent px-2 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                <input type="text" x-show="line.line_metal_choice === '__custom'" x-model="line.line_custom_metal" @input="customMetalChanged(line)" :disabled="isMobile" aria-label="Custom metal" placeholder="Metal" class="h-9 w-full rounded-none border border-slate-300 bg-white px-2 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
                                 <input type="hidden" :name="`lines[${i}][line_metal_type]`" x-model="line.line_metal_type" :disabled="isMobile">
                             </td>
                             <td class="border-b border-r border-slate-300 p-0">
-                                <select x-model="line.line_purity_choice" @change="purityChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} purity`" class="h-11 min-h-[44px] w-full rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
-                                    <option value="">—</option>
+                                <select x-model="line.line_purity_choice" @change="purityChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} purity`" class="h-11 min-h-[44px] w-full rounded-none border border-slate-300 bg-white px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                    <option value="">Select purity</option>
                                     <template x-for="profile in purityOptions(line)" :key="`${profile.metal}-${profile.value}`"><option :value="String(profile.value)" x-text="profile.label"></option></template>
                                     <option value="__custom">Custom…</option>
                                 </select>
-                                <input x-show="line.line_purity_choice === '__custom'" type="number" step="any" x-model.number="line.line_purity_value" @input="customPurityChanged(line)" :disabled="isMobile" aria-label="Custom purity" placeholder="Purity" class="h-9 w-full rounded-none border-0 border-t border-slate-200 bg-transparent px-2 text-right text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                <input x-show="line.line_purity_choice === '__custom'" type="number" step="any" x-model.number="line.line_purity_value" @input="customPurityChanged(line)" :disabled="isMobile" aria-label="Custom purity" placeholder="Purity" class="h-9 w-full rounded-none border border-slate-300 bg-white px-2 text-right text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
                                 <input type="hidden" :name="`lines[${i}][line_purity]`" x-model="line.line_purity" :disabled="isMobile"><input type="hidden" :name="`lines[${i}][line_purity_value]`" x-model="line.line_purity_value" :disabled="isMobile">
                             </td>
-                            <td class="border-b border-r border-slate-300 p-0"><input type="number" step="any" :name="`lines[${i}][line_quantity]`" x-model="line.line_quantity" :disabled="isMobile" :aria-label="`Item ${i + 1} quantity`" class="h-11 w-full rounded-none border-0 bg-transparent px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
+                            <td class="border-b border-r border-slate-300 p-0"><input type="number" step="any" :name="`lines[${i}][line_quantity]`" x-model="line.line_quantity" :disabled="isMobile" :aria-label="`Item ${i + 1} quantity`" placeholder="Qty" class="h-11 w-full rounded-none border border-slate-300 bg-white px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
                             <td class="border-b border-r border-slate-300 p-0">
-                                <input type="number" step="any" :name="`lines[${i}][line_billable_weight]`" x-model="line.line_billable_weight" data-derived-field="line_billable_weight" :disabled="isMobile" :aria-label="`Item ${i + 1} billable weight`" class="h-11 w-full rounded-none border-0 bg-transparent px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                <input type="number" step="any" :name="`lines[${i}][line_billable_weight]`" x-model="line.line_billable_weight" data-derived-field="line_billable_weight" :disabled="isMobile" :aria-label="`Item ${i + 1} billable weight`" placeholder="Weight" class="h-11 w-full rounded-none border border-slate-300 bg-white px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
                                 <input type="hidden" :name="`lines[${i}][line_billable_weight_mode]`" :value="line.line_billable_weight_mode" :disabled="isMobile">
                             </td>
-                            <td class="border-b border-r border-slate-300 p-0"><input type="number" step="any" :name="`lines[${i}][line_rate]`" x-model="line.line_rate" :disabled="isMobile" :aria-label="`Item ${i + 1} historical rate per gram`" class="h-11 w-full rounded-none border-0 bg-transparent px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
+                            <td class="border-b border-r border-slate-300 p-0"><input type="number" step="any" :name="`lines[${i}][line_rate]`" x-model="line.line_rate" :disabled="isMobile" :aria-label="`Item ${i + 1} historical rate per gram`" placeholder="Rate" class="h-11 w-full rounded-none border border-slate-300 bg-white px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
                             <td class="border-b border-r border-slate-300 p-0">
                                 <div class="flex items-center">
-                                    <input type="number" step="any" :name="`lines[${i}][line_total]`" x-model="line.line_total" data-derived-field="line_total" :disabled="isMobile" :aria-label="`Item ${i + 1} line total`" class="h-11 min-w-0 flex-1 rounded-none border-0 bg-transparent px-2 text-right text-sm font-semibold tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                    <input type="number" step="any" :name="`lines[${i}][line_total]`" x-model="line.line_total" data-derived-field="line_total" :disabled="isMobile" :aria-label="`Item ${i + 1} line total`" placeholder="Total" class="h-11 min-w-0 flex-1 rounded-none border border-slate-300 bg-white px-2 text-right text-sm font-semibold tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
                                     <span class="mr-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase" :class="line.line_total_mode === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'" x-text="line.line_total_mode === 'manual' ? 'M' : 'A'"></span>
                                 </div>
                                 <input type="hidden" :name="`lines[${i}][line_total_mode]`" :value="line.line_total_mode" :disabled="isMobile">
                             </td>
                             <td class="border-b border-slate-300 px-1 py-0">
                                 <div class="flex items-center justify-center">
-                                    <button type="button" @click="line.advanced = !line.advanced" class="inline-flex h-11 w-11 items-center justify-center text-slate-600 hover:bg-slate-100" :aria-expanded="line.advanced" :aria-label="`Toggle details for item ${i + 1}`"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m6 8 4 4 4-4" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
-                                    <button type="button" @click="duplicateLine(i)" class="inline-flex h-11 w-11 items-center justify-center text-slate-600 hover:bg-slate-100" :aria-label="`Duplicate item ${i + 1}`"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-7A1.5 1.5 0 0 0 3 5.5v7A1.5 1.5 0 0 0 4.5 14H7"/></svg></button>
-                                    <button type="button" @click="removeLine(i)" class="inline-flex h-11 w-11 items-center justify-center text-rose-600 hover:bg-rose-50" :aria-label="`Remove item ${i + 1}`"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h12M8 3h4l1 3H7l1-3Zm-2 3 .7 10h6.6L14 6M8.5 9v4M11.5 9v4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                                    <button type="button" @click="line.advanced = !line.advanced" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 shadow-sm hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-1" :aria-expanded="line.advanced" :aria-label="`Toggle details for item ${i + 1}`"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m6 8 4 4 4-4" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+                                    <button type="button" @click="duplicateLine(i)" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-700 shadow-sm hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1" :aria-label="`Duplicate item ${i + 1}`"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-7A1.5 1.5 0 0 0 3 5.5v7A1.5 1.5 0 0 0 4.5 14H7"/></svg></button>
+                                    <button type="button" @click="removeLine(i)" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 shadow-sm hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1" :aria-label="`Remove item ${i + 1}`"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h12M8 3h4l1 3H7l1-3Zm-2 3 .7 10h6.6L14 6M8.5 9v4M11.5 9v4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                                 </div>
                                 <input type="hidden" :name="`lines[${i}][line_calculation_enabled]`" value="1" :disabled="isMobile">
                             </td>
@@ -227,8 +219,8 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3 p-3 sm:grid-cols-4">
                         <div class="col-span-2 sm:col-span-2"><label :for="`line-${i}-item-mobile`">Item</label><input type="text" :id="`line-${i}-item-mobile`" :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px]"></div>
-                        <div><label :for="`line-${i}-metal-mobile`">Metal</label><select :id="`line-${i}-metal-mobile`" x-model="line.line_metal_choice" @change="metalChanged(line)" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px]"><option value="">—</option>@foreach($enabledMetals as $metal)<option value="{{ $metal }}">{{ ucfirst($metal) }}</option>@endforeach<option value="__custom">Other…</option></select><input type="text" x-show="line.line_metal_choice === '__custom'" x-model="line.line_custom_metal" @input="customMetalChanged(line)" :disabled="!isMobile" aria-label="Custom metal" placeholder="Metal" class="mt-1 h-11 w-full min-h-[44px]"><input type="hidden" :name="`lines[${i}][line_metal_type]`" x-model="line.line_metal_type" :disabled="!isMobile"></div>
-                        <div><label :for="`line-${i}-purity-mobile`">Purity</label><select :id="`line-${i}-purity-mobile`" x-model="line.line_purity_choice" @change="purityChanged(line)" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px]"><option value="">—</option><template x-for="profile in purityOptions(line)" :key="`${profile.metal}-${profile.value}`"><option :value="String(profile.value)" x-text="profile.label"></option></template><option value="__custom">Custom purity</option></select><input x-show="line.line_purity_choice === '__custom'" type="number" step="any" x-model.number="line.line_purity_value" @input="customPurityChanged(line)" :disabled="!isMobile" aria-label="Custom purity" class="mt-1 h-11 w-full min-h-[44px]"><input type="hidden" :name="`lines[${i}][line_purity]`" x-model="line.line_purity" :disabled="!isMobile"><input type="hidden" :name="`lines[${i}][line_purity_value]`" x-model="line.line_purity_value" :disabled="!isMobile"></div>
+                        <div><label :for="`line-${i}-metal-mobile`">Metal</label><select :id="`line-${i}-metal-mobile`" x-model="line.line_metal_choice" @change="metalChanged(line)" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px]"><option value="">Select metal</option>@foreach($enabledMetals as $metal)<option value="{{ $metal }}">{{ ucfirst($metal) }}</option>@endforeach<option value="__custom">Other…</option></select><input type="text" x-show="line.line_metal_choice === '__custom'" x-model="line.line_custom_metal" @input="customMetalChanged(line)" :disabled="!isMobile" aria-label="Custom metal" placeholder="Metal" class="mt-1 h-11 w-full min-h-[44px]"><input type="hidden" :name="`lines[${i}][line_metal_type]`" x-model="line.line_metal_type" :disabled="!isMobile"></div>
+                        <div><label :for="`line-${i}-purity-mobile`">Purity</label><select :id="`line-${i}-purity-mobile`" x-model="line.line_purity_choice" @change="purityChanged(line)" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px]"><option value="">Select purity</option><template x-for="profile in purityOptions(line)" :key="`${profile.metal}-${profile.value}`"><option :value="String(profile.value)" x-text="profile.label"></option></template><option value="__custom">Custom purity</option></select><input x-show="line.line_purity_choice === '__custom'" type="number" step="any" x-model.number="line.line_purity_value" @input="customPurityChanged(line)" :disabled="!isMobile" aria-label="Custom purity" class="mt-1 h-11 w-full min-h-[44px]"><input type="hidden" :name="`lines[${i}][line_purity]`" x-model="line.line_purity" :disabled="!isMobile"><input type="hidden" :name="`lines[${i}][line_purity_value]`" x-model="line.line_purity_value" :disabled="!isMobile"></div>
                         <div><label :for="`line-${i}-qty-mobile`">Quantity</label><input type="number" step="any" :id="`line-${i}-qty-mobile`" :name="`lines[${i}][line_quantity]`" x-model="line.line_quantity" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px] text-right tabular-nums"></div>
                         <div><label :for="`line-${i}-billable-mobile`">Billable weight (g)</label><input type="number" step="any" :id="`line-${i}-billable-mobile`" :name="`lines[${i}][line_billable_weight]`" x-model="line.line_billable_weight" data-derived-field="line_billable_weight" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px] text-right tabular-nums"><input type="hidden" :name="`lines[${i}][line_billable_weight_mode]`" :value="line.line_billable_weight_mode" :disabled="!isMobile"></div>
                         <div><label :for="`line-${i}-rate-mobile`">Historical rate (₹/g)</label><input type="number" step="any" :id="`line-${i}-rate-mobile`" :name="`lines[${i}][line_rate]`" x-model="line.line_rate" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px] text-right tabular-nums"></div>
@@ -250,7 +242,7 @@
 </fieldset>
 
 <div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-3" data-historical-financial-row>
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-2" data-historical-form-section data-historical-section="amounts">
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="amounts">
     <legend class="sr-only">Amount / payment (display snapshot — no ledger, no receivable)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Amount / payment <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
@@ -285,8 +277,7 @@
     </div>
 </fieldset>
 
-<div class="grid grid-cols-1 gap-4 lg:col-span-1" data-historical-supporting-column>
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="tax-making">
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="tax-making">
     <legend class="sr-only">Tax and making / labour charge</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Tax and making / labour charge</h2>
@@ -320,14 +311,14 @@
         <div>
             <label for="making_category">Category</label>
             <select id="making_category" name="making_category" class="w-full min-h-[44px]">
-                <option value="">—</option>
+                <option value="">Select category</option>
                 @foreach($makingCategories as $c)<option value="{{ $c }}" @selected(old('making_category')===$c)>{{ str_replace('_',' ',$c) }}</option>@endforeach
             </select>
         </div>
         <div>
             <label for="making_basis">Basis</label>
             <select id="making_basis" name="making_basis" class="w-full min-h-[44px]">
-                <option value="">—</option>
+                <option value="">Select basis</option>
                 @foreach($makingBases as $b)<option value="{{ $b }}" @selected(old('making_basis')===$b)>{{ str_replace('_',' ',$b) }}</option>@endforeach
             </select>
         </div>
@@ -336,7 +327,7 @@
 </fieldset>
 
 {{-- Cutover acknowledgement (Phase 4): a date after go-live needs a reason. --}}
-<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-form-section data-historical-section="cutover">
+<fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="cutover">
     <legend class="sr-only">Cutover (only if this bill is dated after JewelFlow went live)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Cutover</h2>
@@ -360,6 +351,5 @@
         </div>
     </div>
 </fieldset>
-</div>
 </div>
 </div>
