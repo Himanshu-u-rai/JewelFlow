@@ -34,7 +34,7 @@ class HistoricalMobileUiTest extends TestCase
     private function xpath(string $html): DOMXPath
     {
         $previous = libxml_use_internal_errors(true);
-        $document = new DOMDocument();
+        $document = new DOMDocument;
         $loaded = $document->loadHTML($html);
         libxml_clear_errors();
         libxml_use_internal_errors($previous);
@@ -117,7 +117,7 @@ class HistoricalMobileUiTest extends TestCase
 
     private function buildTwoSheetXlsx(): string
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $header = $spreadsheet->getActiveSheet();
         $header->setTitle('Invoices Archive');
         $header->fromArray(['InvoiceNo', 'InvoiceDate', 'GrandTotal'], null, 'A1');
@@ -160,7 +160,7 @@ class HistoricalMobileUiTest extends TestCase
     private function makeBatch(int $shopId, int $actorId, array $attributes = []): HistoricalImportBatch
     {
         return TenantContext::runFor($shopId, function () use ($shopId, $actorId, $attributes): HistoricalImportBatch {
-            $batch = new HistoricalImportBatch();
+            $batch = new HistoricalImportBatch;
             $batch->forceFill(array_merge([
                 'shop_id' => $shopId,
                 'label' => 'Mobile review batch',
@@ -185,9 +185,9 @@ class HistoricalMobileUiTest extends TestCase
     {
         return TenantContext::runFor($shopId, function () use ($shopId, $batchId, $attributes): HistoricalSalesDocument {
             $status = $attributes['status'] ?? HistoricalSalesDocument::STATUS_DRAFT;
-            $number = $attributes['original_document_number'] ?? ('MOBILE-' . Str::random(8));
+            $number = $attributes['original_document_number'] ?? ('MOBILE-'.Str::random(8));
 
-            $document = new HistoricalSalesDocument();
+            $document = new HistoricalSalesDocument;
             $document->forceFill(array_merge([
                 'shop_id' => $shopId,
                 'historical_import_batch_id' => $batchId,
@@ -214,7 +214,7 @@ class HistoricalMobileUiTest extends TestCase
     private function makeLine(int $shopId, int $documentId, array $attributes = []): HistoricalSalesLine
     {
         return TenantContext::runFor($shopId, function () use ($shopId, $documentId, $attributes): HistoricalSalesLine {
-            $line = new HistoricalSalesLine();
+            $line = new HistoricalSalesLine;
             $line->forceFill(array_merge([
                 'shop_id' => $shopId,
                 'historical_sales_document_id' => $documentId,
@@ -289,9 +289,10 @@ class HistoricalMobileUiTest extends TestCase
         $manualForm = $this->firstNode($manualXpath, "//form[@data-historical-form='manual']");
         $this->assertSame(route('historical.manual.preview'), $manualForm->getAttribute('action'));
         $this->assertSame('false', $manualForm->getAttribute('data-turbo'));
-        $this->assertSame('{ lines: [] }', $manualForm->getAttribute('x-data'));
+        $this->assertStringStartsWith('historicalManualForm({', $manualForm->getAttribute('x-data'));
+        $this->assertStringContainsString('minimumRows: 1', $manualForm->getAttribute('x-data'));
         $this->assertGreaterThanOrEqual(6, $manualXpath->query("//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]")?->length);
-        $this->assertStringContainsString('@click="lines.push({})"', $manual->getContent());
+        $this->assertStringContainsString('@click="addLine()"', $manual->getContent());
 
         $batch = $this->uploadFile(
             $owner,
@@ -309,9 +310,9 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertStringContainsString("refresh('header', this.value);", $mapping->getContent());
         $this->assertStringContainsString("refresh('detail', this.value);", $mapping->getContent());
 
-        $workflow = $this->firstNode($mappingXpath, "//ol[@data-historical-workflow]");
+        $workflow = $this->firstNode($mappingXpath, '//ol[@data-historical-workflow]');
         $this->assertContains('sm:grid-cols-4', preg_split('/\s+/', trim($workflow->getAttribute('class'))) ?: []);
-        $this->assertSame(4, $mappingXpath->query("//ol[@data-historical-workflow]/li")?->length);
+        $this->assertSame(4, $mappingXpath->query('//ol[@data-historical-workflow]/li')?->length);
         $this->assertSame(1, $mappingXpath->query("//ol[@data-historical-workflow]//*[@aria-current='step' and contains(normalize-space(.), 'Map')]")?->length);
     }
 
@@ -328,17 +329,17 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertStringContainsString('--app-control-border: #cbd5e1', $uploadPage->getAttribute('style'));
         $this->assertNodesHaveClasses(
             $uploadXpath,
-            "//*[@data-historical-workflow]",
+            '//*[@data-historical-workflow]',
             ['rounded-2xl', 'border-slate-200', 'bg-white']
         );
         $this->assertNodesHaveClasses(
             $uploadXpath,
-            "//*[@data-historical-upload-source]",
+            '//*[@data-historical-upload-source]',
             ['rounded-xl', 'border', 'border-slate-200', 'bg-slate-50']
         );
         $this->assertNodesHaveClasses(
             $uploadXpath,
-            "//*[@data-historical-upload-details]",
+            '//*[@data-historical-upload-details]',
             ['grid', 'gap-4', 'sm:grid-cols-2']
         );
         $this->assertNodesHaveClasses(
@@ -363,7 +364,7 @@ class HistoricalMobileUiTest extends TestCase
 
         $this->assertStringContainsString('--app-control-bg: #ffffff', $mappingPage->getAttribute('style'));
         $this->assertStringContainsString('--app-control-border: #cbd5e1', $mappingPage->getAttribute('style'));
-        $this->firstNode($mappingXpath, "//*[@data-historical-map-intro]");
+        $this->firstNode($mappingXpath, '//*[@data-historical-map-intro]');
         $sections = $mappingXpath->query("//form[@data-historical-form='mapping']//fieldset[@data-historical-form-section]");
         $this->assertNotFalse($sections);
         $this->assertGreaterThanOrEqual(8, $sections->length);
@@ -398,14 +399,14 @@ class HistoricalMobileUiTest extends TestCase
 
         $this->assertNotFalse($sections);
         $this->assertSame(6, $sections->length);
-        $this->assertSame(6, $xpath->query($sectionQuery . "/legend[contains(concat(' ', normalize-space(@class), ' '), ' sr-only ')]")?->length);
-        $this->assertSame(6, $xpath->query($sectionQuery . "/*[@data-historical-card-header]")?->length);
-        $this->assertSame(0, $xpath->query($sectionQuery . "/legend[contains(concat(' ', normalize-space(@class), ' '), ' w-full ')]")?->length);
+        $this->assertSame(6, $xpath->query($sectionQuery."/legend[contains(concat(' ', normalize-space(@class), ' '), ' sr-only ')]")?->length);
+        $this->assertSame(6, $xpath->query($sectionQuery.'/*[@data-historical-card-header]')?->length);
+        $this->assertSame(0, $xpath->query($sectionQuery."/legend[contains(concat(' ', normalize-space(@class), ' '), ' w-full ')]")?->length);
 
-        $headings = $xpath->query($sectionQuery . "/*[@data-historical-card-header]");
+        $headings = $xpath->query($sectionQuery.'/*[@data-historical-card-header]');
         $headingText = '';
         foreach ($headings ?: [] as $heading) {
-            $headingText .= ' ' . $heading->textContent;
+            $headingText .= ' '.$heading->textContent;
         }
 
         foreach (['Document identity', 'Customer snapshot', 'Amount / payment', 'Tax and making / labour charge', 'Item lines', 'Cutover'] as $title) {
@@ -426,8 +427,8 @@ class HistoricalMobileUiTest extends TestCase
             $this->assertContains($class, $layoutClasses);
         }
 
-        $identity = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-identity-row]");
-        $financial = $this->firstNode($xpath, "//*[@data-historical-manual-layout]/*[@data-historical-financial-row]");
+        $identity = $this->firstNode($xpath, '//*[@data-historical-manual-layout]/*[@data-historical-identity-row]');
+        $financial = $this->firstNode($xpath, '//*[@data-historical-manual-layout]/*[@data-historical-financial-row]');
         $identityClasses = preg_split('/\s+/', trim($identity->getAttribute('class'))) ?: [];
         foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:grid-cols-12'] as $class) {
             $this->assertContains($class, $identityClasses);
@@ -455,15 +456,15 @@ class HistoricalMobileUiTest extends TestCase
             ['lg:col-span-2']
         );
 
-        $supporting = $this->firstNode($xpath, "//*[@data-historical-financial-row]/*[@data-historical-supporting-column]");
+        $supporting = $this->firstNode($xpath, '//*[@data-historical-financial-row]/*[@data-historical-supporting-column]');
         foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:col-span-1'] as $class) {
             $this->assertContains($class, preg_split('/\s+/', trim($supporting->getAttribute('class'))) ?: []);
         }
 
-        $this->assertSame(2, $xpath->query("//*[@data-historical-identity-row]/fieldset[@data-historical-form-section]")?->length);
-        $this->assertSame(1, $xpath->query("//*[@data-historical-financial-row]/fieldset[@data-historical-form-section]")?->length);
-        $this->assertSame(2, $xpath->query("//*[@data-historical-supporting-column]/fieldset[@data-historical-form-section]")?->length);
-        $this->assertSame(1, $xpath->query("//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(2, $xpath->query('//*[@data-historical-identity-row]/fieldset[@data-historical-form-section]')?->length);
+        $this->assertSame(1, $xpath->query('//*[@data-historical-financial-row]/fieldset[@data-historical-form-section]')?->length);
+        $this->assertSame(2, $xpath->query('//*[@data-historical-supporting-column]/fieldset[@data-historical-form-section]')?->length);
+        $this->assertSame(1, $xpath->query('//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]')?->length);
 
         foreach (['tax-making', 'cutover'] as $section) {
             $this->firstNode($xpath, "//*[@data-historical-supporting-column]/fieldset[@data-historical-section='{$section}']");
@@ -497,7 +498,7 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='cutover']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
     }
 
-    public function test_manual_item_lines_render_as_one_semantic_scrollable_table(): void
+    public function test_manual_item_lines_render_as_a_compact_desktop_table_and_mobile_cards(): void
     {
         [$owner] = $this->createRetailerTenant();
 
@@ -515,77 +516,35 @@ class HistoricalMobileUiTest extends TestCase
         foreach ($headers as $header) {
             $headerText[] = trim(preg_replace('/\s+/', ' ', $header->textContent) ?? '');
         }
-        $this->assertSame([
-            '#', 'Item name', 'SKU', 'HSN', 'Qty', 'Purity', 'Gross wt', 'Net wt',
-            'Stone wt', 'Metal value', 'Stone value', 'Making label', 'Making value',
-            'Rate', 'Line total', 'Action',
-        ], $headerText);
+        $this->assertSame(['#', 'Item', 'Metal', 'Purity', 'Qty', 'Billable wt (g)', 'Historical rate (₹/g)', 'Line total (₹)', 'Actions'], $headerText);
 
-        $this->firstNode($xpath, "{$itemSection}//tbody/template[@x-for='(line, i) in lines']/tr[@data-historical-item-row]");
-        $this->firstNode($xpath, "{$itemSection}//tbody/template/tr/th[@scope='row' and @x-text='i + 1']");
-        $this->assertSame(0, $xpath->query("{$itemSection}//tbody/template/div")?->length);
-        $this->assertSame(0, $xpath->query("{$itemSection}//*[@data-historical-item-card or @data-historical-item-mobile]")?->length);
-
-        $this->assertNodesHaveClasses(
-            $xpath,
-            "{$itemSection}//*[@data-historical-item-table-scroll]",
-            ['overflow-x-auto', 'max-w-full', 'rounded-xl', 'border', 'border-slate-200']
-        );
-        $this->assertNodesHaveClasses($xpath, "{$itemSection}//table", ['min-w-[1100px]', 'w-full', 'text-sm']);
-        $this->assertStringContainsString(
-            'Start entering items below. A new blank row appears automatically; completely blank rows are ignored.',
-            $html
-        );
-        $this->assertStringContainsString('Swipe sideways to view all item columns', $html);
+        $this->firstNode($xpath, "{$itemSection}//*[@data-historical-item-grid-desktop]//*[@data-historical-item-core-row]");
+        $this->firstNode($xpath, "{$itemSection}//*[@data-historical-item-grid-desktop]//*[@data-historical-item-advanced-row]");
+        $this->firstNode($xpath, "{$itemSection}//*[@data-historical-item-grid-mobile]//*[@data-historical-item-card]");
+        $this->assertNodesHaveClasses($xpath, "{$itemSection}//table", ['table-fixed', 'w-full', 'text-sm']);
+        $this->assertSame(0, $xpath->query("{$itemSection}//*[contains(concat(' ', normalize-space(@class), ' '), ' overflow-x-auto ')]")?->length);
+        $this->assertStringContainsString('A fresh row appears automatically.', $html);
     }
 
-    public function test_manual_item_table_preserves_bindings_targets_and_shared_preview_markup(): void
+    public function test_manual_item_grid_preserves_core_and_advanced_bindings_in_preview(): void
     {
         [$owner] = $this->createRetailerTenant();
 
         $manual = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
         $html = $manual->getContent();
         $xpath = $this->xpath($html);
-        $row = "//form[@data-historical-form='manual']//*[@data-historical-item-table]//tbody/template/tr[@data-historical-item-row]";
-        $fields = [
-            'line_item_name' => 'Item name',
-            'line_sku' => 'SKU',
-            'line_hsn' => 'HSN',
-            'line_quantity' => 'Quantity',
-            'line_purity' => 'Purity',
-            'line_gross_weight' => 'Gross weight',
-            'line_net_weight' => 'Net weight',
-            'line_stone_weight' => 'Stone weight',
-            'line_metal_value' => 'Metal value',
-            'line_stone_value' => 'Stone value',
-            'line_making_label' => 'Making charge label',
-            'line_making_value' => 'Making charge value',
-            'line_rate' => 'Rate',
-            'line_total' => 'Line total',
-        ];
-
-        $this->assertSame(14, $xpath->query("{$row}//input")?->length);
-        foreach ($fields as $key => $label) {
-            $this->assertSame(1, substr_count($html, ':name="`lines[${i}][' . $key . ']`"'));
-            $this->assertSame(1, substr_count($html, 'x-model="line.' . $key . '"'));
-            $this->assertSame(1, substr_count($html, 'x-bind:aria-label="`Item ${i + 1} — ' . $label . '`"'));
-            $this->assertNodesHaveClasses($xpath, "{$row}//input[@x-model='line.{$key}']", ['min-h-[44px]']);
+        $core = "//form[@data-historical-form='manual']//*[@data-historical-item-grid-desktop]//*[@data-historical-item-core-row]";
+        $advanced = "//form[@data-historical-form='manual']//*[@data-historical-item-grid-desktop]//*[@data-historical-item-advanced-row]";
+        foreach (['line_item_name', 'line_metal_type', 'line_purity_value', 'line_quantity', 'line_billable_weight', 'line_rate', 'line_total'] as $field) {
+            $this->assertGreaterThan(0, $xpath->query("{$core}//*[@x-model='line.{$field}']")?->length);
+            $this->assertSame(0, $xpath->query("{$advanced}//*[@x-model='line.{$field}']")?->length);
         }
-
-        $numericFields = [
-            'line_quantity', 'line_gross_weight', 'line_net_weight', 'line_stone_weight',
-            'line_metal_value', 'line_stone_value', 'line_rate', 'line_total',
-        ];
-        foreach ($numericFields as $key) {
-            $this->assertNodesHaveClasses($xpath, "{$row}//input[@x-model='line.{$key}']", ['text-right', 'tabular-nums']);
+        foreach (['line_sku', 'line_hsn', 'line_gross_weight', 'line_net_weight', 'line_stone_weight', 'line_making_value', 'line_gst_rate', 'line_notes'] as $field) {
+            $this->assertSame(1, $xpath->query("{$advanced}//*[@x-model='line.{$field}']")?->length);
         }
-
-        $this->assertNodesHaveClasses($xpath, "{$row}//button", ['min-h-[44px]']);
-        $this->assertStringContainsString('@click="lines = historicalRemoveLine(lines, i)"', $html);
-        $this->assertStringContainsString('x-bind:aria-label="`Remove item ${i + 1}`"', $html);
-        $this->assertStringContainsString('@input.debounce.400ms="lines = historicalPadLines(lines)"', $html);
-        $this->assertStringContainsString('@click="lines.push({})"', $html);
-        $this->assertStringContainsString('>Add another row</button>', $html);
+        $this->assertStringContainsString('@click="removeLine(i)"', $html);
+        $this->assertStringContainsString('@click="duplicateLine(i)"', $html);
+        $this->assertStringContainsString('@click="addLine()"', $html);
         $this->assertSame(6, $xpath->query("//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]")?->length);
 
         $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
@@ -599,10 +558,7 @@ class HistoricalMobileUiTest extends TestCase
             $previewXpath,
             "//form[@data-historical-form='manual-preview']//*[@data-historical-item-table]"
         );
-        $this->assertSame(
-            14,
-            $previewXpath->query("//form[@data-historical-form='manual-preview']//*[@data-historical-item-table]//tbody/template/tr//input")?->length
-        );
+        $this->firstNode($previewXpath, "//form[@data-historical-form='manual-preview']//*[@data-historical-item-grid-mobile]//*[@data-historical-item-card]");
         $this->assertSame(6, $previewXpath->query("//form[@data-historical-form='manual-preview']//fieldset[@data-historical-form-section]")?->length);
     }
 
@@ -633,8 +589,8 @@ class HistoricalMobileUiTest extends TestCase
         $index = $this->actingAs($owner)->get(route('historical.index'))->assertOk();
         $this->assertTapTargets($index->getContent());
         $indexXpath = $this->xpath($index->getContent());
-        $this->assertNodesHaveClasses($indexXpath, "//a[@href='" . route('historical.batches.show', $batch) . "']", ['inline-flex', 'items-center', 'min-h-[44px]']);
-        $this->assertNodesHaveClasses($indexXpath, "//a[@href='" . route('historical.documents.show', $document) . "']", ['inline-flex', 'items-center', 'min-h-[44px]']);
+        $this->assertNodesHaveClasses($indexXpath, "//a[@href='".route('historical.batches.show', $batch)."']", ['inline-flex', 'items-center', 'min-h-[44px]']);
+        $this->assertNodesHaveClasses($indexXpath, "//a[@href='".route('historical.documents.show', $document)."']", ['inline-flex', 'items-center', 'min-h-[44px]']);
 
         $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
             'original_document_number' => 'MOBILE-PREVIEW-1',
@@ -790,7 +746,7 @@ class HistoricalMobileUiTest extends TestCase
         $batch = $this->makeBatch($shop->id, $owner->id);
 
         TenantContext::runFor($shop->id, function () use ($shop, $batch): void {
-            $row = new HistoricalImportRow();
+            $row = new HistoricalImportRow;
             $row->forceFill([
                 'shop_id' => $shop->id,
                 'historical_import_batch_id' => $batch->id,
@@ -824,7 +780,7 @@ class HistoricalMobileUiTest extends TestCase
         ]);
 
         TenantContext::runFor($shop->id, function () use ($shop, $batch): void {
-            $row = new HistoricalImportRow();
+            $row = new HistoricalImportRow;
             $row->forceFill([
                 'shop_id' => $shop->id,
                 'historical_import_batch_id' => $batch->id,
@@ -857,7 +813,7 @@ class HistoricalMobileUiTest extends TestCase
             $node = $this->firstNode($xpath, "//*[@data-historical-batch-register='{$surface}']");
             $this->assertStringContainsString('BATCH-HIST-88', $node->textContent);
             $this->assertStringContainsString('7,654.25', $node->textContent);
-            $this->assertSame(1, $xpath->query(".//a[@href='" . route('historical.documents.show', $document) . "']", $node)?->length);
+            $this->assertSame(1, $xpath->query(".//a[@href='".route('historical.documents.show', $document)."']", $node)?->length);
         }
 
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-register='staged-desktop']", ['hidden', 'md:block']);
@@ -879,24 +835,24 @@ class HistoricalMobileUiTest extends TestCase
         );
         $this->assertNodesHaveClasses(
             $xpath,
-            "//*[@data-historical-import-metrics]",
+            '//*[@data-historical-import-metrics]',
             ['grid', 'grid-cols-2', 'gap-3']
         );
         $this->assertNodesHaveClasses(
             $xpath,
-            "//*[@data-historical-import-details]",
+            '//*[@data-historical-import-details]',
             ['grid', 'divide-y', 'divide-slate-100']
         );
         $this->assertSame(
             0,
-            $xpath->query("//*[@data-historical-import-details]//table")?->length
+            $xpath->query('//*[@data-historical-import-details]//table')?->length
         );
         $this->assertNodesHaveClasses(
             $xpath,
-            "//*[@data-historical-batch-actions]",
+            '//*[@data-historical-batch-actions]',
             ['overflow-hidden', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white']
         );
-        $publishPanel = $this->firstNode($xpath, "//*[@data-historical-publish-panel]");
+        $publishPanel = $this->firstNode($xpath, '//*[@data-historical-publish-panel]');
         $this->assertStringContainsString('Publish batch', $publishPanel->textContent);
         $this->assertStringContainsString('permanent', strtolower($publishPanel->textContent));
     }
@@ -933,15 +889,15 @@ class HistoricalMobileUiTest extends TestCase
             $current = $this->firstNode($xpath, "//*[@data-historical-workflow]//*[@aria-current='step']");
 
             $this->assertStringContainsString($step, $current->textContent);
-            $this->assertNodesHaveClasses($xpath, "//*[@data-historical-workflow]", ['rounded-2xl', 'border', 'bg-white']);
+            $this->assertNodesHaveClasses($xpath, '//*[@data-historical-workflow]', ['rounded-2xl', 'border', 'bg-white']);
         }
 
         $publishedXpath = $this->xpath($published->getContent());
-        $complete = $this->firstNode($publishedXpath, "//*[@data-historical-batch-complete]");
+        $complete = $this->firstNode($publishedXpath, '//*[@data-historical-batch-complete]');
         $this->assertStringContainsString('permanent evidence', strtolower($complete->textContent));
         $this->assertSame(
             0,
-            $publishedXpath->query("//form[@action='" . route('historical.batches.publish', $publishedBatch) . "']")?->length
+            $publishedXpath->query("//form[@action='".route('historical.batches.publish', $publishedBatch)."']")?->length
         );
     }
 
@@ -967,21 +923,21 @@ class HistoricalMobileUiTest extends TestCase
         ])->assertOk();
 
         $xpath = $this->xpath($preview->getContent());
-        $review = $this->firstNode($xpath, "//*[@data-historical-preview-review]");
-        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-preview-review]", ['grid', 'gap-4']);
+        $review = $this->firstNode($xpath, '//*[@data-historical-preview-review]');
+        $this->assertNodesHaveClasses($xpath, '//*[@data-historical-preview-review]', ['grid', 'gap-4']);
 
-        $summary = $this->firstNode($xpath, "//*[@data-historical-preview-review]/*[@data-historical-preview-summary]");
+        $summary = $this->firstNode($xpath, '//*[@data-historical-preview-review]/*[@data-historical-preview-summary]');
         $this->assertStringContainsString('PREVIEW-POLISH-1', $summary->textContent);
         $this->assertStringContainsString('15 Jun 2023', $summary->textContent);
         $this->assertStringContainsString('9,876.50', $summary->textContent);
         $this->assertNodesHaveClasses(
             $xpath,
-            "//*[@data-historical-preview-summary]//*[@data-historical-preview-grand-total]",
+            '//*[@data-historical-preview-summary]//*[@data-historical-preview-grand-total]',
             ['lg:w-64']
         );
 
-        $this->firstNode($xpath, "//*[@data-historical-preview-review]/*[@data-historical-preview-messages]");
-        $layout = $this->firstNode($xpath, "//*[@data-historical-preview-review]/*[@data-historical-preview-layout]");
+        $this->firstNode($xpath, '//*[@data-historical-preview-review]/*[@data-historical-preview-messages]');
+        $layout = $this->firstNode($xpath, '//*[@data-historical-preview-review]/*[@data-historical-preview-layout]');
         $layoutClasses = preg_split('/\s+/', trim($layout->getAttribute('class'))) ?: [];
         foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:grid-cols-2'] as $class) {
             $this->assertContains($class, $layoutClasses);
@@ -998,19 +954,19 @@ class HistoricalMobileUiTest extends TestCase
 
         $this->firstNode(
             $xpath,
-            "//*[@data-historical-preview-summary]/following-sibling::*[1][@data-historical-preview-messages]"
+            '//*[@data-historical-preview-summary]/following-sibling::*[1][@data-historical-preview-messages]'
         );
         $this->firstNode(
             $xpath,
-            "//*[@data-historical-preview-messages]/following-sibling::*[1][@data-historical-preview-layout]"
+            '//*[@data-historical-preview-messages]/following-sibling::*[1][@data-historical-preview-layout]'
         );
         $this->firstNode(
             $xpath,
-            "//*[@data-historical-preview-layout]/following-sibling::*[1][@data-historical-preview-items]"
+            '//*[@data-historical-preview-layout]/following-sibling::*[1][@data-historical-preview-items]'
         );
         $this->firstNode(
             $xpath,
-            "//*[@data-historical-preview-items]/following-sibling::*[1][@data-historical-preview-editor-heading]"
+            '//*[@data-historical-preview-items]/following-sibling::*[1][@data-historical-preview-editor-heading]'
         );
         $this->firstNode(
             $xpath,
@@ -1049,13 +1005,13 @@ class HistoricalMobileUiTest extends TestCase
             $xpath = $this->xpath($page->getContent());
             $back = $this->firstNode(
                 $xpath,
-                "//a[@data-historical-back][@href='" . route('historical.index') . "']"
+                "//a[@data-historical-back][@href='".route('historical.index')."']"
             );
 
             $this->assertSame('Back to historical sales', trim($back->textContent));
             $this->assertNodesHaveClasses(
                 $xpath,
-                "//a[@data-historical-back]",
+                '//a[@data-historical-back]',
                 ['inline-flex', 'items-center', 'gap-2', 'min-h-[44px]', 'rounded-lg', 'border', 'border-slate-300', 'bg-white', 'px-4', 'text-sm', 'font-semibold']
             );
             $this->firstNode($xpath, "//a[@data-historical-back]//*[local-name()='svg'][@aria-hidden='true']");
@@ -1072,23 +1028,23 @@ class HistoricalMobileUiTest extends TestCase
 
         $response = $this->actingAs($owner)->get(route('historical.documents.show', $document))->assertOk();
         $xpath = $this->xpath($response->getContent());
-        $panel = $this->firstNode($xpath, "//*[@data-historical-customer-link-panel]");
+        $panel = $this->firstNode($xpath, '//*[@data-historical-customer-link-panel]');
 
         $this->assertStringContainsString('Customer link', $panel->textContent);
         $this->assertStringContainsString('The historical snapshot never changes', $panel->textContent);
         $this->assertNodesHaveClasses(
             $xpath,
-            "//*[@data-historical-customer-link-panel]",
+            '//*[@data-historical-customer-link-panel]',
             ['overflow-hidden', 'rounded-xl', 'border', 'border-slate-200', 'bg-slate-50']
         );
         $this->firstNode(
             $xpath,
-            "//*[@data-historical-document-layout]/following-sibling::*[1][@data-historical-customer-link-panel]"
+            '//*[@data-historical-document-layout]/following-sibling::*[1][@data-historical-customer-link-panel]'
         );
-        $this->assertSame(0, $xpath->query("//*[@data-historical-document-layout]//*[@data-historical-customer-link-panel]")?->length);
+        $this->assertSame(0, $xpath->query('//*[@data-historical-document-layout]//*[@data-historical-customer-link-panel]')?->length);
         $this->assertNodesHaveClasses(
             $xpath,
-            "//*[@data-historical-customer-link-actions]",
+            '//*[@data-historical-customer-link-actions]',
             ['grid', 'gap-4', 'lg:grid-cols-2']
         );
 
@@ -1139,7 +1095,7 @@ class HistoricalMobileUiTest extends TestCase
             ]],
         ])->assertOk();
         $previewXpath = $this->xpath($preview->getContent());
-        $this->firstNode($previewXpath, "//*[@data-historical-preview-layout]");
+        $this->firstNode($previewXpath, '//*[@data-historical-preview-layout]');
         foreach (['lines-desktop', 'lines-mobile'] as $surface) {
             $node = $this->firstNode($previewXpath, "//*[@data-historical-preview-register='{$surface}']");
             $this->assertStringContainsString('Archive Gold Ring', $node->textContent);
@@ -1181,7 +1137,7 @@ class HistoricalMobileUiTest extends TestCase
 
         $documentPage = $this->actingAs($owner)->get(route('historical.documents.show', $document))->assertOk();
         $documentXpath = $this->xpath($documentPage->getContent());
-        $layout = $this->firstNode($documentXpath, "//*[@data-historical-document-layout]");
+        $layout = $this->firstNode($documentXpath, '//*[@data-historical-document-layout]');
         $this->assertContains('lg:grid-cols-3', preg_split('/\s+/', trim($layout->getAttribute('class'))) ?: []);
         $this->assertStringContainsString(HistoricalSalesDocument::RECORD_DISCLAIMER, $documentPage->getContent());
         foreach (['lines-desktop', 'lines-mobile'] as $surface) {
@@ -1197,8 +1153,8 @@ class HistoricalMobileUiTest extends TestCase
         ]);
         $publishedPage = $this->actingAs($owner)->get(route('historical.documents.show', $published))->assertOk();
         $publishedXpath = $this->xpath($publishedPage->getContent());
-        $this->assertSame(1, $publishedXpath->query("//form[@action='" . route('historical.documents.void', $published) . "']")?->length);
-        $this->assertSame(1, $publishedXpath->query("//form[@action='" . route('historical.documents.supersede', $published) . "']")?->length);
+        $this->assertSame(1, $publishedXpath->query("//form[@action='".route('historical.documents.void', $published)."']")?->length);
+        $this->assertSame(1, $publishedXpath->query("//form[@action='".route('historical.documents.supersede', $published)."']")?->length);
     }
 
     public function test_document_action_tap_targets_preserve_permission_and_terminal_gates(): void

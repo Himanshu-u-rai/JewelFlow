@@ -22,8 +22,8 @@ use Tests\TestCase;
  */
 class HistoricalManualPreviewTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesTestTenant;
+    use RefreshDatabase;
 
     private const HISTORICAL_TABLES = [
         'historical_import_profiles',
@@ -43,12 +43,12 @@ class HistoricalManualPreviewTest extends TestCase
     private function manualPayload(array $override = []): array
     {
         return array_merge([
-            'original_document_number' => 'M-' . fake()->unique()->numberBetween(1, 99999),
-            'document_date'            => '2023-06-15',
-            'source_system'            => 'Manual',
-            'customer_name'            => 'Walk-in Customer',
-            'grand_total'              => 18000,
-            'tax_mode'                 => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'original_document_number' => 'M-'.fake()->unique()->numberBetween(1, 99999),
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'customer_name' => 'Walk-in Customer',
+            'grand_total' => 18000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
         ], $override);
     }
 
@@ -71,8 +71,8 @@ class HistoricalManualPreviewTest extends TestCase
 
         $response = $this->actingAs($owner)->post(route('historical.manual.preview'), $this->manualPayload([
             'original_document_number' => 'PREVIEW-0001',
-            'customer_name'            => 'Asha Traders',
-            'grand_total'              => 18500,
+            'customer_name' => 'Asha Traders',
+            'grand_total' => 18500,
         ]));
 
         $response->assertOk();
@@ -90,34 +90,34 @@ class HistoricalManualPreviewTest extends TestCase
         [$owner, $shop] = $this->createRetailerTenant();
 
         TenantContext::runFor($shop->id, function () use ($shop, $owner): void {
-            $batch = new HistoricalImportBatch();
+            $batch = new HistoricalImportBatch;
             $batch->forceFill([
-                'shop_id'      => $shop->id,
-                'label'        => 'Existing record',
+                'shop_id' => $shop->id,
+                'label' => 'Existing record',
                 'source_system' => 'Manual',
-                'status'       => HistoricalImportBatch::STATUS_REVIEW,
-                'created_by'   => $owner->id,
+                'status' => HistoricalImportBatch::STATUS_REVIEW,
+                'created_by' => $owner->id,
             ])->save();
 
-            $doc = new HistoricalSalesDocument();
+            $doc = new HistoricalSalesDocument;
             $doc->forceFill([
-                'shop_id'                              => $shop->id,
-                'historical_import_batch_id'           => $batch->id,
-                'historical_reference'                 => (string) Str::uuid(),
-                'original_document_number'             => 'DUP-0001',
-                'original_document_number_normalized'  => 'DUP-0001',
-                'document_type'                        => HistoricalSalesDocument::TYPE_SALE_INVOICE,
-                'document_date'                         => '2023-06-15',
-                'financial_year'                        => '2023-24',
-                'source_system'                         => 'Manual',
-                'customer_snapshot'                     => ['name' => 'Existing Customer'],
-                'tax_mode'                               => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
-                'tax_completeness'                       => HistoricalSalesDocument::TAX_UNKNOWN,
-                'grand_total'                            => 5000.00,
-                'status'                                 => HistoricalSalesDocument::STATUS_DRAFT,
-                'content_fingerprint'                    => str_repeat('a', 64),
-                'imported_by'                            => $owner->id,
-                'imported_at'                            => now(),
+                'shop_id' => $shop->id,
+                'historical_import_batch_id' => $batch->id,
+                'historical_reference' => (string) Str::uuid(),
+                'original_document_number' => 'DUP-0001',
+                'original_document_number_normalized' => 'DUP-0001',
+                'document_type' => HistoricalSalesDocument::TYPE_SALE_INVOICE,
+                'document_date' => '2023-06-15',
+                'financial_year' => '2023-24',
+                'source_system' => 'Manual',
+                'customer_snapshot' => ['name' => 'Existing Customer'],
+                'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+                'tax_completeness' => HistoricalSalesDocument::TAX_UNKNOWN,
+                'grand_total' => 5000.00,
+                'status' => HistoricalSalesDocument::STATUS_DRAFT,
+                'content_fingerprint' => str_repeat('a', 64),
+                'imported_by' => $owner->id,
+                'imported_at' => now(),
             ])->save();
         });
 
@@ -125,7 +125,7 @@ class HistoricalManualPreviewTest extends TestCase
 
         $response = $this->actingAs($owner)->post(route('historical.manual.preview'), $this->manualPayload([
             'original_document_number' => 'DUP-0001',
-            'document_date'            => '2023-06-15',
+            'document_date' => '2023-06-15',
         ]));
 
         $response->assertOk();
@@ -141,8 +141,8 @@ class HistoricalManualPreviewTest extends TestCase
 
         $response = $this->actingAs($owner)->post(route('historical.manual.preview'), $this->manualPayload([
             'original_document_number' => 'EDIT-0007',
-            'customer_mobile'          => '9876543210',
-            'grand_total'              => 22250,
+            'customer_mobile' => '9876543210',
+            'grand_total' => 22250,
         ]));
 
         $response->assertOk();
@@ -164,9 +164,9 @@ class HistoricalManualPreviewTest extends TestCase
         // (headerFields()), so anything else is structurally dropped, not trusted.
         $response = $this->actingAs($owner)->post(route('historical.manual.store'), $this->manualPayload([
             'original_document_number' => 'CONFIRM-0001',
-            'grand_total'              => 18000,
-            'trusted_grand_total'      => 999999,
-            'computed_total'           => 999999,
+            'grand_total' => 18000,
+            'trusted_grand_total' => 999999,
+            'computed_total' => 999999,
         ]));
 
         $response->assertRedirect();
@@ -177,27 +177,26 @@ class HistoricalManualPreviewTest extends TestCase
         });
     }
 
-    public function test_a_customer_id_from_another_shop_is_dropped_by_preview_and_save(): void
+    public function test_a_customer_id_from_another_shop_is_rejected_by_preview_and_save(): void
     {
         [$ownerA, $shopA] = $this->createRetailerTenant();
-        [, $shopB]        = $this->createRetailerTenant();
+        [, $shopB] = $this->createRetailerTenant();
 
         $foreignCustomer = TenantContext::runFor($shopB->id, fn () => $this->createCustomer($shopB->id));
 
         $preview = $this->actingAs($ownerA)->post(route('historical.manual.preview'), $this->manualPayload([
             'customer_id' => $foreignCustomer->id,
         ]));
-        $preview->assertOk();
+        $preview->assertRedirect()->assertSessionHasErrors('customer_id');
 
         $store = $this->actingAs($ownerA)->post(route('historical.manual.store'), $this->manualPayload([
             'original_document_number' => 'XSHOP-0001',
-            'customer_id'               => $foreignCustomer->id,
+            'customer_id' => $foreignCustomer->id,
         ]));
-        $store->assertRedirect();
+        $store->assertRedirect()->assertSessionHasErrors('customer_id');
 
         TenantContext::runFor($shopA->id, function (): void {
-            $document = HistoricalSalesDocument::query()->firstOrFail();
-            $this->assertNull($document->customer_id, 'Manual entry must never acquire a customer link, let alone a cross-shop one.');
+            $this->assertSame(0, HistoricalSalesDocument::query()->count(), 'A forged cross-shop customer selection must persist nothing.');
         });
     }
 
@@ -251,7 +250,7 @@ class HistoricalManualPreviewTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(
-            '<form method="POST" action="' . route('historical.manual.preview') . '" data-turbo="false"',
+            '<form method="POST" action="'.route('historical.manual.preview').'" data-turbo="false"',
             false
         );
     }
@@ -266,7 +265,7 @@ class HistoricalManualPreviewTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(
-            '<form method="POST" action="' . route('historical.manual.preview') . '" data-turbo="false"',
+            '<form method="POST" action="'.route('historical.manual.preview').'" data-turbo="false"',
             false
         );
     }
@@ -278,11 +277,11 @@ class HistoricalManualPreviewTest extends TestCase
     {
         return $this->manualPayload([
             'original_document_number' => $number,
-            'grand_total'              => 1180,
-            'tax_mode'                 => HistoricalSalesDocument::TAX_MODE_EXCLUSIVE,
-            'cgst'                     => 90,
-            'sgst'                     => 90,
-            'igst'                     => 180,
+            'grand_total' => 1180,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_EXCLUSIVE,
+            'cgst' => 90,
+            'sgst' => 90,
+            'igst' => 180,
         ]);
     }
 

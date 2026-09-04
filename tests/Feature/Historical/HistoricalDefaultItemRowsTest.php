@@ -13,12 +13,9 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * Register-style manual item rows: the create/preview forms start with a
- * padded set of blank rows and auto-expand as the operator types, so nobody
- * has to click "Add line" before every row. Codex owns the table's visual
- * design (frozen separately by HistoricalMobileUiTest); this file proves
- * only the behavior layered on top of it — seeding, padding, blank-row
- * filtering, and the single interaction hook that drives auto-expansion.
+ * Register-style manual item rows: create/preview start with one blank row
+ * and append the next one as the operator types. This file proves seeding,
+ * padding, blank-row filtering, and interaction wiring.
  *
  * PHPUnit never runs Alpine. Every test below either (a) asserts the exact
  * server-rendered HTML/attribute contract the client-side JS depends on, or
@@ -28,8 +25,8 @@ use Tests\TestCase;
  */
 class HistoricalDefaultItemRowsTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesTestTenant;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -41,18 +38,18 @@ class HistoricalDefaultItemRowsTest extends TestCase
     private function manualPayload(array $override = []): array
     {
         return array_merge([
-            'original_document_number' => 'ROW-' . fake()->unique()->numberBetween(1, 99999),
-            'document_date'            => '2023-06-15',
-            'source_system'            => 'Manual',
-            'customer_name'            => 'Walk-in Customer',
-            'grand_total'              => 18000,
-            'tax_mode'                 => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'original_document_number' => 'ROW-'.fake()->unique()->numberBetween(1, 99999),
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'customer_name' => 'Walk-in Customer',
+            'grand_total' => 18000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
         ], $override);
     }
 
     private function xpath(string $html): DOMXPath
     {
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
         libxml_use_internal_errors(true);
         $dom->loadHTML($html);
         libxml_use_internal_errors(false);
@@ -74,25 +71,20 @@ class HistoricalDefaultItemRowsTest extends TestCase
 
     // -------------------------------------------------------- init wiring
 
-    public function test_manual_create_form_wires_seed_and_pad_over_the_frozen_x_data_literal(): void
+    public function test_manual_create_form_wires_the_shared_item_form_component(): void
     {
         [$owner] = $this->createRetailerTenant();
 
-        $html  = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent();
-        $form  = $this->firstNode($this->xpath($html), '//form[@data-historical-form="manual"]');
+        $html = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent();
+        $form = $this->firstNode($this->xpath($html), '//form[@data-historical-form="manual"]');
 
-        // Frozen by HistoricalMobileUiTest — must stay this exact literal.
-        $this->assertSame('{ lines: [] }', $form->getAttribute('x-data'));
-        // Seeding/padding is layered on via x-init instead of changing x-data.
-        // @js(old('lines', [])) compiles to the literal `[]` when there is no
-        // old input (Illuminate\Support\Js short-circuits empty arrays/objects).
-        $this->assertSame(
-            'lines = historicalPadLines(historicalSeedLines([]))',
-            $form->getAttribute('x-init')
-        );
+        $this->assertStringStartsWith('historicalManualForm({', $form->getAttribute('x-data'));
+        $this->assertStringContainsString('lines: []', $form->getAttribute('x-data'));
+        $this->assertStringContainsString('minimumRows: 1', $form->getAttribute('x-data'));
+        $this->assertSame('', $form->getAttribute('x-init'));
     }
 
-    public function test_manual_preview_edit_form_shares_the_identical_init_expression(): void
+    public function test_manual_preview_edit_form_shares_the_same_component(): void
     {
         [$owner] = $this->createRetailerTenant();
 
@@ -100,31 +92,39 @@ class HistoricalDefaultItemRowsTest extends TestCase
             ->assertOk()->getContent();
         $form = $this->firstNode($this->xpath($html), '//form[@data-historical-form="manual-preview"]');
 
-        $this->assertSame('{ lines: [] }', $form->getAttribute('x-data'));
-        $this->assertSame(
-            'lines = historicalPadLines(historicalSeedLines([]))',
-            $form->getAttribute('x-init')
-        );
+        $this->assertStringStartsWith('historicalManualForm({', $form->getAttribute('x-data'));
+        $this->assertStringContainsString('minimumRows: 1', $form->getAttribute('x-data'));
+        $this->assertSame('', $form->getAttribute('x-init'));
     }
 
-    public function test_helper_script_ships_once_and_implements_the_four_row_minimum_and_trailing_blank_rules(): void
+    public function test_frontend_module_implements_one_row_minimum_and_trailing_blank_rules(): void
     {
         [$owner] = $this->createRetailerTenant();
 
         $html = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent();
+        $source = file_get_contents(resource_path('js/historical-manual.js'));
 
-        $this->assertSame(1, substr_count($html, 'window.historicalBlankLine'), 'Helper script must render exactly once (@once).');
-        foreach (['historicalBlankLine', 'historicalLineIsBlank', 'historicalSeedLines', 'historicalPadLines', 'historicalRemoveLine'] as $fn) {
-            $this->assertStringContainsString("window.{$fn}", $html);
+        $this->assertIsString($source);
+        $this->assertStringNotContainsString('window.historicalBlankLine', $html);
+        foreach (['blankLine()', 'seedLines(raw)', 'padLines()', 'addLine()', 'duplicateLine(index)', 'removeLine(index)'] as $method) {
+            $this->assertStringContainsString($method, $source);
         }
+        $this->assertStringContainsString('while (rows.length < this.minimumRows)', $source);
+        $this->assertStringContainsString('if (!this.isBlank(this.lines[this.lines.length - 1]))', $source);
+        $this->assertStringContainsString('this.lines.splice(index, 1)', $source);
+        $this->assertStringContainsString('this.padLines()', $source);
+    }
 
-        // The four-row minimum and "pad while the last row is still blank"
-        // rules, proven present in the shipped source (not executed here).
-        $this->assertStringContainsString('next.length < 4', $html);
-        $this->assertStringContainsString('historicalLineIsBlank(next[next.length - 1])', $html);
-        // Remove stays padding-aware: splice, then re-run the same pad rule.
-        $this->assertStringContainsString('next.splice(index, 1)', $html);
-        $this->assertStringContainsString('return historicalPadLines(next)', $html);
+    public function test_blank_detection_treats_manual_and_advanced_values_as_meaningful(): void
+    {
+        $source = file_get_contents(resource_path('js/historical-manual.js'));
+
+        $this->assertIsString($source);
+        $this->assertSame(1, preg_match('/isBlank\(line\)\s*\{(?<body>.*?)\n        \},/s', $source, $matches));
+
+        foreach (['line_billable_weight_basis', 'line_metal_value', 'line_making_amount', 'line_wastage_amount', 'line_discount_amount', 'line_taxable', 'line_total'] as $field) {
+            $this->assertStringContainsString("'{$field}'", $matches['body'], "{$field} alone must make a row meaningful.");
+        }
     }
 
     // --------------------------------------------------- hydration/order
@@ -136,20 +136,16 @@ class HistoricalDefaultItemRowsTest extends TestCase
         $html = $this->actingAs($owner)->post(route('historical.manual.preview'), $this->manualPayload([
             'lines' => [[
                 'line_item_name' => 'Archive Gold Ring',
-                'line_quantity'  => 2,
+                'line_quantity' => 2,
                 'line_net_weight' => 4.25,
-                'line_total'     => 9876.50,
+                'line_total' => 9876.50,
             ]],
         ]))->assertOk()->getContent();
 
         $this->assertStringContainsString('Archive Gold Ring', $html);
-        // @js(old('lines', [])) compiles to JSON.parse('...') with \u0022 in
-        // place of literal quotes — proves the submitted row actually reached
-        // the edit form's init expression, not just the read-only preview.
-        $this->assertStringContainsString(
-            'x-init="lines = historicalPadLines(historicalSeedLines(JSON.parse(\'[{\u0022line_item_name\u0022:\u0022Archive Gold Ring\u0022',
-            $html
-        );
+        $form = $this->firstNode($this->xpath($html), '//form[@data-historical-form="manual-preview"]');
+        $this->assertStringContainsString('line_item_name', $form->getAttribute('x-data'));
+        $this->assertStringContainsString('Archive Gold Ring', $form->getAttribute('x-data'));
     }
 
     public function test_five_or_more_populated_rows_survive_the_round_trip_without_truncation_and_in_order(): void
@@ -204,9 +200,9 @@ class HistoricalDefaultItemRowsTest extends TestCase
         $html = $this->actingAs($owner)->post(route('historical.manual.preview'), $this->manualPayload([
             'lines' => [
                 ['line_item_name' => 'Real Item', 'line_total' => 500],
-                ['line_item_name' => '', 'line_total' => ''],
-                ['line_item_name' => '', 'line_total' => ''],
-                ['line_item_name' => '', 'line_total' => ''],
+                ['line_item_name' => '', 'line_total' => '', 'line_calculation_enabled' => '1', 'line_total_mode' => 'auto', 'line_tax_mode' => 'no_gst'],
+                ['line_item_name' => '', 'line_total' => '', 'line_calculation_enabled' => '1', 'line_total_mode' => 'auto', 'line_tax_mode' => 'no_gst'],
+                ['line_item_name' => '', 'line_total' => '', 'line_calculation_enabled' => '1', 'line_total_mode' => 'auto', 'line_tax_mode' => 'no_gst'],
                 ['line_item_name' => '', 'line_total' => ''],
             ],
         ]))->assertOk()->getContent();
@@ -247,15 +243,15 @@ class HistoricalDefaultItemRowsTest extends TestCase
         $withoutPadding = $this->actingAs($owner)->post(route('historical.manual.preview'), $this->manualPayload([
             'original_document_number' => 'TOTALS-A',
             'taxable_amount' => 1000,
-            'grand_total'    => 1180,
-            'lines'          => [['line_item_name' => 'Item A', 'line_total' => 1180]],
+            'grand_total' => 1180,
+            'lines' => [['line_item_name' => 'Item A', 'line_total' => 1180]],
         ]))->assertOk()->getContent();
 
         $withPadding = $this->actingAs($owner)->post(route('historical.manual.preview'), $this->manualPayload([
             'original_document_number' => 'TOTALS-B',
             'taxable_amount' => 1000,
-            'grand_total'    => 1180,
-            'lines'          => [
+            'grand_total' => 1180,
+            'lines' => [
                 ['line_item_name' => 'Item A', 'line_total' => 1180],
                 ['line_item_name' => '', 'line_total' => ''],
                 ['line_item_name' => '', 'line_total' => ''],
@@ -265,6 +261,7 @@ class HistoricalDefaultItemRowsTest extends TestCase
 
         $extract = function (string $html): string {
             preg_match('/data-historical-preview-field="grand-total"[^>]*>.*?<dd[^>]*>([\d,.]+)<\/dd>/s', $html, $m);
+
             return $m[1] ?? '';
         };
 
@@ -281,41 +278,33 @@ class HistoricalDefaultItemRowsTest extends TestCase
      * HistoricalMobileUiTest's own `@click="lines.push({})"` check — these
      * assert against the raw response body, not a DOMXPath attribute lookup.
      */
-    public function test_row_container_carries_a_single_bubbled_debounced_listener_not_one_per_field(): void
+    public function test_each_responsive_surface_carries_one_bubbled_listener_not_one_per_field(): void
     {
         [$owner] = $this->createRetailerTenant();
 
         $html = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent();
 
-        $this->assertSame(
-            1,
-            substr_count($html, '@input.debounce.400ms="lines = historicalPadLines(lines)"'),
-            'Auto-expansion must be one bubbled listener, not one per field.'
-        );
-        $this->assertStringContainsString(
-            '<div class="p-4 sm:p-6" @input.debounce.400ms="lines = historicalPadLines(lines)">',
-            $html,
-            'The listener belongs on the row container div, not an individual input.'
-        );
+        $this->assertSame(2, substr_count($html, '@input.debounce.250ms="lineChanged(i, $event)"'));
+        $this->assertStringContainsString('data-historical-item-grid-desktop', $html);
+        $this->assertStringContainsString('data-historical-item-grid-mobile', $html);
     }
 
-    public function test_remove_line_button_uses_the_padding_aware_remove_helper(): void
+    public function test_remove_line_buttons_use_the_padding_aware_component_method(): void
     {
         [$owner] = $this->createRetailerTenant();
 
         $html = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('@click="lines = historicalRemoveLine(lines, i)"', $html);
+        $this->assertSame(2, substr_count($html, '@click="removeLine(i)"'));
     }
 
-    public function test_add_line_fallback_button_keeps_the_literal_click_expression_the_mobile_ui_test_pins(): void
+    public function test_add_item_buttons_use_the_component_method(): void
     {
         [$owner] = $this->createRetailerTenant();
 
         $html = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent();
 
-        // Not our contract to change — confirms our edits left it byte-identical.
-        $this->assertStringContainsString('@click="lines.push({})"', $html);
+        $this->assertSame(2, substr_count($html, '@click="addLine()"'));
     }
 
     /**
@@ -331,8 +320,8 @@ class HistoricalDefaultItemRowsTest extends TestCase
     {
         $this->markTestSkipped(
             'Auto-expansion on keystroke requires live Alpine reactivity — not executable under PHPUnit. '
-            . 'See the render-contract tests above for the server-provable half of this behavior; '
-            . 'the interaction itself needs Codex browser verification.'
+            .'See the render-contract tests above for the server-provable half of this behavior; '
+            .'the interaction itself needs Codex browser verification.'
         );
     }
 }

@@ -53,10 +53,9 @@ class HistoricalImportService
         private readonly HistoricalDocumentNormalizer $normalizer,
         private readonly HistoricalDuplicateDetector $duplicates,
         private readonly HistoricalDocumentLifecycleService $lifecycle,
-        private readonly HistoricalCalculationSuggester $suggester = new HistoricalCalculationSuggester(),
-        private readonly HistoricalCalculationStateService $calculationState = new HistoricalCalculationStateService(),
-        private readonly HistoricalPaymentSettlementService $settlement = new HistoricalPaymentSettlementService(),
-        private readonly HistoricalCustomerMatcher $customerMatcher = new HistoricalCustomerMatcher(),
+        private readonly HistoricalManualCalculationService $manualCalculations = new HistoricalManualCalculationService,
+        private readonly HistoricalPaymentSettlementService $settlement = new HistoricalPaymentSettlementService,
+        private readonly HistoricalCustomerMatcher $customerMatcher = new HistoricalCustomerMatcher,
     ) {}
 
     // ------------------------------------------------------------- uploading
@@ -85,19 +84,19 @@ class HistoricalImportService
             );
         }
 
-        $batch = new HistoricalImportBatch();
+        $batch = new HistoricalImportBatch;
         $batch->forceFill([
-            'shop_id'                      => $shop->id,
+            'shop_id' => $shop->id,
             'historical_import_profile_id' => $profile?->id,
-            'label'                        => $options['label'] ?? $file->getClientOriginalName(),
-            'source_system'                => $options['source_system'] ?? $profile?->source_system,
-            'source_file_name'             => $file->getClientOriginalName(),
-            'cutover_date'                 => $options['cutover_date'] ?? null,
-            'status'                       => HistoricalImportBatch::STATUS_DRAFT,
-            'created_by'                   => $actorId,
-            'source_file_disk'             => self::DISK,
-            'layout_type'                  => $profile?->layout_type,
-            'date_format'                  => $profile?->date_format,
+            'label' => $options['label'] ?? $file->getClientOriginalName(),
+            'source_system' => $options['source_system'] ?? $profile?->source_system,
+            'source_file_name' => $file->getClientOriginalName(),
+            'cutover_date' => $options['cutover_date'] ?? null,
+            'status' => HistoricalImportBatch::STATUS_DRAFT,
+            'created_by' => $actorId,
+            'source_file_disk' => self::DISK,
+            'layout_type' => $profile?->layout_type,
+            'date_format' => $profile?->date_format,
         ])->save();
 
         $path = sprintf('historical/%d/%d/%s.%s', $shop->id, $batch->id, Str::ulid(), $extension);
@@ -173,7 +172,7 @@ class HistoricalImportService
     {
         $this->assertEditable($batch);
 
-        $path      = $this->absolutePath($batch);
+        $path = $this->absolutePath($batch);
         $extension = $this->extensionOf($batch);
         $headerRow = (int) ($profile->header_row ?: 1);
 
@@ -196,15 +195,15 @@ class HistoricalImportService
 
             foreach ($this->reader->rows($path, $extension, $sheet, $headerRow, $headers) as $row) {
                 HistoricalImportRow::query()->create([
-                    'shop_id'                    => $batch->shop_id,
+                    'shop_id' => $batch->shop_id,
                     'historical_import_batch_id' => $batch->id,
                     // '' rather than NULL: the row uniqueness index is defeated by
                     // NULL-distinct semantics on single-sheet files.
-                    'source_sheet'               => (string) ($sheet ?? ''),
-                    'source_row_number'          => $row['row_number'],
-                    'original_payload'           => ['role' => $role] + self::stringify($row['cells']),
-                    'severity'                   => HistoricalImportRow::SEVERITY_OK,
-                    'validation_status'          => HistoricalImportRow::VALIDATION_PENDING,
+                    'source_sheet' => (string) ($sheet ?? ''),
+                    'source_row_number' => $row['row_number'],
+                    'original_payload' => ['role' => $role] + self::stringify($row['cells']),
+                    'severity' => HistoricalImportRow::SEVERITY_OK,
+                    'validation_status' => HistoricalImportRow::VALIDATION_PENDING,
                 ]);
 
                 $total++;
@@ -233,9 +232,9 @@ class HistoricalImportService
             throw new LogicException("Historical import batch #{$batch->id} has no shop.");
         }
 
-        $mapping   = $profile->mapping ?? [];
+        $mapping = $profile->mapping ?? [];
         $decisions = $profile->column_decisions ?? [];
-        $headers   = $this->stagedHeaders($batch);
+        $headers = $this->stagedHeaders($batch);
 
         $mappingMessages = $this->mapper->validate($mapping, $headers, $decisions, (string) $profile->layout_type);
 
@@ -247,11 +246,11 @@ class HistoricalImportService
             $documentCount = 0;
 
             foreach ($groups as $key => $group) {
-                $messages = new HistoricalMessages();
+                $messages = new HistoricalMessages;
                 $messages->merge($mappingMessages);
 
                 $headerCells = $this->mergeHeaderCells($group['header_rows'], $mapping, $messages);
-                $lineCells   = array_map(fn (array $row): array => $this->mapper->line($row['cells'], $mapping), $group['line_rows']);
+                $lineCells = array_map(fn (array $row): array => $this->mapper->line($row['cells'], $mapping), $group['line_rows']);
 
                 $result = $this->normalizer->normalize(
                     $shop,
@@ -280,8 +279,8 @@ class HistoricalImportService
 
             $batch->forceFill([
                 'document_count' => $documentCount,
-                'layout_type'    => $profile->layout_type,
-                'date_format'    => $profile->date_format,
+                'layout_type' => $profile->layout_type,
+                'date_format' => $profile->date_format,
             ])->save();
         });
 
@@ -307,10 +306,10 @@ class HistoricalImportService
             ->get();
 
         return match ((string) $profile->layout_type) {
-            HistoricalImportProfile::LAYOUT_HEADER_ONLY         => $this->groupOnePerRow($rows),
+            HistoricalImportProfile::LAYOUT_HEADER_ONLY => $this->groupOnePerRow($rows),
             HistoricalImportProfile::LAYOUT_SINGLE_ROW_PER_LINE => $this->groupByIdentity($rows, $mapping, $mappingMessages),
-            HistoricalImportProfile::LAYOUT_HEADER_DETAIL       => $this->groupHeaderDetail($rows, $mapping, $profile, $mappingMessages),
-            default                                             => throw new HistoricalParseException(
+            HistoricalImportProfile::LAYOUT_HEADER_DETAIL => $this->groupHeaderDetail($rows, $mapping, $profile, $mappingMessages),
+            default => throw new HistoricalParseException(
                 'This import profile has no layout. Choose one row per invoice, one row per line item, or header/detail sheets.'
             ),
         };
@@ -323,12 +322,12 @@ class HistoricalImportService
 
         foreach ($rows as $row) {
             $cells = self::cellsOf($row);
-            $key   = 'row:' . $row->source_row_number;
+            $key = 'row:'.$row->source_row_number;
 
             $groups[$key] = [
                 'header_rows' => [['id' => $row->id, 'cells' => $cells]],
-                'line_rows'   => [],
-                'row_ids'     => [$row->id],
+                'line_rows' => [],
+                'row_ids' => [$row->id],
             ];
         }
 
@@ -345,7 +344,7 @@ class HistoricalImportService
         $groups = [];
 
         foreach ($rows as $row) {
-            $cells  = self::cellsOf($row);
+            $cells = self::cellsOf($row);
             $header = $this->mapper->header($cells, $mapping);
 
             $number = trim((string) ($header['original_document_number'] ?? ''));
@@ -356,20 +355,20 @@ class HistoricalImportService
                     'grouping_without_number',
                     sprintf(
                         'Row %d has no invoice number. When each row is one item line, the invoice number is what '
-                        . 'tells us which lines belong to the same bill.',
+                        .'tells us which lines belong to the same bill.',
                         $row->source_row_number
                     ),
                     'original_document_number'
                 );
 
-                $number = '__row_' . $row->source_row_number;
+                $number = '__row_'.$row->source_row_number;
             }
 
-            $key = mb_strtoupper($series . '|' . $number, 'UTF-8');
+            $key = mb_strtoupper($series.'|'.$number, 'UTF-8');
 
             $groups[$key] ??= ['header_rows' => [], 'line_rows' => [], 'row_ids' => []];
             $groups[$key]['header_rows'][] = ['id' => $row->id, 'cells' => $cells];
-            $groups[$key]['row_ids'][]     = $row->id;
+            $groups[$key]['row_ids'][] = $row->id;
 
             if ($this->mapper->hasLineData($cells, $mapping)) {
                 $groups[$key]['line_rows'][] = ['id' => $row->id, 'cells' => $cells];
@@ -393,11 +392,11 @@ class HistoricalImportService
         HistoricalMessages $mappingMessages,
     ): array {
         $headerSheet = (string) ($profile->sheetFor('header') ?? '');
-        $groups      = [];
-        $orphans     = [];
+        $groups = [];
+        $orphans = [];
 
         foreach ($rows as $row) {
-            $cells    = self::cellsOf($row);
+            $cells = self::cellsOf($row);
             $isHeader = (string) $row->source_sheet === $headerSheet;
 
             $key = $this->mapper->joinKey(
@@ -422,7 +421,7 @@ class HistoricalImportService
             if ($isHeader) {
                 $groups[$key] ??= ['header_rows' => [], 'line_rows' => [], 'row_ids' => []];
                 $groups[$key]['header_rows'][] = ['id' => $row->id, 'cells' => $cells];
-                $groups[$key]['row_ids'][]     = $row->id;
+                $groups[$key]['row_ids'][] = $row->id;
 
                 continue;
             }
@@ -450,7 +449,7 @@ class HistoricalImportService
 
             foreach ($details as $detail) {
                 $groups[$key]['line_rows'][] = ['id' => $detail['id'], 'cells' => $detail['cells']];
-                $groups[$key]['row_ids'][]   = $detail['id'];
+                $groups[$key]['row_ids'][] = $detail['id'];
             }
         }
 
@@ -487,7 +486,7 @@ class HistoricalImportService
                         'conflicting_repeated_header',
                         sprintf(
                             'The rows of this bill disagree about "%s": one says "%s", another says "%s". '
-                            . 'Correct the source data before importing.',
+                            .'Correct the source data before importing.',
                             $column,
                             $source[$column],
                             $text
@@ -546,9 +545,9 @@ class HistoricalImportService
             return null;
         }
 
-        $overrideKey  = $resolution['override_key'] ?? null;
-        $fingerprint  = $this->normalizer->fingerprint($batch->shop_id, $attributes, $lines, $overrideKey);
-        $conflict     = $this->duplicates->detect($batch->shop_id, $attributes, $fingerprint);
+        $overrideKey = $resolution['override_key'] ?? null;
+        $fingerprint = $this->normalizer->fingerprint($batch->shop_id, $attributes, $lines, $overrideKey);
+        $conflict = $this->duplicates->detect($batch->shop_id, $attributes, $fingerprint);
 
         if ($conflict !== null) {
             $resolved = $this->resolveConflict($conflict, $resolution, $attributes, $messages);
@@ -565,23 +564,23 @@ class HistoricalImportService
             );
         }
 
-        $document = new HistoricalSalesDocument();
+        $document = new HistoricalSalesDocument;
         $document->forceFill($attributes + [
-            'shop_id'                    => $batch->shop_id,
+            'shop_id' => $batch->shop_id,
             'historical_import_batch_id' => $batch->id,
-            'historical_reference'       => (string) Str::uuid(),
-            'status'                     => HistoricalSalesDocument::STATUS_DRAFT,
-            'content_fingerprint'        => $fingerprint,
-            'duplicate_override_key'     => $resolution['override_key'] ?? null,
-            'imported_by'                => $actorId,
-            'imported_at'                => now(),
+            'historical_reference' => (string) Str::uuid(),
+            'status' => HistoricalSalesDocument::STATUS_DRAFT,
+            'content_fingerprint' => $fingerprint,
+            'duplicate_override_key' => $resolution['override_key'] ?? null,
+            'imported_by' => $actorId,
+            'imported_at' => now(),
         ])->save();
 
         foreach ($lines as $line) {
-            $model = new HistoricalSalesLine();
+            $model = new HistoricalSalesLine;
             $model->forceFill($line + [
-                'shop_id'                       => $batch->shop_id,
-                'historical_sales_document_id'  => $document->id,
+                'shop_id' => $batch->shop_id,
+                'historical_sales_document_id' => $document->id,
             ])->save();
         }
 
@@ -602,10 +601,10 @@ class HistoricalImportService
                 $payment['account_label_snapshot'] = $method?->name;
             }
 
-            $model = new HistoricalSalesPayment();
+            $model = new HistoricalSalesPayment;
             $model->forceFill($payment + [
-                'shop_id'                       => $batch->shop_id,
-                'historical_sales_document_id'  => $document->id,
+                'shop_id' => $batch->shop_id,
+                'historical_sales_document_id' => $document->id,
             ])->save();
         }
 
@@ -675,14 +674,14 @@ class HistoricalImportService
         HistoricalImportRow::query()
             ->whereIn('id', $group['row_ids'])
             ->update([
-                'severity'                     => $messages->severity(),
-                'validation_status'            => $messages->validationStatus(),
-                'messages'                     => json_encode($messages->all()),
+                'severity' => $messages->severity(),
+                'validation_status' => $messages->validationStatus(),
+                'messages' => json_encode($messages->all()),
                 'historical_sales_document_id' => $document?->id,
                 // The key that ties a row to its stored duplicate_resolution, so the
                 // review screen can offer skip/link/supersede/new-series per group.
-                'grouping_key'                 => $groupingKey,
-                'updated_at'                   => now(),
+                'grouping_key' => $groupingKey,
+                'updated_at' => now(),
             ]);
     }
 
@@ -714,26 +713,33 @@ class HistoricalImportService
      */
     public function storeManual(Shop $shop, array $header, array $lines, int $actorId, array $options = [], array $payments = []): array
     {
-        $batch = new HistoricalImportBatch();
+        $batch = new HistoricalImportBatch;
         $batch->forceFill([
-            'shop_id'       => $shop->id,
-            'label'         => 'Manual entry — ' . ($header['original_document_number'] ?? 'unnumbered'),
+            'shop_id' => $shop->id,
+            'label' => 'Manual entry — '.($header['original_document_number'] ?? 'unnumbered'),
             'source_system' => $options['source_system'] ?? self::SOURCE_MANUAL,
-            'status'        => HistoricalImportBatch::STATUS_DRAFT,
-            'created_by'    => $actorId,
-            'cutover_date'  => $options['cutover_date'] ?? null,
-            'layout_type'   => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
+            'status' => HistoricalImportBatch::STATUS_DRAFT,
+            'created_by' => $actorId,
+            'cutover_date' => $options['cutover_date'] ?? null,
+            'layout_type' => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
             // The manual form uses a native date control, which submits ISO. There
             // is no ambiguity to resolve and therefore no format to choose.
-            'date_format'   => HistoricalDateParser::FORMAT_ISO,
-            'row_count'     => 1,
+            'date_format' => HistoricalDateParser::FORMAT_ISO,
+            'row_count' => 1,
         ])->save();
 
-        $result = $this->normalizer->normalize($shop, $header, $lines, $this->manualNormalizerOptions($options, $actorId));
+        $calculated = $this->manualCalculations->prepare($header, $lines);
+        $result = $this->normalizer->normalize(
+            $shop,
+            $calculated['header'],
+            $calculated['lines'],
+            $this->manualNormalizerOptions($options, $actorId)
+        );
 
-        $messages        = $result['messages'];
-        $normalizedLines = $this->applyLineCalculationState($result['lines'], $messages);
-        $attributes      = $this->applyPaymentSettlement($result['attributes'], $payments, $options['paid_amount_mode'] ?? null, $messages);
+        $messages = $result['messages'];
+        $normalizedLines = $this->applyLineCalculationState($result['lines'], $messages, $calculated);
+        $attributes = array_replace($result['attributes'], $calculated['document_attributes']);
+        $attributes = $this->applyPaymentSettlement($attributes, $payments, $options['paid_amount_mode'] ?? null, $messages);
 
         $document = DB::transaction(function () use ($batch, $attributes, $normalizedLines, $messages, $actorId, $payments, $options): ?HistoricalSalesDocument {
             $document = $this->persistDraft(
@@ -754,12 +760,12 @@ class HistoricalImportService
         });
 
         $batch->forceFill([
-            'document_count'  => $document === null ? 0 : 1,
-            'blocking_count'  => $messages->countOf(HistoricalMessages::ERROR),
-            'warning_count'   => $messages->countOf(HistoricalMessages::WARNING),
+            'document_count' => $document === null ? 0 : 1,
+            'blocking_count' => $messages->countOf(HistoricalMessages::ERROR),
+            'warning_count' => $messages->countOf(HistoricalMessages::WARNING),
             'preview_summary' => $this->manualPreviewSummary($batch, $messages),
             'preview_generated_at' => now(),
-            'status'          => HistoricalImportBatch::STATUS_REVIEW,
+            'status' => HistoricalImportBatch::STATUS_REVIEW,
         ])->save();
 
         if ($document === null && $messages->hasBlocking()) {
@@ -816,8 +822,8 @@ class HistoricalImportService
         return DB::transaction(function () use ($shop, $header, $lines, $actorId, $options, $acknowledgedWarningDigest, $payments): array {
             // Full re-validation and re-normalisation from the raw input, not from
             // anything the preview computed. This is the same call Save-draft makes.
-            $result   = $this->storeManual($shop, $header, $lines, $actorId, $options, $payments);
-            $batch    = $result['batch'];
+            $result = $this->storeManual($shop, $header, $lines, $actorId, $options, $payments);
+            $batch = $result['batch'];
             $document = $result['document'];
             $messages = $result['messages'];
 
@@ -871,7 +877,7 @@ class HistoricalImportService
             $this->lifecycle->publish($batch, $actorId);
 
             return [
-                'batch'    => $batch->refresh(),
+                'batch' => $batch->refresh(),
                 'document' => $document->refresh(),
                 'messages' => $messages,
             ];
@@ -889,19 +895,19 @@ class HistoricalImportService
     private function manualNormalizerOptions(array $options, int $actorId): array
     {
         return [
-            'date_format'          => HistoricalDateParser::FORMAT_ISO,
-            'decimal_separator'    => '.',
-            'thousands_separator'  => ',',
-            'tax_mode'             => $options['tax_mode'] ?? HistoricalSalesDocument::TAX_MODE_UNKNOWN,
-            'source_system'        => $options['source_system'] ?? self::SOURCE_MANUAL,
-            'cutover_date'         => $options['cutover_date'] ?? null,
-            'making_category'      => $options['making_category'] ?? null,
-            'making_basis'         => $options['making_basis'] ?? null,
-            'zero_tax_confirmed'   => (bool) ($options['zero_tax_confirmed'] ?? false),
+            'date_format' => HistoricalDateParser::FORMAT_ISO,
+            'decimal_separator' => '.',
+            'thousands_separator' => ',',
+            'tax_mode' => $options['tax_mode'] ?? HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'source_system' => $options['source_system'] ?? self::SOURCE_MANUAL,
+            'cutover_date' => $options['cutover_date'] ?? null,
+            'making_category' => $options['making_category'] ?? null,
+            'making_basis' => $options['making_basis'] ?? null,
+            'zero_tax_confirmed' => (bool) ($options['zero_tax_confirmed'] ?? false),
             'cutover_acknowledged' => (bool) ($options['cutover_acknowledged'] ?? false),
-            'cutover_reason'       => $options['cutover_reason'] ?? null,
-            'actor_id'             => $actorId,
-            'layout_type'          => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
+            'cutover_reason' => $options['cutover_reason'] ?? null,
+            'actor_id' => $actorId,
+            'layout_type' => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
         ];
     }
 
@@ -921,87 +927,16 @@ class HistoricalImportService
      * @param  array<int, array<string, mixed>>  $lines  normalizer-output lines
      * @return array<int, array<string, mixed>>
      */
-    private function applyLineCalculationState(array $lines, HistoricalMessages $messages): array
+    private function applyLineCalculationState(array $lines, HistoricalMessages $messages, array $calculated): array
     {
+        foreach ($calculated['errors'] as $error) {
+            $messages->error($error['code'], $error['text'], 'lines');
+        }
+
         foreach ($lines as $i => $line) {
-            $raw = $line['raw_payload'] ?? [];
-
-            $metalType = self::rawText($raw, 'line_metal_type');
-            $basis     = self::rawText($raw, 'line_billable_weight_basis');
-
-            if ($metalType === null && $basis === null) {
-                continue;
+            if (($calculated['line_attributes'][$i] ?? []) !== []) {
+                $lines[$i] = array_replace($line, $calculated['line_attributes'][$i]);
             }
-
-            $lineNumber = $line['line_number'] ?? ($i + 1);
-
-            $billableWeight = match ($basis) {
-                HistoricalSalesLine::BILLABLE_WEIGHT_GROSS,
-                HistoricalSalesLine::BILLABLE_WEIGHT_NET => $this->suggester->suggestBillableWeight(
-                    (string) $basis,
-                    $line['gross_weight'] ?? null,
-                    $line['net_weight'] ?? null,
-                ),
-                HistoricalSalesLine::BILLABLE_WEIGHT_MANUAL => self::rawFloat($raw, 'line_billable_weight_manual'),
-                default => null,
-            };
-
-            $lines[$i]['line_metal_type']       = $metalType;
-            $lines[$i]['billable_weight_basis'] = $basis;
-
-            if ($billableWeight === null) {
-                $messages->error(
-                    'billable_weight_undetermined',
-                    sprintf(
-                        'Line %d: choose gross, net, or a manual weight before a metal value can be suggested.',
-                        $lineNumber
-                    ),
-                    'lines'
-                );
-
-                $lines[$i]['calculation_state'] = ['metal_value' => $this->calculationState->autoState(null)];
-
-                continue;
-            }
-
-            $lines[$i]['billable_weight'] = $billableWeight;
-
-            $purity = self::rawFloat($raw, 'line_purity_value');
-            $rate   = $line['rate_snapshot'] ?? null;
-
-            $suggestion = $this->suggester->suggestMetalValue($metalType, $purity, $billableWeight, $rate);
-
-            if ($suggestion === null) {
-                $messages->error(
-                    'metal_value_undetermined',
-                    sprintf('Line %d: metal value could not be determined — check purity and rate.', $lineNumber),
-                    'lines'
-                );
-            }
-
-            $inputs = [
-                'metal'           => $metalType,
-                'purity'          => $purity,
-                'billable_weight' => $billableWeight,
-                'rate_per_gram'   => $rate,
-            ];
-
-            $submittedValue = self::rawFloat($raw, 'line_metal_value');
-            $claimedMode    = self::rawText($raw, 'line_metal_value_mode');
-            $recalculate    = self::rawBool($raw, 'line_metal_value_recalculate');
-
-            $state = match (true) {
-                $recalculate => $this->calculationState->recalculate($suggestion, $inputs),
-                $submittedValue !== null => $this->calculationState->applyClientSubmission(
-                    $claimedMode ?? HistoricalCalculationStateService::MANUAL,
-                    $submittedValue,
-                    $suggestion,
-                    $inputs
-                ),
-                default => $this->calculationState->autoState($suggestion, $inputs),
-            };
-
-            $lines[$i]['calculation_state'] = ['metal_value' => $state];
         }
 
         return $lines;
@@ -1029,7 +964,7 @@ class HistoricalImportService
             return $attributes;
         }
 
-        $rowSum          = $this->settlement->suggestedPaidTotal($payments);
+        $rowSum = $this->settlement->suggestedPaidTotal($payments);
         $typedPaidAmount = $attributes['paid_amount_snapshot'] ?? null;
 
         if ($paidAmountMode === 'manual' && $typedPaidAmount !== null) {
@@ -1040,7 +975,7 @@ class HistoricalImportService
                     'paid_amount_mismatch',
                     sprintf(
                         'The payment rows total ₹%s but the manually entered paid amount is ₹%s. '
-                        . 'Confirm this is correct before publishing.',
+                        .'Confirm this is correct before publishing.',
                         number_format($rowSum, 2),
                         number_format($paidTotal, 2)
                     ),
@@ -1053,9 +988,9 @@ class HistoricalImportService
 
         $settled = $this->settlement->settle((float) ($attributes['grand_total'] ?? 0), $paidTotal);
 
-        $attributes['paid_amount_snapshot']        = $paidTotal;
+        $attributes['paid_amount_snapshot'] = $paidTotal;
         $attributes['outstanding_amount_snapshot'] = $settled['outstanding'];
-        $attributes['advance_credit_amount']       = $settled['advance_credit'];
+        $attributes['advance_credit_amount'] = $settled['advance_credit'];
 
         return $attributes;
     }
@@ -1071,18 +1006,6 @@ class HistoricalImportService
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
-    }
-
-    private static function rawFloat(array $raw, string $key): ?float
-    {
-        $value = self::rawText($raw, $key);
-
-        return $value === null ? null : (float) $value;
-    }
-
-    private static function rawBool(array $raw, string $key): bool
-    {
-        return in_array($raw[$key] ?? null, ['1', 1, true, 'true', 'on'], true);
     }
 
     // ------------------------------------------------- customer on publish
@@ -1163,8 +1086,8 @@ class HistoricalImportService
         }
 
         $snapshot = $document->customer_snapshot ?? [];
-        $mobile   = HistoricalCustomerMatcher::normalizeMobile($snapshot['mobile'] ?? null);
-        $name     = trim((string) ($snapshot['name'] ?? ''));
+        $mobile = HistoricalCustomerMatcher::normalizeMobile($snapshot['mobile'] ?? null);
+        $name = trim((string) ($snapshot['name'] ?? ''));
 
         // No canonical mobile, a blank name, or a Cash/Walk-in/generic name:
         // the bill still publishes, it just stays a snapshot — none of these
@@ -1181,7 +1104,7 @@ class HistoricalImportService
         if ($match['customers']->count() > 1) {
             throw new HistoricalManualPublishRejected(
                 'More than one existing customer matches this mobile number. '
-                . 'Open the document and link the correct customer before publishing.'
+                .'Open the document and link the correct customer before publishing.'
             );
         }
 
@@ -1199,7 +1122,7 @@ class HistoricalImportService
             if ($archived !== null) {
                 throw new HistoricalManualPublishRejected(
                     'A customer with this mobile already exists but is archived. '
-                    . 'Select or reactivate that customer before publishing.'
+                    .'Select or reactivate that customer before publishing.'
                 );
             }
         }
@@ -1214,10 +1137,10 @@ class HistoricalImportService
                 // as every other Customer::create() call in this codebase
                 // (see Customer::findOrCreateByMobile()).
                 'first_name' => $parts[0] ?? 'Walk-in',
-                'last_name'  => $parts[1] ?? null,
-                'mobile'     => $mobile,
-                'address'    => self::rawText($snapshot, 'address'),
-                'pan'        => self::validPan($snapshot['pan'] ?? null),
+                'last_name' => $parts[1] ?? null,
+                'mobile' => $mobile,
+                'address' => self::rawText($snapshot, 'address'),
+                'pan' => self::validPan($snapshot['pan'] ?? null),
             ]);
         }
 
@@ -1237,16 +1160,23 @@ class HistoricalImportService
      */
     public function previewManual(Shop $shop, array $header, array $lines, int $actorId, array $options = [], array $payments = []): array
     {
-        $result = $this->normalizer->normalize($shop, $header, $lines, $this->manualNormalizerOptions($options, $actorId));
+        $calculated = $this->manualCalculations->prepare($header, $lines);
+        $result = $this->normalizer->normalize(
+            $shop,
+            $calculated['header'],
+            $calculated['lines'],
+            $this->manualNormalizerOptions($options, $actorId)
+        );
 
-        $messages        = $result['messages'];
-        $normalizedLines = $this->applyLineCalculationState($result['lines'], $messages);
-        $attributes      = $this->applyPaymentSettlement($result['attributes'], $payments, $options['paid_amount_mode'] ?? null, $messages);
-        $fingerprint     = null;
+        $messages = $result['messages'];
+        $normalizedLines = $this->applyLineCalculationState($result['lines'], $messages, $calculated);
+        $attributes = array_replace($result['attributes'], $calculated['document_attributes']);
+        $attributes = $this->applyPaymentSettlement($attributes, $payments, $options['paid_amount_mode'] ?? null, $messages);
+        $fingerprint = null;
 
         if (! $messages->hasBlocking() && $attributes['grand_total'] !== null && $attributes['document_date'] !== null) {
             $fingerprint = $this->normalizer->fingerprint($shop->id, $attributes, $normalizedLines);
-            $conflict    = $this->duplicates->detect($shop->id, $attributes, $fingerprint);
+            $conflict = $this->duplicates->detect($shop->id, $attributes, $fingerprint);
 
             if ($conflict !== null) {
                 $this->duplicates->report($conflict, $messages);
@@ -1254,9 +1184,9 @@ class HistoricalImportService
         }
 
         return [
-            'attributes'  => $attributes,
-            'lines'       => $normalizedLines,
-            'messages'    => $messages,
+            'attributes' => $attributes,
+            'lines' => $normalizedLines,
+            'messages' => $messages,
             'fingerprint' => $fingerprint,
         ];
     }
@@ -1288,24 +1218,24 @@ class HistoricalImportService
         })());
 
         $summary = [
-            'source_file'   => $batch->source_file_name,
+            'source_file' => $batch->source_file_name,
             'source_system' => $batch->source_system,
-            'layout_type'   => $batch->layout_type,
-            'profile'       => $profile?->name,
-            'date_format'   => $batch->date_format,
-            'row_count'     => $rows->count(),
+            'layout_type' => $batch->layout_type,
+            'profile' => $profile?->name,
+            'date_format' => $batch->date_format,
+            'row_count' => $rows->count(),
         ]
             + $this->documentSummary($documents)
             + [
-                'duplicate_count'    => $this->countCode($codes, [
+                'duplicate_count' => $this->countCode($codes, [
                     HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
                     HistoricalDuplicateDetector::CODE_DUPLICATE_FINGERPRINT,
                 ]),
-                'cutover_warnings'   => $this->countCode($codes, [HistoricalDocumentNormalizer::CODE_DATE_AFTER_CUTOVER]),
-                'blocking_count'     => $counts['error'],
-                'warning_count'      => $counts['warning'],
+                'cutover_warnings' => $this->countCode($codes, [HistoricalDocumentNormalizer::CODE_DATE_AFTER_CUTOVER]),
+                'blocking_count' => $counts['error'],
+                'warning_count' => $counts['warning'],
                 'informational_count' => $counts['info'],
-                'ignored_columns'    => array_keys(array_filter(
+                'ignored_columns' => array_keys(array_filter(
                     $profile?->column_decisions ?? [],
                     fn ($d) => $d === HistoricalImportProfile::DECISION_IGNORED
                 )),
@@ -1317,11 +1247,11 @@ class HistoricalImportService
             ];
 
         $batch->forceFill([
-            'preview_summary'      => $summary,
+            'preview_summary' => $summary,
             'preview_generated_at' => now(),
-            'blocking_count'       => $counts['error'],
-            'warning_count'        => $counts['warning'],
-            'status'               => $batch->isEditable()
+            'blocking_count' => $counts['error'],
+            'warning_count' => $counts['warning'],
+            'status' => $batch->isEditable()
                 ? HistoricalImportBatch::STATUS_REVIEW
                 : $batch->status,
             // A changed preview invalidates a previous acknowledgement: the
@@ -1361,33 +1291,33 @@ class HistoricalImportService
         [$counts, $codes] = $this->aggregateMessages($messages->all());
 
         return [
-            'source_file'             => null,
-            'source_system'           => $batch->source_system,
-            'layout_type'             => $batch->layout_type,
-            'profile'                 => null,
-            'date_format'             => $batch->date_format,
-            'row_count'               => null,
-            'is_manual'               => true,
-            'manual'                  => true,
-            'staged_rows_applicable'  => false,
-            'workflow_steps'          => ['enter', 'preview', 'review', 'publish'],
+            'source_file' => null,
+            'source_system' => $batch->source_system,
+            'layout_type' => $batch->layout_type,
+            'profile' => null,
+            'date_format' => $batch->date_format,
+            'row_count' => null,
+            'is_manual' => true,
+            'manual' => true,
+            'staged_rows_applicable' => false,
+            'workflow_steps' => ['enter', 'preview', 'review', 'publish'],
             // The findings verbatim, not just aggregated code counts. A manual bill
             // has no HistoricalImportRow to carry its messages, and the document page
             // is now the only place they are shown — so they are kept whole here,
             // severity and field intact, for HistoricalMessages::fromArray().
-            'manual_messages'         => $messages->all(),
+            'manual_messages' => $messages->all(),
         ]
             + $this->documentSummary($documents)
             + [
-                'duplicate_count'    => $this->countCode($codes, [
+                'duplicate_count' => $this->countCode($codes, [
                     HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
                     HistoricalDuplicateDetector::CODE_DUPLICATE_FINGERPRINT,
                 ]),
-                'cutover_warnings'   => $this->countCode($codes, [HistoricalDocumentNormalizer::CODE_DATE_AFTER_CUTOVER]),
-                'blocking_count'     => $counts['error'],
-                'warning_count'      => $counts['warning'],
+                'cutover_warnings' => $this->countCode($codes, [HistoricalDocumentNormalizer::CODE_DATE_AFTER_CUTOVER]),
+                'blocking_count' => $counts['error'],
+                'warning_count' => $counts['warning'],
                 'informational_count' => $counts['info'],
-                'ignored_columns'    => [],
+                'ignored_columns' => [],
                 'informational_columns' => [],
                 'messages' => $codes,
             ];
@@ -1406,42 +1336,42 @@ class HistoricalImportService
         $dates = $documents->pluck('document_date')->filter()->sort()->values();
 
         return [
-            'document_count'     => $documents->count(),
-            'line_count'         => $documents->sum(fn ($d) => $d->lines->count()),
-            'header_only_count'  => $documents->filter(fn ($d) => $d->lines->isEmpty())->count(),
-            'date_from'          => $dates->first()?->toDateString(),
-            'date_to'            => $dates->last()?->toDateString(),
-            'financial_years'    => $documents->pluck('financial_year')->unique()->sort()->values()->all(),
-            'customer_count'     => $documents
+            'document_count' => $documents->count(),
+            'line_count' => $documents->sum(fn ($d) => $d->lines->count()),
+            'header_only_count' => $documents->filter(fn ($d) => $d->lines->isEmpty())->count(),
+            'date_from' => $dates->first()?->toDateString(),
+            'date_to' => $dates->last()?->toDateString(),
+            'financial_years' => $documents->pluck('financial_year')->unique()->sort()->values()->all(),
+            'customer_count' => $documents
                 ->pluck('customer_snapshot')
                 ->map(fn ($s) => is_array($s) ? ($s['name'] ?? null) : null)
                 ->filter()->unique()->count(),
-            'grand_total'        => round((float) $documents->sum(fn ($d) => (float) $d->grand_total), 2),
-            'taxable_total'      => round((float) $documents->sum(fn ($d) => (float) $d->taxable_amount), 2),
-            'tax_total'          => round((float) $documents->sum(
+            'grand_total' => round((float) $documents->sum(fn ($d) => (float) $d->grand_total), 2),
+            'taxable_total' => round((float) $documents->sum(fn ($d) => (float) $d->taxable_amount), 2),
+            'tax_total' => round((float) $documents->sum(
                 fn ($d) => (float) (($d->tax_snapshot['normalized']['tax_total'] ?? 0))
             ), 2),
-            'cgst_total'         => $this->taxComponentTotal($documents, 'cgst'),
-            'sgst_total'         => $this->taxComponentTotal($documents, 'sgst'),
-            'igst_total'         => $this->taxComponentTotal($documents, 'igst'),
-            'cess_total'         => $this->taxComponentTotal($documents, 'cess'),
-            'paid_total'         => round((float) $documents->sum(fn ($d) => (float) $d->paid_amount_snapshot), 2),
-            'outstanding_total'  => round((float) $documents->sum(fn ($d) => (float) $d->outstanding_amount_snapshot), 2),
-            'tax_completeness'   => $documents->countBy('tax_completeness')->all(),
-            'making_mappings'    => $documents
+            'cgst_total' => $this->taxComponentTotal($documents, 'cgst'),
+            'sgst_total' => $this->taxComponentTotal($documents, 'sgst'),
+            'igst_total' => $this->taxComponentTotal($documents, 'igst'),
+            'cess_total' => $this->taxComponentTotal($documents, 'cess'),
+            'paid_total' => round((float) $documents->sum(fn ($d) => (float) $d->paid_amount_snapshot), 2),
+            'outstanding_total' => round((float) $documents->sum(fn ($d) => (float) $d->outstanding_amount_snapshot), 2),
+            'tax_completeness' => $documents->countBy('tax_completeness')->all(),
+            'making_mappings' => $documents
                 ->map(fn ($d) => array_filter([
-                    'label'    => $d->making_label_original,
+                    'label' => $d->making_label_original,
                     'category' => $d->making_category,
-                    'basis'    => $d->making_basis,
+                    'basis' => $d->making_basis,
                 ]))
                 ->filter()->unique()->values()->all(),
-            'samples'            => $documents->take(5)->map(fn ($d) => [
-                'number'       => $d->displayNumber(),
-                'date'         => $d->document_date?->toDateString(),
-                'customer'     => $d->customer_snapshot['name'] ?? null,
-                'grand_total'  => (float) $d->grand_total,
-                'tax'          => $d->tax_completeness,
-                'lines'        => $d->lines->count(),
+            'samples' => $documents->take(5)->map(fn ($d) => [
+                'number' => $d->displayNumber(),
+                'date' => $d->document_date?->toDateString(),
+                'customer' => $d->customer_snapshot['name'] ?? null,
+                'grand_total' => (float) $d->grand_total,
+                'tax' => $d->tax_completeness,
+                'lines' => $d->lines->count(),
             ])->values()->all(),
         ];
     }
@@ -1458,7 +1388,7 @@ class HistoricalImportService
     private function aggregateMessages(iterable $messages): array
     {
         $counts = ['error' => 0, 'warning' => 0, 'info' => 0];
-        $codes  = [];
+        $codes = [];
 
         foreach ($messages as $message) {
             $severity = (string) ($message['severity'] ?? HistoricalMessages::INFO);
@@ -1469,8 +1399,8 @@ class HistoricalImportService
 
             $codes[(string) ($message['code'] ?? 'unknown')] ??= [
                 'severity' => $severity,
-                'count'    => 0,
-                'text'     => (string) ($message['text'] ?? ''),
+                'count' => 0,
+                'text' => (string) ($message['text'] ?? ''),
             ];
             $codes[(string) ($message['code'] ?? 'unknown')]['count']++;
         }
@@ -1505,23 +1435,23 @@ class HistoricalImportService
         int $actorId,
     ): array {
         $resolution = ($batch->duplicate_resolutions ?? [])[$groupingKey] ?? [];
-        $making     = $profile->making_defaults ?? [];
-        $taxes      = $profile->tax_defaults ?? [];
+        $making = $profile->making_defaults ?? [];
+        $taxes = $profile->tax_defaults ?? [];
 
         return [
-            'date_format'          => (string) $profile->date_format,
-            'decimal_separator'    => (string) ($profile->decimal_separator ?: '.'),
-            'thousands_separator'  => $profile->thousands_separator,
-            'tax_mode'             => (string) ($profile->tax_mode ?: HistoricalSalesDocument::TAX_MODE_UNKNOWN),
-            'source_system'        => $batch->source_system ?? $profile->source_system,
-            'cutover_date'         => $batch->cutover_date,
-            'making_category'      => $making['category'] ?? null,
-            'making_basis'         => $making['basis'] ?? null,
-            'zero_tax_confirmed'   => (bool) ($taxes['zero_confirmed'] ?? false),
+            'date_format' => (string) $profile->date_format,
+            'decimal_separator' => (string) ($profile->decimal_separator ?: '.'),
+            'thousands_separator' => $profile->thousands_separator,
+            'tax_mode' => (string) ($profile->tax_mode ?: HistoricalSalesDocument::TAX_MODE_UNKNOWN),
+            'source_system' => $batch->source_system ?? $profile->source_system,
+            'cutover_date' => $batch->cutover_date,
+            'making_category' => $making['category'] ?? null,
+            'making_basis' => $making['basis'] ?? null,
+            'zero_tax_confirmed' => (bool) ($taxes['zero_confirmed'] ?? false),
             'cutover_acknowledged' => (bool) ($resolution['cutover_acknowledged'] ?? false),
-            'cutover_reason'       => $resolution['cutover_reason'] ?? null,
-            'actor_id'             => $actorId,
-            'layout_type'          => $profile->layout_type,
+            'cutover_reason' => $resolution['cutover_reason'] ?? null,
+            'actor_id' => $actorId,
+            'layout_type' => $profile->layout_type,
         ];
     }
 
@@ -1541,8 +1471,7 @@ class HistoricalImportService
                 ->where('historical_import_batch_id', $batch->id)
                 ->orderBy('id')
                 ->get(['source_sheet', 'original_payload'])
-                ->unique('source_sheet')
-            as $row
+                ->unique('source_sheet') as $row
         ) {
             $cells = $row->original_payload ?? [];
             unset($cells['role']);
@@ -1577,10 +1506,10 @@ class HistoricalImportService
 
         foreach ($cells as $key => $value) {
             $out[(string) $key] = match (true) {
-                $value === null                     => null,
+                $value === null => null,
                 $value instanceof \DateTimeInterface => $value->format('Y-m-d'),
-                is_scalar($value)                   => (string) $value,
-                default                             => null,
+                is_scalar($value) => (string) $value,
+                default => null,
             };
         }
 

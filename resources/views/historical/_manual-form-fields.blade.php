@@ -4,50 +4,6 @@
      Fieldset/legend kept for accessibility (screen readers announce the
      group name) — only the visual wrapper changed to match the shared
      card system used across the app. --}}
-@once
-<script>
-    // Blank template for one item row — the exact 14 canonical keys
-    // StoreManualHistoricalRequest::lines() / HistoricalFields::LINE accept.
-    // Kept in one place so manual.blade.php and manual-preview.blade.php
-    // never grow two divergent row shapes.
-    window.historicalBlankLine = function historicalBlankLine() {
-        return {
-            line_item_name: '', line_sku: '', line_hsn: '', line_quantity: '',
-            line_purity: '', line_gross_weight: '', line_net_weight: '',
-            line_stone_weight: '', line_metal_value: '', line_stone_value: '',
-            line_making_label: '', line_making_value: '', line_rate: '', line_total: '',
-        };
-    };
-
-    // Same "any non-empty field counts, zero counts" rule the backend uses
-    // in StoreManualHistoricalRequest::lines() — a row this calls blank is
-    // exactly the row that request drops before it ever reaches the normalizer.
-    window.historicalLineIsBlank = function historicalLineIsBlank(line) {
-        return Object.values(line || {}).every((v) => v === null || v === undefined || String(v).trim() === '');
-    };
-
-    // Normalizes old('lines', []) — an array on a clean submit, but Laravel
-    // hands back an object once any index is missing — into full row objects.
-    window.historicalSeedLines = function historicalSeedLines(raw) {
-        return Object.values(raw || {}).map((row) => Object.assign(historicalBlankLine(), row || {}));
-    };
-
-    // The one invariant the register keeps: at least 4 rows, and the last one
-    // always blank, so the operator never has to click Add to keep typing.
-    window.historicalPadLines = function historicalPadLines(lines) {
-        const next = (lines || []).slice();
-        while (next.length < 4) next.push(historicalBlankLine());
-        if (!historicalLineIsBlank(next[next.length - 1])) next.push(historicalBlankLine());
-        return next;
-    };
-
-    window.historicalRemoveLine = function historicalRemoveLine(lines, index) {
-        const next = (lines || []).slice();
-        next.splice(index, 1);
-        return historicalPadLines(next);
-    };
-</script>
-@endonce
 <div class="grid grid-cols-1 gap-4 items-start" style="--app-control-bg: #ffffff; --app-control-border: #cbd5e1; --app-control-border-focus: #b45309;" data-historical-manual-layout>
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-12" data-historical-identity-row>
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-4" data-historical-form-section data-historical-section="document">
@@ -168,68 +124,128 @@
 </fieldset>
 </div>
 
-{{-- One register for every item row. The table is intentionally shared by
-     create and preview/edit; Alpine remains the sole owner of row state. --}}
+{{-- Dense desktop register plus touch-friendly cards. Only the visible layout
+     enables its controls, so both surfaces share one Alpine row model. --}}
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden min-w-0 max-w-full" data-historical-form-section data-historical-section="items">
     <legend class="sr-only">Item lines (optional)</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
         <h2 class="text-base font-semibold text-slate-900">Item lines <span class="text-slate-400 font-normal text-sm">(optional)</span></h2>
     </div>
-    {{-- This exact bubbled listener is Claude's auto-expansion contract. --}}
-    <div class="p-4 sm:p-6" @input.debounce.400ms="lines = historicalPadLines(lines)">
-        <p class="text-sm text-slate-600">Start entering items below. A new blank row appears automatically; completely blank rows are ignored.</p>
-        <p class="mt-1 text-xs text-slate-500 md:hidden">Swipe sideways to view all item columns</p>
+    <div class="p-4 sm:p-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm font-medium text-slate-700">Enter the original bill one line at a time.</p>
+                <p class="mt-1 text-xs text-slate-500">A fresh row appears automatically. Open Details for weights, charges, discounts and tax.</p>
+            </div>
+            <button type="button" class="btn btn-sm min-h-[44px] shrink-0" @click="addLine()">Add item</button>
+        </div>
 
-        <div class="mt-4 max-w-full overflow-x-auto rounded-xl border border-slate-200" data-historical-item-table-scroll>
-            <table class="min-w-[1100px] w-full text-sm" data-historical-item-table>
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-center text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">#</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Item name</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">SKU</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">HSN</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Qty</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Purity</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Gross wt</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Net wt</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Stone wt</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Metal value</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Stone value</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Making label</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Making value</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Rate</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-right text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Line total</th>
-                        <th scope="col" class="border-b border-slate-200 px-3 py-3 text-left text-xs font-semibold normal-case tracking-normal text-slate-600 whitespace-nowrap">Action</th>
+        <div class="mt-4 hidden max-w-full rounded-xl border border-slate-300 xl:block" data-historical-item-grid-desktop>
+            <table class="w-full table-fixed text-sm" data-historical-item-table>
+                <colgroup>
+                    <col class="w-[3%]"><col class="w-[19%]"><col class="w-[11%]"><col class="w-[9%]"><col class="w-[7%]"><col class="w-[11%]"><col class="w-[13%]"><col class="w-[14%]"><col class="w-[13%]">
+                </colgroup>
+                <thead class="sticky top-0 z-10 bg-slate-100">
+                    <tr class="text-xs font-semibold text-slate-600">
+                        <th scope="col" class="border-b border-r border-slate-300 px-1 py-2 text-center">#</th>
+                        <th scope="col" class="border-b border-r border-slate-300 px-2 py-2 text-left">Item</th>
+                        <th scope="col" class="border-b border-r border-slate-300 px-2 py-2 text-left">Metal</th>
+                        <th scope="col" class="border-b border-r border-slate-300 px-2 py-2 text-left">Purity</th>
+                        <th scope="col" class="border-b border-r border-slate-300 px-2 py-2 text-right">Qty</th>
+                        <th scope="col" class="border-b border-r border-slate-300 px-2 py-2 text-right">Billable wt (g)</th>
+                        <th scope="col" class="border-b border-r border-slate-300 px-2 py-2 text-right">Historical rate (₹/g)</th>
+                        <th scope="col" class="border-b border-r border-slate-300 px-2 py-2 text-right">Line total (₹)</th>
+                        <th scope="col" class="border-b border-slate-300 px-2 py-2 text-center">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <template x-for="(line, i) in lines" :key="i">
-                        <tr class="hover:bg-slate-50" data-historical-item-row>
-                            <th scope="row" x-text="i + 1" class="border-b border-slate-200 px-3 py-2 text-center text-sm font-semibold tabular-nums text-slate-500 whitespace-nowrap"></th>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" placeholder="Item name" x-bind:aria-label="`Item ${i + 1} — Item name`" class="w-40 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_sku]`" x-model="line.line_sku" placeholder="SKU" x-bind:aria-label="`Item ${i + 1} — SKU`" class="w-28 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_hsn]`" x-model="line.line_hsn" placeholder="HSN" x-bind:aria-label="`Item ${i + 1} — HSN`" class="w-24 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_quantity]`" x-model="line.line_quantity" placeholder="Qty" x-bind:aria-label="`Item ${i + 1} — Quantity`" type="number" step="any" class="w-20 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_purity]`" x-model="line.line_purity" placeholder="Purity" x-bind:aria-label="`Item ${i + 1} — Purity`" class="w-24 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_gross_weight]`" x-model="line.line_gross_weight" placeholder="Gross wt" x-bind:aria-label="`Item ${i + 1} — Gross weight`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_net_weight]`" x-model="line.line_net_weight" placeholder="Net wt" x-bind:aria-label="`Item ${i + 1} — Net weight`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_stone_weight]`" x-model="line.line_stone_weight" placeholder="Stone wt" x-bind:aria-label="`Item ${i + 1} — Stone weight`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_metal_value]`" x-model="line.line_metal_value" placeholder="Metal value" x-bind:aria-label="`Item ${i + 1} — Metal value`" type="number" step="any" class="w-28 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_stone_value]`" x-model="line.line_stone_value" placeholder="Stone value" x-bind:aria-label="`Item ${i + 1} — Stone value`" type="number" step="any" class="w-28 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_making_label]`" x-model="line.line_making_label" placeholder="Making label" x-bind:aria-label="`Item ${i + 1} — Making charge label`" class="w-32 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_making_value]`" x-model="line.line_making_value" placeholder="Making value" x-bind:aria-label="`Item ${i + 1} — Making charge value`" class="w-32 min-h-[44px] text-sm"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_rate]`" x-model="line.line_rate" placeholder="Rate" x-bind:aria-label="`Item ${i + 1} — Rate`" type="number" step="any" class="w-24 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2"><input :name="`lines[${i}][line_total]`" x-model="line.line_total" placeholder="Line total" x-bind:aria-label="`Item ${i + 1} — Line total`" type="number" step="any" class="w-28 min-h-[44px] text-sm text-right tabular-nums"></td>
-                            <td class="border-b border-slate-200 p-2">
-                                <button type="button" class="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-rose-200 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" @click="lines = historicalRemoveLine(lines, i)" x-bind:aria-label="`Remove item ${i + 1}`">Remove</button>
+                <template x-for="(line, i) in lines" :key="`desktop-${i}`">
+                    <tbody @input.debounce.250ms="lineChanged(i, $event)" @change="lineChanged(i, $event)" class="group">
+                        <tr data-historical-item-core-row class="bg-white transition-colors focus-within:bg-amber-50/40 hover:bg-slate-50">
+                            <th scope="row" x-text="i + 1" class="border-b border-r border-slate-300 px-1 py-2 text-center text-xs font-semibold tabular-nums text-slate-500"></th>
+                            <td class="border-b border-r border-slate-300 p-0"><input type="text" :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" :disabled="isMobile" :aria-label="`Item ${i + 1} name`" placeholder="Description" class="h-11 w-full rounded-none border-0 bg-transparent px-2 text-sm shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
+                            <td class="border-b border-r border-slate-300 p-0">
+                                <select x-model="line.line_metal_choice" @change="metalChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} metal`" class="h-11 min-h-[44px] w-full rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                    <option value="">—</option>
+                                    @foreach($enabledMetals as $metal)<option value="{{ $metal }}">{{ ucfirst($metal) }}</option>@endforeach
+                                    <option value="__custom">Other…</option>
+                                </select>
+                                <input type="text" x-show="line.line_metal_choice === '__custom'" x-model="line.line_custom_metal" @input="customMetalChanged(line)" :disabled="isMobile" aria-label="Custom metal" placeholder="Metal" class="h-9 w-full rounded-none border-0 border-t border-slate-200 bg-transparent px-2 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                <input type="hidden" :name="`lines[${i}][line_metal_type]`" x-model="line.line_metal_type" :disabled="isMobile">
+                            </td>
+                            <td class="border-b border-r border-slate-300 p-0">
+                                <select x-model="line.line_purity_choice" @change="purityChanged(line)" :disabled="isMobile" :aria-label="`Item ${i + 1} purity`" class="h-11 min-h-[44px] w-full rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                    <option value="">—</option>
+                                    <template x-for="profile in purityOptions(line)" :key="`${profile.metal}-${profile.value}`"><option :value="String(profile.value)" x-text="profile.label"></option></template>
+                                    <option value="__custom">Custom…</option>
+                                </select>
+                                <input x-show="line.line_purity_choice === '__custom'" type="number" step="any" x-model.number="line.line_purity_value" @input="customPurityChanged(line)" :disabled="isMobile" aria-label="Custom purity" placeholder="Purity" class="h-9 w-full rounded-none border-0 border-t border-slate-200 bg-transparent px-2 text-right text-xs shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                <input type="hidden" :name="`lines[${i}][line_purity]`" x-model="line.line_purity" :disabled="isMobile"><input type="hidden" :name="`lines[${i}][line_purity_value]`" x-model="line.line_purity_value" :disabled="isMobile">
+                            </td>
+                            <td class="border-b border-r border-slate-300 p-0"><input type="number" step="any" :name="`lines[${i}][line_quantity]`" x-model="line.line_quantity" :disabled="isMobile" :aria-label="`Item ${i + 1} quantity`" class="h-11 w-full rounded-none border-0 bg-transparent px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
+                            <td class="border-b border-r border-slate-300 p-0">
+                                <input type="number" step="any" :name="`lines[${i}][line_billable_weight]`" x-model="line.line_billable_weight" data-derived-field="line_billable_weight" :disabled="isMobile" :aria-label="`Item ${i + 1} billable weight`" class="h-11 w-full rounded-none border-0 bg-transparent px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                <input type="hidden" :name="`lines[${i}][line_billable_weight_mode]`" :value="line.line_billable_weight_mode" :disabled="isMobile">
+                            </td>
+                            <td class="border-b border-r border-slate-300 p-0"><input type="number" step="any" :name="`lines[${i}][line_rate]`" x-model="line.line_rate" :disabled="isMobile" :aria-label="`Item ${i + 1} historical rate per gram`" class="h-11 w-full rounded-none border-0 bg-transparent px-2 text-right text-sm tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500"></td>
+                            <td class="border-b border-r border-slate-300 p-0">
+                                <div class="flex items-center">
+                                    <input type="number" step="any" :name="`lines[${i}][line_total]`" x-model="line.line_total" data-derived-field="line_total" :disabled="isMobile" :aria-label="`Item ${i + 1} line total`" class="h-11 min-w-0 flex-1 rounded-none border-0 bg-transparent px-2 text-right text-sm font-semibold tabular-nums shadow-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                                    <span class="mr-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase" :class="line.line_total_mode === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'" x-text="line.line_total_mode === 'manual' ? 'M' : 'A'"></span>
+                                </div>
+                                <input type="hidden" :name="`lines[${i}][line_total_mode]`" :value="line.line_total_mode" :disabled="isMobile">
+                            </td>
+                            <td class="border-b border-slate-300 px-1 py-0">
+                                <div class="flex items-center justify-center">
+                                    <button type="button" @click="line.advanced = !line.advanced" class="inline-flex h-11 w-11 items-center justify-center text-slate-600 hover:bg-slate-100" :aria-expanded="line.advanced" :aria-label="`Toggle details for item ${i + 1}`"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m6 8 4 4 4-4" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+                                    <button type="button" @click="duplicateLine(i)" class="inline-flex h-11 w-11 items-center justify-center text-slate-600 hover:bg-slate-100" :aria-label="`Duplicate item ${i + 1}`"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-7A1.5 1.5 0 0 0 3 5.5v7A1.5 1.5 0 0 0 4.5 14H7"/></svg></button>
+                                    <button type="button" @click="removeLine(i)" class="inline-flex h-11 w-11 items-center justify-center text-rose-600 hover:bg-rose-50" :aria-label="`Remove item ${i + 1}`"><svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h12M8 3h4l1 3H7l1-3Zm-2 3 .7 10h6.6L14 6M8.5 9v4M11.5 9v4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                                </div>
+                                <input type="hidden" :name="`lines[${i}][line_calculation_enabled]`" value="1" :disabled="isMobile">
                             </td>
                         </tr>
-                    </template>
-                </tbody>
+                        <tr x-cloak x-show="line.advanced" data-historical-item-advanced-row class="bg-slate-50">
+                            <td colspan="9" class="border-b border-slate-300 p-3">
+                                <div class="mb-1 flex items-center justify-between gap-3"><p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Advanced details</p><button x-show="line.line_total_mode === 'manual'" type="button" @click="recalculate(line, 'line_total')" class="min-h-[32px] text-xs font-semibold text-amber-700">Recalculate line total</button></div>
+                                @include('historical._manual-item-advanced-fields', ['itemGridMode' => 'desktop'])
+                                <p x-show="line.line_missing" x-text="line.line_missing" class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"></p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </template>
             </table>
         </div>
 
-        <button type="button" class="btn btn-sm mt-3 min-h-[44px]" @click="lines.push({})">Add another row</button>
+        <div class="mt-4 grid gap-3 xl:hidden" data-historical-item-grid-mobile>
+            <template x-for="(line, i) in lines" :key="`mobile-${i}`">
+                <article class="overflow-hidden rounded-xl border border-slate-300 bg-white" data-historical-item-card @input.debounce.250ms="lineChanged(i, $event)" @change="lineChanged(i, $event)">
+                    <div class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3 py-2">
+                        <div class="flex items-center gap-2"><span class="inline-flex h-7 min-w-7 items-center justify-center rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold tabular-nums text-slate-600" x-text="i + 1"></span><span class="text-sm font-semibold text-slate-800" x-text="line.line_item_name || 'New item'"></span></div>
+                        <div class="flex items-center">
+                            <button type="button" @click="duplicateLine(i)" class="inline-flex h-11 min-w-11 items-center justify-center px-2 text-xs font-semibold text-slate-600">Duplicate</button>
+                            <button type="button" @click="removeLine(i)" class="inline-flex h-11 min-w-11 items-center justify-center px-2 text-xs font-semibold text-rose-600">Remove</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 p-3 sm:grid-cols-4">
+                        <div class="col-span-2 sm:col-span-2"><label :for="`line-${i}-item-mobile`">Item</label><input type="text" :id="`line-${i}-item-mobile`" :name="`lines[${i}][line_item_name]`" x-model="line.line_item_name" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px]"></div>
+                        <div><label :for="`line-${i}-metal-mobile`">Metal</label><select :id="`line-${i}-metal-mobile`" x-model="line.line_metal_choice" @change="metalChanged(line)" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px]"><option value="">—</option>@foreach($enabledMetals as $metal)<option value="{{ $metal }}">{{ ucfirst($metal) }}</option>@endforeach<option value="__custom">Other…</option></select><input type="text" x-show="line.line_metal_choice === '__custom'" x-model="line.line_custom_metal" @input="customMetalChanged(line)" :disabled="!isMobile" aria-label="Custom metal" placeholder="Metal" class="mt-1 h-11 w-full min-h-[44px]"><input type="hidden" :name="`lines[${i}][line_metal_type]`" x-model="line.line_metal_type" :disabled="!isMobile"></div>
+                        <div><label :for="`line-${i}-purity-mobile`">Purity</label><select :id="`line-${i}-purity-mobile`" x-model="line.line_purity_choice" @change="purityChanged(line)" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px]"><option value="">—</option><template x-for="profile in purityOptions(line)" :key="`${profile.metal}-${profile.value}`"><option :value="String(profile.value)" x-text="profile.label"></option></template><option value="__custom">Custom purity</option></select><input x-show="line.line_purity_choice === '__custom'" type="number" step="any" x-model.number="line.line_purity_value" @input="customPurityChanged(line)" :disabled="!isMobile" aria-label="Custom purity" class="mt-1 h-11 w-full min-h-[44px]"><input type="hidden" :name="`lines[${i}][line_purity]`" x-model="line.line_purity" :disabled="!isMobile"><input type="hidden" :name="`lines[${i}][line_purity_value]`" x-model="line.line_purity_value" :disabled="!isMobile"></div>
+                        <div><label :for="`line-${i}-qty-mobile`">Quantity</label><input type="number" step="any" :id="`line-${i}-qty-mobile`" :name="`lines[${i}][line_quantity]`" x-model="line.line_quantity" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px] text-right tabular-nums"></div>
+                        <div><label :for="`line-${i}-billable-mobile`">Billable weight (g)</label><input type="number" step="any" :id="`line-${i}-billable-mobile`" :name="`lines[${i}][line_billable_weight]`" x-model="line.line_billable_weight" data-derived-field="line_billable_weight" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px] text-right tabular-nums"><input type="hidden" :name="`lines[${i}][line_billable_weight_mode]`" :value="line.line_billable_weight_mode" :disabled="!isMobile"></div>
+                        <div><label :for="`line-${i}-rate-mobile`">Historical rate (₹/g)</label><input type="number" step="any" :id="`line-${i}-rate-mobile`" :name="`lines[${i}][line_rate]`" x-model="line.line_rate" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px] text-right tabular-nums"></div>
+                        <div><span class="flex items-center justify-between gap-2"><label :for="`line-${i}-total-mobile`">Line total (₹)</label><span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" :class="line.line_total_mode === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'" x-text="line.line_total_mode === 'manual' ? 'Manual' : 'Auto'"></span></span><input type="number" step="any" :id="`line-${i}-total-mobile`" :name="`lines[${i}][line_total]`" x-model="line.line_total" data-derived-field="line_total" :disabled="!isMobile" class="mt-1 h-11 w-full min-h-[44px] text-right font-semibold tabular-nums"><input type="hidden" :name="`lines[${i}][line_total_mode]`" :value="line.line_total_mode" :disabled="!isMobile"></div>
+                    </div>
+                    <input type="hidden" :name="`lines[${i}][line_calculation_enabled]`" value="1" :disabled="!isMobile">
+                    <button type="button" @click="line.advanced = !line.advanced" class="flex min-h-[44px] w-full items-center justify-between border-t border-slate-200 px-3 text-sm font-semibold text-slate-700" :aria-expanded="line.advanced"><span>Advanced details</span><span x-text="line.advanced ? 'Hide' : 'Show'" class="text-xs text-amber-700"></span></button>
+                    <div x-cloak x-show="line.advanced" class="border-t border-slate-200 bg-slate-50 p-3">
+                        @include('historical._manual-item-advanced-fields', ['itemGridMode' => 'mobile'])
+                        <button x-show="line.line_total_mode === 'manual'" type="button" @click="recalculate(line, 'line_total')" class="mt-3 min-h-[44px] text-sm font-semibold text-amber-700">Use automatic line total</button>
+                        <p x-show="line.line_missing" x-text="line.line_missing" class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"></p>
+                    </div>
+                </article>
+            </template>
+        </div>
+
+        <button type="button" class="btn btn-sm mt-3 min-h-[44px]" @click="addLine()">Add item</button>
     </div>
 </fieldset>
 
@@ -242,13 +258,29 @@
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 sm:p-6">
         @foreach($money as $f => $label)
             <div>
-                <label for="{{ $f }}">{{ $label }}</label>
-                <input type="number" step="any" id="{{ $f }}" name="{{ $f }}" value="{{ old($f) }}" class="w-full">
+                <span class="flex items-center justify-between gap-2">
+                    <label for="{{ $f }}">{{ $label }}</label>
+                    @if(in_array($f, $calculatedDocumentFields, true))
+                        <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" :class="documentModes.{{ $f }} === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'" x-text="documentModes.{{ $f }} === 'manual' ? 'Manual' : 'Auto'"></span>
+                    @endif
+                </span>
+                @if(in_array($f, $calculatedDocumentFields, true))
+                    <input type="number" step="any" id="{{ $f }}" name="{{ $f }}" value="{{ old($f) }}" x-model="documentTotals.{{ $f }}" @input="markDocumentManual('{{ $f }}')" class="w-full text-right tabular-nums">
+                    <input type="hidden" name="{{ $f }}_mode" :value="documentModes.{{ $f }}">
+                    <button x-show="documentModes.{{ $f }} === 'manual'" type="button" @click="recalculateDocument('{{ $f }}')" class="mt-1 min-h-[32px] text-xs font-semibold text-amber-700">Use automatic value</button>
+                @else
+                    <input type="number" step="any" id="{{ $f }}" name="{{ $f }}" value="{{ old($f) }}" class="w-full text-right tabular-nums">
+                @endif
             </div>
         @endforeach
         <div>
-            <label for="grand_total">Grand total <span class="text-rose-600">*</span></label>
-            <input type="number" step="any" id="grand_total" name="grand_total" value="{{ old('grand_total') }}" required aria-required="true" class="w-full">
+            <span class="flex items-center justify-between gap-2">
+                <label for="grand_total">Grand total <span class="text-rose-600">*</span></label>
+                <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" :class="documentModes.grand_total === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'" x-text="documentModes.grand_total === 'manual' ? 'Manual' : 'Auto'"></span>
+            </span>
+            <input type="number" step="any" id="grand_total" name="grand_total" value="{{ old('grand_total') }}" x-model="documentTotals.grand_total" @input="markDocumentManual('grand_total')" required aria-required="true" class="w-full text-right font-semibold tabular-nums">
+            <input type="hidden" name="grand_total_mode" :value="documentModes.grand_total">
+            <button x-show="documentModes.grand_total === 'manual'" type="button" @click="recalculateDocument('grand_total')" class="mt-1 min-h-[32px] text-xs font-semibold text-amber-700">Use automatic value</button>
         </div>
     </div>
 </fieldset>

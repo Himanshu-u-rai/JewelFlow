@@ -8,6 +8,9 @@
         HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE => 'Not applicable',
     ];
     $money = ['taxable_amount'=>'Taxable','tax_total'=>'Tax total','cgst'=>'CGST','sgst'=>'SGST','igst'=>'IGST','cess'=>'Cess','discount'=>'Discount','rounding'=>'Rounding','metal_value'=>'Metal value','stone_value'=>'Stone value','paid_amount'=>'Paid','outstanding_amount'=>'Outstanding'];
+    $calculatedDocumentFields = ['taxable_amount', 'tax_total', 'discount', 'metal_value', 'stone_value', 'grand_total'];
+    $documentTotals = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field, '')])->all();
+    $documentModes = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field . '_mode', 'auto')])->all();
 @endphp
 <x-app-layout>
     <x-page-header title="Enter a historical bill" subtitle="Records a sale made before JewelFlow. Not a live invoice — no number issued, no stock moved.">
@@ -46,13 +49,15 @@
              before anything is written. Turbo Drive requires form responses to redirect,
              so it must be opted out here — see resources/views/export/index.blade.php
              and super-admin/account/index.blade.php for the same pattern. --}}
-        {{-- x-data stays the literal "{ lines: [] }" HistoricalMobileUiTest pins —
-             seeding/padding happens in x-init instead, so a fresh load, a
-             validation-error redisplay (old('lines') flashed by withInput())
-             and the preview/edit round trip all share one init path. --}}
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false"
-              x-data="{ lines: [] }"
-              x-init="lines = historicalPadLines(historicalSeedLines(@js(old('lines', []))))"
+              x-data="historicalManualForm({
+                  lines: @js(old('lines', [])),
+                  enabledMetals: @js($enabledMetals),
+                  purityProfiles: @js($purityProfiles),
+                  minimumRows: 1,
+                  documentTotals: @js($documentTotals),
+                  documentModes: @js($documentModes),
+              })"
               class="grid gap-4" data-historical-form="manual">
             @csrf
 

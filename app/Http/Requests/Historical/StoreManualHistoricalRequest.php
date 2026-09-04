@@ -44,12 +44,44 @@ class StoreManualHistoricalRequest extends FormRequest
      * metal value, so no second entry is needed.
      */
     private const MANUAL_CALCULATION_LINE_FIELDS = [
+        'line_calculation_enabled',
         'line_metal_type',
         'line_purity_value',
         'line_billable_weight_basis',
+        'line_billable_weight',
         'line_billable_weight_manual',
+        'line_billable_weight_mode',
+        'line_billable_weight_recalculate',
         'line_metal_value_mode',
         'line_metal_value_recalculate',
+        'line_stone_rate',
+        'line_stone_value_mode',
+        'line_stone_value_recalculate',
+        'line_making_basis',
+        'line_making_amount',
+        'line_making_amount_mode',
+        'line_making_amount_recalculate',
+        'line_wastage_basis',
+        'line_wastage_value',
+        'line_wastage_amount',
+        'line_wastage_amount_mode',
+        'line_wastage_amount_recalculate',
+        'line_hallmark_charge',
+        'line_rhodium_charge',
+        'line_other_charge',
+        'line_discount_type',
+        'line_discount_value',
+        'line_discount_amount',
+        'line_discount_amount_mode',
+        'line_discount_amount_recalculate',
+        'line_tax_mode',
+        'line_gst_rate',
+        'line_taxable',
+        'line_taxable_mode',
+        'line_taxable_recalculate',
+        'line_total_mode',
+        'line_total_recalculate',
+        'line_notes',
     ];
 
     /**
@@ -58,7 +90,22 @@ class StoreManualHistoricalRequest extends FormRequest
      * is NOT in the shared HistoricalFields::HEADER catalog, so a bulk-import
      * spreadsheet column can never map onto it. Manual entry alone needs it.
      */
-    private const MANUAL_HEADER_FIELDS = ['customer_pan', 'customer_type'];
+    private const MANUAL_HEADER_FIELDS = [
+        'customer_pan',
+        'customer_type',
+        'taxable_amount_mode',
+        'taxable_amount_recalculate',
+        'tax_total_mode',
+        'tax_total_recalculate',
+        'discount_mode',
+        'discount_recalculate',
+        'metal_value_mode',
+        'metal_value_recalculate',
+        'stone_value_mode',
+        'stone_value_recalculate',
+        'grand_total_mode',
+        'grand_total_recalculate',
+    ];
 
     public function authorize(): bool
     {
@@ -71,31 +118,31 @@ class StoreManualHistoricalRequest extends FormRequest
 
         return [
             // which button was pressed. Absent/unknown means the safe one.
-            'intent'                   => ['nullable', Rule::in([self::INTENT_DRAFT, self::INTENT_PUBLISH])],
+            'intent' => ['nullable', Rule::in([self::INTENT_DRAFT, self::INTENT_PUBLISH])],
             // warning acknowledgement for a direct publish. The checkbox alone is not
             // enough: the digest pins the acknowledgement to the exact warning set the
             // operator was shown, so an edit that changes the warnings invalidates it.
-            'acknowledge_warnings'         => ['nullable', 'boolean'],
-            'acknowledged_warning_digest'  => ['nullable', 'string', 'max:64'],
+            'acknowledge_warnings' => ['nullable', 'boolean'],
+            'acknowledged_warning_digest' => ['nullable', 'string', 'max:64'],
             // identity — number optional (cash bills exist), date + total required.
             'original_document_number' => ['nullable', 'string', 'max:120'],
-            'document_series'          => ['nullable', 'string', 'max:60'],
-            'document_date'            => ['required', 'date'],
-            'source_reference'         => ['nullable', 'string', 'max:120'],
-            'source_system'            => ['nullable', 'string', 'max:80'],
+            'document_series' => ['nullable', 'string', 'max:60'],
+            'document_date' => ['required', 'date'],
+            'source_reference' => ['nullable', 'string', 'max:120'],
+            'source_system' => ['nullable', 'string', 'max:80'],
 
             // customer snapshot — all optional, never linked just by being typed.
-            'customer_name'            => ['nullable', 'string', 'max:180'],
-            'customer_mobile'          => ['nullable', 'string', new IndianMobileRule()],
-            'customer_gstin'           => ['nullable', 'string', 'max:20'],
+            'customer_name' => ['nullable', 'string', 'max:180'],
+            'customer_mobile' => ['nullable', 'string', new IndianMobileRule],
+            'customer_gstin' => ['nullable', 'string', 'max:20'],
             // Snapshot-only, like customer_gstin above — historical data is thin,
             // so no PanFormatRule here. A malformed PAN just never gets copied to
             // a newly created live customer (HistoricalImportService::validPan()).
-            'customer_pan'             => ['nullable', 'string', 'max:20'],
-            'customer_address'         => ['nullable', 'string', 'max:500'],
-            'place_of_supply'          => ['nullable', 'string', 'max:120'],
-            'customer_type'            => ['nullable', Rule::in(['b2b', 'b2c'])],
-            'customer_id'              => [
+            'customer_pan' => ['nullable', 'string', 'max:20'],
+            'customer_address' => ['nullable', 'string', 'max:500'],
+            'place_of_supply' => ['nullable', 'string', 'max:120'],
+            'customer_type' => ['nullable', Rule::in(['b2b', 'b2c'])],
+            'customer_id' => [
                 'nullable',
                 'integer',
                 Customer::activeExistsRule((int) $this->user()?->shop_id),
@@ -104,83 +151,127 @@ class StoreManualHistoricalRequest extends FormRequest
             // Batch 3 §B — explicit, operator-submitted choice for THIS publish
             // only. Never defaulted server-side; the UI may default the checkbox
             // to checked later, but the server persists whatever was submitted.
-            'add_customer_on_publish'  => ['nullable', 'boolean'],
+            'add_customer_on_publish' => ['nullable', 'boolean'],
 
             // amounts — taxable optional (legacy data is thin); grand_total required.
-            'taxable_amount'           => $money,
-            'tax_total'                => $money,
-            'cgst'                     => $money,
-            'sgst'                     => $money,
-            'igst'                     => $money,
-            'cess'                     => $money,
-            'discount'                 => $money,
-            'rounding'                 => ['nullable', 'numeric'],
-            'metal_value'              => $money,
-            'stone_value'              => $money,
-            'grand_total'              => ['required', 'numeric'],
-            'paid_amount'              => $money,
-            'outstanding_amount'       => $money,
+            'taxable_amount' => $money,
+            'tax_total' => $money,
+            'cgst' => $money,
+            'sgst' => $money,
+            'igst' => $money,
+            'cess' => $money,
+            'discount' => $money,
+            'rounding' => ['nullable', 'numeric'],
+            'metal_value' => $money,
+            'stone_value' => $money,
+            'grand_total' => ['required', 'numeric'],
+            'paid_amount' => $money,
+            'outstanding_amount' => $money,
+            'taxable_amount_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'taxable_amount_recalculate' => ['nullable', 'boolean'],
+            'tax_total_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'tax_total_recalculate' => ['nullable', 'boolean'],
+            'discount_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'discount_recalculate' => ['nullable', 'boolean'],
+            'metal_value_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'metal_value_recalculate' => ['nullable', 'boolean'],
+            'stone_value_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'stone_value_recalculate' => ['nullable', 'boolean'],
+            'grand_total_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'grand_total_recalculate' => ['nullable', 'boolean'],
             // Batch 3 §7 — which figure wins when payment rows and a typed
             // aggregate disagree. Absent/unknown means "trust the rows" (the
             // normalizer's existing header-driven paid_amount stays untouched
             // unless this is explicitly 'manual').
-            'paid_amount_mode'         => ['nullable', Rule::in(['auto', 'manual'])],
+            'paid_amount_mode' => ['nullable', Rule::in(['auto', 'manual'])],
 
             // making / labour — value free text ("12%", "450/gm"); meaning confirmed.
-            'making_label'             => ['nullable', 'string', 'max:120'],
-            'making_value'             => ['nullable', 'string', 'max:60'],
-            'making_category'          => ['nullable', Rule::in(HistoricalMakingCharge::CATEGORIES)],
-            'making_basis'             => ['nullable', Rule::in(HistoricalMakingCharge::BASES)],
+            'making_label' => ['nullable', 'string', 'max:120'],
+            'making_value' => ['nullable', 'string', 'max:60'],
+            'making_category' => ['nullable', Rule::in(HistoricalMakingCharge::CATEGORIES)],
+            'making_basis' => ['nullable', Rule::in(HistoricalMakingCharge::BASES)],
 
             // tax posture and the two explicit acknowledgements Phase 4 / 10 need.
-            'tax_mode'                 => ['nullable', Rule::in([
+            'tax_mode' => ['nullable', Rule::in([
                 HistoricalSalesDocument::TAX_MODE_INCLUSIVE,
                 HistoricalSalesDocument::TAX_MODE_EXCLUSIVE,
                 HistoricalSalesDocument::TAX_MODE_UNKNOWN,
                 HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
             ])],
-            'zero_tax_confirmed'       => ['nullable', 'boolean'],
-            'cutover_date'             => ['nullable', 'date'],
-            'cutover_acknowledged'     => ['nullable', 'boolean'],
-            'cutover_reason'           => ['nullable', 'string', 'max:500'],
+            'zero_tax_confirmed' => ['nullable', 'boolean'],
+            'cutover_date' => ['nullable', 'date'],
+            'cutover_acknowledged' => ['nullable', 'boolean'],
+            'cutover_reason' => ['nullable', 'string', 'max:500'],
 
             // optional item lines — keyed by canonical LINE fields.
-            'lines'                       => ['nullable', 'array'],
-            'lines.*.line_item_name'      => ['nullable', 'string', 'max:180'],
-            'lines.*.line_sku'            => ['nullable', 'string', 'max:120'],
-            'lines.*.line_hsn'            => ['nullable', 'string', 'max:20'],
-            'lines.*.line_quantity'       => ['nullable', 'numeric'],
-            'lines.*.line_purity'         => ['nullable', 'string', 'max:40'],
-            'lines.*.line_gross_weight'   => ['nullable', 'numeric'],
-            'lines.*.line_net_weight'     => ['nullable', 'numeric'],
-            'lines.*.line_stone_weight'   => ['nullable', 'numeric'],
-            'lines.*.line_metal_value'    => ['nullable', 'numeric'],
-            'lines.*.line_stone_value'    => ['nullable', 'numeric'],
-            'lines.*.line_making_label'   => ['nullable', 'string', 'max:120'],
-            'lines.*.line_making_value'   => ['nullable', 'string', 'max:60'],
-            'lines.*.line_rate'           => ['nullable', 'numeric'],
-            'lines.*.line_total'          => ['nullable', 'numeric'],
+            'lines' => ['nullable', 'array'],
+            'lines.*.line_item_name' => ['nullable', 'string', 'max:180'],
+            'lines.*.line_sku' => ['nullable', 'string', 'max:120'],
+            'lines.*.line_hsn' => ['nullable', 'string', 'max:20'],
+            'lines.*.line_quantity' => ['nullable', 'numeric'],
+            'lines.*.line_purity' => ['nullable', 'string', 'max:40'],
+            'lines.*.line_gross_weight' => ['nullable', 'numeric'],
+            'lines.*.line_net_weight' => ['nullable', 'numeric'],
+            'lines.*.line_stone_weight' => ['nullable', 'numeric'],
+            'lines.*.line_metal_value' => ['nullable', 'numeric'],
+            'lines.*.line_stone_value' => ['nullable', 'numeric'],
+            'lines.*.line_making_label' => ['nullable', 'string', 'max:120'],
+            'lines.*.line_making_value' => ['nullable', 'string', 'max:60'],
+            'lines.*.line_rate' => ['nullable', 'numeric'],
+            'lines.*.line_total' => ['nullable', 'numeric'],
 
             // Batch 3 §4/§9/§10 — manual-entry-only calculation fields (see
             // MANUAL_CALCULATION_LINE_FIELDS docblock above).
-            'lines.*.line_metal_type'                 => ['nullable', 'string', 'max:40'],
-            'lines.*.line_purity_value'                => ['nullable', 'numeric'],
-            'lines.*.line_billable_weight_basis'       => ['nullable', Rule::in(HistoricalSalesLine::BILLABLE_WEIGHT_BASES)],
-            'lines.*.line_billable_weight_manual'      => ['nullable', 'numeric'],
-            'lines.*.line_metal_value_mode'            => ['nullable', Rule::in([
+            'lines.*.line_metal_type' => ['nullable', 'string', 'max:40'],
+            'lines.*.line_calculation_enabled' => ['nullable', 'boolean'],
+            'lines.*.line_purity_value' => ['nullable', 'numeric'],
+            'lines.*.line_billable_weight_basis' => ['nullable', Rule::in(HistoricalSalesLine::BILLABLE_WEIGHT_BASES)],
+            'lines.*.line_billable_weight' => ['nullable', 'numeric'],
+            'lines.*.line_billable_weight_manual' => ['nullable', 'numeric'],
+            'lines.*.line_billable_weight_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'lines.*.line_billable_weight_recalculate' => ['nullable', 'boolean'],
+            'lines.*.line_metal_value_mode' => ['nullable', Rule::in([
                 HistoricalCalculationStateService::AUTO,
                 HistoricalCalculationStateService::MANUAL,
             ])],
-            'lines.*.line_metal_value_recalculate'     => ['nullable', 'boolean'],
+            'lines.*.line_metal_value_recalculate' => ['nullable', 'boolean'],
+            'lines.*.line_stone_rate' => ['nullable', 'numeric'],
+            'lines.*.line_stone_value_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'lines.*.line_stone_value_recalculate' => ['nullable', 'boolean'],
+            'lines.*.line_making_basis' => ['nullable', Rule::in(HistoricalMakingCharge::BASES)],
+            'lines.*.line_making_amount' => ['nullable', 'numeric'],
+            'lines.*.line_making_amount_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'lines.*.line_making_amount_recalculate' => ['nullable', 'boolean'],
+            'lines.*.line_wastage_basis' => ['nullable', Rule::in(HistoricalSalesLine::WASTAGE_BASES)],
+            'lines.*.line_wastage_value' => ['nullable', 'numeric'],
+            'lines.*.line_wastage_amount' => ['nullable', 'numeric'],
+            'lines.*.line_wastage_amount_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'lines.*.line_wastage_amount_recalculate' => ['nullable', 'boolean'],
+            'lines.*.line_hallmark_charge' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_rhodium_charge' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_other_charge' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_discount_type' => ['nullable', Rule::in(HistoricalSalesLine::DISCOUNT_TYPES)],
+            'lines.*.line_discount_value' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_discount_amount_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'lines.*.line_discount_amount_recalculate' => ['nullable', 'boolean'],
+            'lines.*.line_tax_mode' => ['nullable', Rule::in(['no_gst', 'gst_inclusive', 'gst_exclusive'])],
+            'lines.*.line_gst_rate' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_taxable' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_taxable_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'lines.*.line_taxable_recalculate' => ['nullable', 'boolean'],
+            'lines.*.line_total_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'lines.*.line_total_recalculate' => ['nullable', 'boolean'],
+            'lines.*.line_notes' => ['nullable', 'string', 'max:1000'],
 
             // Batch 3 §7/§8 — payment rows. shop_payment_method_id is checked
             // against THIS shop only, so a cross-tenant reference is a clean
             // 422/302 validation error, never a 500 from the model-layer guard.
-            'payments'                            => ['nullable', 'array'],
-            'payments.*.mode'                     => ['required', Rule::in(HistoricalSalesPayment::VALID_MODES)],
-            'payments.*.amount'                   => ['required', 'numeric', 'min:0.01'],
-            'payments.*.reference'                => ['nullable', 'string', 'max:120'],
-            'payments.*.shop_payment_method_id'   => [
+            'payments' => ['nullable', 'array'],
+            'payments.*.mode' => ['required', Rule::in(HistoricalSalesPayment::VALID_MODES)],
+            'payments.*.amount' => ['required', 'numeric', 'min:0.01'],
+            'payments.*.reference' => ['nullable', 'string', 'max:120'],
+            'payments.*.shop_payment_method_id' => [
                 'nullable',
                 'integer',
                 Rule::exists('shop_payment_methods', 'id')
@@ -240,9 +331,19 @@ class StoreManualHistoricalRequest extends FormRequest
 
         foreach ((array) $this->input('lines', []) as $line) {
             $line = array_intersect_key((array) $line, $allowed);
+            $meaningful = array_filter(
+                $line,
+                static fn ($value, $key): bool => $key !== 'line_calculation_enabled'
+                    && $key !== 'line_tax_mode'
+                    && ! str_ends_with($key, '_mode')
+                    && ! str_ends_with($key, '_recalculate')
+                    && $value !== null
+                    && trim((string) $value) !== '',
+                ARRAY_FILTER_USE_BOTH,
+            );
 
             // Drop a wholly blank line row — a form always POSTs its empty template.
-            if (array_filter($line, static fn ($v) => $v !== null && trim((string) $v) !== '') !== []) {
+            if ($meaningful !== []) {
                 $lines[] = $line;
             }
         }
@@ -254,15 +355,15 @@ class StoreManualHistoricalRequest extends FormRequest
     public function options(): array
     {
         return [
-            'source_system'        => $this->input('source_system'),
-            'tax_mode'             => $this->input('tax_mode'),
-            'making_category'      => $this->input('making_category'),
-            'making_basis'         => $this->input('making_basis'),
-            'zero_tax_confirmed'   => $this->boolean('zero_tax_confirmed'),
-            'cutover_date'         => $this->input('cutover_date'),
+            'source_system' => $this->input('source_system'),
+            'tax_mode' => $this->input('tax_mode'),
+            'making_category' => $this->input('making_category'),
+            'making_basis' => $this->input('making_basis'),
+            'zero_tax_confirmed' => $this->boolean('zero_tax_confirmed'),
+            'cutover_date' => $this->input('cutover_date'),
             'cutover_acknowledged' => $this->boolean('cutover_acknowledged'),
-            'cutover_reason'       => $this->input('cutover_reason'),
-            'paid_amount_mode'     => $this->input('paid_amount_mode'),
+            'cutover_reason' => $this->input('cutover_reason'),
+            'paid_amount_mode' => $this->input('paid_amount_mode'),
             // Batch 3 §B — see the `add_customer_on_publish` rule above.
             'add_customer_on_publish' => $this->boolean('add_customer_on_publish'),
             'customer_id' => $this->filled('customer_id') ? (int) $this->input('customer_id') : null,

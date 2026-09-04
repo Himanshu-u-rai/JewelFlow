@@ -37,8 +37,8 @@ use Tests\TestCase;
  */
 class HistoricalManualCalculationWiringTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesTestTenant;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -50,23 +50,23 @@ class HistoricalManualCalculationWiringTest extends TestCase
     private function calcPayload(array $override = []): array
     {
         return array_merge([
-            'original_document_number' => 'CALC-' . fake()->unique()->numberBetween(1, 999999),
-            'document_date'            => now()->toDateString(),
-            'source_system'            => 'Manual QA',
-            'customer_name'            => 'Calc QA Customer',
-            'grand_total'              => 52250,
-            'tax_mode'                 => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
-            'zero_tax_confirmed'       => '1',
-            'lines'                    => [[
-                'line_item_name'             => 'Gold Ring',
-                'line_quantity'              => 1,
-                'line_gross_weight'          => 10,
-                'line_net_weight'            => 9.5,
-                'line_rate'                  => 6000,
-                'line_metal_type'            => 'gold',
-                'line_purity_value'          => 22,
+            'original_document_number' => 'CALC-'.fake()->unique()->numberBetween(1, 999999),
+            'document_date' => now()->toDateString(),
+            'source_system' => 'Manual QA',
+            'customer_name' => 'Calc QA Customer',
+            'grand_total' => 52250,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
+            'zero_tax_confirmed' => '1',
+            'lines' => [[
+                'line_item_name' => 'Gold Ring',
+                'line_quantity' => 1,
+                'line_gross_weight' => 10,
+                'line_net_weight' => 9.5,
+                'line_rate' => 6000,
+                'line_metal_type' => 'gold',
+                'line_purity_value' => 22,
                 'line_billable_weight_basis' => HistoricalSalesLine::BILLABLE_WEIGHT_NET,
-                'line_total'                 => 52250,
+                'line_total' => 52250,
             ]],
         ], $override);
     }
@@ -100,8 +100,8 @@ class HistoricalManualCalculationWiringTest extends TestCase
     {
         [$owner] = $this->createRetailerTenant();
 
-        $payload                                      = $this->calcPayload();
-        $payload['lines'][0]['line_metal_value']      = 999999; // forged
+        $payload = $this->calcPayload();
+        $payload['lines'][0]['line_metal_value'] = 999999; // forged
         $payload['lines'][0]['line_metal_value_mode'] = 'auto';
 
         $response = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
@@ -126,8 +126,8 @@ class HistoricalManualCalculationWiringTest extends TestCase
     {
         [$owner] = $this->createRetailerTenant();
 
-        $payload                                      = $this->calcPayload();
-        $payload['lines'][0]['line_metal_value']      = 40000;
+        $payload = $this->calcPayload();
+        $payload['lines'][0]['line_metal_value'] = 40000;
         $payload['lines'][0]['line_metal_value_mode'] = 'manual';
 
         $first = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
@@ -141,7 +141,7 @@ class HistoricalManualCalculationWiringTest extends TestCase
         // "edit the weight, leave the manual box alone" form submission would.
         $payload['lines'][0]['line_net_weight'] = 12.0;
 
-        $second      = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
+        $second = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
         $second->assertOk();
         $secondState = $second->viewData('lines')[0]['calculation_state']['metal_value'];
 
@@ -158,9 +158,9 @@ class HistoricalManualCalculationWiringTest extends TestCase
     {
         [$owner] = $this->createRetailerTenant();
 
-        $payload                                            = $this->calcPayload();
-        $payload['lines'][0]['line_metal_value']            = 40000;
-        $payload['lines'][0]['line_metal_value_mode']        = 'manual';
+        $payload = $this->calcPayload();
+        $payload['lines'][0]['line_metal_value'] = 40000;
+        $payload['lines'][0]['line_metal_value_mode'] = 'manual';
         $payload['lines'][0]['line_metal_value_recalculate'] = '1';
 
         $response = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);

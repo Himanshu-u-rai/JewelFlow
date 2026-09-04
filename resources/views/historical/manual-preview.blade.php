@@ -10,11 +10,15 @@
         HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE => 'Not applicable',
     ];
     $money = ['taxable_amount'=>'Taxable','tax_total'=>'Tax total','cgst'=>'CGST','sgst'=>'SGST','igst'=>'IGST','cess'=>'Cess','discount'=>'Discount','rounding'=>'Rounding','metal_value'=>'Metal value','stone_value'=>'Stone value','paid_amount'=>'Paid','outstanding_amount'=>'Outstanding'];
+    $calculatedDocumentFields = ['taxable_amount', 'tax_total', 'discount', 'metal_value', 'stone_value', 'grand_total'];
+    $documentTotals = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field, '')])->all();
+    $documentModes = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field . '_mode', 'auto')])->all();
 
     $customer = $attributes['customer_snapshot'] ?? [];
     $errors   = $messages->ofSeverity(HistoricalMessages::ERROR);
     $warnings = $messages->ofSeverity(HistoricalMessages::WARNING);
     $infos    = $messages->ofSeverity(HistoricalMessages::INFO);
+    $calculationState = $attributes['calculation_state'] ?? [];
     $documentDateDisplay = isset($attributes['document_date'])
         ? \Illuminate\Support\Carbon::parse($attributes['document_date'])->format('d M Y')
         : '—';
@@ -68,7 +72,12 @@
                     </div>
 
                     <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 lg:w-64 lg:shrink-0" data-historical-preview-grand-total>
-                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Grand total</p>
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Grand total</p>
+                            @if(isset($calculationState['grand_total']))
+                                <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['grand_total']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-200 text-amber-900' : 'bg-emerald-100 text-emerald-800' }}" data-historical-calculation-mode="grand_total">{{ ($calculationState['grand_total']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>
+                            @endif
+                        </div>
                         <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</p>
                         <dl class="mt-3 grid grid-cols-2 gap-3 border-t border-amber-200 pt-3 text-xs">
                             <div>
@@ -133,19 +142,31 @@
                     </div>
                     <dl class="grid grid-cols-1 gap-3 p-4 text-sm sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
                         <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="taxable">
-                            <dt class="text-xs font-medium text-slate-500">Taxable</dt>
+                            <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">Taxable</dt>@if(isset($calculationState['taxable_amount']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['taxable_amount']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="taxable_amount">{{ ($calculationState['taxable_amount']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
                             <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['taxable_amount'] ?? 0), 2) }}</dd>
                         </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="tax-total">
+                            <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">Tax total</dt>@if(isset($calculationState['tax_total']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['tax_total']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="tax_total">{{ ($calculationState['tax_total']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) data_get($calculationState, 'tax_total.value', 0), 2) }}</dd>
+                        </div>
                         <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="discount">
-                            <dt class="text-xs font-medium text-slate-500">Discount</dt>
+                            <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">Discount</dt>@if(isset($calculationState['discount']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['discount']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="discount">{{ ($calculationState['discount']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
                             <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['discount_snapshot'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="metal-value">
+                            <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">Metal value</dt>@if(isset($calculationState['metal_value']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['metal_value']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="metal_value">{{ ($calculationState['metal_value']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['metal_value'] ?? 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="stone-value">
+                            <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">Stone value</dt>@if(isset($calculationState['stone_value']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['stone_value']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="stone_value">{{ ($calculationState['stone_value']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['stone_value'] ?? 0), 2) }}</dd>
                         </div>
                         <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="rounding">
                             <dt class="text-xs font-medium text-slate-500">Rounding</dt>
                             <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) ($attributes['rounding_snapshot'] ?? 0), 2) }}</dd>
                         </div>
                         <div class="rounded-xl border border-amber-200 bg-amber-50 p-3" data-historical-preview-field="grand-total">
-                            <dt class="text-xs font-medium text-amber-700">Grand total</dt>
+                            <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-amber-700">Grand total</dt>@if(isset($calculationState['grand_total']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['grand_total']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-200 text-amber-900' : 'bg-emerald-100 text-emerald-800' }}" data-historical-calculation-mode="grand_total">{{ ($calculationState['grand_total']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
                             <dd class="mt-1 font-semibold tabular-nums text-slate-900">{{ number_format((float) ($attributes['grand_total'] ?? 0), 2) }}</dd>
                         </div>
                         <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="paid">
@@ -267,7 +288,7 @@
                                             <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['net_weight'] ?? '—' }}</td>
                                             <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['gross_weight'] ?? '—' }}</td>
                                             <td class="px-4 py-4 text-right tabular-nums sm:px-6">{{ $line['stone_weight'] ?? '—' }}</td>
-                                            <td class="px-4 py-4 text-right font-semibold tabular-nums text-slate-900 sm:px-6">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</td>
+                                            <td class="px-4 py-4 text-right font-semibold tabular-nums text-slate-900 sm:px-6">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}@if(isset($line['calculation_state']['line_total']))<span class="ml-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($line['calculation_state']['line_total']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-line-calculation-mode="{{ $loop->iteration }}">{{ ($line['calculation_state']['line_total']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -282,7 +303,7 @@
                                         <span class="inline-flex w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold tabular-nums text-slate-500" data-historical-row-number="line">{{ $loop->iteration }}</span>
                                         <h3 class="min-w-0 text-sm font-semibold text-slate-900">{{ $line['item_snapshot']['name'] ?? $line['source_description'] ?? '—' }}</h3>
                                     </div>
-                                    <span class="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}</span>
+                                    <span class="shrink-0 text-right text-sm font-semibold tabular-nums text-slate-900">{{ number_format((float) ($line['line_total'] ?? 0), 2) }}@if(isset($line['calculation_state']['line_total']))<span class="mt-1 block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($line['calculation_state']['line_total']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}">{{ ($line['calculation_state']['line_total']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</span>
                                 </div>
                                 <dl class="mt-4 grid grid-cols-2 gap-3 text-xs">
                                     <div><dt class="text-slate-500">Quantity</dt><dd class="mt-1 font-medium text-slate-800">{{ $line['quantity'] ?? '—' }}</dd></div>
@@ -312,13 +333,15 @@
              to the 200-rendering preview endpoint. "Confirm Save" (formaction override)
              redirects and would work under Turbo either way — data-turbo="false" on the
              whole form is harmless for it and keeps both buttons' behavior consistent. --}}
-        {{-- Same x-init contract as manual.blade.php. request->flash() in
-             HistoricalManualEntryController::preview() puts the just-submitted
-             lines into old() before this view renders, so Edit/Recalculate
-             reloads exactly what was typed instead of starting empty. --}}
         <form method="POST" action="{{ route('historical.manual.preview') }}" data-turbo="false" id="historical-manual-preview-form"
-              x-data="{ lines: [] }"
-              x-init="lines = historicalPadLines(historicalSeedLines(@js(old('lines', []))))"
+              x-data="historicalManualForm({
+                  lines: @js(old('lines', [])),
+                  enabledMetals: @js($enabledMetals),
+                  purityProfiles: @js($purityProfiles),
+                  minimumRows: 1,
+                  documentTotals: @js($documentTotals),
+                  documentModes: @js($documentModes),
+              })"
               class="grid gap-4" data-historical-form="manual-preview" aria-labelledby="historical-preview-editor-title">
             @csrf
 

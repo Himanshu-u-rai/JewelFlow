@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Historical;
 
+use App\Data\Mobile\V1\MaterialRegistrySnapshot;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Historical\StoreManualHistoricalRequest;
 use App\Models\Customer;
+use App\Models\Shop;
 use App\Services\Historical\HistoricalCustomerMatcher;
 use App\Services\Historical\HistoricalImportService;
+use App\Services\MetalRegistry;
+use App\Services\ShopPricingService;
 use App\Support\Historical\HistoricalFields;
 use App\Support\Historical\HistoricalMakingCharge;
 use App\Support\Historical\HistoricalManualPublishRejected;
@@ -27,6 +31,7 @@ class HistoricalManualEntryController extends Controller
     public function __construct(
         private readonly HistoricalImportService $imports,
         private readonly HistoricalCustomerMatcher $matcher,
+        private readonly ShopPricingService $pricing,
     ) {}
 
     /**
@@ -45,12 +50,40 @@ class HistoricalManualEntryController extends Controller
 
     public function create(): View
     {
-        return view('historical.manual', [
-            'headerFields'    => HistoricalFields::HEADER,
-            'lineFields'      => HistoricalFields::LINE,
+        return view('historical.manual', $this->formData(auth()->user()->shop) + [
+            'headerFields' => HistoricalFields::HEADER,
+            'lineFields' => HistoricalFields::LINE,
             'makingCategories' => HistoricalMakingCharge::CATEGORIES,
-            'makingBases'     => HistoricalMakingCharge::BASES,
+            'makingBases' => HistoricalMakingCharge::BASES,
         ]);
+    }
+
+    private function formData(Shop $shop): array
+    {
+        $registry = MaterialRegistrySnapshot::forShop((int) $shop->id);
+        $purityProfiles = $this->pricing->activePurityProfiles($shop)
+            ->map(fn ($profile): array => [
+                'metal' => strtolower((string) $profile->metal_type),
+                'label' => (string) $profile->label,
+                'value' => (float) $profile->purity_value,
+            ])
+            ->values()
+            ->all();
+
+        foreach ($registry->metals as $metal => $descriptor) {
+            if (MetalRegistry::purityIsAccountingTruth($metal)) {
+                continue;
+            }
+
+            foreach ($descriptor->active_purity_profiles as $value) {
+                $purityProfiles[] = ['metal' => $metal, 'label' => (string) $value, 'value' => (float) $value];
+            }
+        }
+
+        return [
+            'enabledMetals' => $registry->enabled_metals,
+            'purityProfiles' => $purityProfiles,
+        ];
     }
 
     /**
@@ -115,7 +148,7 @@ class HistoricalManualEntryController extends Controller
     {
         $mobile = Customer::normalizeMobile($mobile);
 
-        return $mobile === null ? 'Mobile unavailable' : substr($mobile, 0, 2) . '******' . substr($mobile, -2);
+        return $mobile === null ? 'Mobile unavailable' : substr($mobile, 0, 2).'******'.substr($mobile, -2);
     }
 
     /**
@@ -156,20 +189,20 @@ class HistoricalManualEntryController extends Controller
             $snapshot['gstin'] ?? null,
         );
 
-        return view('historical.manual-preview', [
-            'attributes'       => $result['attributes'],
-            'lines'            => $result['lines'],
-            'messages'         => $result['messages'],
+        return view('historical.manual-preview', $this->formData($shop) + [
+            'attributes' => $result['attributes'],
+            'lines' => $result['lines'],
+            'messages' => $result['messages'],
             // What "I have read the warnings" must be pinned to. Null when this bill
             // has no warnings, in which case the acknowledgement UI has nothing to
             // show and Save & publish needs no tick.
-            'warningDigest'    => $result['messages']->warningDigest(),
-            'fingerprint'      => $result['fingerprint'],
-            'suggestions'      => $suggestions,
-            'headerFields'     => HistoricalFields::HEADER,
-            'lineFields'       => HistoricalFields::LINE,
+            'warningDigest' => $result['messages']->warningDigest(),
+            'fingerprint' => $result['fingerprint'],
+            'suggestions' => $suggestions,
+            'headerFields' => HistoricalFields::HEADER,
+            'lineFields' => HistoricalFields::LINE,
             'makingCategories' => HistoricalMakingCharge::CATEGORIES,
-            'makingBases'      => HistoricalMakingCharge::BASES,
+            'makingBases' => HistoricalMakingCharge::BASES,
         ]);
     }
 
