@@ -737,6 +737,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // report.payment-reconciliation.csv retired (Phase 3) — use the spine export (POST /reports/payment-reconciliation/export).
     Route::get('/report/day-book', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'day-book')->middleware('can:reports.view')->name('report.day-book');
     // report.day-book.csv retired (Phase 3 Cleanup #1) — use the spine export.
+    // Historical Sales Register (Batch 4) — read-only search/list of pre-JewelFlow
+    // sale evidence. Same spine as every other report; reports.view/reports.export
+    // gates already exist and are reused, not duplicated (HISTORICAL-BATCH-4-REQUIREMENTS.md §6).
+    Route::get('/report/historical-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'historical-sales-register')->middleware('can:reports.view')->name('report.historical-register');
     // Inventory Valuation — served by the reporting spine (Phase 3). Same URL/name/permission.
     Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'inventory-valuation')->middleware('can:reports.view')->name('report.inventory-valuation');
     // report.inventory-valuation.csv retired (GAP 3): inventory-valuation is on the

@@ -24,6 +24,7 @@
                 ['Inventory Valuation', 'On-hand stock value at cost and at tag price', 'report.inventory-valuation', null],
                 ['Cash Flow', 'Cash in vs out over the period', 'report.cash', null],
                 ['Daily Closing', 'End-of-day close figures', 'report.closing', null],
+                ['Historical Sales Register', 'Search pre-JewelFlow sales evidence imported from your old records', 'report.historical-register', null],
             ],
             'Operational' => [
                 ['Dead Stock', 'Stock not turning over, aged and valued at cost', 'report.dead-stock', null],

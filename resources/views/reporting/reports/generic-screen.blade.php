@@ -700,14 +700,18 @@
                     @foreach (($filterControls ?? []) as $fc)
                         <div class="report-register-filter-field">
                             <label>{{ $fc['label'] }}</label>
-                            <div class="report-register-select">
-                                <select name="{{ $fc['key'] }}" class="report-register-input">
-                                    <option value="">All</option>
-                                    @foreach ($fc['options'] as $opt)
-                                        <option value="{{ $opt['value'] }}" @selected($fc['current'] === (string) $opt['value'])>{{ $opt['label'] }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                            @if (($fc['type'] ?? 'select') === 'text')
+                                <input type="text" name="{{ $fc['key'] }}" value="{{ $fc['current'] }}" class="report-register-input" placeholder="Search {{ strtolower($fc['label']) }}…">
+                            @else
+                                <div class="report-register-select">
+                                    <select name="{{ $fc['key'] }}" class="report-register-input">
+                                        <option value="">All</option>
+                                        @foreach ($fc['options'] as $opt)
+                                            <option value="{{ $opt['value'] }}" @selected($fc['current'] === (string) $opt['value'])>{{ $opt['label'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
                         </div>
                     @endforeach
 

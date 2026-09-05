@@ -37,6 +37,7 @@ use App\Services\Reporting\Reports\StockPurchasesDataset;
 use App\Services\Reporting\Reports\StoreCreditDataset;
 use App\Services\Reporting\Reports\GstReportDataset;
 use App\Services\Reporting\Reports\Gstr1Dataset;
+use App\Services\Reporting\Reports\HistoricalSalesRegisterDataset;
 use App\Services\Reporting\Reports\CashFlowDataset;
 use App\Services\Reporting\Reports\DailyClosingDataset;
 use App\Services\Reporting\Reports\Gstr3bDataset;
@@ -141,6 +142,13 @@ class ReportingServiceProvider extends ServiceProvider
         // Phase 4 — Owner: Gold Balances (vault fine-weight holdings by metal/purity).
         if (! $registry->has(GoldBalancesDataset::KEY)) {
             $registry->register(GoldBalancesDataset::KEY, GoldBalancesDataset::class);
+        }
+
+        // Batch 4 — Historical: read-only register/search of pre-JewelFlow sales
+        // evidence (`historical_sales_documents`). No aging/dedup/Combined mode —
+        // see HISTORICAL-BATCH-4-REQUIREMENTS.md §9.7.1.
+        if (! $registry->has(HistoricalSalesRegisterDataset::KEY)) {
+            $registry->register(HistoricalSalesRegisterDataset::KEY, HistoricalSalesRegisterDataset::class);
         }
 
         // GAP 2 — migrate the safest legacy reports onto the spine (each wraps an

@@ -33,6 +33,9 @@
 <x-app-layout>
     <x-page-header title="Historical Sales" subtitle="Records of sales made before JewelFlow. Not live invoices — no numbers issued, no stock moved.">
         <x-slot:actions>
+            @can('reports.view')
+                <a href="{{ route('report.historical-register') }}" class="btn btn-sm min-h-[44px]">Open register</a>
+            @endcan
             @can('historical.import')
                 <a href="{{ route('historical.manual.create') }}" class="btn btn-sm min-h-[44px]">Enter a bill</a>
                 <a href="{{ route('historical.upload.create') }}" class="btn btn-primary btn-sm min-h-[44px]">Import a file</a>

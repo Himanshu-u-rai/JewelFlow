@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Reporting;
 
 use App\Http\Controllers\Controller;
+use App\Models\Historical\HistoricalSalesDocument;
 use App\Services\Reporting\ColumnPolicy;
 use App\Services\Reporting\Dataset\ReportRequest;
 use App\Services\Reporting\Definition\ExportFormat;
+use App\Services\Reporting\Definition\ReportDefinition;
 use App\Services\Reporting\Definition\ReportProfile;
 use App\Services\Reporting\Definition\ReportRegistry;
 use App\Services\Reporting\Filters\DatePreset;
 use App\Services\Reporting\Filters\FilterResolver;
 use App\Services\Reporting\ProvenanceStamp;
 use App\Services\Reporting\Render\ScreenRenderer;
+use App\Services\Reporting\Reports\HistoricalSalesRegisterDataset;
 use App\Services\Reporting\WatermarkPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -57,7 +60,7 @@ class ReportScreenController extends Controller
 
         $filterValues = ['period' => ['from' => $period->from, 'to' => $period->to]];
         $applied = ['Period' => $period->label];
-        foreach (['operator', 'customer', 'status', 'metal_type', 'payment_mode', 'cash_type', 'cash_source'] as $key) {
+        foreach (['operator', 'customer', 'status', 'metal_type', 'payment_mode', 'cash_type', 'cash_source', 'reference'] as $key) {
             if ($request->filled($key)) {
                 $filterValues[$key] = $request->input($key);
                 $applied[ucfirst(str_replace('_', ' ', $key))] = (string) $request->input($key);
@@ -111,9 +114,9 @@ class ReportScreenController extends Controller
      * Date (Period/AsOf) and reserved hooks are excluded — date has its own
      * preset control. Options are read-only lookups.
      *
-     * @return array<int, array{key:string,label:string,options:array<int,array{value:string,label:string}>,current:string}>
+     * @return array<int, array{key:string,label:string,type:string,options:array<int,array{value:string,label:string}>,current:string}>
      */
-    private function filterControls($definition, int $shopId, Request $request): array
+    private function filterControls(ReportDefinition $definition, int $shopId, Request $request): array
     {
         $out = [];
         foreach ($definition->filters as $filter) {
@@ -122,7 +125,21 @@ class ReportScreenController extends Controller
                 continue; // skip date-style + reserved-hook filters
             }
 
-            $options = $this->filterOptions($key, $shopId);
+            // Reference is free-text search (original invoice/document number),
+            // not an enumerable option list — render a text box instead of a <select>.
+            if ($key === \App\Services\Reporting\Definition\FilterKey::Reference) {
+                $out[] = [
+                    'key' => $key->value,
+                    'label' => 'Reference',
+                    'type' => 'text',
+                    'options' => [],
+                    'current' => (string) $request->input($key->value, ''),
+                ];
+
+                continue;
+            }
+
+            $options = $this->filterOptions($key, $shopId, $definition);
             if ($options === null) {
                 continue; // no option provider for this key yet — don't render a broken control
             }
@@ -130,6 +147,7 @@ class ReportScreenController extends Controller
             $out[] = [
                 'key'     => $key->value,
                 'label'   => \Illuminate\Support\Str::headline(str_replace(['cash_', '_'], ['', ' '], $key->value)),
+                'type'    => 'select',
                 'options' => $options,
                 'current' => (string) $request->input($key->value, ''),
             ];
@@ -143,8 +161,21 @@ class ReportScreenController extends Controller
      *
      * @return array<int, array{value:string,label:string}>|null
      */
-    private function filterOptions(\App\Services\Reporting\Definition\FilterKey $key, int $shopId): ?array
+    private function filterOptions(\App\Services\Reporting\Definition\FilterKey $key, int $shopId, ReportDefinition $definition): ?array
     {
+        // Status is meaningful per-report (document status here vs invoice/payment
+        // status elsewhere) — the Historical Register is the only report so far
+        // that needs it surfaced as a discoverable dropdown (§3 audit trail: void/
+        // draft/superseded are otherwise only reachable via a hand-typed query param).
+        if ($key === \App\Services\Reporting\Definition\FilterKey::Status && $definition->key === HistoricalSalesRegisterDataset::KEY) {
+            return $this->staticOptions([
+                HistoricalSalesDocument::STATUS_PUBLISHED => 'Published',
+                HistoricalSalesDocument::STATUS_DRAFT => 'Draft',
+                HistoricalSalesDocument::STATUS_VOID => 'Void',
+                HistoricalSalesDocument::STATUS_SUPERSEDED => 'Superseded',
+            ]);
+        }
+
         return match ($key) {
             \App\Services\Reporting\Definition\FilterKey::PaymentMode => $this->staticOptions([
                 'cash' => 'Cash', 'upi' => 'UPI', 'bank' => 'Bank', 'card' => 'Card', 'wallet' => 'Wallet', 'other' => 'Other',

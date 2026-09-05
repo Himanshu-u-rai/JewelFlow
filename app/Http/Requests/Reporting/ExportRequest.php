@@ -89,6 +89,7 @@ class ExportRequest extends FormRequest
             'movement_type' => ['nullable', 'string', 'max:48'],
             'days_overdue' => ['nullable', 'integer', 'min:0'],
             'age_band' => ['nullable', 'string', 'max:32'],
+            'reference' => ['nullable', 'string', 'max:64'],
         ];
     }
 
