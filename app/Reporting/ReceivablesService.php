@@ -10,6 +10,7 @@ use App\Reporting\Data\MetalLiabilityData;
 use App\Reporting\Data\SchemeLiabilityData;
 use App\Support\Historical\HistoricalOverlapDedup;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -133,31 +134,36 @@ class ReceivablesService
     }
 
     /**
-     * HISTORICAL-mode Dues Aging (Batch 4 §6 steps 2/4, §9.7.2) — outstanding on
-     * PUBLISHED historical_sales_documents only, for LINKED customers only (§3:
-     * "only linked customers count toward per-customer receivables" — a
-     * snapshot-only walk-in cannot be chased inside JewelFlow), aged off
-     * `document_date` (§9.6: methodologically consistent with LIVE ageing off
-     * finalized_at/created_at — neither source has a real due date).
+     * HISTORICAL-mode Dues Aging (Batch 4 §6 steps 2/4, §9.7.2 — owner-agreed
+     * reporting semantics, superseding the earlier dedup-exclusion design):
+     * "Unpaid as recorded" on PUBLISHED historical_sales_documents, aged off
+     * `document_date` — labelled "days since invoice date" (§9.6), never
+     * "days overdue" (neither LIVE nor HISTORICAL has a due date to be
+     * overdue against).
      *
-     * Applies the §4 dedup rule via {@see HistoricalOverlapDedup}: only
-     * documents with no opening-balance overlap, or an overlap explicitly
-     * resolved SEPARATE, are added to a total. A document already resolved
-     * INCLUDED (already counted inside CustomerOpeningBalance) or left
-     * UNRESOLVED is excluded from every total — the exclusion is counted for
-     * disclosure, never silently dropped and never guessed into a bucket
-     * (§5 tests 4/6).
+     * **No amount is ever removed for an opening-balance overlap flag.** This
+     * report reads no `CustomerOpeningBalance` row in HISTORICAL mode, so
+     * overlap is not grounds to subtract anything here — it would only matter
+     * if a combined total were being computed, and no combined *total* is
+     * computed (COMBINED mode is a side-by-side presentation, not a merge).
+     * {@see HistoricalOverlapDedup} is used purely to COUNT how many
+     * documents carry each classification, for a disclosed warning — every
+     * classified document is still counted in `rows`/the bucket totals at
+     * full value.
+     *
+     * Linked customers (`customer_id` present) are aggregated into `rows`
+     * exactly like `duesAging()`. Unlinked/snapshot-only documents
+     * (`customer_id IS NULL`) are aggregated separately into `unlinkedRows`,
+     * grouped by their recorded `customer_snapshot` identity (name/mobile) —
+     * never linked or guessed onto a live customer record.
      *
      * A NULL `outstanding_amount_snapshot` is unknown, not zero (§9.3) —
-     * excluded from every bucket/total, counted separately for disclosure
-     * (§5 test 10). A known outstanding of ≤0 is simply not a due (paid off /
-     * over-collected as recorded) and is dropped silently, same treatment
-     * `duesAging()` gives a fully-paid live invoice.
-     *
-     * This is HISTORICAL mode alone — no live invoice, no CustomerOpeningBalance
-     * read. COMBINED mode is deliberately NOT implemented here: §7.5/§7.6 leave
-     * that semantics unresolved (schema can't express partial overlap; no
-     * approved document says Combined may read CustomerOpeningBalance at all).
+     * mathematically impossible to sum, so it is excluded from every
+     * bucket/total (the one genuine exclusion left) and counted separately so
+     * the total can be disclosed as incomplete, never silently presented as
+     * final (§5 test 10). A known outstanding of ≤0 is simply not a due (paid
+     * off / over-collected as recorded) and is dropped silently, same
+     * treatment `duesAging()` gives a fully-paid live invoice.
      */
     public function historicalDuesAging(int $shopId, ?Carbon $asOf = null): DuesAgingData
     {
@@ -166,7 +172,6 @@ class ReceivablesService
         $documents = HistoricalSalesDocument::withoutTenant()
             ->where('shop_id', $shopId)
             ->where('status', HistoricalSalesDocument::STATUS_PUBLISHED)
-            ->whereNotNull('customer_id')
             ->with('customer')
             ->get();
 
@@ -177,25 +182,78 @@ class ReceivablesService
             ->filter(fn (HistoricalSalesDocument $d) => round((float) $d->outstanding_amount_snapshot, 2) > 0.01)
             ->values();
 
-        $buckets = HistoricalOverlapDedup::partition($owed);
+        $linked = $owed->whereNotNull('customer_id')->values();
+        $unlinked = $owed->whereNull('customer_id')->values();
 
-        $byCustomer = [];
+        // Disclosure-only classification (see HistoricalOverlapDedup) — every
+        // bucket below is already counted in `$linked` at full value; this is
+        // never used to exclude anything, only to count a warning.
+        $classified = HistoricalOverlapDedup::partition($linked);
+
+        [$rows, $bC, $b3160, $b6190, $b90, $docCount] = $this->aggregateHistoricalDocuments(
+            $linked,
+            $asOf,
+            fn (HistoricalSalesDocument $d) => [$d->customer_id, $d->customer?->name ?? 'Unknown customer', $d->customer?->mobile],
+        );
+
+        [$unlinkedRows, , , , , $unlinkedDocCount] = $this->aggregateHistoricalDocuments(
+            $unlinked,
+            $asOf,
+            function (HistoricalSalesDocument $d) {
+                $name = trim((string) ($d->customer_snapshot['name'] ?? '')) ?: 'Unknown customer';
+                $mobile = $d->customer_snapshot['mobile'] ?? null;
+                $key = mb_strtolower($name).'|'.mb_strtolower(trim((string) $mobile));
+
+                return [$key, $name, $mobile];
+            },
+        );
+
+        return new DuesAgingData(
+            rows: $rows,
+            bucketCurrent: round($bC, 2),
+            bucket3160: round($b3160, 2),
+            bucket6190: round($b6190, 2),
+            bucket90plus: round($b90, 2),
+            totalOutstanding: round($bC + $b3160 + $b6190 + $b90, 2),
+            customerCount: $rows->count(),
+            invoiceCount: $docCount,
+            asOf: $asOf->format('Y-m-d'),
+            unknownOutstandingCount: $unknownOutstandingCount,
+            separateFromOpeningBalanceCount: $classified['separate']->count(),
+            includedInOpeningBalanceCount: $classified['included']->count(),
+            unresolvedOverlapCount: $classified['unresolved']->count(),
+            unlinkedRows: $unlinkedRows,
+            unlinkedDocumentCount: $unlinkedDocCount,
+        );
+    }
+
+    /**
+     * Shared per-identity aggregation for historical documents — same shape
+     * `duesAging()` builds for live invoices, keyed by whatever `$identity`
+     * returns (`[key, name, mobile]`) so linked (by `customer_id`) and
+     * unlinked (by snapshot name/mobile) rows can reuse one accumulator.
+     *
+     * @return array{0: Collection<int, object>, 1: float, 2: float, 3: float, 4: float, 5: int}
+     */
+    private function aggregateHistoricalDocuments(Collection $documents, Carbon $asOf, \Closure $identity): array
+    {
+        $byKey = [];
         $bC = 0.0;
         $b3160 = 0.0;
         $b6190 = 0.0;
         $b90 = 0.0;
-        $docCount = 0;
+        $count = 0;
 
-        foreach ($buckets['additive'] as $doc) {
+        foreach ($documents as $doc) {
             $outstanding = round((float) $doc->outstanding_amount_snapshot, 2);
             $ageDays = max(0, (int) Carbon::parse($doc->document_date)->startOfDay()->diffInDays($asOf, false));
             $bucket = self::bucketFor($ageDays);
 
-            $key = $doc->customer_id;
-            if (! isset($byCustomer[$key])) {
-                $byCustomer[$key] = [
-                    'customer_name' => $doc->customer?->name ?? 'Unknown customer',
-                    'mobile' => $doc->customer?->mobile,
+            [$key, $name, $mobile] = $identity($doc);
+            if (! isset($byKey[$key])) {
+                $byKey[$key] = [
+                    'customer_name' => $name,
+                    'mobile' => $mobile,
                     'invoice_count' => 0,
                     'current' => 0.0,
                     'd3160' => 0.0,
@@ -204,10 +262,10 @@ class ReceivablesService
                     'total' => 0.0,
                 ];
             }
-            $byCustomer[$key]['invoice_count']++;
-            $byCustomer[$key][$bucket] += $outstanding;
-            $byCustomer[$key]['total'] += $outstanding;
-            $docCount++;
+            $byKey[$key]['invoice_count']++;
+            $byKey[$key][$bucket] += $outstanding;
+            $byKey[$key]['total'] += $outstanding;
+            $count++;
 
             match ($bucket) {
                 'current' => $bC += $outstanding,
@@ -217,7 +275,7 @@ class ReceivablesService
             };
         }
 
-        $rows = collect($byCustomer)
+        $rows = collect($byKey)
             ->map(function ($c) {
                 $c['current'] = round($c['current'], 2);
                 $c['d3160'] = round($c['d3160'], 2);
@@ -230,20 +288,7 @@ class ReceivablesService
             ->sortByDesc('total')
             ->values();
 
-        return new DuesAgingData(
-            rows: $rows,
-            bucketCurrent: round($bC, 2),
-            bucket3160: round($b3160, 2),
-            bucket6190: round($b6190, 2),
-            bucket90plus: round($b90, 2),
-            totalOutstanding: round($bC + $b3160 + $b6190 + $b90, 2),
-            customerCount: $rows->count(),
-            invoiceCount: $docCount,
-            asOf: $asOf->format('Y-m-d'),
-            excludedIncludedInOpeningBalanceCount: $buckets['excludedIncludedInOpening']->count(),
-            excludedUnresolvedOverlapCount: $buckets['excludedUnresolved']->count(),
-            excludedUnknownOutstandingCount: $unknownOutstandingCount,
-        );
+        return [$rows, $bC, $b3160, $b6190, $b90, $count];
     }
 
     /**

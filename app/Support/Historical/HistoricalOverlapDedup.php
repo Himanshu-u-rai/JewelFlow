@@ -6,56 +6,55 @@ use App\Models\Historical\HistoricalSalesDocument;
 use Illuminate\Support\Collection;
 
 /**
- * The §4 duplicate/overlap dedup rule (Batch 4 requirements doc §4/§9.2), as a
- * small pure function: documents in, three buckets out. Never re-derives or
- * writes a resolution — that decision was already made (or explicitly left
- * unresolved) at the document level; this only routes each document to the
- * bucket its EXISTING `opening_balance_overlap`/`opening_balance_resolution`
- * columns already dictate.
+ * Classifies historical documents by their `opening_balance_overlap` /
+ * `opening_balance_resolution` state (Batch 4 requirements doc §4/§9.2).
+ * Never re-derives or writes a resolution — purely routes each document to
+ * the bucket its EXISTING columns already dictate.
  *
- * Shared by every read model that must avoid double-counting a historical
- * document already reflected elsewhere (Dues Aging HISTORICAL/COMBINED
- * modes today; anything else that aggregates historical receivables later).
- *
- *   additive                    — no overlap, or overlap resolved SEPARATE.
- *                                  Safe to add to a receivables total.
- *   excludedIncludedInOpening   — overlap resolved INCLUDED: already counted
- *                                  inside CustomerOpeningBalance elsewhere.
- *                                  Adding it again would double the debt.
- *   excludedUnresolved          — overlap flagged but never resolved. Never
- *                                  guessed into either bucket above; excluded
- *                                  pending review (§4 row 4 / §5 test 6).
+ * **Superseded (owner-agreed reporting semantics, see `DuesAgingDataset`
+ * docblock): this is disclosure-only, not exclusion.** HISTORICAL mode never
+ * reads `CustomerOpeningBalance` and never adds one to this report, so an
+ * overlap flag is never grounds to subtract a historical snapshot amount —
+ * every bucket below is counted in full. The classification exists solely so
+ * the report can surface *how many* documents carry each classification as a
+ * visible warning ("this bill may also be reflected in the customer's opening
+ * balance — not netted out here"), never a silent drop and never a guess.
+ * Numeric reconciliation against `CustomerOpeningBalance` remains deferred
+ * (owner decisions §7.5/§7.6, still unresolved) — this class does not attempt
+ * it and nothing reads these buckets to exclude anything.
  */
 final class HistoricalOverlapDedup
 {
     /**
      * @param  iterable<HistoricalSalesDocument>  $documents
-     * @return array{additive: Collection<int, HistoricalSalesDocument>, excludedIncludedInOpening: Collection<int, HistoricalSalesDocument>, excludedUnresolved: Collection<int, HistoricalSalesDocument>}
+     * @return array{noOverlap: Collection<int, HistoricalSalesDocument>, separate: Collection<int, HistoricalSalesDocument>, included: Collection<int, HistoricalSalesDocument>, unresolved: Collection<int, HistoricalSalesDocument>}
      */
     public static function partition(iterable $documents): array
     {
-        $additive = new Collection;
-        $excludedIncludedInOpening = new Collection;
-        $excludedUnresolved = new Collection;
+        $noOverlap = new Collection;
+        $separate = new Collection;
+        $included = new Collection;
+        $unresolved = new Collection;
 
         foreach ($documents as $document) {
             if (! $document->opening_balance_overlap) {
-                $additive->push($document);
+                $noOverlap->push($document);
 
                 continue;
             }
 
             match ($document->opening_balance_resolution) {
-                HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE => $additive->push($document),
-                HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED => $excludedIncludedInOpening->push($document),
-                default => $excludedUnresolved->push($document), // NULL — unresolved, never guessed
+                HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE => $separate->push($document),
+                HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED => $included->push($document),
+                default => $unresolved->push($document), // NULL — flagged but never resolved by an operator
             };
         }
 
         return [
-            'additive' => $additive,
-            'excludedIncludedInOpening' => $excludedIncludedInOpening,
-            'excludedUnresolved' => $excludedUnresolved,
+            'noOverlap' => $noOverlap,
+            'separate' => $separate,
+            'included' => $included,
+            'unresolved' => $unresolved,
         ];
     }
 }
