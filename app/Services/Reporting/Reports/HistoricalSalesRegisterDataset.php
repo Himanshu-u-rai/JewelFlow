@@ -215,7 +215,21 @@ class HistoricalSalesRegisterDataset extends ReportDatasetService
         $q->where('status', $status ?: Doc::STATUS_PUBLISHED);
 
         if ($customer = $request->filter('customer')) {
-            $q->where('customer_id', $customer);
+            // Free-text name/mobile search, not an exact customer_id match —
+            // the register must find BOTH linked customers (via the real
+            // Customer row) and snapshot-only ones (walk-ins with no
+            // customers.id at all), matching §3's "Linked and snapshot-only
+            // customers" filter requirement. ILIKE is Postgres-only, matching
+            // this app's DB (see `reference` search above / jsonb columns).
+            $needle = '%'.addcslashes((string) $customer, '%_\\').'%';
+            $q->where(function ($sub) use ($needle) {
+                $sub->whereHas('customer', function ($c) use ($needle) {
+                    $c->where('mobile', 'ilike', $needle)
+                        ->orWhereRaw("(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) ILIKE ?", [$needle]);
+                })
+                    ->orWhereRaw("customer_snapshot->>'name' ILIKE ?", [$needle])
+                    ->orWhereRaw("customer_snapshot->>'mobile' ILIKE ?", [$needle]);
+            });
         }
 
         if ($reference = $request->filter('reference')) {
@@ -243,7 +257,7 @@ class HistoricalSalesRegisterDataset extends ReportDatasetService
             'document_date' => $document->document_date,
             'original_document_number' => $document->displayNumber(),
             'status' => ucfirst((string) $document->status),
-            'customer' => $document->customer?->full_name
+            'customer' => $document->customer?->name
                 ?: ($document->customer_snapshot['name'] ?? null)
                 ?: 'Walk-in',
             'grand_total' => (float) $document->grand_total,

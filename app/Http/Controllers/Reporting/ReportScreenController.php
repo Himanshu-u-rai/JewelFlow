@@ -139,6 +139,25 @@ class ReportScreenController extends Controller
                 continue;
             }
 
+            // Customer is free-text name/mobile search on the Historical
+            // Register (matches BOTH linked and snapshot-only customers, per
+            // §3 of the Batch 4 requirements). Scoped to this one report
+            // because Sales Register's Customer filter still expects an exact
+            // customer_id (pre-existing, unrelated gap) — a text box there
+            // would silently never match.
+            if ($key === \App\Services\Reporting\Definition\FilterKey::Customer
+                && $definition->key === HistoricalSalesRegisterDataset::KEY) {
+                $out[] = [
+                    'key' => $key->value,
+                    'label' => 'Customer',
+                    'type' => 'text',
+                    'options' => [],
+                    'current' => (string) $request->input($key->value, ''),
+                ];
+
+                continue;
+            }
+
             $options = $this->filterOptions($key, $shopId, $definition);
             if ($options === null) {
                 continue; // no option provider for this key yet — don't render a broken control

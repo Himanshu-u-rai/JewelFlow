@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Reporting;
 
+use App\Models\Customer;
 use App\Models\Historical\HistoricalImportBatch;
 use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\User;
@@ -291,6 +292,77 @@ class HistoricalSalesRegisterTest extends TestCase
 
         $this->assertSame(1, $dataset->section('historical_sales_register')->rowCount());
         $this->assertSame($target->displayNumber(), $rows[0]['original_document_number']);
+    }
+
+    // ---- customer filter: free-text search, both linked and snapshot-only -----
+
+    public function test_customer_filter_finds_a_document_by_snapshot_only_customer_name(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $batch = $this->makeBatch($shop->id);
+
+        $target = $this->makeDocument($shop->id, $batch->id, [
+            'document_date' => '2026-03-10', 'customer_snapshot' => ['name' => 'Ramesh Patel'],
+        ]);
+        $this->makeDocument($shop->id, $batch->id, [
+            'document_date' => '2026-03-11', 'customer_snapshot' => ['name' => 'Suresh Shah'],
+        ]);
+
+        $request = $this->request($shop->id, [
+            'period' => ['from' => '2026-03-01', 'to' => '2026-03-31'],
+            'customer' => 'ramesh',
+        ]);
+        $dataset = $this->build($shop->id, $request);
+        $rows = $dataset->section('historical_sales_register')->rows;
+
+        $this->assertSame(1, $dataset->section('historical_sales_register')->rowCount());
+        $this->assertSame($target->displayNumber(), $rows[0]['original_document_number']);
+    }
+
+    public function test_customer_filter_finds_a_document_by_linked_customer_name_or_mobile(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $batch = $this->makeBatch($shop->id);
+
+        $customer = TenantContext::runFor($shop->id, fn () => Customer::create([
+            'first_name' => 'Suresh', 'last_name' => 'Shah', 'mobile' => '9876543210',
+        ]));
+        $target = $this->makeDocument($shop->id, $batch->id, [
+            'document_date' => '2026-03-10', 'customer_id' => $customer->id, 'customer_snapshot' => [],
+        ]);
+        $this->makeDocument($shop->id, $batch->id, ['document_date' => '2026-03-11']); // Ramesh Patel snapshot, unrelated
+
+        foreach (['suresh', '9876543210'] as $needle) {
+            $request = $this->request($shop->id, [
+                'period' => ['from' => '2026-03-01', 'to' => '2026-03-31'],
+                'customer' => $needle,
+            ]);
+            $dataset = $this->build($shop->id, $request);
+            $rows = $dataset->section('historical_sales_register')->rows;
+
+            $this->assertSame(1, $dataset->section('historical_sales_register')->rowCount(), "search '{$needle}' failed");
+            $this->assertSame($target->displayNumber(), $rows[0]['original_document_number']);
+        }
+    }
+
+    public function test_linked_customers_real_name_renders_in_the_customer_column(): void
+    {
+        [, $shop] = $this->createManufacturerTenant();
+        $batch = $this->makeBatch($shop->id);
+
+        $customer = TenantContext::runFor($shop->id, fn () => Customer::create([
+            'first_name' => 'Suresh', 'last_name' => 'Shah', 'mobile' => '9876543210',
+        ]));
+        $this->makeDocument($shop->id, $batch->id, [
+            'document_date' => '2026-03-10', 'customer_id' => $customer->id,
+            'customer_snapshot' => ['name' => 'Stale Snapshot Name'],
+        ]);
+
+        $request = $this->request($shop->id, ['period' => ['from' => '2026-03-01', 'to' => '2026-03-31']]);
+        $dataset = $this->build($shop->id, $request);
+
+        // The linked customer's real name wins over the (possibly stale) snapshot.
+        $this->assertSame('Suresh Shah', $dataset->section('historical_sales_register')->rows[0]['customer']);
     }
 
     // ---- §9.1/§9.3: an all-unknown amount column reports "no known amounts", -

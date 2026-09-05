@@ -179,7 +179,7 @@ class SalesRegisterDataset extends ReportDatasetService
         $all = [
             'invoice_no' => $invoice->invoice_number,
             'date' => $invoice->finalized_at ?? $invoice->created_at,
-            'customer' => $invoice->customer?->full_name ?: 'Walk-in',
+            'customer' => $invoice->customer?->name ?: 'Walk-in',
             'taxable' => (float) $invoice->subtotal,
             'cgst' => $cgst,
             'sgst' => $sgst,
