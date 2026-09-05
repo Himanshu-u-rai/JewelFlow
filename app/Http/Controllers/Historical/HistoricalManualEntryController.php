@@ -192,7 +192,17 @@ class HistoricalManualEntryController extends Controller
                 $request->payments(),
             );
         } catch (Throwable $e) {
-            return $this->backToForm()->with('error', $e->getMessage());
+            // previewManual() never writes to the database — any Throwable here is a
+            // genuine computation fault, never a deliberate business refusal (those
+            // are collected as $messages, not thrown). $e->getMessage() can carry a
+            // raw SQLSTATE/query/bindings for the rare DB-backed lookup (duplicate
+            // detection) inside it, so it goes to the log, never to the flash.
+            report($e);
+
+            return $this->backToForm()->with(
+                'error',
+                'This bill could not be calculated. Check the entered values and try again.'
+            );
         }
 
         // Flashes the submitted input into the session so the same old()-backed
@@ -280,7 +290,16 @@ class HistoricalManualEntryController extends Controller
                 $request->payments(),
             );
         } catch (Throwable $e) {
-            return $this->backToForm()->with('error', $e->getMessage());
+            // storeManual() throws only for a genuine fault (e.g. a DB error) — a
+            // deliberate business refusal is returned as $result['messages'], not
+            // thrown. $e->getMessage() can be a raw SQLSTATE/query/bindings string,
+            // so it goes to the log, never to the flashed, user-facing error.
+            report($e);
+
+            return $this->backToForm()->with(
+                'error',
+                'This bill could not be saved and nothing was recorded. Try again, or contact support if the problem continues.'
+            );
         }
 
         $messages = $result['messages'];
