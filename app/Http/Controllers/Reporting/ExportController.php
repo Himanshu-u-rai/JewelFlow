@@ -14,6 +14,7 @@ use App\Services\Reporting\ExportAuditService;
 use App\Services\Reporting\ExportMode;
 use App\Services\Reporting\ExportPipeline;
 use App\Services\Reporting\ExportSizeRouter;
+use App\Services\Reporting\FilterControlResolver;
 use App\Services\Reporting\Filters\DatePreset;
 use App\Services\Reporting\Filters\FilterResolver;
 use App\Services\Reporting\Filters\ResolvedPeriod;
@@ -44,6 +45,7 @@ class ExportController extends Controller
         private readonly ExportSizeRouter $sizeRouter,
         private readonly ExportPipeline $pipeline,
         private readonly ExportAuditService $audit,
+        private readonly FilterControlResolver $filterControls,
     ) {
     }
 
@@ -81,6 +83,10 @@ class ExportController extends Controller
             'canManagePresets' => $canManagePresets,
             'savedPresets' => $savedPresets,
             'appliedPreset' => $applied,
+            // Same controls the screen renders (§A "consistent screen/export
+            // filtering") — prefilled from whatever query string got the user
+            // here (e.g. the screen's Export link, see generic-screen.blade.php).
+            'filterControls' => $this->filterControls->forReport($definition, (int) $user->shop_id, request()),
         ]));
     }
 

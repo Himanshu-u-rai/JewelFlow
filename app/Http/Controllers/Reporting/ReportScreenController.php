@@ -3,18 +3,16 @@
 namespace App\Http\Controllers\Reporting;
 
 use App\Http\Controllers\Controller;
-use App\Models\Historical\HistoricalSalesDocument;
 use App\Services\Reporting\ColumnPolicy;
 use App\Services\Reporting\Dataset\ReportRequest;
 use App\Services\Reporting\Definition\ExportFormat;
-use App\Services\Reporting\Definition\ReportDefinition;
 use App\Services\Reporting\Definition\ReportProfile;
 use App\Services\Reporting\Definition\ReportRegistry;
+use App\Services\Reporting\FilterControlResolver;
 use App\Services\Reporting\Filters\DatePreset;
 use App\Services\Reporting\Filters\FilterResolver;
 use App\Services\Reporting\ProvenanceStamp;
 use App\Services\Reporting\Render\ScreenRenderer;
-use App\Services\Reporting\Reports\HistoricalSalesRegisterDataset;
 use App\Services\Reporting\WatermarkPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -36,6 +34,7 @@ class ReportScreenController extends Controller
         private readonly WatermarkPolicy $watermarks,
         private readonly ProvenanceStamp $provenance,
         private readonly ScreenRenderer $screen,
+        private readonly FilterControlResolver $filterControlResolver,
     ) {
     }
 
@@ -103,145 +102,8 @@ class ReportScreenController extends Controller
             'profile' => $profile,
             'isRigid' => $isRigid,
             'canExportSensitive' => $canSensitive,
-            'filterControls' => $this->filterControls($definition, (int) $user->shop_id, $request),
+            'filterControls' => $this->filterControlResolver->forReport($definition, (int) $user->shop_id, $request),
         ]);
-    }
-
-    /**
-     * Build the renderable (non-date) filter dropdowns a report declared. The
-     * framework supports per-report filters at the data layer; this surfaces
-     * them on the screen as <select>s with their option lists + current value.
-     * Date (Period/AsOf) and reserved hooks are excluded — date has its own
-     * preset control. Options are read-only lookups.
-     *
-     * @return array<int, array{key:string,label:string,type:string,options:array<int,array{value:string,label:string}>,current:string}>
-     */
-    private function filterControls(ReportDefinition $definition, int $shopId, Request $request): array
-    {
-        $out = [];
-        foreach ($definition->filters as $filter) {
-            $key = $filter->key;
-            if (! $filter->isRendered() || $key->supportsFyPresets()) {
-                continue; // skip date-style + reserved-hook filters
-            }
-
-            // Reference is free-text search (original invoice/document number),
-            // not an enumerable option list — render a text box instead of a <select>.
-            if ($key === \App\Services\Reporting\Definition\FilterKey::Reference) {
-                $out[] = [
-                    'key' => $key->value,
-                    'label' => 'Reference',
-                    'type' => 'text',
-                    'options' => [],
-                    'current' => (string) $request->input($key->value, ''),
-                ];
-
-                continue;
-            }
-
-            // Customer is free-text name/mobile search on the Historical
-            // Register (matches BOTH linked and snapshot-only customers, per
-            // §3 of the Batch 4 requirements). Scoped to this one report
-            // because Sales Register's Customer filter still expects an exact
-            // customer_id (pre-existing, unrelated gap) — a text box there
-            // would silently never match.
-            if ($key === \App\Services\Reporting\Definition\FilterKey::Customer
-                && $definition->key === HistoricalSalesRegisterDataset::KEY) {
-                $out[] = [
-                    'key' => $key->value,
-                    'label' => 'Customer',
-                    'type' => 'text',
-                    'options' => [],
-                    'current' => (string) $request->input($key->value, ''),
-                ];
-
-                continue;
-            }
-
-            $options = $this->filterOptions($key, $shopId, $definition);
-            if ($options === null) {
-                continue; // no option provider for this key yet — don't render a broken control
-            }
-
-            $out[] = [
-                'key'     => $key->value,
-                'label'   => \Illuminate\Support\Str::headline(str_replace(['cash_', '_'], ['', ' '], $key->value)),
-                'type'    => 'select',
-                'options' => $options,
-                'current' => (string) $request->input($key->value, ''),
-            ];
-        }
-
-        return $out;
-    }
-
-    /**
-     * Option list for a renderable filter key, or null if unsupported.
-     *
-     * @return array<int, array{value:string,label:string}>|null
-     */
-    private function filterOptions(\App\Services\Reporting\Definition\FilterKey $key, int $shopId, ReportDefinition $definition): ?array
-    {
-        // Status is meaningful per-report (document status here vs invoice/payment
-        // status elsewhere) — the Historical Register is the only report so far
-        // that needs it surfaced as a discoverable dropdown (§3 audit trail: void/
-        // draft/superseded are otherwise only reachable via a hand-typed query param).
-        if ($key === \App\Services\Reporting\Definition\FilterKey::Status && $definition->key === HistoricalSalesRegisterDataset::KEY) {
-            return $this->staticOptions([
-                HistoricalSalesDocument::STATUS_PUBLISHED => 'Published',
-                HistoricalSalesDocument::STATUS_DRAFT => 'Draft',
-                HistoricalSalesDocument::STATUS_VOID => 'Void',
-                HistoricalSalesDocument::STATUS_SUPERSEDED => 'Superseded',
-            ]);
-        }
-
-        return match ($key) {
-            \App\Services\Reporting\Definition\FilterKey::PaymentMode => $this->staticOptions([
-                'cash' => 'Cash', 'upi' => 'UPI', 'bank' => 'Bank', 'card' => 'Card', 'wallet' => 'Wallet', 'other' => 'Other',
-            ]),
-            \App\Services\Reporting\Definition\FilterKey::CashType => $this->staticOptions([
-                'in' => 'Money in', 'out' => 'Money out',
-            ]),
-            \App\Services\Reporting\Definition\FilterKey::CashSource => $this->distinctCashSources($shopId),
-            \App\Services\Reporting\Definition\FilterKey::Operator => $this->shopOperators($shopId),
-            default => null,
-        };
-    }
-
-    /** @param array<string,string> $map */
-    private function staticOptions(array $map): array
-    {
-        $out = [];
-        foreach ($map as $value => $label) {
-            $out[] = ['value' => $value, 'label' => $label];
-        }
-
-        return $out;
-    }
-
-    /** Distinct source_type values present in this shop's cash ledger. */
-    private function distinctCashSources(int $shopId): array
-    {
-        return \Illuminate\Support\Facades\DB::table('cash_transactions')
-            ->where('shop_id', $shopId)
-            ->whereNotNull('source_type')
-            ->distinct()
-            ->orderBy('source_type')
-            ->pluck('source_type')
-            ->map(fn ($s) => ['value' => (string) $s, 'label' => \Illuminate\Support\Str::headline(str_replace('_', ' ', (string) $s))])
-            ->values()
-            ->all();
-    }
-
-    /** Active users in this shop (operator filter). */
-    private function shopOperators(int $shopId): array
-    {
-        return \App\Models\User::where('shop_id', $shopId)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn ($u) => ['value' => (string) $u->id, 'label' => (string) $u->name])
-            ->values()
-            ->all();
     }
 
     /**
