@@ -18,6 +18,8 @@ use App\Support\Historical\HistoricalManualPublishRejected;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Throwable;
 
@@ -47,6 +49,32 @@ class HistoricalManualEntryController extends Controller
     private function backToForm(): RedirectResponse
     {
         return redirect()->route('historical.manual.create')->withInput();
+    }
+
+    /**
+     * The one place a caught Throwable is turned into a log entry for this
+     * controller. A plain report($e)/Log with $e->getMessage() is unsafe here:
+     * for a QueryException, Laravel bakes the raw SQL text AND bound parameter
+     * VALUES (customer name/mobile/PAN/address for this form) into the message
+     * itself, and bootstrap/app.php wires Sentry to capture every report($e),
+     * shipping that same raw message off-box. So this logs only the exception's
+     * class/file/line plus a fresh correlation id — never ->getMessage(), and
+     * never the exception object itself — which is enough to find the fault in
+     * the log without repeating the SQLSTATE[42703] PII leak this fix closes.
+     */
+    private function logSafeFault(Throwable $e, string $action, int $shopId): string
+    {
+        $correlationId = (string) Str::uuid();
+
+        Log::error("Historical manual entry: {$action} failed", [
+            'shop_id' => $shopId,
+            'exception_class' => get_class($e),
+            'exception_file' => $e->getFile(),
+            'exception_line' => $e->getLine(),
+            'correlation_id' => $correlationId,
+        ]);
+
+        return $correlationId;
     }
 
     public function create(): View
@@ -196,8 +224,9 @@ class HistoricalManualEntryController extends Controller
             // genuine computation fault, never a deliberate business refusal (those
             // are collected as $messages, not thrown). $e->getMessage() can carry a
             // raw SQLSTATE/query/bindings for the rare DB-backed lookup (duplicate
-            // detection) inside it, so it goes to the log, never to the flash.
-            report($e);
+            // detection) inside it, so it is never logged verbatim or sent to
+            // report()/Sentry — see logSafeFault().
+            $this->logSafeFault($e, 'preview', (int) $shop->id);
 
             return $this->backToForm()->with(
                 'error',
@@ -293,8 +322,9 @@ class HistoricalManualEntryController extends Controller
             // storeManual() throws only for a genuine fault (e.g. a DB error) — a
             // deliberate business refusal is returned as $result['messages'], not
             // thrown. $e->getMessage() can be a raw SQLSTATE/query/bindings string,
-            // so it goes to the log, never to the flashed, user-facing error.
-            report($e);
+            // so it is never logged verbatim or sent to report()/Sentry — see
+            // logSafeFault().
+            $this->logSafeFault($e, 'store', (int) $shop->id);
 
             return $this->backToForm()->with(
                 'error',
@@ -352,9 +382,11 @@ class HistoricalManualEntryController extends Controller
      */
     private function storeAndPublish(StoreManualHistoricalRequest $request): RedirectResponse
     {
+        $shop = $request->user()->shop;
+
         try {
             $result = $this->imports->publishManual(
-                $request->user()->shop,
+                $shop,
                 $request->headerFields(),
                 $request->lines(),
                 (int) $request->user()->id,
@@ -363,9 +395,11 @@ class HistoricalManualEntryController extends Controller
                 $request->payments(),
             );
         } catch (HistoricalManualPublishRejected $e) {
+            // Hand-authored, deliberate business refusal — safe to show verbatim.
             return $this->backToForm()->with('error', $e->getMessage());
         } catch (Throwable $e) {
-            report($e);
+            // Never logged verbatim or sent to report()/Sentry — see logSafeFault().
+            $this->logSafeFault($e, 'publish', (int) $shop->id);
 
             return $this->backToForm()->with(
                 'error',

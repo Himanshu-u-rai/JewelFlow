@@ -713,21 +713,6 @@ class HistoricalImportService
      */
     public function storeManual(Shop $shop, array $header, array $lines, int $actorId, array $options = [], array $payments = []): array
     {
-        $batch = new HistoricalImportBatch;
-        $batch->forceFill([
-            'shop_id' => $shop->id,
-            'label' => 'Manual entry — '.($header['original_document_number'] ?? 'unnumbered'),
-            'source_system' => $options['source_system'] ?? self::SOURCE_MANUAL,
-            'status' => HistoricalImportBatch::STATUS_DRAFT,
-            'created_by' => $actorId,
-            'cutover_date' => $options['cutover_date'] ?? null,
-            'layout_type' => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
-            // The manual form uses a native date control, which submits ISO. There
-            // is no ambiguity to resolve and therefore no format to choose.
-            'date_format' => HistoricalDateParser::FORMAT_ISO,
-            'row_count' => 1,
-        ])->save();
-
         $calculated = $this->manualCalculations->prepare($header, $lines);
         $result = $this->normalizer->normalize(
             $shop,
@@ -741,7 +726,32 @@ class HistoricalImportService
         $attributes = array_replace($result['attributes'], $calculated['document_attributes']);
         $attributes = $this->applyPaymentSettlement($attributes, $payments, $options['paid_amount_mode'] ?? null, $messages);
 
-        $document = DB::transaction(function () use ($batch, $attributes, $normalizedLines, $messages, $actorId, $payments, $options): ?HistoricalSalesDocument {
+        // The batch row's own creation used to happen here, BEFORE this
+        // transaction opened. A fault thrown by persistDraft()/linkCustomer()
+        // below rolled the document/lines/payments back correctly but left
+        // that already-committed batch row behind as an orphaned, permanent
+        // status=draft/no-document stray (discovered auditing the manual-entry
+        // exception-disclosure fix). Creating it INSIDE this transaction closes
+        // that gap: a fault now unwinds the batch too. Laravel/Postgres nest
+        // this as a savepoint when storeManual() itself runs inside
+        // publishManual()'s outer transaction, so that path — already provably
+        // atomic — is unchanged.
+        [$batch, $document] = DB::transaction(function () use ($shop, $header, $options, $actorId, $attributes, $normalizedLines, $messages, $payments): array {
+            $batch = new HistoricalImportBatch;
+            $batch->forceFill([
+                'shop_id' => $shop->id,
+                'label' => 'Manual entry — '.($header['original_document_number'] ?? 'unnumbered'),
+                'source_system' => $options['source_system'] ?? self::SOURCE_MANUAL,
+                'status' => HistoricalImportBatch::STATUS_DRAFT,
+                'created_by' => $actorId,
+                'cutover_date' => $options['cutover_date'] ?? null,
+                'layout_type' => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
+                // The manual form uses a native date control, which submits ISO. There
+                // is no ambiguity to resolve and therefore no format to choose.
+                'date_format' => HistoricalDateParser::FORMAT_ISO,
+                'row_count' => 1,
+            ])->save();
+
             $document = $this->persistDraft(
                 $batch,
                 $attributes,
@@ -756,7 +766,7 @@ class HistoricalImportService
                 $document = $this->lifecycle->linkCustomer($document, (int) $options['customer_id']);
             }
 
-            return $document;
+            return [$batch, $document];
         });
 
         $batch->forceFill([

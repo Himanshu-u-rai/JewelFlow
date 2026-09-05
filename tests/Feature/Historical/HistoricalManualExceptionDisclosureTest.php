@@ -146,17 +146,27 @@ class HistoricalManualExceptionDisclosureTest extends TestCase
      * The real save handler, exercised directly (bypassing the FormRequest so a
      * genuinely nonexistent customer_id reaches the service, the same way a
      * DB-level fault would mid-transaction) — proves storeManual()'s
-     * DB::transaction still leaves no partial document/line/payment behind
-     * when a fault strikes after persistDraft() but before the method returns.
+     * DB::transaction still leaves no partial document/line/payment/batch/
+     * customer behind when a fault strikes after persistDraft() but before
+     * the method returns.
+     *
+     * The `historical_import_batches` count is the regression check for the
+     * orphan-batch defect found while auditing this same fix: the batch row
+     * used to be created and saved BEFORE this transaction opened, so a fault
+     * inside it rolled the document/lines/payments back but left the batch
+     * behind forever at status=draft with no document. storeManual() now
+     * creates the batch inside the same transaction.
      */
     public function test_a_fault_mid_transaction_leaves_no_partial_records(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
 
         $before = [
+            'historical_import_batches' => DB::table('historical_import_batches')->count(),
             'historical_sales_documents' => DB::table('historical_sales_documents')->count(),
             'historical_sales_lines' => DB::table('historical_sales_lines')->count(),
             'historical_sales_payments' => DB::table('historical_sales_payments')->count(),
+            'customers' => DB::table('customers')->count(),
         ];
 
         $service = app(HistoricalImportService::class);
@@ -186,11 +196,13 @@ class HistoricalManualExceptionDisclosureTest extends TestCase
         }
 
         $after = [
+            'historical_import_batches' => DB::table('historical_import_batches')->count(),
             'historical_sales_documents' => DB::table('historical_sales_documents')->count(),
             'historical_sales_lines' => DB::table('historical_sales_lines')->count(),
             'historical_sales_payments' => DB::table('historical_sales_payments')->count(),
+            'customers' => DB::table('customers')->count(),
         ];
 
-        $this->assertSame($before, $after, 'A mid-transaction fault left partial historical rows behind.');
+        $this->assertSame($before, $after, 'A mid-transaction fault left partial historical rows (including an orphaned batch) behind.');
     }
 }
