@@ -71,9 +71,9 @@ class FilterControlResolver
             }
 
             $out[] = [
-                'key'     => $key->value,
-                'label'   => \Illuminate\Support\Str::headline(str_replace(['cash_', '_'], ['', ' '], $key->value)),
-                'type'    => 'select',
+                'key' => $key->value,
+                'label' => \Illuminate\Support\Str::headline(str_replace(['cash_', '_'], ['', ' '], $key->value)),
+                'type' => 'select',
                 'options' => $options,
                 'current' => (string) $request->input($key->value, ''),
             ];
@@ -111,11 +111,13 @@ class FilterControlResolver
             ]),
             FilterKey::CashSource => $this->distinctCashSources($shopId),
             FilterKey::Operator => $this->shopOperators($shopId),
-            // `combined` deliberately not offered — §7.5/§7.6 leave it blocked
-            // (see DuesAgingDataset's docblock); unrecognised/hand-typed
-            // values fall back to `live` at the dataset layer regardless.
+            // All three modes offered (owner-agreed reporting semantics — see
+            // DuesAgingDataset's docblock). §7.5/§7.6 numeric reconciliation
+            // remains deferred but no longer blocks the Combined presentation.
+            // An unrecognised/hand-typed value is rejected by ExportRequest /
+            // ReportScreenController validation, never silently relabelled.
             FilterKey::SalesSource => $this->staticOptions([
-                'live' => 'Live', 'historical' => 'Historical',
+                'live' => 'Live', 'historical' => 'Historical', 'combined' => 'Combined',
             ]),
             default => null,
         };

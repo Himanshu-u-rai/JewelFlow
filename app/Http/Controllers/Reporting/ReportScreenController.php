@@ -17,6 +17,7 @@ use App\Services\Reporting\WatermarkPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * Generic interactive screen for ANY registered spine report (frozen §3.1) —
@@ -35,8 +36,7 @@ class ReportScreenController extends Controller
         private readonly ProvenanceStamp $provenance,
         private readonly ScreenRenderer $screen,
         private readonly FilterControlResolver $filterControlResolver,
-    ) {
-    }
+    ) {}
 
     public function show(Request $request, string $report): View
     {
@@ -46,6 +46,15 @@ class ReportScreenController extends Controller
         abort_unless($user !== null && $user->can($definition->permissions->effectiveViewGate()), 403);
         if ($definition->permissions->familyGate !== null) {
             abort_unless($user->can($definition->permissions->familyGate), 403);
+        }
+
+        // Closed vocabulary (owner-agreed reporting semantics) — an explicit
+        // unsupported sales_source is rejected outright, never silently
+        // relabelled to `live` (PresetController::validatePayload() convention).
+        if ($request->filled('sales_source')) {
+            $request->validate([
+                'sales_source' => ['string', Rule::in(['live', 'historical', 'combined'])],
+            ]);
         }
 
         $isRigid = $definition->classification->isRigid();

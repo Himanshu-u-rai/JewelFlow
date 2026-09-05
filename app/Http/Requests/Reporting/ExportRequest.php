@@ -90,6 +90,10 @@ class ExportRequest extends FormRequest
             'days_overdue' => ['nullable', 'integer', 'min:0'],
             'age_band' => ['nullable', 'string', 'max:32'],
             'reference' => ['nullable', 'string', 'max:64'],
+            // Closed vocabulary (owner-agreed reporting semantics) — an explicit
+            // unsupported value is rejected outright (422), never silently
+            // relabelled to `live` at the dataset layer.
+            'sales_source' => ['nullable', 'string', Rule::in(['live', 'historical', 'combined'])],
         ];
     }
 
