@@ -14,10 +14,13 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * Batch 4 — `ReceivablesService::historicalDuesAging()` (§6 steps 2-4, §9.7.2,
- * §5 tests 2/3/10). This is the query alone: published-only, linked-customer-
- * only, document_date-aged, §4-deduped. No mode selector, no Combined mode —
- * those are separate, later wiring (§7.5/§7.6 leave Combined blocked).
+ * Batch 4 — `ReceivablesService::historicalDuesAging()` (owner-agreed reporting
+ * semantics, superseding the earlier §7.5/§7.6-blocks-exclusion design; see
+ * `DuesAgingDataset`'s class docblock). This is the query alone: published-
+ * only, document_date-aged, every overlap classification counted IN FULL
+ * (disclosure, never subtraction), unlinked/snapshot-only customers surfaced
+ * in their own bucket rather than dropped, unknown outstanding disclosed as
+ * incomplete rather than coerced to zero.
  */
 class HistoricalDuesAgingQueryTest extends TestCase
 {
@@ -78,10 +81,9 @@ class HistoricalDuesAgingQueryTest extends TestCase
         return $document;
     }
 
-    private function query(int $shopId): \App\Reporting\Data\DuesAgingData
+    private function query(int $shopId, ?Carbon $asOf = null): \App\Reporting\Data\DuesAgingData
     {
-        return TenantContext::runFor($shopId, fn () => app(ReceivablesService::class)->historicalDuesAging($shopId)
-        );
+        return TenantContext::runFor($shopId, fn () => app(ReceivablesService::class)->historicalDuesAging($shopId, $asOf));
     }
 
     public function test_historical_mode_dues_aging_excludes_draft_void_and_superseded_documents(): void
@@ -101,19 +103,27 @@ class HistoricalDuesAgingQueryTest extends TestCase
         $this->assertSame(1, $data->invoiceCount);
     }
 
-    public function test_historical_mode_dues_aging_excludes_documents_with_no_linked_customer(): void
+    /** Snapshot-only (unlinked) customers are surfaced in their own section — never dropped, never merged into a linked customer's row. */
+    public function test_unlinked_customers_are_surfaced_in_their_own_section_not_merged_or_dropped(): void
     {
         [, $shop] = $this->createRetailerTenant();
         $c = $this->createCustomer($shop->id);
         $batch = $this->makeBatch($shop->id);
 
         $this->makeDocument($shop->id, $batch->id, ['customer_id' => $c->id, 'outstanding_amount_snapshot' => 1000]);
-        $this->makeDocument($shop->id, $batch->id, ['customer_id' => null, 'outstanding_amount_snapshot' => 9000]);
+        $this->makeDocument($shop->id, $batch->id, [
+            'customer_id' => null, 'outstanding_amount_snapshot' => 9000,
+            'customer_snapshot' => ['name' => 'Walk-in Suresh', 'mobile' => '9998887770'],
+        ]);
 
         $data = $this->query($shop->id);
 
-        $this->assertEqualsWithDelta(1000.0, $data->totalOutstanding, 0.01, 'snapshot-only walk-in cannot be chased inside JewelFlow');
+        $this->assertEqualsWithDelta(1000.0, $data->totalOutstanding, 0.01, 'linked-customer total excludes the unlinked document');
         $this->assertSame(1, $data->invoiceCount);
+        $this->assertSame(1, $data->unlinkedDocumentCount, 'the walk-in document is counted, not silently dropped');
+        $this->assertCount(1, $data->unlinkedRows);
+        $this->assertSame('Walk-in Suresh', $data->unlinkedRows->first()->customer_name);
+        $this->assertEqualsWithDelta(9000.0, $data->unlinkedRows->first()->total, 0.01);
     }
 
     public function test_null_outstanding_snapshot_is_disclosed_not_zero_and_excluded_from_sums(): void
@@ -129,7 +139,7 @@ class HistoricalDuesAgingQueryTest extends TestCase
 
         $this->assertEqualsWithDelta(1000.0, $data->totalOutstanding, 0.01, 'unknown outstanding never coerced to 0');
         $this->assertSame(1, $data->invoiceCount);
-        $this->assertSame(1, $data->excludedUnknownOutstandingCount);
+        $this->assertSame(1, $data->unknownOutstandingCount, 'a NULL outstanding is disclosed as unknown, making the total incomplete — not excluded silently');
     }
 
     public function test_fully_settled_document_is_not_a_due(): void
@@ -144,38 +154,42 @@ class HistoricalDuesAgingQueryTest extends TestCase
 
         $this->assertEqualsWithDelta(0.0, $data->totalOutstanding, 0.01);
         $this->assertSame(0, $data->invoiceCount);
-        $this->assertSame(0, $data->excludedUnknownOutstandingCount, 'a known zero is not an unknown');
+        $this->assertSame(0, $data->unknownOutstandingCount, 'a known zero is not an unknown');
     }
 
-    public function test_dedup_rule_additive_states_are_added_and_ambiguous_states_are_excluded_and_disclosed(): void
+    /**
+     * Owner-agreed reversal of the old exclusion design: EVERY overlap
+     * classification is counted in full — `included_in_opening_balance` and
+     * unresolved overlaps are no longer subtracted, only disclosed via the
+     * classification counters. This report reads no `CustomerOpeningBalance`,
+     * so there is nothing to double-count against.
+     */
+    public function test_overlap_flagged_documents_are_counted_in_full_and_classified_for_disclosure_only(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
         $c = $this->createCustomer($shop->id);
         $batch = $this->makeBatch($shop->id);
 
-        // Row 1 (§4): no overlap at all — additive.
+        // Row 1: no overlap at all.
         $this->makeDocument($shop->id, $batch->id, [
             'customer_id' => $c->id, 'outstanding_amount_snapshot' => 1000,
             'opening_balance_overlap' => false,
         ]);
-        // Row 2 (§4): overlap, resolved SEPARATE — additive. (The check
-        // constraint on `historical_sales_documents` requires resolved_by/at
-        // whenever a resolution is set — mirrors a real operator decision.)
+        // Row 2: overlap, resolved SEPARATE.
         $this->makeDocument($shop->id, $batch->id, [
             'customer_id' => $c->id, 'outstanding_amount_snapshot' => 2000,
             'opening_balance_overlap' => true,
             'opening_balance_resolution' => HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE,
             'opening_balance_resolved_by' => $user->id, 'opening_balance_resolved_at' => now(),
         ]);
-        // Row 3 (§4): overlap, resolved INCLUDED — already counted in
-        // CustomerOpeningBalance elsewhere; excluded, never added again.
+        // Row 3: overlap, resolved INCLUDED — historically excluded, now counted in full.
         $this->makeDocument($shop->id, $batch->id, [
             'customer_id' => $c->id, 'outstanding_amount_snapshot' => 4000,
             'opening_balance_overlap' => true,
             'opening_balance_resolution' => HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED,
             'opening_balance_resolved_by' => $user->id, 'opening_balance_resolved_at' => now(),
         ]);
-        // Row 4 (§4): overlap, UNRESOLVED — never guessed into a total.
+        // Row 4: overlap, UNRESOLVED — historically excluded, now counted in full.
         $this->makeDocument($shop->id, $batch->id, [
             'customer_id' => $c->id, 'outstanding_amount_snapshot' => 8000,
             'opening_balance_overlap' => true,
@@ -184,10 +198,11 @@ class HistoricalDuesAgingQueryTest extends TestCase
 
         $data = $this->query($shop->id);
 
-        $this->assertEqualsWithDelta(3000.0, $data->totalOutstanding, 0.01, 'only rows 1+2 (1000+2000) are additive');
-        $this->assertSame(2, $data->invoiceCount);
-        $this->assertSame(1, $data->excludedIncludedInOpeningBalanceCount);
-        $this->assertSame(1, $data->excludedUnresolvedOverlapCount);
+        $this->assertEqualsWithDelta(15000.0, $data->totalOutstanding, 0.01, 'all four rows (1000+2000+4000+8000) are counted — overlap is disclosure, not exclusion');
+        $this->assertSame(4, $data->invoiceCount);
+        $this->assertSame(1, $data->separateFromOpeningBalanceCount);
+        $this->assertSame(1, $data->includedInOpeningBalanceCount);
+        $this->assertSame(1, $data->unresolvedOverlapCount);
     }
 
     public function test_buckets_by_document_date_age(): void
@@ -202,8 +217,7 @@ class HistoricalDuesAgingQueryTest extends TestCase
         $this->makeDocument($shop->id, $batch->id, ['customer_id' => $c->id, 'outstanding_amount_snapshot' => 3000, 'document_date' => $asOf->copy()->subDays(75)->toDateString()]);
         $this->makeDocument($shop->id, $batch->id, ['customer_id' => $c->id, 'outstanding_amount_snapshot' => 4000, 'document_date' => $asOf->copy()->subDays(400)->toDateString()]);
 
-        $data = TenantContext::runFor($shop->id, fn () => app(ReceivablesService::class)->historicalDuesAging($shop->id, $asOf)
-        );
+        $data = $this->query($shop->id, $asOf);
 
         $this->assertEqualsWithDelta(1000.0, $data->bucketCurrent, 0.01);
         $this->assertEqualsWithDelta(2000.0, $data->bucket3160, 0.01);
@@ -225,5 +239,23 @@ class HistoricalDuesAgingQueryTest extends TestCase
 
         $this->assertEqualsWithDelta(0.0, $dataB->totalOutstanding, 0.01);
         $this->assertSame(0, $dataB->invoiceCount);
+        $this->assertCount(0, $dataB->unlinkedRows);
+    }
+
+    public function test_tenant_isolation_unlinked_customers_are_also_shop_scoped(): void
+    {
+        [, $shopA] = $this->createRetailerTenant();
+        [, $shopB] = $this->createRetailerTenant();
+        $batchA = $this->makeBatch($shopA->id);
+
+        $this->makeDocument($shopA->id, $batchA->id, [
+            'customer_id' => null, 'outstanding_amount_snapshot' => 5000,
+            'customer_snapshot' => ['name' => 'Shop A Walk-in'],
+        ]);
+
+        $dataB = $this->query($shopB->id);
+
+        $this->assertCount(0, $dataB->unlinkedRows);
+        $this->assertSame(0, $dataB->unlinkedDocumentCount);
     }
 }

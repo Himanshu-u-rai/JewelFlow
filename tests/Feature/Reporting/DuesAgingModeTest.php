@@ -24,11 +24,16 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * Batch 4 §6 steps 2/4, §9.7.2 — the `sales_source` mode selector wired into
- * `DuesAgingDataset`. Covers: LIVE stays byte-identical (§5 test 1), HISTORICAL
- * mode actually calls the historical query and renders the disclosure notes
- * section, and any unrecognised value (including `combined`, still blocked by
- * §7.5/§7.6) falls back to LIVE rather than guessing.
+ * Batch 4 — the `sales_source` mode selector wired into `DuesAgingDataset`
+ * (owner-agreed reporting semantics, superseding the earlier "combined is
+ * blocked, falls back to live" design; see the dataset's class docblock).
+ * Covers: LIVE stays byte-identical, HISTORICAL renders "Unpaid as Recorded"
+ * with overlap classifications disclosed (never subtracted) and unlinked
+ * customers in their own section, COMBINED renders Live and Historical as two
+ * independent sections with separate subtotals and no grand total, and any
+ * unrecognised value falls back to LIVE at the dataset layer as defense in
+ * depth (the real reject-don't-guess gate is upstream input validation,
+ * covered at the HTTP layer in DuesAgingHttpModeTest).
  */
 class DuesAgingModeTest extends TestCase
 {
@@ -145,7 +150,7 @@ class DuesAgingModeTest extends TestCase
         return TenantContext::runFor($shopId, fn () => app(DuesAgingDataset::class)->build($request, $this->meta()));
     }
 
-    /** §5 test 1: no `sales_source` filter at all → identical to pre-Batch-4 LIVE behavior. */
+    /** No `sales_source` filter at all → identical to pre-Batch-4 LIVE behavior. */
     public function test_default_mode_is_live_and_has_no_notes_section(): void
     {
         [, $shop] = $this->createRetailerTenant();
@@ -156,6 +161,7 @@ class DuesAgingModeTest extends TestCase
 
         $this->assertEqualsWithDelta(1000.0, $dataset->section('aging')->totals['total'], 0.01);
         $this->assertNull($dataset->section('aging_historical_notes'), 'LIVE mode never renders the historical notes section');
+        $this->assertNull($dataset->section('aging_historical'), 'LIVE mode never renders a second, historical section');
     }
 
     /** An explicit `sales_source=live` behaves exactly like the default. */
@@ -184,10 +190,26 @@ class DuesAgingModeTest extends TestCase
 
         $this->assertEqualsWithDelta(1500.0, $dataset->section('aging')->totals['total'], 0.01,
             'only the historical document counts — the live invoice must not leak in');
+        $this->assertSame('Historical — Unpaid as Recorded', $dataset->section('aging')->title);
     }
 
-    /** §4/§9.2 dedup exclusions render as a visible notes section, never a silent drop. */
-    public function test_historical_mode_discloses_dedup_exclusions_in_notes_section(): void
+    /** Historical age columns are labelled "days since invoice date", never "days overdue". */
+    public function test_historical_mode_relabels_age_columns_as_days_since_invoice_date(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $c = $this->createCustomer($shop->id);
+        $batch = $this->makeBatch($shop->id);
+        $this->makeDocument($shop->id, $batch->id, ['customer_id' => $c->id, 'outstanding_amount_snapshot' => 1000]);
+
+        $dataset = $this->build($shop->id, $this->request($shop->id, ['sales_source' => 'historical']));
+
+        $labels = array_column($dataset->section('aging')->columns, 'label') ?: array_map(fn ($c) => $c->label, $dataset->section('aging')->columns);
+        $this->assertContains('0–30 days since invoice date', $labels);
+        $this->assertContains('Unpaid as Recorded', $labels);
+    }
+
+    /** §4/§9.2 overlap classifications render as a visible notes section, never a silent drop and never a subtraction. */
+    public function test_historical_mode_discloses_overlap_classifications_without_subtracting_them(): void
     {
         [$user, $shop] = $this->createRetailerTenant();
         $c = $this->createCustomer($shop->id);
@@ -204,15 +226,44 @@ class DuesAgingModeTest extends TestCase
 
         $dataset = $this->build($shop->id, $this->request($shop->id, ['sales_source' => 'historical']));
 
+        $this->assertEqualsWithDelta(5000.0, $dataset->section('aging')->totals['total'], 0.01,
+            'the opening-balance-overlap-flagged document is counted in full, not subtracted');
+
         $notes = $dataset->section('aging_historical_notes');
-        $this->assertNotNull($notes, 'exclusions must be disclosed, not silently dropped');
+        $this->assertNotNull($notes, 'overlap + unknown-outstanding must be disclosed, not silently dropped');
         $metrics = array_column($notes->rows, 'metric');
-        $this->assertContains('Already in opening balance', $metrics);
-        $this->assertContains('Unknown outstanding', $metrics);
+        $this->assertContains('May be in opening balance', $metrics);
+        $this->assertContains('Unknown outstanding — totals incomplete', $metrics);
     }
 
-    /** Combined mode is deliberately not implemented (§7.5/§7.6) — falls back to LIVE, never guesses. */
-    public function test_combined_mode_falls_back_to_live(): void
+    /** Snapshot-only/unlinked customers render in their own section, under their recorded identity. */
+    public function test_historical_mode_renders_unlinked_customers_in_their_own_section(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $c = $this->createCustomer($shop->id);
+        $batch = $this->makeBatch($shop->id);
+        $this->makeDocument($shop->id, $batch->id, ['customer_id' => $c->id, 'outstanding_amount_snapshot' => 1000]);
+        $this->makeDocument($shop->id, $batch->id, [
+            'customer_id' => null, 'outstanding_amount_snapshot' => 7000,
+            'customer_snapshot' => ['name' => 'Walk-in Suresh'],
+        ]);
+
+        $dataset = $this->build($shop->id, $this->request($shop->id, ['sales_source' => 'historical']));
+
+        $unlinked = $dataset->section('aging_unlinked');
+        $this->assertNotNull($unlinked);
+        $this->assertSame(1, $unlinked->rowCount());
+        $this->assertSame('Walk-in Suresh', $unlinked->rows[0]['customer']);
+        $this->assertEqualsWithDelta(1000.0, $dataset->section('aging')->totals['total'], 0.01, 'the unlinked customer never merges into the linked section total');
+    }
+
+    /**
+     * COMBINED — Live and Historical are two independent sections, each with
+     * its own subtotal. There is no grand total anywhere in the dataset (the
+     * render pipeline has no cross-section summing mechanism, and this method
+     * never introduces one).
+     */
+    public function test_combined_mode_renders_live_and_historical_side_by_side_with_no_grand_total(): void
     {
         [, $shop] = $this->createRetailerTenant();
         $c = $this->createCustomer($shop->id);
@@ -222,12 +273,49 @@ class DuesAgingModeTest extends TestCase
 
         $dataset = $this->build($shop->id, $this->request($shop->id, ['sales_source' => 'combined']));
 
-        $this->assertEqualsWithDelta(750.0, $dataset->section('aging')->totals['total'], 0.01,
-            'combined is not implemented — must fall back to live, not silently include historical data');
-        $this->assertNull($dataset->section('aging_historical_notes'));
+        $live = $dataset->section('aging_live');
+        $historical = $dataset->section('aging_historical');
+        $this->assertNotNull($live);
+        $this->assertNotNull($historical);
+        $this->assertSame('Live — By Customer', $live->title);
+        $this->assertSame('Historical — Unpaid as Recorded', $historical->title);
+        $this->assertEqualsWithDelta(750.0, $live->totals['total'], 0.01);
+        $this->assertEqualsWithDelta(9999.0, $historical->totals['total'], 0.01);
+
+        // No section anywhere sums the two — assert every section total individually
+        // rather than any single combined figure existing.
+        foreach ($dataset->sections as $section) {
+            if (isset($section->totals['total'])) {
+                $this->assertNotEqualsWithDelta(750.0 + 9999.0, $section->totals['total'], 0.01,
+                    "section [{$section->key}] must never hold a live+historical grand total");
+            }
+        }
+
+        $notes = $dataset->section('aging_historical_notes');
+        $this->assertNotNull($notes, 'Combined mode always explains the side-by-side presentation');
+        $this->assertSame('Notes — Combined Mode', $notes->title);
+        $this->assertContains('Combined presentation', array_column($notes->rows, 'metric'));
     }
 
-    /** Any other hand-crafted/unrecognised value also falls back to LIVE. */
+    public function test_combined_mode_also_surfaces_unlinked_historical_customers(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $c = $this->createCustomer($shop->id);
+        $this->invoice($shop->id, $c->id, 100, 5);
+        $batch = $this->makeBatch($shop->id);
+        $this->makeDocument($shop->id, $batch->id, [
+            'customer_id' => null, 'outstanding_amount_snapshot' => 300,
+            'customer_snapshot' => ['name' => 'Walk-in Combined'],
+        ]);
+
+        $dataset = $this->build($shop->id, $this->request($shop->id, ['sales_source' => 'combined']));
+
+        $unlinked = $dataset->section('aging_unlinked');
+        $this->assertNotNull($unlinked);
+        $this->assertSame('Walk-in Combined', $unlinked->rows[0]['customer']);
+    }
+
+    /** Any hand-crafted/unrecognised value falls back to LIVE at the dataset layer (defense in depth). */
     public function test_unrecognised_mode_falls_back_to_live(): void
     {
         [, $shop] = $this->createRetailerTenant();
