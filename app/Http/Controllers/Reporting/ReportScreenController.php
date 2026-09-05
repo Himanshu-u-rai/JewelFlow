@@ -59,7 +59,7 @@ class ReportScreenController extends Controller
 
         $filterValues = ['period' => ['from' => $period->from, 'to' => $period->to]];
         $applied = ['Period' => $period->label];
-        foreach (['operator', 'customer', 'status', 'metal_type', 'payment_mode', 'cash_type', 'cash_source', 'reference'] as $key) {
+        foreach (['operator', 'customer', 'status', 'metal_type', 'payment_mode', 'cash_type', 'cash_source', 'reference', 'sales_source'] as $key) {
             if ($request->filled($key)) {
                 $filterValues[$key] = $request->input($key);
                 $applied[ucfirst(str_replace('_', ' ', $key))] = (string) $request->input($key);

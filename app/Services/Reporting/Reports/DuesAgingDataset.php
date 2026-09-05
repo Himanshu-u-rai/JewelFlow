@@ -2,6 +2,7 @@
 
 namespace App\Services\Reporting\Reports;
 
+use App\Reporting\Data\DuesAgingData;
 use App\Reporting\ReceivablesService;
 use App\Services\Reporting\Dataset\ReportDataset;
 use App\Services\Reporting\Dataset\ReportDatasetService;
@@ -22,9 +23,25 @@ use Carbon\Carbon;
 
 /**
  * Customer Dues Aging — outstanding receivables bucketed by age as of a date
- * (Receivables; GAP 2 tail). Wraps ReceivablesService::duesAging() VERBATIM —
- * the report layer never re-ages dues. Reconciles BY CONSTRUCTION: the section's
- * Σ per bucket equals the service bucket totals; Σ total equals totalOutstanding.
+ * (Receivables; GAP 2 tail). Wraps ReceivablesService::duesAging() /
+ * ::historicalDuesAging() VERBATIM — the report layer never re-ages dues.
+ * Reconciles BY CONSTRUCTION: the section's Σ per bucket equals the service
+ * bucket totals; Σ total equals totalOutstanding.
+ *
+ * `sales_source` (Batch 4 §6 steps 2/4, §9.7.2) selects LIVE (default — byte-
+ * identical to before this filter existed, §5 test 1) or HISTORICAL. Any
+ * other/unrecognised value (including `combined`) falls back to LIVE: Combined
+ * mode is deliberately NOT implemented — §7.5 (schema can't express a partial
+ * overlap) and §7.6 (no approved document says Combined may read
+ * CustomerOpeningBalance at all) are unresolved owner decisions, not guessed
+ * here. `combined` is not offered as an option anywhere a control is rendered
+ * (see `FilterControlResolver`) — reaching this fallback requires a
+ * hand-crafted query string.
+ *
+ * HISTORICAL mode's §4 dedup exclusions (already-in-opening-balance /
+ * unresolved-overlap / unknown-outstanding) are never silently dropped — they
+ * render as an extra "Notes — Historical Mode" section, same disclosure
+ * pattern as `HistoricalSalesRegisterDataset::notesSection()`.
  *
  * Customer mobile is PII → the `mobile` column is sensitive (permission-gated,
  * off in CA/external profiles).
@@ -33,6 +50,8 @@ class DuesAgingDataset extends ReportDatasetService
 {
     public const KEY = 'dues-aging';
     public const VERSION = 'dues-aging@1';
+
+    private const HISTORICAL = 'historical';
 
     public function __construct(private readonly ReceivablesService $receivables)
     {
@@ -54,9 +73,14 @@ class DuesAgingDataset extends ReportDatasetService
                 Col::mandatory('d6190', '61–90', T::Money),
                 Col::mandatory('d90plus', '90+', T::Money),
                 Col::mandatory('total', 'Total Outstanding', T::Money),
+                // Notes-section-only columns (HISTORICAL mode disclosure) — one
+                // shared catalogue filtered per section, same pattern as
+                // HistoricalSalesRegisterDataset's metric/detail pair.
+                Col::mandatory('metric', 'Particular', T::String),
+                Col::mandatory('detail', 'Detail', T::String),
             ],
             profiles: [P::Summary, P::Detailed, P::Ca, P::CaStandard],
-            filters: [Filter::for(FK::AsOf)],
+            filters: [Filter::for(FK::AsOf), Filter::for(FK::SalesSource)],
             formats: [F::Pdf, F::Excel, F::Csv, F::Screen],
             permissions: Perm::default(),
         );
@@ -65,7 +89,7 @@ class DuesAgingDataset extends ReportDatasetService
     public function build(ReportRequest $request, ReportMeta $meta): ReportDataset
     {
         $def = $request->definition;
-        $data = $this->receivables->duesAging($request->shopId, $this->asOf($request));
+        $data = $this->data($request);
 
         $cols = $this->cols($def, $this->keep(
             ['customer', 'mobile', 'invoices', 'current', 'd3160', 'd6190', 'd90plus', 'total'],
@@ -86,14 +110,70 @@ class DuesAgingDataset extends ReportDatasetService
             ];
         }
 
-        $section = new ReportSection('aging', 'By Customer', $cols, $rows, $this->sum($rows, $cols));
+        $sections = [new ReportSection('aging', 'By Customer', $cols, $rows, $this->sum($rows, $cols))];
 
-        return new ReportDataset([$section], $meta);
+        $notes = $this->historicalNotesSection($def, $data);
+        if ($notes !== null) {
+            $sections[] = $notes;
+        }
+
+        return new ReportDataset($sections, $meta);
     }
 
     public function estimateRowCount(ReportRequest $request): ?int
     {
-        return $this->receivables->duesAging($request->shopId, $this->asOf($request))->rows->count();
+        return $this->data($request)->rows->count();
+    }
+
+    /** Resolves `sales_source` — anything but exactly `historical` is LIVE (§7.5/§7.6 keep Combined blocked). */
+    private function data(ReportRequest $request): DuesAgingData
+    {
+        $mode = (string) $request->filter('sales_source', 'live');
+        $asOf = $this->asOf($request);
+
+        return $mode === self::HISTORICAL
+            ? $this->receivables->historicalDuesAging($request->shopId, $asOf)
+            : $this->receivables->duesAging($request->shopId, $asOf);
+    }
+
+    /**
+     * "Notes — Historical Mode" — same disclosure pattern as
+     * HistoricalSalesRegisterDataset::notesSection(): every §4 dedup
+     * exclusion and every unknown-outstanding document gets a visible line,
+     * never a silent drop. Absent entirely in LIVE mode (all 3 counts are
+     * always 0 there — see DuesAgingData's doc comment).
+     */
+    private function historicalNotesSection(ReportDefinition $def, DuesAgingData $data): ?ReportSection
+    {
+        $included = $data->excludedIncludedInOpeningBalanceCount;
+        $unresolved = $data->excludedUnresolvedOverlapCount;
+        $unknown = $data->excludedUnknownOutstandingCount;
+
+        if ($included === 0 && $unresolved === 0 && $unknown === 0) {
+            return null;
+        }
+
+        $rows = [];
+        if ($included > 0) {
+            $rows[] = [
+                'metric' => 'Already in opening balance',
+                'detail' => "{$included} document(s) excluded — already counted in the customer's opening balance elsewhere; adding them here would double the debt.",
+            ];
+        }
+        if ($unresolved > 0) {
+            $rows[] = [
+                'metric' => 'Unresolved overlap',
+                'detail' => "{$unresolved} document(s) flagged as possibly overlapping opening balance but never resolved by an operator — excluded pending review, never guessed.",
+            ];
+        }
+        if ($unknown > 0) {
+            $rows[] = [
+                'metric' => 'Unknown outstanding',
+                'detail' => "{$unknown} document(s) have no recorded outstanding amount (shown blank at import, not ₹0) — excluded from every total above.",
+            ];
+        }
+
+        return new ReportSection('aging_historical_notes', 'Notes — Historical Mode', $this->cols($def, ['metric', 'detail']), $rows, []);
     }
 
     /** AsOf reports use the period end as the point-in-time date. */

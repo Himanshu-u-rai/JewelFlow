@@ -111,6 +111,12 @@ class FilterControlResolver
             ]),
             FilterKey::CashSource => $this->distinctCashSources($shopId),
             FilterKey::Operator => $this->shopOperators($shopId),
+            // `combined` deliberately not offered — §7.5/§7.6 leave it blocked
+            // (see DuesAgingDataset's docblock); unrecognised/hand-typed
+            // values fall back to `live` at the dataset layer regardless.
+            FilterKey::SalesSource => $this->staticOptions([
+                'live' => 'Live', 'historical' => 'Historical',
+            ]),
             default => null,
         };
     }
