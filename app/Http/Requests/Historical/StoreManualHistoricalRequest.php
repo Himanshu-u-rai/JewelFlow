@@ -37,6 +37,19 @@ class StoreManualHistoricalRequest extends FormRequest
     public const INTENT_PUBLISH_AND_NEW = 'publish_and_new';
 
     /**
+     * A validation failure here is reached from the real browser flow with the
+     * preview URL (a POST-only route) as the referer, so FormRequest's default
+     * redirectTo() — UrlGenerator::previous(), which reads that referer — would
+     * otherwise land on previewExpired(), a plain GET redirect with no
+     * withInput()/withErrors(), discarding the operator's typed bill. Naming
+     * the create route directly makes getRedirectUrl() use it before ever
+     * falling back to previous(); Handler::invalid() still applies withInput()
+     * and withErrors() identically regardless of which target this resolves
+     * to, so normal error/old-input flashing is unaffected.
+     */
+    protected $redirectRoute = 'historical.manual.create';
+
+    /**
      * Batch 3 §4/§9/§10 calculation fields — deliberately NOT part of the
      * shared HistoricalFields::LINE catalog (that catalog also drives the
      * bulk-import mapping screen; adding these there would let a spreadsheet
