@@ -2,11 +2,13 @@
 
 namespace App\Reporting;
 
+use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\Invoice;
 use App\Reporting\Data\DuesAgingData;
 use App\Reporting\Data\EmiData;
 use App\Reporting\Data\MetalLiabilityData;
 use App\Reporting\Data\SchemeLiabilityData;
+use App\Support\Historical\HistoricalOverlapDedup;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -49,7 +51,11 @@ class ReceivablesService
 
         // Per-customer accumulator keyed by customer_id (null → walk-in bucket).
         $byCustomer = [];
-        $bC = 0.0; $b3160 = 0.0; $b6190 = 0.0; $b90 = 0.0; $invCount = 0;
+        $bC = 0.0;
+        $b3160 = 0.0;
+        $b6190 = 0.0;
+        $b90 = 0.0;
+        $invCount = 0;
 
         foreach ($invoices as $inv) {
             $total = round((float) $inv->total, 2);
@@ -62,22 +68,25 @@ class ReceivablesService
             $ageDays = Carbon::parse($inv->doc_date)->startOfDay()->diffInDays($asOf, false);
             $ageDays = max(0, (int) $ageDays);
 
-            if ($ageDays <= 30)       { $bucket = 'current'; $bC += $outstanding; }
-            elseif ($ageDays <= 60)   { $bucket = 'd3160';   $b3160 += $outstanding; }
-            elseif ($ageDays <= 90)   { $bucket = 'd6190';   $b6190 += $outstanding; }
-            else                      { $bucket = 'd90plus'; $b90 += $outstanding; }
+            $bucket = self::bucketFor($ageDays);
+            match ($bucket) {
+                'current' => $bC += $outstanding,
+                'd3160' => $b3160 += $outstanding,
+                'd6190' => $b6190 += $outstanding,
+                default => $b90 += $outstanding,
+            };
 
             $key = $inv->customer_id ?? 'walkin';
-            if (!isset($byCustomer[$key])) {
+            if (! isset($byCustomer[$key])) {
                 $byCustomer[$key] = [
                     'customer_name' => $inv->customer_name,
-                    'mobile'        => $inv->customer_mobile,
+                    'mobile' => $inv->customer_mobile,
                     'invoice_count' => 0,
-                    'current'       => 0.0,
-                    'd3160'         => 0.0,
-                    'd6190'         => 0.0,
-                    'd90plus'       => 0.0,
-                    'total'         => 0.0,
+                    'current' => 0.0,
+                    'd3160' => 0.0,
+                    'd6190' => 0.0,
+                    'd90plus' => 0.0,
+                    'total' => 0.0,
                 ];
             }
             $byCustomer[$key]['invoice_count']++;
@@ -88,11 +97,12 @@ class ReceivablesService
 
         $rows = collect($byCustomer)
             ->map(function ($c) {
-                $c['current']  = round($c['current'], 2);
-                $c['d3160']    = round($c['d3160'], 2);
-                $c['d6190']    = round($c['d6190'], 2);
-                $c['d90plus']  = round($c['d90plus'], 2);
-                $c['total']    = round($c['total'], 2);
+                $c['current'] = round($c['current'], 2);
+                $c['d3160'] = round($c['d3160'], 2);
+                $c['d6190'] = round($c['d6190'], 2);
+                $c['d90plus'] = round($c['d90plus'], 2);
+                $c['total'] = round($c['total'], 2);
+
                 return (object) $c;
             })
             ->sortByDesc('total')
@@ -108,6 +118,131 @@ class ReceivablesService
             customerCount: $rows->count(),
             invoiceCount: $invCount,
             asOf: $asOf->format('Y-m-d'),
+        );
+    }
+
+    /** Shared 0–30/31–60/61–90/90+ boundaries — LIVE and HISTORICAL age off different date columns but bucket identically. */
+    private static function bucketFor(int $ageDays): string
+    {
+        return match (true) {
+            $ageDays <= 30 => 'current',
+            $ageDays <= 60 => 'd3160',
+            $ageDays <= 90 => 'd6190',
+            default => 'd90plus',
+        };
+    }
+
+    /**
+     * HISTORICAL-mode Dues Aging (Batch 4 §6 steps 2/4, §9.7.2) — outstanding on
+     * PUBLISHED historical_sales_documents only, for LINKED customers only (§3:
+     * "only linked customers count toward per-customer receivables" — a
+     * snapshot-only walk-in cannot be chased inside JewelFlow), aged off
+     * `document_date` (§9.6: methodologically consistent with LIVE ageing off
+     * finalized_at/created_at — neither source has a real due date).
+     *
+     * Applies the §4 dedup rule via {@see HistoricalOverlapDedup}: only
+     * documents with no opening-balance overlap, or an overlap explicitly
+     * resolved SEPARATE, are added to a total. A document already resolved
+     * INCLUDED (already counted inside CustomerOpeningBalance) or left
+     * UNRESOLVED is excluded from every total — the exclusion is counted for
+     * disclosure, never silently dropped and never guessed into a bucket
+     * (§5 tests 4/6).
+     *
+     * A NULL `outstanding_amount_snapshot` is unknown, not zero (§9.3) —
+     * excluded from every bucket/total, counted separately for disclosure
+     * (§5 test 10). A known outstanding of ≤0 is simply not a due (paid off /
+     * over-collected as recorded) and is dropped silently, same treatment
+     * `duesAging()` gives a fully-paid live invoice.
+     *
+     * This is HISTORICAL mode alone — no live invoice, no CustomerOpeningBalance
+     * read. COMBINED mode is deliberately NOT implemented here: §7.5/§7.6 leave
+     * that semantics unresolved (schema can't express partial overlap; no
+     * approved document says Combined may read CustomerOpeningBalance at all).
+     */
+    public function historicalDuesAging(int $shopId, ?Carbon $asOf = null): DuesAgingData
+    {
+        $asOf = ($asOf ?? Carbon::now())->copy()->endOfDay();
+
+        $documents = HistoricalSalesDocument::withoutTenant()
+            ->where('shop_id', $shopId)
+            ->where('status', HistoricalSalesDocument::STATUS_PUBLISHED)
+            ->whereNotNull('customer_id')
+            ->with('customer')
+            ->get();
+
+        $unknownOutstandingCount = $documents->whereNull('outstanding_amount_snapshot')->count();
+
+        $owed = $documents
+            ->whereNotNull('outstanding_amount_snapshot')
+            ->filter(fn (HistoricalSalesDocument $d) => round((float) $d->outstanding_amount_snapshot, 2) > 0.01)
+            ->values();
+
+        $buckets = HistoricalOverlapDedup::partition($owed);
+
+        $byCustomer = [];
+        $bC = 0.0;
+        $b3160 = 0.0;
+        $b6190 = 0.0;
+        $b90 = 0.0;
+        $docCount = 0;
+
+        foreach ($buckets['additive'] as $doc) {
+            $outstanding = round((float) $doc->outstanding_amount_snapshot, 2);
+            $ageDays = max(0, (int) Carbon::parse($doc->document_date)->startOfDay()->diffInDays($asOf, false));
+            $bucket = self::bucketFor($ageDays);
+
+            $key = $doc->customer_id;
+            if (! isset($byCustomer[$key])) {
+                $byCustomer[$key] = [
+                    'customer_name' => $doc->customer?->name ?? 'Unknown customer',
+                    'mobile' => $doc->customer?->mobile,
+                    'invoice_count' => 0,
+                    'current' => 0.0,
+                    'd3160' => 0.0,
+                    'd6190' => 0.0,
+                    'd90plus' => 0.0,
+                    'total' => 0.0,
+                ];
+            }
+            $byCustomer[$key]['invoice_count']++;
+            $byCustomer[$key][$bucket] += $outstanding;
+            $byCustomer[$key]['total'] += $outstanding;
+            $docCount++;
+
+            match ($bucket) {
+                'current' => $bC += $outstanding,
+                'd3160' => $b3160 += $outstanding,
+                'd6190' => $b6190 += $outstanding,
+                default => $b90 += $outstanding,
+            };
+        }
+
+        $rows = collect($byCustomer)
+            ->map(function ($c) {
+                $c['current'] = round($c['current'], 2);
+                $c['d3160'] = round($c['d3160'], 2);
+                $c['d6190'] = round($c['d6190'], 2);
+                $c['d90plus'] = round($c['d90plus'], 2);
+                $c['total'] = round($c['total'], 2);
+
+                return (object) $c;
+            })
+            ->sortByDesc('total')
+            ->values();
+
+        return new DuesAgingData(
+            rows: $rows,
+            bucketCurrent: round($bC, 2),
+            bucket3160: round($b3160, 2),
+            bucket6190: round($b6190, 2),
+            bucket90plus: round($b90, 2),
+            totalOutstanding: round($bC + $b3160 + $b6190 + $b90, 2),
+            customerCount: $rows->count(),
+            invoiceCount: $docCount,
+            asOf: $asOf->format('Y-m-d'),
+            excludedIncludedInOpeningBalanceCount: $buckets['excludedIncludedInOpening']->count(),
+            excludedUnresolvedOverlapCount: $buckets['excludedUnresolved']->count(),
+            excludedUnknownOutstandingCount: $unknownOutstandingCount,
         );
     }
 
@@ -135,8 +270,11 @@ class ReceivablesService
             ->orderBy('p.next_due_date')
             ->get();
 
-        $totalOutstanding = 0.0; $overdueAmount = 0.0; $upcomingAmount = 0.0;
-        $overdueCount = 0; $upcomingCount = 0;
+        $totalOutstanding = 0.0;
+        $overdueAmount = 0.0;
+        $upcomingAmount = 0.0;
+        $overdueCount = 0;
+        $upcomingCount = 0;
 
         $rows = $plans->map(function ($p) use ($asOf, $upcomingCutoff, &$totalOutstanding, &$overdueAmount, &$upcomingAmount, &$overdueCount, &$upcomingCount) {
             $remaining = round((float) $p->remaining_amount, 2);
@@ -158,13 +296,13 @@ class ReceivablesService
                 'customer_name' => $p->customer_name,
                 'invoice_number' => $p->invoice_number,
                 'total_payable' => round((float) $p->total_payable, 2),
-                'paid'          => round((float) $p->total_payable - $remaining, 2),
-                'remaining'     => $remaining,
-                'emis_paid'     => (int) $p->emis_paid,
-                'total_emis'    => (int) $p->total_emis,
+                'paid' => round((float) $p->total_payable - $remaining, 2),
+                'remaining' => $remaining,
+                'emis_paid' => (int) $p->emis_paid,
+                'total_emis' => (int) $p->total_emis,
                 'next_due_date' => $p->next_due_date,
-                'overdue'       => $overdue,
-                'days_overdue'  => (int) $daysOverdue,
+                'overdue' => $overdue,
+                'days_overdue' => (int) $daysOverdue,
             ];
         });
 
@@ -211,7 +349,10 @@ class ReceivablesService
             ->orderByDesc('se.total_paid')
             ->get();
 
-        $totalLiability = 0.0; $totalContributions = 0.0; $bonusAccrued = 0.0; $maturedCount = 0;
+        $totalLiability = 0.0;
+        $totalContributions = 0.0;
+        $bonusAccrued = 0.0;
+        $maturedCount = 0;
 
         $rows = $enrollments->map(function ($e) use ($latestBalances, &$totalLiability, &$totalContributions, &$bonusAccrued, &$maturedCount) {
             $balance = round((float) ($latestBalances[$e->id] ?? 0), 2);
@@ -226,13 +367,13 @@ class ReceivablesService
             }
 
             return (object) [
-                'customer_name'   => $e->customer_name,
-                'scheme_name'     => $e->scheme_name,
-                'status'          => $e->status,
-                'total_paid'      => $paid,
-                'bonus_accrued'   => $bonus,
+                'customer_name' => $e->customer_name,
+                'scheme_name' => $e->scheme_name,
+                'status' => $e->status,
+                'total_paid' => $paid,
+                'bonus_accrued' => $bonus,
                 'current_balance' => $balance,
-                'maturity_date'   => $e->maturity_date,
+                'maturity_date' => $e->maturity_date,
             ];
         });
 
@@ -271,7 +412,7 @@ class ReceivablesService
             ->orderByDesc('fine')
             ->get()
             ->map(fn ($r) => (object) [
-                'customer_name'  => $r->customer_name,
+                'customer_name' => $r->customer_name,
                 'fine_deposited' => round((float) $r->fine, 4),
             ]);
 

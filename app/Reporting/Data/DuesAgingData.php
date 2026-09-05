@@ -26,5 +26,10 @@ final class DuesAgingData
         public readonly int $customerCount,
         public readonly int $invoiceCount,
         public readonly string $asOf,            // Y-m-d snapshot date
+        // HISTORICAL-mode-only disclosure counts (Batch 4 §4/§9.2 dedup rule).
+        // Always 0 for LIVE — these documents don't exist in that mode at all.
+        public readonly int $excludedIncludedInOpeningBalanceCount = 0,
+        public readonly int $excludedUnresolvedOverlapCount = 0,
+        public readonly int $excludedUnknownOutstandingCount = 0,
     ) {}
 }
