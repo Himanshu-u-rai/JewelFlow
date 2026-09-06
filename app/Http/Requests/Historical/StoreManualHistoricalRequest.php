@@ -124,6 +124,18 @@ class StoreManualHistoricalRequest extends FormRequest
         'stone_value_recalculate',
         'grand_total_mode',
         'grand_total_recalculate',
+        'cgst_mode',
+        'cgst_recalculate',
+        'sgst_mode',
+        'sgst_recalculate',
+        'igst_mode',
+        'igst_recalculate',
+        // Ephemeral bill-level tax calculator inputs — never persisted as their
+        // own column (mirrors the existing line_gst_rate/line_tax_mode
+        // pattern). They only drive cgst/sgst/igst/tax_total/grand_total via
+        // HistoricalManualCalculationService::applyBillLevelTax().
+        'bill_gst_rate',
+        'tax_split_type',
     ];
 
     public function authorize(): bool
@@ -203,6 +215,16 @@ class StoreManualHistoricalRequest extends FormRequest
             'stone_value_recalculate' => ['nullable', 'boolean'],
             'grand_total_mode' => ['nullable', Rule::in(['auto', 'manual'])],
             'grand_total_recalculate' => ['nullable', 'boolean'],
+            'cgst_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'cgst_recalculate' => ['nullable', 'boolean'],
+            'sgst_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'sgst_recalculate' => ['nullable', 'boolean'],
+            'igst_mode' => ['nullable', Rule::in(['auto', 'manual'])],
+            'igst_recalculate' => ['nullable', 'boolean'],
+            // One ordinary bill-level rate + split (requirement #1). Blank rate
+            // means "no bill-level tax" — operator enters tax amounts by hand.
+            'bill_gst_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'tax_split_type' => ['nullable', Rule::in(HistoricalSalesDocument::TAX_SPLIT_TYPES)],
             // Batch 3 §7 — which figure wins when payment rows and a typed
             // aggregate disagree. Absent/unknown means "trust the rows" (the
             // normalizer's existing header-driven paid_amount stays untouched
@@ -395,6 +417,8 @@ class StoreManualHistoricalRequest extends FormRequest
             'document_series' => $this->input('document_series'),
             'source_system' => $this->input('source_system'),
             'tax_mode' => $this->input('tax_mode'),
+            'bill_gst_rate' => $this->input('bill_gst_rate'),
+            'tax_split_type' => $this->input('tax_split_type'),
         ];
     }
 

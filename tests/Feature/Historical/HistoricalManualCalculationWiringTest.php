@@ -225,4 +225,171 @@ class HistoricalManualCalculationWiringTest extends TestCase
             $this->assertSame(0, HistoricalSalesDocument::query()->count());
         });
     }
+
+    /**
+     * Batch 5 — one ordinary bill-level tax treatment (owner's acceptance:
+     * "I enter the original information once... I do not enter the same tax
+     * amount again elsewhere"). Header-only entry (no lines): the printed
+     * example is "for 10000 before tax at 3%, a confirmed CGST/SGST split
+     * automatically produces 150 + 150 and a 10300 total".
+     */
+    public function test_bill_level_gst_rate_auto_splits_cgst_sgst_and_grand_total_on_a_header_only_bill(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'BILLTAX-'.fake()->unique()->numberBetween(1, 999999),
+            'document_date' => now()->toDateString(),
+            'source_system' => 'Manual QA',
+            'customer_name' => 'Bill Tax QA Customer',
+            'taxable_amount' => 10000,
+            'bill_gst_rate' => 3,
+            'tax_split_type' => HistoricalSalesDocument::TAX_SPLIT_CGST_SGST,
+            // Required field; a header-only bill has nothing to auto-derive it
+            // from until the server responds — the operator's placeholder is
+            // superseded by the fresh auto suggestion below. Real form pages
+            // always post an explicit `_mode` hidden input (default "auto") for
+            // every calculated document field — mirrored here for the same
+            // reason.
+            'grand_total' => 10000,
+            'tax_total_mode' => 'auto',
+            'grand_total_mode' => 'auto',
+        ]);
+        $response->assertOk();
+
+        $state = $response->viewData('attributes')['calculation_state'];
+        $this->assertSame('auto', $state['cgst']['mode']);
+        $this->assertSame(150.0, $state['cgst']['value']);
+        $this->assertSame(150.0, $state['sgst']['value']);
+        $this->assertSame(0.0, $state['igst']['value']);
+        $this->assertSame(300.0, $state['tax_total']['value']);
+        $this->assertSame(10300.0, $state['grand_total']['value']);
+    }
+
+    /** Same rate, IGST split this time — the whole amount lands on igst, none on cgst/sgst. */
+    public function test_bill_level_gst_rate_applies_the_igst_split_when_chosen(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'BILLTAX-'.fake()->unique()->numberBetween(1, 999999),
+            'document_date' => now()->toDateString(),
+            'source_system' => 'Manual QA',
+            'customer_name' => 'Bill Tax QA Customer',
+            'taxable_amount' => 10000,
+            'bill_gst_rate' => 3,
+            'tax_split_type' => HistoricalSalesDocument::TAX_SPLIT_IGST,
+            'grand_total' => 10000,
+            'tax_total_mode' => 'auto',
+            'grand_total_mode' => 'auto',
+        ]);
+        $response->assertOk();
+
+        $state = $response->viewData('attributes')['calculation_state'];
+        $this->assertSame(0.0, $state['cgst']['value']);
+        $this->assertSame(0.0, $state['sgst']['value']);
+        $this->assertSame(300.0, $state['igst']['value']);
+        $this->assertSame(10300.0, $state['grand_total']['value']);
+    }
+
+    /** Same bill-level rate, but driven off an ordinary (non-exception) item line instead of a typed header total. */
+    public function test_bill_level_gst_rate_applies_on_top_of_an_ordinary_calculated_line(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'BILLTAX-'.fake()->unique()->numberBetween(1, 999999),
+            'document_date' => now()->toDateString(),
+            'source_system' => 'Manual QA',
+            'customer_name' => 'Bill Tax QA Customer',
+            'bill_gst_rate' => 3,
+            'tax_split_type' => HistoricalSalesDocument::TAX_SPLIT_CGST_SGST,
+            'grand_total' => 1000,
+            'tax_total_mode' => 'auto',
+            'grand_total_mode' => 'auto',
+            'lines' => [[
+                'line_item_name' => 'Plain charge line',
+                'line_calculation_enabled' => '1',
+                'line_other_charge' => 1000,
+            ]],
+        ]);
+        $response->assertOk();
+
+        $state = $response->viewData('attributes')['calculation_state'];
+        $this->assertSame(15.0, $state['cgst']['value']);
+        $this->assertSame(15.0, $state['sgst']['value']);
+        $this->assertSame(30.0, $state['tax_total']['value']);
+        $this->assertSame(1030.0, $state['grand_total']['value']);
+    }
+
+    /**
+     * The "preserve optional item-specific exceptions" half of requirement #1:
+     * a line that already manages its own tax (an explicit line_tax_mode) is
+     * excluded from the bill-level base, so the ordinary bill-level rate never
+     * taxes it a second time.
+     */
+    public function test_bill_level_gst_rate_excludes_a_line_with_its_own_line_tax_mode(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'BILLTAX-'.fake()->unique()->numberBetween(1, 999999),
+            'document_date' => now()->toDateString(),
+            'source_system' => 'Manual QA',
+            'customer_name' => 'Bill Tax QA Customer',
+            'bill_gst_rate' => 3,
+            'tax_split_type' => HistoricalSalesDocument::TAX_SPLIT_CGST_SGST,
+            'grand_total' => 1050,
+            'tax_total_mode' => 'auto',
+            'grand_total_mode' => 'auto',
+            'lines' => [[
+                'line_item_name' => 'Self-taxed exception line',
+                'line_calculation_enabled' => '1',
+                'line_other_charge' => 1000,
+                'line_tax_mode' => 'gst_exclusive',
+                'line_gst_rate' => 5,
+            ]],
+        ]);
+        $response->assertOk();
+
+        $state = $response->viewData('attributes')['calculation_state'];
+        $this->assertSame(
+            0.0,
+            $state['cgst']['value'],
+            'A line managing its own tax must not also be taxed by the bill-level rate.'
+        );
+        $this->assertSame(0.0, $state['sgst']['value']);
+        $this->assertSame(
+            50.0,
+            $state['tax_total']['value'],
+            'tax_total must still carry the exception line\'s own 5% tax (50), untouched by the bill-level rate.'
+        );
+        $this->assertSame(1050.0, $state['grand_total']['value']);
+    }
+
+    /** A blank bill_gst_rate means "no bill-level tax" — cgst/sgst/igst stay exactly what the operator typed (or blank). */
+    public function test_a_blank_bill_gst_rate_leaves_tax_components_untouched(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'BILLTAX-'.fake()->unique()->numberBetween(1, 999999),
+            'document_date' => now()->toDateString(),
+            'source_system' => 'Manual QA',
+            'customer_name' => 'Bill Tax QA Customer',
+            'taxable_amount' => 10000,
+            'grand_total' => 10000,
+        ]);
+        $response->assertOk();
+
+        // Header-only + no bill-level tax means nothing ever populates
+        // document_attributes at all (no calculated line, no bill tax state) —
+        // the key itself is legitimately absent, not just empty.
+        $state = $response->viewData('attributes')['calculation_state'] ?? [];
+        $this->assertArrayNotHasKey(
+            'cgst',
+            $state,
+            'With no bill_gst_rate, applyBillLevelTax() must be a no-op — nothing forces a cgst/sgst/igst state to exist.'
+        );
+    }
 }

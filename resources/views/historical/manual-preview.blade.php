@@ -10,7 +10,15 @@
         HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE => 'Not applicable',
     ];
     $money = ['taxable_amount'=>'Taxable','tax_total'=>'Tax total','cgst'=>'CGST','sgst'=>'SGST','igst'=>'IGST','cess'=>'Cess','discount'=>'Discount','rounding'=>'Rounding','metal_value'=>'Metal value','stone_value'=>'Stone value','paid_amount'=>'Paid','outstanding_amount'=>'Outstanding'];
-    $calculatedDocumentFields = ['taxable_amount', 'tax_total', 'discount', 'metal_value', 'stone_value', 'grand_total', 'paid_amount', 'outstanding_amount'];
+    // cgst/sgst/igst join the auto-calculated set so the one bill-level GST% + split
+    // entry drives them the same way every other calculated field works — see
+    // resources/views/historical/manual.blade.php for the matching change.
+    $calculatedDocumentFields = ['taxable_amount', 'tax_total', 'cgst', 'sgst', 'igst', 'discount', 'metal_value', 'stone_value', 'grand_total', 'paid_amount', 'outstanding_amount'];
+    $taxSplitTypes = [
+        '' => '— not set —',
+        HistoricalSalesDocument::TAX_SPLIT_CGST_SGST => 'CGST + SGST (intrastate)',
+        HistoricalSalesDocument::TAX_SPLIT_IGST      => 'IGST (interstate)',
+    ];
     $documentTotals = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field, '')])->all();
     $documentModes = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field . '_mode', 'auto')])->all();
 
@@ -148,6 +156,18 @@
                         <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="tax-total">
                             <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">Tax total</dt>@if(isset($calculationState['tax_total']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['tax_total']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="tax_total">{{ ($calculationState['tax_total']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
                             <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) data_get($calculationState, 'tax_total.value', 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="cgst">
+                            <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">CGST</dt>@if(isset($calculationState['cgst']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['cgst']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="cgst">{{ ($calculationState['cgst']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) data_get($calculationState, 'cgst.value', 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="sgst">
+                            <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">SGST</dt>@if(isset($calculationState['sgst']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['sgst']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="sgst">{{ ($calculationState['sgst']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) data_get($calculationState, 'sgst.value', 0), 2) }}</dd>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="igst">
+                            <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">IGST</dt>@if(isset($calculationState['igst']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['igst']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="igst">{{ ($calculationState['igst']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
+                            <dd class="mt-1 font-semibold tabular-nums text-slate-800">{{ number_format((float) data_get($calculationState, 'igst.value', 0), 2) }}</dd>
                         </div>
                         <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" data-historical-preview-field="discount">
                             <div class="flex items-center justify-between gap-2"><dt class="text-xs font-medium text-slate-500">Discount</dt>@if(isset($calculationState['discount']))<span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ ($calculationState['discount']['mode'] ?? 'auto') === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700' }}" data-historical-calculation-mode="discount">{{ ($calculationState['discount']['mode'] ?? 'auto') === 'manual' ? 'Manual' : 'Auto' }}</span>@endif</div>
@@ -347,7 +367,7 @@
               class="grid gap-4" data-historical-form="manual-preview" aria-labelledby="historical-preview-editor-title">
             @csrf
 
-            @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases', 'shopPaymentMethods'))
+            @include('historical._manual-form-fields', compact('taxModes', 'taxSplitTypes', 'money', 'makingCategories', 'makingBases', 'shopPaymentMethods'))
 
             {{-- Both Save buttons are hidden while this bill has a blocking finding.
                  The server already refuses (storeManual returns a null document,

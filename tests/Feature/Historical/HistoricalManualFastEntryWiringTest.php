@@ -100,7 +100,7 @@ class HistoricalManualFastEntryWiringTest extends TestCase
         });
     }
 
-    public function test_the_carry_forward_flash_contains_only_the_four_allowed_fields(): void
+    public function test_the_carry_forward_flash_contains_only_the_six_allowed_fields(): void
     {
         [$owner] = $this->createRetailerTenant();
 
@@ -112,11 +112,17 @@ class HistoricalManualFastEntryWiringTest extends TestCase
             'tax_mode' => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
         ]));
 
+        // bill_gst_rate/tax_split_type joined the carry-forward set in Batch 5
+        // (requirement #1) — a run of historical bills from the same source
+        // batch typically shares one ordinary tax rate, same as date/series/
+        // source/tax_mode already did.
         $response->assertSessionHas('historical_carry_forward', [
             'document_date' => '2024-05-01',
             'document_series' => 'B-2024',
             'source_system' => 'Manual QA',
             'tax_mode' => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
+            'bill_gst_rate' => null,
+            'tax_split_type' => null,
         ]);
     }
 

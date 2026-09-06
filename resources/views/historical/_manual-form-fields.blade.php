@@ -304,6 +304,25 @@
         </div>
     </div>
 
+    {{-- One ordinary bill-level rate + split. Populates taxable amount, CGST/SGST
+         or IGST, tax total and grand total (see $calculatedDocumentFields above) —
+         every result stays directly editable afterward. Lines with their own
+         line-level GST mode (gst_inclusive/gst_exclusive) are treated as
+         exceptions and excluded from this bill-level base. --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mt-4" data-historical-supporting-grid>
+        <div>
+            <label for="bill_gst_rate">Bill GST % (ordinary tax rate)</label>
+            <input type="number" step="any" min="0" max="100" id="bill_gst_rate" name="bill_gst_rate" value="{{ old('bill_gst_rate') }}" placeholder="e.g. 3" class="w-full">
+        </div>
+        <div>
+            <label for="tax_split_type">Tax split</label>
+            <select id="tax_split_type" name="tax_split_type" class="w-full min-h-[44px]">
+                @foreach($taxSplitTypes as $v => $l)<option value="{{ $v }}" @selected(old('tax_split_type', $carriedForward['tax_split_type'] ?? null) === $v)>{{ $l }}</option>@endforeach
+            </select>
+        </div>
+        <p class="text-xs text-slate-500 sm:col-span-2">Applies once to the whole bill (not per line). Leave blank to enter tax amounts by hand instead.</p>
+    </div>
+
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mt-4" data-historical-supporting-grid>
         <div class="lg:col-span-1">
             <label for="making_label">Making / labour charge label</label>

@@ -8,7 +8,16 @@
         HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE => 'Not applicable',
     ];
     $money = ['taxable_amount'=>'Taxable','tax_total'=>'Tax total','cgst'=>'CGST','sgst'=>'SGST','igst'=>'IGST','cess'=>'Cess','discount'=>'Discount','rounding'=>'Rounding','metal_value'=>'Metal value','stone_value'=>'Stone value','paid_amount'=>'Paid','outstanding_amount'=>'Outstanding'];
-    $calculatedDocumentFields = ['taxable_amount', 'tax_total', 'discount', 'metal_value', 'stone_value', 'grand_total', 'paid_amount', 'outstanding_amount'];
+    // cgst/sgst/igst join the auto-calculated set so the one bill-level GST% + split
+    // entry (below) drives them the same way every other calculated field works —
+    // editable in place, Auto/Manual badge, reset-to-auto. cess stays plain/manual
+    // (rare on a jewellery bill, outside the "ordinary" tax treatment this adds).
+    $calculatedDocumentFields = ['taxable_amount', 'tax_total', 'cgst', 'sgst', 'igst', 'discount', 'metal_value', 'stone_value', 'grand_total', 'paid_amount', 'outstanding_amount'];
+    $taxSplitTypes = [
+        '' => '— not set —',
+        HistoricalSalesDocument::TAX_SPLIT_CGST_SGST => 'CGST + SGST (intrastate)',
+        HistoricalSalesDocument::TAX_SPLIT_IGST      => 'IGST (interstate)',
+    ];
     $documentTotals = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field, '')])->all();
     $documentModes = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field . '_mode', 'auto')])->all();
 @endphp
@@ -63,7 +72,7 @@
               class="grid gap-4" data-historical-form="manual">
             @csrf
 
-            @include('historical._manual-form-fields', compact('taxModes', 'money', 'makingCategories', 'makingBases', 'shopPaymentMethods'))
+            @include('historical._manual-form-fields', compact('taxModes', 'taxSplitTypes', 'money', 'makingCategories', 'makingBases', 'shopPaymentMethods'))
 
             <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-historical-card-footer>
                 <p class="text-xs text-slate-500">Preview saves nothing. Save a draft or, if permitted, save and publish from the preview.</p>

@@ -2,6 +2,7 @@
 
 namespace App\Services\Historical;
 
+use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\Historical\HistoricalSalesLine;
 
 /**
@@ -30,6 +31,12 @@ class HistoricalManualCalculationService
             'stone_value' => 0.0,
             'making_amount' => 0.0,
             'grand_total' => 0.0,
+            // Sum of ordinary (non-exception) lines' taxable amount only — the
+            // base the new bill-level GST% applies to. A line that sets its
+            // own line_tax_mode (gst_inclusive/gst_exclusive) already manages
+            // its own tax and contributes 0 here, so applyBillLevelTax() never
+            // taxes it a second time.
+            'bill_tax_base' => 0.0,
         ];
         $hasCalculatedLine = false;
 
@@ -66,11 +73,19 @@ class HistoricalManualCalculationService
             }
         }
 
+        $billTax = $this->applyBillLevelTax($header, $totals, $hasCalculatedLine);
+        $header = $billTax['header'];
+        // array_merge, not `+=` — `+=` is array-union and KEEPS the existing
+        // tax_total/grand_total entry on a key collision, silently discarding
+        // applyBillLevelTax()'s composed value. array_merge lets the later
+        // (bill-tax-inclusive) state win, exactly as intended.
+        $documentState = array_merge($documentState, $billTax['state']);
+
         return [
             'header' => $header,
             'lines' => $prepared,
             'line_attributes' => $lineAttributes,
-            'document_attributes' => $hasCalculatedLine ? [
+            'document_attributes' => ($hasCalculatedLine || $documentState !== []) ? [
                 'making_amount' => round($totals['making_amount'], 2),
                 'calculation_state' => $documentState,
             ] : [],
@@ -272,10 +287,67 @@ class HistoricalManualCalculationService
                 'stone_value' => $this->states->currentValue($stoneState),
                 'making_amount' => $this->states->currentValue($makingState),
                 'grand_total' => $this->states->currentValue($totalState),
+                // Exception lines (their own line_tax_mode) already carry their
+                // own tax in line_total above — excluded from the bill-level base.
+                'bill_tax_base' => in_array(self::text($line['line_tax_mode'] ?? null), ['gst_inclusive', 'gst_exclusive'], true)
+                    ? 0.0
+                    : $this->states->currentValue($taxableState),
             ],
             'errors' => $errors,
             'calculation_enabled' => true,
         ];
+    }
+
+    /**
+     * One ordinary bill-level GST% + split (requirement #1 / Example #4:
+     * "for 10000 before tax at 3%, a confirmed CGST/SGST split automatically
+     * produces 150 + 150 and a 10300 total"). A blank `bill_gst_rate` means
+     * "no bill-level tax" — the operator enters cgst/sgst/igst by hand,
+     * exactly like today.
+     *
+     * Runs AFTER the line-total loop in prepare(), so it composes with (does
+     * not replace) any line-derived tax_total/grand_total suggestion already
+     * written into $header — resolveState() is safe to call twice on the same
+     * field: a client-claimed `manual` value survives unchanged (the second
+     * call's fresh suggestion just fails to match it), while `auto` fields
+     * pick up the new, bill-tax-inclusive suggestion.
+     *
+     * @return array{header: array, state: array}
+     */
+    private function applyBillLevelTax(array $header, array $totals, bool $hasCalculatedLine): array
+    {
+        $rate = self::number($header['bill_gst_rate'] ?? null);
+
+        if ($rate === null || $rate <= 0) {
+            return ['header' => $header, 'state' => []];
+        }
+
+        $splitType = self::text($header['tax_split_type'] ?? null) ?? HistoricalSalesDocument::TAX_SPLIT_CGST_SGST;
+        // Header-only entry (no calculated lines): the operator's typed
+        // taxable_amount IS the base. Otherwise it's the ordinary-line sum
+        // (bill_tax_base) tracked per line in prepareLine() above.
+        $taxBase = $hasCalculatedLine
+            ? round($totals['bill_tax_base'], 2)
+            : (self::number($header['taxable_amount'] ?? null) ?? 0.0);
+        $split = $this->suggester->suggestTaxSplit($taxBase, $rate, $splitType);
+        $inputs = ['bill_tax_base' => $taxBase, 'bill_gst_rate' => $rate, 'tax_split_type' => $splitType];
+
+        $state = [];
+        foreach (['cgst', 'sgst', 'igst'] as $field) {
+            $state[$field] = $this->resolveState($header, $field, $split[$field], $inputs, true);
+            $header[$field] = $state[$field]['value'];
+        }
+
+        $billGst = round(($state['cgst']['value'] ?? 0) + ($state['sgst']['value'] ?? 0) + ($state['igst']['value'] ?? 0), 2);
+
+        $state['tax_total'] = $this->resolveState($header, 'tax_total', round($totals['tax_total'] + $billGst, 2), $inputs, true);
+        $header['tax_total'] = $state['tax_total']['value'];
+
+        $priorGrandTotal = $hasCalculatedLine ? $totals['grand_total'] : $taxBase;
+        $state['grand_total'] = $this->resolveState($header, 'grand_total', round($priorGrandTotal + $billGst, 2), $inputs, true);
+        $header['grand_total'] = $state['grand_total']['value'];
+
+        return ['header' => $header, 'state' => $state];
     }
 
     private function resolveState(array $source, string $field, ?float $suggestion, array $inputs = [], bool $strictAuto = false): array
