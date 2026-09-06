@@ -15,6 +15,14 @@ namespace App\Support\Historical;
  */
 final class HistoricalMakingCharge
 {
+    /**
+     * Standard display wording for a manual entry that never asked the
+     * operator for a custom label. File-import keeps its own printed label
+     * (that's the whole point of the mapping screen) — this constant is for
+     * the manual-entry-only path, which has no label input at all.
+     */
+    public const DEFAULT_LABEL = 'Making charges';
+
     // ------------------------------------------------------------- categories
     // What the charge IS. Deliberately not collapsed: see the class docblock.
 

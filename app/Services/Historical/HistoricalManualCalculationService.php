@@ -4,6 +4,7 @@ namespace App\Services\Historical;
 
 use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\Historical\HistoricalSalesLine;
+use App\Support\Historical\HistoricalMakingCharge;
 
 /**
  * Wires raw manual-form values into the existing Historical formula contract.
@@ -20,6 +21,10 @@ class HistoricalManualCalculationService
     /** @return array{header: array, lines: array, line_attributes: array, document_attributes: array, errors: array} */
     public function prepare(array $header, array $lines): array
     {
+        // Manual entry never asks for a custom label — "Making charges" is the
+        // standard wording (see HistoricalMakingCharge::DEFAULT_LABEL docblock).
+        $header['making_label'] = self::text($header['making_label'] ?? null) ?? HistoricalMakingCharge::DEFAULT_LABEL;
+
         $prepared = [];
         $lineAttributes = [];
         $errors = [];
@@ -96,6 +101,11 @@ class HistoricalManualCalculationService
     /** @return array{line: array, attributes: array, totals: array, errors: array, calculation_enabled: bool} */
     private function prepareLine(array $line, int $lineNumber): array
     {
+        // Same standard-wording default as the header — applied before either
+        // early-return branch so it covers every line regardless of whether
+        // per-line calculation is enabled.
+        $line['line_making_label'] = self::text($line['line_making_label'] ?? null) ?? HistoricalMakingCharge::DEFAULT_LABEL;
+
         $enabled = self::bool($line['line_calculation_enabled'] ?? false);
         $metal = self::text($line['line_metal_type'] ?? null);
         $basis = self::text($line['line_billable_weight_basis'] ?? null);

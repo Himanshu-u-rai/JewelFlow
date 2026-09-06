@@ -118,9 +118,14 @@ class HistoricalManualItemGridTest extends TestCase
 
         $this->assertSame(1, $xpath->query('//*[@data-historical-item-grid-mobile]//*[@data-historical-item-card]')?->length);
         $this->assertSame(1, $xpath->query("{$mobile}//*[@x-model='line.line_item_name' and @type='text']")?->length);
-        foreach (['line_sku', 'line_hsn', 'line_making_label'] as $textField) {
+        foreach (['line_sku', 'line_hsn'] as $textField) {
             $this->assertSame(1, $xpath->query("{$advanced}//*[@x-model='line.{$textField}' and @type='text']")?->length);
         }
+
+        // "Making charges" is the standard wording now — no free-text label
+        // input for the operator to fill in, on either surface.
+        $this->assertSame(0, $xpath->query("//*[@x-model='line.line_making_label']")?->length);
+        $this->assertSame(0, $xpath->query("//input[contains(@name, '[line_making_label]')]")?->length);
         $this->assertSame(0, $xpath->query("{$desktop}[contains(concat(' ', normalize-space(@class), ' '), ' overflow-x-auto ')]")?->length);
         $this->assertSame(1, $xpath->query("{$desktop}[contains(concat(' ', normalize-space(@class), ' '), ' rounded-xl ') and contains(concat(' ', normalize-space(@class), ' '), ' overflow-hidden ') and contains(concat(' ', normalize-space(@class), ' '), ' bg-white ')]")?->length);
         $this->assertSame(1, $xpath->query("{$desktop}//table[contains(concat(' ', normalize-space(@class), ' '), ' table-fixed ')]")?->length);

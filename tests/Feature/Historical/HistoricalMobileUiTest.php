@@ -409,7 +409,7 @@ class HistoricalMobileUiTest extends TestCase
             $headingText .= ' '.$heading->textContent;
         }
 
-        foreach (['Document identity', 'Customer snapshot', 'Amount / payment', 'Tax and making / labour charge', 'Item lines', 'Payments', 'Cutover'] as $title) {
+        foreach (['Document identity', 'Customer snapshot', 'Amount / payment', 'Tax and making charges', 'Item lines', 'Payments', 'Cutover'] as $title) {
             $this->assertStringContainsString($title, $headingText);
         }
     }
@@ -529,14 +529,18 @@ class HistoricalMobileUiTest extends TestCase
         $this->assertNodesHaveClasses($xpath, "{$taxSection}//*[@data-historical-supporting-grid][.//*[@id='tax_mode']]", ['lg:grid-cols-1']);
         $this->assertNodesHaveClasses(
             $xpath,
-            "{$taxSection}//*[@data-historical-supporting-grid][.//*[@id='making_category'] and .//*[@id='making_basis']]",
+            "{$taxSection}//*[@data-historical-supporting-grid][.//*[@id='making_value'] and .//*[@id='making_basis']]",
             ['lg:grid-cols-2']
         );
         $this->assertNodesHaveClasses(
             $xpath,
-            "{$taxSection}//*[@data-historical-supporting-grid]/*[.//*[@id='making_label'] or .//*[@id='making_value']]",
+            "{$taxSection}//*[@data-historical-supporting-grid]/*[.//*[@id='making_value']]",
             ['lg:col-span-1']
         );
+        // "Making charges" is the standard wording — no free-text label input
+        // or category choice is asked of the operator anywhere in this section.
+        $this->assertSame(0, $xpath->query("{$taxSection}//*[@id='making_label']")?->length);
+        $this->assertSame(0, $xpath->query("{$taxSection}//*[@id='making_category']")?->length);
         $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='cutover']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
     }
 
@@ -595,7 +599,7 @@ class HistoricalMobileUiTest extends TestCase
         }
         $this->assertSame(0, $xpath->query("{$itemSection}//*[contains(concat(' ', normalize-space(@class), ' '), ' overflow-x-auto ')]")?->length);
         $this->assertStringContainsString('A fresh row appears automatically.', $html);
-        foreach (['Select customer type', 'Select metal', 'Select purity', 'Select category', 'Select basis'] as $placeholder) {
+        foreach (['Select customer type', 'Select metal', 'Select purity', 'Select basis'] as $placeholder) {
             $this->assertStringContainsString($placeholder, $html);
         }
     }

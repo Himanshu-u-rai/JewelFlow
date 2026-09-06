@@ -283,9 +283,9 @@
 </fieldset>
 
 <fieldset class="rounded-2xl border border-slate-200 bg-white overflow-hidden lg:col-span-1" data-historical-form-section data-historical-section="tax-making">
-    <legend class="sr-only">Tax and making / labour charge</legend>
+    <legend class="sr-only">Tax and making charges</legend>
     <div class="border-b border-slate-200 px-4 py-4 sm:px-6" data-historical-card-header aria-hidden="true">
-        <h2 class="text-base font-semibold text-slate-900">Tax and making / labour charge</h2>
+        <h2 class="text-base font-semibold text-slate-900">Tax and making charges</h2>
     </div>
     <div class="p-4 sm:p-6">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4" data-historical-supporting-grid>
@@ -323,40 +323,32 @@
         <p class="text-xs text-slate-500 sm:col-span-2">Applies once to the whole bill (not per line). Leave blank to enter tax amounts by hand instead.</p>
     </div>
 
-    {{-- Optional, reference-only: how the ORIGINAL paper bill labelled its
-         making/labour charge. It is stored as a display snapshot alongside
+    {{-- Optional, reference-only: how the ORIGINAL paper bill recorded its
+         making charge value. It is stored as a display snapshot alongside
          the document (making_label_original/making_value_original/
          making_category/making_basis/making_amount — see
          HistoricalDocumentNormalizer::normalize()) and is never added into
          grand_total, so it must never look like a second charge-entry field
          sitting next to the real bill-level tax rate above. The actual,
-         calculated making/labour charge is entered once per item, in that
-         item's own "Advanced details" (line_making_label/line_making_value).
+         calculated making charge is entered once per item, in that item's
+         own "Advanced details" (line_making_basis/line_making_value).
+         "Making charges" is the standard wording — no free-text label or
+         category choice is asked of the user here; both are set internally
+         (see HistoricalManualCalculationService/manualNormalizerOptions()).
          Collapsed by default; field ids/names/grid classes are unchanged so
          nothing else that imports/renders/tests these fields needs to change. --}}
     <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50" data-historical-original-making-details>
         <summary class="cursor-pointer select-none px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Original bill's making / labour label <span class="font-normal normal-case tracking-normal">(optional, reference only — does not add to the total)</span>
+            Original bill's making charges <span class="font-normal normal-case tracking-normal">(optional, reference only — does not add to the total)</span>
         </summary>
         <div class="px-3 pb-3 pt-1">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mt-4" data-historical-supporting-grid>
         <div class="lg:col-span-1">
-            <label for="making_label">Making / labour charge label</label>
-            <input type="text" id="making_label" name="making_label" value="{{ old('making_label') }}" placeholder="MC, VA, Wastage…" class="w-full">
-        </div>
-        <div class="lg:col-span-1">
-            <label for="making_value">Making / labour charge value</label>
+            <label for="making_value">Making charges value</label>
             <input type="text" id="making_value" name="making_value" value="{{ old('making_value') }}" placeholder="12% or 450/gm" class="w-full">
         </div>
-        <div>
-            <label for="making_category">Category</label>
-            <select id="making_category" name="making_category" class="w-full min-h-[44px]">
-                <option value="">Select category</option>
-                @foreach($makingCategories as $c)<option value="{{ $c }}" @selected(old('making_category')===$c)>{{ str_replace('_',' ',$c) }}</option>@endforeach
-            </select>
-        </div>
-        <div>
-            <label for="making_basis">Basis</label>
+        <div class="lg:col-span-1">
+            <label for="making_basis">Making charges basis</label>
             <select id="making_basis" name="making_basis" class="w-full min-h-[44px]">
                 <option value="">Select basis</option>
                 @foreach($makingBases as $b)<option value="{{ $b }}" @selected(old('making_basis')===$b)>{{ str_replace('_',' ',$b) }}</option>@endforeach

@@ -12,6 +12,7 @@ use App\Models\Historical\HistoricalSalesPayment;
 use App\Models\Shop;
 use App\Models\ShopPaymentMethod;
 use App\Support\Historical\HistoricalFields;
+use App\Support\Historical\HistoricalMakingCharge;
 use App\Support\Historical\HistoricalManualPublishRejected;
 use App\Support\Historical\HistoricalMessages;
 use App\Support\Historical\HistoricalParseException;
@@ -911,7 +912,10 @@ class HistoricalImportService
             'tax_mode' => $options['tax_mode'] ?? HistoricalSalesDocument::TAX_MODE_UNKNOWN,
             'source_system' => $options['source_system'] ?? self::SOURCE_MANUAL,
             'cutover_date' => $options['cutover_date'] ?? null,
-            'making_category' => $options['making_category'] ?? null,
+            // Manual entry never asks the operator to categorize the making
+            // charge (no category select in the form) — default it so the
+            // field still carries a sane, internally-supplied value.
+            'making_category' => $options['making_category'] ?? HistoricalMakingCharge::CATEGORY_MAKING,
             'making_basis' => $options['making_basis'] ?? null,
             'zero_tax_confirmed' => (bool) ($options['zero_tax_confirmed'] ?? false),
             'cutover_acknowledged' => (bool) ($options['cutover_acknowledged'] ?? false),

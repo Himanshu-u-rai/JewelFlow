@@ -392,4 +392,52 @@ class HistoricalManualCalculationWiringTest extends TestCase
             'With no bill_gst_rate, applyBillLevelTax() must be a no-op — nothing forces a cgst/sgst/igst state to exist.'
         );
     }
+
+    /**
+     * Batch 5 usability correction — "Making charges" is the standard wording
+     * and manual entry never asks for a label or category. This proves the
+     * internal defaults (HistoricalMakingCharge::DEFAULT_LABEL/CATEGORY_MAKING)
+     * actually land in the database on both the document header and the line,
+     * for a payload that submits no making_label/making_category/
+     * line_making_label at all — not just that the request succeeds.
+     */
+    public function test_an_ordinary_manual_bill_persists_the_standard_making_charges_wording_with_no_label_input(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        // calcPayload()'s line totals ₹52,250 (metal only); adding a ₹500
+        // fixed-line making charge on top means both the line total and the
+        // printed grand total must move to ₹52,750, or the normalizer's own
+        // total-mismatch guard blocks the save — nothing to do with labels.
+        $payload = $this->calcPayload(['grand_total' => 52750]);
+        $payload['intent'] = 'draft';
+        $payload['lines'][0]['line_calculation_enabled'] = '1';
+        $payload['lines'][0]['line_making_basis'] = 'fixed_line';
+        $payload['lines'][0]['line_making_value'] = '500';
+        $payload['lines'][0]['line_making_amount_mode'] = 'auto';
+        $payload['lines'][0]['line_total'] = 52750;
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
+        $preview->assertOk();
+        $this->assertSame('Making charges', $preview->viewData('attributes')['making_label_original'] ?? null);
+        $this->assertSame('making', $preview->viewData('attributes')['making_category'] ?? null);
+        $this->assertSame('Making charges', $preview->viewData('lines')[0]['making_label_original'] ?? null);
+        $this->assertSame('making', $preview->viewData('lines')[0]['making_category'] ?? null);
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.store'), $payload);
+        $response->assertSessionHasNoErrors();
+
+        TenantContext::runFor($shop->id, function () use ($payload): void {
+            $document = HistoricalSalesDocument::query()
+                ->where('original_document_number', $payload['original_document_number'])
+                ->firstOrFail();
+            $this->assertSame('Making charges', $document->making_label_original);
+            $this->assertSame('making', $document->making_category);
+
+            $line = $document->lines()->firstOrFail();
+            $this->assertSame('Making charges', $line->making_label_original);
+            $this->assertSame('making', $line->making_category);
+            $this->assertSame(500.0, (float) $line->making_amount);
+        });
+    }
 }
