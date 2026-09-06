@@ -198,6 +198,12 @@ class HistoricalSalesDocument extends Model
         return $this->hasMany(HistoricalSalesPayment::class, 'historical_sales_document_id');
     }
 
+    /** Evidence (scanned bills/proof) — Batch 5. Includes removed rows; filter by is_active. */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(HistoricalSalesDocumentAttachment::class, 'historical_sales_document_id');
+    }
+
     public function revises(): BelongsTo
     {
         return $this->belongsTo(self::class, 'revises_document_id');

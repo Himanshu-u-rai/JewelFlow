@@ -11,6 +11,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\GoldInventoryController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\BulkImportController;
+use App\Http\Controllers\Historical\HistoricalDocumentAttachmentController;
 use App\Http\Controllers\Historical\HistoricalDocumentController;
 use App\Http\Controllers\Historical\HistoricalImportController;
 use App\Http\Controllers\Historical\HistoricalManualEntryController;
@@ -306,6 +307,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::bind('document', fn ($value) => \App\Models\Historical\HistoricalSalesDocument::withoutGlobalScope('shop')
         ->where('shop_id', auth()->user()?->shop_id)
         ->findOrFail($value));
+    Route::bind('attachment', fn ($value) => \App\Models\Historical\HistoricalSalesDocumentAttachment::withoutGlobalScope('shop')
+        ->where('shop_id', auth()->user()?->shop_id)
+        ->findOrFail($value));
 
     Route::middleware('edition:retailer')->prefix('historical')->name('historical.')->group(function () {
         // --- view (historical.view) ---
@@ -371,6 +375,14 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         // so it requires the same permission as publishing, not mere import.
         Route::post('/documents/{document}/resolve-opening-balance', [HistoricalDocumentController::class, 'resolveOpeningBalance'])
             ->middleware('can:historical.publish')->name('documents.resolve-opening-balance');
+
+        // --- evidence attachments (historical.import to add/remove; historical.view to stream) ---
+        Route::post('/documents/{document}/attachments', [HistoricalDocumentAttachmentController::class, 'store'])
+            ->middleware('can:historical.import')->name('documents.attachments.store');
+        Route::delete('/attachments/{attachment}', [HistoricalDocumentAttachmentController::class, 'destroy'])
+            ->middleware('can:historical.import')->name('attachments.destroy');
+        Route::get('/attachments/{attachment}/file', [HistoricalDocumentAttachmentController::class, 'show'])
+            ->middleware('can:historical.view')->name('attachments.show');
     });
 
     // ======= EXISTING-SHOP ONBOARDING (opening balances; owner-only, re-checked in controller) =======
