@@ -19,13 +19,19 @@ use LogicException;
  * `HistoricalSalesDocumentAttachmentService` — this model only adds the
  * historical-specific parent link and the soft-removal bookkeeping.
  *
- * Removal is SOFT, unlike `HistoricalSalesPayment` (hard-delete, draft-only).
- * Evidence must survive even after the parent document is published — an
- * operator can retract a wrongly-attached scan post-publish without losing
- * the audit trail of what was removed, by whom, and why. This is why
- * attachments are NOT wrapped in `HistoricalLifecycle::run()` / gated by
- * `ImmutableWhenPublished`: that mechanism protects the PARENT document's
- * own protected columns, and removing an attachment never touches those.
+ * Removal is SOFT, unlike `HistoricalSalesPayment` (hard-delete, draft-only)
+ * — and unlike `KycDocumentService::delete()`, which this class otherwise
+ * mirrors, it does NOT delete the physical file. Evidence is financial
+ * proof, not the PII-purge `KycDocument` is: the private file must survive
+ * removal so it can still be recovered/audited, exactly like the DB row.
+ * `is_active = false` only blocks the streaming route
+ * (`HistoricalDocumentAttachmentController::show()`); the file itself is
+ * untouched. An operator can retract a wrongly-attached scan post-publish
+ * without losing the audit trail of what was removed, by whom, and why, or
+ * the evidence itself. This is why attachments are NOT wrapped in
+ * `HistoricalLifecycle::run()` / gated by `ImmutableWhenPublished`: that
+ * mechanism protects the PARENT document's own protected columns, and
+ * removing an attachment never touches those.
  */
 class HistoricalSalesDocumentAttachment extends Model
 {
@@ -61,9 +67,9 @@ class HistoricalSalesDocumentAttachment extends Model
      * (`historical_attachments_removal_metadata_check`) is never at risk of
      * seeing a half-filled row from this model.
      *
-     * DB-only: file deletion is the service's job, done only after this (and
-     * the audit log) durably commit — see
-     * `HistoricalSalesDocumentAttachmentService::remove()`.
+     * DB-only — the file is deliberately left on disk (see class docblock);
+     * this call and `HistoricalSalesDocumentAttachmentService::remove()`'s
+     * audit-log write are the only durable side effects of a removal.
      *
      * The `removed_at IS NULL` guard on the update itself (not a prior read) is
      * the same atomic-claim shape as

@@ -77,18 +77,18 @@ class HistoricalSalesDocumentAttachmentService
         }
     }
 
-    /** Soft-remove: delete the file from disk, keep the audited DB row. */
+    /**
+     * Soft-remove: deactivate the row, keep both the audit trail AND the
+     * physical file on disk. Deliberately NOT the `KycDocumentService::delete()`
+     * pattern (PII purge) — evidence is financial proof, so it must stay
+     * recoverable after removal. `is_active = false` is what blocks the
+     * streaming route (`HistoricalDocumentAttachmentController::show()`);
+     * see the model's class docblock for the full rationale.
+     */
     public function remove(HistoricalSalesDocumentAttachment $attachment, int $actorId, string $reason): void
     {
         $this->assertMutable($attachment->document);
 
-        $disk = $attachment->file_disk ?? 'local';
-        $path = $attachment->file_path;
-
-        // DB row + audit entry commit together first; the physical file is only
-        // deleted afterward. If the audit log throws, the transaction rolls
-        // back and the file is untouched — never a deleted file backing a row
-        // that still (falsely) claims to be active.
         DB::transaction(function () use ($attachment, $actorId, $reason): void {
             $attachment->remove($actorId, $reason);
 
@@ -101,10 +101,6 @@ class HistoricalSalesDocumentAttachmentService
                 'data' => ['attachment_id' => $attachment->id, 'reason' => $attachment->removed_reason],
             ]);
         });
-
-        if ($path && Storage::disk($disk)->exists($path)) {
-            Storage::disk($disk)->delete($path);
-        }
     }
 
     /**

@@ -184,7 +184,7 @@ class HistoricalDocumentAttachmentTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_removal_requires_a_reason_deletes_the_file_and_keeps_the_audited_row(): void
+    public function test_removal_requires_a_reason_retains_the_file_and_keeps_the_audited_row(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
@@ -212,9 +212,14 @@ class HistoricalDocumentAttachmentTest extends TestCase
             $this->assertSame($owner->id, $fresh->removed_by);
             $this->assertNotNull($fresh->removed_at);
         });
-        Storage::disk('local')->assertMissing($path);
 
-        // Streaming a removed attachment now 404s even for a fully-permitted user.
+        // The approved contract: removal is soft. The private file must survive
+        // on disk — it stays recoverable evidence — even though is_active=false
+        // now blocks it from being served (see the model's class docblock).
+        Storage::disk('local')->assertExists($path);
+
+        // Streaming a removed attachment now 404s even for a fully-permitted user,
+        // despite the file still being physically present.
         $this->actingAs($owner)
             ->get(route('historical.attachments.show', $attachment))
             ->assertNotFound();
