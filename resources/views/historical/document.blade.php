@@ -472,6 +472,77 @@
             @endif
         </section>
 
+        {{-- Evidence attachments (Batch 5). Upload/removal require historical.import
+             and are blocked by the service on void/superseded documents (terminal —
+             the docblock on HistoricalSalesDocumentAttachmentService::assertMutable()
+             explains why); existing evidence stays viewable in every status. --}}
+        <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden" data-historical-attachments>
+            <div class="border-b border-slate-200 px-4 py-4 sm:px-6">
+                <h2 class="text-base font-semibold text-slate-900">Evidence attachments <span class="text-sm font-normal text-slate-500">({{ $document->attachments->where('is_active', true)->count() }})</span></h2>
+                <p class="mt-1 text-sm text-slate-500">Scanned bills or proof supporting this record. Stored privately — never a public link.</p>
+            </div>
+
+            <div class="p-4 sm:p-6">
+                @if($lifecycle['is_void'] || $lifecycle['is_superseded'])
+                    <p class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600" data-historical-attachments-readonly>
+                        This document is {{ $document->status }} — evidence is read-only. Existing attachments remain viewable below; none can be added or removed.
+                    </p>
+                @else
+                    @can('historical.import')
+                        <form method="POST" action="{{ route('historical.documents.attachments.store', $document) }}" enctype="multipart/form-data" class="mb-4 grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4" data-historical-attachment-upload>
+                            @csrf
+                            <label for="attachment_file" class="text-sm font-medium text-slate-700">Upload evidence</label>
+                            <input type="file" id="attachment_file" name="file" accept=".jpg,.jpeg,.png,.pdf" required class="min-h-[44px] w-full text-sm">
+                            <p class="text-xs text-slate-500">JPEG, PNG or PDF, up to 10 MB.</p>
+                            <div><button class="btn btn-sm min-h-[44px]" type="submit">Upload</button></div>
+                        </form>
+                    @endcan
+                @endif
+
+                @if($document->attachments->isEmpty())
+                    <p class="text-sm text-slate-500">No evidence attached yet.</p>
+                @else
+                    <ul class="grid gap-2" data-historical-attachment-list>
+                        @foreach($document->attachments as $attachment)
+                            <li class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 {{ $attachment->is_active ? '' : 'opacity-60' }}" data-historical-attachment-row data-historical-attachment-active="{{ $attachment->is_active ? '1' : '0' }}">
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-medium text-slate-800">{{ $attachment->original_filename }}</p>
+                                    <p class="mt-0.5 text-xs text-slate-500">
+                                        Uploaded by {{ $attachment->uploadedBy?->name ?? 'unknown' }} on {{ $attachment->created_at?->format('d M Y, H:i') }}
+                                    </p>
+                                    @if(! $attachment->is_active)
+                                        <p class="mt-0.5 text-xs text-rose-600">
+                                            Removed by {{ $attachment->removedBy?->name ?? 'unknown' }} on {{ $attachment->removed_at?->format('d M Y, H:i') }} — {{ $attachment->removed_reason }}
+                                        </p>
+                                    @endif
+                                </div>
+                                <div class="flex shrink-0 items-center gap-2">
+                                    @can('historical.view')
+                                        <a href="{{ route('historical.attachments.show', $attachment) }}" target="_blank" rel="noopener" class="text-sm font-medium text-teal-700 hover:text-teal-800">View</a>
+                                    @endcan
+                                    @if($attachment->is_active && ! $lifecycle['is_void'] && ! $lifecycle['is_superseded'])
+                                        @can('historical.import')
+                                            <details class="relative" data-historical-attachment-remove>
+                                                <summary class="cursor-pointer text-sm font-medium text-rose-600 hover:text-rose-700 list-none">Remove</summary>
+                                                <form method="POST" action="{{ route('historical.attachments.destroy', $attachment) }}"
+                                                      onsubmit="return confirm('Remove this attachment? The file is deleted; the audit record is kept.');"
+                                                      class="mt-2 flex flex-wrap items-center gap-2">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <input type="text" name="reason" placeholder="Reason (required)" required maxlength="500" class="min-h-[36px] rounded-lg border-slate-300 text-sm">
+                                                    <button class="btn btn-danger btn-sm min-h-[36px]" type="submit">Confirm removal</button>
+                                                </form>
+                                            </details>
+                                        @endcan
+                                    @endif
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        </section>
+
         @can('historical.publish')
             @if($lifecycle['is_published'])
                 <div class="rounded-2xl border border-rose-200 bg-white p-4 sm:p-6">

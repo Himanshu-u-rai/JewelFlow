@@ -6,7 +6,11 @@ use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\Historical\HistoricalSalesDocumentAttachment;
 use App\Services\AccountingAuditService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use LogicException;
+use Throwable;
 
 /**
  * Stores/removes evidence (scanned bills/proof) against a historical document
@@ -26,51 +30,101 @@ class HistoricalSalesDocumentAttachmentService
 
     public function store(HistoricalSalesDocument $document, UploadedFile $file, int $uploadedBy): HistoricalSalesDocumentAttachment
     {
+        $this->assertMutable($document);
+
         $shopId = (int) $document->shop_id;
         $ext = self::MIME_TO_EXT[$file->getMimeType()] ?? 'bin';
 
         // Evidence is PII/financial proof — private 'local' disk only, never public.
         $path = $file->storeAs("historical-attachments/{$shopId}", Str::ulid().'.'.$ext, 'local');
 
-        // $guarded = ['*'] on this model (same posture as every other Historical
-        // row — evidence is force-filled by the service, never mass-assigned from
-        // a request), so this needs forceFill(), not create().
-        $attachment = new HistoricalSalesDocumentAttachment;
-        $attachment->forceFill([
-            'shop_id' => $shopId,
-            'historical_sales_document_id' => $document->id,
-            'uploaded_by' => $uploadedBy,
-            'file_path' => $path,
-            'file_disk' => 'local',
-            'original_filename' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
-            'file_size_bytes' => $file->getSize(),
-        ])->save();
+        try {
+            return DB::transaction(function () use ($document, $file, $uploadedBy, $shopId, $path): HistoricalSalesDocumentAttachment {
+                // $guarded = ['*'] on this model (same posture as every other Historical
+                // row — evidence is force-filled by the service, never mass-assigned from
+                // a request), so this needs forceFill(), not create().
+                $attachment = new HistoricalSalesDocumentAttachment;
+                $attachment->forceFill([
+                    'shop_id' => $shopId,
+                    'historical_sales_document_id' => $document->id,
+                    'uploaded_by' => $uploadedBy,
+                    'file_path' => $path,
+                    'file_disk' => 'local',
+                    'original_filename' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'file_size_bytes' => $file->getSize(),
+                ])->save();
 
-        AccountingAuditService::log([
-            'shop_id' => $shopId,
-            'action' => 'historical_attachment_uploaded',
-            'model_type' => 'historical_sales_document',
-            'model_id' => $document->id,
-            'description' => "Evidence attachment uploaded for historical document #{$document->id}",
-            'data' => ['attachment_id' => $attachment->id, 'original_filename' => $attachment->original_filename],
-        ]);
+                AccountingAuditService::log([
+                    'shop_id' => $shopId,
+                    'action' => 'historical_attachment_uploaded',
+                    'model_type' => 'historical_sales_document',
+                    'model_id' => $document->id,
+                    'description' => "Evidence attachment uploaded for historical document #{$document->id}",
+                    'data' => ['attachment_id' => $attachment->id, 'original_filename' => $attachment->original_filename],
+                ]);
 
-        return $attachment;
+                return $attachment;
+            });
+        } catch (Throwable $e) {
+            // The DB row (and its audit entry) rolled back together on any
+            // failure — an audit-log write failure can never leave a "phantom"
+            // attachment row with no audit trail. The physical file has no
+            // transaction to roll back into, so it's deleted explicitly instead
+            // of leaking storage for a row that no longer exists.
+            Storage::disk('local')->delete($path);
+            throw $e;
+        }
     }
 
     /** Soft-remove: delete the file from disk, keep the audited DB row. */
     public function remove(HistoricalSalesDocumentAttachment $attachment, int $actorId, string $reason): void
     {
-        $attachment->remove($actorId, $reason);
+        $this->assertMutable($attachment->document);
 
-        AccountingAuditService::log([
-            'shop_id' => $attachment->shop_id,
-            'action' => 'historical_attachment_removed',
-            'model_type' => 'historical_sales_document',
-            'model_id' => $attachment->historical_sales_document_id,
-            'description' => "Evidence attachment #{$attachment->id} removed from historical document #{$attachment->historical_sales_document_id}",
-            'data' => ['attachment_id' => $attachment->id, 'reason' => $attachment->removed_reason],
-        ]);
+        $disk = $attachment->file_disk ?? 'local';
+        $path = $attachment->file_path;
+
+        // DB row + audit entry commit together first; the physical file is only
+        // deleted afterward. If the audit log throws, the transaction rolls
+        // back and the file is untouched — never a deleted file backing a row
+        // that still (falsely) claims to be active.
+        DB::transaction(function () use ($attachment, $actorId, $reason): void {
+            $attachment->remove($actorId, $reason);
+
+            AccountingAuditService::log([
+                'shop_id' => $attachment->shop_id,
+                'action' => 'historical_attachment_removed',
+                'model_type' => 'historical_sales_document',
+                'model_id' => $attachment->historical_sales_document_id,
+                'description' => "Evidence attachment #{$attachment->id} removed from historical document #{$attachment->historical_sales_document_id}",
+                'data' => ['attachment_id' => $attachment->id, 'reason' => $attachment->removed_reason],
+            ]);
+        });
+
+        if ($path && Storage::disk($disk)->exists($path)) {
+            Storage::disk($disk)->delete($path);
+        }
+    }
+
+    /**
+     * Attachments are writable on DRAFT and PUBLISHED documents (evidence can
+     * still be corrected post-publish — see the model's docblock). VOID and
+     * SUPERSEDED are terminal: the document itself is dead, so its evidence
+     * trail is frozen too (still viewable/streamable, never added to or
+     * removed from).
+     */
+    private function assertMutable(HistoricalSalesDocument $document): void
+    {
+        if (in_array($document->status, [
+            HistoricalSalesDocument::STATUS_VOID,
+            HistoricalSalesDocument::STATUS_SUPERSEDED,
+        ], true)) {
+            throw new LogicException(sprintf(
+                'Historical document #%d is %s; its evidence attachments are read-only.',
+                $document->id,
+                $document->status
+            ));
+        }
     }
 }

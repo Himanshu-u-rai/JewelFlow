@@ -31,7 +31,11 @@ class HistoricalDocumentAttachmentController extends Controller
             'file' => ['required', 'file', 'mimes:jpeg,jpg,png,pdf', 'max:10240'],
         ]);
 
-        $this->attachments->store($document, $validated['file'], (int) $request->user()->id);
+        try {
+            $this->attachments->store($document, $validated['file'], (int) $request->user()->id);
+        } catch (Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', 'Attachment uploaded.');
     }

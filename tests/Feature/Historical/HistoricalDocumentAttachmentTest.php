@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use LogicException;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
@@ -82,6 +83,32 @@ class HistoricalDocumentAttachmentTest extends TestCase
     private function fakeUpload(): UploadedFile
     {
         return UploadedFile::fake()->create('bill-scan.pdf', 100, 'application/pdf');
+    }
+
+    /**
+     * Direct-insert fixture, same posture as the CHECK-constraint test below —
+     * bypasses the store() endpoint entirely so a VOID/SUPERSEDED document (on
+     * which the service refuses new uploads) can still have pre-existing
+     * evidence to prove read-only behavior against.
+     */
+    private function makeAttachment(int $shopId, int $documentId, int $uploadedBy, string $path): HistoricalSalesDocumentAttachment
+    {
+        Storage::disk('local')->put($path, 'fake pdf bytes');
+
+        $attachment = new HistoricalSalesDocumentAttachment;
+        $attachment->forceFill([
+            'shop_id' => $shopId,
+            'historical_sales_document_id' => $documentId,
+            'uploaded_by' => $uploadedBy,
+            'file_path' => $path,
+            'file_disk' => 'local',
+            'original_filename' => 'bill-scan.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size_bytes' => 100,
+            'is_active' => true,
+        ])->save();
+
+        return $attachment;
     }
 
     public function test_upload_stores_on_the_private_local_disk_never_public(): void
@@ -260,6 +287,258 @@ class HistoricalDocumentAttachmentTest extends TestCase
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+        });
+    }
+
+    public function test_upload_rejects_a_file_over_the_10mb_limit(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        $oversized = UploadedFile::fake()->create('bill-scan.pdf', 10241, 'application/pdf');
+
+        $this->actingAs($owner)
+            ->post(route('historical.documents.attachments.store', $document), ['file' => $oversized])
+            ->assertSessionHasErrors('file');
+
+        $this->assertSame(0, TenantContext::runFor($shop->id, fn () => HistoricalSalesDocumentAttachment::count()));
+    }
+
+    public function test_upload_rejects_a_disallowed_mime_type(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        $wrongType = UploadedFile::fake()->create('notes.txt', 10, 'text/plain');
+
+        $this->actingAs($owner)
+            ->post(route('historical.documents.attachments.store', $document), ['file' => $wrongType])
+            ->assertSessionHasErrors('file');
+
+        $this->assertSame(0, TenantContext::runFor($shop->id, fn () => HistoricalSalesDocumentAttachment::count()));
+    }
+
+    public function test_guest_is_redirected_to_login_on_every_attachment_route(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+        $attachment = TenantContext::runFor($shop->id, fn () => $this->makeAttachment($shop->id, $document->id, $owner->id, "historical-attachments/{$shop->id}/guest-test.pdf"));
+
+        $this->post(route('historical.documents.attachments.store', $document), ['file' => $this->fakeUpload()])->assertRedirect(route('login'));
+        $this->get(route('historical.attachments.show', $attachment))->assertRedirect(route('login'));
+        $this->delete(route('historical.attachments.destroy', $attachment), ['reason' => 'x'])->assertRedirect(route('login'));
+    }
+
+    /**
+     * A realistic reporting-only custom role (reports.view + reports.export,
+     * mirroring the Batch 4 Dues Aging permission set) has no historical.*
+     * grants at all — every write/removal route must still deny it.
+     */
+    public function test_a_reports_only_role_cannot_upload_or_remove_attachments(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->grantOnlyPermissions($owner, ['reports.view', 'reports.export']);
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        $this->actingAs($owner)
+            ->post(route('historical.documents.attachments.store', $document), ['file' => $this->fakeUpload()])
+            ->assertForbidden();
+
+        $attachment = TenantContext::runFor($shop->id, fn () => $this->makeAttachment($shop->id, $document->id, $owner->id, "historical-attachments/{$shop->id}/reports-only.pdf"));
+
+        $this->actingAs($owner)
+            ->delete(route('historical.attachments.destroy', $attachment), ['reason' => 'x'])
+            ->assertForbidden();
+
+        // historical.view alone (no reports.* overlap needed) still streams it.
+        $this->grantOnlyPermissions($owner, ['historical.view']);
+        $this->actingAs($owner)->get(route('historical.attachments.show', $attachment))->assertOk();
+    }
+
+    public function test_void_document_attachments_are_read_only_but_still_streamable(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id, [
+            'status' => HistoricalSalesDocument::STATUS_VOID,
+            'void_reason' => 'Wrong customer entirely',
+            'voided_at' => now(),
+        ]));
+        $attachment = TenantContext::runFor($shop->id, fn () => $this->makeAttachment($shop->id, $document->id, $owner->id, "historical-attachments/{$shop->id}/void-doc.pdf"));
+
+        $this->actingAs($owner)
+            ->post(route('historical.documents.attachments.store', $document), ['file' => $this->fakeUpload()])
+            ->assertRedirect();
+        $this->assertSame(1, TenantContext::runFor($shop->id, fn () => HistoricalSalesDocumentAttachment::count()));
+
+        $this->actingAs($owner)
+            ->delete(route('historical.attachments.destroy', $attachment), ['reason' => 'Trying to retract'])
+            ->assertRedirect();
+        TenantContext::runFor($shop->id, function () use ($attachment): void {
+            $this->assertTrue($attachment->fresh()->is_active);
+        });
+
+        $this->actingAs($owner)
+            ->get(route('historical.attachments.show', $attachment))
+            ->assertOk();
+    }
+
+    /**
+     * Built via direct insert (same as the CHECK-constraint fixture below) —
+     * the lifecycle trigger only fires on UPDATE/DELETE (see
+     * database/migrations/2026_09_15_000200_add_historical_sales_guards.php),
+     * so a document row inserted with status='superseded' never needs a live
+     * draft->published->superseded transition to exist as a fixture.
+     */
+    public function test_superseded_document_attachments_are_read_only_but_still_streamable(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id, [
+            'status' => HistoricalSalesDocument::STATUS_SUPERSEDED,
+        ]));
+        $attachment = TenantContext::runFor($shop->id, fn () => $this->makeAttachment($shop->id, $document->id, $owner->id, "historical-attachments/{$shop->id}/superseded-doc.pdf"));
+
+        $this->actingAs($owner)
+            ->post(route('historical.documents.attachments.store', $document), ['file' => $this->fakeUpload()])
+            ->assertRedirect();
+        $this->assertSame(1, TenantContext::runFor($shop->id, fn () => HistoricalSalesDocumentAttachment::count()));
+
+        $this->actingAs($owner)
+            ->delete(route('historical.attachments.destroy', $attachment), ['reason' => 'Trying to retract'])
+            ->assertRedirect();
+        TenantContext::runFor($shop->id, function () use ($attachment): void {
+            $this->assertTrue($attachment->fresh()->is_active);
+        });
+
+        $this->actingAs($owner)
+            ->get(route('historical.attachments.show', $attachment))
+            ->assertOk();
+    }
+
+    /**
+     * Forces AccountingAuditService::log()'s AuditLog::create() to throw via a
+     * model-event listener (no static-mocking fragility, and the listener is
+     * scoped to this test's fresh application container). Proves the service's
+     * DB::transaction() wrapping actually rolls back the attachment row AND
+     * deletes the orphaned physical file on any post-write failure.
+     */
+    public function test_an_audit_log_failure_during_upload_rolls_back_the_row_and_deletes_the_orphaned_file(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        \App\Models\AuditLog::creating(function (): void {
+            throw new \RuntimeException('Audit log intentionally failed for test.');
+        });
+
+        try {
+            $this->actingAs($owner)
+                ->post(route('historical.documents.attachments.store', $document), ['file' => $this->fakeUpload()])
+                ->assertRedirect();
+        } finally {
+            \App\Models\AuditLog::flushEventListeners();
+        }
+
+        $this->assertSame(0, TenantContext::runFor($shop->id, fn () => HistoricalSalesDocumentAttachment::count()));
+        Storage::disk('local')->assertDirectoryEmpty("historical-attachments/{$shop->id}");
+    }
+
+    public function test_an_audit_log_failure_during_removal_leaves_the_attachment_active_and_the_file_untouched(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        $this->actingAs($owner)->post(
+            route('historical.documents.attachments.store', $document),
+            ['file' => $this->fakeUpload()]
+        );
+        $attachment = TenantContext::runFor($shop->id, fn () => HistoricalSalesDocumentAttachment::first());
+        $path = $attachment->file_path;
+
+        \App\Models\AuditLog::creating(function (): void {
+            throw new \RuntimeException('Audit log intentionally failed for test.');
+        });
+
+        try {
+            $this->actingAs($owner)
+                ->delete(route('historical.attachments.destroy', $attachment), ['reason' => 'Wrong bill'])
+                ->assertRedirect();
+        } finally {
+            \App\Models\AuditLog::flushEventListeners();
+        }
+
+        TenantContext::runFor($shop->id, function () use ($attachment): void {
+            $this->assertTrue($attachment->fresh()->is_active);
+        });
+        Storage::disk('local')->assertExists($path);
+    }
+
+    /**
+     * Two in-memory copies both read the row while it was still active (the
+     * concurrent-request shape); only the first `remove()` call may win. Proves
+     * the model's atomic `whereNull('removed_at')` claim — not a prior
+     * `is_active` read — is what decides the race, matching
+     * `HistoricalDocumentLifecycleService::claimForPublishing()`'s pattern.
+     */
+    /**
+     * Smoke-tests the Blade wiring on the document detail page itself, not
+     * just the controller/service: the upload form and remove control must be
+     * present on a draft document, and absent (read-only notice instead) once
+     * the document is void — proving the `$lifecycle['is_void']` /
+     * `is_superseded` flags actually reach and gate the attachments section.
+     */
+    public function test_document_screen_renders_upload_form_and_hides_it_when_read_only(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        $this->actingAs($owner)
+            ->get(route('historical.documents.show', $document))
+            ->assertOk()
+            ->assertSee('Evidence attachments')
+            ->assertSee('Upload evidence');
+
+        $this->actingAs($owner)->post(
+            route('historical.documents.attachments.store', $document),
+            ['file' => $this->fakeUpload()]
+        );
+
+        $this->actingAs($owner)
+            ->get(route('historical.documents.show', $document))
+            ->assertOk()
+            ->assertSee('bill-scan.pdf')
+            ->assertSee('Remove');
+
+        $voidDocument = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id, [
+            'status' => HistoricalSalesDocument::STATUS_VOID,
+            'void_reason' => 'Wrong customer entirely',
+            'voided_at' => now(),
+        ]));
+
+        $this->actingAs($owner)
+            ->get(route('historical.documents.show', $voidDocument))
+            ->assertOk()
+            ->assertSee('evidence is read-only')
+            ->assertDontSee('Upload evidence');
+    }
+
+    public function test_concurrent_removal_requests_cannot_both_win_the_race(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        $this->actingAs($owner)->post(
+            route('historical.documents.attachments.store', $document),
+            ['file' => $this->fakeUpload()]
+        );
+
+        TenantContext::runFor($shop->id, function () use ($owner): void {
+            $copyA = HistoricalSalesDocumentAttachment::first();
+            $copyB = HistoricalSalesDocumentAttachment::find($copyA->id);
+
+            $copyA->remove($owner->id, 'first request wins');
+
+            $this->expectException(LogicException::class);
+            $copyB->remove($owner->id, 'second request loses');
         });
     }
 }

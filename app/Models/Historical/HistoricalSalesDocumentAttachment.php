@@ -6,7 +6,7 @@ use App\Models\Concerns\BelongsToShop;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use LogicException;
 
 /**
@@ -60,6 +60,21 @@ class HistoricalSalesDocumentAttachment extends Model
      * pattern exactly, so the DB's all-or-nothing CHECK constraint
      * (`historical_attachments_removal_metadata_check`) is never at risk of
      * seeing a half-filled row from this model.
+     *
+     * DB-only: file deletion is the service's job, done only after this (and
+     * the audit log) durably commit — see
+     * `HistoricalSalesDocumentAttachmentService::remove()`.
+     *
+     * The `removed_at IS NULL` guard on the update itself (not a prior read) is
+     * the same atomic-claim shape as
+     * `HistoricalDocumentLifecycleService::claimForPublishing()`: two
+     * concurrent removal requests can't both "win" a read-then-write gap and
+     * silently overwrite each other's actor/reason. Guarding on `removed_at`
+     * rather than `is_active` sidesteps a real pgsql PDO limitation — a bound
+     * PHP bool compared against a boolean column throws "operator does not
+     * exist: boolean = integer" (see `KycDocument::deactivate()`'s DB::raw
+     * workaround for the same driver quirk on the SET side); the two columns
+     * are equivalent here because the CHECK constraint keeps them in lockstep.
      */
     public function remove(int $actorId, string $reason): void
     {
@@ -69,24 +84,28 @@ class HistoricalSalesDocumentAttachment extends Model
             throw new LogicException('Removing a historical attachment requires a reason.');
         }
 
-        if (! $this->is_active) {
+        $now = now();
+
+        $claimed = static::query()
+            ->whereKey($this->getKey())
+            ->whereNull('removed_at')
+            ->update([
+                'is_active' => DB::raw('false'),
+                'removed_at' => $now,
+                'removed_by' => $actorId,
+                'removed_reason' => $reason,
+                'updated_at' => $now,
+            ]);
+
+        if ($claimed === 0) {
             throw new LogicException('This attachment has already been removed.');
-        }
-
-        // ponytail: the binary is deleted (matches KycDocumentService::delete()'s
-        // posture); the audit trail this class exists for is the DB row itself
-        // (who/when/why), which is never deleted, not a recoverable-file trash.
-        $disk = $this->file_disk ?? 'local';
-
-        if ($this->file_path && Storage::disk($disk)->exists($this->file_path)) {
-            Storage::disk($disk)->delete($this->file_path);
         }
 
         $this->forceFill([
             'is_active' => false,
-            'removed_at' => now(),
+            'removed_at' => $now,
             'removed_by' => $actorId,
             'removed_reason' => $reason,
-        ])->save();
+        ]);
     }
 }

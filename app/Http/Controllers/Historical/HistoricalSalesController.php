@@ -70,6 +70,9 @@ class HistoricalSalesController extends Controller
             'supersededBy',
             'customer',
             'openingBalanceResolver:id,name',
+            'attachments' => fn ($query) => $query->orderByDesc('created_at'),
+            'attachments.uploadedBy:id,name',
+            'attachments.removedBy:id,name',
         ]);
 
         // Suggestions only matter while a link can still be made — linking is
