@@ -323,6 +323,22 @@
         <p class="text-xs text-slate-500 sm:col-span-2">Applies once to the whole bill (not per line). Leave blank to enter tax amounts by hand instead.</p>
     </div>
 
+    {{-- Optional, reference-only: how the ORIGINAL paper bill labelled its
+         making/labour charge. It is stored as a display snapshot alongside
+         the document (making_label_original/making_value_original/
+         making_category/making_basis/making_amount — see
+         HistoricalDocumentNormalizer::normalize()) and is never added into
+         grand_total, so it must never look like a second charge-entry field
+         sitting next to the real bill-level tax rate above. The actual,
+         calculated making/labour charge is entered once per item, in that
+         item's own "Advanced details" (line_making_label/line_making_value).
+         Collapsed by default; field ids/names/grid classes are unchanged so
+         nothing else that imports/renders/tests these fields needs to change. --}}
+    <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50" data-historical-original-making-details>
+        <summary class="cursor-pointer select-none px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Original bill's making / labour label <span class="font-normal normal-case tracking-normal">(optional, reference only — does not add to the total)</span>
+        </summary>
+        <div class="px-3 pb-3 pt-1">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mt-4" data-historical-supporting-grid>
         <div class="lg:col-span-1">
             <label for="making_label">Making / labour charge label</label>
@@ -347,6 +363,8 @@
             </select>
         </div>
     </div>
+        </div>
+    </details>
     </div>
 </fieldset>
 

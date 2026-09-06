@@ -100,7 +100,7 @@ class HistoricalManualFastEntryWiringTest extends TestCase
         });
     }
 
-    public function test_the_carry_forward_flash_contains_only_the_six_allowed_fields(): void
+    public function test_the_carry_forward_flash_contains_only_the_four_allowed_fields(): void
     {
         [$owner] = $this->createRetailerTenant();
 
@@ -112,18 +112,77 @@ class HistoricalManualFastEntryWiringTest extends TestCase
             'tax_mode' => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
         ]));
 
-        // bill_gst_rate/tax_split_type joined the carry-forward set in Batch 5
-        // (requirement #1) — a run of historical bills from the same source
-        // batch typically shares one ordinary tax rate, same as date/series/
-        // source/tax_mode already did.
         $response->assertSessionHas('historical_carry_forward', [
             'document_date' => '2024-05-01',
             'document_series' => 'B-2024',
             'source_system' => 'Manual QA',
             'tax_mode' => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
-            'bill_gst_rate' => null,
-            'tax_split_type' => null,
         ]);
+    }
+
+    /**
+     * Correction: a shared bill-level GST rate across a run of bills was
+     * never owner-approved — different historical bills in the same batch
+     * can carry different printed rates. `bill_gst_rate`/`tax_split_type`
+     * must NOT ride along into the next, blank bill even though a value was
+     * actually typed for the current one (unlike date/series/source/tax_mode,
+     * which deliberately do).
+     */
+    public function test_bill_gst_rate_and_tax_split_type_do_not_survive_into_the_fresh_form(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        // tax_mode EXCLUSIVE: bill_gst_rate is tax added on top of the taxable
+        // base, so reconcileTotal() must expect taxable + tax = grand_total
+        // (NOT_APPLICABLE tells it to expect no tax at all, which mismatches
+        // once a bill-level rate is layered on). tax_total_mode/grand_total_
+        // mode: 'auto' matches the real browser — the hidden mode inputs
+        // default to auto so the payload's placeholder tax_total=0/
+        // grand_total=1000 get recomputed against bill_gst_rate instead of
+        // being frozen as a manual override, which would trip
+        // HistoricalTaxNormalizer::CODE_TAX_COMPONENT_DRIFT and redirect back
+        // to the form with a blocking error instead of the fresh-form success
+        // path this test means to exercise (both redirect to the same route,
+        // so that failure mode would otherwise silently pass with the wrong
+        // evidence).
+        $storeResponse = $this->actingAs($owner)->post(route('historical.manual.store'), $this->fastEntryPayload([
+            'intent' => StoreManualHistoricalRequest::INTENT_DRAFT_AND_NEW,
+            'document_series' => 'B-2024',
+            'document_date' => '2024-05-01',
+            'source_system' => 'Manual QA',
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_EXCLUSIVE,
+            'bill_gst_rate' => 3,
+            'tax_split_type' => HistoricalSalesDocument::TAX_SPLIT_CGST_SGST,
+            'tax_total_mode' => 'auto',
+            'grand_total_mode' => 'auto',
+            // Bill-level tax adds 30.00 (3% of the 1,000 taxable base) on top
+            // of fastEntryPayload()'s untaxed defaults — settle the recomputed
+            // 1,030 total so this test's only failure mode is the thing it
+            // actually checks (carry-forward), not an unrelated settlement
+            // mismatch.
+            'paid_amount' => 1030,
+            'outstanding_amount' => 0,
+        ]));
+        $storeResponse->assertRedirect(route('historical.manual.create'));
+        $storeResponse->assertSessionHas('success');
+        $storeResponse->assertSessionMissing('error');
+
+        $create = $this->actingAs($owner)->get(route('historical.manual.create'));
+        $create->assertOk();
+
+        // The fresh form's Bill GST % input must render blank, and the tax
+        // split <select> must not have the previous bill's option selected.
+        $html = $create->getContent();
+        $this->assertMatchesRegularExpression(
+            '/id="bill_gst_rate"[^>]*value=""/',
+            $html,
+            'bill_gst_rate must not be pre-filled from the previous bill.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="tax_split_type".*?<option value="cgst_sgst" selected/s',
+            $html,
+            'tax_split_type must not be pre-selected from the previous bill.'
+        );
     }
 
     public function test_the_fresh_form_after_and_new_renders_the_carried_fields_prefilled_and_everything_else_blank(): void

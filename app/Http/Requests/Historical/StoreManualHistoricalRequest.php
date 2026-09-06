@@ -408,6 +408,13 @@ class StoreManualHistoricalRequest extends FormRequest
      * bill. Everything else (customer, lines, payments, totals, notes,
      * cutover) is bill-specific and must start blank on the next one.
      *
+     * `bill_gst_rate`/`tax_split_type` are deliberately NOT here: a shared
+     * rate across a run of bills was never owner-approved, and different
+     * historical bills in the same batch can carry different printed rates.
+     * Both still round-trip through `old()` for the current bill (preview,
+     * a validation failure, "&New"'s own re-render before a fresh submit) —
+     * they just never survive INTO the next, blank bill.
+     *
      * @return array<string, mixed>
      */
     public function carryForwardFields(): array
@@ -417,8 +424,6 @@ class StoreManualHistoricalRequest extends FormRequest
             'document_series' => $this->input('document_series'),
             'source_system' => $this->input('source_system'),
             'tax_mode' => $this->input('tax_mode'),
-            'bill_gst_rate' => $this->input('bill_gst_rate'),
-            'tax_split_type' => $this->input('tax_split_type'),
         ];
     }
 
