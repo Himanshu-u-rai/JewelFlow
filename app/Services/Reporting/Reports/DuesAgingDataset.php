@@ -114,7 +114,11 @@ class DuesAgingDataset extends ReportDatasetService
             profiles: [P::Summary, P::Detailed, P::Ca, P::CaStandard],
             filters: [Filter::for(FK::AsOf), Filter::for(FK::SalesSource)],
             formats: [F::Pdf, F::Excel, F::Csv, F::Screen],
-            permissions: Perm::default(),
+            // LIVE keeps its pre-Batch-4 gate (reports.view/export) unchanged;
+            // HISTORICAL/COMBINED additionally require historical.view — the
+            // same class of data Historical Sales Register already gates
+            // behind it (see ReportPermissions::gateForSalesSource()).
+            permissions: Perm::default()->withHistoricalModeGate('historical.view'),
         );
     }
 

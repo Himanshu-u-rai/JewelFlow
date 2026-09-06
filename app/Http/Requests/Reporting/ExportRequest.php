@@ -43,6 +43,16 @@ class ExportRequest extends FormRequest
         if ($perms->familyGate !== null && ! $user->can($perms->familyGate)) {
             return false;
         }
+        // Mode-dependent gate (frozen-pattern counterpart to familyGate above):
+        // HISTORICAL/COMBINED sales_source additionally requires
+        // historical.view; LIVE keeps its existing permissions unchanged. A
+        // crafted export POST cannot bypass this — it is checked here, before
+        // any query/serialization, from the same raw `sales_source` value the
+        // dataset resolves via its own closed-vocabulary match.
+        $requiredModeGate = $perms->gateForSalesSource($this->input('sales_source'));
+        if ($requiredModeGate !== null && ! $user->can($requiredModeGate)) {
+            return false;
+        }
         if ($perms->edition !== null && ! ($user->shop?->hasEdition($perms->edition) ?? false)) {
             return false;
         }

@@ -65,7 +65,7 @@ class FilterControlResolver
                 continue;
             }
 
-            $options = $this->filterOptions($key, $shopId, $definition);
+            $options = $this->filterOptions($key, $shopId, $definition, $request);
             if ($options === null) {
                 continue; // no option provider for this key yet — don't render a broken control
             }
@@ -87,7 +87,7 @@ class FilterControlResolver
      *
      * @return array<int, array{value:string,label:string}>|null
      */
-    private function filterOptions(FilterKey $key, int $shopId, ReportDefinition $definition): ?array
+    private function filterOptions(FilterKey $key, int $shopId, ReportDefinition $definition, Request $request): ?array
     {
         // Status is meaningful per-report (document status here vs invoice/payment
         // status elsewhere) — the Historical Register is the only report so far
@@ -112,15 +112,31 @@ class FilterControlResolver
             FilterKey::CashSource => $this->distinctCashSources($shopId),
             FilterKey::Operator => $this->shopOperators($shopId),
             // All three modes offered (owner-agreed reporting semantics — see
-            // DuesAgingDataset's docblock). §7.5/§7.6 numeric reconciliation
+            // DuesAgingDataset's docblock), but Historical/Combined are only
+            // listed for a user who actually holds the report's mode gate
+            // (ReportPermissions::historicalModeGate) — metadata parity with
+            // the real screen/export enforcement, not a new gate of its own:
+            // a user without it is still blocked server-side even if this
+            // list were somehow stale. §7.5/§7.6 numeric reconciliation
             // remains deferred but no longer blocks the Combined presentation.
             // An unrecognised/hand-typed value is rejected by ExportRequest /
             // ReportScreenController validation, never silently relabelled.
-            FilterKey::SalesSource => $this->staticOptions([
-                'live' => 'Live', 'historical' => 'Historical', 'combined' => 'Combined',
-            ]),
+            FilterKey::SalesSource => $this->salesSourceOptions($definition, $request),
             default => null,
         };
+    }
+
+    /** @return array<int, array{value:string,label:string}> */
+    private function salesSourceOptions(ReportDefinition $definition, Request $request): array
+    {
+        $options = ['live' => 'Live', 'historical' => 'Historical', 'combined' => 'Combined'];
+
+        $gate = $definition->permissions->historicalModeGate;
+        if ($gate !== null && ! ($request->user()?->can($gate) ?? false)) {
+            unset($options['historical'], $options['combined']);
+        }
+
+        return $this->staticOptions($options);
     }
 
     /** @param array<string,string> $map */

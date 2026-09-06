@@ -57,6 +57,16 @@ class ReportScreenController extends Controller
             ]);
         }
 
+        // Mode-dependent gate: HISTORICAL/COMBINED require historical.view in
+        // addition to the checks above; LIVE (default or explicit) does not —
+        // a direct ?sales_source=historical URL cannot bypass this, since it
+        // is checked here before the dataset is built, from the same
+        // validated value the dataset itself consumes.
+        $requiredModeGate = $definition->permissions->gateForSalesSource($request->input('sales_source'));
+        if ($requiredModeGate !== null) {
+            abort_unless($user->can($requiredModeGate), 403);
+        }
+
         $isRigid = $definition->classification->isRigid();
         $canSensitive = $user->can($definition->permissions->sensitive);
 
