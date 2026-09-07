@@ -530,4 +530,173 @@ class HistoricalManualCalculationWiringTest extends TestCase
         $this->assertSame(150.0, $state['cgst']['value']);
         $this->assertSame(300.0, $state['tax_total']['value']);
     }
+
+    /**
+     * Batch 5 usability correction — "Other charges (₹)" collapses hallmark,
+     * rhodium and misc into one manual-entry field. `suggestLineCharges()`
+     * itself never changed (it already summed all three treating missing as
+     * 0), so this proves the UI cleanup did not change what a bill totals to:
+     * a single combined figure and an equivalent hallmark+rhodium+other split
+     * must produce the identical line total, each charge counted exactly once.
+     */
+    public function test_a_single_other_charge_entry_totals_the_same_as_the_equivalent_hallmark_rhodium_other_split(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $combinedPayload = [
+            'original_document_number' => 'CHG-'.fake()->unique()->numberBetween(1, 999999),
+            'document_date' => now()->toDateString(),
+            'source_system' => 'Manual QA',
+            'customer_name' => 'Charge QA Customer',
+            'grand_total' => 175,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
+            'zero_tax_confirmed' => '1',
+            'lines' => [[
+                'line_item_name' => 'Simplified single-field entry',
+                'line_calculation_enabled' => '1',
+                'line_other_charge' => 175,
+            ]],
+        ];
+        $combined = $this->actingAs($owner)->post(route('historical.manual.preview'), $combinedPayload);
+        $combined->assertOk();
+
+        $splitPayload = $combinedPayload;
+        $splitPayload['original_document_number'] = 'CHG-'.fake()->unique()->numberBetween(1, 999999);
+        $splitPayload['lines'][0]['line_item_name'] = 'Pre-existing hallmark/rhodium/other split';
+        unset($splitPayload['lines'][0]['line_other_charge']);
+        $splitPayload['lines'][0]['line_hallmark_charge'] = 100;
+        $splitPayload['lines'][0]['line_rhodium_charge'] = 50;
+        $splitPayload['lines'][0]['line_other_charge'] = 25;
+        $split = $this->actingAs($owner)->post(route('historical.manual.preview'), $splitPayload);
+        $split->assertOk();
+
+        $combinedLine = $combined->viewData('lines')[0];
+        $splitLine = $split->viewData('lines')[0];
+
+        $this->assertSame(175.0, $combinedLine['line_total']);
+        $this->assertSame(
+            $combinedLine['line_total'],
+            $splitLine['line_total'],
+            'A single combined charge entry must total exactly the same as an equivalent hallmark+rhodium+other split.'
+        );
+    }
+
+    /**
+     * The "Additional constraint" guarantee behind keeping hallmark_charge/
+     * rhodium_charge as hidden (not deleted) inputs: a value the operator
+     * never re-types must survive an unrelated field edit untouched, and
+     * typing into the one visible "Other charges" field must add on top of —
+     * never redistribute or replace — the untouched breakdown.
+     */
+    public function test_a_hidden_hallmark_and_rhodium_breakdown_survives_an_unrelated_edit_and_is_not_redistributed_by_the_combined_field(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $payload = [
+            'original_document_number' => 'CHG-'.fake()->unique()->numberBetween(1, 999999),
+            'document_date' => now()->toDateString(),
+            'source_system' => 'Manual QA',
+            'customer_name' => 'Charge QA Customer',
+            'grand_total' => 150,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
+            'zero_tax_confirmed' => '1',
+            'lines' => [[
+                'line_item_name' => 'Breakdown line',
+                'line_calculation_enabled' => '1',
+                'line_hallmark_charge' => 100,
+                'line_rhodium_charge' => 50,
+            ]],
+        ];
+
+        $first = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
+        $first->assertOk();
+        $firstLine = $first->viewData('lines')[0];
+        $this->assertSame(100.0, $firstLine['hallmark_charge']);
+        $this->assertSame(50.0, $firstLine['rhodium_charge']);
+        $this->assertSame(150.0, $firstLine['line_total']);
+
+        // Edit an unrelated field only. hallmark/rhodium have no visible input on
+        // the simplified form at all — this resubmits them exactly as the hidden
+        // inputs carried them, never re-typed by the operator.
+        $payload['lines'][0]['line_item_name'] = 'Breakdown line (renamed)';
+
+        $second = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
+        $second->assertOk();
+        $secondLine = $second->viewData('lines')[0];
+        $this->assertSame(100.0, $secondLine['hallmark_charge'], 'An unrelated field edit must not clear a hidden hallmark_charge value.');
+        $this->assertSame(50.0, $secondLine['rhodium_charge'], 'An unrelated field edit must not clear a hidden rhodium_charge value.');
+        $this->assertSame(150.0, $secondLine['line_total']);
+
+        // The operator now also types into the one visible "Other charges" field.
+        // It must add on top of the untouched breakdown, never redistribute it.
+        $payload['lines'][0]['line_other_charge'] = 25;
+        $payload['grand_total'] = 175;
+
+        $third = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
+        $third->assertOk();
+        $thirdLine = $third->viewData('lines')[0];
+        $this->assertSame(100.0, $thirdLine['hallmark_charge']);
+        $this->assertSame(50.0, $thirdLine['rhodium_charge']);
+        $this->assertSame(25.0, $thirdLine['other_charge']);
+        $this->assertSame(175.0, $thirdLine['line_total'], 'hallmark + rhodium + other must sum without any component being dropped or double counted.');
+    }
+
+    /**
+     * Requirement #4 (stones): "support direct entry of the printed stone
+     * amount... do not require both rate and amount manually." line_stone_value
+     * already carries the same generic auto/manual override every other
+     * calculated field uses — this proves a printed stone amount with no
+     * weight or rate at all reaches the line total untouched.
+     */
+    public function test_a_stone_value_can_be_entered_directly_with_no_stone_weight_or_rate(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $payload = $this->calcPayload(['grand_total' => 55250]);
+        $payload['lines'][0]['line_calculation_enabled'] = '1';
+        $payload['lines'][0]['line_stone_value'] = 3000; // printed amount only
+        $payload['lines'][0]['line_stone_value_mode'] = 'manual';
+        $payload['lines'][0]['line_total'] = 55250;
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
+        $response->assertOk();
+
+        $line = $response->viewData('lines')[0];
+        $this->assertSame('manual', $line['calculation_state']['stone_value']['mode']);
+        $this->assertSame(3000.0, $line['calculation_state']['stone_value']['value']);
+        $this->assertSame(
+            55250.0,
+            $line['line_total'],
+            'A directly-entered stone amount must reach the line total without a stone weight or rate.'
+        );
+    }
+
+    /**
+     * Requirement #5 (making charges): the manual-entry dropdown now only
+     * offers fixed/percent/per-gram (HistoricalMakingCharge::BASES_MANUAL_ENTRY)
+     * — presentation only. A basis trimmed from that dropdown (still in the
+     * full BASES vocabulary file-import relies on) must still calculate
+     * correctly if it ever arrives in a request, proving the simplification
+     * never deleted backend support for it.
+     */
+    public function test_a_making_basis_trimmed_from_the_simplified_manual_dropdown_still_calculates(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $payload = $this->calcPayload(['grand_total' => 52750]);
+        $payload['lines'][0]['line_calculation_enabled'] = '1';
+        $payload['lines'][0]['line_making_basis'] = 'fixed_invoice'; // trimmed from BASES_MANUAL_ENTRY
+        $payload['lines'][0]['line_making_value'] = '500';
+        $payload['lines'][0]['line_total'] = 52750;
+
+        $response = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
+        $response->assertOk();
+
+        $line = $response->viewData('lines')[0];
+        $this->assertSame(
+            500.0,
+            $line['calculation_state']['making_amount']['value'],
+            'Trimming a basis from the simplified manual dropdown must not remove backend support for it.'
+        );
+    }
 }

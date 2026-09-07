@@ -83,7 +83,7 @@ class HistoricalManualEntryController extends Controller
             'headerFields' => HistoricalFields::HEADER,
             'lineFields' => HistoricalFields::LINE,
             'makingCategories' => HistoricalMakingCharge::CATEGORIES,
-            'makingBases' => HistoricalMakingCharge::BASES,
+            'makingBases' => HistoricalMakingCharge::BASES_MANUAL_ENTRY,
             // Fast-entry "& New" success path only — see freshFormAfter(). A
             // plain visit (first load, previewExpired(), or a failed submit's
             // backToForm()) never sets this flash key, so it is null and the
@@ -264,7 +264,7 @@ class HistoricalManualEntryController extends Controller
             'headerFields' => HistoricalFields::HEADER,
             'lineFields' => HistoricalFields::LINE,
             'makingCategories' => HistoricalMakingCharge::CATEGORIES,
-            'makingBases' => HistoricalMakingCharge::BASES,
+            'makingBases' => HistoricalMakingCharge::BASES_MANUAL_ENTRY,
         ]);
     }
 
