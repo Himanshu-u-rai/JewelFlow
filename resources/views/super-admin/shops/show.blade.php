@@ -144,8 +144,123 @@
         </div>
     </div>
 
+    @php
+        // ONE derivation for the whole page — the same Shop::accessClassification()
+        // the badge above and the subscription summary below read, so those three
+        // surfaces cannot contradict each other. Precedence lives in the model.
+        $accessClass = $shop->accessClassification();
+    @endphp
+
     <div class="admin-panel p-4 mb-6">
-        <h3 class="font-semibold text-white mb-1">Platform Control</h3>
+        <h3 class="font-semibold text-white mb-3">Platform Control</h3>
+
+        {{--
+            CURRENT STATUS — read-only reporting, kept strictly separate from the
+            action form below. The page used to express "what is true now" only via
+            a pre-selected radio, which made a legacy subscription lapse look like
+            an administrator Read-Only hold somebody had already applied.
+        --}}
+        <div class="rounded-lg border border-slate-700 bg-slate-900/40 p-3 mb-4">
+            <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                Current status
+            </div>
+
+            <dl class="space-y-1.5 text-sm">
+                <div class="flex flex-wrap justify-between gap-3">
+                    <dt class="text-slate-400 shrink-0">Subscription</dt>
+                    <dd class="text-right">
+                        @if($accessClass === 'subscription_lapse')
+                            <span class="text-amber-200 font-medium">Ended</span>
+                        @elseif($currentSubscription)
+                            <span class="text-slate-100">{{ ucfirst(str_replace('_', ' ', $currentSubscription->status)) }}</span>
+                        @else
+                            <span class="text-slate-400">—</span>
+                        @endif
+                    </dd>
+                </div>
+
+                <div class="flex flex-wrap justify-between gap-3">
+                    <dt class="text-slate-400 shrink-0">Administrator restriction</dt>
+                    <dd class="text-right">
+                        @switch($accessClass)
+                            @case('admin_suspended')
+                                <span class="text-rose-200 font-medium">Suspended</span>
+                                @break
+                            @case('admin_read_only')
+                                <span class="text-amber-200 font-medium">Read-Only</span>
+                                @break
+                            @case('unclassified_read_only')
+                                <span class="text-amber-200 font-medium">Unresolved — needs review</span>
+                                @break
+                            @default
+                                <span class="text-emerald-200 font-medium">None</span>
+                        @endswitch
+                    </dd>
+                </div>
+            </dl>
+
+            @if($accessClass === 'subscription_lapse')
+                {{--
+                    A read_only row the authoritative classifier attributes to the
+                    subscription lifecycle, not to an administrator. Nothing is wrong
+                    with this shop's access path — saying so stops an operator
+                    "correcting" it with a control that would break renewal.
+                --}}
+                <p class="text-xs text-sky-300/90 mt-3">
+                    This shop's subscription term ended — this is <strong>not</strong> an
+                    administrator restriction. The owner is already sent to the plan
+                    picker on login and can
+                    <strong>choose a plan to restore access</strong> on their own.
+                    <strong>No action is needed here.</strong> Applying a mode below would
+                    record an administrator restriction and remove that recovery path.
+                </p>
+            @elseif($accessClass === 'unclassified_read_only')
+                {{--
+                    read_only, no recorded actor, and the subscription rows do NOT
+                    corroborate a lapse. We do not know who imposed it, so say that
+                    rather than guess in either direction. Never presented as
+                    "no restriction" — the shop really is write-blocked.
+                --}}
+                <p class="text-xs text-amber-300/90 mt-3">
+                    This shop is read-only, but <strong>no administrator is recorded</strong>
+                    and its subscription rows do not confirm an expiry either. Treat this as
+                    <strong>unresolved</strong>: the shop is write-blocked, and it is not
+                    known to be owner-recoverable. Investigate the subscription history
+                    before applying anything below.
+                </p>
+            @elseif($accessClass === 'admin_read_only' || $accessClass === 'admin_suspended')
+                <p class="text-xs text-slate-400 mt-3">
+                    Recorded as a deliberate <strong>administrator restriction</strong>.
+                    @if($shop->suspended_at)
+                        Applied {{ $shop->suspended_at->format('d M Y, h:i A') }}.
+                    @endif
+                    @if($shop->suspension_reason)
+                        Reason on record: <span class="text-slate-300">{{ $shop->suspension_reason }}</span>.
+                    @endif
+                    The owner cannot lift this themselves.
+                </p>
+            @endif
+
+            @if(($shop->access_mode ?? 'active') !== 'active')
+                {{-- Raw stored value, clearly marked as audit detail so the human
+                     label above can never be mistaken for the column contents. --}}
+                <p class="text-[11px] text-slate-500 mt-2 font-mono">
+                    Audit detail — stored access_mode: {{ $shop->access_mode }}
+                </p>
+            @endif
+        </div>
+
+        {{--
+            APPLY AN ADMINISTRATIVE CHANGE — a fresh action, never a mirror of
+            current state. Nothing is pre-selected: a pre-selected radio meant an
+            untouched form could be submitted and re-apply (or invent) a
+            restriction, and for any shop not explicitly held it defaulted to
+            Active — the one value that must never be a default here.
+        --}}
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            Apply an administrative change
+        </div>
+
         <p class="text-xs text-slate-400 mb-3">
             <strong class="text-slate-300">Active</strong> — full access &nbsp;·&nbsp;
             <strong class="text-slate-300">Read-Only</strong> — can view, writes blocked &nbsp;·&nbsp;
@@ -155,8 +270,9 @@
         {{--
             Applying Read-Only or Suspended here records this administrator as the
             actor, which moves the shop onto the administrative axis. That axis is
-            not self-service recoverable by design, so the note below states the
-            consequence up front. The controls themselves are unchanged.
+            not self-service recoverable by design, so the note states the
+            consequence up front. Server-side validation, authorization,
+            attribution and audit behaviour are unchanged.
         --}}
         <p class="text-xs text-amber-300/90 mb-3">
             ⚠ Read-Only and Suspended are recorded as <strong>administrator</strong>
@@ -167,33 +283,24 @@
             unpaid or expired subscription.
         </p>
 
-        @if(($shop->access_mode ?? 'active') === 'read_only' && $shop->suspensionIsSubscriptionManaged())
-            {{--
-                A read_only row that the authoritative classifier attributes to the
-                subscription lifecycle rather than to an administrator. Nothing is
-                wrong with this shop's access path — saying so here stops an
-                operator "correcting" it with a control that would break renewal.
-            --}}
-            <p class="text-xs text-sky-300/90 mb-4">
-                This shop's subscription term ended — this is <strong>not</strong> an
-                administrator restriction. The owner is already sent to the plan
-                picker on login and can choose a plan to restore access on their own.
-                <strong>No action is needed here.</strong> Applying a mode below would
-                record an administrator restriction and remove that recovery path.
-            </p>
-        @endif
-
         <form method="POST" action="{{ route('admin.shops.status', $shop) }}" class="space-y-3">
             @csrf
             @method('PATCH')
 
+            @php
+                // Only an operator's OWN submitted choice is ever re-selected, so
+                // their intent survives a validation failure. The shop's stored
+                // mode is deliberately not a fallback.
+                $chosenMode = old('access_mode');
+            @endphp
+
             <div class="flex flex-wrap gap-3">
                 <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="access_mode" value="active"
-                        {{ ($shop->access_mode ?? 'active') === 'active' ? 'checked' : '' }}
+                    <input type="radio" name="access_mode" value="active" required
+                        {{ $chosenMode === 'active' ? 'checked' : '' }}
                         class="accent-emerald-500">
                     <span class="text-sm font-medium px-3 py-1.5 rounded-lg border
-                        {{ ($shop->access_mode ?? 'active') === 'active'
+                        {{ $chosenMode === 'active'
                             ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200'
                             : 'border-slate-700 bg-slate-800 text-slate-300' }}">
                         ✅ Active
@@ -201,11 +308,11 @@
                 </label>
 
                 <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="access_mode" value="read_only"
-                        {{ $shop->access_mode === 'read_only' ? 'checked' : '' }}
+                    <input type="radio" name="access_mode" value="read_only" required
+                        {{ $chosenMode === 'read_only' ? 'checked' : '' }}
                         class="accent-amber-500">
                     <span class="text-sm font-medium px-3 py-1.5 rounded-lg border
-                        {{ $shop->access_mode === 'read_only'
+                        {{ $chosenMode === 'read_only'
                             ? 'border-amber-500 bg-amber-500/20 text-amber-200'
                             : 'border-slate-700 bg-slate-800 text-slate-300' }}">
                         🔒 Read-Only
@@ -213,11 +320,11 @@
                 </label>
 
                 <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="access_mode" value="suspended"
-                        {{ $shop->access_mode === 'suspended' ? 'checked' : '' }}
+                    <input type="radio" name="access_mode" value="suspended" required
+                        {{ $chosenMode === 'suspended' ? 'checked' : '' }}
                         class="accent-rose-500">
                     <span class="text-sm font-medium px-3 py-1.5 rounded-lg border
-                        {{ $shop->access_mode === 'suspended'
+                        {{ $chosenMode === 'suspended'
                             ? 'border-rose-500 bg-rose-500/20 text-rose-200'
                             : 'border-slate-700 bg-slate-800 text-slate-300' }}">
                         ⛔ Suspended
@@ -225,10 +332,21 @@
                 </label>
             </div>
 
+            {{-- The controller already rejects a missing choice; it had no way to
+                 say so on screen, because this page renders no validation errors. --}}
+            @error('access_mode')
+                <p class="text-xs text-rose-300">{{ $message }}</p>
+            @enderror
+
             <div>
-                <label class="block text-xs text-slate-400 mb-1">Reason (optional — shown in audit log)</label>
+                <label class="block text-xs text-slate-400 mb-1">
+                    Reason for this change (optional — shown in audit log)
+                </label>
+                {{-- Starts empty. It used to be seeded with the shop's stored
+                     suspension_reason, so a legacy "Subscription read_only" string
+                     was pre-written into a brand-new administrator action. --}}
                 <input type="text" name="reason"
-                       value="{{ old('reason', $shop->suspension_reason) }}"
+                       value="{{ old('reason') }}"
                        placeholder="e.g. Payment overdue, compliance hold..."
                        maxlength="500"
                        class="admin-control">
@@ -239,15 +357,6 @@
                         class="admin-btn admin-btn-primary">
                     Apply Access Mode
                 </button>
-
-                @if($shop->suspended_at)
-                    <span class="text-xs text-slate-400">
-                        Last changed {{ $shop->suspended_at->format('d M Y, h:i A') }}
-                        @if($shop->suspension_reason)
-                            · {{ $shop->suspension_reason }}
-                        @endif
-                    </span>
-                @endif
             </div>
         </form>
     </div>
@@ -421,6 +530,16 @@
                 <p class="text-xs text-slate-400">Manually assign or update this shop's subscription. Setting a price generates an invoice and sends a receipt email.</p>
             </div>
             @if($currentSubscription)
+                @php
+                    // Same classification as the badge and Platform Control above.
+                    // A confirmed lapse must not still read "Read_only" here — that
+                    // is the raw column, and next to "Subscription ended" it read as
+                    // an administrator hold the operator had to undo.
+                    $subLapsed = $accessClass === 'subscription_lapse';
+                    $subLabel  = $subLapsed
+                        ? 'Ended'
+                        : ucfirst(str_replace('_', ' ', $currentSubscription->status));
+                @endphp
                 <div class="text-right text-xs text-slate-400 shrink-0">
                     <div>Current: <span class="text-slate-200 font-medium">{{ $currentSubscription->plan?->name ?? 'Unknown' }}</span></div>
                     <div class="mt-0.5">
@@ -428,8 +547,14 @@
                             'active', 'trial'        => 'emerald',
                             'grace', 'read_only'     => 'amber',
                             default                  => 'rose'
-                        } }}">{{ ucfirst($currentSubscription->status) }}</span>
+                        } }}">{{ $subLabel }}</span>
                     </div>
+                    @if($subLabel !== ucfirst($currentSubscription->status))
+                        {{-- Raw value preserved, explicitly labelled as audit detail. --}}
+                        <div class="mt-1 text-[11px] text-slate-500 font-mono">
+                            Audit detail — stored status: {{ $currentSubscription->status }}
+                        </div>
+                    @endif
                 </div>
             @endif
         </div>

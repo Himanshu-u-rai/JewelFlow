@@ -279,6 +279,54 @@ class Shop extends Model
             || in_array($reason, self::SUBSCRIPTION_MANAGED_REASONS, true);
     }
 
+    /** Memo for accessClassification(); see the ponytail note on that method. */
+    private ?string $accessClassificationCache = null;
+
+    /**
+     * PRESENTATION classifier: which of the mutually exclusive access states is
+     * this shop actually in? Read-only — it decides nothing and writes nothing.
+     *
+     * Exists because `shops.access_mode` alone cannot answer the only question an
+     * operator has ("did WE do this, and must I act?"): `read_only` is written by
+     * a deliberate admin hold AND by the pre-2026-08-27 expiry fork. Every admin
+     * surface that needs the answer used to re-derive it inline, so the badge, the
+     * Platform Control panel and the subscription summary could disagree on one
+     * page — which is exactly what shipped.
+     *
+     * Delegates to suspensionIsSubscriptionManaged(), the same classifier
+     * AuthenticatedSessionController and EnsureSubscriptionIsActive route on, so
+     * the screen cannot contradict what the owner experiences. Nothing here is
+     * re-implemented from a reason string or a missing timestamp.
+     *
+     * Returns exactly one of:
+     *   'admin_suspended'         — deliberate hold, fully blocked.
+     *   'admin_read_only'         — deliberate hold, writes blocked, actor recorded.
+     *   'subscription_lapse'      — term ended; NOT a restriction; owner self-recovers.
+     *   'unclassified_read_only'  — read_only with no recorded actor AND no
+     *                               corroborating lapse. Unresolved: it must never
+     *                               be presented as "no restriction".
+     *   'active'                  — no restriction.
+     *
+     * ponytail: memoised per instance because the detail page asks three times
+     * (badge, Platform Control, subscription summary) and the classifier runs two
+     * bounded subscription queries.
+     */
+    public function accessClassification(): string
+    {
+        return $this->accessClassificationCache ??= match (true) {
+            ($this->access_mode ?? 'active') === 'suspended' => 'admin_suspended',
+            ($this->access_mode ?? 'active') !== 'read_only' => 'active',
+
+            // read_only from here down. Order is the precedence: the authoritative
+            // classifier first (it already applies admin-attribution precedence
+            // internally), then attribution, and anything left over is unresolved
+            // and fails closed rather than being called unrestricted.
+            $this->suspensionIsSubscriptionManaged() => 'subscription_lapse',
+            $this->suspensionIsAdministrative()      => 'admin_read_only',
+            default                                  => 'unclassified_read_only',
+        };
+    }
+
     public function scopeActive($query)
     {
         return $query->whereRaw($query->qualifyColumn('is_active') . ' IS TRUE');
