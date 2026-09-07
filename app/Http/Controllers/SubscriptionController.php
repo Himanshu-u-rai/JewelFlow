@@ -246,9 +246,11 @@ class SubscriptionController extends Controller
      * data to leak: there is no shop, no subscription and no invoice to read.
      *
      * Deliberately NOT folded back into abortUnlessOwner(): the exception is for
-     * the pre-tenant funnel only. Entry points that act on an existing shop —
-     * startTrial(), which attaches editions to one — keep the strict guard, so a
-     * shop-less caller is refused there.
+     * the pre-tenant funnel only. startTrial() also uses this lenient variant —
+     * plan selection (including trial) deliberately precedes shop creation, so
+     * a shop-less caller must reach it. Once a shop exists, this collapses back
+     * to the full abortUnlessOwner() check, so a staff/role-less member of an
+     * existing shop is still refused exactly as before.
      */
     private function abortUnlessOwnerOrOnboarding(): void
     {
@@ -334,7 +336,7 @@ class SubscriptionController extends Controller
      */
     public function startTrial(Request $request)
     {
-        $this->abortUnlessOwner();
+        $this->abortUnlessOwnerOrOnboarding();
 
         $user = Auth::user();
 
