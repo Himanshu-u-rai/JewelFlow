@@ -39,18 +39,21 @@ class SuperAdminAccessModeBadgeTest extends TestCase
         parent::setUp();
     }
 
-    private function actingAsSuperAdmin(): self
+    private function makeAdmin(string $prefix = 'badge'): PlatformAdmin
     {
-        $admin = PlatformAdmin::create([
-            'first_name' => 'Badge', 'last_name' => 'Test', 'name' => 'Badge Test',
-            'email' => 'badge' . random_int(1000, 999999) . '@example.com',
+        return PlatformAdmin::create([
+            'first_name' => ucfirst($prefix), 'last_name' => 'Test', 'name' => ucfirst($prefix) . ' Test',
+            'email' => $prefix . random_int(1000, 999999) . '@example.com',
             'mobile_number' => '9' . random_int(100000000, 999999999),
             'password' => \Illuminate\Support\Facades\Hash::make('password'),
             'role' => 'super_admin', 'is_active' => true,
             'email_verified_at' => now(),
         ]);
+    }
 
-        return $this->actingAs($admin, 'platform_admin')
+    private function actingAsSuperAdmin(): self
+    {
+        return $this->actingAs($this->makeAdmin(), 'platform_admin')
             ->withSession([\App\Http\Middleware\EnsurePlatformAdminMfa::SESSION_PASSED => true]);
     }
 
@@ -152,16 +155,7 @@ class SuperAdminAccessModeBadgeTest extends TestCase
 
     public function test_admin_held_shop_keeps_the_read_only_label(): void
     {
-        $admin = PlatformAdmin::create([
-            'first_name' => 'Holder', 'last_name' => 'Admin', 'name' => 'Holder Admin',
-            'email' => 'holder' . random_int(1000, 999999) . '@example.com',
-            'mobile_number' => '9' . random_int(100000000, 999999999),
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
-            'role' => 'super_admin', 'is_active' => true,
-            'email_verified_at' => now(),
-        ]);
-
-        $shop = $this->adminHeldShop($admin);
+        $shop = $this->adminHeldShop($this->makeAdmin('holder'));
 
         $this->actingAsSuperAdmin()
             ->get(route('admin.shops.show', ['shop' => $shop->id]))
@@ -201,5 +195,221 @@ class SuperAdminAccessModeBadgeTest extends TestCase
             ->get(route('admin.shops.show', ['shop' => $shop->id]))
             ->assertOk()
             ->assertSee('cannot buy or renew a plan', false);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // Whole-page consistency: header, Platform Control, subscription summary
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * read_only with NO recorded actor and NO corroborating lapse — the latest
+     * subscription row is `active` (long expired), so check (1) of the classifier
+     * fails and this is not a JF-0001 lapse either. Nobody can say who imposed
+     * it, so it must read as unresolved, never as "no restriction".
+     */
+    private function unclassifiedReadOnlyShop(): Shop
+    {
+        $plan = $this->createPlan('retailer');
+        $shop = $this->createShop('retailer');
+
+        ShopSubscription::create([
+            'shop_id'   => $shop->id,
+            'plan_id'   => $plan->id,
+            'status'    => 'active',
+            'starts_at' => now()->subMonths(8)->toDateString(),
+            'ends_at'   => now()->subMonths(4)->toDateString(),
+        ]);
+
+        $shop->forceFill([
+            'access_mode'  => 'read_only',
+            'is_active'    => false,
+            'suspended_by' => null,
+        ])->save();
+
+        return $shop;
+    }
+
+    public function test_lapsed_shop_reads_ended_and_no_restriction_everywhere_on_the_page(): void
+    {
+        $shop = $this->lapsedShop();
+
+        $html = $this->actingAsSuperAdmin()
+            ->get(route('admin.shops.show', ['shop' => $shop->id]))
+            ->assertOk()
+            ->assertSee('Subscription ended')                       // header badge
+            ->assertSee('Administrator restriction')                // Platform Control
+            ->assertSee('None')
+            ->assertSee('choose a plan to restore access', false)
+            ->assertSee('Audit detail — stored access_mode: read_only', false)
+            ->getContent();
+
+        // The contradiction this change removes: the subscription summary must
+        // not still present the raw "Read_only" as the current status.
+        $this->assertStringNotContainsString('>Read_only<', $html);
+        $this->assertStringContainsString('Audit detail — stored status: read_only', $html);
+    }
+
+    public function test_unclassified_read_only_is_not_presented_as_unrestricted(): void
+    {
+        $shop = $this->unclassifiedReadOnlyShop();
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.shops.show', ['shop' => $shop->id]))
+            ->assertOk()
+            ->assertSee('Unresolved — needs review', false)
+            ->assertSee('no administrator is recorded', false)
+            // Not a confirmed lapse, so it must not claim self-recovery.
+            ->assertDontSee('Subscription ended')
+            ->assertDontSee('No action is needed here.', false);
+    }
+
+    public function test_admin_read_only_hold_is_identified_as_an_administrator_restriction(): void
+    {
+        $admin = $this->makeAdmin('holder');
+        $shop  = $this->adminHeldShop($admin);
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.shops.show', ['shop' => $shop->id]))
+            ->assertOk()
+            ->assertSee('Read Only')
+            ->assertSee('deliberate <strong>administrator restriction</strong>', false)
+            ->assertSee('The owner cannot lift this themselves.', false)
+            ->assertDontSee('Subscription ended')
+            ->assertDontSee('No action is needed here.', false);
+    }
+
+    /**
+     * An administrator hold must survive a LIVE subscription: the entitlement
+     * axis never overrides the administrative one.
+     */
+    public function test_a_live_subscription_does_not_override_an_administrator_hold(): void
+    {
+        $admin = $this->makeAdmin('livehold');
+        $plan  = $this->createPlan('retailer');
+        $shop  = $this->createShop('retailer');
+
+        ShopSubscription::create([
+            'shop_id'   => $shop->id,
+            'plan_id'   => $plan->id,
+            'status'    => 'active',
+            'starts_at' => now()->subMonth()->toDateString(),
+            'ends_at'   => now()->addMonths(6)->toDateString(),
+        ]);
+
+        $shop->forceFill([
+            'access_mode'       => 'suspended',
+            'is_active'         => false,
+            'suspended_at'      => now()->subDay(),
+            'suspension_reason' => 'Compliance hold',
+            'suspended_by'      => $admin->id,
+        ])->save();
+
+        $this->assertSame('admin_suspended', $shop->fresh()->accessClassification());
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.shops.show', ['shop' => $shop->id]))
+            ->assertOk()
+            ->assertSee('Suspended')
+            ->assertSee('deliberate <strong>administrator restriction</strong>', false)
+            ->assertDontSee('Subscription ended');
+    }
+
+    public function test_active_shop_reports_no_restriction_and_no_audit_detail_line(): void
+    {
+        $shop = $this->createShop('retailer');
+        $shop->forceFill(['access_mode' => 'active', 'is_active' => true])->save();
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.shops.show', ['shop' => $shop->id]))
+            ->assertOk()
+            ->assertSee('Administrator restriction')
+            ->assertSee('None')
+            ->assertDontSee('Audit detail — stored access_mode', false)
+            ->assertDontSee('Unresolved — needs review', false);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // The action form is an ACTION, not a mirror of current state
+    // ════════════════════════════════════════════════════════════════
+
+    public function test_fresh_form_preselects_nothing_and_prefills_no_reason(): void
+    {
+        $shop = $this->lapsedShop();
+
+        $html = $this->actingAsSuperAdmin()
+            ->get(route('admin.shops.show', ['shop' => $shop->id]))
+            ->assertOk()
+            ->getContent();
+
+        // These three highlight classes are unique to the access-mode form and
+        // render only for a chosen option.
+        $this->assertStringNotContainsString('bg-emerald-500/20', $html, 'Active must never be the default choice.');
+        $this->assertStringNotContainsString('bg-amber-500/20', $html, 'The stored read_only mode must not preselect Read-Only.');
+        $this->assertStringNotContainsString('bg-rose-500/20', $html);
+
+        // The new action's reason starts empty — not seeded from the legacy
+        // subscription reason stored on the shop.
+        $this->assertStringContainsString('name="reason"', $html);
+        $this->assertStringContainsString('value=""', $html);
+        $this->assertStringNotContainsString('value="Subscription read_only"', $html);
+    }
+
+    public function test_an_untouched_form_cannot_apply_a_restriction(): void
+    {
+        $shop = $this->lapsedShop();
+
+        $this->actingAsSuperAdmin()
+            ->from(route('admin.shops.show', ['shop' => $shop->id]))
+            ->patch(route('admin.shops.status', ['shop' => $shop->id]), [])
+            ->assertSessionHasErrors('access_mode');
+
+        $fresh = $shop->fresh();
+        $this->assertSame('read_only', $fresh->access_mode);
+        $this->assertNull($fresh->suspended_by, 'A rejected submit must not stamp an administrator.');
+    }
+
+    public function test_a_submitted_choice_and_reason_survive_a_validation_failure(): void
+    {
+        config(['platform.enforce_subscriptions' => true]);
+
+        $shop = $this->lapsedShop();
+        $url  = route('admin.shops.show', ['shop' => $shop->id]);
+
+        // Activation is refused: no term covers today. That guard is unchanged.
+        $this->actingAsSuperAdmin()
+            ->from($url)
+            ->patch(route('admin.shops.status', ['shop' => $shop->id]), [
+                'access_mode' => 'active',
+                'reason'      => 'Goodwill restore',
+            ])
+            ->assertSessionHasErrors('access_mode');
+
+        $this->assertSame('read_only', $shop->fresh()->access_mode, 'An unpaid shop must not be activated.');
+
+        // Re-rendering keeps what the operator actually chose.
+        $html = $this->get($url)->assertOk()->getContent();
+        $this->assertStringContainsString('bg-emerald-500/20', $html, 'The submitted Active choice should be re-selected.');
+        $this->assertStringContainsString('value="Goodwill restore"', $html);
+        $this->assertStringContainsString('Cannot activate', $html, 'The rejection must be visible on screen.');
+    }
+
+    public function test_a_deliberate_suspension_still_applies_and_is_attributed(): void
+    {
+        $shop = $this->createShop('retailer');
+        $shop->forceFill(['access_mode' => 'active', 'is_active' => true])->save();
+
+        $this->actingAsSuperAdmin()
+            ->from(route('admin.shops.show', ['shop' => $shop->id]))
+            ->patch(route('admin.shops.status', ['shop' => $shop->id]), [
+                'access_mode' => 'suspended',
+                'reason'      => 'Compliance hold',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $fresh = $shop->fresh();
+        $this->assertSame('suspended', $fresh->access_mode);
+        $this->assertNotNull($fresh->suspended_by, 'Attribution must still be stamped.');
+        $this->assertSame('Compliance hold', $fresh->suspension_reason);
+        $this->assertSame('admin_suspended', $fresh->accessClassification());
     }
 }

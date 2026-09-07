@@ -132,7 +132,13 @@ class ShopManagementController extends Controller
             $accessMode = (bool) $validated['is_active'] ? 'active' : 'suspended';
         }
         if ($accessMode === null) {
-            return back()->withErrors(['access_mode' => 'Access mode is required.']);
+            // withInput() so the operator's typed reason survives the round-trip.
+            // The form no longer pre-selects a mode, so this branch is now
+            // reachable in practice — it used to be dead, because an untouched
+            // form always posted the shop's stored mode back.
+            return back()->withInput()->withErrors([
+                'access_mode' => 'Choose Active, Read-Only or Suspended before applying a change.',
+            ]);
         }
 
         // This generic toggle must not promise access the subscription can't
@@ -145,7 +151,9 @@ class ShopManagementController extends Controller
             && config('platform.enforce_subscriptions', false)
             && ! ShopSubscription::entitlesAccessToday($shop)
         ) {
-            return back()->withErrors([
+            // withInput() only: the guard itself, its condition and its message
+            // are unchanged — an unpaid shop still cannot be activated here.
+            return back()->withInput()->withErrors([
                 'access_mode' => "Cannot activate {$shop->name}: no subscription term currently covers today. Extend or renew the subscription via Billing first.",
             ]);
         }

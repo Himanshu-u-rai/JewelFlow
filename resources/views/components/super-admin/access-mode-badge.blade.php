@@ -14,13 +14,15 @@
       • subscription lapse  → not a hold at all; the owner can already recover on
                               their own by choosing a plan.
 
-    Shop::suspensionIsSubscriptionManaged() is the existing authoritative
-    classifier and the same one AuthenticatedSessionController and
-    EnsureSubscriptionIsActive route on, so the badge cannot disagree with what
-    the owner actually experiences. It is deliberately NOT re-implemented here:
-    it already applies admin-attribution precedence first and then corroborates
-    against the shop's current subscription rows, which is exactly why a reason
-    string or an absent timestamp must not be read on its own.
+    Shop::accessClassification() is the single derivation. It delegates to
+    Shop::suspensionIsSubscriptionManaged() — the same classifier
+    AuthenticatedSessionController and EnsureSubscriptionIsActive route on — so
+    the badge cannot disagree with what the owner experiences, nor with the
+    Platform Control panel and subscription summary on the detail page, which
+    read the same method. It is deliberately NOT re-implemented here: it already
+    applies admin-attribution precedence first and then corroborates against the
+    shop's current subscription rows, which is exactly why a reason string or an
+    absent timestamp must not be read on its own.
 
     ponytail: the classifier runs two bounded subscription queries, and only for
     a shop already in `read_only` — a rare, closed set (nothing mints read_only
@@ -34,7 +36,7 @@
 
     // Only a read_only row is ambiguous. `suspended` and `active` mean exactly
     // what they say, so their labels and colours are untouched.
-    $lapsed = $mode === 'read_only' && $shop->suspensionIsSubscriptionManaged();
+    $lapsed = $shop->accessClassification() === 'subscription_lapse';
 
     $label = match (true) {
         $lapsed             => 'Subscription ended',
