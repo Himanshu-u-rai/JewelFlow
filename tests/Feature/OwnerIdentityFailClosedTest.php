@@ -346,13 +346,19 @@ class OwnerIdentityFailClosedTest extends TestCase
     }
 
     /**
-     * …but a shop-less user may do nothing that REQUIRES a shop. startTrial
-     * attaches editions to a shop, so it takes the strict guard: onboarding
-     * never reaches it before shop creation, and every trial fixture in the
-     * suite owns a shop.
+     * …and a shop-less user MAY start a trial. Plan selection (including trial)
+     * deliberately precedes shop creation — OnboardingResumeService runs
+     * STEP_SELECT_PLAN → STEP_PAYMENT → STEP_CREATE_SHOP — and
+     * SubscriptionPaymentService::startTrial() already supports it: the term is
+     * created with shop_id = null, keyed to the user, and attached to the real
+     * shop once shops.store runs. abortUnlessOwnerOrOnboarding() must let this
+     * caller through exactly like every sibling commerce route already does;
+     * a PROVEN owner or staff member of an EXISTING shop is unaffected and
+     * still governed by the coverage above.
      */
-    public function test_a_shop_less_signup_cannot_start_a_trial(): void
+    public function test_a_shop_less_signup_can_start_a_trial(): void
     {
+        $this->createPlatformAdmin();
         $plan = $this->createPlan('manufacturer');
         $user = User::factory()->create([
             'shop_id'              => null,
@@ -361,11 +367,17 @@ class OwnerIdentityFailClosedTest extends TestCase
             'onboarding_shop_type' => 'manufacturer',
         ]);
 
-        $this->actingAs($user)
-            ->post(route('subscription.trial.start'), ['plan_id' => $plan->id])
-            ->assertForbidden();
+        $response = $this->actingAs($user)
+            ->post(route('subscription.trial.start'), ['plan_id' => $plan->id]);
 
-        $this->assertSame(0, ShopSubscription::count(), 'no trial term may exist without a shop to attach it to');
+        $response->assertRedirect(route('shops.create', ['type' => 'manufacturer']));
+
+        $this->assertSame(1, ShopSubscription::count(), 'exactly one trial term is created');
+
+        $subscription = ShopSubscription::first();
+        $this->assertNull($subscription->shop_id, 'a shop-less trial has no shop to attach to yet');
+        $this->assertSame($user->id, $subscription->user_id);
+        $this->assertSame('trial', $subscription->status);
     }
 
     /** And they can never see another tenant's billing history. */
