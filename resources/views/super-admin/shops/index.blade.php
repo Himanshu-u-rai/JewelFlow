@@ -97,9 +97,7 @@
                             <td class="px-4 py-3">{{ \App\Support\ShopEdition::label($shop->shop_type) }}</td>
                             <td class="px-4 py-3">{{ $shop->users_count }}</td>
                             <td class="px-4 py-2">
-                                <span class="admin-badge {{ $shop->access_mode === 'suspended' ? 'admin-badge-rose' : ($shop->access_mode === 'read_only' ? 'admin-badge-amber' : 'admin-badge-emerald') }}">
-                                    {{ $shop->access_mode === 'read_only' ? 'Read Only' : ucfirst($shop->access_mode ?? 'active') }}
-                                </span>
+                                <x-super-admin.access-mode-badge :shop="$shop" />
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <a href="{{ route('admin.shops.show', ['shop' => $shop->id]) }}"

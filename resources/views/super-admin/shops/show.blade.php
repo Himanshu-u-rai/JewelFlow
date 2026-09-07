@@ -17,9 +17,7 @@
                 @empty
                     <span class="admin-badge admin-badge-rose">No editions</span>
                 @endforelse
-                <span class="admin-badge {{ $shop->access_mode === 'suspended' ? 'admin-badge-rose' : ($shop->access_mode === 'read_only' ? 'admin-badge-amber' : 'admin-badge-emerald') }}">
-                    {{ $shop->access_mode === 'read_only' ? 'Read Only' : ucfirst($shop->access_mode ?? 'active') }}
-                </span>
+                <x-super-admin.access-mode-badge :shop="$shop" />
             </div>
         </div>
         <div class="flex items-center gap-2">
@@ -148,11 +146,42 @@
 
     <div class="admin-panel p-4 mb-6">
         <h3 class="font-semibold text-white mb-1">Platform Control</h3>
-        <p class="text-xs text-slate-400 mb-4">
+        <p class="text-xs text-slate-400 mb-3">
             <strong class="text-slate-300">Active</strong> — full access &nbsp;·&nbsp;
             <strong class="text-slate-300">Read-Only</strong> — can view, writes blocked &nbsp;·&nbsp;
             <strong class="text-slate-300">Suspended</strong> — fully blocked, logged out
         </p>
+
+        {{--
+            Applying Read-Only or Suspended here records this administrator as the
+            actor, which moves the shop onto the administrative axis. That axis is
+            not self-service recoverable by design, so the note below states the
+            consequence up front. The controls themselves are unchanged.
+        --}}
+        <p class="text-xs text-amber-300/90 mb-3">
+            ⚠ Read-Only and Suspended are recorded as <strong>administrator</strong>
+            restrictions. An administrator restriction is not self-service
+            recoverable — while it is in place the owner
+            <strong>cannot buy or renew a plan</strong> and is told to contact
+            support. Use it for deliberate holds only, never to reflect an
+            unpaid or expired subscription.
+        </p>
+
+        @if(($shop->access_mode ?? 'active') === 'read_only' && $shop->suspensionIsSubscriptionManaged())
+            {{--
+                A read_only row that the authoritative classifier attributes to the
+                subscription lifecycle rather than to an administrator. Nothing is
+                wrong with this shop's access path — saying so here stops an
+                operator "correcting" it with a control that would break renewal.
+            --}}
+            <p class="text-xs text-sky-300/90 mb-4">
+                This shop's subscription term ended — this is <strong>not</strong> an
+                administrator restriction. The owner is already sent to the plan
+                picker on login and can choose a plan to restore access on their own.
+                <strong>No action is needed here.</strong> Applying a mode below would
+                record an administrator restriction and remove that recovery path.
+            </p>
+        @endif
 
         <form method="POST" action="{{ route('admin.shops.status', $shop) }}" class="space-y-3">
             @csrf
