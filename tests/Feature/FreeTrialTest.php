@@ -298,4 +298,103 @@ class FreeTrialTest extends TestCase
             'actor_type' => 'self_service',
         ]);
     }
+
+    /**
+     * End-to-end HTTP journey for the shop-less free-trial hotfix: register →
+     * choose edition → start trial pre-shop → create the shop → owner access →
+     * logout/login persistence. Drives the real routes with auth/tenant/
+     * subscription middleware active — this is the path that was 403ing in
+     * production (SubscriptionController::startTrial() used the strict owner
+     * guard, which is unconditionally false for a shop-less user).
+     */
+    public function test_shop_less_signup_can_complete_the_full_trial_journey(): void
+    {
+        $mobile = '9' . fake()->unique()->numerify('#########');
+
+        $this->post(route('register'), [
+            'mobile_number' => $mobile,
+            'password' => 'Passw0rd!123',
+            'password_confirmation' => 'Passw0rd!123',
+        ])->assertRedirect(route('shops.choose-type'));
+
+        $user = User::where('mobile_number', $mobile)->firstOrFail();
+        // Registration's Auth::login() cached a partially-hydrated in-memory
+        // User (created via ::create(), never re-SELECTed — DB-default columns
+        // like is_active are absent from its attribute array). That object
+        // stays cached on the Guard for the rest of THIS test process (unlike
+        // production, where every request re-hydrates via a fresh Guard). Swap
+        // in a fully-loaded model so later requests see the real is_active.
+        $this->actingAs($user);
+
+        $this->post(route('shops.choose-type'), ['edition' => 'manufacturer'])
+            ->assertRedirect(route('subscription.plans'));
+
+        $plan = Plan::where('code', 'manufacturer_yearly')->firstOrFail();
+
+        // Step 3: start the trial before any shop exists — this is the failing
+        // step in production. Fresh-close: must redirect to shop creation, not
+        // 403 "Access Restricted".
+        $this->post(route('subscription.trial.start'), ['plan_id' => $plan->id])
+            ->assertRedirect(route('shops.create', ['type' => 'manufacturer']));
+
+        // Step 4: exactly one pending trial, no payment, no shop attached yet.
+        $this->assertSame(1, ShopSubscription::where('user_id', $user->id)->count());
+        $subscription = ShopSubscription::where('user_id', $user->id)->firstOrFail();
+        $this->assertSame('trial', $subscription->status);
+        $this->assertNull($subscription->shop_id);
+        $this->assertSame(0.0, (float) $subscription->price_paid);
+
+        // Step 5: create the shop through the real route.
+        $this->post(route('shops.store'), [
+            'name' => 'Journey Test Shop',
+            'phone' => '9' . fake()->unique()->numerify('#########'),
+            'address_line1' => '1 Test Street',
+            'city' => 'Mumbai',
+            'state' => 'Maharashtra',
+            'pincode' => '400001',
+            'owner_first_name' => 'Jane',
+            'owner_last_name' => 'Doe',
+            'owner_mobile' => '9' . fake()->unique()->numerify('#########'),
+            'gst_rate' => 3,
+            'wastage_recovery_percent' => 10,
+        ])->assertRedirect(route('dashboard'));
+
+        $user->refresh();
+        $this->assertNotNull($user->shop_id, 'owner is now attached to the new shop');
+
+        $role = \App\Models\Role::withoutTenant()->findOrFail($user->role_id);
+        $this->assertSame('owner', $role->name);
+
+        $subscription->refresh();
+        $this->assertSame($user->shop_id, $subscription->shop_id, 'the pending trial is linked to the new shop');
+        $this->assertTrue(
+            \App\Models\ShopEditionAssignment::where('shop_id', $user->shop_id)
+                ->where('edition', 'manufacturer')->whereNull('deactivated_at')->exists(),
+            'manufacturer edition was granted'
+        );
+
+        // Opening-setup is a separate, unrelated gate — stamp it complete so
+        // "usable dashboard access" isn't conflated with that other feature.
+        $this->markShopOpeningSetupComplete($user->shop_id);
+        $this->get(route('dashboard'))->assertOk();
+
+        // Step 6: logout / login — onboarding-complete state persists (DB-backed
+        // via users.shop_id, not session).
+        $this->post(route('logout'))->assertRedirect('/login');
+        $this->assertGuest();
+
+        $this->post(route('login'), [
+            'mobile_number' => $mobile,
+            'password' => 'Passw0rd!123',
+        ])->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($user->fresh());
+        $this->get(route('dashboard'))->assertOk();
+
+        // Also verify: repeating the trial submission cannot mint a second
+        // entitlement — the owner now has a shop, so the strict guard applies
+        // and blocksNewPaidTerm()/the live-trial check refuses it.
+        $this->post(route('subscription.trial.start'), ['plan_id' => $plan->id])
+            ->assertRedirect(route('subscription.status'));
+        $this->assertSame(1, ShopSubscription::where('user_id', $user->id)->count(), 'no duplicate trial created');
+    }
 }
