@@ -1006,6 +1006,30 @@ class HistoricalImportService
         $attributes['outstanding_amount_snapshot'] = $settled['outstanding'];
         $attributes['advance_credit_amount'] = $settled['advance_credit'];
 
+        // HISTORICAL-BATCHES-3-5-REQUIREMENTS-LOCK §"Overpayment": an old paper
+        // bill can genuinely show an advance, so this is a warning and never an
+        // error — but it must not pass silently either. The money is not lost
+        // (outstanding stays 0 per historical_docs_non_negative_check and the
+        // excess is carried in advance_credit_amount), yet an overpayment is far
+        // more often a typo than a real advance, and until now nothing said so.
+        // A warning here is automatically enrolled in HistoricalMessages::
+        // warningDigest(), which publishManual() checks after storeManual()
+        // returns — so this also supplies the acknowledgement-before-publish gate
+        // the lock asks for, without a second mechanism.
+        if ($settled['advance_credit'] > 0) {
+            $messages->warning(
+                'paid_amount_overpayment',
+                sprintf(
+                    'The paid amount ₹%s is more than the grand total ₹%s. '
+                    .'₹%s is recorded as an advance/credit. Confirm this is correct before publishing.',
+                    number_format($paidTotal, 2),
+                    number_format((float) ($attributes['grand_total'] ?? 0), 2),
+                    number_format($settled['advance_credit'], 2)
+                ),
+                'paid_amount'
+            );
+        }
+
         return $attributes;
     }
 

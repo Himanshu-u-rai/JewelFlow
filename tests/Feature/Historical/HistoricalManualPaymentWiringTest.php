@@ -271,4 +271,52 @@ class HistoricalManualPaymentWiringTest extends TestCase
             $this->assertEqualsWithDelta(0.0, (float) $document->outstanding_amount_snapshot, 0.01);
         });
     }
+
+    /**
+     * Requirements lock, "Overpayment": warning not error, never a silent clamp,
+     * same acknowledgement gate before publish. The settlement math already
+     * routed the excess to advance_credit_amount, but said nothing about it —
+     * and an overpayment is more often a typo than a real advance.
+     *
+     * Payment rows only, no manual paid override, so the mismatch warning is not
+     * in play and cannot mask this one.
+     */
+    public function test_an_overpayment_warns_and_requires_acknowledgement_before_publish(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $payload = $this->paymentPayload([
+            'intent' => 'publish',
+            'grand_total' => 1000,
+            'payments' => [['mode' => 'cash', 'amount' => 1200]],
+        ]);
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), $payload);
+        $preview->assertOk();
+        $digest = $preview->viewData('warningDigest');
+        $this->assertNotNull($digest, 'Paying 1200 against a 1000 bill must raise a warning.');
+        $preview->assertSee('recorded as an advance/credit', false);
+
+        $refused = $this->actingAs($owner)->post(route('historical.manual.store'), $payload);
+        $refused->assertSessionHas('error');
+
+        TenantContext::runFor($shop->id, function (): void {
+            $this->assertSame(0, HistoricalSalesDocument::query()->count(), 'An unacknowledged overpayment must publish nothing.');
+        });
+
+        $accepted = $this->actingAs($owner)->post(route('historical.manual.store'), $payload + [
+            'acknowledge_warnings' => '1',
+            'acknowledged_warning_digest' => $digest,
+        ]);
+        $accepted->assertRedirect();
+
+        TenantContext::runFor($shop->id, function (): void {
+            $document = HistoricalSalesDocument::query()->latest('id')->firstOrFail();
+            $this->assertSame(HistoricalSalesDocument::STATUS_PUBLISHED, $document->status);
+            $this->assertEqualsWithDelta(1200.0, (float) $document->paid_amount_snapshot, 0.01);
+            // Clamped, but not lost: the excess is carried, not silently dropped.
+            $this->assertEqualsWithDelta(0.0, (float) $document->outstanding_amount_snapshot, 0.01);
+            $this->assertEqualsWithDelta(200.0, (float) $document->advance_credit_amount, 0.01);
+        });
+    }
 }
