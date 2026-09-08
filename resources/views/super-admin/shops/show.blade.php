@@ -182,18 +182,27 @@
                 <div class="flex flex-wrap justify-between gap-3">
                     <dt class="text-slate-400 shrink-0">Administrator restriction</dt>
                     <dd class="text-right">
+                        {{--
+                            FAIL CLOSED. "None" is asserted only for the two states
+                            that positively prove it — an unrestricted shop, and a
+                            lapse the classifier attributed to the subscription
+                            lifecycle. Anything else, including any classification
+                            added later, lands on "Unresolved" rather than quietly
+                            claiming the shop is unrestricted.
+                        --}}
                         @switch($accessClass)
+                            @case('active')
+                            @case('subscription_lapse')
+                                <span class="text-emerald-200 font-medium">None</span>
+                                @break
                             @case('admin_suspended')
                                 <span class="text-rose-200 font-medium">Suspended</span>
                                 @break
                             @case('admin_read_only')
                                 <span class="text-amber-200 font-medium">Read-Only</span>
                                 @break
-                            @case('unclassified_read_only')
-                                <span class="text-amber-200 font-medium">Unresolved — needs review</span>
-                                @break
                             @default
-                                <span class="text-emerald-200 font-medium">None</span>
+                                <span class="text-amber-200 font-medium">Unresolved — needs review</span>
                         @endswitch
                     </dd>
                 </div>
@@ -201,10 +210,13 @@
 
             @if($accessClass === 'subscription_lapse')
                 {{--
-                    A read_only row the authoritative classifier attributes to the
-                    subscription lifecycle, not to an administrator. Nothing is wrong
-                    with this shop's access path — saying so stops an operator
-                    "correcting" it with a control that would break renewal.
+                    A restricted row — read_only OR suspended — that the authoritative
+                    classifier attributes to the subscription lifecycle, not to an
+                    administrator. CheckSubscriptionExpiry writes the suspended flavour
+                    and EnsureAccountIsActive already sends those owners to the plan
+                    picker, so nothing is wrong with this shop's access path — saying so
+                    stops an operator "correcting" it with a control that would break
+                    renewal.
                 --}}
                 <p class="text-xs text-sky-300/90 mt-3">
                     This shop's subscription term ended — this is <strong>not</strong> an
@@ -214,19 +226,20 @@
                     <strong>No action is needed here.</strong> Applying a mode below would
                     record an administrator restriction and remove that recovery path.
                 </p>
-            @elseif($accessClass === 'unclassified_read_only')
+            @elseif(str_starts_with($accessClass, 'unclassified'))
                 {{--
-                    read_only, no recorded actor, and the subscription rows do NOT
-                    corroborate a lapse. We do not know who imposed it, so say that
-                    rather than guess in either direction. Never presented as
-                    "no restriction" — the shop really is write-blocked.
+                    Restricted (either mode), no recorded actor, and the subscription
+                    rows do NOT corroborate a lapse. We do not know who imposed it, so
+                    say that rather than guess in either direction. Never presented as
+                    "no restriction" — the shop really is blocked.
                 --}}
                 <p class="text-xs text-amber-300/90 mt-3">
-                    This shop is read-only, but <strong>no administrator is recorded</strong>
-                    and its subscription rows do not confirm an expiry either. Treat this as
-                    <strong>unresolved</strong>: the shop is write-blocked, and it is not
-                    known to be owner-recoverable. Investigate the subscription history
-                    before applying anything below.
+                    This shop's access is restricted, but
+                    <strong>no administrator is recorded</strong> and its subscription rows
+                    do not confirm an expiry either. Treat this as
+                    <strong>unresolved</strong>: the shop is blocked, and it is not known
+                    to be owner-recoverable. Investigate the subscription history before
+                    applying anything below.
                 </p>
             @elseif($accessClass === 'admin_read_only' || $accessClass === 'admin_suspended')
                 <p class="text-xs text-slate-400 mt-3">

@@ -412,4 +412,69 @@ class SuperAdminAccessModeBadgeTest extends TestCase
         $this->assertSame('Compliance hold', $fresh->suspension_reason);
         $this->assertSame('admin_suspended', $fresh->accessClassification());
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // `suspended` is NOT self-evidently administrative
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * The shape CheckSubscriptionExpiry::applyShopModeUnderLock() writes on a
+     * grace-period lapse: access_mode=suspended, a 'Subscription…' reason, and
+     * NO suspended_by (the scheduler never stamps an actor). EnsureAccountIsActive
+     * already sends these owners to the plan picker, so the admin screen must not
+     * call it an administrator hold.
+     */
+    public function test_scheduler_created_subscription_suspension_reads_as_an_expiry(): void
+    {
+        $shop = $this->createShop('retailer');
+        $shop->forceFill([
+            'access_mode'       => 'suspended',
+            'is_active'         => false,
+            'suspended_at'      => now()->subDay(),
+            'suspension_reason' => 'Subscription grace period ended',
+            'suspended_by'      => null,
+        ])->save();
+
+        $this->assertSame('subscription_lapse', $shop->fresh()->accessClassification());
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.shops.show', ['shop' => $shop->id]))
+            ->assertOk()
+            ->assertSee('Subscription ended')
+            ->assertSee('choose a plan to restore access', false)
+            ->assertSee('No action is needed here.', false)
+            // Neither of the two ways the page could get this wrong.
+            ->assertDontSee('deliberate <strong>administrator restriction</strong>', false)
+            ->assertDontSee('Unresolved — needs review', false);
+    }
+
+    /**
+     * Suspended, no actor, and a reason the classifier does not recognise. We
+     * cannot say who did it, so it must read as unresolved — never as an invented
+     * administrator hold, and never as "None".
+     */
+    public function test_unattributed_suspension_is_not_presented_as_a_hold_or_as_unrestricted(): void
+    {
+        $shop = $this->createShop('retailer');
+        $shop->forceFill([
+            'access_mode'       => 'suspended',
+            'is_active'         => false,
+            'suspended_at'      => now()->subDay(),
+            'suspension_reason' => 'Manual lockout',
+            'suspended_by'      => null,
+        ])->save();
+
+        $this->assertSame('unclassified_suspended', $shop->fresh()->accessClassification());
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.shops.show', ['shop' => $shop->id]))
+            ->assertOk()
+            ->assertSee('Unresolved — needs review', false)
+            ->assertSee('no administrator is recorded', false)
+            ->assertSee('Audit detail — stored access_mode', false)
+            // Not a lapse, so no self-recovery promise; not attributed, so no hold.
+            ->assertDontSee('Subscription ended')
+            ->assertDontSee('choose a plan to restore access', false)
+            ->assertDontSee('deliberate <strong>administrator restriction</strong>', false);
+    }
 }

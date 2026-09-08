@@ -4,11 +4,13 @@
     Single source of truth for how a shop's access_mode is LABELLED in the admin
     UI. Display only — this component reads state and never changes it.
 
-    Why it exists: `read_only` is meant to denote a JewelFlows administrator
-    hold, but the pre-2026-08-27 expiry fork also minted `read_only` on an
-    ordinary subscription lapse with no actor recorded. Both rows stored the
-    identical string, so a raw `{{ $shop->access_mode }}` echo showed "Read Only"
-    for two states that need opposite operator responses:
+    Why it exists: NEITHER restricted mode records its own cause. `read_only` is
+    meant to denote a JewelFlows administrator hold, but the pre-2026-08-27 expiry
+    fork also minted it on an ordinary subscription lapse with no actor recorded —
+    and `suspended` is written both by an administrator AND by
+    CheckSubscriptionExpiry on a grace-period lapse. Each pair stores the identical
+    string, so a raw `{{ $shop->access_mode }}` echo showed one label for two states
+    that need opposite operator responses:
 
       • administrator hold  → deliberate; leave it alone.
       • subscription lapse  → not a hold at all; the owner can already recover on
@@ -24,18 +26,18 @@
     shop's current subscription rows, which is exactly why a reason string or an
     absent timestamp must not be read on its own.
 
-    ponytail: the classifier runs two bounded subscription queries, and only for
-    a shop already in `read_only` — a rare, closed set (nothing mints read_only
-    any more except a deliberate admin action). If a read_only population ever
-    grows large enough for the index page to feel it, eager-load the shop's
-    subscriptions rather than caching a denormalised label.
+    ponytail: the classifier runs its two bounded subscription queries only for a
+    shop already restricted — a small set. If that population ever grows large
+    enough for the index page to feel it, eager-load the shop's subscriptions
+    rather than caching a denormalised label.
 --}}
 
 @php
+    // The MODE still drives the colour: it is the honest severity signal. A lapse
+    // that suspended the shop is a full block and stays rose; a lapse that only
+    // made it read-only stays amber. Only the LABEL depends on the cause.
     $mode = $shop->access_mode ?? 'active';
 
-    // Only a read_only row is ambiguous. `suspended` and `active` mean exactly
-    // what they say, so their labels and colours are untouched.
     $lapsed = $shop->accessClassification() === 'subscription_lapse';
 
     $label = match (true) {
