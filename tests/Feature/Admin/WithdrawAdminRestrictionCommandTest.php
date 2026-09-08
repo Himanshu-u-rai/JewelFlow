@@ -93,31 +93,48 @@ class WithdrawAdminRestrictionCommandTest extends TestCase
     }
 
     /**
-     * Mirrors the audit row ShopManagementController::updateStatus() writes for a
-     * `shop.suspend`, including its flat (non-nested) before/after shape.
+     * Mirrors the audit row ShopManagementController::updateStatus() writes,
+     * including its flat (non-nested) shape and — importantly — the fact that its
+     * before/after are `$shop->only([...])` over ALL SIX access columns. The
+     * after-state is therefore always read back off the real row, exactly as
+     * production does it, so a fixture can never record a state the row does not
+     * actually hold.
      */
+    private function recordAccessEvent(
+        Shop $shop,
+        PlatformAdmin $actor,
+        string $action,
+        array $before,
+        ?string $reason = null
+    ): PlatformAuditLog {
+        $shop = $shop->fresh();
+
+        return PlatformAuditLog::create([
+            'actor_admin_id' => $actor->id,
+            'action'         => $action,
+            'target_type'    => Shop::class,
+            'target_id'      => $shop->id,
+            'before'         => $before,
+            'after'          => $shop->only([
+                'is_active', 'access_mode', 'suspended_at',
+                'suspended_by', 'suspension_reason', 'suspended_until',
+            ]),
+            'reason'         => $reason,
+            'created_at'     => now(),
+        ]);
+    }
+
     private function recordSuspendEvent(
         Shop $shop,
         PlatformAdmin $actor,
         string $reason,
         ?string $beforeMode = 'read_only'
     ): PlatformAuditLog {
-        return PlatformAuditLog::create([
-            'actor_admin_id' => $actor->id,
-            'action'         => 'shop.suspend',
-            'target_type'    => Shop::class,
-            'target_id'      => $shop->id,
-            'before'         => [
-                'is_active' => false, 'access_mode' => $beforeMode,
-                'suspended_by' => null, 'suspension_reason' => $reason,
-            ],
-            'after'          => [
-                'is_active' => (bool) $shop->is_active, 'access_mode' => $shop->access_mode,
-                'suspended_by' => $shop->suspended_by, 'suspension_reason' => $shop->suspension_reason,
-            ],
-            'reason'         => $reason,
-            'created_at'     => now(),
-        ]);
+        return $this->recordAccessEvent($shop, $actor, 'shop.suspend', [
+            'is_active' => false, 'access_mode' => $beforeMode,
+            'suspended_at' => null, 'suspended_by' => null,
+            'suspension_reason' => $reason, 'suspended_until' => null,
+        ], $reason);
     }
 
     /** The raw shops row, read past Eloquent so no cast or mutator can hide a change. */
@@ -256,11 +273,21 @@ class WithdrawAdminRestrictionCommandTest extends TestCase
             }
         });
 
-        $this->artisan('shop:withdraw-admin-restriction', $this->commitArgs($shop, $holder, $this->makeAdmin(), $event->id))
-            ->assertExitCode(1);
+        $this->assertSame(1, Artisan::call(
+            'shop:withdraw-admin-restriction',
+            $this->commitArgs($shop, $holder, $this->makeAdmin(), $event->id)
+        ));
+        $output = Artisan::output();
 
-        // An unrecorded correction must not survive.
+        // An unrecorded correction must not survive …
         $this->assertSame($holder->id, $shop->fresh()->suspended_by);
+
+        // … and must not be REPORTED as having survived. Success is printed only
+        // after the transaction commits, so a rolled-back run must say nothing of
+        // the sort; an operator reading "Committed." would stop checking.
+        $this->assertStringNotContainsString('Committed.', $output);
+        $this->assertStringNotContainsString('New state:', $output);
+        $this->assertStringContainsString('audit record was not written', $output);
     }
 
     public function test_it_refuses_an_unnamed_unknown_inactive_or_non_super_admin_authorizer(): void
@@ -373,6 +400,163 @@ class WithdrawAdminRestrictionCommandTest extends TestCase
         $this->assertSame($holder->id, $shop->fresh()->suspended_by);
     }
 
+    /**
+     * THE GAP THE MODE-AND-ACTOR COMPARISON LEFT OPEN. An unlogged write can move
+     * a restriction field that is neither the mode nor the administrator, and on
+     * those two columns alone the row still reconciles perfectly.
+     *
+     * The reason case is deliberately 'Subscription expired' — it still starts
+     * with "Subscription", so suspensionIsSubscriptionManaged() still corroborates
+     * a lapse and the classification guard still passes. Nothing but a complete
+     * six-column reconciliation catches it.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('unloggedFieldWrites')]
+    public function test_it_refuses_when_a_restriction_field_other_than_mode_or_actor_disagrees(array $write): void
+    {
+        [$shop, $holder, $event] = $this->heldShop();
+
+        // Straight to the row, past Eloquent and past every cast: this is a write
+        // with no audit entry, which is exactly what updateStatus() can leave
+        // behind when it fails between saving the shop and logging the change.
+        \Illuminate\Support\Facades\DB::table('shops')->where('id', $shop->id)->update($write);
+        $shop = $shop->fresh();
+
+        // The two columns the old comparison looked at are untouched.
+        $this->assertSame('suspended', $shop->access_mode);
+        $this->assertSame($holder->id, $shop->suspended_by);
+
+        $this->assertSame(1, Artisan::call(
+            'shop:withdraw-admin-restriction',
+            $this->commitArgs($shop, $holder, $this->makeAdmin(), $event->id)
+        ));
+
+        // It must be RECONCILIATION that refused — not a coincidental refusal
+        // from one of the other guards, which would leave the gap open.
+        $this->assertStringContainsString('does not match its latest audit event', Artisan::output());
+        $this->assertSame($holder->id, $shop->fresh()->suspended_by);
+    }
+
+    public static function unloggedFieldWrites(): array
+    {
+        return [
+            // Still "Subscription…", so the lapse corroboration cannot mask this.
+            'reason rewritten'      => [['suspension_reason' => 'Subscription expired']],
+            'suspension period set' => [['suspended_until' => '2027-01-31 00:00:00']],
+            'suspended_at moved'    => [['suspended_at' => '2026-01-01 00:00:00']],
+            // 'true' as a literal: this goes in through the raw query builder, and
+            // Postgres will not coerce an integer 1 into a boolean column.
+            'is_active flipped'     => [['is_active' => 'true']],
+        ];
+    }
+
+    /**
+     * THE INVISIBLE EVENT. An entry whose recorded fields are only the suspension
+     * period narrowed to nothing once the dates were excluded, so it was filtered
+     * out of the history entirely: it never reconciled, and — the real damage —
+     * it never moved the latest event id, so a reviewed id stayed "current" right
+     * across a later administrative change.
+     *
+     * With the dates included it is visible again, and the command refuses,
+     * naming that event rather than the stale one the operator reviewed.
+     */
+    public function test_a_later_event_recording_only_the_suspension_period_is_not_invisible(): void
+    {
+        [$shop, $holder, $reviewedEvent] = $this->heldShop();
+
+        \Illuminate\Support\Facades\DB::table('shops')
+            ->where('id', $shop->id)
+            ->update(['suspended_until' => '2027-01-31 00:00:00']);
+
+        $periodOnly = PlatformAuditLog::create([
+            'actor_admin_id' => $holder->id,
+            'action'         => 'shop.suspend',
+            'target_type'    => Shop::class,
+            'target_id'      => $shop->id,
+            'before'         => ['suspended_at' => $shop->suspended_at, 'suspended_until' => null],
+            'after'          => ['suspended_at' => $shop->suspended_at, 'suspended_until' => '2027-01-31 00:00:00'],
+            'reason'         => 'Hold extended',
+            'created_at'     => now(),
+        ]);
+
+        $this->assertSame(1, Artisan::call(
+            'shop:withdraw-admin-restriction',
+            $this->commitArgs($shop->fresh(), $holder, $this->makeAdmin(), $reviewedEvent->id)
+        ));
+        $output = Artisan::output();
+
+        // The period event is what the command now reads as latest. That it is
+        // named at all is the proof it is no longer being skipped.
+        $this->assertStringContainsString("(#{$periodOnly->id},", $output);
+        $this->assertSame($holder->id, $shop->fresh()->suspended_by);
+    }
+
+    /**
+     * The same class of change recorded in the full six-column shape production
+     * actually writes: mode, administrator, reason and is_active all unchanged,
+     * only the period moved. The row and the later event agree, so reconciliation
+     * passes and the event BINDING is isolated as the thing that must refuse.
+     */
+    public function test_a_later_suspension_period_event_invalidates_the_reviewed_event_id(): void
+    {
+        [$shop, $holder, $reviewedEvent] = $this->heldShop();
+
+        $before = $shop->only([
+            'is_active', 'access_mode', 'suspended_at',
+            'suspended_by', 'suspension_reason', 'suspended_until',
+        ]);
+
+        // A later administrative change to the suspension PERIOD only. Mode,
+        // administrator, reason and is_active are all left exactly as they were.
+        Shop::query()->whereKey($shop->id)->update(['suspended_until' => now()->addMonths(2)]);
+        $periodEvent = $this->recordAccessEvent($shop, $holder, 'shop.suspend', $before, 'Hold extended');
+
+        $this->assertGreaterThan($reviewedEvent->id, $periodEvent->id);
+
+        $shop = $shop->fresh();
+
+        // The reviewed id is stale, and the command must say so rather than
+        // proceed on an inspection that predates a real administrative change.
+        $args = $this->commitArgs($shop, $holder, $this->makeAdmin(), $reviewedEvent->id);
+        $this->assertSame(1, Artisan::call('shop:withdraw-admin-restriction', $args));
+        $this->assertStringContainsString('latest access-relevant audit event', Artisan::output());
+        $this->assertSame($holder->id, $shop->fresh()->suspended_by);
+
+        // …and it is the BINDING that refused, not a broken fixture: the same
+        // command bound to the period event goes through.
+        $args['--expect-audit-event'] = $periodEvent->id;
+        $this->artisan('shop:withdraw-admin-restriction', $args)->assertExitCode(0);
+        $this->assertNull($shop->fresh()->suspended_by);
+    }
+
+    /**
+     * Incomplete evidence is refused, not partially checked. An entry recording
+     * only some of the six access columns cannot establish the restriction state,
+     * and reading it as if it had would be worse than having no entry at all —
+     * the operator would be told the state reconciled.
+     */
+    public function test_it_refuses_when_the_latest_event_does_not_record_every_access_column(): void
+    {
+        [$shop, $holder] = $this->heldShop(withHistory: false);
+
+        $partial = PlatformAuditLog::create([
+            'actor_admin_id' => $holder->id,
+            'action'         => 'shop.suspend',
+            'target_type'    => Shop::class,
+            'target_id'      => $shop->id,
+            'before'         => ['access_mode' => 'read_only', 'suspended_by' => null],
+            'after'          => ['access_mode' => 'suspended', 'suspended_by' => $holder->id],
+            'created_at'     => now(),
+        ]);
+
+        $this->assertSame(1, Artisan::call(
+            'shop:withdraw-admin-restriction',
+            $this->commitArgs($shop, $holder, $this->makeAdmin(), $partial->id)
+        ));
+
+        $this->assertStringContainsString('omits', Artisan::output());
+        $this->assertSame($holder->id, $shop->fresh()->suspended_by);
+    }
+
     public function test_it_refuses_a_held_shop_with_no_access_relevant_audit_history(): void
     {
         [$shop, $holder] = $this->heldShop(withHistory: false);
@@ -425,7 +609,7 @@ class WithdrawAdminRestrictionCommandTest extends TestCase
     {
         [$shop, $holder] = $this->heldShop();
         $auditCount = PlatformAuditLog::count();
-        $fingerprint = $shop->updated_at->format('Y-m-d H:i:s');
+        $rowBefore = $this->rawRow($shop->id);
 
         // Artisan::output() over expectsOutputToContain(): the latter mocks the
         // OutputStyle, and what we need to assert on is the REAL rendered tables.
@@ -442,13 +626,16 @@ class WithdrawAdminRestrictionCommandTest extends TestCase
         $this->assertStringContainsString('WITHDRAWING', $output);
         $this->assertStringContainsString('does NOT guarantee no write occurred', $output);
 
+        // The COMPLETE raw row, column for column, read past Eloquent. Spot-checking
+        // a couple of columns (or leaning on updated_at, which is timestamp(0) and
+        // so cannot distinguish a write landing in the same second) would not
+        // establish "writes absolutely nothing" — this does.
+        $this->assertSame($rowBefore, $this->rawRow($shop->id), 'The dry run must not write anything at all.');
+        $this->assertSame($auditCount, PlatformAuditLog::count());
+
         $shop = $shop->fresh();
         $this->assertSame($holder->id, $shop->suspended_by);
         $this->assertSame('suspended', $shop->access_mode);
-        // updated_at is the tell-tale: any write at all, including a no-op
-        // Eloquent save, would move it.
-        $this->assertSame($fingerprint, $shop->updated_at->format('Y-m-d H:i:s'));
-        $this->assertSame($auditCount, PlatformAuditLog::count());
     }
 
     // ════════════════════════════════════════════════════════════════

@@ -55,8 +55,10 @@ use Illuminate\Support\Facades\DB;
  * absence of an entry is not evidence of the absence of a write.
  *
  * What is checkable is RECONCILIATION: the latest access-relevant entry must
- * describe the row as it stands right now. If it does not, an unlogged write
- * happened and the command refuses rather than guessing.
+ * describe the row as it stands right now, across the COMPLETE restriction state
+ * — all six columns of RECONCILED_COLUMNS, not just the mode and the actor. If
+ * it does not, or if it does not record all six, an unlogged write happened (or
+ * cannot be ruled out) and the command refuses rather than guessing.
  *
  * Default is a dry-run: it prints the current state, the audit history, the
  * proposed result, and writes NOTHING.
@@ -92,6 +94,28 @@ class WithdrawAdminRestriction extends Command
      * optional.
      */
     private const TS = 'Y-m-d H:i:s';
+
+    /**
+     * The complete restriction state — every access column
+     * ShopManagementController::updateStatus() writes and records.
+     *
+     * Reconciliation compares ALL SIX. Comparing only access_mode and
+     * suspended_by left four fields unchecked, so an unlogged write that changed
+     * (say) suspension_reason or the suspension period while leaving the mode and
+     * the administrator alone reconciled cleanly and the command proceeded on
+     * evidence it had never actually verified. The suspension dates matter twice
+     * over: they are also part of what makes an audit event access-relevant at
+     * all, so an event that only altered the suspension PERIOD used to be
+     * invisible to --expect-audit-event.
+     */
+    private const RECONCILED_COLUMNS = [
+        'access_mode',
+        'is_active',
+        'suspended_by',
+        'suspension_reason',
+        'suspended_at',
+        'suspended_until',
+    ];
 
     public function __construct(private PlatformAuditService $audit)
     {
@@ -358,10 +382,17 @@ class WithdrawAdminRestriction extends Command
     }
 
     /**
-     * The current row must be described by the latest access-relevant audit
-     * entry. This does NOT prove no write occurred — updateStatus() saves the
-     * shop before logging, unTRANSACTIONED, so a write can exist with no entry —
-     * but a MISMATCH is positive evidence that one did, and that is refusable.
+     * The current row must be described, IN FULL, by the latest access-relevant
+     * audit entry. This does NOT prove no write occurred — updateStatus() saves
+     * the shop before logging, unTRANSACTIONED, so a write can exist with no
+     * entry — but a MISMATCH is positive evidence that one did, and that is
+     * refusable.
+     *
+     * All six columns of RECONCILED_COLUMNS are compared, and an entry that does
+     * not record all six is refused rather than partially checked. A field that
+     * is silently skipped is not weaker evidence, it is no evidence: the operator
+     * would read "reconciled" and reasonably believe the whole restriction state
+     * had been verified against the record.
      */
     private function reconciliationFault(Shop $shop, Collection $history): ?string
     {
@@ -376,32 +407,103 @@ class WithdrawAdminRestriction extends Command
 
         $after = $this->snapshot($latest->after);
 
-        foreach (['access_mode', 'suspended_by'] as $column) {
-            if (! array_key_exists($column, $after)) {
-                return sprintf(
-                    'Refusing: the latest access-relevant audit event (#%d, %s) does not record %s, so the current state cannot be reconciled against it.',
-                    $latest->id,
-                    $latest->action,
-                    $column
-                );
+        $missing = array_values(array_diff(self::RECONCILED_COLUMNS, array_keys($after)));
+        if ($missing !== []) {
+            return sprintf(
+                'Refusing: the latest access-relevant audit event (#%d, %s) records only [%s] and omits [%s], so the shop\'s complete restriction state cannot be reconciled against it. Partial evidence is not partial assurance — re-inspect before correcting anything.',
+                $latest->id,
+                $latest->action,
+                implode(', ', array_keys($after)),
+                implode(', ', $missing)
+            );
+        }
+
+        $recorded = $this->normalizeAccess($after);
+        $current = $this->normalizeAccess($this->accessColumns($shop));
+
+        $conflicts = [];
+        foreach (self::RECONCILED_COLUMNS as $column) {
+            if ($recorded[$column] !== $current[$column]) {
+                $conflicts[] = sprintf('%s (recorded %s, row reads %s)', $column, $recorded[$column], $current[$column]);
             }
         }
 
-        if ((string) $after['access_mode'] !== (string) $shop->access_mode
-            || (int) $after['suspended_by'] !== (int) $shop->suspended_by) {
+        if ($conflicts !== []) {
             return sprintf(
-                'Refusing: shop #%d does not match its latest audit event (#%d, %s). Recorded after-state was access_mode=%s / suspended_by=%s; the row now reads access_mode=%s / suspended_by=%s. A write happened that was never logged — investigate before correcting anything.',
+                'Refusing: shop #%d does not match its latest audit event (#%d, %s) on %s. A write happened that was never logged — investigate before correcting anything.',
                 $shop->id,
                 $latest->id,
                 $latest->action,
-                json_encode($after['access_mode']),
-                json_encode($after['suspended_by']),
-                json_encode($shop->access_mode),
-                json_encode($shop->suspended_by)
+                implode('; ', $conflicts)
             );
         }
 
         return null;
+    }
+
+    /**
+     * Canonical, comparable form of the six access columns.
+     *
+     * The two sides are stored very differently — the row carries native
+     * booleans, ints and Carbon instances, while the audit side has been through
+     * JSON (booleans survive, dates become ISO-8601 strings, and Postgres can
+     * hand back 't'/'f'). Comparing those raw produces false mismatches, and
+     * loose comparison produces false matches (null == false == 0 == ''), so
+     * every value is reduced to one string per column and compared strictly.
+     * Anything unparseable is left visibly unparseable so it MISmatches — this
+     * normalisation fails closed by construction.
+     */
+    private function normalizeAccess(array $data): array
+    {
+        $out = [];
+
+        foreach (self::RECONCILED_COLUMNS as $column) {
+            $value = $data[$column] ?? null;
+
+            $out[$column] = match (true) {
+                $value === null || $value === ''       => 'NULL',
+                $column === 'is_active'                => $this->normalizeBool($value),
+                $column === 'suspended_by'             => (string) (int) $value,
+                in_array($column, ['suspended_at', 'suspended_until'], true) => $this->normalizeDate($value),
+                default                                => trim((string) $value),
+            };
+        }
+
+        return $out;
+    }
+
+    private function normalizeBool($value): string
+    {
+        if (is_string($value)) {
+            // Postgres 't'/'f' are NOT understood by filter_var, which would read
+            // 't' as false and reconcile a true against a false.
+            $value = match (strtolower(trim($value))) {
+                't', 'true', '1', 'yes', 'on'  => true,
+                'f', 'false', '0', 'no', 'off' => false,
+                default                        => null,
+            };
+
+            if ($value === null) {
+                return 'UNPARSEABLE-BOOL';
+            }
+        }
+
+        return var_export((bool) $value, true);
+    }
+
+    /**
+     * Second precision on purpose: suspended_at / suspended_until are stored at
+     * that precision, and the audit side has been round-tripped through JSON.
+     * Normalised to UTC so an app-timezone Carbon and an ISO-8601 'Z' string
+     * compare as the same instant rather than as a spurious conflict.
+     */
+    private function normalizeDate($value): string
+    {
+        try {
+            return \Illuminate\Support\Carbon::parse($value)->utc()->format(self::TS);
+        } catch (\Throwable) {
+            return 'UNPARSEABLE-DATE:' . json_encode($value);
+        }
     }
 
     /**
@@ -421,10 +523,15 @@ class WithdrawAdminRestriction extends Command
     }
 
     /**
-     * Normalises an audit side to the access columns. Entries are written in two
+     * Narrows an audit side to the access columns. Entries are written in two
      * shapes: flat (ShopManagementController, the middlewares) and nested under
      * 'shop' (BillingManagementController). Returns [] for an entry that says
      * nothing about access at all.
+     *
+     * The suspension DATES are part of this set. Without them an event that only
+     * moved the suspension period narrowed to [] and was dropped from the history
+     * entirely — it never reached reconciliation and never moved the latest event
+     * id, so --expect-audit-event could not see it.
      */
     private function snapshot($side): array
     {
@@ -434,10 +541,7 @@ class WithdrawAdminRestriction extends Command
 
         $data = is_array($side['shop'] ?? null) ? $side['shop'] : $side;
 
-        return array_intersect_key(
-            $data,
-            array_flip(['access_mode', 'suspended_by', 'suspension_reason', 'is_active'])
-        );
+        return array_intersect_key($data, array_flip(self::RECONCILED_COLUMNS));
     }
 
     /**
@@ -456,14 +560,7 @@ class WithdrawAdminRestriction extends Command
 
     private function accessColumns(Shop $shop): array
     {
-        return $shop->only([
-            'is_active',
-            'access_mode',
-            'suspended_at',
-            'suspended_by',
-            'suspension_reason',
-            'suspended_until',
-        ]);
+        return $shop->only(self::RECONCILED_COLUMNS);
     }
 
     private function renderCurrent(Shop $shop): void
@@ -509,13 +606,21 @@ class WithdrawAdminRestriction extends Command
                     json_encode($before['access_mode'] ?? null) . '/' . json_encode($before['suspended_by'] ?? null),
                     json_encode($after['access_mode'] ?? null) . '/' . json_encode($after['suspended_by'] ?? null)
                 ),
+                // Shown because an event can be access-relevant on the period
+                // ALONE, leaving the mode and the administrator unchanged. Without
+                // this column such a row reads as a no-op the operator would skim.
+                sprintf(
+                    '%s → %s',
+                    $this->period($before),
+                    $this->period($after)
+                ),
                 (string) ($after['suspension_reason'] ?? $e->reason ?? ''),
                 $marker,
             ];
         })->all();
 
         $this->table(
-            ['event', 'action', 'actor', 'at', 'access_mode/suspended_by', 'reason', ''],
+            ['event', 'action', 'actor', 'at', 'access_mode/suspended_by', 'suspended_at/until', 'reason', ''],
             $rows
         );
 
@@ -528,6 +633,18 @@ class WithdrawAdminRestriction extends Command
         }
 
         $this->line('<comment>Note:</comment> updateStatus() saves the shop before writing its audit entry and does not wrap the pair in a transaction. This history supports attribution; a missing entry does NOT guarantee no write occurred.');
+    }
+
+    /** The suspension period of one audit side, in the same canonical form reconciliation uses. */
+    private function period(array $side): string
+    {
+        if ($side === []) {
+            return '—';
+        }
+
+        $normalised = $this->normalizeAccess($side);
+
+        return $normalised['suspended_at'] . '/' . $normalised['suspended_until'];
     }
 
     /**
