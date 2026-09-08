@@ -298,14 +298,25 @@ class Shop extends Model
      * the screen cannot contradict what the owner experiences. Nothing here is
      * re-implemented from a reason string or a missing timestamp.
      *
+     * MODE AND CAUSE ARE INDEPENDENT AXES. The mode says how hard the block is
+     * (read_only = writes blocked, suspended = fully blocked); attribution says
+     * who caused it. `suspended` is NOT self-evidently administrative:
+     * CheckSubscriptionExpiry::applyShopModeUnderLock() writes access_mode=
+     * 'suspended' with reasons like 'Subscription grace period ended' and never
+     * stamps suspended_by, and EnsureAccountIsActive already routes exactly those
+     * shops to the plan picker. Short-circuiting `suspended` to an administrator
+     * hold made this screen contradict the recovery the owner actually gets. Both
+     * restricted modes therefore run through the same classifier.
+     *
      * Returns exactly one of:
-     *   'admin_suspended'         — deliberate hold, fully blocked.
-     *   'admin_read_only'         — deliberate hold, writes blocked, actor recorded.
-     *   'subscription_lapse'      — term ended; NOT a restriction; owner self-recovers.
-     *   'unclassified_read_only'  — read_only with no recorded actor AND no
-     *                               corroborating lapse. Unresolved: it must never
-     *                               be presented as "no restriction".
-     *   'active'                  — no restriction.
+     *   'admin_suspended'          — deliberate hold, fully blocked, actor recorded.
+     *   'admin_read_only'          — deliberate hold, writes blocked, actor recorded.
+     *   'subscription_lapse'       — term ended; NOT a restriction; owner self-recovers.
+     *                                Reachable from either restricted mode.
+     *   'unclassified_suspended'   — suspended with no recorded actor AND no
+     *   'unclassified_read_only'     corroborating lapse. Unresolved: neither may
+     *                                ever be presented as "no restriction".
+     *   'active'                   — no restriction.
      *
      * ponytail: memoised per instance because the detail page asks three times
      * (badge, Platform Control, subscription summary) and the classifier runs two
@@ -313,17 +324,24 @@ class Shop extends Model
      */
     public function accessClassification(): string
     {
-        return $this->accessClassificationCache ??= match (true) {
-            ($this->access_mode ?? 'active') === 'suspended' => 'admin_suspended',
-            ($this->access_mode ?? 'active') !== 'read_only' => 'active',
+        if ($this->accessClassificationCache !== null) {
+            return $this->accessClassificationCache;
+        }
 
-            // read_only from here down. Order is the precedence: the authoritative
-            // classifier first (it already applies admin-attribution precedence
-            // internally), then attribution, and anything left over is unresolved
-            // and fails closed rather than being called unrestricted.
+        $mode = $this->access_mode ?? 'active';
+
+        if ($mode !== 'read_only' && $mode !== 'suspended') {
+            return $this->accessClassificationCache = 'active';
+        }
+
+        // Order is the precedence: the authoritative classifier first (it already
+        // applies admin-attribution precedence internally), then attribution, and
+        // anything left over is unresolved and fails closed rather than being
+        // called unrestricted. The mode only chooses the severity of the label.
+        return $this->accessClassificationCache = match (true) {
             $this->suspensionIsSubscriptionManaged() => 'subscription_lapse',
-            $this->suspensionIsAdministrative()      => 'admin_read_only',
-            default                                  => 'unclassified_read_only',
+            $this->suspensionIsAdministrative()      => $mode === 'suspended' ? 'admin_suspended' : 'admin_read_only',
+            default                                  => $mode === 'suspended' ? 'unclassified_suspended' : 'unclassified_read_only',
         };
     }
 
