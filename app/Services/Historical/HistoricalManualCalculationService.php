@@ -406,17 +406,24 @@ class HistoricalManualCalculationService
     /**
      * Which reading of `line_rate` to price with.
      *
-     * The absence of the key is the signal, and it is the load-bearing half of
-     * this method. The new form ALWAYS posts `line_rate_basis`, so a payload
-     * without it can only be a replay of something built before this
-     * distinction existed — a stored line, an import row, a queued draft. Those
-     * were computed as 24K/999 reference rates, so they are re-priced as
-     * reference rates. Defaulting them to AS_PRINTED would silently restate
-     * every historical gold figure upward by 24/purity.
+     * A missing key is a COMPATIBILITY FALLBACK, not evidence about the row.
+     * It does not prove the payload is old — any caller can omit the key, and
+     * this method cannot tell an old stored line from a new one that simply
+     * left the field out. What it can do is pick the direction that never
+     * moves money: PURE_REFERENCE reproduces the pre-change §4 arithmetic
+     * exactly, so anything computed before this distinction existed keeps its
+     * figures. Defaulting to AS_PRINTED would restate every affected gold
+     * figure upward by 24/purity with nothing in the record explaining it.
      *
-     * A present-but-unrecognised value is treated the same way, for the same
-     * reason: never resolve an ambiguous stored value in the direction that
-     * changes money.
+     * A present-but-unrecognised value falls back the same way, for the same
+     * reason. That is a second line of defence, not the primary gate: over
+     * HTTP, `StoreManualHistoricalRequest` rejects an unknown basis outright
+     * with `Rule::in(HistoricalSalesLine::RATE_BASES)`. This clause covers the
+     * non-HTTP callers (imports, replays) that never pass through that rule.
+     *
+     * The form always posts an explicit basis, so a NEW manual entry never
+     * reaches either fallback — see
+     * HistoricalRateBasisBoundaryTest for all three paths.
      */
     private static function rateBasisFor(array $line): string
     {

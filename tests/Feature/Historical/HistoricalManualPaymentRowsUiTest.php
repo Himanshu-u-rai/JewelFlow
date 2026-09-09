@@ -131,6 +131,65 @@ class HistoricalManualPaymentRowsUiTest extends TestCase
         $this->assertStringContainsString('x-text="paymentStatusLabel"', $html);
     }
 
+    /**
+     * An over-tendered bill used to read "Fully paid" — true, but it hides the
+     * one figure the operator must reconcile against the paper bill. The pill
+     * now reads "Overpaid" and a sibling states the excess.
+     *
+     * This asserts the WIRING only; the arithmetic is Alpine-side and is
+     * verified in the browser (see the closure evidence). Deliberately not
+     * mocked into a fake JS runtime — a passing mock of a getter I also wrote
+     * would prove nothing the source does not already say.
+     */
+    public function test_manual_entry_form_states_the_excess_when_payments_exceed_the_total(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $html = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent();
+        $xpath = $this->xpath($html);
+
+        $node = $xpath->query("//form[@data-historical-form='manual']//*[@data-historical-payment-excess]")?->item(0);
+        $this->assertNotNull($node, 'No overpayment excess indicator rendered.');
+        $this->assertSame('paymentExcess > 0', $node->getAttribute('x-show'));
+        $this->assertSame('paymentExcessLabel', $node->getAttribute('x-text'));
+
+        // The pill must have a distinct Overpaid state, or the excess figure
+        // would sit next to a green "Fully paid" badge and read as agreement.
+        $this->assertStringContainsString("paymentStatusLabel === 'Overpaid'", $html);
+    }
+
+    /**
+     * The excess is a display figure. If this ever starts writing, the
+     * historical snapshot contract (no ledger, no receivable, no wallet credit)
+     * is broken — so pin that the overpayment path creates nothing.
+     */
+    public function test_an_overpayment_creates_no_credit_or_ledger_entry(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $walletsBefore = \Illuminate\Support\Facades\Schema::hasTable('customer_wallets')
+            ? (int) \Illuminate\Support\Facades\DB::table('customer_wallets')->count()
+            : null;
+        $ledgerBefore = \Illuminate\Support\Facades\Schema::hasTable('customer_ledger_entries')
+            ? (int) \Illuminate\Support\Facades\DB::table('customer_ledger_entries')->count()
+            : null;
+
+        $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'grand_total' => 1000,
+            'tax_mode' => \App\Models\Historical\HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'payments' => [['mode' => 'cash', 'amount' => 1500]],
+        ])->assertOk();
+
+        if ($walletsBefore !== null) {
+            $this->assertSame($walletsBefore, (int) \Illuminate\Support\Facades\DB::table('customer_wallets')->count());
+        }
+        if ($ledgerBefore !== null) {
+            $this->assertSame($ledgerBefore, (int) \Illuminate\Support\Facades\DB::table('customer_ledger_entries')->count());
+        }
+    }
+
     public function test_preview_screen_preserves_the_same_payment_row_bindings(): void
     {
         [$owner] = $this->createRetailerTenant();

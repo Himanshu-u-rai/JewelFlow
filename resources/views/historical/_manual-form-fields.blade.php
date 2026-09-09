@@ -397,14 +397,26 @@
             <h2 class="text-base font-semibold text-slate-900">Payments <span class="text-slate-400 font-normal text-sm">(display snapshot — no ledger, no receivable)</span></h2>
             <p class="mt-1 text-xs text-slate-500">Optional. Add one row per tender received against this bill.</p>
         </div>
-        <span data-historical-payment-status
-              class="rounded-full px-3 py-1 text-xs font-semibold uppercase"
-              :class="{
-                  'bg-emerald-50 text-emerald-700': paymentStatusLabel === 'Fully paid',
-                  'bg-amber-100 text-amber-800': paymentStatusLabel === 'Partially paid',
-                  'bg-slate-100 text-slate-600': paymentStatusLabel === 'Unpaid',
-              }"
-              x-text="paymentStatusLabel"></span>
+        {{-- An overpaid bill reads "Overpaid" and states the excess. It used to
+             read "Fully paid", which is true but hides the discrepancy the
+             operator needs to reconcile against the paper bill. Display only —
+             no credit, no ledger entry; the server warning is still the gate. --}}
+        <div class="flex flex-wrap items-center gap-2">
+            <span data-historical-payment-status
+                  class="rounded-full px-3 py-1 text-xs font-semibold uppercase"
+                  :class="{
+                      'bg-emerald-50 text-emerald-700': paymentStatusLabel === 'Fully paid',
+                      'bg-amber-100 text-amber-800': paymentStatusLabel === 'Partially paid',
+                      'bg-slate-100 text-slate-600': paymentStatusLabel === 'Unpaid',
+                      'bg-rose-100 text-rose-800': paymentStatusLabel === 'Overpaid',
+                  }"
+                  x-text="paymentStatusLabel"></span>
+            <span data-historical-payment-excess
+                  x-show="paymentExcess > 0"
+                  x-cloak
+                  class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold tabular-nums text-rose-800"
+                  x-text="paymentExcessLabel"></span>
+        </div>
     </div>
     <div class="p-4 sm:p-6 grid gap-3">
         <template x-for="(payment, i) in payments" :key="`payment-${i}`">

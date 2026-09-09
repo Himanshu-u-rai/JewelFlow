@@ -338,6 +338,45 @@ class StoreManualHistoricalRequest extends FormRequest
     }
 
     /**
+     * Names a failing row field so the operator can find it on a bill that may
+     * carry a dozen items. Laravel's default renders
+     * `lines.0.line_gross_weight` as "lines.0.line gross weight" — technically
+     * the field, useless as an instruction.
+     *
+     * Derived from the submitted keys rather than a hand-kept label table: the
+     * line schema already has ~50 fields and grows every batch, and a table
+     * that drifts produces a WRONG field name, which is worse than a clumsy
+     * one. Stripping the `line_`/`payment_` prefix and un-underscoring yields
+     * "The item 1 gross weight must be a number." for every field, present and
+     * future, with nothing to maintain.
+     *
+     * Indexes are 1-based: they are read by a human counting rows on a paper
+     * bill, not used to index anything.
+     *
+     * ponytail: derived labels, not curated ones. If one field ever needs
+     * wording the derivation cannot produce, add that single explicit key.
+     */
+    public function attributes(): array
+    {
+        $attributes = [];
+
+        foreach (['lines' => 'item', 'payments' => 'payment'] as $group => $noun) {
+            foreach ((array) $this->input($group, []) as $index => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+
+                foreach (array_keys($row) as $field) {
+                    $attributes["{$group}.{$index}.{$field}"] = $noun.' '.((int) $index + 1).' '
+                        .str_replace('_', ' ', (string) preg_replace('/^(line|payment)_/', '', (string) $field));
+                }
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
      * Drops a wholly blank payment row before validation ever sees it.
      *
      * Unlike `lines()` (whose fields are all nullable, so a blank row simply

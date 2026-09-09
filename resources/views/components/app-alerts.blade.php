@@ -8,9 +8,19 @@
 ])
 
 @php
-    $errorBag = (isset($errors) && is_object($errors) && method_exists($errors, 'all') && method_exists($errors, 'first'))
-        ? $errors
-        : new \Illuminate\Support\MessageBag();
+    // NOT method_exists(): Laravel shares `$errors` as a ViewErrorBag, which
+    // declares neither all() nor first() — both are forwarded to the default
+    // MessageBag through __call(). method_exists() cannot see magic methods, so
+    // the old guard was false for EVERY real validation failure and swapped in
+    // an empty bag, silently blanking the errors on every screen using this
+    // component. Normalize by type instead, and unwrap to the 'default' bag so
+    // first('message') keeps its existing single-bag meaning.
+    // Covered by tests/Feature/View/AppAlertsComponentTest.php.
+    $errorBag = match (true) {
+        ($errors ?? null) instanceof \Illuminate\Support\ViewErrorBag => $errors->getBag('default'),
+        ($errors ?? null) instanceof \Illuminate\Contracts\Support\MessageBag => $errors,
+        default => new \Illuminate\Support\MessageBag(),
+    };
 
     $topMessage = $errorBag->first('message') ?: session('error');
 
@@ -43,8 +53,13 @@
     @endif
 @else
     @php
+        // $topMessage, not session('error'): the floating branch already renders
+        // first('message') this way, but the inline branch only ever looked at
+        // the session. A `message`-keyed validation error was therefore filtered
+        // OUT of the list below (as a duplicate of $topMessage) and then never
+        // rendered at all — swallowed. Same variable, both branches.
         $hasAny = ($showSuccess && session('success'))
-            || ($showError && session('error'))
+            || ($showError && $topMessage)
             || ($showValidation && $validationMessages->isNotEmpty());
     @endphp
 
@@ -62,12 +77,12 @@
                 </div>
             @endif
 
-            @if($showError && session('error'))
+            @if($showError && $topMessage)
                 <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 6000)"
                      x-transition:leave="transition ease-in duration-300"
                      x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
                      class="app-alert app-alert-error">
-                    <span class="app-alert-message">{{ session('error') }}</span>
+                    <span class="app-alert-message">{{ $topMessage }}</span>
                     <button type="button" @click="show = false" class="app-alert-close" aria-label="Close alert">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>

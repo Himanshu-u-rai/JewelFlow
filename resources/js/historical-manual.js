@@ -185,9 +185,33 @@ export function registerHistoricalManual(Alpine) {
             const grand = this.number(this.documentTotals.grand_total) || 0;
 
             if (paid <= 0) return 'Unpaid';
+            // Overpaid before Fully paid: `paid >= grand` is true for both, and
+            // reporting an overpayment as "Fully paid" hides the one number the
+            // operator most needs to check against the paper bill.
+            if (grand > 0 && paid > grand) return 'Overpaid';
             if (grand > 0 && paid >= grand) return 'Fully paid';
 
             return 'Partially paid';
+        },
+
+        /**
+         * Display only. This creates NO wallet credit, NO ledger entry and NO
+         * receivable — historical payments are a snapshot of what the paper bill
+         * recorded (see HistoricalSalesPayment's docblock). The server-side
+         * overpayment warning and its acknowledgement digest remain the gate on
+         * saving; this figure just stops the pill from claiming "Fully paid" on
+         * a bill that was over-tendered.
+         *
+         * ponytail: a number next to the pill, not an advance/credit feature.
+         */
+        get paymentExcess() {
+            const grand = this.number(this.documentTotals.grand_total) || 0;
+
+            return grand > 0 ? Math.max(0, this.paidTotal - grand) : 0;
+        },
+
+        get paymentExcessLabel() {
+            return `Excess ₹${this.paymentExcess.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         },
 
         lineChanged(index, event) {

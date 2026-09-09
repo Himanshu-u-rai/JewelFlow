@@ -23,7 +23,9 @@
     $documentModes = collect($calculatedDocumentFields)->mapWithKeys(fn ($field) => [$field => old($field . '_mode', 'auto')])->all();
 
     $customer = $attributes['customer_snapshot'] ?? [];
-    $errors   = $messages->ofSeverity(HistoricalMessages::ERROR);
+    // NOT $errors: that name is reserved by Laravel's ShareErrorsFromSession.
+    // These are preview findings, a different thing from validation errors.
+    $blockingFindings = $messages->ofSeverity(HistoricalMessages::ERROR);
     $warnings = $messages->ofSeverity(HistoricalMessages::WARNING);
     $infos    = $messages->ofSeverity(HistoricalMessages::INFO);
     $calculationState = $attributes['calculation_state'] ?? [];
@@ -106,12 +108,12 @@
 
             {{-- Findings remain informational until the server re-validates on save. --}}
             <div class="grid gap-3" data-historical-preview-messages>
-                @if($errors !== [])
+                @if($blockingFindings !== [])
                     <section class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3" role="alert" data-historical-preview-finding="blocking">
                         <h2 class="text-sm font-semibold text-rose-800">Blocking issues</h2>
                         <p class="mt-1 text-xs text-rose-700">This bill cannot be saved until these are fixed.</p>
                         <div class="mt-2 grid gap-1">
-                            @foreach($errors as $m)<p class="text-sm text-rose-700">{{ $m['text'] }}</p>@endforeach
+                            @foreach($blockingFindings as $m)<p class="text-sm text-rose-700">{{ $m['text'] }}</p>@endforeach
                         </div>
                     </section>
                 @endif
