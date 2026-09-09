@@ -77,8 +77,11 @@
                 </div>
             @endif
 
+            {{-- No auto-dismiss on the two error branches: an error is a thing the
+                 operator must act on, and a 6s/8s timer deleted the instructions
+                 while they were still reading them. Success stays transient. --}}
             @if($showError && $topMessage)
-                <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 6000)"
+                <div x-data="{ show: true }" x-show="show"
                      x-transition:leave="transition ease-in duration-300"
                      x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
                      class="app-alert app-alert-error">
@@ -90,7 +93,7 @@
             @endif
 
             @if(!$messageOnly && $showValidation && $validationMessages->isNotEmpty())
-                <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 8000)"
+                <div x-data="{ show: true }" x-show="show"
                      x-transition:leave="transition ease-in duration-300"
                      x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
                      class="app-alert app-alert-error">

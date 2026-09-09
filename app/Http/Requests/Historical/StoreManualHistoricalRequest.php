@@ -255,17 +255,22 @@ class StoreManualHistoricalRequest extends FormRequest
             'lines.*.line_item_name' => ['nullable', 'string', 'max:180'],
             'lines.*.line_sku' => ['nullable', 'string', 'max:120'],
             'lines.*.line_hsn' => ['nullable', 'string', 'max:20'],
-            'lines.*.line_quantity' => ['nullable', 'numeric'],
+            // min:0 mirrors historical_lines_non_negative_check. Without it a
+            // negative weight or quantity passed validation, reached Postgres and
+            // came back as a QueryException, which the controller can only report
+            // as the generic "could not be saved" — the operator was never told
+            // WHICH item or field was wrong. Same message surface, named field.
+            'lines.*.line_quantity' => ['nullable', 'numeric', 'min:0'],
             'lines.*.line_purity' => ['nullable', 'string', 'max:40'],
-            'lines.*.line_gross_weight' => ['nullable', 'numeric'],
-            'lines.*.line_net_weight' => ['nullable', 'numeric'],
-            'lines.*.line_stone_weight' => ['nullable', 'numeric'],
+            'lines.*.line_gross_weight' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_net_weight' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_stone_weight' => ['nullable', 'numeric', 'min:0'],
             'lines.*.line_metal_value' => ['nullable', 'numeric'],
             'lines.*.line_stone_value' => ['nullable', 'numeric'],
             'lines.*.line_making_label' => ['nullable', 'string', 'max:120'],
             'lines.*.line_making_value' => ['nullable', 'string', 'max:60'],
             'lines.*.line_rate' => ['nullable', 'numeric'],
-            'lines.*.line_total' => ['nullable', 'numeric'],
+            'lines.*.line_total' => ['nullable', 'numeric', 'min:0'],
 
             // Batch 3 §4/§9/§10 — manual-entry-only calculation fields (see
             // MANUAL_CALCULATION_LINE_FIELDS docblock above).
@@ -273,8 +278,8 @@ class StoreManualHistoricalRequest extends FormRequest
             'lines.*.line_calculation_enabled' => ['nullable', 'boolean'],
             'lines.*.line_purity_value' => ['nullable', 'numeric'],
             'lines.*.line_billable_weight_basis' => ['nullable', Rule::in(HistoricalSalesLine::BILLABLE_WEIGHT_BASES)],
-            'lines.*.line_billable_weight' => ['nullable', 'numeric'],
-            'lines.*.line_billable_weight_manual' => ['nullable', 'numeric'],
+            'lines.*.line_billable_weight' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_billable_weight_manual' => ['nullable', 'numeric', 'min:0'],
             'lines.*.line_billable_weight_mode' => ['nullable', Rule::in(['auto', 'manual'])],
             'lines.*.line_billable_weight_recalculate' => ['nullable', 'boolean'],
             // Nullable on purpose: an absent value means "legacy payload", which
@@ -290,12 +295,12 @@ class StoreManualHistoricalRequest extends FormRequest
             'lines.*.line_stone_value_mode' => ['nullable', Rule::in(['auto', 'manual'])],
             'lines.*.line_stone_value_recalculate' => ['nullable', 'boolean'],
             'lines.*.line_making_basis' => ['nullable', Rule::in(HistoricalMakingCharge::BASES)],
-            'lines.*.line_making_amount' => ['nullable', 'numeric'],
+            'lines.*.line_making_amount' => ['nullable', 'numeric', 'min:0'],
             'lines.*.line_making_amount_mode' => ['nullable', Rule::in(['auto', 'manual'])],
             'lines.*.line_making_amount_recalculate' => ['nullable', 'boolean'],
             'lines.*.line_wastage_basis' => ['nullable', Rule::in(HistoricalSalesLine::WASTAGE_BASES)],
-            'lines.*.line_wastage_value' => ['nullable', 'numeric'],
-            'lines.*.line_wastage_amount' => ['nullable', 'numeric'],
+            'lines.*.line_wastage_value' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.line_wastage_amount' => ['nullable', 'numeric', 'min:0'],
             'lines.*.line_wastage_amount_mode' => ['nullable', Rule::in(['auto', 'manual'])],
             'lines.*.line_wastage_amount_recalculate' => ['nullable', 'boolean'],
             'lines.*.line_hallmark_charge' => ['nullable', 'numeric', 'min:0'],

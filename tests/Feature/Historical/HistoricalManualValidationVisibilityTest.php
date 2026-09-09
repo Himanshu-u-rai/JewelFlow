@@ -143,6 +143,42 @@ class HistoricalManualValidationVisibilityTest extends TestCase
             'The raw field path leaked into the operator-facing message.');
     }
 
+    /**
+     * Found by driving the real form in a browser, not by reading the rules: a
+     * negative quantity passed `['nullable','numeric']`, reached Postgres, and
+     * broke `historical_lines_non_negative_check`. The controller can only
+     * report a QueryException as "This bill could not be saved and nothing was
+     * recorded" — true, visible, and useless, because it names no field.
+     *
+     * The rules now mirror the DB constraint, so the same input is refused at
+     * the gate with the item and field named. Asserting the ABSENCE of the
+     * generic message is the part that would catch a regression: re-drop min:0
+     * and the bill still bounces, just anonymously.
+     */
+    public function test_a_negative_quantity_is_named_rather_than_failing_as_a_generic_save_error(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $bill = $this->validBill();
+        $bill['lines'][0]['line_quantity'] = -3;
+
+        $this->actingAs($owner)
+            ->from(route('historical.manual.preview'))
+            ->post(route('historical.manual.store'), $bill)
+            ->assertRedirect(route('historical.manual.create'))
+            ->assertSessionHasErrors('lines.0.line_quantity');
+
+        $html = $this->actingAs($owner)->followToForm();
+
+        $this->assertStringContainsString('item 1 quantity', $html);
+        $this->assertStringNotContainsString('could not be saved', $html,
+            'A field-level mistake fell through to the generic exception message.');
+
+        TenantContext::runFor($shop->id, function (): void {
+            $this->assertSame(0, HistoricalSalesDocument::query()->count());
+        });
+    }
+
     /** Payment rows get the same treatment as line rows. */
     public function test_a_payment_row_failure_names_the_payment_and_the_field(): void
     {

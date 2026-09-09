@@ -130,6 +130,35 @@ class AppAlertsComponentTest extends TestCase
         );
     }
 
+    /**
+     * The SECOND silent-validation cause, found in the browser after the bag
+     * normalization was already fixed: the markup was correct and the messages
+     * were in the DOM, but every error branch carried
+     * `x-init="setTimeout(() => show = false, …)"`. Alpine flipped `x-show` to
+     * `display:none` six to eight seconds later, so an operator who was still
+     * reading the list watched it delete itself. A DOM-presence assertion
+     * passes throughout — the alert element exists, it is merely invisible.
+     *
+     * Errors are instructions and must persist until dismissed. Success is an
+     * acknowledgement and may still expire, which is the asymmetry pinned here.
+     */
+    public function test_error_alerts_do_not_auto_dismiss_while_success_still_does(): void
+    {
+        $errorHtml = $this->renderWith($this->bagOf([
+            'message' => ['Something went wrong.'],
+            'document_date' => ['The document date field is required.'],
+        ]));
+
+        $this->assertStringNotContainsString('setTimeout', $errorHtml,
+            'An error alert that removes itself on a timer is the silent-validation bug again.');
+
+        View::share('errors', new ViewErrorBag());
+        session()->flash('success', 'Historical bill saved.');
+
+        $this->assertStringContainsString('setTimeout', (string) $this->blade('<x-app-alerts />'),
+            'Success acknowledgements are transient by design; only errors must persist.');
+    }
+
     /** Defensive: the component is also used where `$errors` was never shared. */
     public function test_a_non_bag_errors_value_does_not_explode(): void
     {
