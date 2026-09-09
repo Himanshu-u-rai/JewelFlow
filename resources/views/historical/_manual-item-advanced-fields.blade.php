@@ -52,6 +52,22 @@
                 </select>
                 <button x-show="line.line_billable_weight_mode === 'manual' && ['gross', 'net'].includes(line.line_billable_weight_basis)" type="button" @click="recalculate(line, 'line_billable_weight')" class="mt-1 min-h-[32px] text-xs font-semibold text-amber-700">Use selected weight</button>
             </div>
+            {{--
+                What the rate on the paper bill MEANS. Without this the engine
+                assumed a 24K/999 reference rate and scaled a 22K rate down by
+                22/24, underpricing the metal leg. Defaults to "as printed"
+                because that is what a bill copier is looking at.
+            --}}
+            <div class="{{ $width('w-[165px]') }}">
+                <span class="flex items-center justify-between gap-1">
+                    <label :for="`line-${i}-rate-basis-${@js($itemGridMode)}`">Rate is for</label>
+                </span>
+                <select :id="`line-${i}-rate-basis-${@js($itemGridMode)}`" :name="`lines[${i}][line_rate_basis]`" x-model="line.line_rate_basis" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }}">
+                    <option value="as_printed">This purity (as printed)</option>
+                    <option value="pure_reference">Pure 24K/999 reference</option>
+                </select>
+                <p class="mt-1 text-[10px] leading-tight text-slate-500" x-show="line.line_rate_basis === 'pure_reference'">Rate will be scaled by purity.</p>
+            </div>
             <div class="{{ $width('w-[140px]') }}">
                 <span class="flex items-center justify-between gap-1"><label :for="`line-${i}-metal-value-${@js($itemGridMode)}`">Metal value</label><span class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase" :class="line.line_metal_value_mode === 'manual' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-700'" x-text="line.line_metal_value_mode === 'manual' ? 'Manual' : 'Auto'"></span></span>
                 <div class="relative"><input type="number" step="any" :id="`line-${i}-metal-value-${@js($itemGridMode)}`" :name="`lines[${i}][line_metal_value]`" x-model="line.line_metal_value" data-derived-field="line_metal_value" :disabled="{{ $itemControlDisabled }}" class="{{ $fieldClass }} pr-8 text-right tabular-nums"><span class="{{ $unitClass }}">₹</span></div>

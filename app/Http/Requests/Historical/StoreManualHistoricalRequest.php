@@ -71,6 +71,7 @@ class StoreManualHistoricalRequest extends FormRequest
         'line_billable_weight_manual',
         'line_billable_weight_mode',
         'line_billable_weight_recalculate',
+        'line_rate_basis',
         'line_metal_value_mode',
         'line_metal_value_recalculate',
         'line_stone_rate',
@@ -276,6 +277,10 @@ class StoreManualHistoricalRequest extends FormRequest
             'lines.*.line_billable_weight_manual' => ['nullable', 'numeric'],
             'lines.*.line_billable_weight_mode' => ['nullable', Rule::in(['auto', 'manual'])],
             'lines.*.line_billable_weight_recalculate' => ['nullable', 'boolean'],
+            // Nullable on purpose: an absent value means "legacy payload", which
+            // rateBasisFor() resolves to pure_reference. Rejecting it here would
+            // break replay of anything submitted before this field existed.
+            'lines.*.line_rate_basis' => ['nullable', Rule::in(HistoricalSalesLine::RATE_BASES)],
             'lines.*.line_metal_value_mode' => ['nullable', Rule::in([
                 HistoricalCalculationStateService::AUTO,
                 HistoricalCalculationStateService::MANUAL,

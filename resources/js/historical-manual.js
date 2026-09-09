@@ -46,7 +46,11 @@ export function registerHistoricalManual(Alpine) {
                 line_fine_weight: '',
                 line_gross_weight: '', line_net_weight: '', line_stone_weight: '',
                 line_billable_weight_basis: '', line_billable_weight: '', line_billable_weight_mode: 'auto',
-                line_rate: '', line_metal_value: '', line_metal_value_mode: 'auto',
+                // 'as_printed' = rate already carries this purity (what a paper bill
+                // shows). 'pure_reference' = a 24K/999 rate to be scaled by purity.
+                // Deliberately excluded from isBlank(): it always holds a value, so
+                // counting it would make every empty row look filled.
+                line_rate: '', line_rate_basis: 'as_printed', line_metal_value: '', line_metal_value_mode: 'auto',
                 line_stone_rate: '', line_stone_value: '', line_stone_value_mode: 'auto',
                 line_making_label: '', line_making_value: '', line_making_basis: '', line_making_amount: '', line_making_amount_mode: 'auto',
                 line_wastage_basis: '', line_wastage_value: '', line_wastage_amount: '', line_wastage_amount_mode: 'auto',
@@ -60,6 +64,13 @@ export function registerHistoricalManual(Alpine) {
         seedLines(raw) {
             const rows = Object.values(raw || {}).map((source) => {
                 const line = { ...this.blankLine(), ...(source || {}) };
+
+                // Mirrors HistoricalManualCalculationService::rateBasisFor(). A
+                // seeded row without the key predates this distinction, so it was
+                // priced as a 24K/999 reference — keep it that way rather than
+                // restating its metal value upward by 24/purity on reopen.
+                if (source && source.line_rate_basis === undefined) line.line_rate_basis = 'pure_reference';
+
                 const knownMetal = this.enabledMetals.includes(line.line_metal_type);
                 line.line_metal_choice = knownMetal ? line.line_metal_type : (line.line_metal_type ? '__custom' : '');
                 line.line_custom_metal = knownMetal ? '' : line.line_metal_type;
@@ -252,8 +263,12 @@ export function registerHistoricalManual(Alpine) {
             const rate = this.number(line.line_rate);
             const purity = this.number(line.line_purity_value);
             const multiplier = this.fineMultiplier(line.line_metal_type, purity);
+            // Fine weight always uses the TRUE multiplier — it is metal-content
+            // bookkeeping and does not care how the rate was quoted. Only the
+            // PRICE multiplier depends on the rate basis.
             line.line_fine_weight = weight === null || multiplier === null ? '' : this.format(weight * multiplier, 3);
-            const metal = weight === null || rate === null || multiplier === null ? null : weight * rate * multiplier;
+            const priceMultiplier = line.line_rate_basis === 'pure_reference' ? multiplier : 1;
+            const metal = weight === null || rate === null || multiplier === null ? null : weight * rate * priceMultiplier;
             this.applyAuto(line, 'line_metal_value', metal);
 
             const stoneWeight = this.number(line.line_stone_weight);

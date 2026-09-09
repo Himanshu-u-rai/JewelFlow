@@ -144,12 +144,16 @@ class HistoricalManualCalculationService
 
         $purity = self::number($line['line_purity_value'] ?? null);
         $rate = self::number($line['line_rate'] ?? null);
-        $metalSuggestion = $this->suggester->suggestMetalValue($metal, $purity, $billableWeight, $rate);
+        $rateBasis = self::rateBasisFor($line);
+        $metalSuggestion = $this->suggester->suggestMetalValue($metal, $purity, $billableWeight, $rate, $rateBasis);
         $metalState = $this->resolveState($line, 'line_metal_value', $metalSuggestion, [
             'metal' => $metal,
             'purity' => $purity,
             'billable_weight' => $billableWeight,
             'rate_per_gram' => $rate,
+            // Recorded in calculation_state (jsonb) so a stored line says which
+            // reading produced its figure. No schema change needed for that.
+            'rate_basis' => $rateBasis,
         ]);
 
         $errors = [];
@@ -397,5 +401,33 @@ class HistoricalManualCalculationService
     private static function bool(mixed $value): bool
     {
         return in_array($value, ['1', 1, true, 'true', 'on'], true);
+    }
+
+    /**
+     * Which reading of `line_rate` to price with.
+     *
+     * The absence of the key is the signal, and it is the load-bearing half of
+     * this method. The new form ALWAYS posts `line_rate_basis`, so a payload
+     * without it can only be a replay of something built before this
+     * distinction existed — a stored line, an import row, a queued draft. Those
+     * were computed as 24K/999 reference rates, so they are re-priced as
+     * reference rates. Defaulting them to AS_PRINTED would silently restate
+     * every historical gold figure upward by 24/purity.
+     *
+     * A present-but-unrecognised value is treated the same way, for the same
+     * reason: never resolve an ambiguous stored value in the direction that
+     * changes money.
+     */
+    private static function rateBasisFor(array $line): string
+    {
+        if (! array_key_exists('line_rate_basis', $line)) {
+            return HistoricalSalesLine::RATE_BASIS_PURE_REFERENCE;
+        }
+
+        $basis = self::text($line['line_rate_basis']);
+
+        return in_array($basis, HistoricalSalesLine::RATE_BASES, true)
+            ? $basis
+            : HistoricalSalesLine::RATE_BASIS_PURE_REFERENCE;
     }
 }

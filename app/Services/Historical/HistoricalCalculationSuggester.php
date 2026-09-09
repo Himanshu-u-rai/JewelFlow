@@ -50,12 +50,34 @@ class HistoricalCalculationSuggester
      * purity on a `purity_accounting` Tier 1 metal (gold/silver): a null
      * multiplier there means the value genuinely cannot be suggested, not
      * that it should be priced as though 24K/999 pure (foundation-audit D2).
+     *
+     * §4 RECONCILIATION — the fine multiplier belongs there only when the rate
+     * is a 24K/999 REFERENCE rate. That is the live QuickBill convention (its
+     * field is labelled "Rate (pure 24K/999)") and §4 was written against it,
+     * but a historical paper bill usually prints the rate for the jewellery's
+     * own purity. Applying the multiplier to an already-22K rate discounts it
+     * twice: the supplied invoice (15g billable, 22K, ₹6,200/g, ₹6,200 stone)
+     * printed ₹99,200 while the reference reading produced ₹91,450 — ₹7,750
+     * short, exactly the 22/24 gap on the metal leg.
+     *
+     * The basis is therefore an explicit input, not an assumption.
+     * AS_PRINTED uses a multiplier of 1.0 (the rate already carries purity);
+     * PURE_REFERENCE is the unchanged §4 path, same arithmetic as before.
+     * Purity stays REQUIRED in both: an unspecified purity on gold/silver
+     * still returns null, because purity remains accounting truth for
+     * fine-weight bookkeeping even when it does not scale the price.
+     *
+     * Default is AS_PRINTED so plain invoice copying needs no extra decision.
+     * Callers replaying STORED rows must pass PURE_REFERENCE explicitly when
+     * the persisted calculation_state predates this key — see
+     * HistoricalManualCalculationService::rateBasisFor().
      */
     public function suggestMetalValue(
         ?string $metal,
         ?float $purity,
         ?float $billableWeight,
         ?float $ratePerGram,
+        string $rateBasis = HistoricalSalesLine::RATE_BASIS_AS_PRINTED,
     ): ?float {
         if ($billableWeight === null || $ratePerGram === null || $billableWeight < 0 || $ratePerGram < 0) {
             return null;
@@ -65,6 +87,12 @@ class HistoricalCalculationSuggester
 
         if ($multiplier === null) {
             return null;
+        }
+
+        // A rate printed at the jewellery's own purity already embeds it.
+        // Purity was still validated above — only its price effect is dropped.
+        if ($rateBasis === HistoricalSalesLine::RATE_BASIS_AS_PRINTED) {
+            $multiplier = 1.0;
         }
 
         return round($billableWeight * $ratePerGram * $multiplier, 2);
@@ -124,8 +152,8 @@ class HistoricalCalculationSuggester
     ): ?float {
         return match ($basis) {
             HistoricalSalesLine::BILLABLE_WEIGHT_GROSS => $grossWeight,
-            HistoricalSalesLine::BILLABLE_WEIGHT_NET   => $netWeight,
-            default                                    => null,
+            HistoricalSalesLine::BILLABLE_WEIGHT_NET => $netWeight,
+            default => null,
         };
     }
 
@@ -278,14 +306,14 @@ class HistoricalCalculationSuggester
         if ($taxMode === 'gst_inclusive') {
             $divisor = 1 + ($gstRate / 100);
             $taxable = $divisor > 0 ? round($afterDiscount / $divisor, 2) : $afterDiscount;
-            $gst     = round($afterDiscount - $taxable, 2);
+            $gst = round($afterDiscount - $taxable, 2);
 
             return ['taxable' => $taxable, 'gst' => $gst, 'total' => round($afterDiscount, 2)];
         }
 
         if ($taxMode === 'gst_exclusive') {
             $taxable = $afterDiscount;
-            $gst     = round($taxable * ($gstRate / 100), 2);
+            $gst = round($taxable * ($gstRate / 100), 2);
 
             return ['taxable' => $taxable, 'gst' => $gst, 'total' => round($taxable + $gst, 2)];
         }

@@ -20,7 +20,7 @@ class HistoricalCalculationSuggesterTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->suggester = new HistoricalCalculationSuggester();
+        $this->suggester = new HistoricalCalculationSuggester;
     }
 
     // ------------------------------------------------------------ metal value
@@ -30,7 +30,10 @@ class HistoricalCalculationSuggesterTest extends TestCase
         // 10g billable, rate 6000/g, 22K gold => multiplier 22/24.
         // Independently pre-computed literal (not mirrored from the production
         // formula): 10 * 6000 * (22/24) = 55000.0.
-        $value = $this->suggester->suggestMetalValue('gold', 22.0, 10.0, 6000.0);
+        // The basis is now explicit: this is the 24K/999 REFERENCE reading.
+        $value = $this->suggester->suggestMetalValue(
+            'gold', 22.0, 10.0, 6000.0, HistoricalSalesLine::RATE_BASIS_PURE_REFERENCE
+        );
 
         $this->assertSame(55000.0, $value);
     }
@@ -38,9 +41,62 @@ class HistoricalCalculationSuggesterTest extends TestCase
     public function test_silver_metal_value_uses_millesimal_fine_weight_multiplier(): void
     {
         // Independently pre-computed literal: 100 * 80 * (925/1000) = 7400.0.
-        $value = $this->suggester->suggestMetalValue('silver', 925.0, 100.0, 80.0);
+        $value = $this->suggester->suggestMetalValue(
+            'silver', 925.0, 100.0, 80.0, HistoricalSalesLine::RATE_BASIS_PURE_REFERENCE
+        );
 
         $this->assertSame(7400.0, $value);
+    }
+
+    /**
+     * The supplied paper invoice, digit for digit:
+     *   Gold Earrings · qty 2 · gross 16g · stone 1g · net 15g · 22K
+     *   · rate ₹6,200/g · stone value ₹6,200 · PRINTED TOTAL ₹99,200.
+     *
+     * The bill quotes ₹6,200 as the 22K rate, so the metal leg is a plain
+     * 15 × 6,200 = ₹93,000 and the printed total reconciles exactly. Reading
+     * the same ₹6,200 as a 24K reference gives ₹85,250 + ₹6,200 = ₹91,450,
+     * ₹7,750 short — the bug this basis flag exists to end.
+     *
+     * Both readings are asserted here so neither can drift: the reference
+     * arithmetic is preserved, it simply is no longer assumed.
+     */
+    public function test_supplied_invoice_reconciles_when_the_rate_is_read_as_printed(): void
+    {
+        $asPrinted = $this->suggester->suggestMetalValue(
+            'gold', 22.0, 15.0, 6200.0, HistoricalSalesLine::RATE_BASIS_AS_PRINTED
+        );
+
+        $this->assertSame(93000.0, $asPrinted);
+        $this->assertSame(99200.0, $asPrinted + 6200.0, 'Metal + stone must equal the printed bill total.');
+
+        $asReference = $this->suggester->suggestMetalValue(
+            'gold', 22.0, 15.0, 6200.0, HistoricalSalesLine::RATE_BASIS_PURE_REFERENCE
+        );
+
+        $this->assertSame(85250.0, $asReference);
+        $this->assertSame(7750.0, $asPrinted - $asReference, 'The 22/24 gap on the metal leg.');
+    }
+
+    /** Copying a bill verbatim must need no extra decision. */
+    public function test_the_default_basis_is_as_printed(): void
+    {
+        $this->assertSame(
+            $this->suggester->suggestMetalValue('gold', 22.0, 15.0, 6200.0, HistoricalSalesLine::RATE_BASIS_AS_PRINTED),
+            $this->suggester->suggestMetalValue('gold', 22.0, 15.0, 6200.0)
+        );
+    }
+
+    /**
+     * Purity is accounting truth for the fine-weight ledger whether or not it
+     * scales the price. A missing purity must still fail closed under
+     * as-printed — dropping the multiplier must not also drop the D2 guard.
+     */
+    public function test_as_printed_still_requires_a_purity_on_gold(): void
+    {
+        $this->assertNull($this->suggester->suggestMetalValue(
+            'gold', null, 15.0, 6200.0, HistoricalSalesLine::RATE_BASIS_AS_PRINTED
+        ));
     }
 
     /**
