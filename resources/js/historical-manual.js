@@ -182,14 +182,22 @@ export function registerHistoricalManual(Alpine) {
 
         get paymentStatusLabel() {
             const paid = this.paidTotal;
-            const grand = this.number(this.documentTotals.grand_total) || 0;
+            // Not `|| 0`: number() returns null for a blank field and 0 for a
+            // field that says zero, and `|| 0` collapses the two. An unknown
+            // total is not a zero total — nothing can be settled or exceeded
+            // against a figure the operator has not given us yet.
+            const grand = this.number(this.documentTotals.grand_total);
 
             if (paid <= 0) return 'Unpaid';
+            if (grand === null) return 'Partially paid';
             // Overpaid before Fully paid: `paid >= grand` is true for both, and
             // reporting an overpayment as "Fully paid" hides the one number the
-            // operator most needs to check against the paper bill.
-            if (grand > 0 && paid > grand) return 'Overpaid';
-            if (grand > 0 && paid >= grand) return 'Fully paid';
+            // operator most needs to check against the paper bill. A known ₹0
+            // total is included: money tendered against a nil bill is an
+            // overpayment of exactly that amount, and saying "Partially paid"
+            // there both understates it and hides the excess.
+            if (paid > grand) return 'Overpaid';
+            if (paid >= grand) return 'Fully paid';
 
             return 'Partially paid';
         },
@@ -205,9 +213,12 @@ export function registerHistoricalManual(Alpine) {
          * ponytail: a number next to the pill, not an advance/credit feature.
          */
         get paymentExcess() {
-            const grand = this.number(this.documentTotals.grand_total) || 0;
+            const grand = this.number(this.documentTotals.grand_total);
 
-            return grand > 0 ? Math.max(0, this.paidTotal - grand) : 0;
+            // Blank total: no excess can be asserted, so show none. Known zero:
+            // the whole payment is the excess. Same null-vs-zero distinction as
+            // paymentStatusLabel — the two must never disagree.
+            return grand === null ? 0 : Math.max(0, this.paidTotal - grand);
         },
 
         get paymentExcessLabel() {

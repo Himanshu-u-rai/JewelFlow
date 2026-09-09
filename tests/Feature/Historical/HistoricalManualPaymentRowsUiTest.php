@@ -136,10 +136,9 @@ class HistoricalManualPaymentRowsUiTest extends TestCase
      * one figure the operator must reconcile against the paper bill. The pill
      * now reads "Overpaid" and a sibling states the excess.
      *
-     * This asserts the WIRING only; the arithmetic is Alpine-side and is
-     * verified in the browser (see the closure evidence). Deliberately not
-     * mocked into a fake JS runtime — a passing mock of a getter I also wrote
-     * would prove nothing the source does not already say.
+     * This asserts the WIRING only. The arithmetic behind these bindings is
+     * executed for real — not mocked — by tests/js/payment-status.check.mjs,
+     * driven from test_the_payment_getters_are_executed_for_real() below.
      */
     public function test_manual_entry_form_states_the_excess_when_payments_exceed_the_total(): void
     {
@@ -156,6 +155,37 @@ class HistoricalManualPaymentRowsUiTest extends TestCase
         // The pill must have a distinct Overpaid state, or the excess figure
         // would sit next to a green "Fully paid" badge and read as agreement.
         $this->assertStringContainsString("paymentStatusLabel === 'Overpaid'", $html);
+    }
+
+    /**
+     * Runs the real getters out of resources/js/historical-manual.js through
+     * node: zero, blank, exact and ordinary-overpayment totals. A source-text
+     * assertion cannot tell a known ₹0 total from a blank one, which is exactly
+     * the distinction that was wrong (`grand > 0` treated both as "no total").
+     *
+     * ponytail: node + assert, no JS test framework for two getters. Skipped
+     * rather than failed where node is absent — this pins JS behaviour, and a
+     * PHP-only environment is not the thing under test.
+     */
+    public function test_the_payment_getters_are_executed_for_real(): void
+    {
+        $check = base_path('tests/js/payment-status.check.mjs');
+        $this->assertFileExists($check);
+
+        exec('node --version 2>/dev/null', $version, $probe);
+        if ($probe !== 0) {
+            $this->markTestSkipped('node is not available; JS behaviour unverified here.');
+        }
+
+        exec('node '.escapeshellarg($check).' 2>&1', $output, $status);
+        $report = implode(PHP_EOL, $output);
+
+        $this->assertSame(0, $status, "Payment getters misbehaved:\n".$report);
+        $this->assertStringContainsString('payment-status.check: OK', $report);
+        // Named explicitly so a future edit cannot quietly drop the zero case
+        // and still leave this test green.
+        $this->assertStringContainsString('grand="0" paid="100" -> Overpaid / excess 100', $report);
+        $this->assertStringContainsString('grand="" paid="100" -> Partially paid / excess 0', $report);
     }
 
     /**
