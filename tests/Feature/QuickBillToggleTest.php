@@ -107,7 +107,10 @@ class QuickBillToggleTest extends TestCase
 
     public function test_quick_bill_defaults_enabled_for_new_and_existing_shops(): void
     {
-        [, $shop] = $this->createManufacturerTenant();
+        // A bare shop, not the full tenant factory: that factory stamps the
+        // opening-setup decision, which creates the preferences row and so would
+        // hide the very no-row case this test exists to cover.
+        $shop = $this->createShop('manufacturer');
 
         // New shop: no preferences row yet → reads as enabled.
         $this->assertFalse(ShopPreferences::withoutGlobalScopes()->where('shop_id', $shop->id)->exists());

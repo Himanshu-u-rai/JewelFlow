@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Concerns\ArchivesParties;
 use App\Http\Concerns\RespondsDynamically;
 use App\Models\Karigar;
+use App\Rules\IndianMobileRule;
 use Illuminate\Http\Request;
 
 class KarigarController extends Controller
@@ -170,7 +171,7 @@ class KarigarController extends Controller
             'name' => 'required|string|max:150',
             'shop_name' => 'nullable|string|max:150',
             'contact_person' => 'nullable|string|max:150',
-            'mobile' => 'nullable|string|max:20',
+            'mobile' => ['nullable', 'string', new IndianMobileRule()],
             'email' => 'nullable|email|max:150',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',

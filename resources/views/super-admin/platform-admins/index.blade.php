@@ -41,7 +41,8 @@
 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Mobile Number</label>
-                    <input type="text" name="mobile_number" value="{{ old('mobile_number') }}" required
+                    <input type="tel" inputmode="numeric" pattern="[0-9]{10}" name="mobile_number"
+                           value="{{ old('mobile_number') }}" required
                            maxlength="10" class="admin-control w-full" placeholder="10-digit mobile">
                 </div>
 
@@ -115,7 +116,7 @@
                                 <span class="ml-1 text-xs text-indigo-400">(you)</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 font-mono text-xs">{{ $admin->mobile_number }}</td>
+                        <td class="px-4 py-3 font-mono text-xs">{{ \App\Support\Mobile::forDisplay($admin->mobile_number) }}</td>
                         <td class="px-4 py-3 text-slate-400 text-xs">{{ $admin->email ?: '—' }}</td>
                         <td class="px-4 py-3">
                             <span class="admin-badge admin-badge-sky">{{ $admin->role }}</span>

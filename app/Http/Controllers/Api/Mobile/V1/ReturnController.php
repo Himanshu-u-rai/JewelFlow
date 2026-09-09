@@ -261,7 +261,17 @@ class ReturnController extends Controller
     private function presentSummary(ReturnOrder $ro): array
     {
         return [
+            // `id` stays: route-model binding on /returns/{returnOrder}/approve
+            // needs it and every other mobile v1 presenter exposes it the same way.
+            // What was missing is the number a human is supposed to read. Every
+            // sibling document in this payload already carries one — the credit
+            // note has credit_note_number, the invoice has invoice_number — so
+            // the return order was the only document the app could name nothing
+            // but "#4821" by, even though ReturnOrder::$display_number ("RET-004")
+            // has existed since the business-identifier migration.
             'id'                => $ro->id,
+            'return_number'     => (int) $ro->return_number,
+            'display_number'    => $ro->display_number,
             'status'            => $ro->status,
             'return_type'       => $ro->return_type,
             'reason'            => $ro->reason,

@@ -14,7 +14,12 @@
         $ap = $appliedPreset ?? null;
         $appliedColumns = $ap?->columns ?? [];
         $appliedFilters = $ap?->filters ?? [];
-        $appliedDatePreset = $appliedFilters['date_preset'] ?? 'this_month';
+        // Query string (e.g. the screen's Export link, carrying its active
+        // filters) wins over a saved preset, which wins over the bare default —
+        // so a user's on-screen selection is never silently lost on export.
+        $appliedDatePreset = request('date_preset', $appliedFilters['date_preset'] ?? 'this_month');
+        $appliedProfile = request('profile', $ap->profile ?? null);
+        $appliedFormat = request('format', $ap->format ?? null);
         $screenRoute = $definition->key === 'cash-flow' && \Illuminate\Support\Facades\Route::has('report.cash')
             ? route('report.cash')
             : route('reporting.report.screen', ['report' => $definition->key]);
@@ -71,11 +76,11 @@
 
                     <div class="report-export-field">
                         <label>From</label>
-                        <input type="date" name="date_from" value="{{ $appliedFilters['date_from'] ?? '' }}" class="report-export-input">
+                        <input type="date" name="date_from" value="{{ request('date_from', $appliedFilters['date_from'] ?? '') }}" class="report-export-input">
                     </div>
                     <div class="report-export-field">
                         <label>To</label>
-                        <input type="date" name="date_to" value="{{ $appliedFilters['date_to'] ?? '' }}" class="report-export-input">
+                        <input type="date" name="date_to" value="{{ request('date_to', $appliedFilters['date_to'] ?? '') }}" class="report-export-input">
                     </div>
 
                     <div class="report-export-field">
@@ -83,7 +88,7 @@
                         <div class="report-export-select">
                             <select name="profile" class="report-export-input">
                                 @foreach ($definition->profiles as $profile)
-                                    <option value="{{ $profile->value }}" @selected($ap && $ap->profile === $profile->value)>{{ \Illuminate\Support\Str::headline($profile->value) }}</option>
+                                    <option value="{{ $profile->value }}" @selected($appliedProfile === $profile->value)>{{ \Illuminate\Support\Str::headline($profile->value) }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -94,12 +99,33 @@
                             <select name="format" class="report-export-input">
                                 @foreach ($definition->formats as $format)
                                     @if ($format->value !== 'screen')
-                                        <option value="{{ $format->value }}" @selected($ap && $ap->format === $format->value)>{{ strtoupper($format->value) }}</option>
+                                        <option value="{{ $format->value }}" @selected($appliedFormat === $format->value)>{{ strtoupper($format->value) }}</option>
                                     @endif
                                 @endforeach
                             </select>
                         </div>
                     </div>
+
+                    {{-- Same filter controls the screen renders (§A "consistent
+                         screen/export filtering") — prefilled from the query
+                         string that brought the user here. --}}
+                    @foreach (($filterControls ?? []) as $fc)
+                        <div class="report-export-field">
+                            <label>{{ $fc['label'] }}</label>
+                            @if (($fc['type'] ?? 'select') === 'text')
+                                <input type="text" name="{{ $fc['key'] }}" value="{{ $fc['current'] }}" class="report-export-input" placeholder="Search {{ strtolower($fc['label']) }}…">
+                            @else
+                                <div class="report-export-select">
+                                    <select name="{{ $fc['key'] }}" class="report-export-input">
+                                        <option value="">All</option>
+                                        @foreach ($fc['options'] as $opt)
+                                            <option value="{{ $opt['value'] }}" @selected($fc['current'] === (string) $opt['value'])>{{ $opt['label'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
 
                 @if ($canExportSensitive && $definition->hasSensitiveColumns())

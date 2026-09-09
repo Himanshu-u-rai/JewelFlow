@@ -282,7 +282,7 @@
                                 <td class="px-7 py-5 whitespace-nowrap">
                                     @if($invoice->customer)
                                         <div class="text-sm font-medium text-slate-700">{{ $invoice->customer->name }}</div>
-                                        <div class="text-xs text-slate-500">{{ $invoice->customer->mobile }}</div>
+                                        <div class="text-xs text-slate-500">{{ \App\Support\Mobile::forDisplay($invoice->customer->mobile) }}</div>
                                     @else
                                         <span class="text-slate-400">Walk-in</span>
                                     @endif
@@ -421,7 +421,7 @@
                             <span>Customer</span>
                             <strong>{{ $invoice->customer?->name ?: 'Walk-in' }}</strong>
                             @if($invoice->customer?->mobile)
-                                <small>{{ $invoice->customer->mobile }}</small>
+                                <small>{{ \App\Support\Mobile::forDisplay($invoice->customer->mobile) }}</small>
                             @endif
                         </div>
 

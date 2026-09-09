@@ -501,7 +501,7 @@
                 <div class="party">
                     <div class="party-label">Received From</div>
                     <div class="party-name">{{ $customer?->name ?? 'Customer' }}</div>
-                    @if($customer?->mobile)<div class="party-line">{{ $customer->mobile }}</div>@endif
+                    @if($customer?->mobile)<div class="party-line">{{ \App\Support\Mobile::forDisplay($customer->mobile) }}</div>@endif
                     @if($customer?->address)<div class="party-line">{{ $customer->address }}</div>@endif
                 </div>
             </div>

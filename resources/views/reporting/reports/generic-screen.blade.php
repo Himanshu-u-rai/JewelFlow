@@ -100,7 +100,7 @@
                     </svg>
                     <span class="cash-report-action-label">Cash Ledger</span>
                 </a>
-                <a href="{{ route('reporting.export.panel', ['report' => $definition->key]) }}" class="cash-report-export-btn jf-header-action--gold" aria-label="Export Cash Flow">
+                <a href="{{ route('reporting.export.panel', ['report' => $definition->key] + request()->query()) }}" class="cash-report-export-btn jf-header-action--gold" aria-label="Export Cash Flow">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
@@ -113,7 +113,7 @@
                     </svg>
                     <span class="closing-report-action-label">Reports</span>
                 </a>
-                <a href="{{ route('reporting.export.panel', ['report' => $definition->key]) }}" class="closing-report-export-btn jf-header-action--gold" aria-label="Export Daily Closing">
+                <a href="{{ route('reporting.export.panel', ['report' => $definition->key] + request()->query()) }}" class="closing-report-export-btn jf-header-action--gold" aria-label="Export Daily Closing">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
@@ -126,7 +126,7 @@
                     </svg>
                     <span class="gst-report-action-label">Reports</span>
                 </a>
-                <a href="{{ route('reporting.export.panel', ['report' => $definition->key]) }}" class="gst-report-export-btn jf-header-action--gold" aria-label="Export GST Summary">
+                <a href="{{ route('reporting.export.panel', ['report' => $definition->key] + request()->query()) }}" class="gst-report-export-btn jf-header-action--gold" aria-label="Export GST Summary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
@@ -139,7 +139,7 @@
                     </svg>
                     <span class="report-register-action-label">Reports</span>
                 </a>
-                <a href="{{ route('reporting.export.panel', ['report' => $definition->key]) }}" class="report-register-export-btn jf-header-action--gold" aria-label="Export {{ $definition->title }}">
+                <a href="{{ route('reporting.export.panel', ['report' => $definition->key] + request()->query()) }}" class="report-register-export-btn jf-header-action--gold" aria-label="Export {{ $definition->title }}">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                         <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
@@ -700,14 +700,18 @@
                     @foreach (($filterControls ?? []) as $fc)
                         <div class="report-register-filter-field">
                             <label>{{ $fc['label'] }}</label>
-                            <div class="report-register-select">
-                                <select name="{{ $fc['key'] }}" class="report-register-input">
-                                    <option value="">All</option>
-                                    @foreach ($fc['options'] as $opt)
-                                        <option value="{{ $opt['value'] }}" @selected($fc['current'] === (string) $opt['value'])>{{ $opt['label'] }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                            @if (($fc['type'] ?? 'select') === 'text')
+                                <input type="text" name="{{ $fc['key'] }}" value="{{ $fc['current'] }}" class="report-register-input" placeholder="Search {{ strtolower($fc['label']) }}…">
+                            @else
+                                <div class="report-register-select">
+                                    <select name="{{ $fc['key'] }}" class="report-register-input">
+                                        <option value="">All</option>
+                                        @foreach ($fc['options'] as $opt)
+                                            <option value="{{ $opt['value'] }}" @selected($fc['current'] === (string) $opt['value'])>{{ $opt['label'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
                         </div>
                     @endforeach
 

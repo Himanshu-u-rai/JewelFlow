@@ -11,6 +11,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\GoldInventoryController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\BulkImportController;
+use App\Http\Controllers\Historical\HistoricalDocumentAttachmentController;
 use App\Http\Controllers\Historical\HistoricalDocumentController;
 use App\Http\Controllers\Historical\HistoricalImportController;
 use App\Http\Controllers\Historical\HistoricalManualEntryController;
@@ -220,15 +221,25 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // same rule as /billing below — but the guard is SubscriptionController's
     // abortUnlessOwner(), not `role:owner` middleware, and deliberately so.
     //
-    // RoleMiddleware aborts 403 on a role-less user. ShopController assigns the
-    // owner role as `$ownerRole?->id`, so a shop's only human can legitimately
-    // hold role_id = null — and EVERY failure path in paymentCallback() redirects
-    // here, which is where refund references and signature errors are read. A
-    // route-level 403 would make those invisible again to the one person able to
-    // renew. The controller guard denies a proven non-owner role instead, which
-    // blocks every real cashier (StaffController requires role_id) without
-    // rebuilding that dead end. Proven by
-    // OwnerOnlySubscriptionCommerceTest::test_a_role_less_owner_is_not_locked_out_of_renewal
+    // Ownership FAILS CLOSED. A shop-attached caller must prove ownership through
+    // User::isShopOwner(), which requires role_id to resolve to a role named
+    // `owner` scoped to that same shop. Staff are denied. A role-less shop user is
+    // denied too — a missing role is the absence of proof, never proof itself. No
+    // mobile-number equality and no user-ordering heuristic is consulted: a shop's
+    // owner_mobile can be stale or transferred, and "first user" is not a right.
+    //
+    // The guard lives in the controller rather than `role:owner` middleware for one
+    // reason only — the pre-shop onboarding funnel. Checkout PRECEDES shop creation
+    // (STEP_SELECT_PLAN → STEP_PAYMENT → STEP_CREATE_SHOP), so a signup legitimately
+    // has shop_id = NULL and therefore no role to be measured against. Middleware
+    // cannot draw that distinction; abortUnlessOwnerOrOnboarding() can, and exempts
+    // ONLY shop_id === NULL, which owns no tenant data to leak. Every shop-attached
+    // caller falls through to the strict abortUnlessOwner(). subscription.trial.start
+    // uses that SAME lenient variant (48a6eed) — the trial CTA is reachable before a
+    // shop exists, and the strict guard 403'd every shop-less signup that took it.
+    //
+    // Proven by OwnerIdentityFailClosedTest::test_a_role_less_user_is_denied_every_subscription_route,
+    // OwnerOnlySubscriptionCommerceTest::test_a_role_less_user_is_denied_renewal_because_ownership_is_unproven
     // and ::test_staff_cannot_read_the_shops_platform_invoice_history.
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'status'])
         ->name('subscription.status');
@@ -296,6 +307,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::bind('document', fn ($value) => \App\Models\Historical\HistoricalSalesDocument::withoutGlobalScope('shop')
         ->where('shop_id', auth()->user()?->shop_id)
         ->findOrFail($value));
+    Route::bind('attachment', fn ($value) => \App\Models\Historical\HistoricalSalesDocumentAttachment::withoutGlobalScope('shop')
+        ->where('shop_id', auth()->user()?->shop_id)
+        ->findOrFail($value));
 
     Route::middleware('edition:retailer')->prefix('historical')->name('historical.')->group(function () {
         // --- view (historical.view) ---
@@ -309,6 +323,16 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         // --- manual entry (historical.import) ---
         Route::get('/manual', [HistoricalManualEntryController::class, 'create'])
             ->middleware('can:historical.import')->name('manual.create');
+        Route::get('/customers/search', [HistoricalManualEntryController::class, 'searchCustomers'])
+            ->middleware('can:historical.import')->name('customers.search');
+        Route::post('/manual/preview', [HistoricalManualEntryController::class, 'preview'])
+            ->middleware('can:historical.import')->name('manual.preview');
+        // The preview page is a POST result, so browser Back / reload / a bookmark
+        // replays a GET against a POST-only URL and blows up with a 405. This is the
+        // safe landing pad: same permission, zero writes, no submitted values in the
+        // URL — it just sends the operator back to the form to recalculate.
+        Route::get('/manual/preview', [HistoricalManualEntryController::class, 'previewExpired'])
+            ->middleware('can:historical.import')->name('manual.preview.expired');
         Route::post('/manual', [HistoricalManualEntryController::class, 'store'])
             ->middleware('can:historical.import')->name('manual.store');
 
@@ -331,14 +355,34 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
             ->middleware('can:historical.import')->name('batches.destroy');
         Route::post('/documents/{document}/link-customer', [HistoricalDocumentController::class, 'linkCustomer'])
             ->middleware('can:historical.import')->name('documents.link-customer');
+        // Thin document-level wrappers over the existing batch lifecycle, so a manual
+        // operator never needs the batch page. They delegate to the same service calls
+        // the batch routes use and refuse any document whose batch is a file import
+        // (where one document is not the whole batch).
+        Route::post('/documents/{document}/acknowledge', [HistoricalDocumentController::class, 'acknowledgeWarnings'])
+            ->middleware('can:historical.import')->name('documents.acknowledge');
 
         // --- publish + published-record corrections (historical.publish) ---
         Route::post('/batches/{batch}/publish', [HistoricalImportController::class, 'publish'])
             ->middleware('can:historical.publish')->name('batches.publish');
+        Route::post('/documents/{document}/publish', [HistoricalDocumentController::class, 'publish'])
+            ->middleware('can:historical.publish')->name('documents.publish');
         Route::post('/documents/{document}/void', [HistoricalDocumentController::class, 'void'])
             ->middleware('can:historical.publish')->name('documents.void');
         Route::post('/documents/{document}/supersede', [HistoricalDocumentController::class, 'supersede'])
             ->middleware('can:historical.publish')->name('documents.supersede');
+        // Resolving a HIGH/MEDIUM opening-balance overlap clears a publish gate,
+        // so it requires the same permission as publishing, not mere import.
+        Route::post('/documents/{document}/resolve-opening-balance', [HistoricalDocumentController::class, 'resolveOpeningBalance'])
+            ->middleware('can:historical.publish')->name('documents.resolve-opening-balance');
+
+        // --- evidence attachments (historical.import to add/remove; historical.view to stream) ---
+        Route::post('/documents/{document}/attachments', [HistoricalDocumentAttachmentController::class, 'store'])
+            ->middleware('can:historical.import')->name('documents.attachments.store');
+        Route::delete('/attachments/{attachment}', [HistoricalDocumentAttachmentController::class, 'destroy'])
+            ->middleware('can:historical.import')->name('attachments.destroy');
+        Route::get('/attachments/{attachment}/file', [HistoricalDocumentAttachmentController::class, 'show'])
+            ->middleware('can:historical.view')->name('attachments.show');
     });
 
     // ======= EXISTING-SHOP ONBOARDING (opening balances; owner-only, re-checked in controller) =======
@@ -705,6 +749,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // report.payment-reconciliation.csv retired (Phase 3) — use the spine export (POST /reports/payment-reconciliation/export).
     Route::get('/report/day-book', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'day-book')->middleware('can:reports.view')->name('report.day-book');
     // report.day-book.csv retired (Phase 3 Cleanup #1) — use the spine export.
+    // Historical Sales Register (Batch 4) — read-only search/list of pre-JewelFlow
+    // sale evidence. Same spine as every other report; reports.view/reports.export
+    // gates already exist and are reused, not duplicated (HISTORICAL-BATCH-4-REQUIREMENTS.md §6).
+    Route::get('/report/historical-register', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'historical-sales-register')->middleware('can:reports.view')->name('report.historical-register');
     // Inventory Valuation — served by the reporting spine (Phase 3). Same URL/name/permission.
     Route::get('/report/inventory-valuation', [\App\Http\Controllers\Reporting\ReportScreenController::class, 'show'])->defaults('report', 'inventory-valuation')->middleware('can:reports.view')->name('report.inventory-valuation');
     // report.inventory-valuation.csv retired (GAP 3): inventory-valuation is on the

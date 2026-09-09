@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\MobileChangedNotificationMail;
 use App\Models\User;
+use App\Rules\IndianMobileRule;
 use App\Services\PlatformAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class UserMobileController extends Controller
     public function update(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
-            'new_mobile_number'  => ['required', 'string', 'digits:10'],
+            'new_mobile_number'  => ['required', 'string', new IndianMobileRule()],
             'reason'             => ['required', 'string', 'min:6', 'max:500'],
             'signout_other_sessions' => ['nullable', 'boolean'],
         ]);

@@ -4,7 +4,6 @@ namespace App\Observers;
 
 use App\Models\Invoice;
 use App\Services\EntityEventService;
-use Throwable;
 
 class InvoiceObserver
 {
@@ -57,40 +56,31 @@ class InvoiceObserver
         ];
 
         // Always record on the invoice entity itself.
-        try {
-            $this->entityEventService->record(
-                shopId:      $shopId,
-                entityType:  'invoice',
-                entityId:    (int) $invoice->id,
-                eventType:   'sale_finalized',
-                summary:     $summary,
-                level:       0,
-                detail:      $detail,
-                actorUserId: $actorId ? (int) $actorId : null,
-                occurredAt:  $occurredAt,
-            );
-        } catch (Throwable $e) {
-            // Entity events are non-critical — log and continue.
-            \Log::warning('EntityEventService: failed to record sale_finalized (invoice entity): ' . $e->getMessage());
-        }
+        $this->entityEventService->record(
+            shopId:      $shopId,
+            entityType:  'invoice',
+            entityId:    (int) $invoice->id,
+            eventType:   'sale_finalized',
+            summary:     $summary,
+            level:       0,
+            detail:      $detail,
+            actorUserId: $actorId ? (int) $actorId : null,
+            occurredAt:  $occurredAt,
+        );
 
         // Also record on the customer entity if there is one.
         if ($invoice->customer_id) {
-            try {
-                $this->entityEventService->record(
-                    shopId:      $shopId,
-                    entityType:  'customer',
-                    entityId:    (int) $invoice->customer_id,
-                    eventType:   'sale_finalized',
-                    summary:     $summary,
-                    level:       0,
-                    detail:      array_merge($detail, ['invoice_id' => $invoice->id]),
-                    actorUserId: $actorId ? (int) $actorId : null,
-                    occurredAt:  $occurredAt,
-                );
-            } catch (Throwable $e) {
-                \Log::warning('EntityEventService: failed to record sale_finalized (customer entity): ' . $e->getMessage());
-            }
+            $this->entityEventService->record(
+                shopId:      $shopId,
+                entityType:  'customer',
+                entityId:    (int) $invoice->customer_id,
+                eventType:   'sale_finalized',
+                summary:     $summary,
+                level:       0,
+                detail:      array_merge($detail, ['invoice_id' => $invoice->id]),
+                actorUserId: $actorId ? (int) $actorId : null,
+                occurredAt:  $occurredAt,
+            );
         }
     }
 }

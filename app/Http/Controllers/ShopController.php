@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Platform\PlatformSetting;
 use App\Models\Platform\ShopSubscription;
 use App\Models\Shop;
+use App\Rules\IndianMobileRule;
 use App\Services\OnboardingResumeService;
 use App\Services\TenantRoleService;
 use App\Support\ShopEdition;
@@ -247,7 +248,7 @@ class ShopController extends Controller
 
         $baseRules = [
             'name' => 'required|string|max:255',
-            'phone' => 'required|string|digits:10',
+            'phone' => ['required', 'string', new IndianMobileRule()],
             'address_line1' => 'required|string|max:255',
             'address_line2' => 'nullable|string|max:255',
             'city' => 'required|string|max:100',
@@ -257,7 +258,7 @@ class ShopController extends Controller
             'gst_number' => 'nullable|string|max:50',
             'owner_first_name' => 'required|string|max:255',
             'owner_last_name' => 'required|string|max:255',
-            'owner_mobile' => 'required|string|digits:10',
+            'owner_mobile' => ['required', 'string', new IndianMobileRule()],
             'owner_email' => 'nullable|email',
         ];
 

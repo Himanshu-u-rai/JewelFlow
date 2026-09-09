@@ -5,10 +5,12 @@ namespace Tests\Unit\Historical;
 use App\Models\Historical\HistoricalSalesDocument;
 use App\Services\Historical\HistoricalDateParser;
 use App\Services\Historical\HistoricalMakingChargeNormalizer;
+use App\Services\Historical\HistoricalSourceFileReader;
 use App\Services\Historical\HistoricalTaxNormalizer;
 use App\Support\Historical\HistoricalMakingCharge;
 use App\Support\Historical\HistoricalMessages;
 use App\Support\Historical\HistoricalParseException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -240,5 +242,97 @@ class HistoricalNormalizersTest extends TestCase
         $this->assertSame(HistoricalMakingCharge::BASIS_UNKNOWN, $labour['basis']);
         $this->assertSame('MC', $mc['label_original']);
         $this->assertSame('Labour Charges', $labour['label_original']);
+    }
+
+    // ================================================= csv-injection detection
+
+    /**
+     * A negative amount is a number, not a formula.
+     *
+     * The guard used to match on the leading character alone, so every `-500`
+     * in a discount or rounding column told the operator their own valid input
+     * "looks like a spreadsheet formula". Excel renders `-500` as a number; it
+     * only evaluates a leading sign when what follows is an expression.
+     */
+    #[DataProvider('notFormulas')]
+    public function test_a_plain_signed_number_is_not_flagged_as_a_formula(string $value): void
+    {
+        $this->assertFalse(
+            HistoricalSourceFileReader::looksLikeFormula($value),
+            "\"{$value}\" is a number, not a formula",
+        );
+    }
+
+    #[DataProvider('formulas')]
+    public function test_a_real_formula_is_still_flagged(string $value): void
+    {
+        $this->assertTrue(
+            HistoricalSourceFileReader::looksLikeFormula($value),
+            "\"{$value}\" would be evaluated by a spreadsheet",
+        );
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function notFormulas(): array
+    {
+        return self::named([
+            '-500',            // the reported false positive
+            '+1200.50',
+            '-1,25,000.00',    // indian grouping
+            '-1 250,75',       // space grouping, comma decimal
+            '- 500',           // sign detached from the digits
+            '+0',
+        ]);
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function formulas(): array
+    {
+        return self::named([
+            '=SUM(A1:A9)',
+            '@SUM(A1)',
+            '+SUM(A1)',
+            '-1+1',            // signed, but an expression rather than a number
+            '=1+1',
+            '-A1',
+            "\t-500",          // tab lead: Excel strips it, then evaluates
+            "\r=cmd|'/c calc'!A0",
+        ]);
+    }
+
+    /**
+     * Name each dataset after the value it carries, without letting PHP turn
+     * the name into an integer.
+     *
+     * A bare array_combine($values, ...) looks right and even keeps all the
+     * datasets, but PHP casts a canonical integer string used as an array key:
+     * '-500' becomes int(-500). PHPUnit then renders integer-keyed datasets
+     * positionally, so '-500' and '+0' both came out as "data set #0" — two
+     * tests with one identity. Every runner handles that differently, which is
+     * exactly the confusion it caused: phpunit and the JUnit log counted 2297
+     * tests while `php artisan test` reported 2289 passing, and chasing the
+     * missing one cost a full suite run.
+     *
+     * The `= ` prefix cannot be cast to an int, so the key stays a string and
+     * every dataset keeps a distinct, readable name. Control characters are
+     * escaped so a tab- or CR-led value is legible in test output instead of
+     * silently eating the rest of the line.
+     *
+     * @param  array<int, string>  $values
+     * @return array<string, array{0: string}>
+     */
+    private static function named(array $values): array
+    {
+        $keys = array_map(
+            static fn (string $v): string => '= ' . addcslashes($v, "\0..\37"),
+            $values,
+        );
+
+        $named = array_combine($keys, array_map(static fn ($v) => [$v], $values));
+
+        // A collision here would silently drop a case from the suite.
+        self::assertCount(count($values), $named, 'dataset names collided');
+
+        return $named;
     }
 }

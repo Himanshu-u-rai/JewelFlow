@@ -29,6 +29,16 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // DELIBERATELY digits:10, not IndianMobileRule.
+            //
+            // Every WRITE path is strict now, but a login is a lookup against
+            // rows that already exist. A shop whose owner account was created
+            // years ago may hold a number the strict rule refuses — starting
+            // with a 1-5, say — and tightening the login form would lock that
+            // account out of its own data with an error the operator cannot act
+            // on. Strictness belongs where data is created, not where it is
+            // proven. Rejecting a login for format buys nothing anyway: a wrong
+            // format simply matches no user.
             'mobile_number' => ['required', 'string', 'digits:10'],
             'password' => ['required', 'string'],
         ];

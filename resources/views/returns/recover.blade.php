@@ -90,10 +90,10 @@
                         <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider">From return</dt>
                         <dd class="text-sm text-slate-900">
                             @if($ro && $inv)
-                                <a href="{{ route('returns.show', $ro) }}" class="font-semibold text-amber-700 hover:underline">RO#{{ $ro->id }}</a>
+                                <a href="{{ route('returns.show', $ro) }}" class="font-semibold text-amber-700 hover:underline">{{ $ro->display_number }}</a>
                                 <span class="text-slate-500"> — {{ $inv->invoice_number }}</span>
                             @elseif($ro)
-                                <a href="{{ route('returns.show', $ro) }}" class="font-semibold text-amber-700 hover:underline">RO#{{ $ro->id }}</a>
+                                <a href="{{ route('returns.show', $ro) }}" class="font-semibold text-amber-700 hover:underline">{{ $ro->display_number }}</a>
                             @else
                                 <span class="text-slate-400">—</span>
                             @endif

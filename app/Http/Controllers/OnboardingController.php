@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\IndianMobileRule;
+use App\Support\Csv;
 use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\OnboardingBatch;
@@ -388,7 +390,7 @@ class OnboardingController extends Controller
             return back()->withErrors(['file' => 'Could not read the uploaded file.']);
         }
 
-        $header = fgetcsv($handle);
+        $header = Csv::get($handle);
         if ($header === false) {
             fclose($handle);
             return back()->withErrors(['file' => 'The file is empty.']);
@@ -397,15 +399,26 @@ class OnboardingController extends Controller
 
         $created = 0;
         $skipped = 0;
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = Csv::get($handle)) !== false) {
             if (count($row) === 1 && trim((string) $row[0]) === '') {
                 continue; // blank line
             }
             $data   = array_combine($header, array_pad(array_slice($row, 0, count($header)), count($header), null));
-            $mobile = trim((string) ($data['mobile'] ?? ''));
+            // Canonical form (see Customer::storableMobile) for both the dedupe
+            // and the insert: an exported CSV spells numbers however the shop's
+            // old system did, so '+91 98123 00099' would otherwise import as a
+            // second row for a buyer who is already in the directory.
+            $mobile = Customer::storableMobile($data['mobile'] ?? null);
 
-            // Dedupe by mobile within the shop; nameless/numberless rows skipped.
-            if ($mobile === '' || Customer::where('mobile', $mobile)->exists()) {
+            // Dedupe by mobile within the shop. storableMobile() returns '' for
+            // anything that is not an Indian mobile, so a junk cell skips the row
+            // rather than inserting a number nothing can ever match or message —
+            // this is the one path with no form validation in front of it.
+            // resolveByMobile, not an exact match: canonicalising the value we
+            // are about to insert while looking it up exactly means a legacy row
+            // stored '+91 98123 00099' is invisible, and the import quietly adds
+            // a second record for a customer who is already in the directory.
+            if ($mobile === '' || Customer::resolveByMobile($mobile)) {
                 $skipped++;
                 continue;
             }
@@ -438,12 +451,17 @@ class OnboardingController extends Controller
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name'  => ['nullable', 'string', 'max:100'],
-            'mobile'     => ['required', 'string', 'max:20'],
+            'mobile'     => ['required', 'string', new IndianMobileRule()],
             'email'      => ['nullable', 'email', 'max:150'],
             'address'    => ['nullable', 'string', 'max:500'],
         ]);
 
-        if (Customer::where('mobile', $data['mobile'])->exists()) {
+        // Validation rejects a non-mobile; this canonicalises the accepted one so
+        // the duplicate check and the insert agree on one spelling and the same
+        // buyer cannot enter the directory twice.
+        $data['mobile'] = Customer::storableMobile($data['mobile']);
+
+        if (Customer::resolveByMobile($data['mobile'])) {
             return back()->withErrors(['mobile' => 'A customer with this mobile already exists.'])->withInput();
         }
 
@@ -466,7 +484,7 @@ class OnboardingController extends Controller
         $data = $request->validate([
             'name'           => ['required', 'string', 'max:150'],
             'contact_person' => ['nullable', 'string', 'max:150'],
-            'mobile'         => ['nullable', 'string', 'max:20'],
+            'mobile'         => ['nullable', 'string', new IndianMobileRule()],
             'email'          => ['nullable', 'email', 'max:150'],
             'address'        => ['nullable', 'string', 'max:500'],
             'gst_number'     => ['nullable', 'string', 'max:20'],
@@ -494,7 +512,7 @@ class OnboardingController extends Controller
         $data = $request->validate([
             'name'           => ['required', 'string', 'max:150'],
             'shop_name'      => ['nullable', 'string', 'max:150'],
-            'mobile'         => ['nullable', 'string', 'max:20'],
+            'mobile'         => ['nullable', 'string', new IndianMobileRule()],
             'contact_person' => ['nullable', 'string', 'max:150'],
         ]);
 
@@ -522,12 +540,19 @@ class OnboardingController extends Controller
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name'  => ['nullable', 'string', 'max:100'],
-            'mobile'     => ['required', 'string', 'max:20'],
+            'mobile'     => ['required', 'string', new IndianMobileRule()],
             'email'      => ['nullable', 'email', 'max:150'],
             'address'    => ['nullable', 'string', 'max:500'],
         ]);
 
-        if (Customer::where('mobile', $data['mobile'])->where('id', '!=', $customer->id)->exists()) {
+        // The FOURTH free-text mobile write path. `mobile` is max:20 here, same
+        // as storeCustomer above — so editing a customer could put a spelling
+        // back into the column that the add form had just canonicalised out of
+        // it, and `mobile` is fillable, so update() writes it verbatim.
+        $data['mobile'] = Customer::storableMobile($data['mobile']);
+
+        $clash = Customer::resolveByMobile($data['mobile']);
+        if ($clash && $clash->id !== $customer->id) {
             return back()->withErrors(['mobile' => 'Another customer already uses this mobile.'])->withInput();
         }
 
@@ -737,7 +762,7 @@ class OnboardingController extends Controller
             return back()->withErrors(['file' => 'Could not read the uploaded file.']);
         }
 
-        $header = fgetcsv($handle);
+        $header = Csv::get($handle);
         if ($header === false) {
             fclose($handle);
             return back()->withErrors(['file' => 'The file is empty.']);
@@ -747,7 +772,7 @@ class OnboardingController extends Controller
         $modes   = ['cash', 'bank', 'upi', 'wallet'];
         $created = 0;
         $skipped = 0;
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = Csv::get($handle)) !== false) {
             if (count($row) === 1 && trim((string) $row[0]) === '') {
                 continue;
             }
@@ -811,7 +836,7 @@ class OnboardingController extends Controller
             return back()->withErrors(['file' => 'Could not read the uploaded file.']);
         }
 
-        $header = fgetcsv($handle);
+        $header = Csv::get($handle);
         if ($header === false) {
             fclose($handle);
             return back()->withErrors(['file' => 'The file is empty.']);
@@ -822,7 +847,7 @@ class OnboardingController extends Controller
         $fields  = ['metal_type', 'gross_weight', 'stone_weight', 'purity', 'making_charges', 'stone_charges', 'cost_price', 'selling_price', 'barcode', 'design', 'category', 'sub_category', 'huid', 'hallmark_date'];
         $created = 0;
         $skipped = 0;
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = Csv::get($handle)) !== false) {
             if (count($row) === 1 && trim((string) $row[0]) === '') {
                 continue;
             }
@@ -885,7 +910,7 @@ class OnboardingController extends Controller
             return back()->withErrors(['file' => 'Could not read the uploaded file.']);
         }
 
-        $header = fgetcsv($handle);
+        $header = Csv::get($handle);
         if ($header === false) {
             fclose($handle);
             return back()->withErrors(['file' => 'The file is empty.']);
@@ -894,7 +919,7 @@ class OnboardingController extends Controller
 
         $created = 0;
         $skipped = 0;
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = Csv::get($handle)) !== false) {
             if (count($row) === 1 && trim((string) $row[0]) === '') {
                 continue;
             }
@@ -989,7 +1014,12 @@ class OnboardingController extends Controller
             if (! isset($kinds[$type])) {
                 return false;
             }
-            $customer = Customer::where('mobile', trim((string) ($r['mobile'] ?? '')))->first();
+            // resolveByMobile, not a trimmed exact match: this column comes from
+            // the shop's own spreadsheet, where '+91 98123 00099' and
+            // '98123-00099' are ordinary. An exact match drops those rows
+            // silently — and a dropped row here is a missing opening balance,
+            // which nobody notices until the ledger is already wrong.
+            $customer = Customer::resolveByMobile($r['mobile'] ?? null);
             if (! $customer) {
                 return false;
             }

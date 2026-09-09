@@ -51,7 +51,7 @@
                         <tr class="border-t border-slate-800 text-slate-200">
                             <td class="px-4 py-3 admin-table-index">{{ $users->firstItem() + $loop->index }}</td>
                             <td class="px-4 py-3">{{ $user->name ?? '—' }}</td>
-                            <td class="px-4 py-3">{{ $user->mobile_number }}</td>
+                            <td class="px-4 py-3">{{ \App\Support\Mobile::forDisplay($user->mobile_number) }}</td>
                             <td class="px-4 py-3">
                                 <span class="admin-badge admin-badge-sky">Shop User</span>
                             </td>

@@ -44,7 +44,9 @@ class ReportScreensRenderTest extends TestCase
 
     public static function reportRoutes(): array
     {
-        return array_map(fn ($r) => [$r], [
+        // Keyed by route name so a failure reads "report.stock-aging" rather
+        // than "data set #25", and so a single screen can be run in isolation.
+        $routes = [
             // Reports hub (grouped landing)
             'report.hub',
             // M1 CA Tax Pack
@@ -59,6 +61,11 @@ class ReportScreensRenderTest extends TestCase
             // Legacy / existing reports (full-surface render coverage)
             'report.gst', 'report.pnl', 'report.gold', 'report.daily', 'report.cash',
             'report.closing', 'report.repairs', 'report.metal-exchange',
-        ]);
+            // Retailer-only screens. Absent from this list until stock-aging 500'd
+            // in production on a blade lookup for a bucket that was never a bucket.
+            'report.stock-aging', 'report.sellers', 'report.occasions',
+        ];
+
+        return array_combine($routes, array_map(fn ($r) => [$r], $routes));
     }
 }

@@ -47,9 +47,9 @@
     <div class="header">
         <div>
             <h1>Exchange Receipt</h1>
-            <div class="muted">Exchange #{{ $exchange->id }} · Settled {{ optional($exchange->settled_at)->format('d M Y, h:i A') }}</div>
+            <div class="muted">{{ $exchange->display_number }} · Settled {{ optional($exchange->settled_at)->format('d M Y, h:i A') }}</div>
             @if($customer)
-                <div style="margin-top: 4px;">{{ trim($customer->first_name . ' ' . $customer->last_name) }} · {{ $customer->mobile }}</div>
+                <div style="margin-top: 4px;">{{ trim($customer->first_name . ' ' . $customer->last_name) }} · {{ \App\Support\Mobile::forDisplay($customer->mobile) }}</div>
             @endif
         </div>
         <div class="shop">

@@ -42,7 +42,7 @@
             </div>
             <div class="receipt-detail-row">
                 <span class="receipt-detail-label">Contact:</span>
-                <span class="receipt-detail-value">{{ $loan->customer->mobile ?? '---' }}</span>
+                <span class="receipt-detail-value">{{ \App\Support\Mobile::forDisplay($loan->customer?->mobile) ?: '---' }}</span>
             </div>
             <div class="receipt-detail-row">
                 <span class="receipt-detail-label">Principal Amount:</span>

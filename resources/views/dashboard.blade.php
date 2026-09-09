@@ -4339,7 +4339,7 @@
                 </div>
 
                 <div class="dash-shop-info">
-                    <p class="dash-meta" style="font-size: 11px;"><strong>Owner</strong>{{ $ownerName !== '' ? $ownerName : ($shop?->owner_mobile ?? '—') }}</p>
+                    <p class="dash-meta" style="font-size: 11px;"><strong>Owner</strong>{{ $ownerName !== '' ? $ownerName : (\App\Support\Mobile::forDisplay($shop?->owner_mobile) ?: '—') }}</p>
                     <p class="dash-meta" style="font-size: 11px;"><strong>Phone</strong>{{ $shop?->phone ?? '—' }}</p>
                     @if($shop?->city || $shop?->state)
                         <p class="dash-meta" style="font-size: 11px;"><strong>Location</strong>{{ $shop?->city }}{{ $shop?->state ? ', ' . $shop->state : '' }}</p>
@@ -4922,7 +4922,7 @@
                                         </span>
                                         <div class="dash-row-copy">
                                             <div class="dash-row-title">{{ \Illuminate\Support\Str::limit($rep->item_description, 36) }}</div>
-                                            <div class="dash-row-meta">Ticket #{{ $rep->id }}</div>
+                                            <div class="dash-row-meta">{{ $rep->repair_number ? 'REP-' . str_pad($rep->repair_number, 3, '0', STR_PAD_LEFT) : 'Ticket —' }}</div>
                                         </div>
                                     </div>
                                     <div class="dash-row-mid">{{ $rep->created_at->format('d M') }}</div>
@@ -4978,7 +4978,7 @@
                                         </span>
                                         <div class="dash-row-copy">
                                             <div class="dash-row-title">{{ $displayName }}</div>
-                                            <div class="dash-row-meta">{{ $customer->mobile ?: 'No mobile' }}</div>
+                                            <div class="dash-row-meta">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: 'No mobile' }}</div>
                                         </div>
                                     </div>
                                     <div class="dash-row-mid">{{ $invoiceCount }} {{ \Illuminate\Support\Str::plural('invoice', $invoiceCount) }}</div>

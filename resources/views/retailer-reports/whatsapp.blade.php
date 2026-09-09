@@ -1254,7 +1254,13 @@ Price: ₹{price}
             let latestCollectionLink = '';
             let latestCollectionKey = '';
 
-            const normalizePhone = (raw) => (raw || '').replace(/\D+/g, '');
+            // wa.me needs E.164 digits. A bare 10-digit Indian mobile — which is what
+            // the app now stores and what an operator types — is not routable on its
+            // own, so the country code goes back on here and nowhere else.
+            const normalizePhone = (raw) => {
+                const digits = (raw || '').replace(/\D+/g, '');
+                return /^[6-9][0-9]{9}$/.test(digits) ? '91' + digits : digits;
+            };
 
             const applyCustomTemplate = (templateText, vars) => {
                 if (!templateText) return '';

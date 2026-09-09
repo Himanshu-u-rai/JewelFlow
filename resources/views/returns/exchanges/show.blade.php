@@ -33,7 +33,7 @@
 
     <x-page-header class="exchange-show-header jf-header-auto-mobile">
         <div class="min-w-0 exchange-show-title-block">
-            <h1 class="page-title">Exchange #{{ $exchange->id }}</h1>
+            <h1 class="page-title">Exchange {{ $exchange->display_number }}</h1>
             <p class="page-subtitle">{{ $cn?->credit_note_number ?? 'No credit note' }} / {{ $newInv?->invoice_number ?? 'No new invoice' }}</p>
         </div>
 
@@ -114,7 +114,7 @@
                             <div>
                                 <p class="exchange-show-eyebrow">Return half</p>
                                 <h2 id="exchange-returned-title">Items returned</h2>
-                                <small>Credit note {{ $cn?->credit_note_number ?? '—' }} / return order #{{ $ro->id }}</small>
+                                <small>Credit note {{ $cn?->credit_note_number ?? '—' }} / return order {{ $ro->display_number }}</small>
                             </div>
                             <a href="{{ route('returns.show', $ro) }}" class="exchange-show-link">View return</a>
                         </div>

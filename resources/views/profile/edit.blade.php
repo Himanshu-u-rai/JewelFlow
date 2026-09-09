@@ -19,7 +19,7 @@
                             <p class="mt-1 text-sm text-gray-600">{{ __('Your registered mobile number used to log in.') }}</p>
                         </header>
                         <div class="mt-6 flex items-center justify-between gap-4">
-                            <span class="text-sm font-medium text-gray-800">{{ auth()->user()->mobile_number ?? '—' }}</span>
+                            <span class="text-sm font-medium text-gray-800">{{ \App\Support\Mobile::forDisplay(auth()->user()?->mobile_number) ?: '—' }}</span>
                             <a href="{{ route('profile.mobile.change') }}"
                                data-turbo-frame="_top"
                                class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">

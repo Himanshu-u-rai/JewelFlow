@@ -466,6 +466,10 @@
                                 <label for="mobile" class="vendors-create-label">Mobile</label>
                                 <input
                                     type="tel"
+                                    inputmode="numeric"
+                                    maxlength="10"
+                                    pattern="[0-9]{10}"
+                                    placeholder="10-digit mobile"
                                     name="mobile"
                                     id="mobile"
                                     value="{{ old('mobile') }}"

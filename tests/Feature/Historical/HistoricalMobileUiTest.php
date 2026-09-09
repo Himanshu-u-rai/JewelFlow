@@ -1,0 +1,1271 @@
+<?php
+
+namespace Tests\Feature\Historical;
+
+use App\Models\Historical\HistoricalImportBatch;
+use App\Models\Historical\HistoricalImportRow;
+use App\Models\Historical\HistoricalSalesDocument;
+use App\Models\Historical\HistoricalSalesLine;
+use App\Services\Historical\HistoricalDuplicateDetector;
+use App\Support\TenantContext;
+use DOMDocument;
+use DOMElement;
+use DOMXPath;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Tests\Feature\Traits\CreatesTestTenant;
+use Tests\TestCase;
+
+class HistoricalMobileUiTest extends TestCase
+{
+    use CreatesTestTenant;
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        $this->skipIfNotPostgres();
+        parent::setUp();
+    }
+
+    private function xpath(string $html): DOMXPath
+    {
+        $previous = libxml_use_internal_errors(true);
+        $document = new DOMDocument;
+        $loaded = $document->loadHTML($html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $this->assertTrue($loaded, 'Rendered HTML could not be parsed.');
+
+        return new DOMXPath($document);
+    }
+
+    /** @param list<string> $tokens */
+    private function assertNodesHaveClasses(DOMXPath $xpath, string $expression, array $tokens): void
+    {
+        $nodes = $xpath->query($expression);
+
+        $this->assertNotFalse($nodes);
+        $this->assertGreaterThan(0, $nodes->length, "No rendered nodes matched {$expression}");
+
+        foreach ($nodes as $node) {
+            $this->assertInstanceOf(DOMElement::class, $node);
+            $classes = preg_split('/\s+/', trim($node->getAttribute('class'))) ?: [];
+
+            foreach ($tokens as $token) {
+                $this->assertContains($token, $classes, "Missing {$token} on rendered <{$node->tagName}>.");
+            }
+        }
+    }
+
+    /** @return list<string> */
+    private function optionValues(DOMXPath $xpath, string $selectId): array
+    {
+        $options = $xpath->query("//*[@id='{$selectId}']/option");
+        $this->assertNotFalse($options);
+
+        $values = [];
+        foreach ($options as $option) {
+            $this->assertInstanceOf(DOMElement::class, $option);
+            $values[] = $option->getAttribute('value');
+        }
+
+        return $values;
+    }
+
+    private function assertMapShrinkContract(string $html): DOMXPath
+    {
+        $xpath = $this->xpath($html);
+        $root = "//*[contains(concat(' ', normalize-space(@class), ' '), ' historical-map-page ')]";
+
+        $this->assertNodesHaveClasses($xpath, "{$root}//form", ['min-w-0', 'max-w-full']);
+        $this->assertNodesHaveClasses($xpath, "{$root}//fieldset", ['min-w-0', 'max-w-full']);
+        $this->assertNodesHaveClasses($xpath, "{$root}//fieldset//div[contains(concat(' ', normalize-space(@class), ' '), ' grid ')]", ['min-w-0', 'max-w-full']);
+        $this->assertNodesHaveClasses($xpath, "{$root}//fieldset//div[contains(concat(' ', normalize-space(@class), ' '), ' grid ')]/div", ['min-w-0', 'max-w-full']);
+        $this->assertNodesHaveClasses($xpath, "{$root}//label", ['min-w-0', 'max-w-full']);
+        $this->assertNodesHaveClasses($xpath, "{$root}//select", ['w-full', 'min-w-0', 'max-w-full', 'min-h-[44px]']);
+        $this->assertNodesHaveClasses($xpath, "{$root}//input[@type='text' or @type='number']", ['w-full', 'min-w-0', 'max-w-full']);
+        $this->assertNodesHaveClasses($xpath, "{$root}//select[contains(concat(' ', normalize-space(@class), ' '), ' js-mapping-field ')]", ['min-w-0', 'max-w-full']);
+
+        return $xpath;
+    }
+
+    private function assertTapTargets(string $html): void
+    {
+        $xpath = $this->xpath($html);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//button[contains(concat(' ', normalize-space(@class), ' '), ' btn ')] | //a[contains(concat(' ', normalize-space(@class), ' '), ' btn ')] | //select | //input[@type='file']",
+            ['min-h-[44px]']
+        );
+    }
+
+    private function firstNode(DOMXPath $xpath, string $expression): DOMElement
+    {
+        $nodes = $xpath->query($expression);
+
+        $this->assertNotFalse($nodes);
+        $this->assertSame(1, $nodes->length, "Expected one rendered node for {$expression}.");
+        $this->assertInstanceOf(DOMElement::class, $nodes->item(0));
+
+        return $nodes->item(0);
+    }
+
+    private function buildTwoSheetXlsx(): string
+    {
+        $spreadsheet = new Spreadsheet;
+        $header = $spreadsheet->getActiveSheet();
+        $header->setTitle('Invoices Archive');
+        $header->fromArray(['InvoiceNo', 'InvoiceDate', 'GrandTotal'], null, 'A1');
+        $header->fromArray(['INV-1', '2023-06-15', 15000], null, 'A2');
+
+        $longDetailHeader = 'Legacy Jewellery Description From Previous Accounting Software With Extra Context';
+        $detail = $spreadsheet->createSheet();
+        $detail->setTitle('Line Items Archive');
+        $detail->fromArray(['InvoiceNo', $longDetailHeader, 'LineTotal'], null, 'A1');
+        $detail->fromArray(['INV-1', 'Gold Ring', 15000], null, 'A2');
+
+        $path = tempnam(sys_get_temp_dir(), 'jf_mobile_ui_');
+        $this->assertNotFalse($path);
+
+        try {
+            (new Xlsx($spreadsheet))->save($path);
+            $contents = file_get_contents($path);
+            $this->assertNotFalse($contents);
+
+            return $contents;
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    private function uploadFile($owner, int $shopId, UploadedFile $file): HistoricalImportBatch
+    {
+        $this->actingAs($owner)->post(route('historical.upload.store'), [
+            'file' => $file,
+            'label' => 'Mobile UI fixture',
+            'source_system' => 'Legacy ERP',
+        ])->assertRedirect();
+
+        return TenantContext::runFor(
+            $shopId,
+            fn () => HistoricalImportBatch::query()->latest('id')->firstOrFail()
+        );
+    }
+
+    private function makeBatch(int $shopId, int $actorId, array $attributes = []): HistoricalImportBatch
+    {
+        return TenantContext::runFor($shopId, function () use ($shopId, $actorId, $attributes): HistoricalImportBatch {
+            $batch = new HistoricalImportBatch;
+            $batch->forceFill(array_merge([
+                'shop_id' => $shopId,
+                'label' => 'Mobile review batch',
+                'source_system' => 'Legacy ERP',
+                // These fixtures exercise the FILE-import batch page (staged rows,
+                // reconciliation, document register). isManualBatch() keys off
+                // source_file_name, so without one they would be manual bills and
+                // their batch URL would forward to a document instead of rendering.
+                'source_file_name' => 'legacy-erp-export.csv',
+                'status' => HistoricalImportBatch::STATUS_REVIEW,
+                'created_by' => $actorId,
+                'preview_generated_at' => now(),
+                'blocking_count' => 0,
+                'warning_count' => 1,
+            ], $attributes))->save();
+
+            return $batch;
+        });
+    }
+
+    private function makeDocument(int $shopId, int $batchId, array $attributes = []): HistoricalSalesDocument
+    {
+        return TenantContext::runFor($shopId, function () use ($shopId, $batchId, $attributes): HistoricalSalesDocument {
+            $status = $attributes['status'] ?? HistoricalSalesDocument::STATUS_DRAFT;
+            $number = $attributes['original_document_number'] ?? ('MOBILE-'.Str::random(8));
+
+            $document = new HistoricalSalesDocument;
+            $document->forceFill(array_merge([
+                'shop_id' => $shopId,
+                'historical_import_batch_id' => $batchId,
+                'historical_reference' => (string) Str::uuid(),
+                'original_document_number' => $number,
+                'original_document_number_normalized' => $number,
+                'document_type' => HistoricalSalesDocument::TYPE_SALE_INVOICE,
+                'document_date' => '2023-06-15',
+                'financial_year' => '2023-24',
+                'source_system' => 'Legacy ERP',
+                'customer_snapshot' => ['name' => 'Mobile Customer'],
+                'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+                'tax_completeness' => HistoricalSalesDocument::TAX_UNKNOWN,
+                'grand_total' => 15000,
+                'status' => $status,
+                'content_fingerprint' => hash('sha256', (string) Str::uuid()),
+                'published_at' => $status === HistoricalSalesDocument::STATUS_PUBLISHED ? now() : null,
+            ], $attributes))->save();
+
+            return $document;
+        });
+    }
+
+    private function makeLine(int $shopId, int $documentId, array $attributes = []): HistoricalSalesLine
+    {
+        return TenantContext::runFor($shopId, function () use ($shopId, $documentId, $attributes): HistoricalSalesLine {
+            $line = new HistoricalSalesLine;
+            $line->forceFill(array_merge([
+                'shop_id' => $shopId,
+                'historical_sales_document_id' => $documentId,
+                'line_number' => 1,
+                'item_snapshot' => ['name' => 'Archive Gold Ring'],
+                'source_sku' => 'OLD-RING-1',
+                'hsn_snapshot' => '7113',
+                'quantity' => 2,
+                'net_weight' => 4.250,
+                'line_total' => 9876.50,
+            ], $attributes))->save();
+
+            return $line;
+        });
+    }
+
+    public function test_layout_c_mapping_has_complete_shrink_chain_and_keeps_sheet_options(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->uploadFile(
+            $owner,
+            $shop->id,
+            UploadedFile::fake()->createWithContent('mobile-layout-c.xlsx', $this->buildTwoSheetXlsx())
+        );
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.map', $batch));
+        $response->assertOk();
+
+        $xpath = $this->assertMapShrinkContract($response->getContent());
+        $this->assertContains('Invoices Archive', $this->optionValues($xpath, 'map_sheet_header'));
+        $this->assertContains('Line Items Archive', $this->optionValues($xpath, 'map_sheet_detail'));
+        $this->assertContains(
+            'Legacy Jewellery Description From Previous Accounting Software With Extra Context',
+            $this->optionValues($xpath, 'map_field_line_item_name')
+        );
+    }
+
+    public function test_layout_a_mapping_keeps_single_sheet_options_and_shrink_contract(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+        $csv = "InvoiceNo,InvoiceDate,GrandTotal\nINV-9,2023-01-01,5000\n";
+        $batch = $this->uploadFile($owner, $shop->id, UploadedFile::fake()->createWithContent('layout-a.csv', $csv));
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.map', $batch));
+        $response->assertOk();
+
+        $xpath = $this->assertMapShrinkContract($response->getContent());
+        $this->assertContains('InvoiceNo', $this->optionValues($xpath, 'map_field_original_document_number'));
+        $this->assertContains('GrandTotal', $this->optionValues($xpath, 'map_field_grand_total'));
+        $response->assertDontSee('<option value="Line Items Archive"', false);
+    }
+
+    public function test_entry_and_mapping_forms_use_native_sections_without_changing_contracts(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $upload = $this->actingAs($owner)->get(route('historical.upload.create'))->assertOk();
+        $uploadXpath = $this->xpath($upload->getContent());
+        $uploadForm = $this->firstNode($uploadXpath, "//form[@data-historical-form='upload']");
+        $this->assertSame('post', strtolower($uploadForm->getAttribute('method')));
+        $this->assertSame(route('historical.upload.store'), $uploadForm->getAttribute('action'));
+        $this->assertSame('multipart/form-data', $uploadForm->getAttribute('enctype'));
+        $this->firstNode($uploadXpath, "//form[@data-historical-form='upload']//*[@data-historical-card-header]");
+        $this->firstNode($uploadXpath, "//form[@data-historical-form='upload']//*[@data-historical-card-body]");
+        $this->firstNode($uploadXpath, "//form[@data-historical-form='upload']//*[@data-historical-card-footer]");
+
+        $manual = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $manualXpath = $this->xpath($manual->getContent());
+        $manualForm = $this->firstNode($manualXpath, "//form[@data-historical-form='manual']");
+        $this->assertSame(route('historical.manual.preview'), $manualForm->getAttribute('action'));
+        $this->assertSame('false', $manualForm->getAttribute('data-turbo'));
+        $this->assertStringStartsWith('historicalManualForm({', $manualForm->getAttribute('x-data'));
+        $this->assertStringContainsString('minimumRows: 1', $manualForm->getAttribute('x-data'));
+        $this->assertGreaterThanOrEqual(6, $manualXpath->query("//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]")?->length);
+        $this->assertStringContainsString('@click="addLine()"', $manual->getContent());
+
+        $batch = $this->uploadFile(
+            $owner,
+            $shop->id,
+            UploadedFile::fake()->createWithContent('native-layout-c.xlsx', $this->buildTwoSheetXlsx())
+        );
+        $mapping = $this->actingAs($owner)->get(route('historical.batches.map', $batch))->assertOk();
+        $mappingXpath = $this->assertMapShrinkContract($mapping->getContent());
+        $mappingForm = $this->firstNode($mappingXpath, "//form[@data-historical-form='mapping']");
+        $this->assertSame(route('historical.batches.map.save', $batch), $mappingForm->getAttribute('action'));
+        $this->assertGreaterThanOrEqual(8, $mappingXpath->query("//form[@data-historical-form='mapping']//fieldset[@data-historical-form-section]")?->length);
+        $this->assertSame(1, $mappingXpath->query("//select[@id='map_sheet_header' and @name='sheets[header]']")?->length);
+        $this->assertSame(1, $mappingXpath->query("//select[@id='map_sheet_detail' and @name='sheets[detail]']")?->length);
+        $this->assertGreaterThan(0, $mappingXpath->query("//select[contains(concat(' ', normalize-space(@class), ' '), ' js-mapping-field ') and @data-sheet-role]")?->length);
+        $this->assertStringContainsString("refresh('header', this.value);", $mapping->getContent());
+        $this->assertStringContainsString("refresh('detail', this.value);", $mapping->getContent());
+
+        $workflow = $this->firstNode($mappingXpath, '//ol[@data-historical-workflow]');
+        $this->assertContains('sm:grid-cols-4', preg_split('/\s+/', trim($workflow->getAttribute('class'))) ?: []);
+        $this->assertSame(4, $mappingXpath->query('//ol[@data-historical-workflow]/li')?->length);
+        $this->assertSame(1, $mappingXpath->query("//ol[@data-historical-workflow]//*[@aria-current='step' and contains(normalize-space(.), 'Map')]")?->length);
+    }
+
+    public function test_file_import_entry_and_mapping_use_the_guided_saas_workspace(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $upload = $this->actingAs($owner)->get(route('historical.upload.create'))->assertOk();
+        $uploadXpath = $this->xpath($upload->getContent());
+        $uploadPage = $this->firstNode($uploadXpath, "//*[contains(concat(' ', normalize-space(@class), ' '), ' historical-upload-page ')]");
+
+        $this->assertStringContainsString('--app-control-bg: #ffffff', $uploadPage->getAttribute('style'));
+        $this->assertStringContainsString('--app-control-border: #cbd5e1', $uploadPage->getAttribute('style'));
+        $this->assertNodesHaveClasses(
+            $uploadXpath,
+            '//*[@data-historical-workflow]',
+            ['rounded-2xl', 'border-slate-200', 'bg-white']
+        );
+        $this->assertNodesHaveClasses(
+            $uploadXpath,
+            '//*[@data-historical-upload-source]',
+            ['rounded-xl', 'border', 'border-slate-200', 'bg-slate-50']
+        );
+        $this->assertNodesHaveClasses(
+            $uploadXpath,
+            '//*[@data-historical-upload-details]',
+            ['grid', 'gap-4', 'sm:grid-cols-2']
+        );
+        $this->assertNodesHaveClasses(
+            $uploadXpath,
+            "//form[@data-historical-form='upload']//input[not(@type='hidden')] | //form[@data-historical-form='upload']//select",
+            ['min-h-[44px]', 'rounded-lg']
+        );
+        $this->assertSame(
+            0,
+            $uploadXpath->query("//form[@data-historical-form='upload']//input[not(@type='hidden') and not(@type='file') and contains(concat(' ', normalize-space(@class), ' '), ' bg-white ')] | //form[@data-historical-form='upload']//select[contains(concat(' ', normalize-space(@class), ' '), ' bg-white ')]")?->length,
+            'Text, date and select controls must not match the global bg-white + border card selector.'
+        );
+
+        $batch = $this->uploadFile(
+            $owner,
+            $shop->id,
+            UploadedFile::fake()->createWithContent('guided-layout-c.xlsx', $this->buildTwoSheetXlsx())
+        );
+        $mapping = $this->actingAs($owner)->get(route('historical.batches.map', $batch))->assertOk();
+        $mappingXpath = $this->xpath($mapping->getContent());
+        $mappingPage = $this->firstNode($mappingXpath, "//*[contains(concat(' ', normalize-space(@class), ' '), ' historical-map-page ')]");
+
+        $this->assertStringContainsString('--app-control-bg: #ffffff', $mappingPage->getAttribute('style'));
+        $this->assertStringContainsString('--app-control-border: #cbd5e1', $mappingPage->getAttribute('style'));
+        $this->firstNode($mappingXpath, '//*[@data-historical-map-intro]');
+        $sections = $mappingXpath->query("//form[@data-historical-form='mapping']//fieldset[@data-historical-form-section]");
+        $this->assertNotFalse($sections);
+        $this->assertGreaterThanOrEqual(8, $sections->length);
+        $this->assertSame(
+            $sections->length,
+            $mappingXpath->query("//form[@data-historical-form='mapping']//fieldset[@data-historical-form-section]/legend[contains(concat(' ', normalize-space(@class), ' '), ' sr-only ')]")?->length
+        );
+        $this->assertSame(
+            $sections->length,
+            $mappingXpath->query("//form[@data-historical-form='mapping']//fieldset[@data-historical-form-section]/*[@data-historical-card-header]")?->length
+        );
+        $this->assertNodesHaveClasses(
+            $mappingXpath,
+            "//form[@data-historical-form='mapping']//input[@type='text' or @type='number'] | //form[@data-historical-form='mapping']//select",
+            ['min-h-[44px]', 'rounded-lg']
+        );
+        $this->assertSame(
+            0,
+            $mappingXpath->query("//form[@data-historical-form='mapping']//*[self::input or self::select][contains(concat(' ', normalize-space(@class), ' '), ' bg-white ')]")?->length,
+            'Mapping controls must not match the global bg-white + border card selector.'
+        );
+    }
+
+    public function test_manual_section_titles_render_inside_cards_instead_of_on_fieldset_borders(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+        $sectionQuery = "//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]";
+        $sections = $xpath->query($sectionQuery);
+
+        $this->assertNotFalse($sections);
+        $this->assertSame(7, $sections->length);
+        $this->assertSame(7, $xpath->query($sectionQuery."/legend[contains(concat(' ', normalize-space(@class), ' '), ' sr-only ')]")?->length);
+        $this->assertSame(7, $xpath->query($sectionQuery.'/*[@data-historical-card-header]')?->length);
+        $this->assertSame(0, $xpath->query($sectionQuery."/legend[contains(concat(' ', normalize-space(@class), ' '), ' w-full ')]")?->length);
+
+        $headings = $xpath->query($sectionQuery.'/*[@data-historical-card-header]');
+        $headingText = '';
+        foreach ($headings ?: [] as $heading) {
+            $headingText .= ' '.$heading->textContent;
+        }
+
+        foreach (['Document identity', 'Customer snapshot', 'Amount / payment', 'Tax and making charges', 'Item lines', 'Payments', 'Cutover'] as $title) {
+            $this->assertStringContainsString($title, $headingText);
+        }
+    }
+
+    public function test_manual_form_places_item_register_between_identity_and_financial_groups(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+        $layout = $this->firstNode($xpath, "//form[@data-historical-form='manual']//*[@data-historical-manual-layout]");
+        $layoutClasses = preg_split('/\s+/', trim($layout->getAttribute('class'))) ?: [];
+
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'items-start'] as $class) {
+            $this->assertContains($class, $layoutClasses);
+        }
+
+        $identity = $this->firstNode($xpath, '//*[@data-historical-manual-layout]/*[@data-historical-identity-row]');
+        $financial = $this->firstNode($xpath, '//*[@data-historical-manual-layout]/*[@data-historical-financial-row]');
+        $identityClasses = preg_split('/\s+/', trim($identity->getAttribute('class'))) ?: [];
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:grid-cols-12'] as $class) {
+            $this->assertContains($class, $identityClasses);
+        }
+        $this->assertNotContains('items-start', $identityClasses);
+
+        $financialClasses = preg_split('/\s+/', trim($financial->getAttribute('class'))) ?: [];
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'items-start', 'lg:grid-cols-3'] as $class) {
+            $this->assertContains($class, $financialClasses);
+        }
+
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='document']",
+            ['lg:col-span-4']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='customer']",
+            ['lg:col-span-8']
+        );
+        $documentFields = $this->firstNode(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='document']/div[2]"
+        );
+        $documentFieldClasses = preg_split('/\s+/', trim($documentFields->getAttribute('class'))) ?: [];
+        foreach (['grid', 'grid-cols-1', 'gap-4'] as $class) {
+            $this->assertContains($class, $documentFieldClasses);
+        }
+        $this->assertNotContains('sm:grid-cols-2', $documentFieldClasses);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='document']//input[not(@type='hidden')]",
+            ['w-full', 'max-w-full', 'lg:w-64']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-identity-row]/fieldset[@data-historical-section='customer']//div[@data-historical-customer-fields]",
+            ['lg:grid-cols-4']
+        );
+        foreach ([
+            'historical_customer_search' => 'lg:col-span-4',
+            'customer_address' => 'lg:col-span-2',
+        ] as $field => $span) {
+            $this->assertNodesHaveClasses(
+                $xpath,
+                "//*[@data-historical-section='customer']//*[@id='{$field}']/ancestor::div[1]",
+                [$span]
+            );
+        }
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-section='customer']//*[@data-customer-status]",
+            ['min-h-0']
+        );
+        $this->assertSame(0, $xpath->query("//*[@data-historical-section='customer']//*[@id='add_customer_on_publish']")?->length);
+        $this->firstNode(
+            $xpath,
+            "//form[@data-historical-form='manual']//*[@data-historical-card-footer]//*[@id='add_customer_on_publish']"
+        );
+        $this->firstNode(
+            $xpath,
+            '//*[@data-historical-manual-layout]/following-sibling::*[@data-historical-card-footer]'
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-financial-row]/fieldset[@data-historical-section='amounts']",
+            ['lg:col-span-1']
+        );
+
+        $this->assertSame(2, $xpath->query('//*[@data-historical-identity-row]/fieldset[@data-historical-form-section]')?->length);
+        $this->assertSame(3, $xpath->query('//*[@data-historical-financial-row]/fieldset[@data-historical-form-section]')?->length);
+        $this->assertSame(0, $xpath->query('//*[@data-historical-financial-row]/*[@data-historical-supporting-column]')?->length);
+        $this->assertSame(2, $xpath->query('//*[@data-historical-manual-layout]/fieldset[@data-historical-form-section]')?->length);
+
+        foreach (['tax-making', 'cutover'] as $section) {
+            $this->assertNodesHaveClasses(
+                $xpath,
+                "//*[@data-historical-financial-row]/fieldset[@data-historical-section='{$section}']",
+                ['lg:col-span-1']
+            );
+        }
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-manual-layout]/fieldset[@data-historical-section='items']",
+            ['min-w-0', 'max-w-full']
+        );
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-identity-row]/following-sibling::*[1][self::fieldset][@data-historical-section='items']"
+        );
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-manual-layout]/fieldset[@data-historical-section='items']/following-sibling::*[1][@data-historical-financial-row]"
+        );
+
+        $taxSection = "//*[@data-historical-section='tax-making']";
+        $this->assertNodesHaveClasses($xpath, "{$taxSection}//*[@data-historical-supporting-grid][.//*[@id='tax_mode']]", ['lg:grid-cols-1']);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "{$taxSection}//*[@data-historical-supporting-grid][.//*[@id='making_value'] and .//*[@id='making_basis']]",
+            ['lg:grid-cols-2']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "{$taxSection}//*[@data-historical-supporting-grid]/*[.//*[@id='making_value']]",
+            ['lg:col-span-1']
+        );
+        // "Making charges" is the standard wording — no free-text label input
+        // or category choice is asked of the operator anywhere in this section.
+        $this->assertSame(0, $xpath->query("{$taxSection}//*[@id='making_label']")?->length);
+        $this->assertSame(0, $xpath->query("{$taxSection}//*[@id='making_category']")?->length);
+        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-section='cutover']//*[@data-historical-supporting-grid]", ['lg:grid-cols-1']);
+    }
+
+    public function test_manual_item_lines_render_as_a_compact_desktop_table_and_mobile_cards(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $html = $response->getContent();
+        $xpath = $this->xpath($html);
+        $itemSection = "//form[@data-historical-form='manual']//fieldset[@data-historical-section='items']";
+
+        $this->firstNode($xpath, "{$itemSection}//table[@data-historical-item-table]");
+        $this->assertSame(1, $xpath->query("{$itemSection}//table")?->length);
+
+        $headers = $xpath->query("{$itemSection}//table/thead/tr/th[@scope='col']");
+        $this->assertNotFalse($headers);
+        $headerText = [];
+        foreach ($headers as $header) {
+            $headerText[] = trim(preg_replace('/\s+/', ' ', $header->textContent) ?? '');
+        }
+        $this->assertSame(['#', 'Item', 'Metal', 'Purity', 'Qty', 'Billable wt (g)', 'Historical rate (₹/g)', 'Line total (₹)', 'Actions'], $headerText);
+
+        $this->firstNode($xpath, "{$itemSection}//*[@data-historical-item-grid-desktop]//*[@data-historical-item-core-row]");
+        $this->firstNode($xpath, "{$itemSection}//*[@data-historical-item-grid-desktop]//*[@data-historical-item-advanced-row]");
+        $this->firstNode($xpath, "{$itemSection}//*[@data-historical-item-grid-mobile]//*[@data-historical-item-card]");
+        $this->assertNodesHaveClasses($xpath, "{$itemSection}//table", ['table-fixed', 'w-full', 'text-sm']);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "{$itemSection}//*[@data-historical-item-core-row]//*[self::input or self::select][@x-model and not(@type='hidden')]",
+            ['rounded-none', 'border', 'border-slate-300', 'bg-white']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "{$itemSection}//*[@data-historical-item-core-row]//button[contains(@*[name()=':aria-label'], 'Toggle details for item')]",
+            ['h-11', 'w-11', 'rounded-full', 'border', 'border-amber-200', 'bg-amber-50', 'text-amber-700']
+        );
+        $this->assertStringContainsString(
+            '@click="duplicateLine(i)" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-700',
+            $html
+        );
+        $this->assertStringContainsString(
+            '@click="removeLine(i)" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700',
+            $html
+        );
+        foreach ([
+            'line_quantity' => 'Qty',
+            'line_billable_weight' => 'Weight',
+            'line_rate' => 'Rate',
+            'line_total' => 'Total',
+        ] as $field => $placeholder) {
+            $this->assertSame(
+                1,
+                $xpath->query("{$itemSection}//*[@data-historical-item-core-row]//*[@x-model='line.{$field}' and @placeholder='{$placeholder}']")?->length
+            );
+        }
+        $this->assertSame(0, $xpath->query("{$itemSection}//*[contains(concat(' ', normalize-space(@class), ' '), ' overflow-x-auto ')]")?->length);
+        $this->assertStringContainsString('A fresh row appears automatically.', $html);
+        foreach (['Select customer type', 'Select metal', 'Select purity', 'Select basis'] as $placeholder) {
+            $this->assertStringContainsString($placeholder, $html);
+        }
+    }
+
+    public function test_manual_item_grid_preserves_core_and_advanced_bindings_in_preview(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $manual = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $html = $manual->getContent();
+        $xpath = $this->xpath($html);
+        $core = "//form[@data-historical-form='manual']//*[@data-historical-item-grid-desktop]//*[@data-historical-item-core-row]";
+        $advanced = "//form[@data-historical-form='manual']//*[@data-historical-item-grid-desktop]//*[@data-historical-item-advanced-row]";
+        foreach (['line_item_name', 'line_metal_type', 'line_purity_value', 'line_quantity', 'line_billable_weight', 'line_rate', 'line_total'] as $field) {
+            $this->assertGreaterThan(0, $xpath->query("{$core}//*[@x-model='line.{$field}']")?->length);
+            $this->assertSame(0, $xpath->query("{$advanced}//*[@x-model='line.{$field}']")?->length);
+        }
+        foreach (['line_sku', 'line_hsn', 'line_gross_weight', 'line_net_weight', 'line_stone_weight', 'line_making_value', 'line_gst_rate', 'line_notes'] as $field) {
+            $this->assertSame(1, $xpath->query("{$advanced}//*[@x-model='line.{$field}']")?->length);
+        }
+        $this->assertStringContainsString('@click="removeLine(i)"', $html);
+        $this->assertStringContainsString('@click="duplicateLine(i)"', $html);
+        $this->assertStringContainsString('@click="addLine()"', $html);
+        $this->assertSame(7, $xpath->query("//form[@data-historical-form='manual']//fieldset[@data-historical-form-section]")?->length);
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'grand_total' => 18000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+        ])->assertOk();
+        $previewXpath = $this->xpath($preview->getContent());
+        $this->firstNode(
+            $previewXpath,
+            "//form[@data-historical-form='manual-preview']//*[@data-historical-item-table]"
+        );
+        $this->firstNode($previewXpath, "//form[@data-historical-form='manual-preview']//*[@data-historical-item-grid-mobile]//*[@data-historical-item-card]");
+        $this->assertSame(7, $previewXpath->query("//form[@data-historical-form='manual-preview']//fieldset[@data-historical-form-section]")?->length);
+    }
+
+    public function test_manual_form_controls_override_the_shared_page_surface_tokens(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $response = $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+        $layout = $this->firstNode($xpath, "//form[@data-historical-form='manual']//*[@data-historical-manual-layout]");
+        $style = $layout->getAttribute('style');
+
+        $this->assertStringContainsString('--app-control-bg: #ffffff', $style);
+        $this->assertStringContainsString('--app-control-border: #cbd5e1', $style);
+        $this->assertStringContainsString('--app-control-border-focus: #b45309', $style);
+    }
+
+    public function test_upload_manual_preview_and_index_actions_have_mobile_tap_targets(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'MOBILE-INDEX',
+        ]);
+
+        $this->assertTapTargets($this->actingAs($owner)->get(route('historical.upload.create'))->assertOk()->getContent());
+        $this->assertTapTargets($this->actingAs($owner)->get(route('historical.manual.create'))->assertOk()->getContent());
+        $index = $this->actingAs($owner)->get(route('historical.index'))->assertOk();
+        $this->assertTapTargets($index->getContent());
+        $indexXpath = $this->xpath($index->getContent());
+        $this->assertNodesHaveClasses($indexXpath, "//a[@href='".route('historical.batches.show', $batch)."']", ['inline-flex', 'items-center', 'min-h-[44px]']);
+        $this->assertNodesHaveClasses($indexXpath, "//a[@href='".route('historical.documents.show', $document)."']", ['inline-flex', 'items-center', 'min-h-[44px]']);
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'MOBILE-PREVIEW-1',
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'customer_name' => 'Mobile Customer',
+            'grand_total' => 18000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+        ])->assertOk();
+        $this->assertTapTargets($preview->getContent());
+    }
+
+    public function test_index_registers_keep_equivalent_desktop_tables_and_mobile_cards(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, [
+            'label' => 'FY 2023 archive',
+            'warning_count' => 0,
+        ]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'HIST-MOBILE-42',
+            'customer_snapshot' => ['name' => 'Asha Jewels'],
+            'grand_total' => 15420.75,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('historical.index'))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+
+        foreach (['batches', 'documents'] as $surface) {
+            $desktop = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}-desktop']");
+            $mobile = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}-mobile']");
+
+            $this->assertContains('hidden', preg_split('/\s+/', trim($desktop->getAttribute('class'))) ?: []);
+            $this->assertContains('md:block', preg_split('/\s+/', trim($desktop->getAttribute('class'))) ?: []);
+            $this->assertContains('md:hidden', preg_split('/\s+/', trim($mobile->getAttribute('class'))) ?: []);
+        }
+
+        $batchUrl = route('historical.batches.show', $batch);
+        $documentUrl = route('historical.documents.show', $document);
+        foreach (['batches-desktop', 'batches-mobile'] as $surface) {
+            $node = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}']");
+            $this->assertStringContainsString('FY 2023 archive', $node->textContent);
+            $this->assertSame(1, $xpath->query(".//a[@href='{$batchUrl}']", $node)?->length);
+        }
+        foreach (['documents-desktop', 'documents-mobile'] as $surface) {
+            $node = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}']");
+            $this->assertStringContainsString('HIST-MOBILE-42', $node->textContent);
+            $this->assertStringContainsString('Asha Jewels', $node->textContent);
+            $this->assertStringContainsString('15,420.75', $node->textContent);
+            $this->assertSame(1, $xpath->query(".//a[@href='{$documentUrl}']", $node)?->length);
+        }
+
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-register='batches-desktop' or @data-historical-register='documents-desktop']//th",
+            ['normal-case', 'tracking-normal', 'text-xs', 'font-semibold']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-register='batches-desktop' or @data-historical-register='documents-desktop']//a",
+            ['border', 'rounded-lg', 'min-h-[44px]']
+        );
+    }
+
+    public function test_index_registers_render_continuous_row_numbers_across_pagination_and_breakpoints(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+
+        foreach (range(1, 26) as $number) {
+            $this->makeDocument($shop->id, $batch->id, [
+                'original_document_number' => "HIST-PAGE-{$number}",
+            ]);
+        }
+
+        $response = $this->actingAs($owner)->get(route('historical.index', ['page' => 2]))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+
+        foreach (['batches-desktop', 'batches-mobile'] as $surface) {
+            $number = $this->firstNode(
+                $xpath,
+                "//*[@data-historical-register='{$surface}']//*[@data-historical-row-number='batch'][1]"
+            );
+            $this->assertSame('1', trim($number->textContent));
+        }
+
+        foreach (['documents-desktop', 'documents-mobile'] as $surface) {
+            $number = $this->firstNode(
+                $xpath,
+                "//*[@data-historical-register='{$surface}']//*[@data-historical-row-number='document'][1]"
+            );
+            $this->assertSame('26', trim($number->textContent));
+        }
+    }
+
+    public function test_preview_and_document_item_registers_render_matching_row_numbers(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'NUMBERED-PREVIEW',
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'grand_total' => 3000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'lines' => [
+                ['line_item_name' => 'First archived item', 'line_total' => 1000],
+                ['line_item_name' => 'Second archived item', 'line_total' => 2000],
+            ],
+        ])->assertOk();
+        $previewXpath = $this->xpath($preview->getContent());
+
+        foreach (['lines-desktop', 'lines-mobile'] as $surface) {
+            $numbers = $previewXpath->query(
+                "//*[@data-historical-preview-register='{$surface}']//*[@data-historical-row-number='line']"
+            );
+            $this->assertNotFalse($numbers);
+            $this->assertSame(['1', '2'], array_map(
+                static fn (DOMElement $node): string => trim($node->textContent),
+                iterator_to_array($numbers)
+            ));
+        }
+
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'NUMBERED-DOCUMENT',
+        ]);
+        $this->makeLine($shop->id, $document->id);
+        $this->makeLine($shop->id, $document->id, [
+            'line_number' => 2,
+            'item_snapshot' => ['name' => 'Second archived item'],
+            'source_sku' => 'OLD-RING-2',
+        ]);
+
+        $documentPage = $this->actingAs($owner)->get(route('historical.documents.show', $document))->assertOk();
+        $documentXpath = $this->xpath($documentPage->getContent());
+
+        foreach (['lines-desktop', 'lines-mobile'] as $surface) {
+            $numbers = $documentXpath->query(
+                "//*[@data-historical-document-register='{$surface}']//*[@data-historical-row-number='line']"
+            );
+            $this->assertNotFalse($numbers);
+            $this->assertSame(['1', '2'], array_map(
+                static fn (DOMElement $node): string => trim($node->textContent),
+                iterator_to_array($numbers)
+            ));
+        }
+    }
+
+    public function test_batch_review_controls_have_mobile_tap_targets(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id);
+
+        TenantContext::runFor($shop->id, function () use ($shop, $batch): void {
+            $row = new HistoricalImportRow;
+            $row->forceFill([
+                'shop_id' => $shop->id,
+                'historical_import_batch_id' => $batch->id,
+                'source_sheet' => 'Sheet1',
+                'source_row_number' => 2,
+                'grouping_key' => 'duplicate-mobile-ui',
+                'original_payload' => ['InvoiceNo' => 'DUP-1'],
+                'normalized_payload' => ['original_document_number' => 'DUP-1'],
+                'severity' => HistoricalImportRow::SEVERITY_WARNING,
+                'validation_status' => HistoricalImportRow::VALIDATION_VALID,
+                'messages' => [[
+                    'severity' => HistoricalImportRow::SEVERITY_WARNING,
+                    'code' => HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
+                    'text' => 'Duplicate fixture.',
+                    'field' => null,
+                ]],
+            ])->save();
+        });
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.show', $batch))->assertOk();
+        $this->assertTapTargets($response->getContent());
+    }
+
+    public function test_batch_review_keeps_equivalent_staged_rows_and_document_links_across_breakpoints(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'BATCH-HIST-88',
+            'grand_total' => 7654.25,
+        ]);
+
+        TenantContext::runFor($shop->id, function () use ($shop, $batch): void {
+            $row = new HistoricalImportRow;
+            $row->forceFill([
+                'shop_id' => $shop->id,
+                'historical_import_batch_id' => $batch->id,
+                'source_sheet' => 'Legacy Sales',
+                'source_row_number' => 17,
+                'grouping_key' => 'review-mobile-row',
+                'original_payload' => ['InvoiceNo' => 'BATCH-HIST-88'],
+                'normalized_payload' => ['original_document_number' => 'BATCH-HIST-88'],
+                'severity' => HistoricalImportRow::SEVERITY_WARNING,
+                'validation_status' => HistoricalImportRow::VALIDATION_VALID,
+                'messages' => [[
+                    'severity' => HistoricalImportRow::SEVERITY_WARNING,
+                    'code' => 'review_fixture',
+                    'text' => 'Check the archived tax summary.',
+                    'field' => null,
+                ]],
+            ])->save();
+        });
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.show', $batch))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+
+        foreach (['staged-desktop', 'staged-mobile'] as $surface) {
+            $node = $this->firstNode($xpath, "//*[@data-historical-register='{$surface}']");
+            $this->assertStringContainsString('Legacy Sales', $node->textContent);
+            $this->assertStringContainsString('17', $node->textContent);
+            $this->assertStringContainsString('Check the archived tax summary.', $node->textContent);
+        }
+        foreach (['documents-desktop', 'documents-mobile'] as $surface) {
+            $node = $this->firstNode($xpath, "//*[@data-historical-batch-register='{$surface}']");
+            $this->assertStringContainsString('BATCH-HIST-88', $node->textContent);
+            $this->assertStringContainsString('7,654.25', $node->textContent);
+            $this->assertSame(1, $xpath->query(".//a[@href='".route('historical.documents.show', $document)."']", $node)?->length);
+        }
+
+        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-register='staged-desktop']", ['hidden', 'md:block']);
+        $this->assertNodesHaveClasses($xpath, "//*[@data-historical-register='staged-mobile']", ['md:hidden']);
+    }
+
+    public function test_file_import_review_uses_divided_summary_and_a_clear_publish_panel(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.show', $batch))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-batch-summary='import']",
+            ['overflow-hidden', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            '//*[@data-historical-import-metrics]',
+            ['grid', 'grid-cols-2', 'gap-3']
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            '//*[@data-historical-import-details]',
+            ['grid', 'divide-y', 'divide-slate-100']
+        );
+        $this->assertSame(
+            0,
+            $xpath->query('//*[@data-historical-import-details]//table')?->length
+        );
+        $this->assertNodesHaveClasses(
+            $xpath,
+            '//*[@data-historical-batch-actions]',
+            ['overflow-hidden', 'rounded-2xl', 'border', 'border-slate-200', 'bg-white']
+        );
+        $publishPanel = $this->firstNode($xpath, '//*[@data-historical-publish-panel]');
+        $this->assertStringContainsString('Publish batch', $publishPanel->textContent);
+        $this->assertStringContainsString('permanent', strtolower($publishPanel->textContent));
+    }
+
+    public function test_file_import_workflow_marks_upload_map_review_and_published_states(): void
+    {
+        Storage::fake('local');
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $upload = $this->actingAs($owner)->get(route('historical.upload.create'))->assertOk();
+        $mappingBatch = $this->uploadFile(
+            $owner,
+            $shop->id,
+            UploadedFile::fake()->createWithContent('workflow-state.csv', "InvoiceNo,GrandTotal\nINV-1,5000\n")
+        );
+        $mapping = $this->actingAs($owner)->get(route('historical.batches.map', $mappingBatch))->assertOk();
+        $reviewBatch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $review = $this->actingAs($owner)->get(route('historical.batches.show', $reviewBatch))->assertOk();
+        $publishedBatch = $this->makeBatch($shop->id, $owner->id, [
+            'label' => 'Published workflow batch',
+            'status' => HistoricalImportBatch::STATUS_PUBLISHED,
+            'published_at' => now(),
+            'warning_count' => 0,
+        ]);
+        $published = $this->actingAs($owner)->get(route('historical.batches.show', $publishedBatch))->assertOk();
+
+        foreach ([
+            [$upload, 'Upload'],
+            [$mapping, 'Map'],
+            [$review, 'Review'],
+            [$published, 'Publish'],
+        ] as [$page, $step]) {
+            $xpath = $this->xpath($page->getContent());
+            $current = $this->firstNode($xpath, "//*[@data-historical-workflow]//*[@aria-current='step']");
+
+            $this->assertStringContainsString($step, $current->textContent);
+            $this->assertNodesHaveClasses($xpath, '//*[@data-historical-workflow]', ['rounded-2xl', 'border', 'bg-white']);
+        }
+
+        $publishedXpath = $this->xpath($published->getContent());
+        $complete = $this->firstNode($publishedXpath, '//*[@data-historical-batch-complete]');
+        $this->assertStringContainsString('permanent evidence', strtolower($complete->textContent));
+        $this->assertSame(
+            0,
+            $publishedXpath->query("//form[@action='".route('historical.batches.publish', $publishedBatch)."']")?->length
+        );
+    }
+
+    public function test_manual_preview_uses_compact_review_hierarchy_before_the_editor(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'PREVIEW-POLISH-1',
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'customer_name' => 'Preview Customer',
+            'grand_total' => 9876.50,
+            'paid_amount' => 2500,
+            'outstanding_amount' => 7376.50,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'lines' => [[
+                'line_item_name' => 'Archive Gold Ring',
+                'line_quantity' => 2,
+                'line_net_weight' => 4.25,
+                'line_total' => 9876.50,
+            ]],
+        ])->assertOk();
+
+        $xpath = $this->xpath($preview->getContent());
+        $review = $this->firstNode($xpath, '//*[@data-historical-preview-review]');
+        $this->assertNodesHaveClasses($xpath, '//*[@data-historical-preview-review]', ['grid', 'gap-4']);
+
+        $summary = $this->firstNode($xpath, '//*[@data-historical-preview-review]/*[@data-historical-preview-summary]');
+        $this->assertStringContainsString('PREVIEW-POLISH-1', $summary->textContent);
+        $this->assertStringContainsString('15 Jun 2023', $summary->textContent);
+        $this->assertStringContainsString('9,876.50', $summary->textContent);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            '//*[@data-historical-preview-summary]//*[@data-historical-preview-grand-total]',
+            ['lg:w-64']
+        );
+
+        $this->firstNode($xpath, '//*[@data-historical-preview-review]/*[@data-historical-preview-messages]');
+        $layout = $this->firstNode($xpath, '//*[@data-historical-preview-review]/*[@data-historical-preview-layout]');
+        $layoutClasses = preg_split('/\s+/', trim($layout->getAttribute('class'))) ?: [];
+        foreach (['grid', 'grid-cols-1', 'gap-4', 'lg:grid-cols-2'] as $class) {
+            $this->assertContains($class, $layoutClasses);
+        }
+
+        foreach (['customer', 'tax-making'] as $card) {
+            $this->firstNode($xpath, "//*[@data-historical-preview-layout]/*[@data-historical-preview-card='{$card}']");
+        }
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//*[@data-historical-preview-layout]/*[@data-historical-preview-card='amounts']",
+            ['lg:col-span-2']
+        );
+
+        $this->firstNode(
+            $xpath,
+            '//*[@data-historical-preview-summary]/following-sibling::*[1][@data-historical-preview-messages]'
+        );
+        $this->firstNode(
+            $xpath,
+            '//*[@data-historical-preview-messages]/following-sibling::*[1][@data-historical-preview-layout]'
+        );
+        $this->firstNode(
+            $xpath,
+            '//*[@data-historical-preview-layout]/following-sibling::*[1][@data-historical-preview-items]'
+        );
+        $this->firstNode(
+            $xpath,
+            '//*[@data-historical-preview-items]/following-sibling::*[1][@data-historical-preview-editor-heading]'
+        );
+        $this->firstNode(
+            $xpath,
+            "//*[@data-historical-preview-editor-heading]/following-sibling::form[1][@data-historical-form='manual-preview']"
+        );
+        $this->assertSame('historical-preview-editor-title', $this->firstNode(
+            $xpath,
+            "//form[@data-historical-form='manual-preview']"
+        )->getAttribute('aria-labelledby'));
+        $this->assertStringContainsString('Edit submitted details', $review->textContent);
+    }
+
+    public function test_historical_entry_preview_and_document_share_a_saas_back_control(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'PREVIEW-BACK-1',
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'grand_total' => 1000,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+        ])->assertOk();
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'BACK-CONTROL-DOCUMENT',
+        ]);
+
+        $pages = [
+            $this->actingAs($owner)->get(route('historical.manual.create'))->assertOk(),
+            $preview,
+            $this->actingAs($owner)->get(route('historical.documents.show', $document))->assertOk(),
+        ];
+
+        foreach ($pages as $page) {
+            $xpath = $this->xpath($page->getContent());
+            $back = $this->firstNode(
+                $xpath,
+                "//a[@data-historical-back][@href='".route('historical.index')."']"
+            );
+
+            $this->assertSame('Back to historical sales', trim($back->textContent));
+            $this->assertNodesHaveClasses(
+                $xpath,
+                '//a[@data-historical-back]',
+                ['inline-flex', 'items-center', 'gap-2', 'min-h-[44px]', 'rounded-lg', 'border', 'border-slate-300', 'bg-white', 'px-4', 'text-sm', 'font-semibold']
+            );
+            $this->firstNode($xpath, "//a[@data-historical-back]//*[local-name()='svg'][@aria-hidden='true']");
+        }
+    }
+
+    public function test_draft_document_presents_customer_linking_as_a_clear_action_panel(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'CUSTOMER-LINK-PANEL',
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('historical.documents.show', $document))->assertOk();
+        $xpath = $this->xpath($response->getContent());
+        $panel = $this->firstNode($xpath, '//*[@data-historical-customer-link-panel]');
+
+        $this->assertStringContainsString('Customer link', $panel->textContent);
+        $this->assertStringContainsString('The historical snapshot never changes', $panel->textContent);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            '//*[@data-historical-customer-link-panel]',
+            ['overflow-hidden', 'rounded-xl', 'border', 'border-slate-200', 'bg-slate-50']
+        );
+        $this->firstNode(
+            $xpath,
+            '//*[@data-historical-document-layout]/following-sibling::*[1][@data-historical-customer-link-panel]'
+        );
+        $this->assertSame(0, $xpath->query('//*[@data-historical-document-layout]//*[@data-historical-customer-link-panel]')?->length);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            '//*[@data-historical-customer-link-actions]',
+            ['grid', 'gap-4', 'lg:grid-cols-2']
+        );
+
+        $linkForm = $this->firstNode($xpath, "//form[@data-historical-customer-link-action='by-id']");
+        $this->assertSame(route('historical.documents.link-customer', $document), $linkForm->getAttribute('action'));
+        $this->assertSame('post', strtolower($linkForm->getAttribute('method')));
+        $customerId = $this->firstNode($xpath, "//form[@data-historical-customer-link-action='by-id']//input[@id='doc_customer_id'][@name='customer_id'][@type='number']");
+        $this->assertContains('w-full', preg_split('/\s+/', trim($customerId->getAttribute('class'))) ?: []);
+        $this->assertContains('min-h-[44px]', preg_split('/\s+/', trim($customerId->getAttribute('class'))) ?: []);
+        $linkButton = $this->firstNode($xpath, "//form[@data-historical-customer-link-action='by-id']//button[@type='submit']");
+        $this->assertSame('Link customer by ID', trim($linkButton->textContent));
+        $this->assertContains('btn-primary', preg_split('/\s+/', trim($linkButton->getAttribute('class'))) ?: []);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//form[@data-historical-customer-link-action='by-id']",
+            ['rounded-xl', 'border', 'border-slate-200', 'bg-white', 'p-4']
+        );
+
+        $snapshotForm = $this->firstNode($xpath, "//form[@data-historical-customer-link-action='snapshot-only']");
+        $this->assertSame(route('historical.documents.link-customer', $document), $snapshotForm->getAttribute('action'));
+        $this->assertSame(0, $xpath->query("//form[@data-historical-customer-link-action='snapshot-only']//input[@name='customer_id']")?->length);
+        $snapshotButton = $this->firstNode($xpath, "//form[@data-historical-customer-link-action='snapshot-only']//button[@type='submit']");
+        $this->assertSame('Keep historical snapshot only', trim($snapshotButton->textContent));
+        $this->assertContains('min-h-[44px]', preg_split('/\s+/', trim($snapshotButton->getAttribute('class'))) ?: []);
+        $this->assertNodesHaveClasses(
+            $xpath,
+            "//form[@data-historical-customer-link-action='snapshot-only']",
+            ['rounded-xl', 'border', 'border-slate-200', 'bg-white', 'p-4']
+        );
+    }
+
+    public function test_preview_and_document_keep_reference_hierarchy_and_single_mutation_controls(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $preview = $this->actingAs($owner)->post(route('historical.manual.preview'), [
+            'original_document_number' => 'PREVIEW-HIST-9',
+            'document_date' => '2023-06-15',
+            'source_system' => 'Manual',
+            'customer_name' => 'Preview Customer',
+            'grand_total' => 9876.50,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'lines' => [[
+                'line_item_name' => 'Archive Gold Ring',
+                'line_quantity' => 2,
+                'line_net_weight' => 4.25,
+                'line_total' => 9876.50,
+            ]],
+        ])->assertOk();
+        $previewXpath = $this->xpath($preview->getContent());
+        $this->firstNode($previewXpath, '//*[@data-historical-preview-layout]');
+        foreach (['lines-desktop', 'lines-mobile'] as $surface) {
+            $node = $this->firstNode($previewXpath, "//*[@data-historical-preview-register='{$surface}']");
+            $this->assertStringContainsString('Archive Gold Ring', $node->textContent);
+            $this->assertStringContainsString('9,876.50', $node->textContent);
+        }
+        $previewForm = $this->firstNode($previewXpath, "//form[@data-historical-form='manual-preview']");
+        $this->assertSame(route('historical.manual.preview'), $previewForm->getAttribute('action'));
+        $this->assertSame('false', $previewForm->getAttribute('data-turbo'));
+        // The preview now offers four DISTINCT save intents, not one Confirm Save:
+        // draft, draft-and-new, and (for a publish-authorized user) save-and-publish
+        // and publish-and-new — Batch 3's fast-entry "& New" pair sits alongside the
+        // original two, never replacing them. The rule this assertion has always
+        // enforced still holds — no intent may be rendered twice, so there is never
+        // an ambiguous duplicate of the same control.
+        $storeAction = route('historical.manual.store');
+
+        foreach ([
+            \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT,
+            \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_DRAFT_AND_NEW,
+            \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH,
+            \App\Http\Requests\Historical\StoreManualHistoricalRequest::INTENT_PUBLISH_AND_NEW,
+        ] as $intent) {
+            $this->assertSame(
+                1,
+                $previewXpath->query("//button[@formaction='{$storeAction}'][@name='intent'][@value='{$intent}']")?->length,
+                "Expected exactly one '{$intent}' save control on the manual preview."
+            );
+        }
+
+        // …and every store control declares an intent, so none can fall back to a
+        // default the operator did not choose.
+        $this->assertSame(
+            4,
+            $previewXpath->query("//button[@formaction='{$storeAction}']")?->length
+        );
+
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $document = $this->makeDocument($shop->id, $batch->id, [
+            'original_document_number' => 'DOC-HIST-55',
+            'grand_total' => 9876.50,
+        ]);
+        $this->makeLine($shop->id, $document->id);
+
+        $documentPage = $this->actingAs($owner)->get(route('historical.documents.show', $document))->assertOk();
+        $documentXpath = $this->xpath($documentPage->getContent());
+        $layout = $this->firstNode($documentXpath, '//*[@data-historical-document-layout]');
+        $this->assertContains('lg:grid-cols-3', preg_split('/\s+/', trim($layout->getAttribute('class'))) ?: []);
+        $this->assertStringContainsString(HistoricalSalesDocument::RECORD_DISCLAIMER, $documentPage->getContent());
+        foreach (['lines-desktop', 'lines-mobile'] as $surface) {
+            $node = $this->firstNode($documentXpath, "//*[@data-historical-document-register='{$surface}']");
+            $this->assertStringContainsString('Archive Gold Ring', $node->textContent);
+            $this->assertStringContainsString('OLD-RING-1', $node->textContent);
+            $this->assertStringContainsString('9,876.50', $node->textContent);
+        }
+
+        $published = $this->makeDocument($shop->id, $batch->id, [
+            'status' => HistoricalSalesDocument::STATUS_PUBLISHED,
+            'original_document_number' => 'DOC-PUBLISHED-56',
+        ]);
+        $publishedPage = $this->actingAs($owner)->get(route('historical.documents.show', $published))->assertOk();
+        $publishedXpath = $this->xpath($publishedPage->getContent());
+        $this->assertSame(1, $publishedXpath->query("//form[@action='".route('historical.documents.void', $published)."']")?->length);
+        $this->assertSame(1, $publishedXpath->query("//form[@action='".route('historical.documents.supersede', $published)."']")?->length);
+    }
+
+    public function test_document_action_tap_targets_preserve_permission_and_terminal_gates(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->makeBatch($shop->id, $owner->id, ['warning_count' => 0]);
+        $published = $this->makeDocument($shop->id, $batch->id, [
+            'status' => HistoricalSalesDocument::STATUS_PUBLISHED,
+            'original_document_number' => 'MOBILE-PUBLISHED',
+        ]);
+
+        $publishedPage = $this->actingAs($owner)->get(route('historical.documents.show', $published))->assertOk();
+        $publishedPage->assertSee(route('historical.documents.void', $published), false);
+        $publishedPage->assertSee(route('historical.documents.supersede', $published), false);
+        $this->assertTapTargets($publishedPage->getContent());
+
+        $this->grantOnlyPermissions($owner, ['historical.view']);
+        $readOnlyPage = $this->actingAs($owner->fresh())->get(route('historical.documents.show', $published))->assertOk();
+        $readOnlyPage->assertDontSee(route('historical.documents.void', $published), false);
+        $readOnlyPage->assertDontSee(route('historical.documents.supersede', $published), false);
+
+        [$draftOwner, $draftShop] = $this->createRetailerTenant();
+        $draftBatch = $this->makeBatch($draftShop->id, $draftOwner->id, ['warning_count' => 0]);
+        $draft = $this->makeDocument($draftShop->id, $draftBatch->id, [
+            'original_document_number' => 'MOBILE-DRAFT',
+        ]);
+        $draftPage = $this->actingAs($draftOwner)->get(route('historical.documents.show', $draft))->assertOk();
+        $draftPage->assertDontSee(route('historical.documents.void', $draft), false);
+        $draftPage->assertDontSee(route('historical.documents.supersede', $draft), false);
+        $this->assertTapTargets($draftPage->getContent());
+    }
+}

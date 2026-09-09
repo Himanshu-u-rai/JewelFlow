@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CanonicalisesMobileNumbers;
 use App\Models\Platform\PlatformAdmin;
 use App\Models\Platform\ShopSubscription;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Shop extends Model
 {
+    use CanonicalisesMobileNumbers;
+
+    /** @var array<int, string> */
+    protected static array $mobileColumns = ['phone', 'owner_mobile', 'shop_whatsapp'];
+
     protected $fillable = [
         'name',
         'shop_type',

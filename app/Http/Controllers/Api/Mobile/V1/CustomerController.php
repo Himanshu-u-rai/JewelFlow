@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\Mobile\V1;
 use App\Http\Concerns\EmitsEntityTag;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Rules\IndianMobileRule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * Mobile v1 — Customer show/update with ETag concurrency control (M5).
@@ -42,7 +44,16 @@ class CustomerController extends Controller
         $data = $request->validate([
             'first_name' => ['sometimes', 'string', 'max:255'],
             'last_name'  => ['sometimes', 'nullable', 'string', 'max:255'],
-            'mobile'     => ['sometimes', 'nullable', 'string', 'max:32'],
+            // Was max:32 free text — the last write path into customers.mobile
+            // with no format rule at all. The unique rule goes with it: without
+            // one, a collision reached the (shop_id, mobile) index and came back
+            // as a 500 instead of a validation error the app can show.
+            'mobile'     => [
+                'sometimes', 'nullable', 'string', new IndianMobileRule(),
+                Rule::unique('customers', 'mobile')
+                    ->ignore($customer->id)
+                    ->where('shop_id', (int) $request->user()->shop_id),
+            ],
             'email'      => ['sometimes', 'nullable', 'email', 'max:255'],
             'address'    => ['sometimes', 'nullable', 'string', 'max:1000'],
             'notes'      => ['sometimes', 'nullable', 'string', 'max:2000'],

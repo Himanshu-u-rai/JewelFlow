@@ -2,7 +2,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
             <h2 class="text-xl font-semibold text-white">{{ $user->name ?? 'User' }}</h2>
-            <p class="text-sm text-slate-400">Mobile: {{ $user->mobile_number }}</p>
+            <p class="text-sm text-slate-400">Mobile: {{ \App\Support\Mobile::forDisplay($user->mobile_number) }}</p>
         </div>
         <a href="{{ route('admin.users.index') }}" class="admin-btn admin-btn-secondary">Back to Users</a>
     </div>
@@ -13,7 +13,7 @@
             <h3 class="font-semibold text-white mb-3">User Information</h3>
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between"><span class="text-slate-400">Name</span><span class="font-medium text-slate-100">{{ $user->name ?? '—' }}</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Mobile</span><span class="font-medium text-slate-100">{{ $user->mobile_number }}</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">Mobile</span><span class="font-medium text-slate-100">{{ \App\Support\Mobile::forDisplay($user->mobile_number) }}</span></div>
                 <div class="flex justify-between"><span class="text-slate-400">Email</span><span class="font-medium text-slate-100">{{ $user->email ?? '—' }}</span></div>
                 <div class="flex justify-between"><span class="text-slate-400">Shop</span><span class="font-medium text-slate-100">{{ $user->shop?->name ?? '—' }}</span></div>
                 <div class="flex justify-between"><span class="text-slate-400">Role</span><span class="font-medium text-slate-100">{{ $user->role?->display_name ?? '—' }}</span></div>

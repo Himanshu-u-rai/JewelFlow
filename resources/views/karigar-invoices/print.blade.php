@@ -39,7 +39,7 @@
             <h1>{{ $invoice->karigar?->name ?? 'Karigar' }}</h1>
             <div class="small">{{ $invoice->karigar?->address }}{{ $invoice->karigar?->city ? ', ' . $invoice->karigar->city : '' }}</div>
             <div class="small">
-                @if($invoice->karigar?->mobile) Mo: {{ $invoice->karigar->mobile }} @endif
+                @if($invoice->karigar?->mobile) Mo: {{ \App\Support\Mobile::forDisplay($invoice->karigar->mobile) }} @endif
                 @if($invoice->karigar?->gst_number) · GST: {{ $invoice->karigar->gst_number }} @endif
             </div>
         </div>

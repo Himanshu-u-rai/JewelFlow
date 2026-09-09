@@ -65,9 +65,9 @@
                                     {{ strtoupper(substr($member->name ?? $member->mobile_number, 0, 1)) }}
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-gray-900">{{ $member->name ?? $member->mobile_number }}</h3>
+                                    <h3 class="font-semibold text-gray-900">{{ $member->name ?? \App\Support\Mobile::forDisplay($member->mobile_number) }}</h3>
                                     @if($member->name)
-                                        <p class="text-sm text-gray-500">{{ $member->mobile_number }}</p>
+                                        <p class="text-sm text-gray-500">{{ \App\Support\Mobile::forDisplay($member->mobile_number) }}</p>
                                     @endif
                                 </div>
                             </div>

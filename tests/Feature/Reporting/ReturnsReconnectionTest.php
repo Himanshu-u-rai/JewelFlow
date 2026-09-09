@@ -70,10 +70,12 @@ class ReturnsReconnectionTest extends TestCase
         // actually invokes ShopPreferences::hasConfiguredReturnPolicy(). (The
         // earlier version had no preferences row and silently skipped it — which
         // is exactly how the live "Something Went Wrong" slipped past.)
-        DB::table('shop_preferences')->insert([
-            'shop_id' => $shop->id, 'return_policy_configured_at' => null,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
+        // updateOrInsert, not insert: the tenant factory already creates the row,
+        // and what this test needs is the unconfigured policy, not the insert.
+        DB::table('shop_preferences')->updateOrInsert(
+            ['shop_id' => $shop->id],
+            ['return_policy_configured_at' => null, 'updated_at' => now()],
+        );
 
         // Rendering inbox resolves all its internal route('returns.*') calls AND
         // the banner method; unconfigured policy → the warning banner shows.

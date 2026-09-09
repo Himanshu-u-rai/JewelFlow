@@ -88,17 +88,24 @@
                 position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
                 font-size: 15px; font-weight: 600; color: var(--rm-muted); pointer-events: none;
             }
-            .rate-modal input[type="number"] {
+            /* Selected by wrapper, NOT by input[type="number"]. These fields were
+               type="number" until the grouped-rate fix ("1,00,000") had to make
+               them type="text" — which silently dropped every rule below,
+               including the 28px left padding that clears the ₹ above, so the
+               currency glyph landed on top of the placeholder's first digit and
+               the modal read "₹.00". Styling keyed to a type attribute breaks the
+               moment the type is the thing you need to change. */
+            .rate-modal .rate-input-wrap input {
                 width: 100%; padding: 11px 13px 11px 28px;
                 border: 1px solid #d3d8e0; border-radius: 11px; background: #fdfbf7;
                 font: inherit; font-size: 16px; font-weight: 600; color: var(--rm-ink);
                 transition: border-color .16s ease, box-shadow .18s var(--rm-ease), background .16s ease;
             }
-            .rate-modal input[type="number"]::placeholder { color: #b3a892; font-weight: 400; }
+            .rate-modal .rate-input-wrap input::placeholder { color: #b3a892; font-weight: 400; }
             @media (hover: hover) and (pointer: fine) {
-                .rate-modal input[type="number"]:hover { border-color: #b8c0cc; }
+                .rate-modal .rate-input-wrap input:hover { border-color: #b8c0cc; }
             }
-            .rate-modal input[type="number"]:focus {
+            .rate-modal .rate-input-wrap input:focus {
                 outline: none; border-color: #f59e0b; background: #fff;
                 box-shadow: 0 0 0 3px rgba(245,158,11,0.18);
             }
@@ -151,7 +158,7 @@
 
             @media (prefers-reduced-motion: reduce) {
                 .rate-modal__backdrop, .rate-modal__panel { animation: none; opacity: 1; transform: none; }
-                .rate-modal__cta, .rate-modal input[type="number"] { transition: none; }
+                .rate-modal__cta, .rate-modal .rate-input-wrap input { transition: none; }
             }
         </style>
     </head>
@@ -218,11 +225,15 @@
                                 <label for="rm-gold">{{ __('24K Gold Price / Gram') }}</label>
                                 <div class="rate-input-wrap">
                                     <span class="cur">₹</span>
+                                    {{-- text, not number: a number input silently discards any value the
+                                         browser cannot parse, so "1,00,000" reaches value="" and `required`
+                                         blocks the save with "Please fill in this field" — the grouped rate
+                                         never reaches normalizeRateInput(). step/min are dropped with it;
+                                         the controller already enforces min/max/format, and two copies of
+                                         one rule that disagree is how this got missed. --}}
                                     <input
                                         id="rm-gold"
-                                        type="number"
-                                        step="0.0001"
-                                        min="0.0001"
+                                        type="text"
                                         inputmode="decimal"
                                         autocomplete="off"
                                         placeholder="0.00"
@@ -238,9 +249,7 @@
                                     <span class="cur">₹</span>
                                     <input
                                         id="rm-silver"
-                                        type="number"
-                                        step="0.0001"
-                                        min="0.0001"
+                                        type="text"
                                         inputmode="decimal"
                                         autocomplete="off"
                                         placeholder="0.00"

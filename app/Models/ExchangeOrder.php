@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\ImmutableLedger;
+use App\Services\BusinessIdentifierService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -57,6 +58,30 @@ class ExchangeOrder extends Model
         'cancelled_at' => 'datetime',
         'approved_at'  => 'datetime',
     ];
+
+    /**
+     * An exchange cannot borrow the invoice's or the return's number: both
+     * return_order_id and new_invoice_id are nullable, so a draft exchange
+     * would have no identity at all until it settles. It gets its own
+     * per-shop counter. Not fillable — assigned here, never from request
+     * input; a Postgres BEFORE INSERT trigger covers raw DB::table() writes.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $exchange): void {
+            if (empty($exchange->exchange_number) && !empty($exchange->shop_id)) {
+                $exchange->exchange_number = BusinessIdentifierService::nextCounter(
+                    (int) $exchange->shop_id,
+                    BusinessIdentifierService::KEY_EXCHANGE
+                );
+            }
+        });
+    }
+
+    public function getDisplayNumberAttribute(): string
+    {
+        return 'EXC-' . str_pad((string) $this->exchange_number, 3, '0', STR_PAD_LEFT);
+    }
 
     public function returnOrder(): BelongsTo
     {

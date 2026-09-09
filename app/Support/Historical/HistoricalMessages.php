@@ -120,6 +120,35 @@ final class HistoricalMessages
         return $this->messages === [];
     }
 
+    /**
+     * A stable fingerprint of exactly the warnings in this set, or null when there
+     * are none to acknowledge.
+     *
+     * This is what makes "I have read the warnings" honest across an edit. The
+     * operator acknowledges a digest; publication recomputes the warnings from the
+     * re-submitted raw input and recomputes the digest. If the bill changed enough
+     * to change its warnings, the digests differ and the acknowledgement is refused
+     * rather than silently carried over from a screen that showed something else.
+     *
+     * Only code+text+field go in: severity is fixed by the filter, and ordering is
+     * normalised away so a reordered-but-identical warning set stays acknowledged.
+     */
+    public function warningDigest(): ?string
+    {
+        $warnings = array_map(
+            static fn (array $m): string => $m['code'] . '|' . $m['text'] . '|' . ($m['field'] ?? ''),
+            $this->ofSeverity(self::WARNING)
+        );
+
+        if ($warnings === []) {
+            return null;
+        }
+
+        sort($warnings);
+
+        return hash('sha256', implode("\n", $warnings));
+    }
+
     /** @param  array<int, array<string, mixed>>|null  $messages */
     public static function fromArray(?array $messages): self
     {

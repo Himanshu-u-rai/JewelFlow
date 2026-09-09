@@ -8,6 +8,7 @@ use App\Services\Reporting\Dataset\ReportRequest;
 use App\Services\Reporting\Definition\ExportFormat;
 use App\Services\Reporting\Definition\ReportProfile;
 use App\Services\Reporting\Definition\ReportRegistry;
+use App\Services\Reporting\FilterControlResolver;
 use App\Services\Reporting\Filters\DatePreset;
 use App\Services\Reporting\Filters\FilterResolver;
 use App\Services\Reporting\ProvenanceStamp;
@@ -16,6 +17,7 @@ use App\Services\Reporting\WatermarkPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * Generic interactive screen for ANY registered spine report (frozen §3.1) —
@@ -33,8 +35,8 @@ class ReportScreenController extends Controller
         private readonly WatermarkPolicy $watermarks,
         private readonly ProvenanceStamp $provenance,
         private readonly ScreenRenderer $screen,
-    ) {
-    }
+        private readonly FilterControlResolver $filterControlResolver,
+    ) {}
 
     public function show(Request $request, string $report): View
     {
@@ -44,6 +46,25 @@ class ReportScreenController extends Controller
         abort_unless($user !== null && $user->can($definition->permissions->effectiveViewGate()), 403);
         if ($definition->permissions->familyGate !== null) {
             abort_unless($user->can($definition->permissions->familyGate), 403);
+        }
+
+        // Closed vocabulary (owner-agreed reporting semantics) — an explicit
+        // unsupported sales_source is rejected outright, never silently
+        // relabelled to `live` (PresetController::validatePayload() convention).
+        if ($request->filled('sales_source')) {
+            $request->validate([
+                'sales_source' => ['string', Rule::in(['live', 'historical', 'combined'])],
+            ]);
+        }
+
+        // Mode-dependent gate: HISTORICAL/COMBINED require historical.view in
+        // addition to the checks above; LIVE (default or explicit) does not —
+        // a direct ?sales_source=historical URL cannot bypass this, since it
+        // is checked here before the dataset is built, from the same
+        // validated value the dataset itself consumes.
+        $requiredModeGate = $definition->permissions->gateForSalesSource($request->input('sales_source'));
+        if ($requiredModeGate !== null) {
+            abort_unless($user->can($requiredModeGate), 403);
         }
 
         $isRigid = $definition->classification->isRigid();
@@ -57,7 +78,7 @@ class ReportScreenController extends Controller
 
         $filterValues = ['period' => ['from' => $period->from, 'to' => $period->to]];
         $applied = ['Period' => $period->label];
-        foreach (['operator', 'customer', 'status', 'metal_type', 'payment_mode', 'cash_type', 'cash_source'] as $key) {
+        foreach (['operator', 'customer', 'status', 'metal_type', 'payment_mode', 'cash_type', 'cash_source', 'reference', 'sales_source'] as $key) {
             if ($request->filled($key)) {
                 $filterValues[$key] = $request->input($key);
                 $applied[ucfirst(str_replace('_', ' ', $key))] = (string) $request->input($key);
@@ -100,98 +121,8 @@ class ReportScreenController extends Controller
             'profile' => $profile,
             'isRigid' => $isRigid,
             'canExportSensitive' => $canSensitive,
-            'filterControls' => $this->filterControls($definition, (int) $user->shop_id, $request),
+            'filterControls' => $this->filterControlResolver->forReport($definition, (int) $user->shop_id, $request),
         ]);
-    }
-
-    /**
-     * Build the renderable (non-date) filter dropdowns a report declared. The
-     * framework supports per-report filters at the data layer; this surfaces
-     * them on the screen as <select>s with their option lists + current value.
-     * Date (Period/AsOf) and reserved hooks are excluded — date has its own
-     * preset control. Options are read-only lookups.
-     *
-     * @return array<int, array{key:string,label:string,options:array<int,array{value:string,label:string}>,current:string}>
-     */
-    private function filterControls($definition, int $shopId, Request $request): array
-    {
-        $out = [];
-        foreach ($definition->filters as $filter) {
-            $key = $filter->key;
-            if (! $filter->isRendered() || $key->supportsFyPresets()) {
-                continue; // skip date-style + reserved-hook filters
-            }
-
-            $options = $this->filterOptions($key, $shopId);
-            if ($options === null) {
-                continue; // no option provider for this key yet — don't render a broken control
-            }
-
-            $out[] = [
-                'key'     => $key->value,
-                'label'   => \Illuminate\Support\Str::headline(str_replace(['cash_', '_'], ['', ' '], $key->value)),
-                'options' => $options,
-                'current' => (string) $request->input($key->value, ''),
-            ];
-        }
-
-        return $out;
-    }
-
-    /**
-     * Option list for a renderable filter key, or null if unsupported.
-     *
-     * @return array<int, array{value:string,label:string}>|null
-     */
-    private function filterOptions(\App\Services\Reporting\Definition\FilterKey $key, int $shopId): ?array
-    {
-        return match ($key) {
-            \App\Services\Reporting\Definition\FilterKey::PaymentMode => $this->staticOptions([
-                'cash' => 'Cash', 'upi' => 'UPI', 'bank' => 'Bank', 'card' => 'Card', 'wallet' => 'Wallet', 'other' => 'Other',
-            ]),
-            \App\Services\Reporting\Definition\FilterKey::CashType => $this->staticOptions([
-                'in' => 'Money in', 'out' => 'Money out',
-            ]),
-            \App\Services\Reporting\Definition\FilterKey::CashSource => $this->distinctCashSources($shopId),
-            \App\Services\Reporting\Definition\FilterKey::Operator => $this->shopOperators($shopId),
-            default => null,
-        };
-    }
-
-    /** @param array<string,string> $map */
-    private function staticOptions(array $map): array
-    {
-        $out = [];
-        foreach ($map as $value => $label) {
-            $out[] = ['value' => $value, 'label' => $label];
-        }
-
-        return $out;
-    }
-
-    /** Distinct source_type values present in this shop's cash ledger. */
-    private function distinctCashSources(int $shopId): array
-    {
-        return \Illuminate\Support\Facades\DB::table('cash_transactions')
-            ->where('shop_id', $shopId)
-            ->whereNotNull('source_type')
-            ->distinct()
-            ->orderBy('source_type')
-            ->pluck('source_type')
-            ->map(fn ($s) => ['value' => (string) $s, 'label' => \Illuminate\Support\Str::headline(str_replace('_', ' ', (string) $s))])
-            ->values()
-            ->all();
-    }
-
-    /** Active users in this shop (operator filter). */
-    private function shopOperators(int $shopId): array
-    {
-        return \App\Models\User::where('shop_id', $shopId)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn ($u) => ['value' => (string) $u->id, 'label' => (string) $u->name])
-            ->values()
-            ->all();
     }
 
     /**

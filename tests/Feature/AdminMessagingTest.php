@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsurePlatformAdminMfa;
 use App\Models\Platform\PlatformAnnouncement;
 use App\Support\ShopEdition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,12 +31,17 @@ class AdminMessagingTest extends TestCase
     }
 
     // ── Admin CRUD ─────────────────────────────────────────────
+    // Every admin POST/PUT below carries EnsurePlatformAdminMfa::SESSION_PASSED.
+    // Without it the mfa gate redirects to /admin/mfa and the controller never
+    // runs — the request "succeeds" as a 302, so assertRedirect() passes while
+    // nothing is written. The MFA gate itself is covered by PlatformAdminMfaTest.
 
     public function test_admin_can_create_a_banner(): void
     {
         $admin = $this->createPlatformAdmin();
 
         $this->actingAs($admin, 'platform_admin')
+            ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
             ->post('/admin/announcements', [
                 'title' => 'Deal', 'body' => 'Big sale', 'type' => 'banner',
                 'target' => 'all', 'realm' => 'dhiran',
@@ -56,6 +62,7 @@ class AdminMessagingTest extends TestCase
         $banner = $this->banner(['title' => 'Old']);
 
         $this->actingAs($admin, 'platform_admin')
+            ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
             ->put("/admin/announcements/{$banner->id}", [
                 'title' => 'New Title', 'body' => 'Updated body', 'type' => 'banner',
                 'target' => 'all', 'send_email' => false,
@@ -70,6 +77,7 @@ class AdminMessagingTest extends TestCase
         $admin = $this->createPlatformAdmin();
 
         $this->actingAs($admin, 'platform_admin')
+            ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
             ->post('/admin/announcements', [
                 'title' => 'Custom heading', 'body' => 'Custom body', 'type' => 'cross_promo',
                 'target' => 'all', 'realm' => 'erp',
@@ -84,6 +92,7 @@ class AdminMessagingTest extends TestCase
         $admin = $this->createPlatformAdmin();
 
         $this->actingAs($admin, 'platform_admin')
+            ->withSession([EnsurePlatformAdminMfa::SESSION_PASSED => true])
             ->post('/admin/announcements', [
                 'title' => 'X', 'body' => 'Y', 'type' => 'nonsense', 'target' => 'all', 'send_email' => false,
             ])->assertSessionHasErrors('type');
@@ -127,6 +136,11 @@ class AdminMessagingTest extends TestCase
     public function test_cross_promo_override_replaces_default_toast_text(): void
     {
         // An ERP-surface cross_promo override changes the Dhiran-promo toast text.
+        // The toast only renders once Realm::dhiranRegisterUrl() resolves, and it
+        // derives from the request host only in production/local — so under
+        // `testing` the documented config override stands in for host derivation.
+        config(['platform.cross_promotion.dhiran_register_url' => 'https://dhiran.jewelflows.com/register']);
+
         PlatformAnnouncement::create([
             'title' => 'Special gold-loan launch', 'body' => 'Custom promo body',
             'cta_label' => 'Try Dhiran now', 'cta_url' => 'https://dhiran.jewelflows.com/register',

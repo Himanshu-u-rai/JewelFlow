@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -21,7 +22,7 @@ class SettingsTurboFrameTest extends TestCase
         $this->blade = file_get_contents(resource_path('views/settings.blade.php'));
     }
 
-    /** @dataProvider redirectingForms */
+    #[DataProvider('redirectingForms')]
     public function test_redirecting_form_has_turbo_top(string $action): void
     {
         // The form's opening tag (action + data-turbo-frame="_top") must co-occur.
@@ -51,9 +52,8 @@ class SettingsTurboFrameTest extends TestCase
      * frame. Its banner-upload + CMS page forms all redirect to a full page, so
      * each must carry data-turbo-frame="_top" — otherwise the hero-image upload
      * and page create/update/delete yield Turbo "Content missing".
-     *
-     * @dataProvider websiteTabForms
      */
+    #[DataProvider('websiteTabForms')]
     public function test_website_tab_redirecting_form_has_turbo_top(string $action): void
     {
         $partial = file_get_contents(resource_path('views/partials/settings/website-tab.blade.php'));

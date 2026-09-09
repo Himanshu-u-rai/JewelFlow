@@ -908,7 +908,7 @@
                                                 :class="customerId === '{{ $c->id }}' ? 'job-combobox-option-selected' : ''"
                                                 @click="onCustomerSelect('{{ $c->id }}', @js($custLabel))">
                                             {{ trim($c->first_name . ' ' . $c->last_name) ?: 'Customer #' . $c->id }}
-                                            @if($c->mobile)<span class="job-combobox-meta">{{ $c->mobile }}</span>@endif
+                                            @if($c->mobile)<span class="job-combobox-meta">{{ \App\Support\Mobile::forDisplay($c->mobile) }}</span>@endif
                                         </button>
                                     @endforeach
                                     </div>

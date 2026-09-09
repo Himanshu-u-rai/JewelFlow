@@ -48,7 +48,7 @@
                 </a>
             @elseif($returnOrder->exchangeOrder)
                 <a href="{{ route('exchanges.show', $returnOrder->exchangeOrder) }}" class="returns-show-header-action returns-show-header-action--exchange">
-                    Part of exchange #{{ $returnOrder->exchangeOrder->id }}
+                    Part of exchange {{ $returnOrder->exchangeOrder->display_number }}
                 </a>
             @endif
         </x-slot:actions>
@@ -68,7 +68,7 @@
                     </a>
                 @elseif($returnOrder->exchangeOrder)
                     <a href="{{ route('exchanges.show', $returnOrder->exchangeOrder) }}" class="returns-show-mobile-action returns-show-mobile-action--primary">
-                        Exchange #{{ $returnOrder->exchangeOrder->id }}
+                        View Exchange {{ $returnOrder->exchangeOrder->display_number }}
                     </a>
                 @endif
             </section>
@@ -90,7 +90,7 @@
             <article class="returns-show-stat">
                 <span>Customer</span>
                 <strong>{{ $customerName ?: '-' }}</strong>
-                <small>{{ $customer?->mobile ?: 'No mobile number' }}</small>
+                <small>{{ \App\Support\Mobile::forDisplay($customer?->mobile) ?: 'No mobile number' }}</small>
             </article>
         </section>
 

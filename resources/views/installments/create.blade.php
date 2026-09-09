@@ -54,7 +54,7 @@
 
                         <label class="emi-create-field">
                             <span>Invoice</span>
-                            <input type="text" value="POS EMI Draft #{{ $posInvoice?->id }} · ₹{{ number_format((float) ($posInvoice?->total ?? 0), 2) }}" readonly disabled>
+                            <input type="text" value="POS EMI Draft {{ $posInvoice?->invoice_number }} · ₹{{ number_format((float) ($posInvoice?->total ?? 0), 2) }}" readonly disabled>
                             <input type="hidden" name="invoice_id" value="{{ $posInvoice?->id }}">
                             <small>This EMI is for the bill you just created at the counter.</small>
                         </label>
@@ -70,7 +70,7 @@
                                 <option value="">Select customer</option>
                                 @foreach($customers as $customer)
                                     <option value="{{ $customer->id }}">
-                                        {{ $customer->name }} ({{ $customer->mobile }})
+                                        {{ $customer->name }} ({{ \App\Support\Mobile::forDisplay($customer->mobile) }})
                                     </option>
                                 @endforeach
                             </select>

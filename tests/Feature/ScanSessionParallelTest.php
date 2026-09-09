@@ -13,10 +13,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 class ScanSessionParallelTest extends TestCase
 {
+    use CreatesTestTenant;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -138,6 +140,11 @@ class ScanSessionParallelTest extends TestCase
             'password' => Hash::make('password'),
             'is_active' => true,
         ]);
+
+        // This shop stands in for an operational one. Without the opening-setup
+        // stamp, EnsureOpeningSetupCompleted answers every scan-session route
+        // with 403 opening_setup_required before authorization is ever reached.
+        $this->markShopOpeningSetupComplete($shop->id);
 
         return [$user, $shop];
     }

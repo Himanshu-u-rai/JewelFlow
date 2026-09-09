@@ -6,6 +6,7 @@ use App\Http\Concerns\RespondsDynamically;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\AuditLog;
+use App\Rules\IndianMobileRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -56,7 +57,7 @@ class StaffController extends Controller
             // mobile_number, and login resolves users by mobile across all
             // shops). The check MUST be global — a per-shop check let a globally
             // duplicate mobile pass validation and then 500 on the DB constraint.
-            'mobile_number' => ['required', 'digits:10', Rule::unique('users', 'mobile_number')],
+            'mobile_number' => ['required', new IndianMobileRule(), Rule::unique('users', 'mobile_number')],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->where('shop_id', $shopId)],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
             'role_id' => [
@@ -148,7 +149,7 @@ class StaffController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             // Global uniqueness — see store(): mobile is the global login identity.
-            'mobile_number' => ['required', 'digits:10', Rule::unique('users', 'mobile_number')->ignore($staff->id)],
+            'mobile_number' => ['required', new IndianMobileRule(), Rule::unique('users', 'mobile_number')->ignore($staff->id)],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->where('shop_id', $shopId)->ignore($staff->id)],
             'role_id' => [
                 'required',

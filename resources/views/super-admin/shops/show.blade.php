@@ -3,7 +3,7 @@
         <div>
             <h2 class="text-xl font-semibold text-white">{{ $shop->name }}</h2>
             <div class="flex flex-wrap items-center gap-2 mt-1 text-sm text-slate-400">
-                <span>Owner Mobile: {{ $shop->owner_mobile ?? 'N/A' }}</span>
+                <span>Owner Mobile: {{ \App\Support\Mobile::forDisplay($shop->owner_mobile) ?: 'N/A' }}</span>
                 @forelse(($activeEditions ?? []) as $ed)
                     @php
                         $cls = match($ed) {
@@ -84,7 +84,7 @@
                     </div>
                     <div class="flex justify-between gap-3">
                         <dt class="text-slate-400 shrink-0">Mobile</dt>
-                        <dd class="text-slate-100 text-right break-all">{{ $shop->owner_mobile ?: '—' }}</dd>
+                        <dd class="text-slate-100 text-right break-all">{{ \App\Support\Mobile::forDisplay($shop->owner_mobile) ?: '—' }}</dd>
                     </div>
                     <div class="flex justify-between gap-3">
                         <dt class="text-slate-400 shrink-0">Email</dt>
@@ -508,7 +508,7 @@
                             @endphp
                             <td class="px-4 py-3 admin-table-index">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3">{{ $userFullName !== '' ? $userFullName : '-' }}</td>
-                            <td class="px-4 py-3">{{ $user->mobile_number }}</td>
+                            <td class="px-4 py-3">{{ \App\Support\Mobile::forDisplay($user->mobile_number) }}</td>
                             <td class="px-4 py-3">{{ $user->role?->display_name ?? '-' }}</td>
                             <td class="px-4 py-2">
                                 <span class="admin-badge {{ $user->is_active ? 'admin-badge-emerald' : 'admin-badge-rose' }}">

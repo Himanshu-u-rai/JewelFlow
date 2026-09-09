@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\IndianMobileRule;
+use App\Support\Csv;
 use App\Models\Shop;
 use App\Models\Role;
 use App\Models\Permission;
@@ -372,8 +374,8 @@ class SettingsController extends Controller
 
         $rules = [
             'name'                      => 'required|string|max:255',
-            'phone'                     => 'required|string|digits:10',
-            'shop_whatsapp'             => 'nullable|string|digits:10',
+            'phone'                     => ['required', 'string', new IndianMobileRule()],
+            'shop_whatsapp'             => ['nullable', 'string', new IndianMobileRule()],
             'shop_email'                => 'nullable|email|max:100',
             'established_year'          => 'nullable|integer|min:1900|max:' . now()->year,
             'shop_registration_number'  => 'nullable|string|max:100',
@@ -387,7 +389,7 @@ class SettingsController extends Controller
             'pincode'                   => 'required|string|digits:6',
             'owner_first_name'          => 'required|string|max:255',
             'owner_last_name'           => 'required|string|max:255',
-            'owner_mobile'              => 'required|string|digits:10',
+            'owner_mobile'              => ['required', 'string', new IndianMobileRule()],
             'owner_email'               => 'nullable|email|max:255',
             // gst_number + gst_rate moved to the dedicated GST & Tax tab (updateGst).
         ];
@@ -1013,12 +1015,12 @@ class SettingsController extends Controller
             $out = fopen('php://output', 'w');
             // UTF-8 BOM so Excel renders ₹ and accented names correctly.
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Date & Time', 'User', 'Action', 'What happened', 'Sensitive', 'Entity', 'Verification hash']);
+            Csv::put($out, ['Date & Time', 'User', 'Action', 'What happened', 'Sensitive', 'Entity', 'Verification hash']);
 
             // chunk to keep memory flat on large logs
             $build()->chunk(500, function ($rows) use ($out): void {
                 foreach ($rows as $log) {
-                    fputcsv($out, [
+                    Csv::put($out, [
                         optional($log->created_at)->format('Y-m-d H:i:s'),
                         $log->user->name ?? $log->user->mobile_number ?? 'System',
                         $log->action,

@@ -223,7 +223,7 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="customers-table-contact text-sm text-slate-900">{{ $customer->mobile }}</div>
+                                    <div class="customers-table-contact text-sm text-slate-900">{{ \App\Support\Mobile::forDisplay($customer->mobile) }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right">
                                     @if(!$isRetailer)
@@ -334,7 +334,7 @@
                                             <span class="ml-1 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">Archived</span>
                                         @endunless
                                     </span>
-                                    <span class="customers-mobile-card__sub">{{ $customer->mobile ?: 'No mobile' }}</span>
+                                    <span class="customers-mobile-card__sub">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: 'No mobile' }}</span>
                                 </span>
                             </div>
                             @if(!$isRetailer)
@@ -494,7 +494,7 @@
                                 <td class="px-6 py-4 text-sm font-semibold text-slate-900">
                                     <a href="{{ route('customers.show', $lCustomer) }}" class="hover:text-amber-700 transition-colors">{{ $lCustomer->name }}</a>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-slate-600">{{ $lCustomer->mobile }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-600">{{ \App\Support\Mobile::forDisplay($lCustomer->mobile) }}</td>
                                 <td class="px-6 py-4 text-sm text-right">
                                     <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 tabular-nums">
                                         {{ number_format($lCustomer->loyalty_points) }} pts
@@ -526,7 +526,7 @@
                             <div class="customers-mobile-card__top">
                                 <div>
                                     <span class="customers-mobile-card__title">{{ $lCustomer->name }}</span>
-                                    <span class="customers-mobile-card__sub">{{ $lCustomer->mobile ?: 'No mobile' }}</span>
+                                    <span class="customers-mobile-card__sub">{{ \App\Support\Mobile::forDisplay($lCustomer->mobile) ?: 'No mobile' }}</span>
                                 </div>
                                 <span class="customers-mobile-pill">{{ number_format($lCustomer->loyalty_points) }} pts</span>
                             </div>

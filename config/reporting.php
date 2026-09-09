@@ -15,18 +15,41 @@ return [
     |--------------------------------------------------------------------------
     | Path to the headless Chromium/Chrome binary used to render the shared
     | report-document HTML print template to PDF (frozen §4.1). When the env
-    | override is absent we glob the Playwright cache for the bundled binary;
-    | if nothing is found this resolves to null and PdfRenderer throws a clear
-    | exception (tests skip).
+    | override is absent we glob the Playwright cache for the bundled binary,
+    | then fall back to a system Chrome; if nothing is found this resolves to
+    | null and PdfRenderer throws a clear exception.
+    |
+    | The cache is searched under the running user's HOME as well as /root:
+    | the server runs as root, but a developer box or CI runner does not, and
+    | hardcoding /root there resolved to null even with Chrome installed —
+    | which surfaced as a dozen failing report tests rather than a config gap.
     */
     'chromium_path' => env('REPORTING_CHROMIUM_PATH') ?: (static function (): ?string {
-        $matches = glob('/root/.cache/ms-playwright/chromium-*/chrome-linux64/chrome');
-        if ($matches === false || $matches === []) {
-            return null;
+        $homes = ['/root'];
+        $home = getenv('HOME');
+
+        if (is_string($home) && $home !== '' && $home !== '/root') {
+            $homes[] = $home;
         }
-        // Prefer the highest build number (last when sorted).
-        sort($matches);
-        return end($matches) ?: null;
+
+        foreach ($homes as $candidateHome) {
+            $matches = glob($candidateHome . '/.cache/ms-playwright/chromium-*/chrome-linux64/chrome') ?: [];
+
+            if ($matches !== []) {
+                // Prefer the highest build number (last when sorted).
+                sort($matches);
+
+                return end($matches) ?: null;
+            }
+        }
+
+        foreach (['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'] as $binary) {
+            if (is_executable($binary)) {
+                return $binary;
+            }
+        }
+
+        return null;
     })(),
 
     /*

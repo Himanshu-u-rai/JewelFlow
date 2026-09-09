@@ -24,6 +24,10 @@ use LogicException;
  */
 class HistoricalDocumentLifecycleService
 {
+    public function __construct(
+        private readonly HistoricalOpeningBalanceEvaluator $openingBalance,
+    ) {}
+
     /**
      * Atomic publish claim. Returns false when another request already took it,
      * so the caller stops instead of double-publishing.
@@ -102,6 +106,19 @@ class HistoricalDocumentLifecycleService
                     ->where('historical_import_batch_id', $batch->getKey())
                     ->where('status', HistoricalSalesDocument::STATUS_DRAFT)
                     ->get();
+
+                // Publish-time recheck: the batch-level gate already looked at this,
+                // but opening balances can move between "generate preview" and this
+                // claimed transaction. Never freeze a HIGH, unresolved overlap.
+                foreach ($documents as $document) {
+                    if ($this->openingBalance->evaluate($document) === HistoricalOpeningBalanceEvaluator::HIGH
+                        && $document->opening_balance_resolution === null) {
+                        throw new LogicException(sprintf(
+                            'Historical document #%d has an unresolved HIGH opening-balance overlap and cannot be published.',
+                            $document->id
+                        ));
+                    }
+                }
 
                 foreach ($documents as $document) {
                     $document->forceFill([
@@ -243,11 +260,98 @@ class HistoricalDocumentLifecycleService
      * Manual, operator-confirmed customer linking (R1 never auto-links on fuzzy
      * confidence). The immutable `customer_snapshot` is untouched either way, so
      * unlinking never loses what the original bill said.
+     *
+     * Draft-only: once a document is published/voided/superseded its customer
+     * link is frozen along with everything else it represents as evidence — the
+     * DB trigger's allowed_cols still permits this column post-publish (it
+     * predates this rule), so the guard has to live here.
      */
     public function linkCustomer(HistoricalSalesDocument $document, ?int $customerId): HistoricalSalesDocument
     {
+        if ($document->status !== HistoricalSalesDocument::STATUS_DRAFT) {
+            throw new LogicException(sprintf(
+                'Historical document %d is %s and its customer link is frozen.',
+                $document->id,
+                $document->status
+            ));
+        }
+
+        if ($customerId !== null && $customerId !== $document->customer_id) {
+            $customer = \App\Models\Customer::withoutTenant()
+                ->where('shop_id', $document->shop_id)
+                ->find($customerId);
+
+            if ($customer === null) {
+                throw new LogicException('The selected customer was not found for this shop.');
+            }
+
+            if ($customer->isArchived()) {
+                throw new LogicException('This customer is archived. Reactivate the customer before linking.');
+            }
+        }
+
         return HistoricalLifecycle::run(function () use ($document, $customerId): HistoricalSalesDocument {
-            $document->forceFill(['customer_id' => $customerId])->save();
+            $document->forceFill(['customer_id' => $customerId]);
+
+            // The overlap question is tied to a specific customer's opening
+            // balance. A different (or no) customer makes any prior overlap
+            // finding and its resolution stale, so both reset here — the
+            // publish-time recheck re-evaluates from scratch regardless.
+            $overlaps = $customerId !== null && $this->openingBalance->overlaps($document);
+            $document->forceFill([
+                'opening_balance_overlap'      => $overlaps,
+                'opening_balance_resolution'   => null,
+                'opening_balance_resolved_by'  => null,
+                'opening_balance_resolved_at'  => null,
+            ])->save();
+
+            return $document->refresh();
+        });
+    }
+
+    /**
+     * The operator's explicit, metadata-only answer to a detected opening-balance
+     * overlap. It never changes `opening_balance_overlap`, any money field or any
+     * balance/ledger — it only records which of the two honest answers applies,
+     * so a HIGH overlap can clear the publish gate instead of being silently
+     * bypassed. Draft-only, same as the customer link it accompanies.
+     *
+     * Severity is re-evaluated live, right before the write — never trusts the
+     * stored `opening_balance_overlap` boolean, which may be stale. A document
+     * with no overlap (NONE) has nothing to resolve; only HIGH and MEDIUM are
+     * eligible, matching the DB CHECK added in 2026_09_17_000200 that rejects a
+     * resolution on a row where `opening_balance_overlap` is not true.
+     */
+    public function resolveOpeningBalance(HistoricalSalesDocument $document, string $resolution, int $actorId): HistoricalSalesDocument
+    {
+        if ($document->status !== HistoricalSalesDocument::STATUS_DRAFT) {
+            throw new LogicException(sprintf(
+                'Historical document %d is %s and its opening-balance resolution is frozen.',
+                $document->id,
+                $document->status
+            ));
+        }
+
+        if (! in_array($resolution, [
+            HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_INCLUDED,
+            HistoricalSalesDocument::OPENING_BALANCE_RESOLUTION_SEPARATE,
+        ], true)) {
+            throw new LogicException("Invalid opening-balance resolution: {$resolution}");
+        }
+
+        if ($this->openingBalance->evaluate($document) === HistoricalOpeningBalanceEvaluator::NONE) {
+            throw new LogicException(sprintf(
+                'Historical document %d has no opening-balance overlap to resolve.',
+                $document->id
+            ));
+        }
+
+        return HistoricalLifecycle::run(function () use ($document, $resolution, $actorId): HistoricalSalesDocument {
+            $document->forceFill([
+                'opening_balance_resolution'  => $resolution,
+                'opening_balance_resolved_by' => $actorId,
+                'opening_balance_resolved_at' => now(),
+            ])->save();
 
             return $document->refresh();
         });

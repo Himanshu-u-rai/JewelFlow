@@ -25,6 +25,7 @@ enum FilterKey: string
     case CashType = 'cash_type';       // cash ledger: money in / money out
     case CashSource = 'cash_source';   // cash ledger: source_type (invoice, expense, …)
     case Branch = 'branch';            // RESERVED — never rendered (frozen §3.2)
+    case SalesSource = 'sales_source'; // live / historical / combined selector (Batch 4, Dues Aging only) — wired at DuesAgingDataset, validated in ExportRequest/ReportScreenController
 
     /** Date-style filters carry the FY-first preset set (frozen §17). */
     public function supportsFyPresets(): bool

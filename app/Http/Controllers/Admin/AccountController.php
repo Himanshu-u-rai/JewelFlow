@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsurePlatformAdminPasswordFresh;
 use App\Mail\EmailOtpMail;
 use App\Models\Platform\PlatformAdmin;
+use App\Rules\IndianMobileRule;
 use App\Services\PlatformAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -134,7 +135,7 @@ class AccountController extends Controller
         $admin = $this->admin();
         $validated = $request->validate([
             'current_password' => ['required', 'string'],
-            'new_mobile' => ['required', 'string', 'digits:10', Rule::unique('platform_admins', 'mobile_number')->ignore($admin->id)],
+            'new_mobile' => ['required', 'string', new IndianMobileRule(), Rule::unique('platform_admins', 'mobile_number')->ignore($admin->id)],
         ]);
 
         if (! $this->requireCurrentPassword($request, $admin)) {

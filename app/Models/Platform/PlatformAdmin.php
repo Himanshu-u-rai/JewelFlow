@@ -2,6 +2,7 @@
 
 namespace App\Models\Platform;
 
+use App\Models\Concerns\CanonicalisesMobileNumbers;
 use App\Notifications\PlatformAdminResetPassword;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
@@ -12,7 +13,10 @@ use LogicException;
 class PlatformAdmin extends Authenticatable implements CanResetPasswordContract
 {
     use CanResetPassword;
-    use Notifiable;
+    use Notifiable, CanonicalisesMobileNumbers;
+
+    /** @var array<int, string> */
+    protected static array $mobileColumns = ['mobile_number'];
 
     protected $table = 'platform_admins';
 

@@ -3,6 +3,7 @@ import * as Turbo from '@hotwired/turbo';
 import flatpickr from 'flatpickr';
 
 import Alpine from 'alpinejs';
+import { registerHistoricalManual } from './historical-manual';
 
 let toastTimer = null;
 
@@ -55,6 +56,7 @@ window.fetch = function(input, init) {
 window.Alpine = Alpine;
 window.Turbo = Turbo;
 
+registerHistoricalManual(Alpine);
 Alpine.start();
 
 function showFlashToasts() {

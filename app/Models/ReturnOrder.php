@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\ImmutableLedger;
+use App\Services\BusinessIdentifierService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -71,6 +72,29 @@ class ReturnOrder extends Model
         // raw array (Array-to-string error) and reads an undecoded JSON string.
         'pending_data' => 'array',
     ];
+
+    /**
+     * return_number is the per-shop document number shown to the customer.
+     * Deliberately absent from $fillable — it is assigned here, never from
+     * request input, so nobody can pick their own. A matching Postgres
+     * BEFORE INSERT trigger covers raw DB::table() writes that skip Eloquent.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $returnOrder): void {
+            if (empty($returnOrder->return_number) && !empty($returnOrder->shop_id)) {
+                $returnOrder->return_number = BusinessIdentifierService::nextCounter(
+                    (int) $returnOrder->shop_id,
+                    BusinessIdentifierService::KEY_RETURN
+                );
+            }
+        });
+    }
+
+    public function getDisplayNumberAttribute(): string
+    {
+        return 'RET-' . str_pad((string) $this->return_number, 3, '0', STR_PAD_LEFT);
+    }
 
     public function invoice(): BelongsTo
     {

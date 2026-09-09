@@ -14,7 +14,12 @@ namespace App\Services\Reporting\Definition;
  *                 set (Audit reports, Dhiran forfeiture/profitability) use
  *                 `reports.audit`. When set, it replaces `view` at the route.
  *  - familyGate:  optional family baseline (Dhiran = `dhiran.reports`), required
- *                 in addition to the above.
+ *                 in addition to the above, UNCONDITIONALLY (every request).
+ *  - historicalModeGate: optional MODE-DEPENDENT baseline — required only when
+ *                 the request's `sales_source` is `historical`/`combined`
+ *                 (Dues Aging: `historical.view`, since LIVE must keep its
+ *                 existing reporting permissions unchanged — see
+ *                 `gateForSalesSource()`).
  *  - edition:     optional edition constraint ('retailer' | 'manufacturer').
  */
 final class ReportPermissions
@@ -26,6 +31,7 @@ final class ReportPermissions
         public readonly ?string $surfaceGate = null,
         public readonly ?string $familyGate = null,
         public readonly ?string $edition = null,
+        public readonly ?string $historicalModeGate = null,
     ) {
     }
 
@@ -44,6 +50,7 @@ final class ReportPermissions
             $permission,
             $this->familyGate,
             $this->edition,
+            $this->historicalModeGate,
         );
     }
 
@@ -56,6 +63,7 @@ final class ReportPermissions
             $this->surfaceGate,
             $permission,
             $this->edition,
+            $this->historicalModeGate,
         );
     }
 
@@ -68,6 +76,7 @@ final class ReportPermissions
             $this->surfaceGate,
             $this->familyGate,
             $this->edition,
+            $this->historicalModeGate,
         );
     }
 
@@ -80,7 +89,39 @@ final class ReportPermissions
             $this->surfaceGate,
             $this->familyGate,
             $edition,
+            $this->historicalModeGate,
         );
+    }
+
+    /** Requires $permission in addition to view/export, but ONLY when the request's `sales_source` is `historical`/`combined` — LIVE (default/explicit) keeps whatever view/export/familyGate already grant it, unchanged. */
+    public function withHistoricalModeGate(string $permission): self
+    {
+        return new self(
+            $this->view,
+            $this->export,
+            $this->sensitive,
+            $this->surfaceGate,
+            $this->familyGate,
+            $this->edition,
+            $permission,
+        );
+    }
+
+    /**
+     * The permission needed for the given `sales_source` value, or null if
+     * this mode needs nothing beyond the report's normal gates. Same closed
+     * vocabulary as the dataset's own mode resolution (`historical`/
+     * `combined` trigger it; `live`, absent, or anything else does not — an
+     * unrecognised value is rejected by upstream validation regardless, never
+     * silently granted or denied here).
+     */
+    public function gateForSalesSource(?string $salesSource): ?string
+    {
+        if ($this->historicalModeGate === null) {
+            return null;
+        }
+
+        return in_array($salesSource, ['historical', 'combined'], true) ? $this->historicalModeGate : null;
     }
 
     /**

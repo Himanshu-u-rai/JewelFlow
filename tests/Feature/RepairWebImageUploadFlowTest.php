@@ -53,7 +53,9 @@ class RepairWebImageUploadFlowTest extends TestCase
             return $this->actingAs($user)->get(route('repairs.show', $repair));
         });
         $detail->assertOk();
-        $detail->assertSee('Item Photo');
+        $detail->assertSee('Item photo');
+        // The <img> src is the resolved public URL, which embeds the stored path.
         $detail->assertSee($repair->image_path);
+        $detail->assertDontSee('No photo uploaded');
     }
 }

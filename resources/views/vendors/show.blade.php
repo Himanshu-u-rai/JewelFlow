@@ -494,7 +494,7 @@
 
                     <div class="vendors-show-meta-card">
                         <p class="vendors-show-meta-label">Mobile</p>
-                        <p class="vendors-show-meta-value">{{ $vendor->mobile ?: 'Not available' }}</p>
+                        <p class="vendors-show-meta-value">{{ \App\Support\Mobile::forDisplay($vendor->mobile) ?: 'Not available' }}</p>
                     </div>
 
                     <div class="vendors-show-meta-card">

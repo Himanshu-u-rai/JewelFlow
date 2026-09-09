@@ -9,12 +9,14 @@ use App\Models\LoyaltyTransaction;
 use App\Models\CustomerGoldTransaction;
 use App\Http\Concerns\ArchivesParties;
 use App\Http\Concerns\RespondsDynamically;
+use App\Rules\IndianMobileRule;
 use App\Rules\PanFormatRule;
 use App\Services\ComplianceService;
 use App\Services\PosSearchCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
@@ -225,7 +227,7 @@ class CustomerController extends Controller
         $data = $request->validate([
             'first_name'       => 'required|string|max:255',
             'last_name'        => 'required|string|max:255',
-            'mobile'           => ['nullable', 'string', 'digits:10', Rule::unique('customers', 'mobile')->where('shop_id', $shopId)],
+            'mobile'           => ['nullable', 'string', new IndianMobileRule(), Rule::unique('customers', 'mobile')->where('shop_id', $shopId)],
             'address'          => 'nullable|string|max:1000',
             'email'            => 'nullable|email|max:255',
             'date_of_birth'    => 'nullable|date|before:today',
@@ -233,33 +235,41 @@ class CustomerController extends Controller
             'wedding_date'     => 'nullable|date',
             'notes'            => 'nullable|string|max:2000',
         ], [
-            'mobile.digits' => 'Mobile number must be exactly 10 digits.',
         ]);
 
         $data['mobile'] = $data['mobile'] ?? null;
         $data['shop_id'] = $shopId;
 
-        // Duplicate check — non-blocking: warn but do not prevent creation
-        $duplicates = [];
-        if (!empty($data['mobile'])) {
-            $duplicates = Customer::where('shop_id', $shopId)
-                ->where('mobile', $data['mobile'])
-                ->limit(3)
-                ->get(['id', 'first_name', 'last_name', 'mobile'])
-                ->map(fn ($c) => [
-                    'id'     => $c->id,
-                    'name'   => trim($c->first_name . ' ' . ($c->last_name ?? '')),
-                    'mobile' => $c->mobile,
-                ])
-                ->values()
-                ->all();
-        }
+        // The duplicate check Rule::unique cannot do.
+        //
+        // Rule::unique above and the (shop_id, mobile) index both compare
+        // STRINGS, so a legacy column holding '+91 98123 00099' does not clash
+        // with an incoming '9812300099' and two rows for one human sail through.
+        // resolveByMobile compares NUMBERS, which is why it is here — and why
+        // the needle already being canonical (CanonicaliseMobileInput) is not
+        // enough on its own. It is the column that may not be.
+        //
+        // This used to return a 409 {warning: 'possible_duplicate'} and let the
+        // caller retry with confirm_duplicate=1, on the theory that a family can
+        // share a phone. Nothing ever sent that flag: not the create form (a
+        // plain <form> POST, so the operator got raw JSON painted on the page),
+        // not the POS quick-add modal (its handler reads `message`, which the
+        // 409 body did not have, so the toast said "Error: Error"). A soft gate
+        // no client can pass is a hard gate with a broken error message, so it
+        // is now the hard gate it always was — and one the operator can read.
+        //
+        // Note the shop check: resolveByMobile can surface another tenant's row,
+        // and "already exists" must never leak across shops.
+        if (! empty($data['mobile'])) {
+            $existing = Customer::resolveByMobile($data['mobile']);
 
-        if (!empty($duplicates) && !$request->boolean('confirm_duplicate')) {
-            return response()->json([
-                'warning'    => 'possible_duplicate',
-                'duplicates' => $duplicates,
-            ], 409);
+            if ($existing && $existing->shop_id === $shopId) {
+                $name = trim($existing->first_name . ' ' . ($existing->last_name ?? ''));
+
+                throw ValidationException::withMessages([
+                    'mobile' => "This number is already saved for {$name}. Open that customer instead of creating a second one.",
+                ]);
+            }
         }
 
         $customer = Customer::create($data);
@@ -354,7 +364,7 @@ class CustomerController extends Controller
         $data = $request->validate([
             'first_name'       => 'required|string|max:255',
             'last_name'        => 'required|string|max:255',
-            'mobile'           => ['nullable', 'string', 'digits:10', Rule::unique('customers', 'mobile')->ignore($customer->id)->where('shop_id', $shopId)],
+            'mobile'           => ['nullable', 'string', new IndianMobileRule(), Rule::unique('customers', 'mobile')->ignore($customer->id)->where('shop_id', $shopId)],
             'address'          => 'nullable|string|max:1000',
             'email'            => 'nullable|email|max:255',
             'date_of_birth'    => 'nullable|date|before:today',
@@ -362,7 +372,6 @@ class CustomerController extends Controller
             'wedding_date'     => 'nullable|date',
             'notes'            => 'nullable|string|max:2000',
         ], [
-            'mobile.digits' => 'Mobile number must be exactly 10 digits.',
         ]);
 
         $data['mobile'] = $data['mobile'] ?? null;
@@ -385,7 +394,7 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'pan'     => ['nullable', 'string', 'max:10', new PanFormatRule()],
             'aadhaar' => ['nullable', 'digits:12'],
-            'mobile'  => ['nullable', 'digits:10'],
+            'mobile'  => ['nullable', new IndianMobileRule()],
             'address' => ['nullable', 'string', 'max:255'],
             'consent' => ['required', 'accepted'],
         ]);

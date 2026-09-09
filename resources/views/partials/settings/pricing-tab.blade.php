@@ -762,14 +762,35 @@
         <form method="POST" action="{{ route('settings.pricing.save-rates') }}" class="pricing-panel pricing-panel-stack pricing-rates-panel">
             @csrf
             <input type="hidden" name="context" value="settings">
+
+            {{-- The save validates into the `pricing` bag; until this block existed nothing
+                 rendered it, so a rejected rate bounced back with the typo repopulated and no
+                 reason given. That stayed invisible only because the inputs were type="number"
+                 and the browser blocked bad values first — the moment they became type="text"
+                 below, every server-side rejection would have been silent. --}}
+            @if($errors->getBag('pricing')->any())
+                {{-- rate-modal__errors is styled in the layout's own <style>, which sits
+                     outside the gate-modal @if — so it is on every page, and reusing it keeps
+                     both daily-rate forms looking identical when they reject input. --}}
+                <div class="rate-modal__errors" role="alert">
+                    <ul>
+                        @foreach($errors->getBag('pricing')->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <div class="pricing-grid pricing-grid-3">
                 <div class="pricing-field">
                     <label class="field-label">{{ __('24K Gold Price / Gram') }}</label>
-                    <input type="number" step="0.0001" min="0.0001" name="gold_24k_rate_per_gram" value="{{ $goldRateValue }}" class="field-input" required>
+                    {{-- text, not number: see layouts/app.blade.php — a number input eats the
+                         commas in "1,00,000" before the request is even sent. --}}
+                    <input type="text" inputmode="decimal" name="gold_24k_rate_per_gram" value="{{ $goldRateValue }}" class="field-input" required>
                 </div>
                 <div class="pricing-field">
                     <label class="field-label">{{ __('Pure Silver Price / Kg') }}</label>
-                    <input type="number" step="0.0001" min="0.0001" name="silver_999_rate_per_kg" value="{{ $silverRatePerKgValue }}" class="field-input" required>
+                    <input type="text" inputmode="decimal" name="silver_999_rate_per_kg" value="{{ $silverRatePerKgValue }}" class="field-input" required>
                     <span class="field-hint">{{ __('Price of pure (fine) silver, like 24K is for gold. Each purity (999, 925, …) is worked out from this.') }}</span>
                 </div>
                 <div class="pricing-field">

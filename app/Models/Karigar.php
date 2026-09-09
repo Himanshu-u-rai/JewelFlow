@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\ArchivableParty;
+use App\Models\Concerns\CanonicalisesMobileNumbers;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,7 +14,10 @@ class Karigar extends Model
     // archived() scopes plus the two-layer eligibility (activeExistsRule +
     // lockActiveOrFail) so a disabled karigar can never receive a NEW item,
     // job or commitment while every historical row keeps resolving it.
-    use ArchivableParty, BelongsToShop;
+    use ArchivableParty, BelongsToShop, CanonicalisesMobileNumbers;
+
+    /** @var array<int, string> */
+    protected static array $mobileColumns = ['mobile'];
 
     protected $fillable = [
         'shop_id',

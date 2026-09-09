@@ -2,7 +2,7 @@
     <x-dhiran.page-header>
         <div>
             <h1 class="page-title">{{ $customer->name }}</h1>
-            <p class="text-sm text-gray-500 mt-1">{{ $customer->mobile ?? '' }}{{ $customer->customer_code ? ' · ' . $customer->customer_code : '' }}</p>
+            <p class="text-sm text-gray-500 mt-1">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: '' }}{{ $customer->customer_code ? ' · ' . $customer->customer_code : '' }}</p>
         </div>
         <div class="page-actions">
             <a href="{{ route('dhiran.create', ['customer_id' => $customer->id]) }}" class="btn btn-dark btn-sm">
@@ -23,7 +23,7 @@
             <h2 class="text-base font-semibold text-slate-900 mb-4">Borrower details</h2>
             <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                 <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Name</dt><dd class="text-slate-800 font-medium mt-0.5">{{ $customer->name }}</dd></div>
-                <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Mobile</dt><dd class="text-slate-800 mt-0.5">{{ $customer->mobile ?? '—' }}</dd></div>
+                <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Mobile</dt><dd class="text-slate-800 mt-0.5">{{ \App\Support\Mobile::forDisplay($customer->mobile) ?: '—' }}</dd></div>
                 <div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Customer code</dt><dd class="text-slate-800 font-mono mt-0.5">{{ $customer->customer_code ?? '—' }}</dd></div>
                 @if($customer->address)<div class="col-span-2"><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Address</dt><dd class="text-slate-800 mt-0.5">{{ $customer->address }}</dd></div>@endif
                 @if($customer->email)<div><dt class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Email</dt><dd class="text-slate-800 mt-0.5">{{ $customer->email }}</dd></div>@endif

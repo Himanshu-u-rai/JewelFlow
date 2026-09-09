@@ -102,39 +102,45 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account(): void
+    /**
+     * Closing an account DEACTIVATES it — the row survives with is_active=false.
+     * A tenant user owns invoices, sales and audit trail, so hard-deleting the
+     * row would orphan financial history; only the shop owner can reactivate.
+     */
+    public function test_user_can_deactivate_their_account(): void
     {
         $user = $this->createUserWithShop();
 
         $response = $this
             ->actingAs($user)
-            ->delete('/profile', [
+            ->post('/profile/deactivate', [
                 'password' => 'password',
             ]);
 
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect('/');
+            ->assertRedirect('/login');
 
         $this->assertGuest();
-        $this->assertNull($user->fresh());
+        $this->assertNotNull($user->fresh(), 'the user row must survive deactivation');
+        $this->assertFalse((bool) $user->fresh()->is_active);
     }
 
-    public function test_correct_password_must_be_provided_to_delete_account(): void
+    public function test_correct_password_must_be_provided_to_deactivate_account(): void
     {
         $user = $this->createUserWithShop();
 
         $response = $this
             ->actingAs($user)
             ->from('/profile')
-            ->delete('/profile', [
+            ->post('/profile/deactivate', [
                 'password' => 'wrong-password',
             ]);
 
         $response
-            ->assertSessionHasErrorsIn('userDeletion', 'password')
+            ->assertSessionHasErrorsIn('userDeactivation', 'password')
             ->assertRedirect('/profile');
 
-        $this->assertNotNull($user->fresh());
+        $this->assertTrue((bool) $user->fresh()->is_active, 'a wrong password must not deactivate');
     }
 }

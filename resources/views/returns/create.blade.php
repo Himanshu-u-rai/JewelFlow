@@ -84,7 +84,7 @@
                 <div>
                     <span>Customer</span>
                     <strong>{{ $customerName ?: 'Walk-in' }}</strong>
-                    <small>{{ $invoice->customer?->mobile ?: 'No mobile number' }}</small>
+                    <small>{{ \App\Support\Mobile::forDisplay($invoice->customer?->mobile) ?: 'No mobile number' }}</small>
                 </div>
             </article>
 

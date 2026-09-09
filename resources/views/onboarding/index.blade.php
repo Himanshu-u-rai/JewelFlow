@@ -633,7 +633,7 @@
                                         <tr style="border-top:1px solid #f1f5f9;">
                                             <td style="padding:8px;color:#94a3b8;">{{ $loop->iteration }}</td>
                                             <td style="padding:8px;">{{ trim(($c->first_name ?? '') . ' ' . ($c->last_name ?? '')) }}</td>
-                                            <td style="padding:8px;">{{ $c->mobile }}</td>
+                                            <td style="padding:8px;">{{ \App\Support\Mobile::forDisplay($c->mobile) }}</td>
                                             <td style="padding:8px;color:#64748b;">{{ $c->email ?: '—' }}</td>
                                             <td style="padding:8px;color:#64748b;">{{ $c->address ?: '—' }}</td>
                                             <td style="padding:8px;white-space:nowrap;">
@@ -1126,7 +1126,7 @@
                                         <tr style="border-top:1px solid #f1f5f9;">
                                             <td style="padding:8px;color:#94a3b8;">{{ $loop->iteration }}</td>
                                             <td style="padding:8px;">{{ $cust ? trim($cust->first_name.' '.$cust->last_name) : '—' }}</td>
-                                            <td style="padding:8px;color:#64748b;">{{ $cust->mobile ?? '—' }}</td>
+                                            <td style="padding:8px;color:#64748b;">{{ \App\Support\Mobile::forDisplay($cust->mobile) ?: '—' }}</td>
                                             <td style="padding:8px;">{{ $balanceTypes[$e->kind] ?? $e->kind }}</td>
                                             <td style="padding:8px;text-align:right;">
                                                 @if ($isGold)
@@ -1216,7 +1216,7 @@
                                             <td style="padding:6px 8px;color:#94a3b8;">{{ $loop->iteration }}</td>
                                             <td style="padding:6px 8px;">{{ $v->name }}</td>
                                             <td style="padding:6px 8px;color:#64748b;">{{ $v->contact_person ?? '—' }}</td>
-                                            <td style="padding:6px 8px;color:#64748b;">{{ $v->mobile ?? '—' }}</td>
+                                            <td style="padding:6px 8px;color:#64748b;">{{ \App\Support\Mobile::forDisplay($v->mobile) ?: '—' }}</td>
                                             <td style="padding:6px 8px;color:#64748b;">{{ $v->gst_number ?? '—' }}</td>
                                         </tr>
                                     @endforeach
@@ -1254,7 +1254,7 @@
                                             <td style="padding:6px 8px;">{{ $k->name }}</td>
                                             <td style="padding:6px 8px;color:#64748b;">{{ $k->shop_name ?? '—' }}</td>
                                             <td style="padding:6px 8px;color:#64748b;">{{ $k->contact_person ?? '—' }}</td>
-                                            <td style="padding:6px 8px;color:#64748b;">{{ $k->mobile ?? '—' }}</td>
+                                            <td style="padding:6px 8px;color:#64748b;">{{ \App\Support\Mobile::forDisplay($k->mobile) ?: '—' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

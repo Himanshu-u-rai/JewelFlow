@@ -248,7 +248,7 @@
                                             <tr>
                                                 <td>
                                                     <strong>{{ $enrollment->customer->name ?? 'Unknown' }}</strong>
-                                                    <span>{{ $enrollment->customer->mobile ?? 'No mobile' }}</span>
+                                                    <span>{{ \App\Support\Mobile::forDisplay($enrollment->customer?->mobile) ?: 'No mobile' }}</span>
                                                 </td>
                                                 <td class="text-right">₹{{ number_format((float) $enrollment->monthly_amount, 2) }}</td>
                                                 <td class="text-center">{{ $enrollment->installments_paid }}/{{ $enrollment->total_installments }}</td>
@@ -270,7 +270,7 @@
                                     <article class="schemes-enrollment-mobile-card">
                                         <div>
                                             <strong>{{ $enrollment->customer->name ?? 'Unknown' }}</strong>
-                                            <span>{{ $enrollment->customer->mobile ?? 'No mobile' }}</span>
+                                            <span>{{ \App\Support\Mobile::forDisplay($enrollment->customer?->mobile) ?: 'No mobile' }}</span>
                                         </div>
                                         <span class="schemes-enrollment-status schemes-enrollment-status--{{ $enrollment->status }}">{{ ucfirst($enrollment->status) }}</span>
                                         <dl>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Platform\PlatformAdmin;
+use App\Rules\IndianMobileRule;
 use App\Services\PlatformAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class PlatformAdminManagementController extends Controller
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'max:255', 'unique:platform_admins,email'],
-            'mobile_number' => ['required', 'string', 'digits:10', 'unique:platform_admins,mobile_number'],
+            'mobile_number' => ['required', 'string', new IndianMobileRule(), 'unique:platform_admins,mobile_number'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'in:super_admin,platform_operator'],
         ]);

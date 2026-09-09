@@ -7,6 +7,7 @@ use App\Models\Dhiran\DhiranLoan;
 use App\Models\Dhiran\DhiranLoanItem;
 use App\Models\Dhiran\DhiranPayment;
 use App\Models\Dhiran\DhiranSettings;
+use App\Rules\IndianMobileRule;
 use Illuminate\Support\Facades\DB;
 use App\Services\DhiranService;
 use Illuminate\Http\Request;
@@ -145,7 +146,7 @@ class DhiranController extends Controller
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'last_name'  => ['nullable', 'string', 'max:255'],
-            'mobile'     => ['required', 'string', 'regex:/^[0-9]{10}$/'],
+            'mobile'     => ['required', 'string', new IndianMobileRule()],
             'address'    => ['nullable', 'string', 'max:500'],
             'state_code' => ['nullable', 'string', 'max:10'],
             'pan'        => ['nullable', 'string', 'max:20'],
@@ -154,7 +155,10 @@ class DhiranController extends Controller
         ]);
 
         // Dedupe within THIS shop (BelongsToShop scope keeps the lookup tenant-local).
-        $existing = Customer::where('mobile', $data['mobile'])->first();
+        // resolveByMobile, not an exact match: a borrower added before mobiles
+        // were canonicalised is stored as typed, and an exact lookup would miss
+        // them and hand this shop a second loan account for the same person.
+        $existing = Customer::resolveByMobile($data['mobile']);
         if ($existing) {
             return response()->json([
                 'ok'        => true,

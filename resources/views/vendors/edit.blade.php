@@ -517,7 +517,7 @@
 
                             <div class="vendors-edit-field">
                                 <label for="mobile" class="vendors-edit-label">Mobile</label>
-                                <input type="tel" name="mobile" id="mobile" value="{{ old('mobile', $vendor->mobile) }}" class="vendors-edit-input @error('mobile') is-error @enderror">
+                                <input type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" name="mobile" id="mobile" value="{{ old('mobile', $vendor->mobile) }}" placeholder="10-digit mobile" class="vendors-edit-input @error('mobile') is-error @enderror">
                                 @error('mobile')<p class="vendors-edit-error">{{ $message }}</p>@enderror
                             </div>
 

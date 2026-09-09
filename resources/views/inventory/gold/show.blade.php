@@ -179,7 +179,7 @@
                                 </td>
                                 <td class="px-6 py-3 text-sm text-gray-700">{{ ucfirst($m->reference_type) }}</td>
                                 <td class="px-6 py-3 text-sm text-gray-500">
-                                    {{ $m->user->mobile_number ?? 'System' }}
+                                    {{ \App\Support\Mobile::forDisplay($m->user?->mobile_number) ?: 'System' }}
                                 </td>
                             </tr>
                         @empty

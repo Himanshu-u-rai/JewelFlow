@@ -87,7 +87,7 @@
                     <dd class="mt-1 text-sm font-semibold text-slate-900">
                         {{ $customerName ?: 'Walk-in customer' }}
                         @if($customer?->mobile)
-                            <span class="block text-xs font-normal text-slate-500">{{ $customer->mobile }}</span>
+                            <span class="block text-xs font-normal text-slate-500">{{ \App\Support\Mobile::forDisplay($customer->mobile) }}</span>
                         @endif
                     </dd>
                 </div>

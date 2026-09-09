@@ -3,12 +3,21 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\CanonicalisesMobileNumbers;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CatalogWebsiteSettings extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, CanonicalisesMobileNumbers;
+
+    /**
+     * The public catalog's WhatsApp button. Stored bare like every other mobile
+     * column; Mobile::forWhatsApp() puts the 91 back when the link is built.
+     *
+     * @var array<int, string>
+     */
+    protected static array $mobileColumns = ['social_whatsapp'];
 
     protected $table = 'catalog_website_settings';
 

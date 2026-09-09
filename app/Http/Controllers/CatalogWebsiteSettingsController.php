@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CatalogPage;
 use App\Models\CatalogWebsiteSettings;
 use App\Models\Shop;
+use App\Rules\IndianMobileRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -35,7 +36,7 @@ class CatalogWebsiteSettingsController extends Controller
             'show_weights'        => 'boolean',
             'show_huid'           => 'boolean',
             'meta_description'    => 'nullable|string|max:500',
-            'social_whatsapp'     => 'nullable|string|max:20',
+            'social_whatsapp'     => ['nullable', 'string', new IndianMobileRule()],
             'social_instagram'    => 'nullable|url|max:255',
             'social_facebook'     => 'nullable|url|max:255',
             'featured_categories' => 'nullable|array',
