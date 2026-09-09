@@ -45,7 +45,15 @@ return new class extends Migration
 
             $table->boolean('is_active')->default(true);
             $table->timestamp('removed_at')->nullable();
-            $table->foreignId('removed_by')->nullable()->constrained('users')->nullOnDelete();
+            // restrictOnDelete, NOT nullOnDelete: the CHECK below requires a
+            // remover on every inactive row, so SET NULL would try to blank a
+            // column the CHECK forbids blanking — the hard delete would still
+            // fail, but as an unreadable check violation instead of a plain
+            // "this user is referenced" FK error. Retaining the attribution IS
+            // the requirement; RESTRICT states it directly.
+            // This bites only on hard DELETE of a users row. Deactivating a
+            // staff account (`is_active = false`) touches nothing here.
+            $table->foreignId('removed_by')->nullable()->constrained('users')->restrictOnDelete();
             $table->text('removed_reason')->nullable();
 
             $table->timestamps();

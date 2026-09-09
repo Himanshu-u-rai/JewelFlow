@@ -5,10 +5,13 @@ namespace Tests\Feature\Historical;
 use App\Models\Historical\HistoricalImportBatch;
 use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\Historical\HistoricalSalesDocumentAttachment;
+use App\Models\Role;
 use App\Support\Historical\HistoricalDocumentIdentity;
 use App\Support\TenantContext;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use LogicException;
@@ -545,5 +548,70 @@ class HistoricalDocumentAttachmentTest extends TestCase
             $this->expectException(LogicException::class);
             $copyB->remove($owner->id, 'second request loses');
         });
+    }
+
+    /**
+     * The removal CHECK says an inactive attachment must always name who removed
+     * it. A `nullOnDelete` FK on `removed_by` contradicted that: hard deleting
+     * the remover's user row would try to blank the very column the CHECK
+     * forbids blanking, so the delete failed anyway — as an unreadable check
+     * violation rather than a plain "this user is still referenced". RESTRICT
+     * states the retention rule at the FK, where it belongs.
+     *
+     * Scope note: HARD deletion of a users row only. Deactivating a staff
+     * account sets `users.is_active = false` and never touches this FK — the
+     * closing assertion pins that, so nobody later "fixes" this constraint
+     * believing it blocks ordinary offboarding.
+     */
+    public function test_removal_attribution_survives_an_attempt_to_hard_delete_the_remover(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        // Same role as the owner — roles are unique per (shop, name), and this
+        // test is about the user row, not the role.
+        $remover = $this->createOwnerUser($shop, Role::withoutTenant()->findOrFail($owner->role_id));
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        $this->actingAs($owner)->post(
+            route('historical.documents.attachments.store', $document),
+            ['file' => $this->fakeUpload()]
+        );
+
+        TenantContext::runFor($shop->id, function () use ($remover): void {
+            HistoricalSalesDocumentAttachment::query()->firstOrFail()->remove($remover->id, 'wrong bill scanned');
+        });
+
+        // Nested DB::transaction() = SAVEPOINT. RefreshDatabase already holds an
+        // outer transaction, and a raw FK violation would abort it outright
+        // ("current transaction is aborted"), failing every later assertion.
+        // The savepoint contains the damage so the row can still be inspected.
+        try {
+            DB::transaction(fn () => DB::table('users')->where('id', $remover->id)->delete());
+            $this->fail('Hard deleting the remover must be refused — the removal audit trail names them.');
+        } catch (QueryException $e) {
+            // Must be a FOREIGN KEY violation (23503), not a CHECK violation
+            // (23514). Under the old nullOnDelete the delete also failed — but
+            // because SET NULL tripped the removal CHECK, which is an accident
+            // of constraint ordering rather than a stated rule. Asserting only
+            // "an error mentioning this table" cannot tell the two apart, and
+            // that weaker assertion passed with the defect reinstated.
+            $this->assertSame('23503', $e->getCode(), 'Refusal must come from the FK, not the removal CHECK.');
+            $this->assertStringContainsString(
+                'historical_sales_document_attachments_removed_by_foreign',
+                $e->getMessage()
+            );
+        }
+
+        TenantContext::runFor($shop->id, function () use ($remover): void {
+            $attachment = HistoricalSalesDocumentAttachment::query()->firstOrFail();
+            $this->assertFalse((bool) $attachment->is_active);
+            $this->assertSame($remover->id, (int) $attachment->removed_by, 'The remover attribution was erased.');
+            $this->assertSame('wrong bill scanned', $attachment->removed_reason);
+        });
+
+        // Ordinary offboarding is untouched by the RESTRICT. Via the model, not
+        // the query builder — Postgres rejects the builder's integer 0 for a
+        // boolean column, which is a binding quirk, not the behavior under test.
+        $remover->forceFill(['is_active' => false])->save();
+        $this->assertFalse((bool) $remover->fresh()->is_active, 'Deactivating the remover must still be allowed.');
     }
 }
