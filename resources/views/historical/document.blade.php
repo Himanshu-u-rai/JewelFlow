@@ -517,15 +517,21 @@
                                     @endif
                                 </div>
                                 <div class="flex shrink-0 items-center gap-2">
-                                    @can('historical.view')
-                                        <a href="{{ route('historical.attachments.show', $attachment) }}" target="_blank" rel="noopener" class="text-sm font-medium text-teal-700 hover:text-teal-800">View</a>
-                                    @endcan
+                                    {{-- is_active ONLY, deliberately not the document lifecycle: the
+                                         stream route 404s a removed attachment, so a View link on one is
+                                         dead. Void/superseded documents keep their ACTIVE evidence
+                                         viewable — see the readonly notice above. --}}
+                                    @if($attachment->is_active)
+                                        @can('historical.view')
+                                            <a href="{{ route('historical.attachments.show', $attachment) }}" target="_blank" rel="noopener" class="text-sm font-medium text-teal-700 hover:text-teal-800">View</a>
+                                        @endcan
+                                    @endif
                                     @if($attachment->is_active && ! $lifecycle['is_void'] && ! $lifecycle['is_superseded'])
                                         @can('historical.import')
                                             <details class="relative" data-historical-attachment-remove>
                                                 <summary class="cursor-pointer text-sm font-medium text-rose-600 hover:text-rose-700 list-none">Remove</summary>
                                                 <form method="POST" action="{{ route('historical.attachments.destroy', $attachment) }}"
-                                                      onsubmit="return confirm('Remove this attachment? The file is deleted; the audit record is kept.');"
+                                                      onsubmit="return confirm('Remove this attachment? It stops being viewable here. The file and the audit history are both kept.');"
                                                       class="mt-2 flex flex-wrap items-center gap-2">
                                                     @csrf
                                                     @method('DELETE')

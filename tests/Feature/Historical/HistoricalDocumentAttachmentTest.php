@@ -614,4 +614,104 @@ class HistoricalDocumentAttachmentTest extends TestCase
         $remover->forceFill(['is_active' => false])->save();
         $this->assertFalse((bool) $remover->fresh()->is_active, 'Deactivating the remover must still be allowed.');
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // Document screen — the View affordance and the removal warning
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * The removal confirmation used to read "The file is deleted; the audit
+     * record is kept." That is the opposite of what remove() does: it
+     * deactivates the row and keeps BOTH the audit trail and the bytes on disk
+     * (see the service docblock, and
+     * test_removal_requires_a_reason_retains_the_file_and_keeps_the_audited_row
+     * above, which proves the file survives). Telling an operator their
+     * financial evidence was destroyed when it was not is the kind of untruth
+     * that gets acted on — so the copy is pinned, not merely corrected.
+     */
+    public function test_the_removal_confirmation_does_not_claim_the_file_is_deleted(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        $this->actingAs($owner)->post(
+            route('historical.documents.attachments.store', $document),
+            ['file' => $this->fakeUpload()]
+        );
+
+        $response = $this->actingAs($owner)
+            ->get(route('historical.documents.show', $document))
+            ->assertOk();
+
+        $response->assertDontSee('The file is deleted', false);
+        $response->assertSee('The file and the audit history are both kept.', false);
+    }
+
+    /**
+     * F2: the stream route 404s an inactive attachment
+     * (HistoricalDocumentAttachmentController::show() aborts on !is_active), so
+     * a View link rendered next to a removed row is a link to a 404.
+     *
+     * The gate is `is_active` ALONE and deliberately not the document
+     * lifecycle. Void/superseded documents freeze their evidence but must keep
+     * ACTIVE attachments viewable — that contract is already pinned at the
+     * route level by test_void_document_attachments_are_read_only_but_still_streamable;
+     * this covers the UI half of it.
+     */
+    public function test_view_link_is_hidden_for_a_removed_attachment_but_shown_for_an_active_one(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id));
+
+        $this->actingAs($owner)->post(
+            route('historical.documents.attachments.store', $document),
+            ['file' => $this->fakeUpload()]
+        );
+        $attachment = TenantContext::runFor($shop->id, fn () => HistoricalSalesDocumentAttachment::query()->firstOrFail());
+        $viewUrl = route('historical.attachments.show', $attachment);
+
+        // Active: the link is there.
+        $this->actingAs($owner)
+            ->get(route('historical.documents.show', $document))
+            ->assertOk()
+            ->assertSee($viewUrl, false);
+
+        $this->actingAs($owner)
+            ->delete(route('historical.attachments.destroy', $attachment), ['reason' => 'wrong bill scanned'])
+            ->assertRedirect();
+        TenantContext::runFor($shop->id, function () use ($attachment): void {
+            $this->assertFalse((bool) $attachment->fresh()->is_active);
+        });
+
+        // Removed: the row still shows (with its attribution), the link does not.
+        $response = $this->actingAs($owner)
+            ->get(route('historical.documents.show', $document))
+            ->assertOk()
+            ->assertSee('bill-scan.pdf')
+            ->assertSee('wrong bill scanned');
+        $response->assertDontSee($viewUrl, false);
+
+        // And the link would indeed have been dead.
+        $this->actingAs($owner)->get($viewUrl)->assertNotFound();
+    }
+
+    public function test_active_evidence_on_a_void_document_keeps_its_view_link(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $document = TenantContext::runFor($shop->id, fn () => $this->makeDocument($shop->id, $this->makeBatch($shop->id)->id, [
+            'status' => HistoricalSalesDocument::STATUS_VOID,
+            'void_reason' => 'Wrong customer entirely',
+            'voided_at' => now(),
+        ]));
+        $attachment = TenantContext::runFor($shop->id, fn () => $this->makeAttachment($shop->id, $document->id, $owner->id, "historical-attachments/{$shop->id}/void-view-link.pdf"));
+
+        $this->actingAs($owner)
+            ->get(route('historical.documents.show', $document))
+            ->assertOk()
+            ->assertSee('evidence is read-only')
+            // Frozen for WRITES, not for reading. Narrowing the View link to
+            // is_active must not have narrowed it to the lifecycle as well.
+            ->assertSee(route('historical.attachments.show', $attachment), false)
+            ->assertDontSee('Upload evidence');
+    }
 }
