@@ -496,10 +496,10 @@ class SuperAdminAccessModeBadgeTest extends TestCase
     // nothing else. If a future edit re-spells that static furniture these
     // tests go red, rather than quietly stopping to test anything.
     //
-    // Scope note: $stats['shops_read_only'] and $readOnlyShops still select on
-    // access_mode alone, so the KPI card and the alert table continue to count
-    // lapses as administrator holds. That is tracked separately — it needs the
-    // subscription joins, not a label swap, and is deliberately NOT pinned here.
+    // Scope note: the KPI card and the read-only alert table are a DIFFERENT
+    // concern from this badge and are pinned in SuperAdminDashboardRestrictionLabelsTest.
+    // The KPI stays coarse on purpose — it splits on suspended_by alone, which
+    // needs no joins — while the alert table runs the real classifier per row.
     // ════════════════════════════════════════════════════════════════
 
     public function test_dashboard_recent_tenants_shows_subscription_ended_for_a_lapse(): void

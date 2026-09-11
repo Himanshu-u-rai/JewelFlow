@@ -35,7 +35,12 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <x-admin.kpi-card label="Total Shops" :value="$stats['shops_total']" description="All tenants onboarded" tone="slate" />
                 <x-admin.kpi-card label="Active Shops" :value="$stats['shops_active']" description="Live and operational" tone="emerald" />
-                <x-admin.kpi-card label="Read-Only Shops" :value="$stats['shops_read_only']" description="Writes blocked" tone="amber" />
+                <x-admin.kpi-card
+                    label="Read-Only Shops"
+                    :value="$stats['shops_read_only']"
+                    :description="$stats['shops_read_only_admin_hold'] . ' admin hold · ' . $stats['shops_read_only_unattributed'] . ' unattributed'"
+                    tone="amber"
+                />
                 <x-admin.kpi-card label="Suspended Shops" :value="$stats['shops_suspended']" description="Full access blocked" tone="rose" />
             </div>
         </section>
@@ -162,7 +167,8 @@
                         <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                         <td class="px-4 py-2 font-medium">{{ $shop->name }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ \App\Support\Mobile::forDisplay($shop->owner_mobile) ?: '—' }}</td>
-                        <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?? '—' }}</td>
+                        {{-- ?: not ??  — an empty-string reason must fall back too. --}}
+                        <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?: '—' }}</td>
                         <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspended_at?->format('d M Y, H:i') ?? '—' }}</td>
                         <td class="px-4 py-2">
                             <a href="{{ route('admin.shops.show', ['shop' => $shop->id]) }}" class="admin-btn admin-btn-xs admin-btn-secondary">Inspect</a>
@@ -176,20 +182,39 @@
             <x-admin.alert-table
                 title="Read-Only Shops"
                 subtitle="Writes blocked for billing or compliance"
-                :headers="['Shop','Owner','Reason','Action']"
+                :headers="['Shop','Owner','Cause','Reason','Action']"
             >
                 @forelse($readOnlyShops as $shop)
                     <tr class="border-t border-slate-800 text-slate-200">
                         <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                         <td class="px-4 py-2 font-medium">{{ $shop->name }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ \App\Support\Mobile::forDisplay($shop->owner_mobile) ?: '—' }}</td>
-                        <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?? '—' }}</td>
+                        {{--
+                            Cause answers the question the admin actually has: can this
+                            shop fix itself? An admin hold cannot be cleared by the owner
+                            buying a plan; a subscription lapse can. Asking the model
+                            rather than re-deriving it here keeps one classifier, and this
+                            table is capped at 6 rows so the per-row subscription lookups
+                            inside suspensionIsSubscriptionManaged() stay bounded.
+                            ponytail: 6 rows x 2 queries. Move to a batched pre-classify
+                            pass only if this table is ever unbounded.
+                        --}}
+                        <td class="px-4 py-2 text-xs">
+                            @if($shop->suspensionIsAdministrative())
+                                <span class="admin-badge admin-badge-rose">Admin hold</span>
+                            @elseif($shop->suspensionIsSubscriptionManaged())
+                                <span class="admin-badge admin-badge-amber">Subscription lapse</span>
+                            @else
+                                <span class="admin-badge admin-badge-slate">Unattributed</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?: '—' }}</td>
                         <td class="px-4 py-2">
                             <a href="{{ route('admin.shops.show', ['shop' => $shop->id]) }}" class="admin-btn admin-btn-xs admin-btn-secondary">Inspect</a>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="px-4 py-4 text-center text-slate-400">No read-only shops.</td></tr>
+                    <tr><td colspan="6" class="px-4 py-4 text-center text-slate-400">No read-only shops.</td></tr>
                 @endforelse
             </x-admin.alert-table>
         </section>
