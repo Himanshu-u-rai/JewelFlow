@@ -37,23 +37,22 @@ class ShopController extends Controller
             return redirect()->route('dashboard');
         }
 
-        $retailerEnabled     = PlatformSetting::retailerEnabled();
-        $manufacturerEnabled = PlatformSetting::manufacturerEnabled();
-        $dhiranEnabled       = PlatformSetting::dhiranEnabled();
+        // The editions this screen can actually put on screen. Deliberately NOT
+        // enabledShopTypes(): Dhiran is platform-enabled but is served on its own
+        // subdomain and has never had a card here, so counting it kept the chooser
+        // alive showing one card — a question with a single possible answer.
+        // One list decides all three things below: whether to skip, what to
+        // accept on POST, and what the view draws.
+        $offered = PlatformSetting::erpSelectableShopTypes();
 
-        $enabledSet = PlatformSetting::enabledShopTypes();
-
-        if (empty($enabledSet)) {
+        if (empty($offered)) {
             abort(503, 'Registrations are currently closed.');
         }
 
-        // If only one edition is enabled platform-wide, auto-pick it and skip screen.
-        if (count($enabledSet) === 1) {
-            $only = $enabledSet[0];
-            $this->persistEditionChoice($user, [$only]);
-            return redirect()->route('subscription.plans');
-        }
-
+        // A submitted choice is answered before the skip below. The skip exists to
+        // spare the user a pointless screen, NOT to overrule a request they
+        // actually made: if it ran first, posting an unavailable edition would be
+        // silently rewritten to the one remaining type instead of refused.
         if ($request->isMethod('post')) {
             // A shop picks ONE type at onboarding. Adding or switching the other
             // is done later from shop settings, so this is single-select.
@@ -63,7 +62,9 @@ class ShopController extends Controller
 
             $edition = $validated['edition'];
 
-            if (! in_array($edition, $enabledSet, true)) {
+            // Refuse anything the GET never offered — including Dhiran, which is
+            // not merely disabled here but onboarded somewhere else entirely.
+            if (! in_array($edition, $offered, true)) {
                 return back()
                     ->with('error', ucfirst($edition) . ' registration is currently unavailable.')
                     ->withInput();
@@ -73,11 +74,15 @@ class ShopController extends Controller
             return redirect()->route('subscription.plans');
         }
 
+        // Nothing to ask when only one edition can be shown — pick it and move on.
+        if (count($offered) === 1) {
+            $this->persistEditionChoice($user, [$offered[0]]);
+            return redirect()->route('subscription.plans');
+        }
+
         return view('shops.choose-type', [
-            'retailerEnabled'     => $retailerEnabled,
-            'manufacturerEnabled' => $manufacturerEnabled,
-            'dhiranEnabled'       => $dhiranEnabled,
-            'selected'            => session('onboarding_editions', []),
+            'offeredTypes' => $offered,
+            'selected'     => session('onboarding_editions', []),
         ]);
     }
 

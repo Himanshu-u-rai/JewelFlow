@@ -97,4 +97,27 @@ class PlatformSetting extends Model
         $types = static::enabledShopTypes();
         return count($types) === 1 ? $types[0] : null;
     }
+
+    /**
+     * Editions that are never offered on the ERP shop-type chooser because they
+     * are separate products served on their own subdomain, with their own
+     * onboarding. Dhiran signs up at dhiran.jewelflows.com and never reaches the
+     * ERP chooser — DhiranOnboardingTest asserts that in both directions.
+     */
+    private const SERVED_ON_OWN_SUBDOMAIN = ['dhiran'];
+
+    /**
+     * The editions the ERP chooser can actually put on screen.
+     *
+     * This — not enabledShopTypes() — is what that screen must count. Counting
+     * platform-enabled editions meant an enabled-but-never-rendered edition
+     * (Dhiran) kept the chooser alive showing a single card, asking the user a
+     * question with exactly one possible answer.
+     */
+    public static function erpSelectableShopTypes(): array
+    {
+        return array_values(
+            array_diff(static::enabledShopTypes(), static::SERVED_ON_OWN_SUBDOMAIN)
+        );
+    }
 }

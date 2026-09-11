@@ -265,17 +265,15 @@
 <body>
 
 @php
-    $enabled = [
-        'retailer'     => $retailerEnabled ?? true,
-        'manufacturer' => $manufacturerEnabled ?? true,
-        // Dhiran is a separate product served on its own subdomain; not shown here.
-        'dhiran'       => false,
-    ];
-    // The grid must size to the cards ACTUALLY rendered, not the platform's
-    // enabled count: otherwise an enabled-but-hidden type (Dhiran) leaves an
-    // empty column and the cards pin to the side.
-    $visibleTypes = array_keys(array_filter($enabled));
-    $cardCount = max(1, count($visibleTypes));
+    // The controller decides which editions this screen offers and hands them
+    // over — the view no longer keeps its own opinion. That split is what let the
+    // skip-condition and the rendered cards disagree: the controller counted
+    // Dhiran, the view hardcoded it off, and the screen asked a one-answer
+    // question. PlatformSetting::erpSelectableShopTypes() is now the only list.
+    $offered = collect($offeredTypes ?? []);
+    // The grid sizes to the cards ACTUALLY rendered, else a missing card leaves
+    // an empty column and the rest pin to the side.
+    $cardCount = max(1, $offered->count());
     $selected = collect($selected ?? []);
 @endphp
 
@@ -306,7 +304,7 @@
         </div>
 
 <div class="cards" data-count="{{ $cardCount }}">
-            @if($enabled['retailer'])
+            @if($offered->contains('retailer'))
                 <label class="type-card card-retailer {{ $selected->contains('retailer') ? 'selected' : '' }}">
                     <input type="radio" name="edition" value="retailer" {{ $selected->contains('retailer') ? 'checked' : '' }}>
                     <div class="check-dot">
@@ -326,7 +324,7 @@
                 </label>
             @endif
 
-            @if($enabled['manufacturer'])
+            @if($offered->contains('manufacturer'))
                 <label class="type-card card-manufacturer {{ $selected->contains('manufacturer') ? 'selected' : '' }}">
                     <input type="radio" name="edition" value="manufacturer" {{ $selected->contains('manufacturer') ? 'checked' : '' }}>
                     <div class="check-dot">
