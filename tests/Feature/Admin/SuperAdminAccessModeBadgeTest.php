@@ -477,4 +477,87 @@ class SuperAdminAccessModeBadgeTest extends TestCase
             ->assertDontSee('choose a plan to restore access', false)
             ->assertDontSee('deliberate <strong>administrator restriction</strong>', false);
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // Dashboard → Recent Tenants
+    //
+    // The shops index and detail screens were converted to the badge
+    // component; the dashboard was missed and kept its own inline echo, so one
+    // shop read "Suspended" on /admin and "Subscription ended" on /admin/shops.
+    // That is the expensive direction of the error: "Suspended" is the state
+    // whose operator response is "deliberate, leave it alone", so a customer
+    // who can already self-recover was presented as a closed case on the
+    // landing screen.
+    //
+    // The assertions lean on a real distinction in the markup rather than a
+    // lucky one: the dashboard's KPI card, status chip and alert table all
+    // spell the mode "Read-Only" (hyphen), while the BADGE label is "Read Only"
+    // (space). An assertion on the spaced form therefore sees the badge and
+    // nothing else. If a future edit re-spells that static furniture these
+    // tests go red, rather than quietly stopping to test anything.
+    //
+    // Scope note: $stats['shops_read_only'] and $readOnlyShops still select on
+    // access_mode alone, so the KPI card and the alert table continue to count
+    // lapses as administrator holds. That is tracked separately — it needs the
+    // subscription joins, not a label swap, and is deliberately NOT pinned here.
+    // ════════════════════════════════════════════════════════════════
+
+    public function test_dashboard_recent_tenants_shows_subscription_ended_for_a_lapse(): void
+    {
+        $shop = $this->lapsedShop();
+
+        $this->assertSame('subscription_lapse', $shop->fresh()->accessClassification());
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee($shop->name)
+            ->assertSee('Subscription ended')
+            // The inline echo this replaced rendered the badge label "Read Only"
+            // here. The hyphenated static furniture is untouched.
+            ->assertDontSee('Read Only');
+    }
+
+    public function test_dashboard_recent_tenants_keeps_read_only_for_an_admin_hold(): void
+    {
+        $shop = $this->adminHeldShop($this->makeAdmin('holder'));
+
+        $this->assertSame('admin_read_only', $shop->fresh()->accessClassification());
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee($shop->name)
+            ->assertSee('Read Only')
+            ->assertDontSee('Subscription ended');
+    }
+
+    public function test_dashboard_recent_tenants_agrees_with_the_shops_list_for_the_same_shop(): void
+    {
+        $shop = $this->lapsedShop();
+
+        // The bug was not "the dashboard is wrong" in isolation — it was that
+        // two admin screens disagreed about one shop. Pin the agreement.
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('Subscription ended');
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.shops.index', ['q' => $shop->name]))
+            ->assertOk()
+            ->assertSee('Subscription ended');
+    }
+
+    public function test_dashboard_recent_tenants_labels_an_active_shop_unchanged(): void
+    {
+        $active = $this->createShop('retailer');
+        $active->forceFill(['access_mode' => 'active', 'is_active' => true])->save();
+
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee($active->name)
+            ->assertSee('Active');
+    }
 }
