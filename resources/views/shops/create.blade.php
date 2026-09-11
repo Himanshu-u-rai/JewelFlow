@@ -321,10 +321,14 @@
             </svg>
             <div class="header-brand-text">Jewel<span>Flows</span></div>
         </div>
+        {{-- Hidden when there is no other type to change TO — the chooser skips
+             itself in that case, so the link would bounce straight back here. --}}
+        @if(\App\Models\Platform\PlatformSetting::erpChooserOffersAChoice())
         <a href="{{ route('shops.choose-type') }}" class="header-back" aria-label="Change business type">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
             <span class="header-back-label">Change business type</span>
         </a>
+        @endif
     </div>
     <div class="shop-chip">
         <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">

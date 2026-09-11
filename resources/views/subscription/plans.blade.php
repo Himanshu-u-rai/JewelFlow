@@ -276,6 +276,10 @@
 
   <div>
     <div class="plans-container plans-md">
+      {{-- Only when there is another type to change TO. The chooser skips itself
+           when it has one option, so this link would bounce the user straight back
+           to this page — a visible control that does nothing. --}}
+      @if(\App\Models\Platform\PlatformSetting::erpChooserOffersAChoice())
       <div class="plans-back-link-wrap">
         <a href="{{ route('shops.choose-type') }}" class="back-btn">
           <span class="back-btn__icon" aria-hidden="true">
@@ -286,6 +290,7 @@
           <span>Change business type</span>
         </a>
       </div>
+      @endif
 
       {{-- Master / detail: stacked options on the left, full detail on the right. --}}
       <div class="md-shell" id="planMaster">

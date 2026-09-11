@@ -120,4 +120,17 @@ class PlatformSetting extends Model
             array_diff(static::enabledShopTypes(), static::SERVED_ON_OWN_SUBDOMAIN)
         );
     }
+
+    /**
+     * Is there actually a business type to choose between?
+     *
+     * The chooser skips itself when the answer is no, so anything that LINKS to
+     * that screen ("Change business type" on the plan and shop-creation pages)
+     * must ask the same question — otherwise it renders a control that bounces
+     * the user straight back to the page they clicked it on.
+     */
+    public static function erpChooserOffersAChoice(): bool
+    {
+        return count(static::erpSelectableShopTypes()) > 1;
+    }
 }

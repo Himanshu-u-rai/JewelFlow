@@ -75,7 +75,9 @@ class ShopController extends Controller
         }
 
         // Nothing to ask when only one edition can be shown — pick it and move on.
-        if (count($offered) === 1) {
+        // Asked through the same helper the "Change business type" links use, so
+        // a link to this screen can never appear when the screen won't render.
+        if (! PlatformSetting::erpChooserOffersAChoice()) {
             $this->persistEditionChoice($user, [$offered[0]]);
             return redirect()->route('subscription.plans');
         }

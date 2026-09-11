@@ -60,6 +60,19 @@ class ShopTypeChooserTest extends TestCase
     }
 
     /**
+     * The plan page redirects BACK to the chooser when no plan matches the shop
+     * type, and RefreshDatabase starts with an empty plans table. Without this,
+     * a test reaching that page would pass or fail for the wrong reason.
+     */
+    private function retailerPlan(): void
+    {
+        Plan::firstOrCreate(
+            ['code' => 'retailer_yearly'],
+            ['name' => 'Retailer Yearly', 'price_monthly' => 0, 'price_yearly' => 19999, 'grace_days' => 5, 'is_active' => true],
+        );
+    }
+
+    /**
      * THE BUG. Production's exact settings: manufacturer off, dhiran on.
      * Only Retailer can be drawn, so there is no question to ask — skip it.
      */
@@ -179,13 +192,7 @@ class ShopTypeChooserTest extends TestCase
     public function test_plan_page_accepts_the_auto_picked_type_without_bouncing_back(): void
     {
         $this->setTypes(retailer: true, manufacturer: false, dhiran: true);
-        // The plan page also bounces back when NO plan matches the type, and
-        // RefreshDatabase starts with an empty plans table — without this the
-        // test would pass or fail for the wrong reason.
-        Plan::firstOrCreate(
-            ['code' => 'retailer_yearly'],
-            ['name' => 'Retailer Yearly', 'price_monthly' => 0, 'price_yearly' => 19999, 'grace_days' => 5, 'is_active' => true],
-        );
+        $this->retailerPlan();
         $user = $this->chooser('9390100010');
 
         $this->actingAs($user)
@@ -200,6 +207,39 @@ class ShopTypeChooserTest extends TestCase
             'The plan page bounced back to the chooser — the auto-picked type was rejected downstream.'
         );
         $response->assertOk();
+    }
+
+    /**
+     * A link to a screen that skips itself is a control that visibly does
+     * nothing. The plan page's "Change business type" link must answer the same
+     * question the chooser answers, or clicking it returns you to the page you
+     * clicked it on. Found on staging, not in review.
+     */
+    public function test_change_business_type_link_is_hidden_when_there_is_no_choice(): void
+    {
+        $this->setTypes(retailer: true, manufacturer: false, dhiran: true);
+        $this->retailerPlan();
+        $user = $this->chooser('9390100011');
+
+        $this->actingAs($user)->get(self::ERP.'/shops/choose-type');
+        $this->actingAs($user)
+            ->get(self::ERP.'/subscription/plans')
+            ->assertOk()
+            ->assertDontSee('Change business type');
+    }
+
+    /** …and it must still be there when changing type is actually possible. */
+    public function test_change_business_type_link_is_shown_when_a_choice_exists(): void
+    {
+        $this->setTypes(retailer: true, manufacturer: true, dhiran: true);
+        $this->retailerPlan();
+        $user = $this->chooser('9390100012');
+
+        $this->actingAs($user)->post(self::ERP.'/shops/choose-type', ['edition' => 'retailer']);
+        $this->actingAs($user)
+            ->get(self::ERP.'/subscription/plans')
+            ->assertOk()
+            ->assertSee('Change business type');
     }
 
     /** A user who already has a shop never sees this screen. */
