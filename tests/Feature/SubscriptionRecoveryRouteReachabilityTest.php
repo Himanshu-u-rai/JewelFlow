@@ -206,13 +206,44 @@ class SubscriptionRecoveryRouteReachabilityTest extends TestCase
      * subscription.trial.start is deliberately NOT bypassed (see the comment on
      * the bypass list). A free trial force-activates the shop, so bypassing it
      * would hand every restricted shop a free way out.
+     *
+     * A VALID payload is submitted on purpose. An earlier cut posted nothing at
+     * all, which meant a mere `required` validation bounce on plan_id would have
+     * produced the same "no trial row, still read_only" end state — a validation
+     * failure masquerading as authorization coverage. With a real plan_id the only
+     * thing left that can refuse this request is the middleware, and the
+     * assertions below name that refusal positively rather than infer it from an
+     * unchanged database.
+     *
+     * The refusal is a 302 `back()`, NOT a 423. EnsureAccountIsActive::deny()
+     * negotiates on content type: JSON and `api/*` get
+     * `response()->json(..., 423)`, a browser form POST gets
+     * `back()->withErrors(['shop' => ...])`. The /_probe/write test above is the
+     * JSON leg of this same guard; this is its web leg.
      */
     public function test_the_trial_route_is_not_bypassed(): void
     {
         [$user, $shop, $plan] = $this->tenant();
         $this->corroboratedLapse($shop, $plan);
 
-        $this->actingAs($user)->post(route('subscription.trial.start'));
+        // from() makes back() deterministic. Without it the bounce resolves to '/'
+        // and the redirect target proves nothing about what was refused.
+        $response = $this->actingAs($user)
+            ->from(route('subscription.plans'))
+            ->post(route('subscription.trial.start'), ['plan_id' => $plan->id]);
+
+        $response->assertRedirect(route('subscription.plans'));
+        $response->assertSessionHasErrors([
+            'shop' => 'Shop is in read-only mode. Writes are blocked by platform policy.',
+        ]);
+
+        // THE DISCRIMINATOR: a validation failure would land under 'plan_id'. The
+        // read-only refusal has to be the reason, and the only reason.
+        $response->assertSessionDoesntHaveErrors(['plan_id']);
+
+        // startTrial()'s body never ran, so neither marker it would set exists.
+        $response->assertSessionMissing('pending_subscription_id');
+        $response->assertSessionMissing('subscription_completed');
 
         $this->assertSame('read_only', $shop->fresh()->access_mode, 'A restricted shop must not be able to trial its way out.');
         $this->assertDatabaseMissing('shop_subscriptions', [
@@ -231,6 +262,21 @@ class SubscriptionRecoveryRouteReachabilityTest extends TestCase
      * refusal comes from the CONTROLLER, not from the middleware — the route is
      * bypassed either way. That distinction is the whole point of asking where
      * a refusal comes from before proposing an authorization change.
+     *
+     * WHY THIS TEST HAD TO BE REWRITTEN. The first cut asserted only that the shop
+     * row and the subscription rows were unchanged, and ignored the response
+     * entirely. Those assertions cannot fail: choosePlan() does not activate a
+     * subscription even on the SUCCESS path — it writes two session keys and
+     * redirects to the payment page. So "shop still read_only, no active row"
+     * describes an ACCEPTED plan selection just as well as a refused one, and the
+     * test would have passed with the guard deleted.
+     *
+     * The real refusal is `purchaseBlockedResponse()`: because
+     * suspensionIsAdministrative() is true AND access_mode is read_only, it
+     * returns `redirect()->route('dashboard')->with('error', ...)`. And the real
+     * evidence that checkout never opened is the ABSENCE of the pending_plan_id /
+     * pending_billing_cycle session pair, which is the only thing choosePlan()
+     * writes before handing off. Both are asserted below.
      */
     public function test_an_administrator_hold_cannot_buy_its_way_out(): void
     {
@@ -244,11 +290,32 @@ class SubscriptionRecoveryRouteReachabilityTest extends TestCase
         ])->save();
 
         $this->assertFalse($shop->fresh()->suspensionIsSubscriptionManaged());
+        $this->assertTrue(
+            $shop->fresh()->suspensionIsAdministrative(),
+            'Fixture guard: without an administrative classification blocksNewPaidTerm() would not fire and this test would measure nothing.'
+        );
 
-        $this->actingAs($user)->post(route('subscription.choose'), [
+        // 'monthly', not 'yearly'. createPlan() prices price_monthly and leaves
+        // price_yearly null, so a yearly cycle could be bounced by payment()'s
+        // priceless-cycle guard further down the funnel — a second possible reason
+        // for the same visible outcome. A fully valid, priced request leaves the
+        // administrative hold as the only thing that can refuse it.
+        $response = $this->actingAs($user)->post(route('subscription.choose'), [
             'plan_id' => $plan->id,
-            'billing_cycle' => 'yearly',
+            'billing_cycle' => 'monthly',
         ]);
+
+        $response->assertRedirect(route('dashboard'));
+        $response->assertSessionHas(
+            'error',
+            'Your shop is under an administrative hold by JewelFlows. A subscription purchase cannot lift it — please contact support.'
+        );
+
+        // Checkout never opened. These two keys are the whole of choosePlan()'s
+        // forward progress, so their absence is the positive proof of refusal that
+        // the unchanged rows below cannot supply.
+        $response->assertSessionMissing('pending_plan_id');
+        $response->assertSessionMissing('pending_billing_cycle');
 
         $this->assertSame('read_only', $shop->fresh()->access_mode);
         $this->assertSame($admin->id, (int) $shop->fresh()->suspended_by, 'The hold must survive a purchase attempt.');
