@@ -48,9 +48,11 @@ class SaveHistoricalMappingRequest extends FormRequest
             'mapping'            => ['required', 'array'],
             'mapping.*'          => ['nullable', 'string', 'max:255'],
 
-            // source column header => ignored|informational.
+            // source column header => ignored|informational, or empty for "not
+            // decided yet" — which must reach the profile so the mapper can raise
+            // the undecided block rather than 422 with a generic invalid-value.
             'column_decisions'   => ['nullable', 'array'],
-            'column_decisions.*' => [Rule::in([
+            'column_decisions.*' => ['nullable', Rule::in([
                 HistoricalImportProfile::DECISION_IGNORED,
                 HistoricalImportProfile::DECISION_INFORMATIONAL,
             ])],

@@ -233,11 +233,16 @@
                     <div class="p-4 sm:p-6 min-w-0 max-w-full">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0 max-w-full">
                         @foreach($suggestion['unmapped'] as $header)
+                            @php($decision = $profile?->column_decisions[$header] ?? '')
                             <div class="min-w-0 max-w-full">
                                 <label for="map_decision_{{ $loop->index }}" class="min-w-0 max-w-full">{{ $header }}</label>
+                                {{-- The blank option is the point: without it the browser pre-selects
+                                     "Ignore", so clicking through drops the column and the undecided
+                                     block (money silently disappearing) can never fire. --}}
                                 <select id="map_decision_{{ $loop->index }}" name="column_decisions[{{ $header }}]" class="w-full min-w-0 max-w-full min-h-[44px] rounded-lg">
-                                    <option value="{{ HistoricalImportProfile::DECISION_IGNORED }}" @selected(($profile?->column_decisions[$header] ?? '') === HistoricalImportProfile::DECISION_IGNORED)>Ignore</option>
-                                    <option value="{{ HistoricalImportProfile::DECISION_INFORMATIONAL }}" @selected(($profile?->column_decisions[$header] ?? '') === HistoricalImportProfile::DECISION_INFORMATIONAL)>Keep (informational)</option>
+                                    <option value="" @selected($decision === '')>— Not decided yet —</option>
+                                    <option value="{{ HistoricalImportProfile::DECISION_IGNORED }}" @selected($decision === HistoricalImportProfile::DECISION_IGNORED)>Ignore</option>
+                                    <option value="{{ HistoricalImportProfile::DECISION_INFORMATIONAL }}" @selected($decision === HistoricalImportProfile::DECISION_INFORMATIONAL)>Keep (informational)</option>
                                 </select>
                             </div>
                         @endforeach
