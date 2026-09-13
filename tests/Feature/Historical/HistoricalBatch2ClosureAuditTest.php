@@ -3,10 +3,14 @@
 namespace Tests\Feature\Historical;
 
 use App\Models\Historical\HistoricalImportBatch;
+use App\Models\Historical\HistoricalImportProfile;
+use App\Models\Historical\HistoricalImportRow;
 use App\Models\Historical\HistoricalSalesDocument;
+use App\Services\Historical\HistoricalColumnMapper;
 use App\Services\Historical\HistoricalDocumentLifecycleService;
 use App\Services\Historical\HistoricalImportService;
 use App\Services\Historical\HistoricalDuplicateDetector;
+use App\Support\Historical\HistoricalMessages;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -209,6 +213,401 @@ class HistoricalBatch2ClosureAuditTest extends TestCase
             $batch->refresh();
             $this->assertGreaterThan(0, (int) $batch->blocking_count, 'An undecided monetary column must block, not silently vanish.');
             $this->assertNotNull($batch->blockedFromPublishing());
+        });
+    }
+
+    /**
+     * The gate above proves the SERVICE blocks an undecided column. It says
+     * nothing about whether the mapping screen can ever produce one — and for a
+     * long time it could not: the decision select had two options and no blank,
+     * so the browser pre-selected the first ("Ignore") and clicking Continue
+     * dropped every unrecognized column without the operator deciding anything.
+     */
+    private function batchWithAnUnrecognizedColumn($owner, int $shopId): HistoricalImportBatch
+    {
+        $csv = "Invoice No,Date,Amount,Counter Ref\nA-1,2023-06-15,1000,X9\n";
+
+        $this->actingAs($owner)->post(route('historical.upload.store'), [
+            'file' => UploadedFile::fake()->createWithContent('a.csv', $csv),
+        ])->assertRedirect();
+
+        return TenantContext::runFor($shopId, fn () => HistoricalImportBatch::query()->latest('id')->firstOrFail());
+    }
+
+    /**
+     * An otherwise-valid mapping for that fixture: the three required fields are
+     * mapped and correct, so "Counter Ref" is the ONLY thing under test. Pass
+     * null for $decisions to omit the key entirely, which is what a form that
+     * never rendered a select for the column would post.
+     */
+    private function mappingPayload(?array $decisions): array
+    {
+        $payload = [
+            'name'              => 'p',
+            'layout_type'       => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
+            'header_row'        => 1,
+            'date_format'       => \App\Services\Historical\HistoricalDateParser::FORMAT_ISO,
+            'decimal_separator' => '.',
+            'tax_mode'          => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
+            'mapping'           => [
+                'original_document_number' => 'Invoice No',
+                'document_date'            => 'Date',
+                'grand_total'              => 'Amount',
+            ],
+        ];
+
+        return $decisions === null ? $payload : $payload + ['column_decisions' => $decisions];
+    }
+
+    /**
+     * Every finding the pipeline recorded for this batch, as stored — not as
+     * re-derived by calling the mapper again. `messages` is cast to array on the
+     * row model, so these are the exact severity/code/text/field tuples that
+     * HistoricalMessages::add() wrote.
+     *
+     * @return array<int, array{severity: string, code: string, text: string, field: ?string}>
+     */
+    private function recordedFindings(HistoricalImportBatch $batch): array
+    {
+        return TenantContext::runFor((int) $batch->shop_id, fn (): array => HistoricalImportRow::query()
+            ->where('historical_import_batch_id', $batch->id)
+            ->get(['messages'])
+            ->flatMap(fn ($row): array => $row->messages ?: [])
+            ->all());
+    }
+
+    /**
+     * Asserts the ONE finding that matters, by code AND by the header it names.
+     *
+     * The header is the mapper's third argument to HistoricalMessages::error()
+     * — the `field` key. Asserting only the code would pass while the message
+     * pointed the operator at the wrong column, which on a forty-column file is
+     * the difference between a fixable error and an unreadable one.
+     *
+     * Pass null for $header to assert a deliberately field-less finding (a
+     * whole-bill decision such as `duplicate_skipped`). Null is matched
+     * strictly, so it still fails if the code starts naming a field.
+     *
+     * $textMustContain defaults to $header because a column finding should name
+     * its column. Where `field` is a canonical field key rather than a source
+     * header (`original_document_number`), that key is not what the operator
+     * reads — pass the value they WILL recognize (the printed bill number).
+     */
+    private function assertFindingNames(
+        HistoricalImportBatch $batch,
+        string $code,
+        ?string $header,
+        string $severity,
+        ?string $textMustContain = null,
+    ): void {
+        $textMustContain ??= $header;
+
+        $matching = array_values(array_filter(
+            $this->recordedFindings($batch),
+            fn (array $m): bool => $m['code'] === $code && $m['field'] === $header
+        ));
+
+        $this->assertNotEmpty($matching, sprintf(
+            'Expected a "%s" finding naming column "%s". Recorded instead: %s',
+            $code,
+            $header ?? '(no field)',
+            json_encode(array_map(
+                fn (array $m): string => $m['severity'].':'.$m['code'].':'.($m['field'] ?? '-'),
+                $this->recordedFindings($batch)
+            ))
+        ));
+
+        $this->assertSame($severity, $matching[0]['severity']);
+
+        if ($textMustContain !== null) {
+            $this->assertStringContainsString(
+                $textMustContain,
+                $matching[0]['text'],
+                'The operator-facing text must name what the finding points at.'
+            );
+        }
+    }
+
+    public function test_decision_select_opens_undecided_instead_of_defaulting_to_ignore(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->batchWithAnUnrecognizedColumn($owner, $shop->id);
+
+        $response = $this->actingAs($owner)->get(route('historical.batches.map', $batch->id));
+
+        $response->assertOk();
+        $response->assertSee('name="column_decisions[Counter Ref]"', false);
+        $response->assertSee('<option value="" selected>— Not decided yet —</option>', false);
+        // The destructive option must not be what the form submits by default.
+        $response->assertDontSee(
+            '<option value="'.HistoricalImportProfile::DECISION_IGNORED.'" selected>',
+            false
+        );
+    }
+
+    /**
+     * The alias table prefills the screen; it never completes it. Both halves of
+     * that sentence are load-bearing and neither was pinned end-to-end:
+     *
+     *  - a recognized header must arrive PRE-SELECTED on its field, or the
+     *    operator re-does by hand what the table already knew; and
+     *  - an unrecognized header must fall through to the decision block instead
+     *    of being quietly attached to whatever field is nearest.
+     *
+     * "Amount" is the interesting one: it aliases to `line_total`, NOT to
+     * `grand_total`, so the required total stays unmapped and the operator must
+     * confirm it. That is deliberate — asserting it here stops a future "helpful"
+     * alias from auto-filling a bill's total from a line amount.
+     */
+    public function test_alias_prefill_selects_recognized_headers_and_leaves_the_rest_to_be_decided(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->batchWithAnUnrecognizedColumn($owner, $shop->id);
+
+        $html = $this->actingAs($owner)
+            ->get(route('historical.batches.map', $batch->id))
+            ->assertOk()
+            ->getContent();
+
+        $previous = libxml_use_internal_errors(true);
+        $document = new \DOMDocument;
+        $this->assertTrue($document->loadHTML($html), 'Rendered mapping screen could not be parsed.');
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $xpath = new \DOMXPath($document);
+
+        $selected = function (string $field) use ($xpath): ?string {
+            $node = $xpath->query(
+                sprintf('//select[@name="mapping[%s]"]/option[@selected]', $field)
+            )?->item(0);
+
+            return $node?->getAttribute('value');
+        };
+
+        $this->assertSame('Invoice No', $selected('original_document_number'));
+        $this->assertSame('Date', $selected('document_date'));
+        $this->assertSame('Amount', $selected('line_total'));
+        $this->assertNull($selected('grand_total'), 'A line amount must not be auto-filled as the bill total.');
+
+        // The one header with no alias is the one the operator is asked about.
+        $this->assertSame(
+            1,
+            $xpath->query('//select[@name="column_decisions[Counter Ref]"]')?->length,
+            'An unrecognized column must reach the operator as a decision.'
+        );
+        $this->assertSame(
+            0,
+            $xpath->query('//select[starts-with(@name, "column_decisions[")][not(@name="column_decisions[Counter Ref]")]')?->length,
+            'A header the alias table recognized must not also be asked about.'
+        );
+    }
+
+    /**
+     * Pairs with the assertion above: proves "Ignore is not selected" is evidence
+     * of the blank default, not of a reworded option or an empty render — and
+     * that deciding the column is what lets the file move on.
+     */
+    public function test_a_saved_ignore_decision_is_shown_selected_on_return_and_unblocks_the_batch(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->batchWithAnUnrecognizedColumn($owner, $shop->id);
+
+        $this->actingAs($owner)->post(
+            route('historical.batches.map.save', $batch->id),
+            $this->mappingPayload(['Counter Ref' => HistoricalImportProfile::DECISION_IGNORED])
+        )->assertSessionHasNoErrors();
+
+        $this->actingAs($owner)
+            ->get(route('historical.batches.map', $batch->id))
+            ->assertOk()
+            ->assertSee(
+                '<option value="'.HistoricalImportProfile::DECISION_IGNORED.'" selected>Ignore</option>',
+                false
+            );
+
+        // The decision is recorded as an explicit one, against this header.
+        $this->assertFindingNames(
+            $batch,
+            HistoricalColumnMapper::CODE_COLUMN_IGNORED,
+            'Counter Ref',
+            HistoricalMessages::INFO
+        );
+
+        $this->assertDecidedColumnLetsTheImportProceed($owner, $batch, $shop->id);
+    }
+
+    /**
+     * "Keep (informational)" is the other legal decision and must behave like a
+     * decision, not like a half-measure: recorded, named, and not blocking.
+     */
+    public function test_keeping_a_column_as_informational_is_recorded_and_does_not_block(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->batchWithAnUnrecognizedColumn($owner, $shop->id);
+
+        $this->actingAs($owner)->post(
+            route('historical.batches.map.save', $batch->id),
+            $this->mappingPayload(['Counter Ref' => HistoricalImportProfile::DECISION_INFORMATIONAL])
+        )->assertSessionHasNoErrors();
+
+        $this->actingAs($owner)
+            ->get(route('historical.batches.map', $batch->id))
+            ->assertOk()
+            ->assertSee(
+                '<option value="'.HistoricalImportProfile::DECISION_INFORMATIONAL.'" selected>Keep (informational)</option>',
+                false
+            );
+
+        $this->assertFindingNames(
+            $batch,
+            HistoricalColumnMapper::CODE_COLUMN_IGNORED,
+            'Counter Ref',
+            HistoricalMessages::INFO
+        );
+
+        $this->assertDecidedColumnLetsTheImportProceed($owner, $batch, $shop->id);
+    }
+
+    /**
+     * The blank option is worthless if the request layer rejects it — a 422
+     * "selected value is invalid" would hide the real message ("money that
+     * silently disappears") behind a generic one. It must pass validation and
+     * reach the mapper as an undecided column, and the block it raises must be
+     * enforced by the SERVER on the publish route, not merely by a disabled
+     * button on the review screen.
+     */
+    public function test_submitting_an_undecided_column_blocks_instead_of_failing_validation(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->batchWithAnUnrecognizedColumn($owner, $shop->id);
+
+        $this->actingAs($owner)->post(
+            route('historical.batches.map.save', $batch->id),
+            $this->mappingPayload(['Counter Ref' => '']) // exactly what the blank option posts
+        )->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertFindingNames(
+            $batch,
+            HistoricalColumnMapper::CODE_COLUMN_UNDECIDED,
+            'Counter Ref',
+            HistoricalMessages::ERROR
+        );
+
+        $this->assertPublishIsRefusedServerSide($owner, $batch, $shop->id);
+    }
+
+    /**
+     * The empty string is what the blank <option> posts. A key that is absent
+     * altogether — an older saved profile, a form that never rendered a select
+     * for a column the file gained this year, a hand-built request — must reach
+     * the same conclusion. `$decisions[$header] ?? null` is the line that makes
+     * these two identical, and nothing else pinned it.
+     */
+    public function test_a_missing_decision_key_is_undecided_too(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->batchWithAnUnrecognizedColumn($owner, $shop->id);
+
+        $this->actingAs($owner)->post(
+            route('historical.batches.map.save', $batch->id),
+            $this->mappingPayload(null) // no column_decisions key at all
+        )->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertFindingNames(
+            $batch,
+            HistoricalColumnMapper::CODE_COLUMN_UNDECIDED,
+            'Counter Ref',
+            HistoricalMessages::ERROR
+        );
+
+        $this->assertPublishIsRefusedServerSide($owner, $batch, $shop->id);
+    }
+
+    /**
+     * The decided column leaves no undecided finding and no blocking error, and
+     * the file actually completes the journey: acknowledge the ordinary
+     * header-only warning (this fixture has no item lines, which is a warning by
+     * design, NOT a mapping problem) and the batch publishes.
+     *
+     * Asserting only "blockedFromPublishing() is null" here would be wrong —
+     * that method also reports the warning-acknowledgement barrier, which has
+     * nothing to do with the column decision under test. Running the
+     * acknowledgement and then publishing separates the two cleanly and proves
+     * progression rather than merely the absence of one error.
+     */
+    private function assertDecidedColumnLetsTheImportProceed($owner, HistoricalImportBatch $batch, int $shopId): void
+    {
+        $codes = array_column($this->recordedFindings($batch), 'code');
+
+        $this->assertNotContains(
+            HistoricalColumnMapper::CODE_COLUMN_UNDECIDED,
+            $codes,
+            'A decided column must leave no undecided finding behind.'
+        );
+
+        TenantContext::runFor($shopId, function () use ($batch): void {
+            $batch->refresh();
+            $this->assertSame(0, (int) $batch->blocking_count, 'A fully decided mapping must raise no blocking error.');
+        });
+
+        if ((int) $batch->warning_count > 0) {
+            $this->actingAs($owner)->post(route('historical.batches.acknowledge', $batch->id))->assertRedirect();
+        }
+
+        TenantContext::runFor($shopId, function () use ($batch): void {
+            $batch->refresh();
+            $this->assertNull($batch->blockedFromPublishing(), 'Nothing should stand between a decided mapping and publishing.');
+        });
+
+        $this->actingAs($owner)
+            ->post(route('historical.batches.publish', $batch->id))
+            ->assertRedirect()
+            ->assertSessionMissing('error');
+
+        TenantContext::runFor($shopId, function () use ($batch): void {
+            $batch->refresh();
+            $this->assertTrue($batch->isPublished(), 'A fully decided mapping failed to publish.');
+            $this->assertSame(
+                [HistoricalSalesDocument::STATUS_PUBLISHED],
+                HistoricalSalesDocument::query()
+                    ->where('historical_import_batch_id', $batch->id)
+                    ->pluck('status')->unique()->values()->all()
+            );
+        });
+    }
+
+    /**
+     * Posting straight at the publish route, bypassing every rendered control.
+     * A block that only lives in the Blade template is not a block.
+     */
+    private function assertPublishIsRefusedServerSide($owner, HistoricalImportBatch $batch, int $shopId): void
+    {
+        TenantContext::runFor($shopId, function () use ($batch): void {
+            $batch->refresh();
+            $this->assertGreaterThan(0, (int) $batch->blocking_count, 'An undecided column must block publishing.');
+            $this->assertNotNull($batch->blockedFromPublishing());
+        });
+
+        $this->actingAs($owner)
+            ->post(route('historical.batches.publish', $batch->id))
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        TenantContext::runFor($shopId, function () use ($batch): void {
+            $batch->refresh();
+            $this->assertFalse($batch->isPublished(), 'A blocked batch was published anyway.');
+
+            $statuses = HistoricalSalesDocument::query()
+                ->where('historical_import_batch_id', $batch->id)
+                ->pluck('status')
+                ->unique()
+                ->all();
+
+            $this->assertNotContains(
+                HistoricalSalesDocument::STATUS_PUBLISHED,
+                $statuses,
+                'A document escaped into the published state from a blocked batch.'
+            );
         });
     }
 
@@ -419,6 +818,121 @@ class HistoricalBatch2ClosureAuditTest extends TestCase
         });
     }
 
+    /**
+     * GATE 10 above exercises LINK and NEW_SERIES. SKIP and SUPERSEDE are the
+     * other two answers HistoricalDuplicateDetector::RESOLUTIONS allows, and
+     * before this test neither constant appeared anywhere in the suite — the
+     * `duplicate_resolutions` column itself was referenced by no test at all.
+     * Both branches decide whether a bill enters the archive, so they are
+     * exactly the wrong pair to leave unexecuted.
+     *
+     * Same fixture as GATE 10: two rows printed DUP-1, so row:2 collides on
+     * NUMBER identity.
+     */
+    public function test_skipping_a_duplicate_clears_the_block_and_writes_no_document(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->numberedDuplicateBatch($owner, $shop->id);
+
+        $this->actingAs($owner)->post(route('historical.batches.duplicates', $batch->id), [
+            'grouping_key' => 'row:2',
+            'action'       => HistoricalDuplicateDetector::RESOLUTION_SKIP,
+        ])->assertRedirect();
+
+        TenantContext::runFor($shop->id, function () use ($batch) {
+            $batch->refresh();
+            $this->assertSame(0, (int) $batch->blocking_count, 'A skipped duplicate must stop blocking the batch.');
+            $this->assertSame(1, $batch->document_count, 'Skip means the second bill is NOT archived.');
+        });
+
+        // Progression, not merely absence-of-error: clear the ordinary
+        // warning-acknowledgement barrier (which is not about the duplicate),
+        // then prove the batch really does publish, with one document.
+        $this->actingAs($owner)->post(route('historical.batches.acknowledge', $batch->id))->assertRedirect();
+        $this->actingAs($owner)->post(route('historical.batches.publish', $batch->id))->assertRedirect();
+
+        TenantContext::runFor($shop->id, function () use ($batch) {
+            $batch->refresh();
+            // Not assertNull(blockedFromPublishing()) here: that method also
+            // reports post-publish state ("This batch is already published."),
+            // so it is not a clean precondition probe once publishing succeeded.
+            // The status below is the stronger claim anyway.
+            $this->assertSame(HistoricalImportBatch::STATUS_PUBLISHED, $batch->status);
+            $this->assertSame(1, HistoricalSalesDocument::query()
+                ->where('historical_import_batch_id', $batch->id)->count());
+        });
+
+        // Skipping is recorded, not silent: the operator's own decision has to be
+        // visible on the row afterwards, or a re-opened batch looks like the bill
+        // was simply lost.
+        $this->assertFindingNames($batch, 'duplicate_skipped', null, HistoricalMessages::INFO);
+    }
+
+    /**
+     * SUPERSEDE answers "this file holds the corrected version of a bill already
+     * in the archive". It is deliberately NOT an answer to a number-identity
+     * collision — `resolveConflict()` accepts it only on a content-fingerprint
+     * conflict — because the printed number is never reassigned to make an
+     * import succeed. Pinned here so the restriction cannot be relaxed silently.
+     */
+    public function test_supersede_is_not_an_answer_to_a_printed_number_collision(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $batch = $this->numberedDuplicateBatch($owner, $shop->id);
+
+        $this->actingAs($owner)->post(route('historical.batches.duplicates', $batch->id), [
+            'grouping_key' => 'row:2',
+            'action'       => HistoricalDuplicateDetector::RESOLUTION_SUPERSEDE,
+            'override_key' => 'this-is-the-corrected-one',
+        ])->assertRedirect();
+
+        TenantContext::runFor($shop->id, function () use ($batch) {
+            $batch->refresh();
+            $this->assertGreaterThan(
+                0,
+                (int) $batch->blocking_count,
+                'Supersede must not clear a number-identity collision; only a confirmed series does.'
+            );
+            $this->assertSame(1, $batch->document_count);
+        });
+
+        $this->assertFindingNames(
+            $batch,
+            HistoricalDuplicateDetector::CODE_DUPLICATE_NUMBER,
+            'original_document_number',
+            HistoricalMessages::ERROR,
+            'DUP-1'
+        );
+    }
+
+    /** The GATE 10 fixture: two rows both printed DUP-1, mapped and normalized. */
+    private function numberedDuplicateBatch($owner, int $shopId): HistoricalImportBatch
+    {
+        $csv = "Invoice No,Date,Amount\nDUP-1,2023-06-15,1000\nDUP-1,2023-06-16,2000\n";
+
+        $this->actingAs($owner)->post(route('historical.upload.store'), [
+            'file' => UploadedFile::fake()->createWithContent('dup.csv', $csv),
+        ])->assertRedirect();
+
+        $batch = TenantContext::runFor($shopId, fn () => HistoricalImportBatch::query()->latest('id')->firstOrFail());
+
+        $this->actingAs($owner)->post(route('historical.batches.map.save', $batch->id), [
+            'name'              => 'dup-profile',
+            'layout_type'       => HistoricalImportProfile::LAYOUT_HEADER_ONLY,
+            'header_row'        => 1,
+            'date_format'       => \App\Services\Historical\HistoricalDateParser::FORMAT_ISO,
+            'decimal_separator' => '.',
+            'tax_mode'          => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
+            'mapping'           => [
+                'original_document_number' => 'Invoice No',
+                'document_date'            => 'Date',
+                'grand_total'              => 'Amount',
+            ],
+        ])->assertRedirect();
+
+        return TenantContext::runFor($shopId, fn () => $batch->refresh());
+    }
+
     // ============================================================== GATE 12
 
     public function test_publish_claim_is_an_atomic_compare_and_swap_not_a_sequential_check(): void
@@ -466,15 +980,29 @@ class HistoricalBatch2ClosureAuditTest extends TestCase
 
     // ============================================================== GATE 13
 
+    /**
+     * Every live table a historical publish could plausibly leak into.
+     *
+     * Named literally and asserted unconditionally on purpose. A
+     * `Schema::hasTable()` guard around a money assertion turns a wrong table
+     * name into a silently skipped assertion — a green test that proves nothing.
+     * If a name here is ever wrong, the query throws and says so.
+     *
+     * Public because `HistoricalManualPaymentRowsUiTest` asserts the same
+     * invariant on the preview path; two hand-maintained copies would drift.
+     */
+    public const LIVE_MONEY_TABLES = [
+        'invoices', 'invoice_items', 'quick_bills', 'quick_bill_items',
+        'cash_transactions', 'invoice_payments', 'metal_movements',
+        'customer_gold_transactions', 'loyalty_transactions',
+        'customer_opening_balances',
+    ];
+
     public function test_publishing_a_historical_batch_writes_to_historical_tables_only(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
 
-        $liveTables = [
-            'invoices', 'invoice_items', 'quick_bills', 'quick_bill_items',
-            'cash_transactions', 'invoice_payments', 'metal_movements',
-            'customer_gold_transactions', 'loyalty_transactions',
-        ];
+        $liveTables = self::LIVE_MONEY_TABLES;
 
         $before = collect($liveTables)->mapWithKeys(fn ($t) => [$t => DB::table($t)->count()]);
 
@@ -512,6 +1040,74 @@ class HistoricalBatch2ClosureAuditTest extends TestCase
 
         $this->assertSame(1, DB::table('historical_sales_documents')->count());
         $this->assertSame(1, DB::table('historical_sales_lines')->count());
+    }
+
+    /**
+     * The overpayment case, on the WRITE path.
+     *
+     * The excess a customer paid on a 2022 bill is a display figure in a
+     * historical snapshot: there is no wallet to credit, no receivable to
+     * reduce, no ledger to post to. An overpaid bill LINKED TO A REAL CUSTOMER
+     * is the one shape where a future "helpful" integration would be tempted to
+     * write, so it is the shape worth pinning.
+     *
+     * Why this test exists separately from the gate above: the only existing
+     * overpayment no-write assertion (HistoricalManualPaymentRowsUiTest) posts
+     * to `historical.manual.preview` — a read-only render — and guarded its
+     * counts behind `Schema::hasTable('customer_wallets')` and
+     * `customer_ledger_entries`, NEITHER OF WHICH EXISTS in this schema. Both
+     * assertions were therefore skipped at runtime and the test proved nothing
+     * about writes at all. This one drives store -> acknowledge -> publish and
+     * asserts unconditionally.
+     */
+    public function test_publishing_an_overpaid_bill_for_a_linked_customer_writes_no_live_money(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = TenantContext::runFor($shop->id, fn () => $this->createCustomer($shop->id));
+
+        $before = collect(self::LIVE_MONEY_TABLES)->mapWithKeys(fn ($t) => [$t => DB::table($t)->count()]);
+
+        $this->actingAs($owner)->post(route('historical.manual.store'), [
+            'original_document_number' => 'OVERPAID-1',
+            'document_date'            => '2022-03-09',
+            'customer_id'              => $customer->id,
+            'grand_total'              => 1000,
+            'tax_mode'                 => HistoricalSalesDocument::TAX_MODE_NOT_APPLICABLE,
+            'payments'                 => [['mode' => 'cash', 'amount' => 1500]],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $batch = TenantContext::runFor($shop->id, fn () => HistoricalImportBatch::query()->latest('id')->firstOrFail());
+
+        // The overpayment is a WARNING: publishable, but only after the operator
+        // acknowledges it. That gate is the subject of HistoricalManualPaymentWiringTest;
+        // here it is a precondition, so assert it rather than assume it.
+        $this->assertGreaterThan(0, (int) $batch->warning_count, 'An overpayment must warn before it can be published.');
+        $this->actingAs($owner)->post(route('historical.batches.acknowledge', $batch->id))->assertRedirect();
+        $this->actingAs($owner)->post(route('historical.batches.publish', $batch->id))->assertRedirect();
+
+        TenantContext::runFor($shop->id, function () use ($batch, $customer) {
+            $batch->refresh();
+            $this->assertSame(HistoricalImportBatch::STATUS_PUBLISHED, $batch->status);
+
+            $document = HistoricalSalesDocument::query()
+                ->where('historical_import_batch_id', $batch->id)
+                ->firstOrFail();
+
+            // The excess was recorded on the historical snapshot, not discarded...
+            $this->assertSame($customer->id, (int) $document->customer_id);
+            $this->assertEqualsWithDelta(1500, (float) $document->paid_amount_snapshot, 0.001);
+            $this->assertEqualsWithDelta(1000, (float) $document->grand_total, 0.001);
+        });
+
+        // ...and nowhere else.
+        foreach (self::LIVE_MONEY_TABLES as $table) {
+            $this->assertSame(
+                $before[$table],
+                DB::table($table)->count(),
+                "Publishing an overpaid historical bill wrote to live operational table `{$table}`."
+            );
+        }
     }
 
     // ============================================================== GATE 8

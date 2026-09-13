@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Historical;
 
+use App\Models\Historical\HistoricalSalesDocument;
 use App\Models\ShopPaymentMethod;
 use App\Support\TenantContext;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
@@ -189,34 +191,45 @@ class HistoricalManualPaymentRowsUiTest extends TestCase
     }
 
     /**
-     * The excess is a display figure. If this ever starts writing, the
-     * historical snapshot contract (no ledger, no receivable, no wallet credit)
-     * is broken — so pin that the overpayment path creates nothing.
+     * The excess is a display figure. Previewing an overpayment must not write
+     * money anywhere — preview is a render, not a transaction.
+     *
+     * This test previously guarded its counts behind
+     * `Schema::hasTable('customer_wallets')` and `customer_ledger_entries`,
+     * neither of which exists in this schema. Both assertions were skipped at
+     * runtime, so it asserted nothing beyond a 200. The table list is now the
+     * single shared one, asserted unconditionally: a wrong name throws instead
+     * of silently passing.
+     *
+     * The publish path — where a leak would actually be possible — is pinned
+     * separately by
+     * `HistoricalBatch2ClosureAuditTest::test_publishing_an_overpaid_bill_for_a_linked_customer_writes_no_live_money`.
      */
-    public function test_an_overpayment_creates_no_credit_or_ledger_entry(): void
+    public function test_an_overpayment_preview_writes_no_live_money(): void
     {
-        [$owner, $shop] = $this->createRetailerTenant();
+        [$owner] = $this->createRetailerTenant();
 
-        $walletsBefore = \Illuminate\Support\Facades\Schema::hasTable('customer_wallets')
-            ? (int) \Illuminate\Support\Facades\DB::table('customer_wallets')->count()
-            : null;
-        $ledgerBefore = \Illuminate\Support\Facades\Schema::hasTable('customer_ledger_entries')
-            ? (int) \Illuminate\Support\Facades\DB::table('customer_ledger_entries')->count()
-            : null;
+        $tables = HistoricalBatch2ClosureAuditTest::LIVE_MONEY_TABLES;
+        $before = collect($tables)->mapWithKeys(fn ($t) => [$t => DB::table($t)->count()]);
 
-        $this->actingAs($owner)->post(route('historical.manual.preview'), [
+        $response = $this->actingAs($owner)->post(route('historical.manual.preview'), [
             'document_date' => '2023-06-15',
             'source_system' => 'Manual',
             'grand_total' => 1000,
-            'tax_mode' => \App\Models\Historical\HistoricalSalesDocument::TAX_MODE_UNKNOWN,
+            'tax_mode' => HistoricalSalesDocument::TAX_MODE_UNKNOWN,
             'payments' => [['mode' => 'cash', 'amount' => 1500]],
         ])->assertOk();
 
-        if ($walletsBefore !== null) {
-            $this->assertSame($walletsBefore, (int) \Illuminate\Support\Facades\DB::table('customer_wallets')->count());
-        }
-        if ($ledgerBefore !== null) {
-            $this->assertSame($ledgerBefore, (int) \Illuminate\Support\Facades\DB::table('customer_ledger_entries')->count());
+        // The excess is surfaced to the operator, so this really is the
+        // overpayment path and not a silently rejected payload.
+        $response->assertSee('Overpaid', false);
+
+        foreach ($tables as $table) {
+            $this->assertSame(
+                $before[$table],
+                DB::table($table)->count(),
+                "Previewing an overpaid historical bill wrote to live operational table `{$table}`."
+            );
         }
     }
 
