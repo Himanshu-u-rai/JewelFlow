@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class KycDocument extends Model
 {
@@ -52,21 +51,19 @@ class KycDocument extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
+    /**
+     * Identity documents (PAN/Aadhaar/passport) resolve ONLY to the authenticated,
+     * shop-scoped stream route — whatever disk the row records.
+     *
+     * The previous 'public' branch honoured file_disk's schema default
+     * (2026_05_10_200003_create_kyc_documents.php:19 is NOT NULL DEFAULT 'public'),
+     * so any row not written by KycDocumentService minted a /storage/ URL that
+     * nginx serves off the public/storage symlink with no auth, no tenant scope
+     * and no shop_id check. show() still reads the recorded disk, so rows already
+     * sitting on the public or s3 disk stay retrievable by authorised users.
+     */
     public function url(): string
     {
-        $disk = $this->file_disk ?? 'public';
-
-        if ($disk === 's3') {
-            return Storage::disk('s3')->temporaryUrl($this->file_path, now()->addMinutes(15));
-        }
-
-        // Legacy documents stored on the public disk keep their direct URL.
-        if ($disk === 'public') {
-            return Storage::disk('public')->url($this->file_path);
-        }
-
-        // Identity documents (PAN/Aadhaar/passport) live on a PRIVATE disk and
-        // are served only through the authenticated, shop-scoped stream route.
         return route('kyc-documents.show', $this);
     }
 
