@@ -120,8 +120,8 @@ class PaymentMethodSettingsTest extends TestCase
         ));
 
         $m->refresh();
-        // Direct controller call bypasses the input-normalization middleware, so
-        // the name is stored verbatim here (the HTTP path would title-case it).
+        // Stored verbatim. (This calls the controller directly, bypassing the
+        // input-normalization middleware — which would only tidy whitespace.)
         $this->assertSame('SBI Main', $m->name);
         $this->assertSame('999988887777', $m->account_number);
     }

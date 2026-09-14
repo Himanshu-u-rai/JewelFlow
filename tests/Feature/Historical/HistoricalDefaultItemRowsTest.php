@@ -152,9 +152,8 @@ class HistoricalDefaultItemRowsTest extends TestCase
     {
         [$owner] = $this->createRetailerTenant();
 
-        // Title Case input on purpose — app\Http\Middleware\NormalizeHumanTextInput
-        // title-cases any "*_name" field globally, unrelated to this behavior;
-        // matching its output here avoids coupling this test to that middleware.
+        // Any spelling works now: NormalizeHumanTextInput tidies whitespace on
+        // "*_name" fields but no longer touches case, so what goes in comes back.
         $lines = [];
         for ($i = 1; $i <= 5; $i++) {
             $lines[] = ['line_item_name' => "Row {$i} Item", 'line_total' => $i * 100];

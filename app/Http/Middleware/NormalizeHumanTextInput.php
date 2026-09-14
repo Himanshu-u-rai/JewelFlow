@@ -12,7 +12,7 @@ class NormalizeHumanTextInput
      * Only normalize fields that are human-facing text labels/details.
      * IDs/codes/passwords/emails/numeric fields remain untouched.
      */
-    private array $exactTitleTextKeys = [
+    private array $exactNameTextKeys = [
         'name',
         'first_name',
         'last_name',
@@ -137,8 +137,8 @@ class NormalizeHumanTextInput
             }
 
             $mode = $this->normalizationModeForKey((string) $key);
-            if ($mode === 'title') {
-                $payload[$key] = $this->normalizeTitleText($value);
+            if ($mode === 'name') {
+                $payload[$key] = $this->normalizeNameText($value);
             } elseif ($mode === 'sentence') {
                 $payload[$key] = $this->normalizeSentenceText($value);
             }
@@ -159,16 +159,16 @@ class NormalizeHumanTextInput
             return 'sentence';
         }
 
-        if (in_array($key, $this->exactTitleTextKeys, true)) {
-            return 'title';
+        if (in_array($key, $this->exactNameTextKeys, true)) {
+            return 'name';
         }
 
         if (str_ends_with($key, '_name')) {
-            return 'title';
+            return 'name';
         }
 
         if (str_contains($key, 'address')) {
-            return 'title';
+            return 'name';
         }
 
         return null;
@@ -190,37 +190,38 @@ class NormalizeHumanTextInput
     }
 
     /**
-     * Tidy whitespace always; only impose Title Case when the operator supplied
-     * no capitalization of their own.
+     * Tidy whitespace. Change no letter's case, ever.
      *
-     * `MB_CASE_TITLE` lowercases every character it does not capitalize, so
-     * applying it unconditionally destroyed deliberate capitalization in names:
+     * A name is the operator's own text and is stored verbatim. This used to run
+     * `MB_CASE_TITLE`, which lowercases every character it does not capitalize:
      * "JewelFlows" -> "Jewelflows", "RK Jewellers" -> "Rk Jewellers",
-     * "TBZ" -> "Tbz", "Monthly CA Export" -> "Monthly Ca Export". A shop,
-     * customer or item name is the operator's own text, and that loss is not
+     * "TBZ" -> "Tbz", "QA Gold Item" -> "Qa Gold Item". The loss is not
      * recoverable from the stored value.
      *
-     * An all-lowercase entry carries no case decision to preserve, so
-     * title-casing it is a pure improvement. Anything containing an uppercase
-     * letter is a decision, and is left exactly as typed.
+     * A first correction kept Title Case for all-lowercase input, on the theory
+     * that "abc jewellers" carried no case decision to protect. That theory was
+     * wrong: an operator who types lowercase has still chosen how their own shop
+     * name is spelled, and "no uppercase letter" is not evidence of indifference.
+     * Presentation is the view layer's job — `capitalize`/`uppercase` in CSS
+     * changes nothing in the database and is reversible. Rewriting the stored
+     * value is neither.
+     *
+     * Case-insensitive UNIQUENESS does not depend on this: App\Rules\
+     * UniqueNameIgnoringCase compares on LOWER(TRIM(...)), matching the
+     * `normalized_name` indexes, so "ABC" and "abc" still collide.
+     *
+     * Whitespace is different in kind and stays: leading/trailing and doubled
+     * spaces are typos, not decisions, and `normalized_name` collapses them
+     * anyway — so tidying here keeps validation agreeing with the index.
      */
-    private function normalizeTitleText(string $value): string
+    private function normalizeNameText(string $value): string
     {
         $value = trim($value);
         if ($value === '') {
             return $value;
         }
 
-        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
-
-        // ponytail: "has an uppercase letter" is deliberately the whole test.
-        // A smarter acronym/particle dictionary ("of", "and", "McDonald") is the
-        // upgrade path, and only worth it if operators ask for it.
-        if (preg_match('/\p{Lu}/u', $value) === 1) {
-            return $value;
-        }
-
-        return mb_convert_case($value, MB_CASE_TITLE, 'UTF-8');
+        return preg_replace('/\s+/u', ' ', $value) ?? $value;
     }
 
     private function normalizeSentenceText(string $value): string

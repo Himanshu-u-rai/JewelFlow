@@ -11,15 +11,22 @@ use PHPUnit\Framework\TestCase;
  * The middleware tidies human-typed labels on the way in. Its job is to clean up
  * sloppy entry, NOT to overrule the operator.
  *
- * The defect this pins: `normalizeTitleText()` applied `MB_CASE_TITLE`
- * unconditionally, and that function lowercases every character it does not
- * capitalize. A name the operator capitalized on purpose came back damaged --
- * "JewelFlows" -> "Jewelflows", "RK Jewellers" -> "Rk Jewellers", "TBZ" -> "Tbz"
- * -- and the original spelling is not recoverable from the stored value.
+ * The defect this pins: the name path applied `MB_CASE_TITLE`, and that function
+ * lowercases every character it does not capitalize. A name the operator
+ * capitalized on purpose came back damaged -- "JewelFlows" -> "Jewelflows",
+ * "RK Jewellers" -> "Rk Jewellers", "TBZ" -> "Tbz" -- and the original spelling
+ * is not recoverable from the stored value.
  *
  * It reached far past shop names: the rule fires on `name`, every `*_name` key,
  * and anything containing "address", so customer names, item names, payment
  * method names and export preset names were all affected by the same line.
+ *
+ * THE SECOND CORRECTION. The first fix kept Title Case for input that contained
+ * no uppercase letter, reading "abc jewellers" as an operator who had expressed
+ * no preference. That was still the middleware deciding it knew better: typing
+ * lowercase is a spelling choice like any other, and the absence of a capital is
+ * not consent to add one. The name path now changes no letter's case at all. How
+ * a name is DISPLAYED is the view layer's business, where it is reversible.
  *
  * PHPUnit's TestCase, not Laravel's -- the middleware touches nothing but the
  * request, and the answer must not be able to vary by environment or database.
@@ -27,13 +34,16 @@ use PHPUnit\Framework\TestCase;
 class NormalizeHumanTextInputTest extends TestCase
 {
     /**
-     * The regression itself. Every one of these came back mangled before the fix.
+     * Every spelling an operator might legitimately type. None may come back
+     * altered -- the mixed-case ones were mangled by the original defect, the
+     * all-lowercase ones by the first attempt at fixing it.
      *
      * @return array<string, array{string}>
      */
-    public static function deliberatelyCapitalizedNames(): array
+    public static function operatorSpellings(): array
     {
         return [
+            // Mangled by the original MB_CASE_TITLE.
             'internal caps'           => ['JewelFlows'],
             'leading acronym'         => ['RK Jewellers'],
             'acronym with suffix'     => ['TBZ - The Original'],
@@ -44,11 +54,17 @@ class NormalizeHumanTextInputTest extends TestCase
             'camel case word'         => ['Shree MahaLaxmi Jewellers'],
             'acronym alone'           => ['ABC'],
             'acronym mid-string'      => ['Monthly CA Export'],
+
+            // Mangled by the "no uppercase letter means no decision" theory.
+            'all lowercase'           => ['abc jewellers'],
+            'lowercase single word'   => ['mumbai'],
+            'lowercase brand'         => ['iphone'],
+            'lowercase with initials' => ['r k jewellers'],
         ];
     }
 
-    #[DataProvider('deliberatelyCapitalizedNames')]
-    public function test_capitalization_the_operator_chose_is_preserved(string $name): void
+    #[DataProvider('operatorSpellings')]
+    public function test_the_spelling_the_operator_typed_is_preserved(string $name): void
     {
         $request = $this->pass(['name' => $name]);
 
@@ -57,52 +73,48 @@ class NormalizeHumanTextInputTest extends TestCase
     }
 
     /**
-     * The other half of the bargain. An all-lowercase entry carries no case
-     * decision to preserve, so tidying it is a pure improvement and the helpful
-     * behaviour the middleware exists for is kept.
+     * The half that remains. Whitespace is a typo, not a decision -- and
+     * `normalized_name` collapses it in the index regardless, so tidying here is
+     * what keeps validation agreeing with the database.
      */
-    public function test_an_entry_with_no_capitalization_is_still_tidied(): void
-    {
-        $request = $this->pass(['name' => 'abc jewellers', 'city' => 'mumbai']);
-
-        $this->assertSame('Abc Jewellers', $request->input('name'));
-        $this->assertSame('Mumbai', $request->input('city'));
-    }
-
-    /** Whitespace tidying is harmless and applies whichever branch is taken. */
-    public function test_whitespace_is_collapsed_and_trimmed_either_way(): void
+    public function test_whitespace_is_still_collapsed_and_trimmed(): void
     {
         $request = $this->pass([
             'name'       => '  RK   Jewellers  ',
-            'first_name' => '  abc   jewellers  ',
+            'first_name' => "  abc \t  jewellers  ",
             'last_name'  => '   ',
         ]);
 
         $this->assertSame('RK Jewellers', $request->input('name'));
-        $this->assertSame('Abc Jewellers', $request->input('first_name'));
+        $this->assertSame('abc jewellers', $request->input('first_name'),
+            'whitespace collapsed, case untouched');
         $this->assertSame('', $request->input('last_name'));
     }
 
     /**
      * The rule is key-driven, so the fix has to hold on every key that reaches
-     * title mode -- not just the `name` the defect was reported against.
+     * name mode -- not just the `name` the defect was reported against. Both
+     * spellings, because both were damaged at some point.
      */
-    public function test_the_fix_holds_on_every_key_that_reaches_title_mode(): void
+    public function test_the_fix_holds_on_every_key_that_reaches_name_mode(): void
     {
         $keys = ['name', 'first_name', 'last_name', 'owner_first_name', 'contact_person',
             'display_name', 'category', 'stone_type', 'source_name', 'city', 'state',
             'address', 'address_line1', 'customer_name', 'vendor_name'];
 
-        $request = $this->pass(array_fill_keys($keys, 'RK Jewellers'));
+        foreach (['RK Jewellers', 'abc jewellers'] as $spelling) {
+            $request = $this->pass(array_fill_keys($keys, $spelling));
 
-        foreach ($keys as $key) {
-            $this->assertSame('RK Jewellers', $request->input($key), "{$key} was still mangled");
+            foreach ($keys as $key) {
+                $this->assertSame($spelling, $request->input($key), "{$key} was still rewritten");
+            }
         }
     }
 
     /**
-     * Sentence mode only ever capitalizes a line's first letter; it never
-     * lowercases, so it had no defect and must not have acquired one.
+     * Sentence mode only ever capitalizes a line's FIRST letter and concatenates
+     * the rest untouched, so it cannot destroy information the way MB_CASE_TITLE
+     * did. It had no defect and is deliberately left alone.
      */
     public function test_sentence_mode_is_unchanged(): void
     {

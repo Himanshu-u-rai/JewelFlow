@@ -57,7 +57,12 @@ class CategoryNameCaseTest extends TestCase
             'the category was renamed on the operator behind their back');
     }
 
-    public function test_an_all_lowercase_name_is_still_tidied(): void
+    /**
+     * Whitespace is tidied; case is not. An operator who types lowercase has
+     * still chosen how the name is spelled — the absence of a capital is not
+     * consent to add one.
+     */
+    public function test_an_all_lowercase_name_keeps_its_case_while_spacing_is_tidied(): void
     {
         [$user, $shop] = $this->createManufacturerTenant();
         $this->actingAs($user);
@@ -67,7 +72,7 @@ class CategoryNameCaseTest extends TestCase
         $category = Category::withoutGlobalScopes()->where('shop_id', $shop->id)->first();
 
         $this->assertNotNull($category);
-        $this->assertSame('Bridal Sets', $category->name);
+        $this->assertSame('bridal sets', $category->name);
     }
 
     /**

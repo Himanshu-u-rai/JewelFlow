@@ -252,10 +252,10 @@ class GstTaxSettingsTest extends TestCase
         ])->assertRedirect();
 
         // Exactly one default remains, and it's the new one — the old one cleared.
-        // (name may be normalised/title-cased by the app, so compare case-insensitively.)
+        // The name is stored as typed — input normalization tidies whitespace only.
         $defaults = $this->defaultCategories();
         $this->assertCount(1, $defaults, 'single-default invariant holds');
-        $this->assertSame('new default', strtolower($defaults->first()->name));
+        $this->assertSame('New default', $defaults->first()->name);
         $this->assertFalse((bool) $old->fresh()->is_default);
     }
 
