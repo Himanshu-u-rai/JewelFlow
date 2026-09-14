@@ -54,9 +54,10 @@ class FreeTrialEligibilityTest extends TestCase
         config(['business.subscription_trial_days' => 30]);
         $this->seed(\Database\Seeders\PlatformProductSeeder::class);
         $this->seed(\Database\Seeders\PlanSeeder::class);
-        // startTrial() stamps updated_by_admin_id from the platform super admin
-        // and refuses outright if none exists — without this the "eligible" path
-        // would fail for an infrastructure reason and prove nothing about policy.
+        // The admin actor for the cases below that genuinely involve one (admin
+        // billing changes, admin holds). startTrial() itself no longer needs it:
+        // an owner starting their own trial records no admin actor, and it used
+        // to refuse the trial outright when no super_admin row existed.
         $this->platformAdmin = $this->createPlatformAdmin();
     }
 

@@ -582,11 +582,26 @@
                     <label class="block text-xs text-slate-400 mb-1">Plan <span class="text-rose-400">*</span></label>
                     <select name="plan_id" id="sub-plan" required class="admin-control admin-select">
                         <option value="">— Select plan —</option>
+                        {{--
+                            Not every plan sells both cycles — the monthly plans carry no
+                            price_yearly at all. This used to print number_format(null) for
+                            those, reading "₹0/yr", which advertised a cycle the plan cannot
+                            be billed on; the Billing Cycle select below then offered it, and
+                            the server accepted it. Say "not sold" and let the script disable
+                            the option. The server refuses the pair regardless.
+                        --}}
                         @foreach($plans as $plan)
+                            @php
+                                $planMonthly = $plan->priceFor('monthly');
+                                $planYearly  = $plan->priceFor('yearly');
+                            @endphp
                             <option value="{{ $plan->id }}" data-grace-days="{{ $plan->grace_days }}"
+                                data-monthly="{{ $planMonthly !== null ? 1 : 0 }}"
+                                data-yearly="{{ $planYearly !== null ? 1 : 0 }}"
                                 {{ old('plan_id', $currentSubscription?->plan_id) == $plan->id ? 'selected' : '' }}>
                                 {{ $plan->name }}
-                                (₹{{ number_format($plan->price_monthly, 0) }}/mo · ₹{{ number_format($plan->price_yearly, 0) }}/yr)
+                                ({{ $planMonthly !== null ? '₹' . number_format($planMonthly, 0) . '/mo' : 'no monthly price' }}
+                                · {{ $planYearly !== null ? '₹' . number_format($planYearly, 0) . '/yr' : 'no yearly price' }})
                             </option>
                         @endforeach
                     </select>
@@ -715,7 +730,25 @@
             const addCycle = (d, c) => { const n = new Date(d); c === 'yearly' ? n.setFullYear(n.getFullYear() + 1) : n.setMonth(n.getMonth() + 1); return n; };
             const graceDays = () => parseInt(planSel?.selectedOptions[0]?.dataset.graceDays || '0', 10) || 0;
 
+            // A plan that carries no price for a cycle cannot be billed on it. Grey
+            // the option out rather than let the operator pick it and read the
+            // rejection afterwards. With no plan chosen yet nothing is disabled —
+            // the form guesses nothing, and the server checks the pair anyway.
+            const cycleOptions = { monthly: 'Monthly', yearly: 'Yearly' };
+            function syncCycleOptions() {
+                const chosen = planSel?.selectedOptions[0];
+                for (const [value, label] of Object.entries(cycleOptions)) {
+                    const opt = cycle.querySelector('option[value="' + value + '"]');
+                    if (!opt) continue;
+                    const sold = !chosen || chosen.dataset[value] === undefined || chosen.dataset[value] === '1';
+                    opt.disabled = !sold;
+                    opt.textContent = sold ? label : label + ' — this plan has no ' + value + ' price';
+                    if (!sold && cycle.value === value) cycle.value = '';
+                }
+            }
+
             function refresh() {
+                syncCycleOptions();
                 const f = parse(from.value);
                 const c = cycle.value;
                 if (f && c && !toDirty) to.value = fmt(addCycle(f, c));

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Concerns\RespondsDynamically;
 use App\Models\SubCategory;
+use App\Rules\UniqueNameIgnoringCase;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -21,9 +22,10 @@ class SubCategoryController extends Controller
             ],
             'name' => [
                 'required', 'string', 'max:255',
-                Rule::unique('sub_categories')
-                    ->where('shop_id', $shopId)
-                    ->where('category_id', $request->category_id),
+                new UniqueNameIgnoringCase('sub_categories', [
+                    'shop_id'     => $shopId,
+                    'category_id' => $request->category_id,
+                ], null, 'sub-category'),
             ],
         ]);
 
@@ -45,10 +47,10 @@ class SubCategoryController extends Controller
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                Rule::unique('sub_categories')
-                    ->where('shop_id', $shopId)
-                    ->where('category_id', $sub_category->category_id)
-                    ->ignore($sub_category->id),
+                new UniqueNameIgnoringCase('sub_categories', [
+                    'shop_id'     => $shopId,
+                    'category_id' => $sub_category->category_id,
+                ], $sub_category->id, 'sub-category'),
             ],
         ]);
 

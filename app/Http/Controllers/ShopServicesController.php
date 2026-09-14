@@ -126,8 +126,8 @@ class ShopServicesController extends Controller
             return response()->json(['error' => 'No plan is available for this service. Please contact support.'], 422);
         }
 
-        $price = $validated['billing_cycle'] === 'yearly' ? $plan->price_yearly : $plan->price_monthly;
-        if (is_null($price) || (float) $price <= 0) {
+        $price = $plan->priceFor($validated['billing_cycle']);
+        if ($price === null) {
             return response()->json(['error' => 'This service has invalid pricing. Please contact support.'], 422);
         }
 

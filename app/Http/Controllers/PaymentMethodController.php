@@ -7,6 +7,7 @@ use App\Models\JobOrder;
 use App\Models\KarigarPayment;
 use App\Models\QuickBillPayment;
 use App\Models\ShopPaymentMethod;
+use App\Rules\UniqueNameIgnoringCase;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -90,10 +91,10 @@ class PaymentMethodController extends Controller
             'type'            => ['required', Rule::in(ShopPaymentMethod::TYPES)],
             'name'            => [
                 'required', 'string', 'max:100',
-                Rule::unique('shop_payment_methods')
-                    ->where('shop_id', $shopId)
-                    ->where('type', $request->input('type'))
-                    ->ignore($ignoreId),
+                new UniqueNameIgnoringCase('shop_payment_methods', [
+                    'shop_id' => $shopId,
+                    'type'    => $request->input('type'),
+                ], $ignoreId, 'payment method'),
             ],
             'upi_id'          => 'nullable|string|max:100',
             'bank_name'       => 'nullable|string|max:100',

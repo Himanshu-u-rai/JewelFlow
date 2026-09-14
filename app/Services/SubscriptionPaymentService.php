@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Jobs\SendPlatformInvoiceEmail;
 use App\Models\Platform\Plan;
-use App\Models\Platform\PlatformAdmin;
 use App\Models\Platform\ShopSubscription;
 use App\Models\Platform\SubscriptionEvent;
 use App\Models\Shop;
@@ -97,7 +96,26 @@ class SubscriptionPaymentService
      */
     public function verifyAmount(object $rzpOrder, Plan $plan, string $billingCycle): int
     {
-        $expectedPrice = $billingCycle === 'yearly' ? $plan->price_yearly : $plan->price_monthly;
+        // A cycle the plan does not price has no expected amount to compare
+        // against. Left as a bare column read this became (int) round(null * 100)
+        // = 0 paise, so the comparison still "worked": it reported an amount
+        // mismatch, and the operator reading the unresolved-payment evidence was
+        // told the customer paid the wrong amount when the truth is that the plan
+        // was never sold on that cycle. Named here, before anything is written.
+        //
+        // "Invalid billing cycle" is load-bearing: isTransientPaymentError() reads
+        // it as PERMANENT, and it must be — no number of retries adds a price to a
+        // plan.
+        $expectedPrice = $plan->priceFor($billingCycle);
+        if ($expectedPrice === null) {
+            Log::error('Razorpay order priced on a cycle the plan does not sell', [
+                'order_id'      => $rzpOrder->id,
+                'plan_id'       => $plan->id,
+                'billing_cycle' => $billingCycle,
+            ]);
+            throw new \Exception("Invalid billing cycle: {$plan->name} has no {$billingCycle} price.");
+        }
+
         $expectedPaise = (int) round($expectedPrice * 100);
 
         if ((int) $rzpOrder->amount !== $expectedPaise) {
@@ -249,15 +267,15 @@ class SubscriptionPaymentService
         // Auth, so the identical locked create path serves all three callers.
         $actor = $actor ?? Auth::user();
 
-        $admin = $this->systemAdmin();
-
-        if (!$admin) {
-            Log::error('Subscription payment callback failed: no platform super admin found.', [
-                'payment_id' => $paymentId,
-                'user_id' => $actor?->id,
-            ]);
-            throw new \Exception('Platform configuration incomplete.');
-        }
+        // NO ADMIN IS INVENTED HERE. This is a customer paying for their own shop;
+        // `updated_by_admin_id` records WHO MADE THE CHANGE, and the answer is
+        // "nobody at JewelFlows". This used to stamp the lowest-id super_admin,
+        // which wrote a row that contradicted its own `actor_type` — and, worse,
+        // refused the purchase outright ("Platform configuration incomplete.")
+        // when no super_admin existed, failing a customer's payment for a reason
+        // that has nothing to do with their payment. The 2026-08-15 migration
+        // made the column nullable for exactly this case; every other lifecycle
+        // writer (webhook, expiry scheduler, repair command) already passes null.
 
         // A paid purchase is ALWAYS active. The term is a pure function of the
         // billing cycle — trial_days is NEVER read here, otherwise a paid yearly
@@ -285,7 +303,7 @@ class SubscriptionPaymentService
 
             $subscription = DB::transaction(function () use (
                 $plan, $status, $startsAt, $endsAt, $graceEndsAt,
-                $billingCycle, $expectedPrice, $paymentId, $orderId, $admin, $actor,
+                $billingCycle, $expectedPrice, $paymentId, $orderId, $actor,
                 &$invoiceId
             ) {
                 $subscription = ShopSubscription::create([
@@ -300,14 +318,14 @@ class SubscriptionPaymentService
                     'price_paid' => $expectedPrice,
                     'razorpay_payment_id' => $paymentId,
                     'razorpay_order_id' => $orderId,
-                    'updated_by_admin_id' => $admin->id,
+                    'updated_by_admin_id' => null,
                     'actor_type' => 'self_service',
                 ]);
 
                 SubscriptionEvent::create([
                     'shop_subscription_id' => $subscription->id,
                     'shop_id' => $subscription->shop_id,
-                    'admin_id' => $admin->id,
+                    'admin_id' => null,
                     'event_type' => 'subscription.paid',
                     'before' => null,
                     'after' => $subscription->toArray(),
@@ -433,7 +451,9 @@ class SubscriptionPaymentService
         $this->verifyAmount($rzpOrder, $plan, $billingCycle);
         $this->verifyPaymentCaptured($paymentId);
 
-        $expectedPrice = $billingCycle === 'yearly' ? $plan->price_yearly : $plan->price_monthly;
+        // verifyAmount() above has already refused an unpriced cycle, so this can
+        // no longer cast a null into a 0.00 price_paid on a real payment.
+        $expectedPrice = $plan->priceFor($billingCycle);
 
         return $this->createSubscription($plan, $billingCycle, (float) $expectedPrice, $paymentId, $orderId, $actor);
     }
@@ -687,7 +707,12 @@ class SubscriptionPaymentService
                     'price_paid' => $price,
                     'razorpay_payment_id' => $paymentId,
                     'razorpay_order_id' => $orderId,
-                    'updated_by_admin_id' => $current->updated_by_admin_id,
+                    // Never inherited from $current. If the previous term happened
+                    // to be keyed in by an admin, copying the stamp forward made
+                    // that admin the recorded actor on a renewal the customer paid
+                    // for themselves — and the row's own SubscriptionEvent below
+                    // already (correctly) records admin_id = null.
+                    'updated_by_admin_id' => null,
                     'actor_type' => 'self_service',
                 ]);
 
@@ -1059,11 +1084,10 @@ class SubscriptionPaymentService
             throw new \LogicException($reason);
         }
 
-        $admin = $this->systemAdmin();
-        if (! $admin) {
-            Log::error('Trial start failed: no platform super admin found.', ['user_id' => $userId]);
-            throw new \Exception('Platform configuration incomplete.');
-        }
+        // Same rule as createSubscription(): the owner started their own trial, so
+        // there is no admin actor to record. This used to refuse the trial when no
+        // super_admin row existed — a self-service action failing on platform
+        // bookkeeping the customer has nothing to do with.
 
         // Admin-configurable trial length (Platform Settings) → config → 30.
         $trialDays = \App\Models\Platform\PlatformSetting::trialDays();
@@ -1071,7 +1095,7 @@ class SubscriptionPaymentService
         $endsAt    = $startsAt->copy()->addDays($trialDays);
 
         try {
-            return DB::transaction(function () use ($plan, $shopId, $userId, $admin, $startsAt, $endsAt, $trialDays) {
+            return DB::transaction(function () use ($plan, $shopId, $userId, $startsAt, $endsAt, $trialDays) {
             $subscription = ShopSubscription::create([
                 'shop_id'             => $shopId,
                 'user_id'             => $userId,
@@ -1086,14 +1110,14 @@ class SubscriptionPaymentService
                 'price_paid'          => 0,
                 'razorpay_payment_id' => null,
                 'razorpay_order_id'   => null,
-                'updated_by_admin_id' => $admin->id,
+                'updated_by_admin_id' => null,
                 'actor_type'          => 'self_service',
             ]);
 
             SubscriptionEvent::create([
                 'shop_subscription_id' => $subscription->id,
                 'shop_id'              => $subscription->shop_id,
-                'admin_id'             => $admin->id,
+                'admin_id'             => null,
                 'event_type'           => 'subscription.trial_started',
                 'before'               => null,
                 'after'                => $subscription->toArray(),
@@ -1184,12 +1208,5 @@ class SubscriptionPaymentService
                 'error' => $e->getMessage(),
             ]);
         }
-    }
-
-    private function systemAdmin(): ?PlatformAdmin
-    {
-        return PlatformAdmin::where('role', 'super_admin')
-            ->orderBy('id')
-            ->first();
     }
 }

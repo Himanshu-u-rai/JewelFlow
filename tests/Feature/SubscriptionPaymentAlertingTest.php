@@ -61,12 +61,34 @@ class SubscriptionPaymentAlertingTest extends TestCase
         ];
     }
 
-    private function bindFakeService(Plan $plan, object $order, string $cycle = 'monthly'): SubscriptionPaymentService
-    {
+    /**
+     * $failFirstCallWith models a provider hiccup on the FIRST attempt only: the
+     * capture check throws, the retry succeeds. That is the shape
+     * isTransientPaymentError() actually documents as transient ("provider
+     * network errors, DB deadlocks"), and it is what the recover-and-resolve
+     * test needs — a failure that a retry genuinely can fix.
+     */
+    private function bindFakeService(
+        Plan $plan,
+        object $order,
+        string $cycle = 'monthly',
+        ?\Throwable $failFirstCallWith = null,
+    ): SubscriptionPaymentService {
         $svc = Mockery::mock(SubscriptionPaymentService::class)->makePartial();
         $svc->shouldReceive('fetchAndValidateOrder')
             ->andReturn(['order' => $order, 'plan' => $plan, 'billing_cycle' => $cycle]);
-        $svc->shouldReceive('verifyPaymentCaptured')->andReturnNull();
+
+        $attempt = 0;
+        $svc->shouldReceive('verifyPaymentCaptured')->andReturnUsing(
+            function () use (&$attempt, $failFirstCallWith) {
+                $attempt++;
+                if ($failFirstCallWith !== null && $attempt === 1) {
+                    throw $failFirstCallWith;
+                }
+
+                return null;
+            }
+        );
 
         $this->app->instance(SubscriptionPaymentService::class, $svc);
 
@@ -111,10 +133,17 @@ class SubscriptionPaymentAlertingTest extends TestCase
     {
         $plan = $this->createPlan('retailer');
         [$owner] = $this->ownerWithShop();
-        $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id));
+        $svc = $this->bindFakeService(
+            $plan,
+            $this->fakeOrder($owner->id),
+            'monthly',
+            new \RuntimeException('Razorpay API unreachable'),
+        );
 
-        // No platform super admin yet → createSubscription throws
-        // "Platform configuration incomplete." → TRANSIENT (safe to retry).
+        // The gateway is unreachable on the first attempt → TRANSIENT (safe to
+        // retry). This used to be provoked by having no platform super admin,
+        // back when a self-service purchase refused to proceed without one —
+        // a platform-bookkeeping failure dressed up as a provider hiccup.
         $first = $svc->applyCapturedPayment('order_TEST', 'pay_T');
         $this->assertSame(SubscriptionPaymentService::OUTCOME_TRANSIENT, $first['outcome']);
         $this->assertNull($first['subscription']);
@@ -124,9 +153,8 @@ class SubscriptionPaymentAlertingTest extends TestCase
         $this->assertTrue((bool) ($event->after['transient'] ?? false), 'recorded as transient');
         $this->assertNull($event->after['resolved_at'] ?? null, 'still open');
 
-        // Fix the platform config → the very same payment now applies and the
-        // open record flips to resolved WITHOUT being deleted.
-        $this->createPlatformAdmin();
+        // The provider recovers → the very same payment now applies and the open
+        // record flips to resolved WITHOUT being deleted.
         $second = $svc->applyCapturedPayment('order_TEST', 'pay_T');
         $this->assertSame(SubscriptionPaymentService::OUTCOME_APPLIED, $second['outcome']);
         $this->assertSame(1, ShopSubscription::where('razorpay_payment_id', 'pay_T')->count());
@@ -187,11 +215,16 @@ class SubscriptionPaymentAlertingTest extends TestCase
     public function test_webhook_transient_failure_returns_500_for_retry(): void
     {
         config(['services.razorpay.webhook_secret' => 'test_secret']);
-        // No platform admin → createSubscription throws → transient → 500.
         $plan = $this->createPlan('retailer');
         [$owner] = $this->ownerWithShop();
 
-        $this->bindFakeService($plan, $this->fakeOrder($owner->id));
+        // The provider is unreachable on this delivery → transient → 500, so
+        // Razorpay redelivers. The transient condition used to be provoked by
+        // omitting the platform super admin, back when a self-service purchase
+        // refused to proceed without one. That refusal was the defect; asking the
+        // webhook to prove its 5xx mapping through it would have re-pinned it.
+        $this->bindFakeService($plan, $this->fakeOrder($owner->id), 'monthly',
+            new \RuntimeException('Razorpay API unreachable'));
         $this->bindTrustedWebhook();
 
         $this->postJson('/subscription/payment/webhook',
@@ -296,17 +329,17 @@ class SubscriptionPaymentAlertingTest extends TestCase
         Bus::fake([SendOpsAlertEmail::class]);
         $plan = $this->createPlan('retailer');
         [$owner] = $this->ownerWithShop();
-        $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id));
+        $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id), 'monthly',
+            new \RuntimeException('Razorpay API unreachable'));
 
-        // First: no admin → transient unresolved → "retrying" alert.
+        // First: the provider hiccups → transient unresolved → "retrying" alert.
         $svc->applyCapturedPayment('order_TEST', 'pay_RCX');
         Bus::assertDispatched(SendOpsAlertEmail::class,
             fn (SendOpsAlertEmail $job) => str_contains($job->subject, 'unresolved'));
 
-        // Then: fixed → reconciled. Exactly ONE reconciliation-success alert and
-        // NOT a separate "Payment applied" — a reconciled payment must never emit
-        // two success emails.
-        $this->createPlatformAdmin();
+        // Then: the retry gets through → reconciled. Exactly ONE reconciliation-
+        // success alert and NOT a separate "Payment applied" — a reconciled
+        // payment must never emit two success emails.
         $svc->applyCapturedPayment('order_TEST', 'pay_RCX');
 
         Bus::assertDispatched(SendOpsAlertEmail::class,
@@ -322,11 +355,11 @@ class SubscriptionPaymentAlertingTest extends TestCase
         Bus::fake([SendOpsAlertEmail::class]);
         $plan = $this->createPlan('retailer');
         [$owner] = $this->ownerWithShop();
-        $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id));
+        $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id), 'monthly',
+            new \RuntimeException('Razorpay API unreachable'));
 
         // Transient first, then reconcile, then a duplicate reconcile delivery.
         $svc->applyCapturedPayment('order_TEST', 'pay_RDUP');
-        $this->createPlatformAdmin();
         $svc->applyCapturedPayment('order_TEST', 'pay_RDUP');
         $svc->applyCapturedPayment('order_TEST', 'pay_RDUP');
 

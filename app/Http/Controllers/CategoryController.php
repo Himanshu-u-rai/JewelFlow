@@ -6,9 +6,9 @@ use App\Http\Concerns\RespondsDynamically;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\SubCategory;
+use App\Rules\UniqueNameIgnoringCase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
@@ -65,7 +65,7 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                Rule::unique('categories', 'name')->where('shop_id', $shopId),
+                new UniqueNameIgnoringCase('categories', ['shop_id' => $shopId], null, 'category'),
             ],
         ]);
 
@@ -94,7 +94,7 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                Rule::unique('categories', 'name')->where('shop_id', $shopId)->ignore($category->id),
+                new UniqueNameIgnoringCase('categories', ['shop_id' => $shopId], $category->id, 'category'),
             ],
         ]);
 

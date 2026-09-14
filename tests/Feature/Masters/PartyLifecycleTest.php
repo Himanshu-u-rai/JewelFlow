@@ -465,7 +465,7 @@ class PartyLifecycleTest extends TestCase
             'status' => 'received',
         ]))->assertSessionHasNoErrors();
 
-        $this->assertSame('Chain Solder + Polish', $repair->fresh()->item_description);
+        $this->assertSame('Chain solder + polish', $repair->fresh()->item_description);
     }
 
     public function test_editing_a_repair_onto_a_different_archived_customer_is_rejected_with_no_partial_write(): void

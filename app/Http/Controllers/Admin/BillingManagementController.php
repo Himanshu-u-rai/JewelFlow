@@ -54,6 +54,20 @@ class BillingManagementController extends Controller
         if ($endsAt->lessThanOrEqualTo($startsAt)) {
             return back()->withErrors(['ends_at' => 'To date must be after the From date.'])->withInput();
         }
+        // The cycle is validated as a string we understand, never against the
+        // plan that has to honour it — and several plans price only one of the
+        // two. This is the one surface that can PERSIST the mismatch: a yearly
+        // cycle on a plan with no yearly price produced a row the owner's own
+        // status page then priced at nothing (it falls back to the plan column
+        // when price_paid is null), and which the renewal path prices at zero.
+        // Checked for every status, not just entitling ones: an expired or
+        // cancelled row carries its cycle into the invoice and the history just
+        // the same.
+        if ($cycle && ! $plan->supportsCycle($cycle)) {
+            return back()->withErrors([
+                'billing_cycle' => "{$plan->name} has no {$cycle} price, so it cannot be billed on a {$cycle} cycle. Pick a cycle this plan prices, or a plan that prices this cycle.",
+            ])->withInput();
+        }
         if ($entitling) {
             if (! $cycle) {
                 return back()->withErrors(['billing_cycle' => 'Choose Monthly or Yearly for an active/trial/grace term.'])->withInput();

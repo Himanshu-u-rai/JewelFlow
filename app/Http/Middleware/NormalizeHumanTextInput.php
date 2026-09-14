@@ -189,6 +189,21 @@ class NormalizeHumanTextInput
         return false;
     }
 
+    /**
+     * Tidy whitespace always; only impose Title Case when the operator supplied
+     * no capitalization of their own.
+     *
+     * `MB_CASE_TITLE` lowercases every character it does not capitalize, so
+     * applying it unconditionally destroyed deliberate capitalization in names:
+     * "JewelFlows" -> "Jewelflows", "RK Jewellers" -> "Rk Jewellers",
+     * "TBZ" -> "Tbz", "Monthly CA Export" -> "Monthly Ca Export". A shop,
+     * customer or item name is the operator's own text, and that loss is not
+     * recoverable from the stored value.
+     *
+     * An all-lowercase entry carries no case decision to preserve, so
+     * title-casing it is a pure improvement. Anything containing an uppercase
+     * letter is a decision, and is left exactly as typed.
+     */
     private function normalizeTitleText(string $value): string
     {
         $value = trim($value);
@@ -197,6 +212,13 @@ class NormalizeHumanTextInput
         }
 
         $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        // ponytail: "has an uppercase letter" is deliberately the whole test.
+        // A smarter acronym/particle dictionary ("of", "and", "McDonald") is the
+        // upgrade path, and only worth it if operators ask for it.
+        if (preg_match('/\p{Lu}/u', $value) === 1) {
+            return $value;
+        }
 
         return mb_convert_case($value, MB_CASE_TITLE, 'UTF-8');
     }

@@ -96,9 +96,10 @@ class ExportPresetTest extends TestCase
 
         $preset = ReportingPreset::withoutTenant()->where('shop_id', $shop->id)->first();
         $this->assertNotNull($preset);
-        // NormalizeHumanTextInput title-cases `name` inputs app-wide, so the
-        // stored value is the normalized form (consistent with every other name field).
-        $this->assertSame('Monthly Ca Export', $preset->name);
+        // NormalizeHumanTextInput tidies `name` inputs app-wide, but it no longer
+        // overrules capitalization the operator supplied. This assertion used to
+        // read 'Monthly Ca Export' — it was pinning the defect, not the intent.
+        $this->assertSame('Monthly CA Export', $preset->name);
         $this->assertSame('csv', $preset->format);
         $this->assertSame($shop->id, $preset->shop_id);
         $this->assertSame($owner->id, $preset->created_by);

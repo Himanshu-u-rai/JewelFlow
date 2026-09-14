@@ -122,7 +122,10 @@ class HistoricalManualCustomerAutocompleteTest extends TestCase
         $selected = TenantContext::runFor($shop->id, fn () => HistoricalSalesDocument::query()->latest('id')->firstOrFail());
         $this->assertSame($customer->id, $selected->customer_id);
         $this->assertSame('Historical Snapshot Name', $selected->customer_snapshot['name']);
-        $this->assertSame('Historical Address Only', $selected->customer_snapshot['address']);
+        // Snapshotted exactly as typed ('Historical address only'). The input
+        // normalizer tidies whitespace but no longer imposes Title Case on text
+        // the operator already capitalized themselves.
+        $this->assertSame('Historical address only', $selected->customer_snapshot['address']);
         $this->assertSame('Current customer address', $customer->fresh()->address);
     }
 

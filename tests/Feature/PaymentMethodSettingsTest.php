@@ -34,9 +34,9 @@ class PaymentMethodSettingsTest extends TestCase
         $this->shopId = $shop->id;
     }
 
-    // Seed names already in the title-cased form the NormalizeHumanTextInput
-    // middleware produces, so unique-name checks against a POSTed (normalized)
-    // value compare apples-to-apples. forceFill bypasses the middleware.
+    // Seed whatever spelling the case wants. Uniqueness is decided by
+    // UniqueNameIgnoringCase on LOWER(TRIM(name)), so the seeded and POSTed
+    // spellings no longer have to match. forceFill bypasses the middleware.
     private function method(array $attrs = []): ShopPaymentMethod
     {
         $m = new ShopPaymentMethod();
@@ -58,9 +58,9 @@ class PaymentMethodSettingsTest extends TestCase
 
         $m = ShopPaymentMethod::withoutGlobalScopes()->where('shop_id', $this->shopId)->first();
         $this->assertNotNull($m);
-        // Name is title-cased by NormalizeHumanTextInput middleware (app-wide),
-        // so compare case-insensitively.
-        $this->assertSame('phonepe', strtolower($m->name));
+        // The operator typed "PhonePe" and that is what is stored — the
+        // middleware no longer overrules capitalization it was given.
+        $this->assertSame('PhonePe', $m->name);
         $this->assertSame($this->shopId, $m->shop_id);
         $this->assertTrue((bool) $m->is_active);
     }
@@ -74,8 +74,10 @@ class PaymentMethodSettingsTest extends TestCase
 
     public function test_duplicate_name_within_same_type_is_rejected(): void
     {
-        // Seeded as the normalized form 'Phonepe'; the POST 'PhonePe' normalizes
-        // to the same → unique-name violation.
+        // Different spelling, same name. The middleware no longer folds the case
+        // for us, so this now exercises UniqueNameIgnoringCase directly — which
+        // is the rule that has to hold if "PhonePe" and "Phonepe" are not to
+        // become two separate payment methods.
         $this->method(['type' => 'upi', 'name' => 'Phonepe']);
 
         $this->actingAs($this->user)->post(route('settings.payment-methods.store'), [

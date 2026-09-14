@@ -207,7 +207,7 @@ class SubscriptionRecoveryCorrectionTest extends TestCase
 
     public function test_settled_payment_records_money_but_does_not_lift_admin_suspension(): void
     {
-        $admin = $this->createPlatformAdmin();          // also the systemAdmin() for the receipt
+        $admin = $this->createPlatformAdmin();          // the admin who applies the lock below
         $plan = $this->createPlan('retailer');
         $shop = $this->createShop('retailer');
         $this->adminLock($shop, $admin, 'Chargeback fraud');

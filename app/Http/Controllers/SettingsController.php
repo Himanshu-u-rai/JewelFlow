@@ -1103,12 +1103,8 @@ class SettingsController extends Controller
                 // Yearly plan: the first plan that actually carries a yearly price.
                 $yearlyPlan  = $plans->first(fn ($p) => ! is_null($p->price_yearly));
 
-                $monthlyPrice = $monthlyPlan && (float) $monthlyPlan->price_monthly > 0
-                    ? (float) $monthlyPlan->price_monthly
-                    : null;
-                $yearlyPrice = $yearlyPlan && (float) $yearlyPlan->price_yearly > 0
-                    ? (float) $yearlyPlan->price_yearly
-                    : null;
+                $monthlyPrice = $monthlyPlan?->priceFor('monthly');
+                $yearlyPrice  = $yearlyPlan?->priceFor('yearly');
 
                 $option['monthly_price'] = $monthlyPrice;
                 $option['yearly_price']  = $yearlyPrice;

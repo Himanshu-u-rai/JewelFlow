@@ -73,12 +73,31 @@ class SubscriptionPaymentReconciliationTest extends TestCase
      * provider-network methods; everything else (finalize, verifyAmount,
      * createSubscription, idempotency, anti-stack) runs for real.
      */
-    private function bindFakeService(Plan $plan, object $order, string $cycle = 'monthly'): SubscriptionPaymentService
-    {
+    private function bindFakeService(
+        Plan $plan,
+        object $order,
+        string $cycle = 'monthly',
+        ?\Throwable $failFirstCallWith = null,
+    ): SubscriptionPaymentService {
         $svc = Mockery::mock(SubscriptionPaymentService::class)->makePartial();
         $svc->shouldReceive('fetchAndValidateOrder')
             ->andReturn(['order' => $order, 'plan' => $plan, 'billing_cycle' => $cycle]);
-        $svc->shouldReceive('verifyPaymentCaptured')->andReturnNull();
+
+        // A provider hiccup on the FIRST finalization only — the retry sees a
+        // healthy Razorpay. This is the transient failure the reconcile path
+        // exists for; it has to come from the provider seam, because every
+        // in-process reason to refuse a valid payment is now a bug.
+        $attempt = 0;
+        $svc->shouldReceive('verifyPaymentCaptured')->andReturnUsing(
+            function () use (&$attempt, $failFirstCallWith) {
+                $attempt++;
+                if ($failFirstCallWith !== null && $attempt === 1) {
+                    throw $failFirstCallWith;
+                }
+
+                return null;
+            }
+        );
 
         $this->app->instance(SubscriptionPaymentService::class, $svc);
 
@@ -194,19 +213,20 @@ class SubscriptionPaymentReconciliationTest extends TestCase
 
     public function test_transaction_failure_stays_reconcilable_and_activates_once_when_fixed(): void
     {
-        // No platform super admin yet → createSubscription throws → recorded, not applied.
         $plan = $this->createPlan('retailer');
         [$owner] = $this->ownerWithShop();
 
-        $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id));
+        // The first finalization dies at the provider seam — money is captured
+        // at Razorpay, nothing is written here.
+        $svc = $this->bindFakeService($plan, $this->fakeOrder($owner->id), 'monthly',
+            new \RuntimeException('Razorpay API unreachable'));
 
         $first = $svc->reconcileCapturedPayment('order_TEST', 'pay_RETRY');
-        $this->assertNull($first, 'no admin configured → payment not applied');
+        $this->assertNull($first, 'the failed attempt applied nothing');
         $this->assertSame(0, ShopSubscription::where('razorpay_payment_id', 'pay_RETRY')->count());
         $this->assertDatabaseHas('subscription_events', ['event_type' => 'payment.unresolved']);
 
-        // Fix the platform config, re-run reconcile → activates exactly once.
-        $this->createPlatformAdmin();
+        // The provider recovers; re-running reconcile activates exactly once.
         $second = $svc->reconcileCapturedPayment('order_TEST', 'pay_RETRY');
 
         $this->assertNotNull($second);

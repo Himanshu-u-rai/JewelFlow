@@ -80,10 +80,15 @@ class AdminBillingStatusAxisTest extends TestCase
     {
         $entitling = in_array($status, ['trial', 'active', 'grace'], true);
 
+        // Monthly because that is the only cycle createPlan() prices — the shared
+        // fixture ships a `price_monthly` and no `price_yearly`, the same shape as
+        // the seeded `*_monthly` plans. The cycle is incidental here (this file's
+        // axis is STATUS), but it can no longer be incoherent: billing a plan on a
+        // cycle it does not price is refused before anything is written.
         return array_merge([
             'plan_id'       => $plan->id,
             'status'        => $status,
-            'billing_cycle' => $entitling ? 'yearly' : null,
+            'billing_cycle' => $entitling ? 'monthly' : null,
             'starts_at'     => now()->subMonth()->toDateString(),
             'ends_at'       => $entitling ? now()->addYear()->toDateString() : now()->subDay()->toDateString(),
             'reason'        => 'axis test',

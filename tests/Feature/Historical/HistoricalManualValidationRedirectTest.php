@@ -87,9 +87,12 @@ class HistoricalManualValidationRedirectTest extends TestCase
         $response->assertSessionHasInput('customer_name', 'Redirect Regression Customer');
         $response->assertSessionHasInput('customer_mobile', '9800000001');
         $response->assertSessionHasInput('intent', $intent);
-        // prepareForValidation() title-cases the item name before validation —
-        // pre-existing normalization, unrelated to this fix.
-        $response->assertSessionHasInput('lines.0.line_item_name', 'Qa Gold Item');
+        // Flashed back exactly as typed. This used to read 'Qa Gold Item': the
+        // input normalizer (not prepareForValidation, as an earlier comment here
+        // guessed) title-cased every `*_name` key, and MB_CASE_TITLE lowercases
+        // whatever it does not capitalize — so an acronym came back wrong on the
+        // form the operator was being asked to correct.
+        $response->assertSessionHasInput('lines.0.line_item_name', 'QA Gold Item');
         $response->assertSessionHasInput('lines.0.line_stone_value_mode', 'manual');
         $response->assertSessionHasInput('payments.0.reference', 'VR-PAY-0001');
         $response->assertSessionMissing('historical_carry_forward');

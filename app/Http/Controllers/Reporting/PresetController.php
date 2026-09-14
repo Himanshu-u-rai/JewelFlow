@@ -7,6 +7,7 @@ use App\Models\Reporting\ReportingPreset;
 use App\Services\Reporting\Definition\ColumnTier;
 use App\Services\Reporting\Definition\ExportFormat;
 use App\Services\Reporting\Definition\ReportProfile;
+use App\Rules\UniqueNameIgnoringCase;
 use App\Services\Reporting\Definition\ReportRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -67,8 +68,10 @@ class PresetController extends Controller
         // them anyway; this keeps the saved record honest).
         $columns = $this->sanitizeColumns($validated['columns'] ?? [], $definition, $user);
 
-        $uniqueName = Rule::unique('reporting_presets')
-            ->where(fn ($q) => $q->where('shop_id', $user->shop_id)->where('report_key', $report));
+        $uniqueName = new UniqueNameIgnoringCase('reporting_presets', [
+            'shop_id'    => $user->shop_id,
+            'report_key' => $report,
+        ], null, 'preset');
         $request->validate([
             'name' => ['required', 'string', 'max:120', $uniqueName],
         ], [], ['name' => 'preset name']);
@@ -97,9 +100,10 @@ class PresetController extends Controller
         $validated = $this->validatePayload($request, $definition);
         $columns = $this->sanitizeColumns($validated['columns'] ?? [], $definition, $user);
 
-        $uniqueName = Rule::unique('reporting_presets')
-            ->where(fn ($q) => $q->where('shop_id', $user->shop_id)->where('report_key', $report))
-            ->ignore($preset->id);
+        $uniqueName = new UniqueNameIgnoringCase('reporting_presets', [
+            'shop_id'    => $user->shop_id,
+            'report_key' => $report,
+        ], $preset->id, 'preset');
         $request->validate([
             'name' => ['required', 'string', 'max:120', $uniqueName],
         ], [], ['name' => 'preset name']);

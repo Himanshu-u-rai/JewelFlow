@@ -61,8 +61,11 @@ class SubscriptionCallbackOwnershipTest extends TestCase
             'services.razorpay.key_id'     => 'rzp_test_key',
             'services.razorpay.key_secret' => self::KEY_SECRET,
         ]);
-        // createSubscription() stamps its audit event with the platform super
-        // admin and throws 'Platform configuration incomplete.' without one.
+        // A platform admin exists so these cases run against a realistically
+        // populated platform. createSubscription() no longer needs one: a
+        // customer's own purchase records no admin actor (updated_by_admin_id
+        // is null, actor_type is 'self_service'), and it used to refuse the
+        // purchase outright when no super_admin row existed.
         $this->createPlatformAdmin();
     }
 

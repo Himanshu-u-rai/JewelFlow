@@ -159,15 +159,30 @@
         <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <x-admin.alert-table
                 title="Suspended Shops"
-                subtitle="Immediate attention required"
-                :headers="['Shop','Owner','Reason','Suspended At','Action']"
+                subtitle="Full access blocked — check the cause before acting"
+                :headers="['Shop','Owner','Cause','Reason','Suspended At','Action']"
             >
                 @forelse($suspendedShops as $shop)
                     <tr class="border-t border-slate-800 text-slate-200">
                         <td class="px-4 py-2 admin-table-index">{{ $loop->iteration }}</td>
                         <td class="px-4 py-2 font-medium">{{ $shop->name }}</td>
                         <td class="px-4 py-2 text-sm text-slate-300">{{ \App\Support\Mobile::forDisplay($shop->owner_mobile) ?: '—' }}</td>
-                        {{-- ?: not ??  — an empty-string reason must fall back too. --}}
+                        {{--
+                            `suspended` is NOT self-evidently an administrator act.
+                            CheckSubscriptionExpiry writes this exact mode on a grace
+                            lapse and stamps no actor, so this table listed ordinary
+                            lapsed tenants under "immediate attention" with a Reason of
+                            whatever the scheduler happened to store — or an em-dash —
+                            and nothing saying the owner can already recover on their
+                            own. The sibling Read-Only table had answered this since the
+                            2026-08-27 work; this one had not.
+                        --}}
+                        <td class="px-4 py-2 text-xs">
+                            <x-super-admin.access-cause-badge :shop="$shop" />
+                        </td>
+                        {{-- ?: not ??  — an empty-string reason must fall back too. The
+                             em-dash stays honest: it means nothing was recorded, and the
+                             Cause badge beside it carries the explanation. --}}
                         <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?: '—' }}</td>
                         <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspended_at?->format('d M Y, H:i') ?? '—' }}</td>
                         <td class="px-4 py-2">
@@ -175,7 +190,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-4 py-4 text-center text-slate-400">No suspended shops.</td></tr>
+                    <tr><td colspan="7" class="px-4 py-4 text-center text-slate-400">No suspended shops.</td></tr>
                 @endforelse
             </x-admin.alert-table>
 
@@ -192,21 +207,18 @@
                         {{--
                             Cause answers the question the admin actually has: can this
                             shop fix itself? An admin hold cannot be cleared by the owner
-                            buying a plan; a subscription lapse can. Asking the model
-                            rather than re-deriving it here keeps one classifier, and this
-                            table is capped at 6 rows so the per-row subscription lookups
-                            inside suspensionIsSubscriptionManaged() stay bounded.
+                            buying a plan; a subscription lapse can. This used to ask the
+                            two predicates here in its own order — a fourth copy of a
+                            precedence rule that has one home in the model. The component
+                            asks accessClassification() once, so this row cannot drift
+                            from the badge, the shop list or the detail page. Both tables
+                            are capped at 6 rows, so the classifier's bounded per-row
+                            subscription lookups stay bounded.
                             ponytail: 6 rows x 2 queries. Move to a batched pre-classify
-                            pass only if this table is ever unbounded.
+                            pass only if either table is ever unbounded.
                         --}}
                         <td class="px-4 py-2 text-xs">
-                            @if($shop->suspensionIsAdministrative())
-                                <span class="admin-badge admin-badge-rose">Admin hold</span>
-                            @elseif($shop->suspensionIsSubscriptionManaged())
-                                <span class="admin-badge admin-badge-amber">Subscription lapse</span>
-                            @else
-                                <span class="admin-badge admin-badge-slate">Unattributed</span>
-                            @endif
+                            <x-super-admin.access-cause-badge :shop="$shop" />
                         </td>
                         <td class="px-4 py-2 text-xs text-slate-400">{{ $shop->suspension_reason ?: '—' }}</td>
                         <td class="px-4 py-2">

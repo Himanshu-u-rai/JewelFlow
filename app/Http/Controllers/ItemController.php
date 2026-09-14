@@ -18,6 +18,7 @@ use App\Services\MetalRegistry;
 use App\Services\ReferencePriceService;
 use App\Http\Concerns\RespondsDynamically;
 use App\Http\Requests\Items\StoreItemWebRequest;
+use App\Rules\UniqueNameIgnoringCase;
 use App\Support\ShopEdition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -815,7 +816,7 @@ class ItemController extends Controller
         $validated = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
-                Rule::unique('categories', 'name')->where('shop_id', $shopId),
+                new UniqueNameIgnoringCase('categories', ['shop_id' => $shopId], null, 'category'),
             ],
         ]);
 
@@ -842,9 +843,10 @@ class ItemController extends Controller
             ],
             'name' => [
                 'required', 'string', 'max:255',
-                Rule::unique('sub_categories')
-                    ->where('shop_id', $shopId)
-                    ->where('category_id', $request->input('category_id')),
+                new UniqueNameIgnoringCase('sub_categories', [
+                    'shop_id'     => $shopId,
+                    'category_id' => $request->input('category_id'),
+                ], null, 'sub-category'),
             ],
         ]);
 

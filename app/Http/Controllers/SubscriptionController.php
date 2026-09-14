@@ -317,6 +317,27 @@ class SubscriptionController extends Controller
             'billing_cycle' => 'required|in:monthly,yearly',
         ]);
 
+        // `in:monthly,yearly` only says the string is a cycle we understand. It
+        // does not say THIS plan sells it, and several plans sell only one of
+        // the two. The picker renders a button per cycle the plan actually
+        // prices, so a mismatched pair arrives only from a stale tab, the back
+        // button or a hand-made POST — but arrive it did, and the pair was
+        // written to the session and carried to the payment screen, which then
+        // dead-ended the owner with "invalid pricing, contact support" one step
+        // after they thought they had chosen. Refuse it where it is chosen, and
+        // say which cycle is wrong.
+        $plan = Plan::whereRaw('is_active IS TRUE')->find($validated['plan_id']);
+        if (! $plan) {
+            return redirect()->route('subscription.plans')
+                ->with('error', 'That plan is no longer available.');
+        }
+        if (! $plan->supportsCycle($validated['billing_cycle'])) {
+            return redirect()->route('subscription.plans')->with(
+                'error',
+                "{$plan->name} isn't sold on a {$validated['billing_cycle']} billing cycle. Please pick one of the options shown."
+            );
+        }
+
         session([
             'pending_plan_id' => $validated['plan_id'],
             'pending_billing_cycle' => $validated['billing_cycle'],
@@ -421,11 +442,9 @@ class SubscriptionController extends Controller
                 ->with('error', 'Selected plan is no longer available.');
         }
 
-        $price = $billingCycle === 'yearly'
-            ? $plan->price_yearly
-            : $plan->price_monthly;
+        $price = $plan->priceFor($billingCycle);
 
-        if (is_null($price) || (float) $price <= 0) {
+        if ($price === null) {
             Log::error('Subscription payment page received invalid plan price.', [
                 'plan_id' => $plan->id,
                 'plan_code' => $plan->code,
@@ -511,8 +530,8 @@ class SubscriptionController extends Controller
             return response()->json(['error' => 'Plan not available.'], 422);
         }
 
-        $price = $billingCycle === 'yearly' ? $plan->price_yearly : $plan->price_monthly;
-        if (is_null($price) || (float) $price <= 0) {
+        $price = $plan->priceFor($billingCycle);
+        if ($price === null) {
             Log::error('Subscription initiatePayment blocked due to invalid plan price.', [
                 'plan_id' => $plan->id,
                 'plan_code' => $plan->code,
@@ -695,9 +714,9 @@ class SubscriptionController extends Controller
                     . 'Please contact support for a refund with ref: ' . $paymentId);
         } catch (\Exception $e) {
             return redirect()->route('subscription.payment')
-                ->with('error', $e->getMessage() === 'Platform configuration incomplete.'
-                    ? 'Platform configuration incomplete. Please contact support.'
-                    : 'Could not create subscription. Contact support with ref: ' . $paymentId);
+                // No "platform configuration incomplete" branch any more: a customer's
+                // purchase no longer depends on JewelFlows having a super_admin row.
+                ->with('error', 'Could not create subscription. Contact support with ref: ' . $paymentId);
         }
 
         // Persist to both session and DB
