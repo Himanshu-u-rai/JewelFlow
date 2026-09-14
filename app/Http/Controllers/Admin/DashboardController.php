@@ -31,16 +31,23 @@ class DashboardController extends Controller
             // Shop::suspensionIsAdministrative(), needs no joins, and every admin
             // write path stamps it while the subscription lifecycle never does.
             //
-            // The other bucket is deliberately labelled "unattributed", NOT
-            // "subscription lapse". Proving a lapse needs the ordered subscription-row
-            // checks inside suspensionIsSubscriptionManaged(), and re-implementing
-            // that fail-closed logic as a second SQL predicate is exactly how two
-            // copies drift apart. The per-shop rows below use the real classifier;
-            // this KPI stays coarse and honest.
+            // The other bucket stays coarse on purpose. Proving a lapse needs the
+            // ordered subscription-row checks inside suspensionIsSubscriptionManaged(),
+            // and re-implementing that fail-closed logic as a second SQL predicate is
+            // exactly how two copies drift apart. The per-shop rows below use the real
+            // classifier; this KPI does not try to.
+            //
+            // It is therefore named "not admin-held" and NOT "unattributed". The Cause
+            // badge added alongside it uses "Unattributed" for something strictly
+            // narrower — no actor AND no subscription row confirming a lapse — so a
+            // lapsed shop lands in this bucket while the table below correctly badges
+            // it "Subscription lapse". Naming both the same made one page state "2
+            // unattributed" above a table showing one. The count was right; the word
+            // was borrowed. Widen the word, never the badge.
             'shops_read_only_admin_hold' => Shop::where('access_mode', 'read_only')
                 ->whereNotNull('suspended_by')
                 ->count(),
-            'shops_read_only_unattributed' => Shop::where('access_mode', 'read_only')
+            'shops_read_only_not_admin_held' => Shop::where('access_mode', 'read_only')
                 ->whereNull('suspended_by')
                 ->count(),
             'shops_suspended' => Shop::where('access_mode', 'suspended')->count(),

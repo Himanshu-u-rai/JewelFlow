@@ -157,7 +157,7 @@ class SuperAdminDashboardRestrictionLabelsTest extends TestCase
     // Defect 2 — the read-only KPI split
     // ════════════════════════════════════════════════════════════════
 
-    public function test_read_only_kpi_splits_admin_holds_from_unattributed_shops(): void
+    public function test_read_only_kpi_splits_admin_holds_from_everything_else(): void
     {
         $this->adminHeldShop('Kpi Held Shop', 'Compliance hold');
         $this->lapsedShop('Kpi Lapsed Shop');
@@ -166,7 +166,34 @@ class SuperAdminDashboardRestrictionLabelsTest extends TestCase
             ->get(route('admin.dashboard'))
             ->assertOk()
             // Total unchanged; the description is what carries the split.
-            ->assertSee('1 admin hold · 1 unattributed');
+            ->assertSee('1 admin hold · 1 not admin-held');
+    }
+
+    /**
+     * THE CARD MUST NOT CONTRADICT THE TABLE UNDER IT. The KPI splits on
+     * suspended_by alone; the Cause badge runs the real classifier and reserves
+     * "Unattributed" for a shop with no actor AND no subscription row confirming
+     * a lapse. While the card said "unattributed" too, this page read "2
+     * unattributed" above a table showing exactly one — the count was right and
+     * the word was borrowed.
+     *
+     * Found by driving the rendered page in a browser, not by a failing test:
+     * both numbers were individually correct, so nothing was red.
+     */
+    public function test_the_kpi_does_not_call_a_lapsed_shop_unattributed(): void
+    {
+        $this->adminHeldShop('Kpi Held Shop', 'Compliance hold');
+        $this->lapsedShop('Kpi Lapsed Shop');
+        $this->namedShop('Kpi Legacy Shop')->forceFill([
+            'access_mode' => 'read_only', 'is_active' => false, 'suspended_by' => null,
+        ])->save();
+
+        $html = $this->actingAsSuperAdmin()->get(route('admin.dashboard'))->assertOk()->getContent();
+
+        // Two shops are not admin-held, but only ONE of them is Unattributed.
+        $this->assertStringContainsString('1 admin hold · 2 not admin-held', $html);
+        $this->assertSame(1, substr_count($html, '>Unattributed<'),
+            'the word "Unattributed" appears somewhere other than the one row that earns it');
     }
 
     public function test_read_only_kpi_counts_only_read_only_shops(): void
@@ -185,7 +212,7 @@ class SuperAdminDashboardRestrictionLabelsTest extends TestCase
         $this->actingAsSuperAdmin()
             ->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('1 admin hold · 0 unattributed');
+            ->assertSee('1 admin hold · 0 not admin-held');
     }
 
     // ════════════════════════════════════════════════════════════════

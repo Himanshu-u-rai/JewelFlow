@@ -38,7 +38,13 @@
                 <x-admin.kpi-card
                     label="Read-Only Shops"
                     :value="$stats['shops_read_only']"
-                    :description="$stats['shops_read_only_admin_hold'] . ' admin hold · ' . $stats['shops_read_only_unattributed'] . ' unattributed'"
+                    {{-- "not admin-held", NOT "unattributed": this split is the coarse
+                         suspended_by one (see DashboardController). "Unattributed" is a
+                         Cause badge with a narrower meaning — no actor AND no
+                         corroborating subscription row — so a lapsed shop counts here
+                         but is NOT badged Unattributed in the table below. Reusing the
+                         badge's word made the card contradict its own table. --}}
+                    :description="$stats['shops_read_only_admin_hold'] . ' admin hold · ' . $stats['shops_read_only_not_admin_held'] . ' not admin-held'"
                     tone="amber"
                 />
                 <x-admin.kpi-card label="Suspended Shops" :value="$stats['shops_suspended']" description="Full access blocked" tone="rose" />
