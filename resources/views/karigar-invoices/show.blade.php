@@ -939,7 +939,7 @@
 
                     <div class="ki-show-actions">
                         @if($invoice->invoice_file_path)
-                            <a href="{{ asset('storage/' . $invoice->invoice_file_path) }}" target="_blank" class="ki-show-summary-link">View original PDF / image</a>
+                            <a href="{{ $invoice->attachmentUrl() }}" target="_blank" class="ki-show-summary-link">View original PDF / image</a>
                         @endif
                         <p class="ki-show-summary-note">Use this panel to quickly verify outstanding value before recording payment splits below.</p>
                     </div>

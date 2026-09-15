@@ -615,7 +615,7 @@
                         <span class="ki-label">Upload Original Invoice (PDF/JPG/PNG)</span>
                         <input type="file" name="invoice_file" accept=".pdf,.jpg,.jpeg,.png" class="ki-control bg-white p-2">
                         @if($isEdit && $invoice->invoice_file_path)
-                            <p class="mt-1 text-[11px] text-gray-500">Current: <a href="{{ asset('storage/' . $invoice->invoice_file_path) }}" target="_blank" class="text-amber-700 underline">view</a>. Uploading replaces it.</p>
+                            <p class="mt-1 text-[11px] text-gray-500">Current: <a href="{{ $invoice->attachmentUrl() }}" target="_blank" class="text-amber-700 underline">view</a>. Uploading replaces it.</p>
                         @endif
                     </label>
                 </div>

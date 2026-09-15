@@ -45,8 +45,12 @@ class KarigarInvoiceService
             }
 
             if ($invoiceFile) {
-                $path = $invoiceFile->store("karigar-invoices/{$shopId}", 'public');
+                // Supplier invoices are confidential (GST numbers, amounts,
+                // counterparty identity) — private disk only, never 'public'.
+                // Served by the authenticated karigar-invoices.file route.
+                $path = $invoiceFile->store("karigar-invoices/{$shopId}", KarigarInvoice::ATTACHMENT_DISK);
                 $invoice->invoice_file_path = $path;
+                $invoice->invoice_file_disk = KarigarInvoice::ATTACHMENT_DISK;
             }
 
             $this->recalculate($invoice);
@@ -108,10 +112,14 @@ class KarigarInvoiceService
             }
 
             if ($invoiceFile) {
-                if ($invoice->invoice_file_path) {
-                    Storage::disk('public')->delete($invoice->invoice_file_path);
+                // Delete the outgoing file from whichever disk it is RECORDED on.
+                // Hard-coding 'public' here would silently orphan every attachment
+                // already relocated to the private disk.
+                if ($invoice->invoice_file_path && $invoice->invoice_file_disk) {
+                    Storage::disk($invoice->invoice_file_disk)->delete($invoice->invoice_file_path);
                 }
-                $invoice->invoice_file_path = $invoiceFile->store("karigar-invoices/{$invoice->shop_id}", 'public');
+                $invoice->invoice_file_path = $invoiceFile->store("karigar-invoices/{$invoice->shop_id}", KarigarInvoice::ATTACHMENT_DISK);
+                $invoice->invoice_file_disk = KarigarInvoice::ATTACHMENT_DISK;
             }
 
             $this->recalculate($invoice);

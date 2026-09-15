@@ -49,6 +49,7 @@ class KarigarInvoice extends Model
         'payment_status',
         'amount_paid',
         'invoice_file_path',
+        'invoice_file_disk',
         'discrepancy_flags',
         'created_by_user_id',
     ];
@@ -76,6 +77,32 @@ class KarigarInvoice extends Model
         'amount_paid' => 'decimal:2',
         'discrepancy_flags' => 'array',
     ];
+
+    /** Private disk for newly uploaded supplier invoices. */
+    public const ATTACHMENT_DISK = 'local';
+
+    public function hasAttachment(): bool
+    {
+        return ! empty($this->invoice_file_path);
+    }
+
+    /**
+     * Supplier invoices (GST numbers, amounts, counterparty identity) resolve ONLY
+     * to the authenticated, shop- and permission-scoped stream route — whatever
+     * disk the row records.
+     *
+     * Previously both templates linked asset('storage/'.$invoice->invoice_file_path)
+     * (karigar-invoices/show.blade.php:942, _form.blade.php:618), which nginx serves
+     * off the public/storage symlink with no auth, no tenant scope and no shop_id
+     * check. The route reads the recorded disk, so attachments already sitting on
+     * the public disk stay retrievable by authorised users and are not stranded.
+     */
+    public function attachmentUrl(): ?string
+    {
+        return $this->hasAttachment()
+            ? route('karigar-invoices.file', $this)
+            : null;
+    }
 
     public function karigar()
     {

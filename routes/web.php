@@ -710,6 +710,7 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         Route::get('/karigar-invoices/create', [\App\Http\Controllers\KarigarInvoiceController::class, 'create'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.create');
         Route::post('/karigar-invoices', [\App\Http\Controllers\KarigarInvoiceController::class, 'store'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.store');
         Route::get('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'show'])->middleware('can:karigar_invoice.view')->name('karigar-invoices.show');
+        Route::get('/karigar-invoices/{karigarInvoice}/file', [\App\Http\Controllers\KarigarInvoiceController::class, 'showFile'])->middleware('can:karigar_invoice.view')->name('karigar-invoices.file');
         Route::get('/karigar-invoices/{karigarInvoice}/edit', [\App\Http\Controllers\KarigarInvoiceController::class, 'edit'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.edit');
         Route::put('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'update'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.update');
         Route::delete('/karigar-invoices/{karigarInvoice}', [\App\Http\Controllers\KarigarInvoiceController::class, 'destroy'])->middleware('can:karigar_invoice.manage')->name('karigar-invoices.destroy');

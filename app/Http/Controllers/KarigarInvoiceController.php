@@ -11,6 +11,7 @@ use App\Models\Shop;
 use App\Models\ShopPaymentMethod;
 use App\Services\KarigarInvoiceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class KarigarInvoiceController extends Controller
 {
@@ -223,8 +224,11 @@ class KarigarInvoiceController extends Controller
             return back()->with('error', 'Cannot delete an invoice with recorded payments.');
         }
 
-        if ($karigarInvoice->invoice_file_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($karigarInvoice->invoice_file_path);
+        // Delete from whichever disk the row records — hard-coding 'public' here
+        // would leave every private-disk attachment orphaned on disk after the
+        // row is gone.
+        if ($karigarInvoice->invoice_file_path && $karigarInvoice->invoice_file_disk) {
+            Storage::disk($karigarInvoice->invoice_file_disk)->delete($karigarInvoice->invoice_file_path);
         }
 
         $karigarInvoice->lines()->delete();
@@ -294,5 +298,37 @@ class KarigarInvoiceController extends Controller
     private function authorizeShop(KarigarInvoice $invoice): void
     {
         abort_unless($invoice->shop_id === auth()->user()->shop_id, 403);
+    }
+
+    /**
+     * Stream a supplier invoice attachment to an authenticated, same-shop user
+     * holding karigar_invoice.view. The file has no public URL.
+     *
+     * Reads whichever disk the row records, so attachments still resident on the
+     * public disk stay retrievable while the separately-approved relocation
+     * procedure has not yet run. Nothing here assumes the file has been moved.
+     */
+    public function showFile(KarigarInvoice $karigarInvoice)
+    {
+        $this->authorizeShop($karigarInvoice);
+
+        abort_unless($karigarInvoice->hasAttachment() && $karigarInvoice->invoice_file_disk, 404);
+
+        $disk = Storage::disk($karigarInvoice->invoice_file_disk);
+        abort_unless($disk->exists($karigarInvoice->invoice_file_path), 404);
+
+        // karigar_invoices has no original_filename column, so derive a stable,
+        // safe download name from the invoice number plus the stored extension.
+        // A client-supplied filename is never echoed back.
+        $extension = pathinfo($karigarInvoice->invoice_file_path, PATHINFO_EXTENSION);
+        $downloadName = 'karigar-invoice-'
+            . preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $karigarInvoice->karigar_invoice_number)
+            . ($extension !== '' ? '.' . $extension : '');
+
+        return $disk->response(
+            $karigarInvoice->invoice_file_path,
+            $downloadName,
+            ['Content-Type' => $disk->mimeType($karigarInvoice->invoice_file_path) ?: 'application/octet-stream']
+        );
     }
 }
