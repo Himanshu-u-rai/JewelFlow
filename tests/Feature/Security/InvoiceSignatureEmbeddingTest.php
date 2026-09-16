@@ -4,6 +4,7 @@ namespace Tests\Feature\Security;
 
 use App\Models\Invoice;
 use App\Models\InvoiceRenderSnapshot;
+use App\Models\QuickBill;
 use App\Models\ShopBillingSettings;
 use App\Models\User;
 use App\Services\InvoiceSignatureRenderer;
@@ -389,6 +390,115 @@ class InvoiceSignatureEmbeddingTest extends TestCase
         });
     }
 
+    // ---------------------------------------------------------------- G-18
+    /**
+     * Added because mutation M8 survived: putting a Storage::disk('public')->url()
+     * back into quick-bills/print.blade.php left the whole suite green. Nothing
+     * in this repository rendered that template — G-05 and G-14 only ever
+     * exercised invoice_print.blade.php, so the second of the two print paths
+     * named in the finding had no coverage at all.
+     *
+     * The quick bill reads its selection from its own shop_snapshot, not from an
+     * invoice_render_snapshots row, so this is a genuinely separate resolution
+     * path and not a copy of G-05.
+     */
+    public function test_g18_the_quick_bill_print_path_embeds_the_signature_and_emits_no_storage_url(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $path = 'signatures/'.$shop->id.'/sig-qb.png';
+        Storage::disk('local')->put($path, $this->pngBytes("\x0D"));
+        $this->setSignature($shop->id, $path, 'local', true);
+
+        $bill = TenantContext::runFor($shop->id, function () use ($shop, $path) {
+            $bill = new QuickBill();
+            $bill->forceFill([
+                'shop_id'       => $shop->id,
+                'bill_sequence' => 1,
+                'bill_number'   => 'QB-G18',
+                'bill_date'     => now()->toDateString(),
+                'status'        => QuickBill::STATUS_ISSUED,
+                'issued_at'     => now(),
+                'total_amount'  => 1030,
+                'shop_snapshot' => [
+                    'show_digital_signature' => true,
+                    'digital_signature_path' => $path,
+                    'digital_signature_disk' => 'local',
+                ],
+            ])->save();
+
+            return $bill;
+        });
+
+        $html = $this->requestAs($owner, route('quick-bills.print', $bill))
+            ->assertStatus(200)
+            ->getContent();
+
+        $this->assertStringContainsString(
+            'data:image/png;base64,'.base64_encode($this->pngBytes("\x0D")),
+            $html,
+            'the quick bill must carry the signature bytes inline'
+        );
+        $this->assertStringNotContainsString(
+            '/storage/signatures/',
+            $html,
+            'no public storage URL may survive on the quick bill print path'
+        );
+    }
+
+    // ---------------------------------------------------------------- G-16
+    /**
+     * Added because mutation M5 survived: re-adding the baseline
+     * Storage::delete() to SettingsController::updateBilling — bypassing
+     * SignatureStore entirely — left all twelve tests green.
+     *
+     * G-09 proves the RENDERER reads the snapshot; G-10 proves SignatureStore
+     * does not delete. Neither drives the real settings write path, so nothing
+     * caught a delete reintroduced one layer above the store. Immutability is a
+     * property of the whole write path, and this is the test that says so: a
+     * real operator request, replacing signature A with B, and A must survive on
+     * disk AND still render on the invoice finalized under it.
+     */
+    public function test_g16_replacing_the_signature_through_the_settings_route_preserves_the_finalized_invoice(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $pathA = 'signatures/'.$shop->id.'/sig-a.png';
+        Storage::disk('local')->put($pathA, $this->pngBytes("\x0A"));
+        $this->setSignature($shop->id, $pathA, 'local', true);
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G16');
+
+        TenantContext::runFor($shop->id, fn () => app(\App\Services\InvoiceRenderSnapshotService::class)
+            ->captureForInvoice($invoice));
+
+        // A real operator replacing the signature, through the real route.
+        $this->actingAs($owner)
+            ->patch(route('settings.update.billing'), [
+                'invoice_prefix'         => 'INV',
+                'invoice_start_number'   => 1,
+                'show_digital_signature' => '1',
+                'digital_signature'      => \Illuminate\Http\UploadedFile::fake()
+                    ->createWithContent('sig-b.png', $this->pngBytes("\x0B")),
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue(
+            Storage::disk('local')->exists($pathA),
+            'signature A is referenced by a finalized invoice and must survive replacement'
+        );
+
+        $result = $this->resolveAs($owner, $invoice->fresh());
+
+        $this->assertTrue($result['available'], 'signature A bytes must still be readable');
+        $this->assertStringContainsString(
+            base64_encode($this->pngBytes("\x0A")),
+            (string) $result['dataUri'],
+            'the finalized invoice must still render A after the operator uploaded B'
+        );
+    }
+
     // ---------------------------------------------------------------- G-11
     public function test_g11_a_legacy_snapshot_without_a_disk_key_still_resolves_to_the_public_disk(): void
     {
@@ -417,6 +527,13 @@ class InvoiceSignatureEmbeddingTest extends TestCase
     }
 
     // ---------------------------------------------------------------- G-12
+    /**
+     * The path here is deliberately ORDINARY. The original version of this test
+     * used '../../../../etc/passwd' together with the evil disk, which meant
+     * mutation M6 (deleting the ALLOWED_DISKS check) was caught by the traversal
+     * guard instead — the reason merely changed from 'bad_disk' to 'bad_path'.
+     * Defence in depth held, but no test isolated the disk guard. This one does.
+     */
     public function test_g12_an_untrusted_disk_name_is_refused_rather_than_read(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
@@ -426,7 +543,7 @@ class InvoiceSignatureEmbeddingTest extends TestCase
 
         $this->putSnapshot($invoice, [
             'show_digital_signature' => true,
-            'digital_signature_path' => '../../../../etc/passwd',
+            'digital_signature_path' => 'signatures/'.$shop->id.'/sig-a.png',
             'digital_signature_disk' => 's3-evil',
         ]);
 
@@ -434,6 +551,28 @@ class InvoiceSignatureEmbeddingTest extends TestCase
 
         $this->assertFalse($result['available']);
         $this->assertSame('bad_disk', $result['reason']);
+        $this->assertNull($result['dataUri']);
+    }
+
+    // ---------------------------------------------------------------- G-17
+    /** The other half of the split: trusted disk, hostile path. */
+    public function test_g17_a_traversal_path_is_refused_on_a_trusted_disk(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G17');
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => '../../../../etc/passwd',
+            'digital_signature_disk' => 'local',
+        ]);
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertFalse($result['available']);
+        $this->assertSame('bad_path', $result['reason']);
         $this->assertNull($result['dataUri']);
     }
 
@@ -450,6 +589,32 @@ class InvoiceSignatureEmbeddingTest extends TestCase
 
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
         TenantContext::runFor($shopB->id, fn () => $this->renderer()->forInvoice($invoice));
+    }
+
+    // ---------------------------------------------------------------- G-15
+    /**
+     * Added because mutation M2 survived: deleting the renderer's own
+     * Gate::denies('sales.view') left the whole suite green, since G-01 reaches
+     * the renderer through the web route and never gets past that route's
+     * Authorize:sales.view middleware. The resource stayed protected — but the
+     * renderer's second, independent check had no assertion behind it at all.
+     *
+     * That check exists for the caller that does NOT come through the print
+     * route (see InvoiceSignatureRenderer::authorize docblock). This test calls
+     * the service the way such a caller would: correct tenant, authenticated,
+     * no sales.view. Route middleware cannot answer for it.
+     */
+    public function test_g15_the_renderer_refuses_a_same_shop_user_without_sales_view(): void
+    {
+        [, $shop]  = $this->createRetailerTenant();
+        $customer  = $this->createCustomer($shop->id);
+        $invoice   = $this->makeInvoice($shop->id, $customer->id, 'INV-G15');
+
+        Storage::disk('local')->put('signatures/'.$shop->id.'/sig-g15.png', $this->pngBytes());
+        $this->setSignature($shop->id, 'signatures/'.$shop->id.'/sig-g15.png', 'local', true);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->resolveAs($this->staffWithout($shop), $invoice);
     }
 
     /**
