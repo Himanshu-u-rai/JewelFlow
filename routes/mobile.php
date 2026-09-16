@@ -154,8 +154,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             ->middleware(['throttle:api-pos-read', 'can:sales.view']);
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])
             ->middleware(['throttle:api-pos-read', 'can:sales.view']);
+        // S3-04: 'nocache'. This envelope's html key carries the signature bytes
+        // inline, and this is the surface that actually sits behind a CDN.
         Route::get('/invoices/{invoice}/template', [InvoiceController::class, 'template'])
-            ->middleware(['throttle:api-pos-read', 'can:sales.view']);
+            ->middleware(['throttle:api-pos-read', 'can:sales.view', 'nocache']);
         Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'storePayment'])
             ->middleware(['throttle:api-pos-sale', 'can:sales.create'])
             ->whereNumber('invoice');
@@ -168,7 +170,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
             Route::get('/quick-bills/{quickBill}', [QuickBillController::class, 'show'])
                 ->middleware(['throttle:api-pos-read', 'can:sales.view']);
             Route::get('/quick-bills/{quickBill}/template', [QuickBillController::class, 'template'])
-                ->middleware(['throttle:api-pos-read', 'can:sales.view']);
+                ->middleware(['throttle:api-pos-read', 'can:sales.view', 'nocache']);
             Route::post('/quick-bills', [QuickBillController::class, 'store'])
                 ->middleware(['throttle:api-pos-sale', 'can:sales.create']);
             Route::put('/quick-bills/{quickBill}', [QuickBillController::class, 'update'])

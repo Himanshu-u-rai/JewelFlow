@@ -277,6 +277,66 @@ class InvoiceSignatureEmbeddingTest extends TestCase
         $this->assertStringNotContainsString('/storage/signatures/', $html, 'no signature URL may be emitted');
     }
 
+    // ---------------------------------------------------------------- G-21
+    /**
+     * Embedding moved the bytes INTO the document, so the document inherited the
+     * bytes' sensitivity. Before this finding the print HTML was merely a bill;
+     * now it is a bill plus forgery material, and it must not be storable by any
+     * cache between the origin and the operator.
+     *
+     * no-store, not just no-cache: no-cache permits a shared cache to keep the
+     * body and revalidate. For signature bytes, keeping it is the problem.
+     */
+    public function test_g21_the_web_print_response_may_not_be_stored_by_any_cache(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        Storage::disk('local')->put('signatures/'.$shop->id.'/sig-a.png', $this->pngBytes());
+        $this->setSignature($shop->id, 'signatures/'.$shop->id.'/sig-a.png', 'local', true);
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G21');
+
+        $response = $this->requestAs($owner, route('invoices.print', $invoice))->assertOk();
+
+        $this->assertStringContainsString(
+            'no-store',
+            (string) $response->headers->get('Cache-Control'),
+            'a document carrying signature bytes must not be storable by a shared cache'
+        );
+    }
+
+    // ---------------------------------------------------------------- G-22
+    /**
+     * Same clause on the mobile surface, which is the one actually in front of a
+     * CDN: the JSON envelope carries the SAME embedded bytes inside its html key.
+     */
+    public function test_g22_the_mobile_template_response_may_not_be_stored_by_any_cache(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        Storage::disk('local')->put('signatures/'.$shop->id.'/sig-a.png', $this->pngBytes());
+        $this->setSignature($shop->id, 'signatures/'.$shop->id.'/sig-a.png', 'local', true);
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G22');
+
+        \Laravel\Sanctum\Sanctum::actingAs($owner);
+        $response = TenantContext::runFor(
+            (int) $shop->id,
+            fn () => $this->getJson('/api/mobile/invoices/'.$invoice->id.'/template')
+        )->assertOk();
+
+        // 'data:image' without the slash: response()->json() escapes forward
+        // slashes, so the body literally reads data:image\/png;base64,...
+        $this->assertStringContainsString('data:image', $response->getContent(), 'positive control: bytes are in this body');
+        $this->assertStringContainsString(
+            'no-store',
+            (string) $response->headers->get('Cache-Control'),
+            'the mobile envelope carries the same bytes and must not be storable either'
+        );
+    }
+
     // ---------------------------------------------------------------- G-06
     public function test_g06_a_disabled_signature_shows_nothing_and_warns_nothing(): void
     {

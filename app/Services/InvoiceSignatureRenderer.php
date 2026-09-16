@@ -25,8 +25,13 @@ use Illuminate\Support\Facades\Storage;
  *
  * BASE64 IS NOT ACCESS CONTROL. It is an encoding. The protection is that this
  * method refuses to produce bytes at all unless the caller has already passed the
- * same checks the print routes enforce, and that the containing document is itself
- * non-cacheable and non-shared. See EnsurePrintResponsesArePrivate.
+ * same checks the print routes enforce, and that the containing document is not
+ * storable by any cache. The second half is the 'nocache' middleware
+ * (App\Http\Middleware\NoCache) on invoices.print, quick-bills.print,
+ * quick-bills.print-original and both mobile /template routes — pinned by G-21
+ * and G-22. An earlier revision of this docblock named a middleware
+ * ("EnsurePrintResponsesArePrivate") that was never written; the gap was real
+ * until those tests were added.
  *
  * RESOLUTION ORDER — snapshot first, live settings only as fallback
  * A finalized invoice must print what it was signed with. invoice_render_snapshots

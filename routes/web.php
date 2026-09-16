@@ -895,7 +895,11 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     // the cancel/void branch is separately gated 'sales.void' inside update().
     Route::put('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->middleware('can:sales.create')->name('invoices.update');
     Route::get('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'show'])->middleware('can:sales.view')->name('invoices.show');
-    Route::get('/invoice/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->middleware('can:sales.view')->name('invoices.print');
+    // S3-04: 'nocache' because the printed document now carries the signature
+    // bytes inline. Laravel's default 'no-cache, private' still permits a shared
+    // cache to STORE the body and revalidate; for forgery material, storing it
+    // is the problem. NoCache sends no-store.
+    Route::get('/invoice/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->middleware(['can:sales.view', 'nocache'])->name('invoices.print');
 
     // ======= QUICK BILL GENERATOR (sales.* permissions) =======
     // quickbill.enabled blocks the whole feature when the owner toggles it off.
@@ -921,11 +925,13 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
             ->middleware('can:sales.void')
             ->name('quick-bills.void');
+        // S3-04: 'nocache' for the same reason as invoices.print — both blades
+        // now inline the signature.
         Route::get('/quick-bills/{quickBill}/print', [QuickBillController::class, 'print'])
-            ->middleware('can:sales.view')
+            ->middleware(['can:sales.view', 'nocache'])
             ->name('quick-bills.print');
         Route::get('/quick-bills/{quickBill}/print/original', [QuickBillController::class, 'printOriginal'])
-            ->middleware('can:sales.view')
+            ->middleware(['can:sales.view', 'nocache'])
             ->name('quick-bills.print-original');
     });
 
