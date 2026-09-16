@@ -22,6 +22,7 @@ class StockPurchase extends Model
         'purchase_date',
         'status',
         'invoice_image',
+        'invoice_image_disk',
         'notes',
         'labour_discount',
         'subtotal_amount',
@@ -58,6 +59,35 @@ class StockPurchase extends Model
         'tcs_amount'        => 'decimal:2',
         'total_amount'      => 'decimal:2',
     ];
+
+    /**
+     * Disk for NEW invoice attachments (audit finding S3-03).
+     *
+     * Private. Reads must dispatch on the per-row invoice_image_disk, never on
+     * this constant, because rows written before the fix are physically on the
+     * 'public' disk and stay there until the separately-approved relocation runs.
+     */
+    public const ATTACHMENT_DISK = 'local';
+
+    public function hasInvoiceImage(): bool
+    {
+        return filled($this->invoice_image) && filled($this->invoice_image_disk);
+    }
+
+    /**
+     * The authenticated download URL, or null when there is no attachment.
+     *
+     * Deliberately NOT Storage::url(). That helper resolves against the default
+     * disk and, for a local disk with no 'url' key, returns an unsigned
+     * /storage/{path} which nginx serves off the public symlink with no auth.
+     * Emitting a route instead is what keeps the bytes behind PHP.
+     */
+    public function invoiceImageUrl(): ?string
+    {
+        return $this->hasInvoiceImage()
+            ? route('inventory.purchases.invoice-image', $this)
+            : null;
+    }
 
     public function vendor(): BelongsTo
     {

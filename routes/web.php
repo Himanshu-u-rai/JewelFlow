@@ -951,6 +951,10 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::get('/inventory/purchases/create', [StockPurchaseController::class, 'create'])->middleware(['edition:retailer', 'can:inventory.create'])->name('inventory.purchases.create');
     Route::post('/inventory/purchases', [StockPurchaseController::class, 'store'])->middleware(['edition:retailer', 'can:inventory.create'])->name('inventory.purchases.store');
     Route::get('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'show'])->middleware(['edition:retailer', 'can:inventory.view'])->name('inventory.purchases.show');
+    // S3-03: stream the attachment through PHP so auth, the tenant scope and
+    // inventory.view all apply. Before this route the views linked the raw
+    // /storage/purchases/ path, which nginx serves with none of those checks.
+    Route::get('/inventory/purchases/{purchase}/invoice-image', [StockPurchaseController::class, 'showInvoiceImage'])->middleware(['edition:retailer', 'can:inventory.view'])->name('inventory.purchases.invoice-image');
     Route::get('/inventory/purchases/{purchase}/edit', [StockPurchaseController::class, 'edit'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.edit');
     Route::put('/inventory/purchases/{purchase}', [StockPurchaseController::class, 'update'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.update');
     Route::patch('/inventory/purchases/{purchase}/confirm', [StockPurchaseController::class, 'confirm'])->middleware(['edition:retailer', 'can:inventory.edit'])->name('inventory.purchases.confirm');

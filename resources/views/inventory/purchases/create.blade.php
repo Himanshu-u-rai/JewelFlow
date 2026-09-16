@@ -398,8 +398,9 @@
                             <div class="md:col-span-2 xl:col-span-1">
                                 <label class="purchase-field-label">Invoice PDF / Image</label>
                                 <input type="file" name="invoice_image" accept="image/jpeg,image/png,application/pdf" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-amber-700 hover:file:bg-amber-100">
-                                @if($isEdit && $purchase->invoice_image)
-                                    <p class="mt-1 text-xs text-slate-500">Current: <a href="{{ Storage::url($purchase->invoice_image) }}" target="_blank" class="text-amber-600 underline">View</a></p>
+                                {{-- S3-03: authenticated route, not Storage::url(). --}}
+                                @if($isEdit && $purchase->hasInvoiceImage())
+                                    <p class="mt-1 text-xs text-slate-500">Current: <a href="{{ $purchase->invoiceImageUrl() }}" target="_blank" class="text-amber-600 underline">View</a></p>
                                 @endif
                             </div>
 

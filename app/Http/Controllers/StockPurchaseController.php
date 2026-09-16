@@ -122,9 +122,15 @@ class StockPurchaseController extends Controller
             // authoritative archive check inside the same transaction.
             Vendor::lockActiveOrFail($shopId, isset($validated['vendor_id']) ? (int) $validated['vendor_id'] : null, 'vendor_id');
 
+            // S3-03: the private disk, segmented by shop. Was 'purchases' on the
+            // 'public' disk — a flat, web-served prefix shared by every tenant.
             $imagePath = null;
             if ($request->hasFile('invoice_image')) {
-                $imagePath = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('invoice_image'), 'purchases', 'public');
+                $imagePath = app(\App\Services\ImageOptimizer::class)->optimizeAndStore(
+                    $request->file('invoice_image'),
+                    "purchases/{$shopId}",
+                    StockPurchase::ATTACHMENT_DISK
+                );
             }
 
             $purchase = StockPurchase::create([
@@ -138,6 +144,8 @@ class StockPurchaseController extends Controller
                 'purchase_date'         => $validated['purchase_date'],
                 'status'                => 'draft',
                 'invoice_image'         => $imagePath,
+                // Both-or-neither: the CHECK constraint refuses a path with no disk.
+                'invoice_image_disk'    => $imagePath === null ? null : StockPurchase::ATTACHMENT_DISK,
                 'notes'                 => $validated['notes'] ?? null,
                 'labour_discount'       => $validated['labour_discount'] ?? 0,
                 'cgst_rate'             => $validated['cgst_rate'] ?? 0,
@@ -348,10 +356,19 @@ class StockPurchaseController extends Controller
             );
 
             if ($request->hasFile('invoice_image')) {
-                if ($purchase->invoice_image) {
-                    Storage::disk('public')->delete($purchase->invoice_image);
+                // Delete from whichever disk the row records. Hard-coding 'public'
+                // here would silently orphan every already-relocated file while
+                // reporting success, because Storage::delete() on a missing path
+                // returns false rather than raising.
+                if ($purchase->invoice_image && $purchase->invoice_image_disk) {
+                    Storage::disk($purchase->invoice_image_disk)->delete($purchase->invoice_image);
                 }
-                $purchase->invoice_image = app(\App\Services\ImageOptimizer::class)->optimizeAndStore($request->file('invoice_image'), 'purchases', 'public');
+                $purchase->invoice_image = app(\App\Services\ImageOptimizer::class)->optimizeAndStore(
+                    $request->file('invoice_image'),
+                    "purchases/{$shopId}",
+                    StockPurchase::ATTACHMENT_DISK
+                );
+                $purchase->invoice_image_disk = StockPurchase::ATTACHMENT_DISK;
             }
 
             $purchase->fill([
@@ -438,6 +455,43 @@ class StockPurchaseController extends Controller
 
         return redirect()->route('inventory.purchases.index')
             ->with('success', 'Draft purchase deleted.');
+    }
+
+    /**
+     * Stream a purchase invoice attachment to an authenticated, same-shop user
+     * holding inventory.view. The file has no public URL (S3-03).
+     *
+     * Reads whichever disk the row records, so attachments still resident on the
+     * public disk stay retrievable while the separately-approved relocation has
+     * not yet run. Nothing here assumes the file has been moved — that is the
+     * property that lets containment and relocation proceed independently.
+     *
+     * The shop comparison is defence in depth, not the only guard: BelongsToShop
+     * already fail-closes the route-model bind for a foreign row. Both are kept
+     * because they fail independently — see PurchaseInvoiceAttachmentTest P-02,
+     * which pins this check by letting the bind resolve.
+     */
+    public function showInvoiceImage(StockPurchase $purchase)
+    {
+        $this->authorizeShop($purchase);
+
+        abort_unless($purchase->hasInvoiceImage(), 404);
+
+        $disk = Storage::disk($purchase->invoice_image_disk);
+        abort_unless($disk->exists($purchase->invoice_image), 404);
+
+        // Derive a stable download name from the purchase number. A
+        // client-supplied filename is never echoed back into the response.
+        $extension    = pathinfo($purchase->invoice_image, PATHINFO_EXTENSION);
+        $downloadName = 'purchase-invoice-'
+            . preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $purchase->purchase_number)
+            . ($extension !== '' ? '.' . $extension : '');
+
+        return $disk->response(
+            $purchase->invoice_image,
+            $downloadName,
+            ['Content-Type' => $disk->mimeType($purchase->invoice_image) ?: 'application/octet-stream']
+        );
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

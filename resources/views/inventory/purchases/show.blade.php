@@ -281,16 +281,21 @@
                 </div>
 
                 {{-- Invoice Image --}}
-                @if($purchase->invoice_image)
+                @if($purchase->hasInvoiceImage())
                 <div class="purchase-show-card p-4">
                     <p class="purchase-show-label">Invoice Document</p>
-                    @php $ext = strtolower(pathinfo($purchase->invoice_image, PATHINFO_EXTENSION)); @endphp
+                    {{-- S3-03: the authenticated route, never Storage::url(), which
+                         would emit an unauthenticated /storage/purchases/ path. --}}
+                    @php
+                        $ext = strtolower(pathinfo($purchase->invoice_image, PATHINFO_EXTENSION));
+                        $invoiceImageUrl = $purchase->invoiceImageUrl();
+                    @endphp
                     @if(in_array($ext, ['jpg','jpeg','png','gif','webp']))
-                        <a href="{{ Storage::url($purchase->invoice_image) }}" target="_blank">
-                            <img src="{{ Storage::url($purchase->invoice_image) }}" alt="Invoice" class="w-full rounded-xl border border-slate-200 object-cover">
+                        <a href="{{ $invoiceImageUrl }}" target="_blank">
+                            <img src="{{ $invoiceImageUrl }}" alt="Invoice" class="w-full rounded-xl border border-slate-200 object-cover">
                         </a>
                     @else
-                        <a href="{{ Storage::url($purchase->invoice_image) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100">
+                        <a href="{{ $invoiceImageUrl }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100">
                             <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                             View PDF Invoice
                         </a>
