@@ -133,7 +133,14 @@
     $tagline   = $billing?->custom_tagline  ?? '';
     $copyLabel = $billing?->invoice_copy_label ?? 'Original';
     $secondSig = $billing?->second_signature_label ?? '';
-    $showDigitalSignature = (bool) ($billing?->show_digital_signature && !empty($billing?->digital_signature_path));
+    // S3-04. Resolved ONCE here, outside the copy_count @for loop below, so a
+    // two-copy bill reads and base64-encodes the signature file once, not twice.
+    // The resolver authorizes the invoice against the active shop and sales.view
+    // before it touches storage, reads the FINALIZED snapshot's choice rather than
+    // today's settings, and returns inline bytes instead of a public
+    // /storage/signatures/ URL.
+    $signature = app(\App\Services\InvoiceSignatureRenderer::class)->forInvoice($invoice);
+    $showDigitalSignature = $signature['show'];
     $stateCode = trim((string) ($shop?->state_code ?? ''));
     $stateName = trim((string) ($shop?->state ?? ''));
     $stateAndCode = $stateCode !== '' && $stateName !== ''
@@ -464,6 +471,8 @@
     </style>
 </head>
 <body onload="window.print()">
+
+@include('partials.signature-warning', ['signature' => $signature])
 
 @for($copy = 1; $copy <= $copyCount; $copy++)
 <div class="invoice-shell{{ $copy > 1 ? ' copy-break' : '' }}">
@@ -840,10 +849,19 @@
                     <div class="footer-sign-role">(Prepared by)</div>
                 </div>
                 @endif
-                @if($showDigitalSignature)
+                @if($showDigitalSignature && $signature['available'])
                 <div class="footer-sign-image">
-                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($billing?->digital_signature_path) }}"
-                         alt="Signature">
+                    <img src="{{ $signature['dataUri'] }}" alt="Signature">
+                </div>
+                @elseif($showDigitalSignature)
+                {{-- Expected a signature, could not produce it. Say so in the
+                     signature area rather than printing a blank space that looks
+                     like a signed bill missing nothing. Never substitute another
+                     shop's signature or a placeholder graphic. --}}
+                <div class="footer-sign-image" style="display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:7px;letter-spacing:.04em;text-transform:uppercase;color:#b91c1c;border:1px dashed #b91c1c;padding:2px 6px;">
+                        Signature unavailable
+                    </span>
                 </div>
                 @else
                 <div class="footer-sign-spacer">&nbsp;</div>

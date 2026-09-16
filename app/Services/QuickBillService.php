@@ -622,6 +622,14 @@ class QuickBillService
             'terms_and_conditions'      => $billing?->terms_and_conditions,
             'bank_details'              => $billing?->bank_details,
             'upi_id'                    => $billing?->upi_id,
+            // S3-04: pin the signature this bill was issued with — both WHICH
+            // image and WHETHER it was switched on — so reprinting an old bill
+            // does not follow today's settings. Bills issued before these keys
+            // existed have no signature section in their snapshot and fall back
+            // to live settings; their snapshots are NOT rewritten.
+            'show_digital_signature'    => (bool) ($billing?->show_digital_signature ?? false),
+            'digital_signature_path'    => $billing?->digital_signature_path,
+            'digital_signature_disk'    => $billing?->digital_signature_disk,
         ];
     }
 }

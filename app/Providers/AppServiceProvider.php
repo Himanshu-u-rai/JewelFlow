@@ -61,6 +61,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->extend('auth.password', function ($manager, $app) {
             return new \App\Auth\RealmPasswordBrokerManager($app);
         });
+
+        // S3-04: one instance per request, so its memo actually memoizes. The
+        // print blade and the mobile JSON wrapper both resolve it for the same
+        // bill; without this each resolution is a separate object and the
+        // signature file is read and base64-encoded once per caller per copy.
+        // scoped(), not singleton(), so a queue worker starts clean on each job
+        // and never carries one tenant's bytes into the next.
+        $this->app->scoped(\App\Services\InvoiceSignatureRenderer::class);
     }
 
     /**

@@ -413,12 +413,25 @@ class InvoiceController extends Controller
             'invoice' => $invoice,
         ])->render();
 
+        // S3-04. The HTML now carries the signature bytes inline, and the mobile
+        // client prints it with no screen to show the web banner on — so the
+        // operator warning has to ride the JSON instead. Resolved from the same
+        // request-scoped renderer the view already used, so this re-reads nothing.
+        $signature = app(\App\Services\InvoiceSignatureRenderer::class)->forInvoice($invoice);
+
         return response()->json([
             'id' => (int) $invoice->id,
             'invoice_number' => (string) $invoice->invoice_number,
             'status' => (string) $invoice->status,
             'created_at' => optional($invoice->created_at)?->toIso8601String(),
             'html' => $html,
+            // Deliberately NOT the bytes — the client already has them inside
+            // `html`. This is only the state the operator must be told about.
+            'signature' => [
+                'expected'  => $signature['show'],
+                'available' => $signature['available'],
+                'reason'    => $signature['reason'],
+            ],
         ]);
     }
 }

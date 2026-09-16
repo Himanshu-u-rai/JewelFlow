@@ -516,18 +516,32 @@ class SettingsController extends Controller
 
         $billing = $shop->billingSettings ?? new ShopBillingSettings(['shop_id' => $shop->id]);
 
-        // Handle digital signature upload
+        // Handle digital signature upload — S3-04.
+        //
+        // Both branches used to Storage::disk('public')->delete() the previous
+        // file. That is what destroyed the signature a finalized invoice was
+        // issued under: replacing or removing today's signature retroactively
+        // changed what last year's bill prints. SignatureStore now owns this and
+        // never deletes — each upload is a new immutable version — and new files
+        // go to the private disk instead of the web-served public tree.
+        $signatures = app(\App\Services\SignatureStore::class);
+
         if ($request->hasFile('digital_signature')) {
             $request->validate(['digital_signature' => 'image|mimes:png,jpg,jpeg|max:512']);
 
-            if ($billing->digital_signature_path) {
-                Storage::disk('public')->delete($billing->digital_signature_path);
-            }
-            $validated['digital_signature_path'] = app(\App\Services\ImageOptimizer::class)
-                ->optimizeAndStore($request->file('digital_signature'), 'signatures', 'public');
+            $stored = $signatures->store($billing, $request->file('digital_signature'));
+            $validated['digital_signature_path'] = $stored['path'];
+            // Set directly, not through $validated: digital_signature_disk is
+            // deliberately absent from ShopBillingSettings::$fillable so no
+            // request payload can ever steer which disk a signature is read from.
+            // The both-or-neither CHECK on the table backstops this — a write that
+            // sets a path without a disk is rejected by Postgres, not silently
+            // defaulted to the public tree the way kyc_documents.file_disk was.
+            $billing->digital_signature_disk = $stored['disk'];
         } elseif ($request->boolean('remove_digital_signature') && $billing->digital_signature_path) {
-            Storage::disk('public')->delete($billing->digital_signature_path);
-            $validated['digital_signature_path'] = null;
+            $cleared = $signatures->clear($billing);
+            $validated['digital_signature_path'] = $cleared['path'];
+            $billing->digital_signature_disk = $cleared['disk'];
         }
 
         // Boolean toggles (hidden-input pattern: unchecked = "0" sent by hidden input)

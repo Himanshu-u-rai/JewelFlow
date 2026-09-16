@@ -108,6 +108,12 @@ class InvoiceRenderSnapshotService
                 'show_bis_logo' => (bool) ($billing?->show_bis_logo ?? false),
                 'show_digital_signature' => (bool) ($billing?->show_digital_signature ?? false),
                 'digital_signature_path' => $billing?->digital_signature_path,
+                // S3-04: WHICH disk those bytes are on. Without it a snapshot
+                // only pins a filename, and a filename is not a location once
+                // signatures start living on the private disk. Snapshots written
+                // before this key existed are read as 'public' (their bytes
+                // really are there) — see InvoiceSignatureRenderer.
+                'digital_signature_disk' => $billing?->digital_signature_disk,
                 'second_signature_label' => $billing?->second_signature_label,
                 'igst_mode' => (bool) ($billing?->igst_mode ?? false),
                 'terms_and_conditions' => $billing?->terms_and_conditions,

@@ -152,12 +152,21 @@ class QuickBillController extends Controller
             'quickBill' => $quickBill,
         ])->render();
 
+        // S3-04 — see Api\Mobile\InvoiceController::template. Signature bytes are
+        // inline in $html; this is the operator-facing state only.
+        $signature = app(\App\Services\InvoiceSignatureRenderer::class)->forQuickBill($quickBill);
+
         return response()->json([
             'id' => (int) $quickBill->id,
             'bill_number' => (string) $quickBill->bill_number,
             'status' => (string) $quickBill->status,
             'bill_date' => optional($quickBill->bill_date)?->toDateString(),
             'html' => $html,
+            'signature' => [
+                'expected'  => $signature['show'],
+                'available' => $signature['available'],
+                'reason'    => $signature['reason'],
+            ],
         ]);
     }
 
