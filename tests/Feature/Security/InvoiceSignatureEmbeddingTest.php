@@ -201,6 +201,62 @@ class InvoiceSignatureEmbeddingTest extends TestCase
         $this->get($url)->assertRedirect('/login');
     }
 
+    // ---------------------------------------------------------------- G-14
+    /**
+     * Payload growth at the supported maximum copy count.
+     *
+     * copy_count is validated `in:1,2`, so two is the worst case. The signature
+     * markup sits inside the per-copy @for loop, so a two-copy bill carries the
+     * data URI twice: the FILE is read and encoded once (the renderer memoizes and
+     * is request-scoped) but the resulting string is emitted per copy. That is the
+     * honest cost of inlining, and this test pins it so it cannot quietly become
+     * per-copy re-encoding or an unbounded blob.
+     *
+     * Bound: growth must stay within the mathematical maximum — copies × base64 of
+     * the file (4/3 expansion) plus a small markup allowance. Assertion is on the
+     * real rendered bytes, not on an estimate.
+     */
+    public function test_g14_two_copies_embed_the_signature_twice_and_no_more(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        // A realistic worst case: the largest file the upload rule accepts.
+        $bytes = $this->pngBytes().str_repeat("\x00", InvoiceSignatureRenderer::MAX_BYTES - strlen($this->pngBytes()) - 1);
+        $path  = 'signatures/'.$shop->id.'/big.png';
+        Storage::disk('local')->put($path, $bytes);
+
+        $customer = $this->createCustomer($shop->id);
+
+        TenantContext::runFor($shop->id, function () use ($shop) {
+            ShopBillingSettings::where('shop_id', $shop->id)->update(['copy_count' => 2]);
+        });
+        $this->setSignature($shop->id, $path, 'local', true);
+
+        $withSig = $this->requestAs($owner, route('invoices.print',
+            $this->makeInvoice($shop->id, $customer->id, 'INV-G14A')))->assertOk()->getContent();
+
+        $this->setSignature($shop->id, null, null, false);
+
+        $withoutSig = $this->requestAs($owner, route('invoices.print',
+            $this->makeInvoice($shop->id, $customer->id, 'INV-G14B')))->assertOk()->getContent();
+
+        $copies = substr_count($withSig, 'data:image/');
+        $growth = strlen($withSig) - strlen($withoutSig);
+        $encoded = strlen(base64_encode($bytes));
+
+        fwrite(STDERR, sprintf(
+            "\n[G-14] copy_count=2  file=%d B  base64=%d B  html_with=%d B  html_without=%d B  growth=%d B (%.2fx encoded)\n",
+            strlen($bytes), $encoded, strlen($withSig), strlen($withoutSig), $growth, $growth / $encoded
+        ));
+
+        $this->assertSame(2, $copies, 'one data URI per printed copy, no more');
+        $this->assertLessThan(
+            2 * $encoded + 4096,
+            $growth,
+            'payload must not exceed copies x base64 plus a small markup allowance'
+        );
+    }
+
     // ---------------------------------------------------------------- G-05
     public function test_g05_an_enabled_signature_is_embedded_and_no_storage_url_is_emitted(): void
     {
