@@ -185,11 +185,45 @@ class InvoiceSignatureRenderer
             return $this->unavailable('bad_path', $path, $disk);
         }
 
-        $storage = Storage::disk($disk);
+        // The recorded disk is a location HINT, not the identity of the file.
+        // A finalized snapshot is immutable, so once relocation moves bytes from
+        // the public tree to the private one, that snapshot's disk is stale and
+        // cannot be corrected — rewriting it is precisely what this finding
+        // forbids. Every signature path is a Str::ulid() under signatures/{shop},
+        // so a path names one and only one set of bytes on whichever
+        // app-controlled disk currently holds it.
+        //
+        // This widens WHERE the same path is looked for. It does not widen WHICH
+        // paths or WHICH disks are acceptable: the ALLOWED_DISKS and traversal
+        // checks above have already run, and the content validation below still
+        // runs on whatever is found.
+        $storage = null;
+        $found   = $disk;
 
-        if (! $storage->exists($path)) {
+        foreach (array_unique([$disk, ...self::ALLOWED_DISKS]) as $candidate) {
+            if (Storage::disk($candidate)->exists($path)) {
+                $storage = Storage::disk($candidate);
+                $found   = $candidate;
+                break;
+            }
+        }
+
+        if ($storage === null) {
             return $this->unavailable('missing', $path, $disk);
         }
+
+        if ($found !== $disk) {
+            // Not an error — this is the expected state mid-relocation. Logged
+            // so a stale recorded disk is visible to reconciliation rather than
+            // silently absorbed forever.
+            Log::info('Invoice signature resolved from a disk other than the one recorded', [
+                'recorded_disk' => $disk,
+                'found_on'      => $found,
+                'path_hash'     => substr(hash('sha256', $path), 0, 12),
+            ]);
+        }
+
+        $disk = $found;
 
         // Size is checked from metadata BEFORE the bytes are pulled into memory,
         // so an oversized file cannot be used to exhaust the render process.

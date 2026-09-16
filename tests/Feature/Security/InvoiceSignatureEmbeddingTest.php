@@ -390,6 +390,73 @@ class InvoiceSignatureEmbeddingTest extends TestCase
         });
     }
 
+    // ---------------------------------------------------------------- G-19
+    /**
+     * THE RELOCATION-PRESERVES-A CASE named in the directive.
+     *
+     * A finalized snapshot is immutable and records disk 'public'. Relocation
+     * copies those bytes to the private disk and eventually purges the public
+     * original — at which point the snapshot's recorded disk is stale and
+     * CANNOT be corrected, because rewriting a finalized snapshot is exactly
+     * what the finding forbids.
+     *
+     * So the disk in a snapshot is a location HINT, not the identity of the
+     * file. Signature paths are Str::ulid() and therefore globally unique per
+     * upload, so a given path names one and only one set of bytes whichever
+     * app-controlled disk currently holds it. The renderer falls back across
+     * ALLOWED_DISKS for that reason and no other.
+     *
+     * Without this, relocating signatures would silently break the reprint of
+     * every invoice finalized before the move.
+     */
+    public function test_g19_a_relocated_signature_still_renders_for_an_invoice_whose_snapshot_names_the_old_disk(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G19');
+
+        $path = 'signatures/'.$shop->id.'/sig-a.png';
+
+        // The snapshot was written when the bytes were on the public tree.
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => $path,
+            'digital_signature_disk' => 'public',
+        ]);
+
+        // Relocation has since copied the bytes to the private disk and purged
+        // the public original. The snapshot is untouched and still says public.
+        Storage::disk('local')->put($path, $this->pngBytes("\x0A"));
+        $this->assertFalse(Storage::disk('public')->exists($path));
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertTrue($result['available'], 'a relocated signature must still render for a pre-relocation invoice');
+        $this->assertStringContainsString(base64_encode($this->pngBytes("\x0A")), (string) $result['dataUri']);
+    }
+
+    // ---------------------------------------------------------------- G-20
+    /** The fallback must not paper over a genuinely absent file. */
+    public function test_g20_a_signature_absent_from_every_allowed_disk_is_still_reported_missing(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G20');
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => 'signatures/'.$shop->id.'/gone.png',
+            'digital_signature_disk' => 'public',
+        ]);
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertFalse($result['available']);
+        $this->assertSame('missing', $result['reason']);
+    }
+
     // ---------------------------------------------------------------- G-18
     /**
      * Added because mutation M8 survived: putting a Storage::disk('public')->url()
