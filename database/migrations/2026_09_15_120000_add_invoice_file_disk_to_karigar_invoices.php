@@ -13,14 +13,19 @@ use Illuminate\Support\Facades\Schema;
  * hard-coded it again on delete. Moving new uploads to the private disk therefore
  * needs a per-row record, or existing attachments become unreachable.
  *
+ * EXPAND PHASE ONLY — see the release-order note at the foot of this block.
+ *
  * Design notes:
  *  - The column is NULLABLE, not NOT NULL DEFAULT 'public'. A default is exactly
  *    how the KYC finding (S3-01c) arose: kyc_documents.file_disk is NOT NULL
  *    DEFAULT 'public', so any writer that forgets the column silently gets a
  *    web-served disk and no error. A default cannot fail loudly; a constraint can.
- *  - The CHECK constraint expresses the real invariant: a row either has NO
- *    attachment (both columns NULL) or has one whose disk is explicitly recorded
- *    (both NOT NULL). There is no third state for a future writer to fall into.
+ *  - The both-or-neither CHECK that expresses the real invariant NO LONGER LIVES
+ *    HERE. It moved to the contract-phase migration 2026_09_20_130000, because
+ *    applying it while baseline 018b3d8 is still serving turns every karigar
+ *    attachment upload into a database error: KarigarInvoiceService:49,114 write
+ *    invoice_file_path and never the disk. Proven by
+ *    DiskColumnReleaseOrderTest T-05.
  *  - Existing rows that already hold a path are backfilled to 'public' because
  *    that is where those bytes actually are. This is a truthful relabel of the
  *    status quo, NOT a remediation: the files stay on the public tree until the
@@ -32,6 +37,20 @@ use Illuminate\Support\Facades\Schema;
  * karigar_invoice_date and karigar_id once payment_status leaves 'unpaid'.
  * invoice_file_disk is not among them, so finalized invoices accept this write.
  * The trigger is not dropped, disabled or altered.
+ *
+ * RELEASE ORDER. What remains here — add a nullable column, backfill it — really
+ * is safe to apply while the old code serves, because the old code neither reads
+ * nor writes this column and a NULL is a state it already produces. That is what
+ * "additive" was supposed to mean; the constraint never qualified.
+ *
+ * down() still drops the contract constraint before dropping the column. Not
+ * because it has to — I assumed it did, and checked instead of asserting.
+ * PostgreSQL 16.15 drops a CHECK automatically with any column it references,
+ * including a two-column one, so DROP COLUMN alone would have succeeded
+ * (verified 2026-09-20 on the local jewelflow_testing database with a scratch
+ * table inside a rolled-back transaction). The explicit DROP is kept because it
+ * makes the rollback independent of that behaviour and of which phase happens to
+ * be applied, and IF EXISTS makes it a no-op in the expand-only window.
  */
 return new class extends Migration
 {
@@ -52,16 +71,6 @@ return new class extends Migration
             ->whereNotNull('invoice_file_path')
             ->whereNull('invoice_file_disk')
             ->update(['invoice_file_disk' => 'public']);
-
-        // Both-or-neither. A path can never again be stored without its disk.
-        DB::statement(<<<'SQL'
-            ALTER TABLE karigar_invoices
-            ADD CONSTRAINT karigar_invoices_attachment_disk_check
-            CHECK (
-                (invoice_file_path IS NULL AND invoice_file_disk IS NULL)
-                OR (invoice_file_path IS NOT NULL AND invoice_file_disk IS NOT NULL)
-            )
-        SQL);
     }
 
     public function down(): void

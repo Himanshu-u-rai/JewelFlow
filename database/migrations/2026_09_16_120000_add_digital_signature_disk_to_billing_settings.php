@@ -57,20 +57,6 @@ return new class extends Migration
             ->whereNotNull('digital_signature_path')
             ->whereNull('digital_signature_disk')
             ->update(['digital_signature_disk' => 'public']);
-
-        DB::statement('ALTER TABLE shop_billing_settings DROP CONSTRAINT IF EXISTS shop_billing_settings_digital_signature_disk_check');
-        DB::statement(<<<'SQL'
-            ALTER TABLE shop_billing_settings
-            ADD CONSTRAINT shop_billing_settings_digital_signature_disk_check
-            CHECK (
-                (digital_signature_path IS NULL AND digital_signature_disk IS NULL)
-                OR (
-                    digital_signature_path IS NOT NULL
-                    AND digital_signature_disk IS NOT NULL
-                    AND digital_signature_disk IN ('public', 'local')
-                )
-            )
-        SQL);
     }
 
     public function down(): void

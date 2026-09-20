@@ -67,20 +67,6 @@ return new class extends Migration
             ->whereNotNull('invoice_image')
             ->whereNull('invoice_image_disk')
             ->update(['invoice_image_disk' => 'public']);
-
-        DB::statement('ALTER TABLE stock_purchases DROP CONSTRAINT IF EXISTS stock_purchases_invoice_image_disk_check');
-        DB::statement(<<<'SQL'
-            ALTER TABLE stock_purchases
-            ADD CONSTRAINT stock_purchases_invoice_image_disk_check
-            CHECK (
-                (invoice_image IS NULL AND invoice_image_disk IS NULL)
-                OR (
-                    invoice_image IS NOT NULL
-                    AND invoice_image_disk IS NOT NULL
-                    AND invoice_image_disk IN ('public', 'local')
-                )
-            )
-        SQL);
     }
 
     public function down(): void
