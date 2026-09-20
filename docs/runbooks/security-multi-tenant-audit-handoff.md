@@ -34,7 +34,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-02b karigar CHECK lacks the allowed-disk term | OPEN (logged, deliberately not fixed) | None by design | N/A |
 | S3-03 purchase attachment public | OPEN | Authenticated route committed | **OPEN** |
 | S3-04 signature public + mutable | OPEN | Option B implemented; immutability proven end to end | **OPEN** |
-| S3-05 finalized invoice reprints with today's settings | OPEN | **None — characterization tests only** | OPEN |
+| S3-05 finalized invoice reprints with today's settings | **PARTIAL** — `igst_mode` + HSN fixed, 43 cosmetic reads still drift | Fix committed (`b216b80`), 8 tests | **OPEN** |
 
 ### Corrections to my own earlier reports, restated here so they are not lost
 
@@ -348,11 +348,17 @@ what makes that safe, and E-07 proves it on the printed page.
 ## 8. Commands actually run, and their results
 
 ```
-php artisan test tests/Feature/Security tests/Feature/Mobile
-  -> 206 passed, 722 assertions
+php artisan test tests/Feature/Security/SignatureImmutabilityEndToEndTest.php
+  -> 7 passed, 65 assertions
 
-php artisan test --filter='Invoice|Sales|Exchange|Installment|Return|QuickBill|Repair'
-  -> 427 passed, 2 skipped, 1694 assertions
+php artisan test tests/Feature/Security/FinalizedInvoiceSettingsDriftTest.php
+  -> 8 passed, 31 assertions
+
+php artisan test tests/Feature/Security tests/Feature/Mobile
+  -> 211 passed, 737 assertions
+
+php artisan test --filter='Invoice|Sales|Exchange|Installment|Return|QuickBill|Repair|Gst|Tax|Snapshot|Setting'
+  -> 594 passed, 3 skipped, 2311 assertions
 ```
 
 **The Vite failures, reported explicitly.** The second command first returned
@@ -380,19 +386,29 @@ is not coverage:
 | Mixed-disk estate | yes |
 | Missing / unreadable / invalid signature | yes (G-07, G-08, G-20) |
 | Immutable historical rendering | yes (E-01…E-07) |
+| Immutable tax characterization | yes (D-01…D-08) |
 | Release ordering | yes (T-01…T-07) |
 | **On-device print** | **NOT RUN — see §5** |
 | **Edge cache behaviour** | **NOT RUN — no Cloudflare access** |
 
 ## 9. Commits, diff, working tree
 
-22 commits ahead of `018b3d8`; cumulative **46 files changed, +7,813 / −54**.
+24 commits ahead of `018b3d8`; cumulative **49 files changed, +8,642 / −77**
+(`git diff --stat 018b3d8..HEAD`, run 2026-09-21 in this worktree).
+
+**A correction to the previous revision of this section.** It claimed "22
+commits, 46 files, +7,813 / −54". Those figures were not measured; they were
+carried over from an earlier point in the branch and then edited by hand. The
+line above is the command's output. If a number in this document is not
+traceable to a command, treat it the way I should have: as unverified.
 This session added:
 
 ```
 7fc27cf  Capture a render snapshot at finalization (S3-04)
 0ae6b15  Drive the quick-bill signature regression through real routes (S3-04)
 1eef5b2  Prove relocation preserves the signature on the printed page (S3-04)
+c211264  Record the audit handoff: separated statuses and pending containment
+b216b80  Print a finalized bill's tax as it was issued, not as today (S3-05)
 ```
 
 (plus, earlier in the same session: `a542745` migration split, `ad9babe` runbook
@@ -407,9 +423,14 @@ covered by `.gitignore`.
 
 ## 10. Next, while production approval is pending
 
-1. S3-05 has characterization tests and **no fix**. A fix extends the finalized
-   invoice's snapshot to cover `igst_mode` and the HSN map, with the same
-   legacy-snapshot compatibility rules the signature snapshot uses.
+1. S3-05's **statutory half is fixed** (`b216b80`): `igst_mode` and the HSN map
+   now come from the bill's own snapshot on all five render paths (web invoice,
+   web quick bill, quick-bill original, and both mobile HTML endpoints), with
+   the same read-time legacy defaulting the signature snapshot uses. **The
+   cosmetic half is not fixed** — 43 live settings reads (theme colour, font
+   tier, paper size, subtitle, tagline) still re-resolve at reprint, and bills
+   finalized before these keys were captured still fall back to live settings.
+   S3-05 therefore stays PARTIAL, not closed.
 2. The mobile on-screen "Signature unavailable" banner (§5).
 3. Remaining model/route/job/cache investigations.
 4. The tracked backup repair.
