@@ -252,7 +252,95 @@ class SignatureImmutabilityEndToEndTest extends TestCase
         );
     }
 
+    // -------------------------------------------------------------------- E-07
+    /**
+     * Relocation preserves A, proved on the PRINTED PAGE.
+     *
+     * R-14 already covers relocate-then-purge, but it asserts on
+     * InvoiceSignatureRenderer's return value. E-02 is the reason that is not
+     * quite enough: the whole reason the missing-snapshot defect stayed hidden
+     * was that a component behaved correctly in isolation while the assembled
+     * page did not. This asserts the same property through invoices.print.
+     *
+     * The public-disk signature IS built by hand here, and that is not the
+     * fixture shortcut E-01 was about. New uploads go straight to the private
+     * disk (SignatureStore::DISK = 'local'), so signatures:relocate — which
+     * moves public to local — has nothing to move for a signature created
+     * through the settings route. A legacy public-tree signature is the only
+     * state in which relocation is meaningful, and it can only be constructed
+     * directly. Finalization, relocation, purge and printing all still run
+     * through the real code.
+     */
+    public function test_e07_a_relocated_and_purged_signature_still_prints_on_the_invoice_it_signed(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $path = $this->legacyPublicSignature((int) $shop->id);
+        $legacyBytes = base64_encode(Storage::disk('public')->get($path));
+
+        // Finalized while the signature was still on the web-served tree. No
+        // snapshot is captured by hand — finalizeDraft does it now.
+        $invoice = $this->draftInvoice((int) $shop->id);
+        $this->finalizeThroughRoute($owner, $invoice);
+
+        $snapshotBefore = InvoiceRenderSnapshot::withoutTenant()
+            ->where('invoice_id', $invoice->id)->value('snapshot');
+
+        $this->assertSame(
+            'public',
+            $snapshotBefore['billing']['digital_signature_disk'] ?? null,
+            'the snapshot must record where the bytes actually were at finalization'
+        );
+
+        $this->artisan('signatures:relocate --execute')->assertExitCode(0);
+        $this->artisan('signatures:relocate --purge-originals --execute')->assertExitCode(0);
+
+        $this->assertFalse(
+            Storage::disk('public')->exists($path),
+            'the point of relocation: the web-served copy is gone'
+        );
+
+        $this->assertSame(
+            $snapshotBefore,
+            InvoiceRenderSnapshot::withoutTenant()->where('invoice_id', $invoice->id)->value('snapshot'),
+            'relocation must never rewrite a finalized snapshot'
+        );
+
+        $this->assertStringContainsString(
+            $legacyBytes,
+            $this->printInvoice($owner, $invoice),
+            'the invoice must still PRINT the signature it was issued under, resolved '
+            .'through the relocation ledger rather than from its recorded disk'
+        );
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    /**
+     * A signature on the public tree, recorded as public — the baseline state.
+     *
+     * Written directly because no current code path produces it: SignatureStore
+     * has sent new uploads to the private disk since this finding was opened.
+     */
+    private function legacyPublicSignature(int $shopId): string
+    {
+        $path = 'signatures/'.$shopId.'/sig-legacy.png';
+
+        Storage::disk('public')->put($path, UploadedFile::fake()->image('legacy.png', 40, 20)->get());
+
+        DB::table('shop_billing_settings')->updateOrInsert(
+            ['shop_id' => $shopId],
+            [
+                'digital_signature_path' => $path,
+                'digital_signature_disk' => 'public',
+                // DB::raw('true'): PostgreSQL rejects PHP's 1 for a boolean
+                // column in a bulk update (CLAUDE.md, Common Pitfalls).
+                'show_digital_signature' => DB::raw('true'),
+            ]
+        );
+
+        return $path;
+    }
 
     /**
      * Issue a quick bill through POST quick-bills.store and return its id.
