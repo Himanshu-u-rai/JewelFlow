@@ -18,6 +18,36 @@ integration fetches these paths directly.
 
 ---
 
+## 0. Two packages, decided independently
+
+This file contains **two** proposals. They are separable and either can be
+approved without the other. Nothing below has been executed.
+
+| | **Option A — ORIGIN-ONLY** | **Option B — EDGE + ORIGIN** |
+|---|---|---|
+| What it changes | §4 nginx only | §3 Cloudflare rule, then §4 nginx, then §5 purge |
+| Config diff | §4.2 | §3 expression + §4.2 |
+| Verification | §6 origin block only | §6 in full |
+| Rollback | §7 | §7 |
+| Stops a fresh origin fetch | Yes | Yes |
+| Stops a fetch served from Cloudflare's cache | **No** | Yes |
+| Standing status | **PARTIAL** (§4a) — edge-cache exposure unresolved | Complete for the paths verified |
+| Blocked dependency | none identified | **Cloudflare API/dashboard access, which I do not have.** §3 and §5 cannot be executed or verified by me |
+
+**Option A is a real reduction and is offered on its own** precisely because
+Option B's edge half is blocked. It stays labelled PARTIAL rather than being
+promoted once it lands: an origin deny does nothing about a response Cloudflare
+has already cached, and §5's purge is the only step that addresses that.
+
+**Baseline staleness, stated rather than implied.** The deployed baseline in §1
+was last *actually observed* on **2026-09-20T18:36:08+00:00**. This handoff is
+written 2026-09-21. A commit existing as a local git object is not evidence of
+what is deployed — the two are different facts about different machines. Re-read
+`git rev-parse HEAD` on the server immediately before executing either option
+and abort on drift.
+
+---
+
 ## 1. Verified facts
 
 All production checks are read-only. Timestamps are the server's own clock.
