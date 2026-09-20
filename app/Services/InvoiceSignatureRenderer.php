@@ -53,9 +53,28 @@ use Illuminate\Support\Facades\Storage;
  * LEGACY SNAPSHOT COMPATIBILITY
  * Snapshots written before digital_signature_disk existed carry a path and no
  * disk. Those bytes are physically on the public tree, so a missing disk key reads
- * as 'public'. Snapshots are NEVER rewritten: the fallback is applied at read
+ * as 'public'. Snapshots are NEVER rewritten: the default is applied at read
  * time, so a mixed estate (old public rows, new private rows) resolves correctly
  * at every intermediate state of the relocation.
+ *
+ * HOW A HISTORICAL REFERENCE FINDS ITS RELOCATED BYTES
+ * An earlier revision resolved this with a generic rule: try the recorded disk,
+ * then every other allowed disk, serve the first file found. That rule is
+ * WITHDRAWN. Its justification was that Str::ulid() filenames are unique, so a
+ * path names one and only one set of bytes wherever it lives — which describes
+ * the names a generator emits and proves nothing about whether the destination
+ * bytes are the same bytes, whether the path belongs to the shop asking, or
+ * whether the fallback is safe in both directions. It is not safe in both
+ * directions: a reference recorded as private would have resolved on the public
+ * tree, serving the copy relocation exists to retire.
+ *
+ * The replacement resolves on recorded evidence. signatures:relocate writes a
+ * signature_relocations row carrying the digest it verified at the destination,
+ * and this class follows a move only when (a) the path is under this shop's
+ * signature directory, (b) a row vouches for exactly that shop/path/source
+ * disk, and (c) the bytes still hash to what was recorded. Any of those failing
+ * yields 'unavailable' — never a substituted image. See
+ * SignatureRelocationLedger; pinned by G-24 … G-30.
  */
 class InvoiceSignatureRenderer
 {
@@ -78,6 +97,10 @@ class InvoiceSignatureRenderer
      * @var array<string, array{show:bool, available:bool, dataUri:?string, reason:?string}>
      */
     private array $memo = [];
+
+    public function __construct(
+        private readonly SignatureRelocationLedger $ledger,
+    ) {}
 
     /**
      * @return array{show:bool, available:bool, dataUri:?string, reason:?string}
@@ -173,13 +196,18 @@ class InvoiceSignatureRenderer
             $disk = $billing?->digital_signature_disk ?? 'public';
         }
 
-        return $this->memo[$memoKey] = $this->build($show, is_string($path) ? $path : null, is_string($disk) ? $disk : null);
+        return $this->memo[$memoKey] = $this->build(
+            $shopId,
+            $show,
+            is_string($path) ? $path : null,
+            is_string($disk) ? $disk : null,
+        );
     }
 
     /**
      * @return array{show:bool, available:bool, dataUri:?string, reason:?string}
      */
-    private function build(bool $show, ?string $path, ?string $disk): array
+    private function build(int $shopId, bool $show, ?string $path, ?string $disk): array
     {
         // Deliberately switched off, or never configured. Not a fault — the
         // operator gets no warning, because nothing is wrong.
@@ -198,45 +226,63 @@ class InvoiceSignatureRenderer
             return $this->unavailable('bad_path', $path, $disk);
         }
 
-        // The recorded disk is a location HINT, not the identity of the file.
-        // A finalized snapshot is immutable, so once relocation moves bytes from
-        // the public tree to the private one, that snapshot's disk is stale and
-        // cannot be corrected — rewriting it is precisely what this finding
-        // forbids. Every signature path is a Str::ulid() under signatures/{shop},
-        // so a path names one and only one set of bytes on whichever
-        // app-controlled disk currently holds it.
+        // Tenant boundary on the reference itself. Signature paths are always
+        // signatures/{shop_id}/{ULID}.{ext}; a stored reference naming any other
+        // directory did not come from SignatureStore, and is refused before any
+        // storage read. Checked AFTER the traversal guard above so '..' cannot
+        // be used to satisfy this prefix and then climb back out of it.
+        if (! $this->ledger->pathBelongsToShop($path, $shopId)) {
+            return $this->unavailable('bad_path', $path, $disk);
+        }
+
+        // ---- Resolution ----------------------------------------------------
         //
-        // This widens WHERE the same path is looked for. It does not widen WHICH
-        // paths or WHICH disks are acceptable: the ALLOWED_DISKS and traversal
-        // checks above have already run, and the content validation below still
-        // runs on whatever is found.
-        $storage = null;
-        $found   = $disk;
+        // The recorded disk is authoritative FIRST. Only when the file is not
+        // there does a recorded relocation get to redirect the read, and only
+        // on evidence.
+        //
+        // REPLACES A GENERIC FALLBACK. The earlier revision tried every entry in
+        // ALLOWED_DISKS and served whatever appeared first, justified by ULID
+        // filenames being unique. That justification was wrong: unique names say
+        // nothing about whether the destination bytes are the same bytes, whether
+        // the path belongs to this shop, or whether falling back is safe in both
+        // directions. It is not safe in both directions — a private reference
+        // resolving on the public tree would serve the exact copy relocation
+        // exists to retire. See SignatureRelocationLedger.
+        $storage = Storage::disk($disk);
+        $relocation = null;
 
-        foreach (array_unique([$disk, ...self::ALLOWED_DISKS]) as $candidate) {
-            if (Storage::disk($candidate)->exists($path)) {
-                $storage = Storage::disk($candidate);
-                $found   = $candidate;
-                break;
+        if (! $storage->exists($path)) {
+            $relocation = $this->ledger->targetFor($shopId, $path, $disk);
+
+            if ($relocation === null) {
+                // No row vouches for a move, so nothing establishes that any
+                // same-named file elsewhere is this signature. Report it missing
+                // rather than substituting a guess.
+                return $this->unavailable('missing', $path, $disk);
             }
-        }
 
-        if ($storage === null) {
-            return $this->unavailable('missing', $path, $disk);
-        }
+            if (! in_array($relocation->target_disk, self::ALLOWED_DISKS, true)) {
+                return $this->unavailable('bad_disk', $path, $relocation->target_disk);
+            }
 
-        if ($found !== $disk) {
-            // Not an error — this is the expected state mid-relocation. Logged
-            // so a stale recorded disk is visible to reconciliation rather than
-            // silently absorbed forever.
-            Log::info('Invoice signature resolved from a disk other than the one recorded', [
+            $storage = Storage::disk($relocation->target_disk);
+
+            if (! $storage->exists($path)) {
+                return $this->unavailable('missing', $path, $disk);
+            }
+
+            // Expected state after an approved relocation, not an error. Logged
+            // so reconciliation can see which references are still being served
+            // through the ledger rather than from their recorded disk.
+            Log::info('Invoice signature resolved through a recorded relocation', [
                 'recorded_disk' => $disk,
-                'found_on'      => $found,
+                'served_from'   => $relocation->target_disk,
                 'path_hash'     => substr(hash('sha256', $path), 0, 12),
             ]);
-        }
 
-        $disk = $found;
+            $disk = $relocation->target_disk;
+        }
 
         // Size is checked from metadata BEFORE the bytes are pulled into memory,
         // so an oversized file cannot be used to exhaust the render process.
@@ -263,6 +309,14 @@ class InvoiceSignatureRenderer
 
         if (! is_string($bytes) || $bytes === '') {
             return $this->unavailable('unreadable', $path, $disk);
+        }
+
+        // A ledger row proves a copy HAPPENED. It does not prove the copy is
+        // still intact, so the digest is re-checked at read time. This is what
+        // catches an overwrite, a truncation, or a different image that ended up
+        // at the same path after the move.
+        if ($relocation !== null && ! $this->ledger->verify($relocation, $bytes)) {
+            return $this->unavailable('integrity_mismatch', $path, $disk);
         }
 
         // Content validation, not extension trust: the recorded path could name

@@ -69,6 +69,73 @@ class SignatureRelocationTest extends TestCase
         return $path;
     }
 
+    // ------------------------------------------------------------------ R-17
+    /**
+     * The command must write the ledger row the renderer depends on, carrying
+     * the digest it verified at the destination.
+     *
+     * This is what stops the embedding tests' recordRelocation() helper drifting
+     * away from production. Those tests build ledger rows through the same
+     * service, but only this test proves the COMMAND actually calls it —
+     * without it, every G-24…G-31 assertion could be green against evidence
+     * nothing in production ever writes.
+     */
+    public function test_r17_execute_records_a_digest_matched_relocation_in_the_ledger(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $path     = $this->legacySignature($shop->id, "\x0A");
+        $expected = hash('sha256', $this->pngBytes("\x0A"));
+
+        $this->artisan('signatures:relocate --execute')->assertSuccessful();
+
+        $row = \App\Models\SignatureRelocation::withoutTenant()
+            ->where('shop_id', $shop->id)
+            ->where('path', $path)
+            ->first();
+
+        $this->assertNotNull($row, 'relocation must leave recorded evidence, not just moved bytes');
+        $this->assertSame('public', $row->source_disk);
+        $this->assertSame('local', $row->target_disk);
+        $this->assertSame($expected, $row->sha256, 'the recorded digest must be the source digest');
+        $this->assertSame(strlen($this->pngBytes("\x0A")), $row->bytes);
+    }
+
+    // ------------------------------------------------------------------ R-18
+    /**
+     * Purge must refuse an original that has no recorded relocation.
+     *
+     * Deleting such a file is unrecoverable: the immutable snapshots naming it
+     * would have nothing left to resolve through. The guard this replaces only
+     * checked that two disk names still appeared in a constant, which could
+     * never have detected this case.
+     */
+    public function test_r18_purge_refuses_an_original_with_no_recorded_relocation(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $path     = $this->legacySignature($shop->id, "\x0A");
+
+        // Bytes privately present and the settings row already pointing at the
+        // private disk — the state a half-finished or hand-run move leaves
+        // behind — but nothing recorded the move.
+        Storage::disk('local')->put($path, $this->pngBytes("\x0A"));
+        DB::table('shop_billing_settings')
+            ->where('shop_id', $shop->id)
+            ->update(['digital_signature_disk' => 'local']);
+
+        $this->assertSame(
+            0,
+            \App\Models\SignatureRelocation::withoutTenant()->count(),
+            'precondition: no relocation evidence exists'
+        );
+
+        $this->artisan('signatures:relocate --purge-originals --execute')->assertFailed();
+
+        $this->assertTrue(
+            Storage::disk('public')->exists($path),
+            'an unvouched original must survive the purge'
+        );
+    }
+
     // ------------------------------------------------------------------ R-01
     public function test_r01_the_default_run_is_a_dry_run_and_moves_nothing(): void
     {

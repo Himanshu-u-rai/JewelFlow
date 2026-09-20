@@ -511,31 +511,35 @@ class InvoiceSignatureEmbeddingTest extends TestCase
 
     // ---------------------------------------------------------------- G-19
     /**
-     * THE RELOCATION-PRESERVES-A CASE named in the directive.
+     * THE RELOCATION-PRESERVES-A CASE named in the directive, on the path shape
+     * production ACTUALLY has.
      *
-     * A finalized snapshot is immutable and records disk 'public'. Relocation
-     * copies those bytes to the private disk and eventually purges the public
-     * original — at which point the snapshot's recorded disk is stale and
-     * CANNOT be corrected, because rewriting a finalized snapshot is exactly
-     * what the finding forbids.
+     * REWRITTEN. This test used to assert the generic cross-disk fallback, and
+     * its docblock carried the argument that has since been withdrawn: that
+     * Str::ulid() uniqueness means a path names one set of bytes on whatever
+     * disk holds it. The evidence-based replacement is G-24 … G-30.
      *
-     * So the disk in a snapshot is a location HINT, not the identity of the
-     * file. Signature paths are Str::ulid() and therefore globally unique per
-     * upload, so a given path names one and only one set of bytes whichever
-     * app-controlled disk currently holds it. The renderer falls back across
-     * ALLOWED_DISKS for that reason and no other.
+     * What this now covers that those do not: the LEGACY FLAT path. Baseline
+     * 018b3d8 SettingsController:527 stored every signature under a bare
+     * 'signatures' directory, so every reference already in production is
+     * signatures/{ULID}.{ext} with no shop segment. Relocation and rendering
+     * have to keep working for that shape, which is the only shape any existing
+     * finalized invoice can be carrying.
      *
-     * Without this, relocating signatures would silently break the reprint of
-     * every invoice finalized before the move.
+     * The tenant boundary for a flat path is the ledger row's shop_id, since
+     * the path string itself carries no ownership claim. G-31 is the negative
+     * control for exactly that.
      */
-    public function test_g19_a_relocated_signature_still_renders_for_an_invoice_whose_snapshot_names_the_old_disk(): void
+    public function test_g19_a_relocated_legacy_flat_path_still_renders_for_a_pre_relocation_invoice(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
 
         $customer = $this->createCustomer($shop->id);
         $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G19');
 
-        $path = 'signatures/'.$shop->id.'/sig-a.png';
+        // The shape baseline actually wrote: no shop directory.
+        $path  = 'signatures/01JLEGACYFLATPATH.png';
+        $bytes = $this->pngBytes("\x0A");
 
         // The snapshot was written when the bytes were on the public tree.
         $this->putSnapshot($invoice, [
@@ -546,13 +550,58 @@ class InvoiceSignatureEmbeddingTest extends TestCase
 
         // Relocation has since copied the bytes to the private disk and purged
         // the public original. The snapshot is untouched and still says public.
-        Storage::disk('local')->put($path, $this->pngBytes("\x0A"));
+        Storage::disk('local')->put($path, $bytes);
+        $this->recordRelocation($shop->id, $path, $bytes);
         $this->assertFalse(Storage::disk('public')->exists($path));
 
         $result = $this->resolveAs($owner, $invoice);
 
-        $this->assertTrue($result['available'], 'a relocated signature must still render for a pre-relocation invoice');
-        $this->assertStringContainsString(base64_encode($this->pngBytes("\x0A")), (string) $result['dataUri']);
+        $this->assertTrue($result['available'], 'a relocated legacy signature must still render for a pre-relocation invoice');
+        $this->assertStringContainsString(base64_encode($bytes), (string) $result['dataUri']);
+    }
+
+    // ---------------------------------------------------------------- G-31
+    /**
+     * The negative control G-19 depends on. A legacy flat path carries no shop
+     * segment, so path inspection cannot tell two shops' references apart. The
+     * boundary has to hold somewhere else, and it does: the ledger row is keyed
+     * by shop_id, so another shop's recorded relocation does not license this
+     * shop's reference to follow it.
+     *
+     * Without this test, G-19 would equally pass in a build where flat paths
+     * skipped tenant checks entirely.
+     */
+    public function test_g31_a_legacy_flat_path_does_not_follow_another_shops_relocation(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        [, $otherShop]  = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G31');
+
+        $path  = 'signatures/01JLEGACYSHARED.png';
+        $bytes = $this->pngBytes("\x0E");
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => $path,
+            'digital_signature_disk' => 'public',
+        ]);
+
+        // The bytes are private, but the only relocation evidence belongs to a
+        // DIFFERENT shop.
+        Storage::disk('local')->put($path, $bytes);
+        $this->recordRelocation($otherShop->id, $path, $bytes);
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertFalse($result['available'], "another shop's relocation must not license this reference");
+        $this->assertSame('missing', $result['reason']);
+        $this->assertStringNotContainsString(
+            base64_encode($bytes),
+            (string) ($result['dataUri'] ?? ''),
+            'no bytes may be emitted on another tenant\'s evidence'
+        );
     }
 
     // ---------------------------------------------------------------- G-20
@@ -574,6 +623,271 @@ class InvoiceSignatureEmbeddingTest extends TestCase
 
         $this->assertFalse($result['available']);
         $this->assertSame('missing', $result['reason']);
+    }
+
+    // ================================================================
+    // LEDGER-BACKED DISK RESOLUTION (G-24 … G-30)
+    //
+    // WHY THESE EXIST. The first version of the cross-disk fallback tried every
+    // entry in ALLOWED_DISKS for the recorded path and served whatever it found
+    // first. Its stated justification — preserved in the G-19 docblock, now
+    // rewritten — was that Str::ulid() paths are globally unique, so a path
+    // names one and only one set of bytes on whichever disk holds them.
+    //
+    // That argument is not sound. ULID uniqueness is a claim about the NAMES a
+    // generator produces. It is not a mapping from a historical reference to a
+    // verified copy, and it proves none of the following:
+    //
+    //   - that the file now sitting at path P on the private disk is the same
+    //     bytes as the public P the snapshot was written against (no integrity
+    //     link existed at all);
+    //   - that P belongs to the shop currently resolving it (no ownership check
+    //     existed — the path's shop segment was never compared to the tenant);
+    //   - that falling back is safe in BOTH directions. It is not. A signature
+    //     recorded as private that goes missing would have been served from the
+    //     public tree — precisely the file relocation exists to remove.
+    //
+    // No exploit was demonstrated for any of these. They are review findings,
+    // and the fix is to replace a guess with recorded evidence: signatures:relocate
+    // writes a signature_relocations row carrying the source digest, and the
+    // renderer will only follow a relocation it can verify against that row.
+    // ================================================================
+
+    // ---------------------------------------------------------------- G-24
+    /**
+     * The generic fallback, killed. Bytes present on the private disk at the
+     * recorded path, but NO relocation was ever recorded for them. The renderer
+     * must refuse: nothing establishes that this file is the one the finalized
+     * invoice was signed with.
+     */
+    public function test_g24_a_public_reference_does_not_follow_an_unrecorded_private_file(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G24');
+        $path     = 'signatures/'.$shop->id.'/sig-a.png';
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => $path,
+            'digital_signature_disk' => 'public',
+        ]);
+
+        // Some file exists privately at that path. No ledger row vouches for it.
+        Storage::disk('local')->put($path, $this->pngBytes("\x0A"));
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertFalse(
+            $result['available'],
+            'an unverified same-path file must not stand in for the recorded signature'
+        );
+        $this->assertSame('missing', $result['reason']);
+    }
+
+    // ---------------------------------------------------------------- G-25
+    /**
+     * G-19 restated on evidence. Same scenario — snapshot says public, public
+     * original purged, bytes live privately — but now a recorded, digest-matched
+     * relocation exists, so the renderer can follow it and say why.
+     */
+    public function test_g25_a_recorded_and_verified_relocation_is_followed(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G25');
+        $path     = 'signatures/'.$shop->id.'/sig-a.png';
+        $bytes    = $this->pngBytes("\x0A");
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => $path,
+            'digital_signature_disk' => 'public',
+        ]);
+
+        Storage::disk('local')->put($path, $bytes);
+        $this->assertFalse(Storage::disk('public')->exists($path), 'public original purged');
+
+        $this->recordRelocation($shop->id, $path, $bytes);
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertTrue($result['available'], 'a verified relocation must keep the old invoice printable');
+        $this->assertStringContainsString(base64_encode($bytes), (string) $result['dataUri']);
+    }
+
+    // ---------------------------------------------------------------- G-26
+    /**
+     * The integrity half. A ledger row exists, but the bytes now at the
+     * destination do not match the digest recorded when they were copied —
+     * overwritten, truncated, or a different image that happens to share the
+     * path. Serving them would put a signature that is not signature A onto a
+     * document that claims to be the original. Refuse instead.
+     */
+    public function test_g26_a_relocation_whose_digest_no_longer_matches_is_refused(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G26');
+        $path     = 'signatures/'.$shop->id.'/sig-a.png';
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => $path,
+            'digital_signature_disk' => 'public',
+        ]);
+
+        // Recorded against signature A's digest...
+        $this->recordRelocation($shop->id, $path, $this->pngBytes("\x0A"));
+        // ...but signature B's bytes are what is actually there now.
+        Storage::disk('local')->put($path, $this->pngBytes("\x0B"));
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertFalse($result['available'], 'mismatched bytes must never be substituted');
+        $this->assertStringNotContainsString(
+            base64_encode($this->pngBytes("\x0B")),
+            (string) ($result['dataUri'] ?? ''),
+            'the wrong signature must not reach the document'
+        );
+        $this->assertSame('integrity_mismatch', $result['reason']);
+    }
+
+    // ---------------------------------------------------------------- G-27
+    /**
+     * One-directional. Relocation only ever moves public -> private, so a
+     * reference recorded as private has no legitimate reason to resolve on the
+     * public tree. If it did, a signature that had been made private could be
+     * quietly served from the very public copy the relocation was meant to
+     * retire — reopening the exposure through the renderer.
+     */
+    public function test_g27_a_private_reference_never_falls_back_to_the_public_tree(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G27');
+        $path     = 'signatures/'.$shop->id.'/sig-a.png';
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => $path,
+            'digital_signature_disk' => 'local',
+        ]);
+
+        // A stale public copy at the same path is the only thing present.
+        Storage::disk('public')->put($path, $this->pngBytes("\x0A"));
+        $this->assertFalse(Storage::disk('local')->exists($path));
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertFalse($result['available'], 'a private reference must not be satisfied by a public file');
+        $this->assertSame('missing', $result['reason']);
+    }
+
+    // ---------------------------------------------------------------- G-28
+    /**
+     * Ownership. A relocation recorded for a DIFFERENT shop must not vouch for
+     * this shop's reference, even when the path string matches exactly. The
+     * ledger is keyed by shop, and the path's own shop segment is checked
+     * against the tenant, so neither a stray ledger row nor a corrupted
+     * snapshot can cross the tenant boundary.
+     */
+    public function test_g28_another_shops_relocation_does_not_vouch_for_this_shops_reference(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        [, $otherShop]  = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G28');
+
+        // The path names the OTHER shop's directory.
+        $path  = 'signatures/'.$otherShop->id.'/sig-a.png';
+        $bytes = $this->pngBytes("\x0C");
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => $path,
+            'digital_signature_disk' => 'public',
+        ]);
+
+        Storage::disk('local')->put($path, $bytes);
+        $this->recordRelocation($otherShop->id, $path, $bytes);
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertFalse($result['available'], 'a cross-tenant path must not resolve');
+        $this->assertStringNotContainsString(
+            base64_encode($bytes),
+            (string) ($result['dataUri'] ?? ''),
+            "another shop's signature bytes must never be emitted"
+        );
+    }
+
+    // ---------------------------------------------------------------- G-29
+    /**
+     * Interrupted and repeated relocation. Recording the same move twice must
+     * not create a second, conflicting mapping, and resolution must be
+     * unaffected — a relocation pass that died midway and was re-run is the
+     * normal case, not an exceptional one.
+     */
+    public function test_g29_recording_the_same_relocation_twice_is_idempotent(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G29');
+        $path     = 'signatures/'.$shop->id.'/sig-a.png';
+        $bytes    = $this->pngBytes("\x0A");
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => $path,
+            'digital_signature_disk' => 'public',
+        ]);
+
+        Storage::disk('local')->put($path, $bytes);
+        $this->recordRelocation($shop->id, $path, $bytes);
+        $this->recordRelocation($shop->id, $path, $bytes);
+
+        $this->assertSame(
+            1,
+            \App\Models\SignatureRelocation::withoutTenant()->where('path', $path)->count(),
+            'a repeated relocation must collapse onto one mapping'
+        );
+
+        $this->assertTrue($this->resolveAs($owner, $invoice)['available']);
+    }
+
+    // ---------------------------------------------------------------- G-30
+    /**
+     * The path's shop segment is load-bearing, not decorative. A reference that
+     * does not live under this shop's signature directory is refused before any
+     * ledger lookup or storage read happens.
+     */
+    public function test_g30_a_path_outside_the_shops_signature_directory_is_refused(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G30');
+        $path     = 'exports/'.$shop->id.'/ledger.png';
+
+        $this->putSnapshot($invoice, [
+            'show_digital_signature' => true,
+            'digital_signature_path' => $path,
+            'digital_signature_disk' => 'local',
+        ]);
+
+        Storage::disk('local')->put($path, $this->pngBytes("\x0A"));
+
+        $result = $this->resolveAs($owner, $invoice);
+
+        $this->assertFalse($result['available'], 'only files under signatures/{shop}/ are signatures');
+        $this->assertSame('bad_path', $result['reason']);
     }
 
     // ---------------------------------------------------------------- G-18
@@ -834,5 +1148,19 @@ class InvoiceSignatureEmbeddingTest extends TestCase
             $billing->show_digital_signature = $show;
             $billing->save();
         });
+    }
+
+    /**
+     * Stand in for what `signatures:relocate --execute` records.
+     *
+     * Deliberately goes through the same service the command uses rather than
+     * inserting a row directly, so these tests exercise the real recording path
+     * and cannot drift from it. R-17 in SignatureRelocationTest asserts the
+     * command actually calls it.
+     */
+    private function recordRelocation(int $shopId, string $path, string $bytes): void
+    {
+        app(\App\Services\SignatureRelocationLedger::class)
+            ->record($shopId, $path, 'public', 'local', hash('sha256', $bytes), strlen($bytes));
     }
 }

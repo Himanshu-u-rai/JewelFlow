@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\InvoiceSignatureRenderer;
+use App\Services\SignatureRelocationLedger;
 use App\Services\SignatureStore;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\Filesystem;
@@ -30,11 +30,23 @@ use Illuminate\Support\Facades\Storage;
  *      was captured while that signature was current — IMMUTABLE, unbounded in
  *      number, and explicitly not rewritable.
  *
- * This command therefore updates (1) and NEVER touches (2). That is only safe
- * because InvoiceSignatureRenderer resolves a recorded path across
- * ALLOWED_DISKS and treats the recorded disk as a location hint (pinned by
- * G-19). Without that property, purging a public original would break the
- * reprint of every invoice finalized before the move.
+ * This command therefore updates (1) and NEVER touches (2). What makes that
+ * safe is the RELOCATION LEDGER: every copy this command verifies is recorded
+ * as a signature_relocations row carrying the source digest, written in the
+ * SAME transaction as the settings flip, and InvoiceSignatureRenderer follows a
+ * move only when such a row vouches for it and the bytes still hash to what was
+ * recorded. Without that row, purging a public original would break the reprint
+ * of every invoice finalized before the move — which is why purgePass() refuses
+ * any original that has no row (R-18).
+ *
+ * CORRECTS AN EARLIER CLAIM IN THIS DOCBLOCK. It used to argue the move was
+ * safe because the renderer resolves a recorded path across ALLOWED_DISKS,
+ * treating the disk as a location hint. That generic fallback is WITHDRAWN: a
+ * matching relative path on an allowed disk does not establish that the bytes
+ * are the same bytes, nor that the file belongs to the shop asking for it, and
+ * the rule ran in both directions — so a reference already made private could
+ * be served from the very public tree this command exists to empty. See
+ * SignatureRelocationLedger, and G-24 … G-31.
  *
  * SUPERSEDES AN EARLIER CLAIM
  * A previous report of mine said "12 files is small enough to relocate by hand."
@@ -74,6 +86,11 @@ class RelocateShopSignatures extends Command
     private function targetDisk(): string
     {
         return SignatureStore::DISK;
+    }
+
+    private function ledger(): SignatureRelocationLedger
+    {
+        return app(SignatureRelocationLedger::class);
     }
 
     public function handle(): int
@@ -184,18 +201,50 @@ class RelocateShopSignatures extends Command
                 continue;
             }
 
-            // Guarded on the values we read, so a concurrent re-upload through
-            // SettingsController is not clobbered. Both columns move together —
-            // the table's both-or-neither CHECK would reject anything else.
-            $updated = DB::table('shop_billing_settings')
-                ->where('id', $row->id)
-                ->where('digital_signature_disk', self::SOURCE_DISK)
-                ->where('digital_signature_path', $path)
-                ->update(['digital_signature_disk' => $this->targetDisk()]);
+            // The ledger row and the settings flip go in ONE transaction.
+            //
+            // They are not independent facts. The flip stops the CURRENT
+            // reference resolving on the public disk; the ledger row is the only
+            // thing that lets every IMMUTABLE snapshot still naming 'public'
+            // find these bytes afterwards. Commit the flip without the row and a
+            // later purge strands every pre-relocation invoice. Write the row
+            // without the flip and the ledger vouches for a move that did not
+            // happen. Neither half is safe on its own.
+            try {
+                DB::transaction(function () use ($row, $path, $sourceDigest, $source) {
+                    // Guarded on the values we read, so a concurrent re-upload
+                    // through SettingsController is not clobbered. Both columns
+                    // move together — the table's both-or-neither CHECK would
+                    // reject anything else.
+                    $updated = DB::table('shop_billing_settings')
+                        ->where('id', $row->id)
+                        ->where('digital_signature_disk', self::SOURCE_DISK)
+                        ->where('digital_signature_path', $path)
+                        ->update(['digital_signature_disk' => $this->targetDisk()]);
 
-            if ($updated !== 1) {
+                    if ($updated !== 1) {
+                        throw new ConcurrentSignatureChange();
+                    }
+
+                    $this->ledger()->record(
+                        (int) $row->shop_id,
+                        $path,
+                        self::SOURCE_DISK,
+                        $this->targetDisk(),
+                        $sourceDigest,
+                        (int) $source->size($path),
+                    );
+                });
+            } catch (ConcurrentSignatureChange) {
                 $this->record($row, 'failed', 'row_changed_concurrently', $sourceDigest);
                 $this->warn("  shop {$row->shop_id} row changed during relocation; left alone.");
+                $failed++;
+                continue;
+            } catch (\Throwable $e) {
+                // The verified private copy stays where it is — leaving it costs
+                // only disk. What must not survive is a half-committed move.
+                $this->record($row, 'failed', 'ledger_write_failed', $sourceDigest);
+                $this->warn("  shop {$row->shop_id} ledger write failed: {$e->getMessage()}");
                 $failed++;
                 continue;
             }
@@ -292,13 +341,39 @@ class RelocateShopSignatures extends Command
             return self::FAILURE;
         }
 
-        // A purge is only survivable because the renderer falls back across
-        // ALLOWED_DISKS for a recorded path (G-19). Refuse to run at all if that
-        // property has been removed, rather than discovering it one reprint at
-        // a time after the bytes are gone.
-        if (! in_array($this->targetDisk(), InvoiceSignatureRenderer::ALLOWED_DISKS, true)
-            || ! in_array(self::SOURCE_DISK, InvoiceSignatureRenderer::ALLOWED_DISKS, true)) {
-            $this->error('Renderer no longer resolves across both disks; purging would strand finalized invoices.');
+        // Deleting a public original is only survivable because a ledger row
+        // lets the immutable snapshots that still name 'public' find the bytes
+        // privately. Purging a file with no such row would strand every
+        // finalized invoice that references it, with nothing left to recover
+        // from — so each candidate is checked for its own ledger row HERE,
+        // before any delete, rather than discovering the gap one reprint at a
+        // time after the bytes are gone.
+        //
+        // REPLACES a weaker guard. The earlier version only asserted that both
+        // disk names still appeared in the renderer's ALLOWED_DISKS list, which
+        // was a check on a constant, not on whether this particular file could
+        // still be found.
+        $unvouched = [];
+
+        foreach ($result['purgeable'] as $row) {
+            $vouched = $this->ledger()->targetFor(
+                (int) $row->shop_id,
+                $row->digital_signature_path,
+                self::SOURCE_DISK,
+            );
+
+            if ($vouched === null) {
+                $unvouched[] = (int) $row->shop_id;
+            }
+        }
+
+        if ($unvouched !== []) {
+            $this->error(sprintf(
+                'Refusing to purge: %d original(s) have no recorded relocation, so finalized invoices '
+                .'referencing them would become unrenderable. Shops: %s. Re-run the relocate pass first.',
+                count($unvouched),
+                implode(', ', array_unique($unvouched)),
+            ));
 
             return self::FAILURE;
         }
@@ -466,3 +541,11 @@ class RelocateShopSignatures extends Command
         $this->line("Manifest: {$file} (on the {$this->targetDisk()} disk)");
     }
 }
+
+/**
+ * Marker only — thrown to roll the relocation transaction back when the
+ * settings row changed underneath us. Distinguished from a genuine failure so
+ * "someone re-uploaded mid-run" is reported as the benign, resumable event it
+ * is rather than as a ledger fault.
+ */
+final class ConcurrentSignatureChange extends \RuntimeException {}
