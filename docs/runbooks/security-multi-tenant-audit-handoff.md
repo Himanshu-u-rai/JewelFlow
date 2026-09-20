@@ -35,6 +35,9 @@ wrote tests" becomes "it is fixed in production".
 | S3-03 purchase attachment public | OPEN | Authenticated route committed | **OPEN** |
 | S3-04 signature public + mutable | OPEN | Option B implemented; immutability proven end to end | **OPEN** |
 | S3-05 finalized invoice reprints with today's settings | **PARTIAL** — `igst_mode` + HSN fixed, 43 cosmetic reads still drift | Fix committed (`b216b80`), 8 tests | **OPEN** |
+| S3-06 catalog tenant context survives a throw | **CLOSED as a code defect** — no cross-tenant read demonstrated | Fix committed (`721c06d`), 5 tests | **OPEN — needs the deploy** |
+| S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
+| S3-06c published item images outlive the shopfront toggle | OPEN | None — recorded limitation | **OPEN** |
 
 ### Corrections to my own earlier reports, restated here so they are not lost
 
@@ -55,6 +58,19 @@ wrote tests" becomes "it is fixed in production".
 * **The signature work does not make historical rendering immutable.** It makes
   the *signature* immutable. See S3-05.
 * **My own immutability tests were resting on their fixtures.** Detailed in §3.
+* **Item images were mis-filed.** An earlier note listed
+  `storage/app/public/items` beside `signatures/` and `kyc/` as
+  "candidate-public assets pending classification", as though the three were
+  alike. They are not. Signatures and KYC documents have **no feature that
+  publishes them** — their public location is an accident of a default disk.
+  Item images have a deliberate publishing feature: `routes/web.php` 94-100
+  serves an unauthenticated shopfront at `/s/{slug}` that renders them by public
+  URL on purpose, gated by `catalog_website_settings.is_enabled`, which is
+  `default(false)` (`2026_04_01_000002_…:14`). This is the directive's "folder
+  names do not establish publication consent" answered from the other side: the
+  folder name did not establish consent here either — the **feature and its
+  opt-in default** did. Verified by test, not by reading the route table:
+  `PublicCatalogExposureTest` C-01/C-02 pin both halves.
 
 ---
 
@@ -336,12 +352,70 @@ what makes that safe, and E-07 proves it on the printed page.
 * Item images and other candidate-public assets stay under review. A folder named
   `public` records no publication decision, and a handful of absent grep matches
   does not prove a dynamically built URL has no consumer.
+  **Item images are now classified** (see §7a) — they have a real publishing
+  feature, so they are NOT relocation candidates. The remaining public-disk
+  destinations are not: `products`, `shop-logos`, `catalog-heroes`,
+  `UploadIntentService:110,251` and `Api\Mobile\ItemController:226,495` are still
+  unclassified and stay under review. Enumerated by grep over
+  `Storage::disk('public')` writes on 2026-09-21; that enumerates *writers*, not
+  consumers, and a consumer is what decides publication.
 * Superseded signature versions are named by no settings row — only by snapshots.
   `--orphans` reports them; the default pass does not move them, because moving a
   file that no row names would strip the only pointer to it.
 * **If an image was already overwritten or deleted by the baseline's
   `Storage::delete()` calls, it is gone. It cannot be reconstructed.** Nothing
   here claims otherwise.
+
+---
+
+## 7a. S3-06 — the public catalog, and the one defect in it
+
+**How this came up.** Directive item 7 says folder names do not establish
+publication consent. Classifying `storage/app/public/items` meant finding what
+actually publishes item images, and that search found a route group I had not
+audited: `routes/web.php` 94-100 serves `/s/{slug}` — a whole shopfront, product
+list and category pages — with **no authentication at all**.
+
+**The gate, verified rather than assumed.** `ResolveCatalogShop` requires all
+three of: a shop whose `catalog_slug` matches, that shop being `active()`, and
+`catalog_website_settings.is_enabled`. That column is `default(false)`, so a shop
+publishes nothing until someone switches it on. C-01 proves an enabled shopfront
+serves a logged-out visitor; C-02 proves a shop that never opted in gets a 404
+and leaks no sentinel. "It is opt-in" is worth exactly what the test proving it
+is worth.
+
+**The defect (S3-06).** The middleware set tenant context from the anonymous
+visitor's URL segment and cleared it only after `$next($request)` returned. Any
+throw in between skipped the clear. `EnsureTenantUser:31-32` has used
+`try/finally` all along; the asymmetry was the finding. Fixed in `721c06d`.
+
+*Bounded honestly:* no cross-tenant read is demonstrated, and `composer.json` has
+no Octane, so no worker carries stale context into a different visitor's request.
+What it was, was a missing guard on the one route group whose tenant comes from
+an unauthenticated URL rather than a session.
+
+**Two things this does NOT fix, recorded as findings rather than repaired:**
+
+* **S3-06b — consent is per SHOP, publication is per ITEM.**
+  `PublicCatalogWebsiteController::products()` lists `Item::where('status',
+  'in_stock')` with no per-item opt-out, so enabling the shopfront publishes
+  every in-stock piece — barcode, design, category, price, photo — not a chosen
+  subset. C-03 characterizes this. If someone later adds a per-item flag, C-03
+  **should** fail; that failure is the feature landing. This is a
+  product-consent question, not a tenant-isolation break, and adding the flag is
+  a feature decision rather than an audit repair.
+* **S3-06c — the image files outlive the gate.** Turning the shopfront off makes
+  the pages 404. It moves no bytes: photos stay readable at
+  `/storage/items/<ULID>.webp` to anyone holding the URL. Filenames are
+  `Str::ulid()->toBase32()` (`ImageOptimizer:72,80`), whose low 80 bits are
+  random, so they are not enumerable by guessing — but a URL that was shared,
+  screenshotted or logged keeps working. A limitation, not a repair.
+
+**Cross-shop isolation on this route group gets its own test (C-04)** because
+every other isolation test in the suite has a logged-in principal whose
+`shop_id` the scope keys off. Here there is none — the tenant is chosen by an
+anonymous URL segment, which makes it the one place a missing scope would expose
+another shop's inventory to the open internet.
 
 ---
 
@@ -354,8 +428,21 @@ php artisan test tests/Feature/Security/SignatureImmutabilityEndToEndTest.php
 php artisan test tests/Feature/Security/FinalizedInvoiceSettingsDriftTest.php
   -> 8 passed, 31 assertions
 
+php artisan test tests/Feature/Security/PublicCatalogExposureTest.php
+  -> BEFORE the fix: 1 failed, 4 passed (15 assertions)
+     C-05 "Failed asserting that 6 is null" -- 6 is the shop id, still
+     pinned after the handler threw. RED for the intended reason.
+  -> AFTER  the fix: 5 passed, 16 assertions
+
+php artisan test --filter='Catalog|Tenant|Middleware|Share'
+  -> 120 passed, 414 assertions   (S3-06 regression band)
+
 php artisan test tests/Feature/Security tests/Feature/Mobile
-  -> 211 passed, 737 assertions
+  -> 216 passed, 753 assertions   (re-measured after S3-06)
+     Was 211 / 737 before PublicCatalogExposureTest existed. Arithmetic
+     would have predicted 216 / 753 and would have been right -- it was
+     re-run anyway, because three wrong diffstats earlier in this session
+     all came from computing a figure instead of measuring one.
 
 php artisan test --filter='Invoice|Sales|Exchange|Installment|Return|QuickBill|Repair|Gst|Tax|Snapshot|Setting'
   -> 594 passed, 3 skipped, 2311 assertions
@@ -388,23 +475,31 @@ is not coverage:
 | Immutable historical rendering | yes (E-01…E-07) |
 | Immutable tax characterization | yes (D-01…D-08) |
 | Release ordering | yes (T-01…T-07) |
+| Unauthenticated route, cross-shop isolation | yes (C-04) |
+| Unauthenticated route, context release on throw | yes (C-02, C-05) |
+| Publication consent gate, both halves | yes (C-01 enabled, C-02 not enabled) |
+| **Per-item publication opt-out** | **none exists — characterized by C-03, not covered** |
 | **On-device print** | **NOT RUN — see §5** |
 | **Edge cache behaviour** | **NOT RUN — no Cloudflare access** |
 
 ## 9. Commits, diff, working tree
 
-**Measured at `e12c6c5`, not at HEAD — deliberately.** A diffstat recorded inside
+**Measured at `721c06d`, not at HEAD — deliberately.** A diffstat recorded inside
 a tracked file changes the diffstat, so "the figure at HEAD" has no fixed point,
 and chasing it is exactly how the earlier revisions of this line came to be
 wrong. Pinning it to a named commit makes it rerunnable:
 
 ```
-$ git diff --shortstat 018b3d8..e12c6c5
- 49 files changed, 8641 insertions(+), 69 deletions(-)
+$ git diff --shortstat 018b3d8..721c06d
+ 51 files changed, 8920 insertions(+), 95 deletions(-)
+
+$ git log --oneline 018b3d8..721c06d | wc -l
+28
 ```
 
-`e12c6c5` is the last commit before this section was rewritten; every commit
-after it is an edit to this document.
+`721c06d` is the last **code** commit on the branch; every commit after it is an
+edit to this document. The previous pin was `e12c6c5` at 49 files / +8,641 / −69,
+superseded by the S3-06 work rather than corrected.
 
 **Three revisions of this one line were wrong, recorded rather than quietly
 overwritten.** The first claimed "22 commits, 46 files, +7,813 / −54", carried
@@ -423,6 +518,7 @@ This session added:
 1eef5b2  Prove relocation preserves the signature on the printed page (S3-04)
 c211264  Record the audit handoff: separated statuses and pending containment
 b216b80  Print a finalized bill's tax as it was issued, not as today (S3-05)
+721c06d  Release the catalog tenant context even when the handler throws (S3-06)
 ```
 
 (plus, earlier in the same session: `a542745` migration split, `ad9babe` runbook
