@@ -277,15 +277,65 @@ class InvoiceSignatureEmbeddingTest extends TestCase
         $this->assertStringNotContainsString('/storage/signatures/', $html, 'no signature URL may be emitted');
     }
 
+    // ---------------------------------------------------------------- G-23
+    /**
+     * CORRECTION / BASELINE CONTROL.
+     *
+     * An earlier revision of G-21, G-22 and the S3-04d finding asserted that the
+     * framework default "no-cache, private" still permits a SHARED cache to store
+     * the body. That is wrong. RFC 9111 §5.2.2.7: an unqualified `private`
+     * directive prohibits a shared cache from storing the response at all. So
+     * there was never a demonstrated shared-cache exposure on these routes.
+     *
+     * This test records what the framework actually emits on a comparable,
+     * equally sensitive route that does NOT carry 'nocache', so the claim is
+     * measured rather than remembered. It is deliberately asserted on
+     * invoices.show — same auth stack, same session middleware, no NoCache.
+     *
+     * What `no-store` on the print routes is therefore worth: it restricts the
+     * PRIVATE caches `private` explicitly permits — the browser's disk cache and
+     * the mobile WebView/Expo cache — where a rendered bill now carries signature
+     * bytes. That is real hardening with a smaller blast radius than was claimed.
+     *
+     * This is an APPLICATION HEADER assertion. It says nothing about what the CDN
+     * in front of production does with those headers; no CDN behaviour has been
+     * verified. See the S3-04d row in the matrix.
+     */
+    public function test_g23_the_framework_default_already_forbids_shared_cache_storage(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $customer = $this->createCustomer($shop->id);
+        $invoice  = $this->makeInvoice($shop->id, $customer->id, 'INV-G23');
+
+        $response = $this->requestAs($owner, route('invoices.show', $invoice))->assertOk();
+        $header   = (string) $response->headers->get('Cache-Control');
+
+        $this->assertStringContainsString(
+            'private',
+            $header,
+            'baseline control: the framework default must already carry `private`, '
+            .'which forbids shared-cache storage. If this fails, the S3-04d correction '
+            .'is itself wrong and a shared-cache exposure is real.'
+        );
+        $this->assertStringNotContainsString(
+            'public',
+            $header,
+            '`private` must not be accompanied by anything that re-permits shared storage'
+        );
+    }
+
     // ---------------------------------------------------------------- G-21
     /**
      * Embedding moved the bytes INTO the document, so the document inherited the
      * bytes' sensitivity. Before this finding the print HTML was merely a bill;
-     * now it is a bill plus forgery material, and it must not be storable by any
-     * cache between the origin and the operator.
+     * now it is a bill plus forgery material.
      *
-     * no-store, not just no-cache: no-cache permits a shared cache to keep the
-     * body and revalidate. For signature bytes, keeping it is the problem.
+     * WHAT THIS ADDS OVER THE DEFAULT (corrected). The framework default already
+     * forbids SHARED caches from storing the body — see G-23, which measures it.
+     * `no-store` extends that to the private caches `private` permits: the
+     * operator's browser disk cache and the mobile WebView cache. Storing forgery
+     * material on a shared till machine is the residual risk this closes.
      */
     public function test_g21_the_web_print_response_may_not_be_stored_by_any_cache(): void
     {
@@ -308,8 +358,17 @@ class InvoiceSignatureEmbeddingTest extends TestCase
 
     // ---------------------------------------------------------------- G-22
     /**
-     * Same clause on the mobile surface, which is the one actually in front of a
-     * CDN: the JSON envelope carries the SAME embedded bytes inside its html key.
+     * Same clause on the mobile surface: the JSON envelope carries the SAME
+     * embedded bytes inside its html key.
+     *
+     * CORRECTED SCOPE. An earlier revision justified this as protection against
+     * the CDN in front of this route. That justification does not hold — see
+     * G-23; `private` already forbade shared-cache storage, and no CDN behaviour
+     * has been observed either way. The cache this actually restricts is the
+     * device-local one in the app's HTTP stack.
+     *
+     * This asserts an APPLICATION response header. It is not a CDN test, and it
+     * must not be reported as one.
      */
     public function test_g22_the_mobile_template_response_may_not_be_stored_by_any_cache(): void
     {

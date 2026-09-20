@@ -155,7 +155,14 @@ Route::middleware(['auth:sanctum', 'tenant', 'subscription.active', 'account.act
         Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])
             ->middleware(['throttle:api-pos-read', 'can:sales.view']);
         // S3-04: 'nocache'. This envelope's html key carries the signature bytes
-        // inline, and this is the surface that actually sits behind a CDN.
+        // inline.
+        //
+        // CORRECTED. This route's framework default already carries `private`,
+        // which forbids shared-cache storage — the edge was never demonstrated
+        // to be storing it. no-store targets the cache that IS permitted to hold
+        // it on this path: the app's own HTTP/WebView cache on the device. That
+        // device is the one a bearer token also lives on, so the marginal value
+        // is real but bounded. CDN behaviour remains unverified (S3-04d).
         Route::get('/invoices/{invoice}/template', [InvoiceController::class, 'template'])
             ->middleware(['throttle:api-pos-read', 'can:sales.view', 'nocache']);
         Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'storePayment'])

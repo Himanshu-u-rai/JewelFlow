@@ -896,9 +896,20 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
     Route::put('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->middleware('can:sales.create')->name('invoices.update');
     Route::get('/invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'show'])->middleware('can:sales.view')->name('invoices.show');
     // S3-04: 'nocache' because the printed document now carries the signature
-    // bytes inline. Laravel's default 'no-cache, private' still permits a shared
-    // cache to STORE the body and revalidate; for forgery material, storing it
-    // is the problem. NoCache sends no-store.
+    // bytes inline.
+    //
+    // CORRECTED. An earlier revision of this comment claimed the framework
+    // default 'no-cache, private' still lets a SHARED cache store the body. That
+    // is wrong: an unqualified `private` forbids shared-cache storage outright
+    // (RFC 9111 §5.2.2.7), and G-23 measures that the default really is present
+    // on the sibling invoices.show route. No shared-cache exposure was ever
+    // demonstrated here.
+    //
+    // What no-store actually adds is the PRIVATE caches `private` permits — the
+    // browser disk cache on a shared till machine, and the mobile WebView cache,
+    // both of which would otherwise retain forgery material. Smaller blast
+    // radius than was claimed; still worth closing. Application headers only:
+    // no CDN behaviour has been verified.
     Route::get('/invoice/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->middleware(['can:sales.view', 'nocache'])->name('invoices.print');
 
     // ======= QUICK BILL GENERATOR (sales.* permissions) =======
@@ -925,8 +936,9 @@ Route::middleware(['auth', 'tenant', 'subscription.active', 'account.active', 's
         Route::post('/quick-bills/{quickBill}/void', [QuickBillController::class, 'void'])
             ->middleware('can:sales.void')
             ->name('quick-bills.void');
-        // S3-04: 'nocache' for the same reason as invoices.print — both blades
-        // now inline the signature.
+        // S3-04: 'nocache' for the same (corrected) reason as invoices.print —
+        // both blades inline the signature, and no-store covers the private
+        // caches that `private` permits. Not a shared-cache fix.
         Route::get('/quick-bills/{quickBill}/print', [QuickBillController::class, 'print'])
             ->middleware(['can:sales.view', 'nocache'])
             ->name('quick-bills.print');

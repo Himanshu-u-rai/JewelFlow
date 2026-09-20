@@ -26,12 +26,20 @@ use Illuminate\Support\Facades\Storage;
  * BASE64 IS NOT ACCESS CONTROL. It is an encoding. The protection is that this
  * method refuses to produce bytes at all unless the caller has already passed the
  * same checks the print routes enforce, and that the containing document is not
- * storable by any cache. The second half is the 'nocache' middleware
- * (App\Http\Middleware\NoCache) on invoices.print, quick-bills.print,
+ * retained by a cache after it is displayed. The second half is the 'nocache'
+ * middleware (App\Http\Middleware\NoCache) on invoices.print, quick-bills.print,
  * quick-bills.print-original and both mobile /template routes — pinned by G-21
  * and G-22. An earlier revision of this docblock named a middleware
- * ("EnsurePrintResponsesArePrivate") that was never written; the gap was real
+ * ("EnsurePrintResponsesArePrivate") that was never written; that gap was real
  * until those tests were added.
+ *
+ * TWO CORRECTIONS TO THE ORIGINAL RATIONALE, both measured by G-23:
+ * 1. The framework default already sends an unqualified `private`, which forbids
+ *    SHARED-cache storage (RFC 9111 §5.2.2.7). No shared-cache exposure was ever
+ *    demonstrated. What no-store adds is the PRIVATE caches `private` permits:
+ *    the till browser's disk cache and the mobile WebView cache.
+ * 2. These are application response headers. No CDN has been observed honouring,
+ *    stripping or overriding them. Do not read G-21/G-22 as edge verification.
  *
  * RESOLUTION ORDER — snapshot first, live settings only as fallback
  * A finalized invoice must print what it was signed with. invoice_render_snapshots
