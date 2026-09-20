@@ -393,21 +393,28 @@ is not coverage:
 
 ## 9. Commits, diff, working tree
 
-24 commits ahead of `018b3d8`. `git diff --shortstat 018b3d8..HEAD`, run
-2026-09-21 in this worktree, output verbatim:
+**Measured at `e12c6c5`, not at HEAD — deliberately.** A diffstat recorded inside
+a tracked file changes the diffstat, so "the figure at HEAD" has no fixed point,
+and chasing it is exactly how the earlier revisions of this line came to be
+wrong. Pinning it to a named commit makes it rerunnable:
 
 ```
-49 files changed, 8641 insertions(+), 69 deletions(-)
+$ git diff --shortstat 018b3d8..e12c6c5
+ 49 files changed, 8641 insertions(+), 69 deletions(-)
 ```
 
-**A correction to the two previous revisions of this section, recorded rather
-than quietly overwritten.** The first claimed "22 commits, 46 files, +7,813 /
--54"; the second claimed "+8,642 / -77". Neither was measured. The first was
-carried over from an earlier point in the branch; the second I arrived at by
-adding the size of my own edit to an earlier reading, which is arithmetic, not
-evidence — and it was wrong by 1 insertion and 8 deletions. The block above is
-pasted from the command. Any number in this document not traceable to a command
+`e12c6c5` is the last commit before this section was rewritten; every commit
+after it is an edit to this document.
+
+**Three revisions of this one line were wrong, recorded rather than quietly
+overwritten.** The first claimed "22 commits, 46 files, +7,813 / −54", carried
+over from an earlier point in the branch. The second claimed "+8,642 / −77",
+which I got by adding the size of my own edit to an earlier reading — arithmetic,
+not evidence, and wrong by one insertion and eight deletions. The third pasted
+real output but labelled it "at HEAD", which the act of pasting falsified. Any
+number in this document not traceable to a named command at a named commit
 should be treated as unverified.
+
 This session added:
 
 ```
