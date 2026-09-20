@@ -8,6 +8,7 @@ use App\Models\CashTransaction;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\ShopPaymentMethod;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -155,6 +156,50 @@ class InvoiceController extends Controller
     }
 
     /**
+     * S3-07: authorize a cache HIT the same way fresh processing is authorized.
+     *
+     * The idempotency key is `invoice_payment_idempotency:{invoice}:{key}` —
+     * no shop, no user. That is deliberately left alone: changing the key shape
+     * makes every in-flight key miss across the deploy window, and a client
+     * retrying a partial payment in that window would have it recorded twice.
+     * So the key, its TTL and its replay semantics are untouched, and the
+     * missing check is added here instead — the cached body is a payment
+     * receipt, and returning one is an access decision whether or not the
+     * database is touched.
+     *
+     * Three conditions, in this order:
+     *
+     *  1. A trusted active tenant must exist. `TenantContext` is set by the
+     *     `tenant` middleware; if this action is ever reached without it, the
+     *     answer is a refusal, NOT a fallback to `$request->user()->shop_id`.
+     *     Fail closed, matching BelongsToShop's own `whereRaw('1 = 0')` stance.
+     *  2. The invoice must belong to that tenant. 404 rather than 403, because
+     *     that is the answer the scoped route binding already gives for
+     *     somebody else's invoice — a 403 here would confirm the row exists.
+     *  3. The caller must hold `sales.create` AND pass InvoicePolicy::view —
+     *     the same permission the route's `can:` middleware requires, checked
+     *     again here so the cache-hit path does not depend on route middleware
+     *     configuration staying correct.
+     *
+     * Why this is defence in depth and not an incident fix: with the shipped
+     * scoped binding, another shop's request 404s before reaching this method.
+     * The gap was that the cache-hit path had exactly one guard (that binding)
+     * where the write path has two — it also re-resolves the invoice through a
+     * tenant-scoped `lockForUpdate()`. This closes that asymmetry.
+     */
+    private function authorizeCachedPaymentReplay(Request $request, Invoice $invoice): void
+    {
+        $tenantShopId = TenantContext::get();
+
+        abort_if($tenantShopId === null, 403, 'No active shop context.');
+        abort_if((int) $invoice->shop_id !== (int) $tenantShopId, 404);
+
+        $user = $request->user();
+
+        abort_unless($user?->can('sales.create') && $user->can('view', $invoice), 403);
+    }
+
+    /**
      * Record a payment against a finalized invoice. Supports partial
      * collection for credit / follow-up-payment use cases. Metal-exchange
      * (old_gold/old_silver) + EMI/scheme modes are intentionally excluded —
@@ -170,6 +215,8 @@ class InvoiceController extends Controller
         if ($cacheKey) {
             $cached = Cache::get($cacheKey);
             if ($cached) {
+                $this->authorizeCachedPaymentReplay($request, $invoice);
+
                 return response()->json($cached);
             }
         }

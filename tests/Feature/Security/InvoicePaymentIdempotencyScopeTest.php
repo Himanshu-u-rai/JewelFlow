@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Security;
 
+use App\Http\Middleware\EnsureTenantUser;
 use App\Models\Invoice;
 use App\Models\User;
 use App\Support\TenantContext;
+use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Sanctum;
 use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
@@ -56,33 +59,60 @@ use Tests\TestCase;
  * ->firstOrFail()` at :181 still carries the tenant scope, so the write path
  * 404s anyway. Two independent guards protect the write path.
  *
- * The cache-hit path has only ONE. `Cache::get` at :171 returns before that
- * lock is ever reached, so under mutation A shop B received HTTP 200 carrying
- * shop A's payment totals — verified, not surmised. I-05 was the only test that
- * caught it.
+ * The cache-hit path had only ONE. `Cache::get` returns before that lock is
+ * ever reached, so under mutation A shop B received HTTP 200 carrying shop A's
+ * payment totals. I-05 was the only test that caught it.
  *
- * That asymmetry — two guards on the write path, one on the cache-hit path —
- * is the substance of S3-07, and I did not have it before running the
- * mutations. It is also the reason I-05 asserts on the BODY rather than only
- * the status code.
+ * HOW THAT EVIDENCE IS CLASSIFIED — precisely, because the earlier revision of
+ * this docblock was loose about it. The unchanged route binding blocks the
+ * cross-shop request that I-05 sends; no exploit has been demonstrated against
+ * unchanged code. What the mutation demonstrates is a DEPENDENCY on that single
+ * guard, not a live exploit. That is why the repair below is defence in depth
+ * rather than an incident fix.
  *
- * WHY THE KEY IS NOT BEING "HARDENED" HERE
- * ---------------------------------------
- * Adding `{$shopId}:{$userId}` to the key is a one-line change and I am
- * deliberately NOT making it. Changing the key shape means every in-flight
+ * THE REPAIR, AND WHY IT IS NOT A CHANGE TO THE KEY
+ * ------------------------------------------------
+ * Adding `{$shopId}:{$userId}` to the key is a one-line change and is
+ * deliberately NOT made. Changing the key shape means every in-flight
  * idempotency key misses the cache across the deploy window, and a client
  * retrying a partial payment in that window would have it recorded TWICE. The
  * overpayment guard at :194 only catches the duplicate when it pushes the total
  * past `outstanding` — pay 3,000 twice against a 10,000 invoice and both land,
- * silently. So the "safe hardening" carries a real double-credit risk and the
- * status quo carries none that I can demonstrate. Recorded as a finding with
- * the guard identified, not repaired.
+ * silently. The key format, its 24h TTL and successful replay behaviour are
+ * therefore all preserved, and no cached record is flushed.
  *
- * If it is later decided to change the key anyway, the cheap way to avoid the
- * double-credit window is to READ both the old and new key shapes for one
- * release and WRITE only the new one, then drop the old read. That is a
- * deliberate migration, not a one-line edit, which is why it is not being done
- * as a drive-by inside a security audit.
+ * What is added instead is the smallest missing check BEFORE cached data can be
+ * returned — `authorizeCachedPaymentReplay()` in the controller. Three
+ * conditions, in order:
+ *
+ *   1. a trusted active tenant must exist (`TenantContext`); a request that
+ *      reaches this line with no tenant context FAILS CLOSED rather than
+ *      falling back to the user's own column,
+ *   2. the invoice must belong to that tenant — 404, the same answer the
+ *      scoped binding gives, so the guard does not turn into an existence
+ *      oracle,
+ *   3. the caller must hold `sales.create`, the same permission the route's
+ *      `can:` middleware requires for fresh processing.
+ *
+ * Authorization now covers the cached response as well as the fresh write.
+ * I-06..I-09 below pin all four halves of that.
+ *
+ * EVIDENCE FOR THE REPAIR, MEASURED
+ * --------------------------------
+ * I-07, I-08 and I-09 were watched failing BEFORE the guard existed, and each
+ * failed the same way: HTTP 200 carrying shop A's `7777`. Not a 404, not a
+ * routing error — the cached receipt handed to the wrong caller. I-06 passed
+ * from the start, which is correct: it characterizes the replay behaviour the
+ * repair had to leave alone, and it is the test that would fail if the guard
+ * were written to refuse an authorized retry.
+ *
+ * One further mutation answered an attribution question the RED run could not:
+ * with three conditions in the guard, WHICH one does I-09 depend on? Deleting
+ * only `abort_if($tenantShopId === null, ...)` killed I-09 and nothing else —
+ * so the fail-closed branch is load-bearing and separately pinned, rather than
+ * being incidentally covered by the shop comparison below it. Restoration was
+ * confirmed by md5sum and an empty `diff`, not by searching for the word
+ * MUTATION.
  *
  * A CONSOLE-SPECIFIC TEST ADJUSTMENT, DECLARED RATHER THAN BURIED
  * ---------------------------------------------------------------
@@ -243,7 +273,203 @@ class InvoicePaymentIdempotencyScopeTest extends TestCase
         $response->assertDontSee($invoice->invoice_number);
     }
 
+    // -------------------------------------------------------------------- I-06
+    /**
+     * THE REPLAY POSITIVE CONTROL, and the one that stops the new guard being
+     * an availability bug.
+     *
+     * A pre-existing cached receipt must stay usable by the authorized caller
+     * who created it — same body back, and NO second payment row. If the guard
+     * below were written slightly wrong (fail closed on a *present* tenant,
+     * say) this is the test that would catch it, and it would catch it as a
+     * double charge or a broken retry rather than as a security finding.
+     */
+    public function test_i06_an_authorized_caller_replays_a_cached_receipt_without_paying_twice(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->finalizedInvoice($shop->id, 10000.00);
+
+        $this->actAs($owner);
+
+        $key = 'replay-key-0001';
+        $first = $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash',
+            'amount' => 3000.00,
+        ], ['X-Idempotency-Key' => $key])->assertCreated();
+
+        $this->assertSame(1, $this->paymentCount($invoice->id));
+
+        // Re-arm the context for the SECOND request. `EnsureTenantUser` clears
+        // it in its own finally at the end of request one, and under PHPUnit
+        // nothing re-sets it (see the console note in the class docblock), so
+        // without this line the replay 404s at the binding and the test would
+        // "pass" its no-double-charge assertion for the wrong reason. Same
+        // principal, same shop — this is not weakening anything.
+        $this->actAs($owner);
+
+        $replay = $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash',
+            'amount' => 3000.00,
+        ], ['X-Idempotency-Key' => $key])->assertOk();
+
+        // Same receipt, not a fresh one: identical body AND no new row.
+        $this->assertSame($first->json('totals'), $replay->json('totals'));
+        $this->assertSame(
+            1,
+            $this->paymentCount($invoice->id),
+            'a replayed idempotency key must not record a second payment'
+        );
+    }
+
+    // -------------------------------------------------------------------- I-07
+    /**
+     * The repair itself, under the condition that made S3-07 worth writing up.
+     *
+     * `unscopeRouteBinding()` is mutation A made permanent and automated: it
+     * simulates the future in which someone swaps the scoped binding for a
+     * plain lookup. Before the repair, shop B got HTTP 200 carrying shop A's
+     * totals here. After it, the controller refuses on its own.
+     *
+     * Normal binding is left intact in every other test in this file; this one
+     * weakens it ON PURPOSE and says so, because a guard that is only ever
+     * exercised behind another guard is a guard nobody has tested.
+     */
+    public function test_i07_with_binding_weakened_another_shop_still_gets_no_cached_body(): void
+    {
+        [$ownerA, $shopA] = $this->createRetailerTenant();
+        [$ownerB] = $this->createRetailerTenant();
+        $invoice = $this->finalizedInvoice($shopA->id, 10000.00);
+
+        $sharedKey = 'depth-key-0001';
+
+        $this->actAs($ownerA);
+        $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash',
+            'amount' => 7777.00,
+        ], ['X-Idempotency-Key' => $sharedKey])->assertCreated();
+
+        $this->assertNotNull(
+            Cache::get("invoice_payment_idempotency:{$invoice->id}:{$sharedKey}"),
+            'precondition: shop A\'s response must actually be cached'
+        );
+
+        $this->unscopeRouteBinding();
+
+        $this->actAs($ownerB);
+        $response = $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash',
+            'amount' => 1.00,
+        ], ['X-Idempotency-Key' => $sharedKey]);
+
+        $response->assertNotFound();
+        $response->assertDontSee('7777');
+        $response->assertDontSee($invoice->invoice_number);
+
+        // No body AND no write — shop A's ledger is untouched by B's attempt.
+        $this->assertSame(1, $this->paymentCount($invoice->id));
+    }
+
+    // -------------------------------------------------------------------- I-08
+    /**
+     * Same shop, cached entry present, caller lacks `sales.create`.
+     *
+     * `withoutMiddleware(Authorize::class)` is mutation B made automated: the
+     * route's own `can:sales.create` is removed so the answer is attributable
+     * to the CONTROLLER rather than to middleware configuration. The directive
+     * asks for exactly that distinction — a surviving mutation can mean another
+     * legitimate guard is still doing the work, and here I want to know whether
+     * this one does any.
+     */
+    public function test_i08_same_shop_staff_without_the_permission_gets_no_cached_body(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->finalizedInvoice($shop->id, 10000.00);
+
+        $key = 'perm-key-0001';
+
+        $this->actAs($owner);
+        $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash',
+            'amount' => 7777.00,
+        ], ['X-Idempotency-Key' => $key])->assertCreated();
+
+        $staff = $this->staffWithout($owner, $shop->id);
+        $this->actAs($staff);
+
+        // Route middleware out of the way; the controller answers alone.
+        $this->withoutMiddleware(Authorize::class);
+
+        $response = $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash',
+            'amount' => 1.00,
+        ], ['X-Idempotency-Key' => $key]);
+
+        $response->assertForbidden();
+        $response->assertDontSee('7777');
+        $this->assertSame(1, $this->paymentCount($invoice->id));
+    }
+
+    // -------------------------------------------------------------------- I-09
+    /**
+     * Fail closed on a missing tenant.
+     *
+     * If the `tenant` middleware is ever skipped, reordered, or a future caller
+     * reaches this action out of band, the cache read must NOT fall back to
+     * `$request->user()->shop_id` and serve the body anyway. Absent context is
+     * a refusal, not a default.
+     *
+     * A CORRECTION, recorded rather than quietly patched: this test first tried
+     * to produce "no context" by calling `TenantContext::clear()` before the
+     * request, and it failed — 200, cached body served. The premise was wrong,
+     * not the guard. `EnsureTenantUser:28` SETS the context from the
+     * authenticated user on every request, so clearing beforehand is undone
+     * microseconds later. The only honest way to test the fail-closed branch is
+     * to remove the middleware that supplies the context, which is also exactly
+     * the scenario the branch exists for.
+     */
+    public function test_i09_a_missing_tenant_context_refuses_the_cached_body(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->finalizedInvoice($shop->id, 10000.00);
+
+        $key = 'noctx-key-0001';
+
+        $this->actAs($owner);
+        $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash',
+            'amount' => 7777.00,
+        ], ['X-Idempotency-Key' => $key])->assertCreated();
+
+        // Binding weakened, because with a scoped binding and no context the
+        // 404 would come from the binding and prove nothing about the guard.
+        $this->unscopeRouteBinding();
+
+        Sanctum::actingAs($owner);
+        $this->withoutMiddleware(EnsureTenantUser::class);
+        TenantContext::clear();
+
+        $response = $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash',
+            'amount' => 1.00,
+        ], ['X-Idempotency-Key' => $key]);
+
+        $response->assertForbidden();
+        $response->assertDontSee('7777');
+        $this->assertSame(1, $this->paymentCount($invoice->id));
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    /**
+     * Replace the scoped implicit binding with an unscoped lookup, simulating
+     * the regression named in the class docblock. An explicit `Route::bind`
+     * wins over implicit model binding, so the rest of the stack — auth,
+     * tenant, throttle, the controller — stays exactly as it ships.
+     */
+    private function unscopeRouteBinding(): void
+    {
+        Route::bind('invoice', fn ($value) => Invoice::withoutGlobalScope('shop')->findOrFail($value));
+    }
 
     /**
      * Authenticate, and put the tenant context where the `tenant` middleware
