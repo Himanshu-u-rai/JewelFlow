@@ -144,6 +144,29 @@ class InvoiceAccountingService
             }
         }
 
+        // Render snapshot — S3-04. Freezes WHAT THE BILL LOOKED LIKE, as distinct
+        // from the compliance snapshot above, which freezes who the customer was.
+        //
+        // THIS CALL IS THE FIX. invoice_render_snapshots existed and was read by
+        // InvoiceSignatureRenderer, but at baseline 018b3d8 its only writer was
+        // reachable only from the BackfillAccountingSnapshots console command.
+        // Finalization never captured one, so every reprint fell through the
+        // renderer's live-settings fallback and followed TODAY'S signature. The
+        // gap stayed invisible because the existing tests called captureForInvoice()
+        // by hand in their fixtures, supplying the one precondition production
+        // omitted — and the fallback means the miss degrades to the wrong output
+        // rather than to an error.
+        //
+        // Runs AFTER the compliance block on purpose: buildInvoiceSnapshot() reads
+        // $invoice->complianceSnapshot for the frozen customer address / ID.
+        //
+        // NOT wrapped in try/catch, unlike the compliance block. Every caller runs
+        // finalizeDraft inside a transaction, so on PostgreSQL a caught failure
+        // leaves an aborted transaction and everything after it fails anyway —
+        // "log and continue" would be a comment that is not true. And a silently
+        // missing render snapshot is exactly the failure mode this finding is about.
+        app(\App\Services\InvoiceRenderSnapshotService::class)->captureForInvoice($invoice);
+
         AccountingAuditService::log([
             'shop_id' => $invoice->shop_id,
             'action' => 'invoice_finalized',
