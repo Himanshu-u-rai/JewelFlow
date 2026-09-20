@@ -98,10 +98,6 @@ another reason the origin deny — not the edge rule — has to be the control.
 docroot. This procedure does not touch, audit, or change anything else about the
 Dhiran business.
 
-`dhiran.jewelflows.com` is in scope here **only** as a name that resolves to this
-docroot. This procedure does not touch, audit, or change anything else about the
-Dhiran business.
-
 ---
 
 ## 2. Execution order
