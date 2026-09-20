@@ -122,12 +122,54 @@ class ShopBillingSettings extends Model
      */
     public function hsnForMetal(?string $metalType, ?string $category = null): string
     {
+        return self::hsnFromMap($this->hsnMap(), $metalType, $category);
+    }
+
+    /**
+     * This shop's configured codes, keyed exactly like HSN_DEFAULTS.
+     *
+     * Exists so a finalized bill's HSN map can be SNAPSHOTTED (S3-05). Before
+     * this, the print template called hsnForMetal() on the live settings row, so
+     * editing the map rewrote the HSN on every already-issued invoice.
+     *
+     * @return array<string, ?string>
+     */
+    public function hsnMap(): array
+    {
+        return [
+            'gold'     => $this->hsn_gold,
+            'silver'   => $this->hsn_silver,
+            'platinum' => $this->hsn_platinum,
+            'copper'   => $this->hsn_copper,
+            'diamond'  => $this->hsn_diamond,
+        ];
+    }
+
+    /**
+     * The resolution rules, applied to a map rather than to a live model.
+     *
+     * hsnForMetal() delegates here so the snapshot path and the live path cannot
+     * disagree about what "no metal_type, category says diamond" means. A second
+     * copy of this match() is exactly how the two would drift apart.
+     *
+     * A map key that is absent, null or empty falls back to the system default —
+     * so a legacy snapshot carrying no HSN section behaves as the defaults did,
+     * which is what those bills actually printed.
+     *
+     * @param  array<string, ?string>  $map
+     */
+    public static function hsnFromMap(array $map, ?string $metalType, ?string $category = null): string
+    {
         $metal = strtolower(trim((string) $metalType));
         $cat   = strtolower((string) $category);
 
+        $pick = static fn (string $key): string => (string) ($map[$key] ?? '') !== ''
+            ? (string) $map[$key]
+            : self::HSN_DEFAULTS[$key];
+
         // Stone/diamond lines carry no metal type — key off the category.
         if ($metal === '' && ($cat !== '' && (str_contains($cat, 'diamond') || str_contains($cat, 'stone') || str_contains($cat, 'gem')))) {
-            return $this->hsn_diamond ?: self::HSN_DEFAULTS['diamond'];
+            return $pick('diamond');
         }
 
         // Legacy lines with no metal_type: infer from the category string.
@@ -138,11 +180,11 @@ class ShopBillingSettings extends Model
         }
 
         return match ($metal) {
-            'silver'   => $this->hsn_silver   ?: self::HSN_DEFAULTS['silver'],
-            'platinum' => $this->hsn_platinum ?: self::HSN_DEFAULTS['platinum'],
-            'copper'   => $this->hsn_copper   ?: self::HSN_DEFAULTS['copper'],
-            'diamond'  => $this->hsn_diamond  ?: self::HSN_DEFAULTS['diamond'],
-            default    => $this->hsn_gold     ?: self::HSN_DEFAULTS['gold'],
+            'silver'   => $pick('silver'),
+            'platinum' => $pick('platinum'),
+            'copper'   => $pick('copper'),
+            'diamond'  => $pick('diamond'),
+            default    => $pick('gold'),
         };
     }
 }

@@ -40,7 +40,11 @@
     $showStone  = $billing?->show_stone_columns   ?? true;
     $showPurity = $billing?->show_purity          ?? true;
     $showAddr   = $billing?->show_customer_address ?? true;
-    $igstMode   = $billing?->igst_mode            ?? false;
+    // S3-05: from the bill's own shop_snapshot, not from today's settings, so
+    // flipping the shop between intra- and inter-state does not re-characterize
+    // the tax on a bill that was already issued. HSN on this template already
+    // came from the line's own hsn_code column and never drifted.
+    $igstMode   = app(\App\Services\BillTaxPresentation::class)->forQuickBill($quickBill)['igst_mode'];
     $copyCount  = (int) ($billing?->copy_count    ?? 1);
     $copyCount  = max(1, min(2, $copyCount));
 

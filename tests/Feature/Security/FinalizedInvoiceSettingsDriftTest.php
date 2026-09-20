@@ -11,210 +11,351 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * S3-05 (NEW, OPEN) — a finalized invoice reprints using TODAY'S shop settings.
+ * S3-05 — a finalized bill must reprint with the tax presentation it was ISSUED
+ * with, not with today's shop settings.
  *
- * WHAT THIS IS, AND WHAT IT IS NOT
- * --------------------------------
- * These are CHARACTERIZATION tests. They pass on first run, deliberately, and
- * they assert the behaviour that exists rather than the behaviour that should.
- * They are not TDD and must not be read as such: no production code is being
- * driven here. Their job is to make a finding reproducible and to fail loudly on
- * the day someone fixes it, so the fix cannot land unnoticed.
+ * THIS FILE CHANGED CHARACTER, AND THAT IS THE POINT
+ * --------------------------------------------------
+ * Its first revision (commit 2f26386) held CHARACTERIZATION tests. They asserted
+ * the broken behaviour on purpose, so the finding was reproducible and so they
+ * would fail loudly on the day someone fixed it. That day is this commit. The
+ * assertions below are inverted from that revision: they now pin the REPAIR.
+ * If you are bisecting and see this file flip, that flip is the fix landing, not
+ * a test being weakened.
  *
- * WHY IT MATTERS, AND WHY IT IS NARROWER THAN IT SOUNDS
- * ----------------------------------------------------
- * I previously claimed the signature work made historical invoice rendering
- * immutable. That claim was too broad and is narrowed here. The signature
- * snapshot fixes the SIGNATURE. It fixes nothing else. invoice_print.blade.php
- * reads shop_billing_settings live in 45 places (counted 2026-09-21; an earlier
- * report said "~25", which was wrong), and every one of them re-resolves at
- * reprint time.
+ * WHAT WAS WRONG
+ * --------------
+ * invoice_print.blade.php read shop_billing_settings live in 45 places. Most are
+ * cosmetic — theme colour, font tier, paper size. Two were not:
  *
- * Most of those 45 are cosmetic — theme colour, font tier, paper size, subtitle,
- * tagline. Drift there is untidy, not dangerous. Two are not cosmetic, and they
- * are the reason this file exists:
+ *   igst_mode    decided whether the bill printed ONE IGST row or TWO CGST/SGST
+ *                rows. Flipping the shop setting re-characterized an already
+ *                issued supply as inter-state.
+ *   hsnForMetal  resolved the HSN code printed against each line from the shop's
+ *                CURRENT map, so a finalized line's HSN followed later edits.
  *
- *   igst_mode         line 42, used at line 752. Decides whether the invoice
- *                     prints ONE IGST row or TWO CGST/SGST rows.
- *   hsnForMetal()     line 160, used at line 601. Resolves the HSN code printed
- *                     against each line item.
+ * MONEY WAS NEVER AFFECTED, and saying otherwise would overstate this. The
+ * amounts come off the invoice row; $cgst/$sgst are $gst/2. Total tax is
+ * identical either way. D-03 pins that bound so a reader who sees "GST
+ * presentation changed" does not conclude the totals moved. They did not.
  *
- * MONEY IS NOT AFFECTED, and saying otherwise would overstate this. The amounts
- * come off the invoice itself — $invoice->gst at line 103, $invoice->gst_rate at
- * line 109 — and $cgst/$sgst are simply $gst/2 at lines 107-108. Total tax is
- * identical either way. T-02 below pins that, because a reader who sees "GST
- * presentation changes after finalization" will reasonably assume the totals
- * moved, and they do not.
+ * SCOPE, STATED HONESTLY
+ * ----------------------
+ * The repair covers igst_mode and the HSN map — the two statutory fields. The
+ * other 43 reads are still live and still cosmetic; they are NOT fixed here and
+ * the finding stays open for them. Pinning paper size or theme colour to a
+ * snapshot is a separate, larger change with its own review.
  *
- * What changes is the tax CHARACTERIZATION on a statutory document. An invoice
- * issued as an intra-state supply (CGST+SGST) reprints as an inter-state supply
- * (IGST) at the same total, and its HSN codes can change to whatever the shop
- * last configured. Two prints of one invoice number can therefore disagree about
- * what kind of supply occurred.
+ * LEGACY INVOICES ARE NOT REPAIRED BY THIS, EITHER. An invoice finalized before
+ * invoice_render_snapshots carried these keys has no record of what it printed.
+ * D-06 pins that it falls back to live settings and still renders rather than
+ * erroring — a stated limitation, not a repair. Nothing can reconstruct a
+ * presentation that was never recorded.
  *
- * STATUS. Finding: OPEN. Local fix: NONE — no fix is attempted here. This is
- * outside the signature work's scope and is filed so it is not silently absorbed
- * into a claim about historical rendering that it does not support. A fix would
- * extend the finalized invoice's snapshot to cover igst_mode and the HSN map,
- * with the same legacy-snapshot compatibility rules the signature snapshot uses.
+ * WHAT EACH TEST ACTUALLY BINDS
+ * -----------------------------
+ * Verified by mutation, not by inspection. Each row below was applied to the
+ * working tree, the suite run, and the file restored by copying back a
+ * pre-mutation snapshot — restoration confirmed by `git diff` showing only the
+ * intended additions, plus a green rerun. Grepping for the absence of the word
+ * MUTATION would not have shown any of this.
+ *
+ *   Mutation                                          Killed        Survived
+ *   ------------------------------------------------  ------------  -----------------
+ *   BillTaxPresentation::resolve ignores the snapshot  D-01 D-04     D-02 D-03 D-05
+ *   (`if (false)`), always using live settings         D-07          D-06 D-08
+ *   InvoiceRenderSnapshotService drops 'hsn_map'       D-04 D-05     the rest
+ *   QuickBillService::shopSnapshot drops 'igst_mode'   D-07          the rest
+ *
+ * The survivors are survivors for good reasons, and the reasons differ:
+ *  - D-02, D-05, D-08 are POSITIVE CONTROLS. A positive control that died under
+ *    a mutation would be bounding nothing; it must pass under both the broken
+ *    and the fixed implementation, or it is just a second copy of the
+ *    regression test.
+ *  - D-06 asserts the live-settings FALLBACK, which mutation 1 makes universal.
+ *    It passes there by definition.
+ *  - D-03 is about stored figures, which no mutation here touches.
+ *
+ * ONE SURVIVOR WAS NOT LEGITIMATE, AND THE TEST WAS FIXED RATHER THAN EXCUSED.
+ * D-04 originally issued its invoice under HSN 7113 — which is
+ * HSN_DEFAULTS['gold']. Dropping 'hsn_map' from the snapshot left D-04 green,
+ * because the empty-map fallback resolves to exactly that default. The test was
+ * agreeing with the fix by coincidence. Changing the issued code to 5555 made
+ * mutation 2 kill it, which is the result recorded in the table above.
  */
 class FinalizedInvoiceSettingsDriftTest extends TestCase
 {
     use CreatesTestTenant;
     use RefreshDatabase;
 
-    // -------------------------------------------------------------------- T-01
+    // -------------------------------------------------------------------- D-01
     /**
-     * Flipping igst_mode after finalization changes how the SAME finalized
-     * invoice describes its own tax.
+     * THE DECISIVE REGRESSION. Finalize as intra-state, flip the shop to
+     * inter-state, reprint — the bill still describes itself as it was issued.
      */
-    public function test_t01_flipping_igst_mode_changes_the_tax_rows_of_an_already_finalized_invoice(): void
+    public function test_d01_flipping_igst_mode_after_finalization_does_not_change_the_bill(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
-        $invoice = $this->finalizedInvoice($shop->id);
 
         $this->setBilling($shop->id, ['igst_mode' => DB::raw('false')]);
-        $intra = $this->printAs($owner, $invoice);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
 
-        $this->assertStringContainsString('CGST', $intra, 'baseline: an intra-state shop prints CGST');
-        $this->assertStringContainsString('SGST', $intra, 'baseline: and SGST');
-        $this->assertStringNotContainsString('IGST', $intra, 'baseline: and not IGST');
-
-        // Nothing about the invoice changes. Only the shop setting.
         $this->setBilling($shop->id, ['igst_mode' => DB::raw('true')]);
-        $inter = $this->printAs($owner, $invoice);
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringContainsString('CGST', $html, 'the bill was issued as an intra-state supply');
+        $this->assertStringContainsString('SGST', $html, 'and must keep both halves of that split');
+        $this->assertStringNotContainsString(
+            'IGST',
+            $html,
+            'S3-05: a shop setting changed after finalization must not re-characterize the supply'
+        );
+    }
+
+    // -------------------------------------------------------------------- D-02
+    /**
+     * The bound on D-01. Without this, D-01 would also pass if IGST never
+     * rendered at all — a template that cannot print IGST satisfies
+     * "assertStringNotContainsString('IGST')" for the wrong reason.
+     */
+    public function test_d02_an_invoice_finalized_under_igst_mode_prints_igst(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['igst_mode' => DB::raw('true')]);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringContainsString('IGST', $html, 'an inter-state shop still prints IGST');
+        $this->assertStringNotContainsString('CGST', $html, 'and not the intra-state split');
+    }
+
+    // -------------------------------------------------------------------- D-03
+    /** Presentation is pinned; the figures were never the thing at risk. */
+    public function test_d03_no_stored_figure_moves_in_either_direction(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['igst_mode' => DB::raw('false')]);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $before = Invoice::withoutTenant()->find($invoice->id);
+        $storedGst = (string) $before->gst;
+        $storedTotal = (string) $before->total;
+
+        $this->setBilling($shop->id, ['igst_mode' => DB::raw('true')]);
+        $this->printInvoice($owner, $invoice);
+
+        $after = Invoice::withoutTenant()->find($invoice->id);
+
+        $this->assertSame($storedGst, (string) $after->gst, 'the stored tax figure must not move');
+        $this->assertSame($storedTotal, (string) $after->total, 'nor the stored total');
+    }
+
+    // -------------------------------------------------------------------- D-04
+    /**
+     * Separate from D-01 because it is a different mechanism — a method call on
+     * the live settings model rather than a boolean branch. A fix for one would
+     * not automatically cover the other.
+     *
+     * THE ISSUED CODE IS 5555, NOT 7113, AND THAT MATTERS. An earlier draft of
+     * this test used 7113, which is HSN_DEFAULTS['gold']. Deleting the snapshot's
+     * hsn_map still left it green, because an absent map falls back to exactly
+     * that default — the test passed without the capture it was supposed to be
+     * pinning. A non-default code cannot be reached by the fallback, so the
+     * assertion now binds the capture rather than coinciding with it.
+     */
+    public function test_d04_editing_the_hsn_map_after_finalization_does_not_change_the_bill(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['hsn_gold' => '5555']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $this->setBilling($shop->id, ['hsn_gold' => '9999']);
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringContainsString('HSN: 5555', $html, 'the bill keeps the HSN it was issued under');
+        $this->assertStringNotContainsString(
+            '9999',
+            $html,
+            'S3-05: a later edit to the shop HSN map must not rewrite a finalized line'
+        );
+    }
+
+    // -------------------------------------------------------------------- D-05
+    /**
+     * The bound on D-04 — proves the shop's configured code reaches the page at
+     * all, so D-04 is not passing because HSN is hard-coded to the default.
+     */
+    public function test_d05_an_invoice_finalized_under_a_custom_hsn_prints_that_hsn(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['hsn_gold' => '9999']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringContainsString('HSN: 9999', $html, 'the configured code is what gets frozen');
+    }
+
+    // -------------------------------------------------------------------- D-06
+    /**
+     * COMPATIBILITY, NOT REPAIR.
+     *
+     * An invoice with no render snapshot — every invoice finalized before the
+     * snapshot service shipped — has no record of how it printed. It falls back
+     * to live settings and still renders. This test exists so that fallback is a
+     * decision with a name on it rather than an accident, and so nobody later
+     * reads D-01 as covering historical invoices. It does not.
+     */
+    public function test_d06_an_invoice_without_a_render_snapshot_still_renders_from_live_settings(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['igst_mode' => DB::raw('false')]);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        // Reproduce a pre-snapshot invoice by removing the row entirely. The
+        // snapshot is deleted, never rewritten — a rewritten snapshot would be a
+        // fabricated history, which is the thing this whole finding is against.
+        DB::table('invoice_render_snapshots')->where('invoice_id', $invoice->id)->delete();
+
+        $this->setBilling($shop->id, ['igst_mode' => DB::raw('true')]);
+        $html = $this->printInvoice($owner, $invoice);
 
         $this->assertStringContainsString(
             'IGST',
-            $inter,
-            'S3-05: the same finalized invoice now describes itself as an inter-state supply'
-        );
-        $this->assertStringNotContainsString(
-            'CGST',
-            $inter,
-            'S3-05: and no longer shows the CGST/SGST split it was issued with'
+            $html,
+            'with no snapshot there is nothing to honour, so live settings are the only information that exists'
         );
     }
 
-    // -------------------------------------------------------------------- T-02
-    /**
-     * The bound on T-01, asserted rather than assumed.
-     *
-     * The presentation drifts; the figures do not. Without this, T-01 reads as
-     * though finalized totals were mutable, which would be a far more serious
-     * claim than the evidence supports.
-     */
-    public function test_t02_the_drift_does_not_change_any_stored_figure(): void
+    // -------------------------------------------------------------------- D-07
+    /** The same regression on the quick-bill path, which has its own snapshot. */
+    public function test_d07_flipping_igst_mode_after_issue_does_not_change_a_quick_bill(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
-        $invoice = $this->finalizedInvoice($shop->id);
 
         $this->setBilling($shop->id, ['igst_mode' => DB::raw('false')]);
-        $this->printAs($owner, $invoice);
+        $billId = $this->issueQuickBill($owner);
 
         $this->setBilling($shop->id, ['igst_mode' => DB::raw('true')]);
-        $after = $this->printAs($owner, $invoice);
+        $html = $this->printQuickBill($owner, $billId);
 
-        $fresh = Invoice::withoutTenant()->find($invoice->id);
-
-        $this->assertSame('30.00', (string) $fresh->gst, 'the stored tax figure must not move');
-        $this->assertSame('1030.00', (string) $fresh->total, 'the stored total must not move');
-
-        // And the printed total still agrees with the stored one.
-        $this->assertStringContainsString('1,030.00', $after, 'the printed total still matches the invoice');
+        $this->assertStringContainsString('CGST', $html, 'the bill was issued as an intra-state supply');
+        $this->assertStringNotContainsString('IGST', $html, 'S3-05: and must not be re-characterized afterwards');
     }
 
-    // -------------------------------------------------------------------- T-03
-    /**
-     * The HSN code on a finalized line item is resolved from current settings.
-     *
-     * Separate from T-01 because it is a different mechanism — a method call on
-     * the live settings model rather than a boolean branch — and a fix for one
-     * would not automatically cover the other.
-     */
-    public function test_t03_hsn_codes_on_a_finalized_invoice_follow_current_settings(): void
+    // -------------------------------------------------------------------- D-08
+    /** The bound on D-07. */
+    public function test_d08_a_quick_bill_issued_under_igst_mode_prints_igst(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
-        $invoice = $this->finalizedInvoice($shop->id, withItem: true);
 
-        $this->setBilling($shop->id, ['hsn_gold' => '7113']);
-        $before = $this->printAs($owner, $invoice);
+        $this->setBilling($shop->id, ['igst_mode' => DB::raw('true')]);
+        $billId = $this->issueQuickBill($owner);
 
-        $this->setBilling($shop->id, ['hsn_gold' => '9999']);
-        $after = $this->printAs($owner, $invoice);
+        $html = $this->printQuickBill($owner, $billId);
 
-        $this->assertNotSame(
-            $before,
-            $after,
-            'S3-05: changing the shop HSN map changes what a finalized invoice prints'
-        );
-        $this->assertStringContainsString(
-            '9999',
-            $after,
-            'S3-05: the reprint carries the NEW HSN code, not the one the invoice was issued under'
-        );
+        $this->assertStringContainsString('IGST', $html, 'an inter-state shop still prints IGST');
+        $this->assertStringNotContainsString('CGST', $html, 'and not the intra-state split');
     }
 
     // ------------------------------------------------------------------ helpers
 
     /**
-     * Money columns on Invoice are GUARDED by design (CONSTITUTION Article I),
-     * so fixtures write them with forceFill exactly as the signature suite does.
+     * A finalized invoice created through the REAL path.
      *
-     * Line items are inserted while the invoice is still a DRAFT, then the
-     * invoice is finalized. invoice_items_finalized_guard (Art. IX.A) refuses any
-     * insert against an already-finalized invoice, and rightly so — the fixture
-     * has to follow the same order the application does. The trigger is not
-     * dropped, disabled or altered.
+     * The draft and its line are seeded directly — Invoice money columns are
+     * GUARDED by design (CONSTITUTION Art. I) and invoice_items_finalized_guard
+     * (Art. IX.A) refuses inserts against a finalized invoice, so the fixture
+     * follows the same order the application does. No trigger is dropped,
+     * disabled or altered. Finalization itself goes through the controller so
+     * the render snapshot is captured by production code, not by the fixture.
      */
-    private function finalizedInvoice(int $shopId, bool $withItem = false): Invoice
+    private function finalizedInvoice(User $owner, int $shopId): Invoice
     {
         $customer = $this->createCustomer($shopId);
 
-        return TenantContext::runFor($shopId, function () use ($shopId, $customer, $withItem) {
+        $invoice = TenantContext::runFor($shopId, function () use ($shopId, $customer) {
             $invoice = new Invoice();
             $invoice->forceFill([
                 'shop_id'        => $shopId,
                 'customer_id'    => $customer->id,
-                'invoice_number' => 'INV-DRIFT-'.fake()->unique()->numberBetween(1000, 99999),
                 'gold_rate'      => 7200,
                 'subtotal'       => 1000,
-                'gst'            => 30,
                 'gst_rate'       => 3,
+                // NOT NULL even on a draft, seeded at zero rather than
+                // pre-computed: finalizeDraft() recalculates both, so seeding
+                // real figures would hide whether the calculation ran.
+                'gst'            => 0,
+                'total'          => 0,
                 'wastage_charge' => 0,
                 'discount'       => 0,
                 'round_off'      => 0,
-                'total'          => 1030,
                 'status'         => Invoice::STATUS_DRAFT,
             ])->save();
 
-            if ($withItem) {
-                // invoice_items has no shop_id of its own; it is scoped through
-                // its invoice. item_id is NOT NULL, so the line must point at a
-                // real inventory item rather than a synthetic name.
-                $item = $this->createItem($shopId, null, ['metal_type' => 'gold']);
+            $item = $this->createItem($shopId, null, ['metal_type' => 'gold']);
 
-                DB::table('invoice_items')->insert([
-                    'invoice_id'     => $invoice->id,
-                    'item_id'        => $item->id,
-                    'metal_type'     => 'gold',
-                    'weight'         => 10,
-                    'rate'           => 7200,
-                    'making_charges' => 0,
-                    'stone_amount'   => 0,
-                    'line_total'     => 1000,
-                    'created_at'     => now(),
-                    'updated_at'     => now(),
-                ]);
-            }
-
-            $invoice->forceFill([
-                'status'       => Invoice::STATUS_FINALIZED,
-                'finalized_at' => now(),
-            ])->save();
+            DB::table('invoice_items')->insert([
+                'invoice_id'     => $invoice->id,
+                'item_id'        => $item->id,
+                'metal_type'     => 'gold',
+                'weight'         => 10,
+                'rate'           => 7200,
+                'making_charges' => 0,
+                'stone_amount'   => 0,
+                'line_total'     => 1000,
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
 
             return $invoice;
         });
+
+        $owner->unsetRelation('shop');
+        TenantContext::runFor($shopId, fn () => $this->actingAs($owner)
+            ->put(route('invoices.update', $invoice), ['action' => 'finalize'])
+            ->assertSessionHasNoErrors());
+
+        return $invoice;
+    }
+
+    private function issueQuickBill(User $owner): int
+    {
+        $owner->unsetRelation('shop');
+
+        TenantContext::runFor((int) $owner->shop_id, fn () => $this->actingAs($owner)
+            ->post(route('quick-bills.store'), [
+                'bill_date'     => now()->toDateString(),
+                'pricing_mode'  => 'gst_exclusive',
+                'gst_rate'      => 3,
+                'save_action'   => 'issue',
+                'customer_name' => 'Walk-in',
+                'items'         => [[
+                    'description' => 'Gold chain',
+                    'metal_type'  => 'gold',
+                    'net_weight'  => 10,
+                    'rate'        => 7200,
+                    'line_total'  => 1000,
+                ]],
+                // QuickBillService:265 refuses to ISSUE a fully unpaid bill.
+                // A business rule, not a fixture obstacle — satisfied, not
+                // routed around.
+                'payments'      => [[
+                    'payment_mode' => 'cash',
+                    'amount'       => 1030,
+                ]],
+            ])->assertSessionHasNoErrors());
+
+        return (int) DB::table('quick_bills')
+            ->where('shop_id', $owner->shop_id)
+            ->orderByDesc('id')
+            ->value('id');
     }
 
     /** @param array<string, mixed> $values */
@@ -230,24 +371,36 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
     /**
      * TEST HARNESS NOTE, not a production behaviour.
      *
-     * invoice_print.blade.php reads `auth()->user()->shop->billingSettings`.
-     * actingAs() keeps ONE User instance alive across both renders in a test, so
-     * the relation loaded during the first render is still cached during the
-     * second and the view would never see the settings change. A real request
-     * builds a fresh User, so this caching does not exist in production.
-     *
-     * Unsetting the relation reproduces the real per-request state. Without it
-     * T-01 fails for a reason that has nothing to do with the finding, which is
-     * exactly how a genuine bug gets dismissed as a flaky test.
+     * The print views read `auth()->user()->shop->billingSettings`. actingAs()
+     * keeps ONE User alive across every call in a test, so a relation loaded
+     * during the first render is still cached during the second and the view
+     * would never observe the settings change. A real request builds a fresh
+     * User. Unsetting the relation reproduces that; without it these tests would
+     * pass for a reason that has nothing to do with the fix.
      */
-    private function printAs(User $user, Invoice $invoice): string
+    private function printInvoice(User $owner, Invoice $invoice): string
     {
-        $user->unsetRelation('shop');
-        $this->actingAs($user);
+        $owner->unsetRelation('shop');
 
         return TenantContext::runFor(
-            (int) $user->shop_id,
-            fn () => $this->get(route('invoices.print', $invoice))->assertOk()->getContent()
+            (int) $owner->shop_id,
+            fn () => $this->actingAs($owner)
+                ->get(route('invoices.print', $invoice))
+                ->assertOk()
+                ->getContent()
+        );
+    }
+
+    private function printQuickBill(User $owner, int $billId): string
+    {
+        $owner->unsetRelation('shop');
+
+        return TenantContext::runFor(
+            (int) $owner->shop_id,
+            fn () => $this->actingAs($owner)
+                ->get(route('quick-bills.print', $billId))
+                ->assertOk()
+                ->getContent()
         );
     }
 }

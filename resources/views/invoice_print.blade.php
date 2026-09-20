@@ -39,7 +39,14 @@
     $showIdPan   = $billing?->show_customer_id_pan  ?? true;
     $showMode    = $billing?->show_mode             ?? true;
     $showTime    = $billing?->show_time             ?? true;
-    $igstMode    = $billing?->igst_mode          ?? false;
+    // S3-05. igst_mode and the HSN map are the two STATUTORY fields on this
+    // page, and both used to re-resolve from live settings at reprint, so a
+    // finalized bill could describe itself as a different kind of supply than
+    // the one it was issued for. They now come from the bill's own snapshot.
+    // Everything else in this @php block is presentation and still lives —
+    // that part of S3-05 is open.
+    $taxPresentation = app(\App\Services\BillTaxPresentation::class)->forInvoice($invoice);
+    $igstMode    = $taxPresentation['igst_mode'];
     $copyCount   = (int) ($billing?->copy_count  ?? 1);
     $copyCount   = max(1, min(2, $copyCount));
 
@@ -152,13 +159,16 @@
         || !empty($billing?->bank_account_number)
         || !empty($billing?->bank_details);
 
-    // HSN helper: resolve per metal type (with a legacy category fallback) via the
-    // single source of truth on ShopBillingSettings, so platinum/copper get their
-    // own HSN instead of silently inheriting gold's.
-    $hsnFor = function (?string $metalType, ?string $category = null) use ($billing): string {
-        return $billing
-            ? $billing->hsnForMetal($metalType, $category)
-            : (\App\Models\ShopBillingSettings::HSN_DEFAULTS[strtolower((string) $metalType)] ?? '7113');
+    // HSN helper: resolve per metal type (with a legacy category fallback)
+    // against the map THIS BILL WAS ISSUED UNDER, so platinum/copper get their
+    // own HSN instead of silently inheriting gold's — and so a later edit to the
+    // shop's map does not rewrite a finalized line (S3-05). The resolution rules
+    // still live in one place, ShopBillingSettings::hsnFromMap; only the source
+    // of the map changed.
+    $hsnFor = function (?string $metalType, ?string $category = null) use ($taxPresentation): string {
+        return \App\Models\ShopBillingSettings::hsnFromMap(
+            $taxPresentation['hsn_map'], $metalType, $category
+        );
     };
 
 @endphp

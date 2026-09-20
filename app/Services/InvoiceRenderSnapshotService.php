@@ -116,6 +116,11 @@ class InvoiceRenderSnapshotService
                 'digital_signature_disk' => $billing?->digital_signature_disk,
                 'second_signature_label' => $billing?->second_signature_label,
                 'igst_mode' => (bool) ($billing?->igst_mode ?? false),
+                // S3-05: the HSN map this bill was issued under. igst_mode above
+                // was already captured but nothing read it; both are now read by
+                // BillTaxPresentation. These two are the statutory fields on this
+                // document — the rest of this section is presentation.
+                'hsn_map' => $billing?->hsnMap() ?? [],
                 'terms_and_conditions' => $billing?->terms_and_conditions,
                 'upi_id' => $billing?->upi_id,
                 'bank_name' => $billing?->bank_name,
