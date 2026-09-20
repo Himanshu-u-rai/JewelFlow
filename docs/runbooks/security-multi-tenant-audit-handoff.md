@@ -38,6 +38,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-06 catalog tenant context survives a throw | **CLOSED as a code defect** — no cross-tenant read demonstrated | Fix committed (`721c06d`), 5 tests | **OPEN — needs the deploy** |
 | S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
 | S3-06c published item images outlive the shopfront toggle | OPEN | None — recorded limitation | **OPEN** |
+| S3-07 mobile payment idempotency cache is unscoped | OPEN — LOW, not an exposure; one guard on the cache-hit path vs two on the write path | Guard pinned by 5 tests (`1b6aeb4`); key deliberately NOT changed | N/A — nothing to deploy; no repair proposed |
 
 ### Corrections to my own earlier reports, restated here so they are not lost
 
@@ -394,6 +395,15 @@ no Octane, so no worker carries stale context into a different visitor's request
 What it was, was a missing guard on the one route group whose tenant comes from
 an unauthenticated URL rather than a session.
 
+**Checked for siblings rather than fixing only the instance I tripped over.**
+`TenantContext::set()` has exactly two call sites in `app/` —
+`ResolveCatalogShop:35` and `EnsureTenantUser:28` — and both now release through
+`finally`. The third entry point, `TenantContext::runFor()`, was already correct
+and is in fact stricter than either: it restores the **previous** shop id rather
+than clearing to null, so it nests safely. Neither middleware needs that, being
+top-of-request, but the asymmetry is worth knowing if either is ever called from
+inside an existing context.
+
 **Two things this does NOT fix, recorded as findings rather than repaired:**
 
 * **S3-06b — consent is per SHOP, publication is per ITEM.**
@@ -419,6 +429,52 @@ another shop's inventory to the open internet.
 
 ---
 
+## 7b. S3-07 — the cache investigation, and what mutation changed about it
+
+Directive item 5 asks whether the HTML/JSON carrying signature bytes can leak
+through a shared cache. Auditing every `Cache::` call in `app/` answered that
+**no**: the only response-caching call sites are idempotency caches holding
+payment totals, not rendered documents. Keys are otherwise shop-scoped
+(`shop:{id}:…`, `reorder_alerts_{id}`, `pos_sell_idempotency:{shop}:{user}:{key}`).
+
+One exception, and it is not a signature path:
+`Api\Mobile\InvoiceController::storePayment` keys its cache
+`invoice_payment_idempotency:{$invoice->id}:{$key}` — no shop, no user — and
+reads it at :171, **before** `$shopId` is read at :176.
+
+**The mutation changed the finding, not just confirmed it.** My first
+conclusion was "route-model binding blocks it, so the key shape is harmless."
+Making the binding unscoped killed only I-05. I-02 survived — because a
+*second* guard holds the write path: the `lockForUpdate()->firstOrFail()` at
+:181 is still tenant-scoped. But the cache-hit path returns before that lock is
+reached, and shop B received **HTTP 200 carrying shop A's payment totals**.
+
+So the accurate statement is: **two independent guards protect the write path,
+one protects the cache-hit path.** That is S3-07. Had I graded the mutation by
+kill-count alone I would have "strengthened" I-02 and destroyed the evidence —
+the directive's "a surviving mutation may mean another legitimate guard still
+protects access", met in the wild.
+
+**No repair is proposed, deliberately.** Adding `{shop}:{user}` to the key makes
+every in-flight key miss across the deploy window, and a retried *partial*
+payment would then be recorded twice — the overpayment guard at :194 only
+catches duplicates that push past `outstanding`, so 3,000 paid twice on a
+10,000 invoice lands twice, silently. Doing it safely means reading both key
+shapes for one release and writing only the new one. That is a migration, not a
+one-line hardening, and it is not something to slip into a security audit.
+Severity LOW; cross-shop is blocked today; recorded with the guard named.
+
+**Console-specific test adjustment, declared.** `actAs()` sets `TenantContext`
+as well as authenticating. `BelongsToShop::resolveTenantShopId()` returns null
+under `runningInConsole()` and the scope falls to `whereRaw('1 = 0')`, and route
+binding runs before the `tenant` middleware — so without it all five tests 404,
+positive control included. The first run did exactly that: I-02 and I-04 "passed"
+against a route nobody could reach. The context always follows the acting
+principal; pointing it at the target shop would invert I-02 into a demonstration
+that shop B *can* reach shop A's invoice.
+
+---
+
 ## 8. Commands actually run, and their results
 
 ```
@@ -437,15 +493,25 @@ php artisan test tests/Feature/Security/PublicCatalogExposureTest.php
 php artisan test --filter='Catalog|Tenant|Middleware|Share'
   -> 120 passed, 414 assertions   (S3-06 regression band)
 
+php artisan test tests/Feature/Security/InvoicePaymentIdempotencyScopeTest.php
+  -> 5 passed, 13 assertions
+     Passed on the FIRST run -- existing behaviour was already correct, so
+     these are regression tests, not TDD-first ones, and they prove less
+     on their own. Mutation is what gives them teeth; see S3-07 in 7b.
+
 php artisan test tests/Feature/Security tests/Feature/Mobile
-  -> 216 passed, 753 assertions   (re-measured after S3-06)
+  -> 221 passed, 766 assertions   (re-measured after S3-07)
+     Was 216 / 753 after S3-06.
      Was 211 / 737 before PublicCatalogExposureTest existed. Arithmetic
      would have predicted 216 / 753 and would have been right -- it was
      re-run anyway, because three wrong diffstats earlier in this session
      all came from computing a figure instead of measuring one.
 
 php artisan test --filter='Invoice|Sales|Exchange|Installment|Return|QuickBill|Repair|Gst|Tax|Snapshot|Setting'
-  -> 594 passed, 3 skipped, 2311 assertions
+  -> 599 passed, 3 skipped, 2324 assertions   (re-run after S3-06 + S3-07)
+     Was 594 / 3 / 2311. The delta is exactly the 5 tests and 13 assertions
+     of InvoicePaymentIdempotencyScopeTest, which this filter picks up on
+     'Invoice'. No pre-existing test changed result.
 ```
 
 **The Vite failures, reported explicitly.** The second command first returned
@@ -478,6 +544,8 @@ is not coverage:
 | Unauthenticated route, cross-shop isolation | yes (C-04) |
 | Unauthenticated route, context release on throw | yes (C-02, C-05) |
 | Publication consent gate, both halves | yes (C-01 enabled, C-02 not enabled) |
+| Four principals on a mobile mutation route | yes (I-01…I-04) |
+| Cached-response cross-tenant replay | yes (I-05, body-level assertion) |
 | **Per-item publication opt-out** | **none exists — characterized by C-03, not covered** |
 | **On-device print** | **NOT RUN — see §5** |
 | **Edge cache behaviour** | **NOT RUN — no Cloudflare access** |
@@ -541,7 +609,20 @@ covered by `.gitignore`.
    tier, paper size, subtitle, tagline) still re-resolve at reprint, and bills
    finalized before these keys were captured still fall back to live settings.
    S3-05 therefore stays PARTIAL, not closed.
-2. The mobile on-screen "Signature unavailable" banner (§5).
-3. Remaining model/route/job/cache investigations.
-4. The tracked backup repair.
-5. Item-image and candidate-public asset classification (§7).
+2. The mobile on-screen "Signature unavailable" banner (§5). The printed
+   document already carries the marker; what is missing is the in-app banner in
+   `app/invoice/[id].tsx` / `app/quick-bill/[id].tsx`, which today only raise
+   `Alert.alert('Print Failed', …)`. **I have made no change to the mobile
+   repository** (still `d8a0781`).
+3. Remaining model/route/job investigations. **The cache investigation is
+   DONE** — every `Cache::` call site in `app/` was reviewed; see §7b. No
+   rendered document, and therefore no signature byte, is held in any
+   application cache. The one unscoped key is S3-07.
+4. The tracked backup repair, including spelling out what "backup fix A+C"
+   changes.
+5. Candidate-public asset classification. **Item images are now classified**
+   (§7a): they have a real, opt-in publishing feature and are NOT relocation
+   candidates. Still unclassified: `products`, `shop-logos`, `catalog-heroes`,
+   `UploadIntentService:110,251`, `Api\Mobile\ItemController:226,495`.
+6. S3-06b, if the business wants it: a per-item publication flag. Adding it
+   should break C-03, which is where to record the change.
