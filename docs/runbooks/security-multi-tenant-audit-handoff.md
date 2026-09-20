@@ -393,14 +393,21 @@ is not coverage:
 
 ## 9. Commits, diff, working tree
 
-24 commits ahead of `018b3d8`; cumulative **49 files changed, +8,642 / −77**
-(`git diff --stat 018b3d8..HEAD`, run 2026-09-21 in this worktree).
+24 commits ahead of `018b3d8`. `git diff --shortstat 018b3d8..HEAD`, run
+2026-09-21 in this worktree, output verbatim:
 
-**A correction to the previous revision of this section.** It claimed "22
-commits, 46 files, +7,813 / −54". Those figures were not measured; they were
-carried over from an earlier point in the branch and then edited by hand. The
-line above is the command's output. If a number in this document is not
-traceable to a command, treat it the way I should have: as unverified.
+```
+49 files changed, 8641 insertions(+), 69 deletions(-)
+```
+
+**A correction to the two previous revisions of this section, recorded rather
+than quietly overwritten.** The first claimed "22 commits, 46 files, +7,813 /
+-54"; the second claimed "+8,642 / -77". Neither was measured. The first was
+carried over from an earlier point in the branch; the second I arrived at by
+adding the size of my own edit to an earlier reading, which is arithmetic, not
+evidence — and it was wrong by 1 insertion and 8 deletions. The block above is
+pasted from the command. Any number in this document not traceable to a command
+should be treated as unverified.
 This session added:
 
 ```
