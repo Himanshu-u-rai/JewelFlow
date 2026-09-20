@@ -194,7 +194,120 @@ class SignatureImmutabilityEndToEndTest extends TestCase
         );
     }
 
+    // -------------------------------------------------------------------- E-05
+    /**
+     * The same decisive regression on the QUICK BILL path, through real routes.
+     *
+     * Included because G-18 has the same defect E-01 exposed on the invoice
+     * side: it hand-builds the bill's shop_snapshot in the fixture, so it proves
+     * the renderer reads that section and proves nothing about whether issuing a
+     * quick bill writes one. QuickBillService::create does appear to call
+     * shopSnapshot() (:313), but "appears to" is exactly the reasoning that was
+     * wrong about invoices, so it is checked rather than assumed.
+     */
+    public function test_e05_an_issued_quick_bill_still_prints_a_after_b_replaces_it_and_signatures_are_disabled(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $signatureA = $this->uploadSignature($owner, self::SIG_A);
+        $billId = $this->issueQuickBill($owner);
+
+        $signatureB = $this->uploadSignature($owner, self::SIG_B);
+        $this->disableSignature($owner);
+
+        $html = $this->printQuickBill($owner, $billId);
+
+        $this->assertStringContainsString(
+            $signatureA,
+            $html,
+            'a quick bill issued under A must still print A after A is replaced and switched off'
+        );
+        $this->assertStringNotContainsString(
+            $signatureB,
+            $html,
+            'the replacement signature must never appear on a bill issued before it'
+        );
+    }
+
+    // -------------------------------------------------------------------- E-06
+    /**
+     * Positive control for E-05, for the same reason E-03 exists: without it,
+     * E-05 is equally consistent with the quick bill print path never embedding
+     * a signature at all.
+     */
+    public function test_e06_a_quick_bill_issued_after_the_replacement_prints_the_new_signature(): void
+    {
+        [$owner] = $this->createRetailerTenant();
+
+        $this->uploadSignature($owner, self::SIG_A);
+        $signatureB = $this->uploadSignature($owner, self::SIG_B);
+
+        $billId = $this->issueQuickBill($owner);
+        $html = $this->printQuickBill($owner, $billId);
+
+        $this->assertStringContainsString(
+            $signatureB,
+            $html,
+            'control: a quick bill issued under B must print B'
+        );
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    /**
+     * Issue a quick bill through POST quick-bills.store and return its id.
+     *
+     * No model is built by hand and no snapshot is supplied: whether the bill
+     * carries a signature selection is precisely what E-05 is testing.
+     */
+    private function issueQuickBill(User $owner): int
+    {
+        $owner->unsetRelation('shop');
+
+        return TenantContext::runFor((int) $owner->shop_id, function () use ($owner) {
+            $this->actingAs($owner)
+                ->post(route('quick-bills.store'), [
+                    'bill_date'     => now()->toDateString(),
+                    'pricing_mode'  => 'gst_exclusive',
+                    'gst_rate'      => 3,
+                    'save_action'   => 'issue',
+                    'customer_name' => 'Walk-in',
+                    'items'         => [[
+                        'description'  => 'Gold chain',
+                        'metal_type'   => 'gold',
+                        'net_weight'   => 10,
+                        'rate'         => 7200,
+                        'line_total'   => 1000,
+                    ]],
+                    // QuickBillService:265 refuses to ISSUE a fully unpaid bill.
+                    // That is a business rule, not a fixture obstacle, so the
+                    // fixture satisfies it instead of routing around it.
+                    'payments'      => [[
+                        'payment_mode' => 'cash',
+                        'amount'       => 1030,
+                    ]],
+                ])
+                ->assertSessionHasNoErrors();
+
+            return (int) DB::table('quick_bills')
+                ->where('shop_id', (int) $owner->shop_id)
+                ->orderByDesc('id')
+                ->value('id');
+        });
+    }
+
+    private function printQuickBill(User $owner, int $billId): string
+    {
+        $owner->unsetRelation('shop');
+
+        return TenantContext::runFor(
+            (int) $owner->shop_id,
+            fn () => $this->actingAs($owner)
+                ->get(route('quick-bills.print', $billId))
+                ->assertOk()
+                ->getContent()
+        );
+    }
 
     /**
      * Upload a signature exactly as an operator does, through settings, and
