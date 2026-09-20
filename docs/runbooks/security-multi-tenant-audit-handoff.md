@@ -552,22 +552,26 @@ is not coverage:
 
 ## 9. Commits, diff, working tree
 
-**Measured at `721c06d`, not at HEAD — deliberately.** A diffstat recorded inside
+**Measured at `1b6aeb4`, not at HEAD — deliberately.** A diffstat recorded inside
 a tracked file changes the diffstat, so "the figure at HEAD" has no fixed point,
 and chasing it is exactly how the earlier revisions of this line came to be
 wrong. Pinning it to a named commit makes it rerunnable:
 
 ```
-$ git diff --shortstat 018b3d8..721c06d
- 51 files changed, 8920 insertions(+), 95 deletions(-)
+$ git diff --shortstat 018b3d8..1b6aeb4
+ 52 files changed, 9318 insertions(+), 95 deletions(-)
 
-$ git log --oneline 018b3d8..721c06d | wc -l
-28
+$ git log --oneline 018b3d8..1b6aeb4 | wc -l
+30
 ```
 
-`721c06d` is the last **code** commit on the branch; every commit after it is an
-edit to this document. The previous pin was `e12c6c5` at 49 files / +8,641 / −69,
-superseded by the S3-06 work rather than corrected.
+`1b6aeb4` is the last **code** commit on the branch; every commit after it is an
+edit to this document.
+
+Earlier pins, superseded by later work rather than corrected: `e12c6c5` at
+49 files / +8,641 / −69, and `721c06d` at 51 files / +8,920 / −95. Those two are
+supersessions. The three revisions described below are different — they were
+wrong when written.
 
 **Three revisions of this one line were wrong, recorded rather than quietly
 overwritten.** The first claimed "22 commits, 46 files, +7,813 / −54", carried
