@@ -24,43 +24,79 @@ All production checks are read-only. Timestamps are the server's own clock.
 
 | Fact | Value | How checked |
 |---|---|---|
-| Deployed baseline | `018b3d810e37d534f498033ab582ee41f3197c27` | `git rev-parse HEAD` in `/var/www/jewelflow`, 2026-09-16T17:29:11+00:00 — **no drift** from the reported baseline |
+| Deployed baseline | `018b3d810e37d534f498033ab582ee41f3197c27` | `git rev-parse HEAD` in `/var/www/jewelflow`. First checked 2026-09-16T17:29:11+00:00; **re-checked 2026-09-20T18:36:08+00:00, unchanged.** Must be re-read again immediately before any approved action |
 | nginx version | 1.18.0 (Ubuntu) | `nginx -v`, same session |
 | Enabled vhosts | `jewelflow`, `staging.jewelflows.com` | `ls -l /etc/nginx/sites-enabled/` |
-| Serving hostnames, production vhost | **`jewelflows.com`, `www.jewelflows.com`, `dhiran.jewelflows.com`** | `/etc/nginx/sites-available/jewelflow` line 24 |
+| Serving hostnames, production vhost | **`jewelflows.com`, `www.jewelflows.com`, `dhiran.jewelflows.com`** | `/etc/nginx/sites-available/jewelflow` line 24, confirmed present in `nginx -T` output |
 | Production docroot | `/var/www/jewelflow/public` | line 26 |
 | Public storage symlink | `public/storage -> /var/www/jewelflow/storage/app/public` | `ls -ld` |
 | KYC files on the public tree | 2 (count only; filenames deliberately not recorded) | `find … -type f \| wc -l` |
-| `default_server` anywhere in `/etc/nginx/` | **none** | `grep -rn default_server /etc/nginx/` |
+| Default server for `:80` and `:443` | the **production** block (see below) | `nginx -T` block order + TLS SNI probe |
 | Staging hostname | `staging.jewelflows.com`, separate docroot `/var/www/jewelflow-staging/public` | `/etc/nginx/sites-available/staging.jewelflows.com` |
 | KYC files on the staging public tree | 0 | `find … \| wc -l` |
+| `set_real_ip_from` / `real_ip_header` | **absent everywhere** | `grep -rn` over `/etc/nginx/` |
+| Cloudflare-only network restriction at origin | **none** | same grep: the only `deny all` directives are the dotfile rule in the staging vhost and one in the unlinked `sites-available/default` |
 | Cloudflare in front | authoritative NS `stephane.ns.cloudflare.com.`, `josh.ns.cloudflare.com.` | `dig NS jewelflows.com` |
 
-### Consequences of "no `default_server`"
+### Which server block is the default — corrected evidence
 
-`nginx.conf` line 60 is `include /etc/nginx/sites-enabled/*;`. The glob sorts
-`jewelflow` before `staging.jewelflows.com`, so **the production vhost is the
-implicit default server for both `:80` and `:443`.** Confirmed empirically from
-the origin itself, using a path that does not exist so no real document was
-requested or cached:
+**Correction.** An earlier revision argued from the *absence* of a
+`default_server` directive. That argument is invalid: nginx always has a default
+server for each listening address:port, and when no block is explicitly
+designated it uses the **first block declared for that address:port in
+configuration order**. Absence of the directive tells you nothing by itself.
+Matching 404s across hostnames told you nothing either — three identical status
+codes are consistent with any number of document roots.
+
+Effective-configuration evidence, from `nginx -T` (not the source file):
 
 ```
---resolve jewelflows.com:443:127.0.0.1        /storage/kyc/__containment-probe-does-not-exist -> 404
---resolve dhiran.jewelflows.com:443:127.0.0.1 /storage/kyc/__containment-probe-does-not-exist -> 404
---resolve unknown.example:443:127.0.0.1       /storage/kyc/__containment-probe-does-not-exist -> 404
+# configuration file /etc/nginx/sites-enabled/jewelflow:
+196: server {            207: listen 80;        208: server_name jewelflows.com www.jewelflows.com;
+217: server {            218: listen 443 ssl;   219: server_name jewelflows.com www.jewelflows.com dhiran.jewelflows.com;
+                         221: root /var/www/jewelflow/public;
+# configuration file /etc/nginx/sites-enabled/staging.jewelflows.com:
+288: server {            310: listen 443 ssl;   289: server_name staging.jewelflows.com;
+                         291: root /var/www/jewelflow-staging/public;
+317: server {            323: listen 80;        324: server_name staging.jewelflows.com;
 ```
 
-An *unknown* Host was served by the production block. So:
+The production blocks are declared **first** for both `0.0.0.0:80` and
+`0.0.0.0:443`, so they are the defaults for those addresses.
 
-* **Any Host header** presented to the origin on 443 reaches
-  `/var/www/jewelflow/public`. A hostname allow-list alone cannot contain this.
-* The nginx rule must therefore be **host-independent**, and it — not the
-  Cloudflare rule — is the authoritative control.
+Confirmed by behaviour that actually distinguishes the two blocks, rather than by
+matching status codes — the certificate served for an unrecognised SNI name is
+the default server's certificate:
+
+```
+SNI unknown.example        -> subject CN = jewelflows.com
+                              SAN: dhiran.jewelflows.com, jewelflows.com, www.jewelflows.com
+SNI staging.jewelflows.com -> subject CN = staging.jewelflows.com      (control: name matching works)
+Host unknown.example :80   -> 301 (production block; the staging :80 block returns 404)
+```
+
+So:
+
+* **Any Host header, and any unrecognised SNI name**, presented to the origin on
+  443 is served by the production block out of `/var/www/jewelflow/public`. A
+  hostname allow-list at the edge therefore cannot contain this on its own.
+* The nginx rule must be **host-independent**, and it — not the Cloudflare rule —
+  is the authoritative control.
 * `dhiran.jewelflows.com` is absent from the `:80` `server_name` (line 13), so
-  plain HTTP to that host falls through to the default `:80` block and is
-  `301`-ed to `https://jewelflows.com$request_uri`. An HTTP KYC request is thus
-  redirected *into* a hostname the rules already cover. No separate HTTP rule is
-  needed, but the redirect target must stay covered.
+  plain HTTP to that host is handled by the default `:80` block and `301`-ed to
+  `https://jewelflows.com$request_uri` — into a hostname the rules already cover.
+  No separate HTTP rule is needed, but the redirect target must stay covered.
+
+**`set_real_ip_from` is not a network filter.** It is absent here, and it would
+not matter to containment if it were present: `ngx_http_realip_module` only
+decides whether nginx *replaces the recorded client address* with one taken from
+a trusted header. It grants and denies nothing. There is currently **no**
+origin-level restriction limiting access to Cloudflare address ranges, which is
+another reason the origin deny — not the edge rule — has to be the control.
+
+`dhiran.jewelflows.com` is in scope here **only** as a name that resolves to this
+docroot. This procedure does not touch, audit, or change anything else about the
+Dhiran business.
 
 `dhiran.jewelflows.com` is in scope here **only** as a name that resolves to this
 docroot. This procedure does not touch, audit, or change anything else about the
@@ -101,11 +137,19 @@ Business/Enterprise-only operator. The portable form is `starts_with`:
 * The hostname set is the exact verified set from line 24 — not a wildcard.
 
 **BLOCKED dependency, named exactly:** I have no Cloudflare dashboard or API
-credentials, so I cannot (a) read the existing custom-rule order, (b) read the
-zone plan, or (c) create this rule. **Purge by prefix is an Enterprise feature**;
-the zone's plan is unconfirmed. If the zone is not Enterprise, step 5 must fall
-back to purge-by-URL or a full zone purge (see §5). Steps 4 (nginx) and the
-first-party evidence are unaffected by this block.
+credentials. I therefore cannot (a) read the existing custom-rule order, (b) read
+whether any Transform Rule / Page Rule rewrites these URLs, (c) read the zone's
+current cache configuration, or (d) create this rule. That is the whole blocker:
+**unavailable account access and unverified account configuration.**
+
+**Correction.** An earlier revision of this file claimed purge-by-prefix is an
+Enterprise-only feature and proposed a whole-zone purge as the fallback. That is
+wrong. Purge by prefix is available on **Free, Pro, Business and Enterprise**.
+The Enterprise claim and the whole-zone fallback are withdrawn; §5 needs no
+fallback tier, only account access.
+
+Steps 4 (nginx) and the first-party evidence are unaffected by this block, which
+is why §4a below is presented as an independently approvable option.
 
 Optional hardening for the same rule set, not required for containment: a
 Cache Rule setting *Bypass cache* on the same expression, so the path can never
@@ -195,6 +239,65 @@ still up on the old config.
 
 ---
 
+## 4a. Option ORIGIN-ONLY — independently approvable, **PARTIAL**
+
+The Cloudflare access gap must not hold up the part that is ready. §4 alone
+(backup → insert location → `nginx -t` → reload → §6 verification → §7 rollback
+rules) is a complete, self-contained change that needs no Cloudflare access and
+can be approved on its own.
+
+**Why this is labelled PARTIAL and not "contained":**
+
+* **Cached edge copies remain unresolved.** Any KYC object Cloudflare already
+  holds continues to be servable from the edge after the origin starts returning
+  403, for as long as that object's TTL allows. Nothing in §4 evicts it.
+* Whether any such copy exists **cannot be determined without account access**,
+  and must not be probed — a HEAD against a real KYC URL can be converted by
+  Cloudflare into an origin GET whose full response is then cached (§5), i.e.
+  the check can create the very copy being looked for.
+* With no edge rule, a request that hits a cached copy never reaches the origin
+  and so never meets the deny.
+
+What ORIGIN-ONLY *does* achieve, which is most of the value:
+
+* Every **uncached** request — including every future one, and every
+  direct-to-origin request with a forged Host or unrecognised SNI name — is
+  refused. Per §1 that is the only layer that covers direct-origin access at all.
+* It stops the exposure growing: no newly-uploaded KYC document can ever be
+  fetched over `/storage/kyc/`, and no new edge cache entry can be created,
+  because the origin will not serve one.
+
+**Sequence if ORIGIN-ONLY is approved:** run §4, then §6, then record the
+residual as an explicitly tracked open item — "edge cache state unverified,
+purge outstanding" — and close it later by executing §3 and §5 once account
+access exists. The residual does **not** expire on its own.
+
+---
+
+## 4b. Staging — separately scoped assessment, not part of this change
+
+`staging.jewelflows.com` is a **different document root**
+(`/var/www/jewelflow-staging/public`, its own `public/storage` symlink) served by
+a **different server block** in a different file
+(`/etc/nginx/sites-available/staging.jewelflows.com`). Nothing in §4 touches it,
+and the §4 diff must not be applied to it by analogy.
+
+Current state, metadata only: **0** files under the staging public KYC tree, so
+there is nothing presently exposed there. The staging `:80` block returns 404 for
+unknown hosts and the `:443` block is not the default server (§1), so it is
+reached only by its own name.
+
+If parity is wanted it is a **separate change with its own approval**, its own
+backup under `/root/nginx-backups/`, its own `nginx -t`/reload, and its own
+verification — the same `location ^~ /storage/kyc/ { deny all; }` inserted before
+that file's `location / {` (line 10). It is **not** blocking, and it carries a
+different risk profile: staging is where a first-party regression would surface
+harmlessly, so applying it there first is defensible — but only if the two
+changes are approved and logged separately, because a staging pass does **not**
+constitute evidence about production's live consumers.
+
+---
+
 ## 5. Layer 3 — cache purge
 
 Purge entries must be **hostname-qualified**. A bare `/storage/kyc/` is not a
@@ -212,15 +315,11 @@ One entry per serving hostname, because Cloudflare keys the cache per hostname.
 or Page Rule rewriting URLs, the cached key may not be the request path.
 Unverified — requires dashboard access.
 
-**If the zone is not Enterprise** (prefix purge unavailable), the fallback in
-descending order of preference:
-
-1. Purge by single URL, all three hostnames × each known KYC URL. This requires
-   enumerating filenames, which conflicts with the "do not expose sensitive
-   filenames" constraint — so it must be done by the operator from the
-   dashboard, not produced in an audit artefact.
-2. Purge everything for the zone. Blunt, causes a transient origin load spike,
-   but leaks nothing and needs no filename list.
+**Plan level is not a constraint here.** Purge by prefix is available on Free,
+Pro, Business and Enterprise, so no tiered fallback and no whole-zone purge is
+proposed. The only thing standing between this step and execution is account
+access. (An earlier revision of this file said otherwise and proposed a
+whole-zone purge; both are withdrawn.)
 
 Note for anyone verifying afterwards: **Cloudflare can turn a cacheable HEAD
 request into an origin GET and cache the full response.** Do not "check whether
@@ -292,7 +391,35 @@ nginx location reopens 2 customer identity documents to the internet. So:
   decision** with an expiry, recorded in the change log with who approved it —
   never a quiet `cp` back.
 
-Config rollback, when approved:
+**Correction — the earlier rollback instruction was unsafe.** It said to roll
+back the origin deny and leave the Cloudflare block in place. That reopens the
+exposure: §1 establishes that the production block answers any Host header and
+any unrecognised SNI name at the origin address, so an edge rule is not a
+substitute for the origin deny. "Restore the file, keep the edge rule" is
+precisely the silent reopening this section exists to forbid.
+
+**A rollback must leave equivalent origin protection in place.** Restoring the
+pre-change config file removes the only control that holds against direct-origin
+requests, so a plain file restore is a *reopening*, not a rollback, and needs its
+own explicit approval on the same footing as the original change.
+
+Ordered by preference:
+
+1. **Narrow the rule, keep an origin control.** If one specific consumer path
+   regressed, replace `deny all;` with an equally host-independent rule that
+   still refuses everything else — e.g. an `internal;` location plus an
+   `X-Accel-Redirect` from the authenticated controller. Origin protection is
+   retained; only the authorized path changes.
+2. **Move the consumer to the authenticated route** (`kyc-documents.show` or the
+   mobile endpoint) and keep `deny all;` untouched. This is the prescribed
+   remedy for a genuine first-party regression.
+3. **Full reopening.** Requires its **own explicit approval**, separately from
+   the approval for applying this package. Time-boxed with a stated expiry,
+   recorded in the change log with the approver's name, and §6 re-run afterwards
+   with the result recorded as *"the prefix is publicly reachable again"*. Never
+   a quiet `cp` back.
+
+Mechanics for option 3 only, once separately approved:
 
 ```bash
 sudo sha256sum /root/nginx-backups/jewelflow.<stamp>.pre-s3-01.conf   # match the recorded value
@@ -300,20 +427,15 @@ sudo cp -a /root/nginx-backups/jewelflow.<stamp>.pre-s3-01.conf /etc/nginx/sites
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-**Order matters on the way back too.** Roll back the origin deny *only*; leave
-the Cloudflare block in place unless it is the thing that caused the regression.
-Rolling back both at once returns the system to the fully exposed baseline.
-After any rollback, re-run §6 and record in the change log that the prefix is
-publicly reachable again.
+Leave the Cloudflare block in place through all three options. It is defence in
+depth and removing it widens the reopening; it is **not** a stand-in for the
+origin deny under any of them.
 
 ---
 
 ## 8. Optional, not part of containment
 
-* **Staging parity.** `staging.jewelflows.com` serves its own public tree and
-  currently holds **0** KYC files. The same `location ^~ /storage/kyc/` block
-  can be added to `/etc/nginx/sites-available/staging.jewelflows.com` for
-  parity. Not required, and not blocking.
+* **Staging parity** — moved to §4b, where it is scoped as its own change.
 * **Broader prefix.** KYC is not the only sensitive material on the public tree
   (see the audit handoff: purchases, karigar invoices, repairs, signatures). A
   wider deny is *not* proposed here, because those prefixes still have live
