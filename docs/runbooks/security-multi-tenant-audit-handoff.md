@@ -41,7 +41,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-07 mobile payment cache-hit path was unauthorized | **CLOSED as a code defect** — no exploit against shipped code; the binding blocked it | Guard committed (`0296431`), 9 tests | **OPEN — needs the deploy** |
 | S3-07b payment retry integrity (cache/commit not coordinated) | **REPAIRED LOCALLY** — both defects closed; two more found by real concurrency and fixed; **rollback to the deployed baseline is measured UNSAFE** | Characterized `893a49b` (3 tests) → repaired `2dd0875` → claim scope `0cdd794` → claim staked before validation + P-14 `7d20e08` → rollback evidence, P-06 relabel, P-15 `b1a52f0`. 15 tests, 250 in band | **OPEN — needs the deploy, under the constraints in `payment-idempotency-rollback-constraints.md`** |
 | S3-08 static memoization across a long-lived worker | **CLOSED — examined, not a tenant break** | None needed; one inaccurate docblock noted | N/A |
-| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **OPEN — identified, NOT repaired** | None. Scope enumerated only (§7c) | **OPEN** |
+| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **REPAIRED LOCALLY** — crash window and concurrency window both closed; claim now staked before the controller | Characterized `8cddbc3` → repaired `b8673db`. 17 tests / 89 assertions, plus 9 contract tests still green; 98 in `Feature/Mobile`, 160 in `Feature/Security`, no regressions | **OPEN — needs the deploy. 12 of 16 routes NOT RUN at the service layer (§7c)** |
 
 ### Finding IDs — old → new, because they drifted
 
@@ -855,7 +855,7 @@ them.
 
 ### The defect, from the source
 
-`app/Http/Middleware/EnsureIdempotency.php`:
+`app/Http/Middleware/EnsureIdempotency.php`, as it stood:
 
 * line 140 — `$response = $next($request);` the controller runs, commits its own
   transaction, and returns.
@@ -866,49 +866,131 @@ That is the same uncoordinated-commit shape S3-07b had, in shared middleware.
 Anything that kills the process between those two lines leaves the business
 effect durable and no record that the key was used, so the retry re-runs it.
 
-Two further soft-failure paths widen it:
+Two further soft-failure paths widened it:
 
-* the unique-collision `catch (QueryException)` logs
-  `EnsureIdempotency: concurrent insert collided on unique key` and returns the
-  response — it does not replay the winner's;
-* the outer `catch (Throwable)` fails soft, with a comment that already concedes
+* the unique-collision `catch (QueryException)` logged
+  `EnsureIdempotency: concurrent insert collided on unique key` and returned the
+  response — it did not replay the winner's;
+* the outer `catch (Throwable)` failed soft, with a comment that already conceded
   *"a future retry with the same key will simply re-run (not ideal…)"*.
 
 The uniqueness is on `(shop_id, user_id, key)`. A **read** failure against the
-table returns 503, so the read side is fail-closed; it is the **write** side
-that is not.
+table returns 503, so the read side was fail-closed; it was the **write** side
+that was not.
+
+A second consequence, derived after the routes were inspected: because nothing
+was staked before `$next()`, **two concurrent same-key requests both passed the
+lookup and both reached the controller**. The unique index only decided which of
+the two got to record a response — both had already moved money.
+
+### The repair — `b8673db`
+
+The claim is staked **before** the controller, with `response_status = 0` as an
+in-flight sentinel, so the unique index admits exactly one request. A same-key
+request meeting an in-flight claim gets `409 idempotency_in_flight`.
+
+A sentinel was chosen over making the column nullable specifically to avoid
+adding a migration against a populated production table to a risk register that
+already tracks one.
+
+**The 4xx/5xx split is a deliberate trade and is the one judgement call here.**
+A 4xx releases the claim and stays retryable — it is a controller refusal with
+nothing written, which preserves existing behaviour. A 5xx does **not** release
+it. Laravel's pipeline converts a controller exception into a response, so the
+middleware cannot distinguish "died before writing" from "wrote, then died", and
+releasing the key makes the second case double-charge. The cost is that a
+transient 5xx which wrote nothing burns that one key and the client must surface
+*"we could not confirm this — check before re-entering it"*. The burn is
+bounded, not permanent: `PruneIdempotencyKeys` is scheduled daily
+(`routes/console.php:147`) at 48h retention, which was already the ceiling on
+replay itself.
+
+Fail-soft now survives in exactly one place — recording a completed claim —
+where the mutation has already succeeded and the row already holds the key, so a
+failure degrades a retry to a refusal and never to a re-run. Staking failures
+fail **closed** (503), because nothing has run yet and nothing is lost by
+refusing.
 
 ### Affected state-changing routes — 16, enumerated from `route:list`, not grep
 
-| Route | What a duplicate does |
-|---|---|
-| `POST /uploads/intent` | extra pending upload record; benign, storage only |
-| `POST /cashbook` | **duplicate cash movement** — money in/out recorded twice |
-| `POST /cashbook/drawer-check` | duplicate drawer reconciliation entry; corrupts the count trail |
-| `POST /sessions/lock` | second lock on an already-locked session |
-| `POST /sessions/unlock` | second unlock; re-opens a session an operator closed |
-| `DELETE /sessions` | second bulk revoke; idempotent in effect, audit noise |
-| `DELETE /sessions/{session}` | as above, single session |
-| `PATCH /items/{item}` | re-applies an update; last-write-wins, may clobber an edit made between the two attempts |
-| `PATCH /customers/{customer}` | as above, customer record |
-| `POST /returns` | **duplicate return order** — stock returned twice |
-| `POST /returns/{returnOrder}/approve` | second approval on an approved return; credit-note risk |
-| `POST /job-orders` | duplicate job order issued to a karigar |
-| `POST /job-orders/{jobOrder}/receipt` | **duplicate karigar receipt** — metal received twice |
-| `POST /installments/finalize` | duplicate plan finalization |
-| `POST /installments/discard-draft` | second discard; benign |
-| `POST /installments/{plan}/pay` | **duplicate installment payment** — money recorded twice |
+All 16 share the repaired middleware, so the crash window and the concurrency
+window are closed for every one of them. What is **not** uniform, and what the
+last two columns track, is each route's own service-layer duplicate behaviour.
+That is the part that still matters, because it decides what happens once the
+middleware's 48h retention lapses.
+
+`Read` = controller/service actually read for internal dedup.
+`Tested` = a test asserts the money/metal/stock consequence, not just a status.
+
+| Route | What a duplicate does | Read | Tested | Own service-layer guard |
+|---|---|---|---|---|
+| `POST /cashbook` | **duplicate cash movement** — money in/out recorded twice | yes | yes | **NONE.** No transaction either: `CashBookController::store` writes `CashTransaction::record` then `AuditLog::create` unwrapped, so a failure between them commits cash with no audit row. Measured. See below. |
+| `POST /installments/{plan}/pay` | **duplicate installment payment** — money recorded twice | yes | yes | Partial. `InstallmentService::recordPayment` is transactional and locks the plan, but its `status === 'active'` check is not an idempotency guard — `active` is the state a non-final EMI *leaves* the plan in. Only the final EMI is guarded. |
+| `POST /job-orders/{jobOrder}/receipt` | **duplicate karigar receipt** — metal received twice | yes | yes | Partial, same shape. `JobOrderService::receive` locks and guards on status, but permits `ISSUED` and `PARTIAL_RETURN`, and a partial receipt leaves `PARTIAL_RETURN`. Only the final receipt is guarded. Worst blast radius of the four: a replay mints a fresh `items` row marked in-stock and a fresh `manufacture` metal movement. |
+| `POST /returns` | **duplicate return order** — stock returned twice | yes | yes | **Full, and independent of the middleware.** `ReturnService` carries two durable guards: the invoice's own status, and the per-line `invoice_items.returned_at` stamp. This route was never part of the finding. |
+| `POST /returns/{returnOrder}/approve` | second approval on an approved return; credit-note risk | partial | no | `ReturnController::approve` guards `status === STATUS_PENDING_APPROVAL`, which *is* terminal — approval moves the order off that status. Read only; **NOT RUN.** |
+| `POST /uploads/intent` | extra pending upload record; benign, storage only | no | no | NOT RUN |
+| `POST /cashbook/drawer-check` | duplicate drawer reconciliation entry; corrupts the count trail | no | no | NOT RUN |
+| `POST /sessions/lock` | second lock on an already-locked session | no | no | NOT RUN |
+| `POST /sessions/unlock` | second unlock; re-opens a session an operator closed | no | no | NOT RUN |
+| `DELETE /sessions` | second bulk revoke; idempotent in effect, audit noise | no | no | NOT RUN |
+| `DELETE /sessions/{session}` | as above, single session | no | no | NOT RUN |
+| `PATCH /items/{item}` | re-applies an update; last-write-wins, may clobber an edit made between the two attempts | no | no | NOT RUN |
+| `PATCH /customers/{customer}` | as above, customer record | no | no | NOT RUN |
+| `POST /job-orders` | duplicate job order issued to a karigar | no | no | NOT RUN |
+| `POST /installments/finalize` | duplicate plan finalization | no | no | NOT RUN |
+| `POST /installments/discard-draft` | second discard; benign | no | no | NOT RUN |
 
 Four of these move money or metal: `cashbook`, `returns`,
-`job-orders/{jobOrder}/receipt`, `installments/{plan}/pay`.
+`job-orders/{jobOrder}/receipt`, `installments/{plan}/pay`. Those four were the
+ones inspected, and they did **not** turn out to be uniform — which is why no
+blanket transaction wrapper was applied.
 
-**Status: identified and scoped, NOT repaired and NOT tested.** No fix is
-attempted here, and no broad middleware rewrite is proposed. Verified by reading
-`CashBookController::store` (lines 140–186): it calls `CashTransaction::record`
-and `AuditLog::create` with no internal deduplication of its own, so the
-middleware is the only thing standing between a retry and a second ledger row.
-The other 15 controllers have **not** been read for internal dedup — that is
-NOT RUN, not "confirmed absent".
+**Status: repaired at the middleware (`b8673db`), with regression evidence on
+four routes. Twelve routes are NOT RUN at the service layer.** "NOT RUN" here
+means exactly that — not "confirmed absent", and not "confirmed safe".
+
+### Evidence — `tests/Feature/Security/MobileIdempotencyRetryIntegrityTest.php`
+
+17 passed, 89 assertions, together with the 9 pre-existing
+`IdempotencyMiddlewareTest` contract tests (all still green — the repair changes
+no documented behaviour). No regressions in `tests/Feature/Mobile` (98 passed)
+or `tests/Feature/Security` (160 passed).
+
+The crash window is exercised by injecting a real failure, not by mocking:
+`AuditLog::creating` throws for the cashbook case, `IdempotencyKey::updating`
+throws for the rest — the latter lands exactly in the window the repair leaves
+behind (staked, committed, outcome never recorded). Each test asserts the
+injection actually fired, so a green run cannot be the accidental result of the
+first request never having written anything.
+
+Two findings about the tests themselves are recorded in the file and are worth
+carrying forward:
+
+* **A false pass was caught and fixed.** The job-order test initially passed for
+  the wrong reason: the retry 404'd on route-model binding because the second
+  request had no `TenantContext`, so it never reached the controller and of
+  course nothing duplicated. This is a test-environment characteristic, **not a
+  production bug** — `BelongsToShop::resolveTenantShopId()` checks
+  `runningInConsole()` before the `Auth::user()->shop_id` fallback, which is true
+  under PHPUnit and false under FPM. The tests now assert the exact refusal
+  (`409 idempotency_in_flight`) rather than merely "not a duplicate".
+* **The returns control retries with a *different* key**, deliberately. Post-
+  repair a same-key retry is answered by the middleware and never reaches
+  `ReturnService`, so a same-key control would prove nothing about the service.
+  The control also records which of the two `ReturnService` guards it actually
+  reaches — the invoice-status one — and marks the per-line `returned_at` guard
+  as **NOT RUN**, because the single-line fixture cannot reach it.
+
+The concurrency window is proven by driving the code path rather than the
+timing: a listener raw-inserts a conflicting claim from inside `creating`, which
+is after the lookup found nothing and before the middleware's own insert lands —
+precisely where a losing sibling sits. Its central assertion is a spy proving
+the controller never executed, paired with a positive control proving the spy
+can fire. Row counts are unusable there: `RefreshDatabase` runs the test in one
+transaction and the unique violation aborts it. That is a harness artefact, not
+a production concern — the middleware runs outside any transaction, so
+PostgreSQL rolls back the failed statement alone.
 
 ## 8. Commands actually run, and their results
 
@@ -1105,6 +1187,51 @@ the primary checkout and running `npm run build` in the worktree; the rerun abov
 is the result. **This was not caused by, and did not mask, any change in this
 branch.**
 
+### S3-09 run — at `b8673db`
+
+```
+HEAD=b8673dbbcf... (fix(S3-09): stake the idempotency claim before the controller)
+
+php artisan test tests/Feature/Security/MobileIdempotencyRetryIntegrityTest.php \
+                 tests/Feature/Mobile/V1/IdempotencyMiddlewareTest.php
+  -> Tests: 17 passed (89 assertions)
+     8 S3-09 evidence tests + the 9 pre-existing contract tests, all green.
+     The contract tests were run BEFORE the repair too, and passed then as
+     well — that is what establishes the repair changed no documented
+     behaviour, rather than assuming it.
+
+php artisan test tests/Feature/Mobile
+  -> Tests: 98 passed (335 assertions)
+
+php artisan test tests/Feature/Security
+  -> Tests: 160 passed (619 assertions)
+
+php artisan test tests/Feature/Masters/KarigarLifecycleTest.php \
+                 tests/Feature/SubscriptionRecoveryCorrectionTest.php \
+                 tests/Feature/SubscriptionRecoveryLifecycleTest.php
+  -> Tests: 48 passed (156 assertions)
+     The only tests outside the two suites above that touch /api/mobile/v1,
+     found by grep rather than assumed absent. Run because the 4xx-release /
+     5xx-hold policy changes behaviour for all 16 routes, not just the four
+     inspected.
+```
+
+Intermediate states, recorded because they are the evidence the tests were
+measuring something:
+
+```
+Before the repair:  4 failed, 11 passed  -- the 3 defect tests plus the returns
+                    control failing as characterization, 9 contract tests green.
+After the repair:   the same 4 failed, because the injections were now hitting
+                    the new pre-controller stake (3x 503, 1x "1 is identical
+                    to 0"). Injection retargeted from IdempotencyKey::creating
+                    to ::updating -- the window the repair actually leaves.
+Then:               1 failed -- the returns control, now answered 409 by the
+                    middleware before ReturnService was reached. Fixed by
+                    retrying with a DIFFERENT key, which is the only way to
+                    isolate the service guard post-repair.
+```
+
 Scenario-family coverage, reported separately from the test count because a count
 is not coverage:
 
@@ -1131,6 +1258,15 @@ is not coverage:
 | Private-disk serve route, unsigned vs signed | yes (C-08, denial + positive control) |
 | Live-setting drift, business identity | yes (D-09 bank, D-10 terms, D-11 GSTIN) |
 | Live-setting drift, genuinely cosmetic | yes (D-12 — the bound on the above) |
+| S3-09 crash window, money route (cash) | yes — cash rows and drawer total asserted |
+| S3-09 crash window, money route (EMI) | yes — payment row, cash-in and `emis_paid` asserted |
+| S3-09 crash window, metal route | yes — receipt, `items`, `metal_movements`, `returned_fine_weight` asserted |
+| S3-09 concurrency, loser never reaches controller | yes — spy, with a positive control proving the spy can fire |
+| S3-09 route with its own durable guard (control) | yes — returns, retried under a *different* key to exclude the middleware |
+| S3-09 authorized success / distinct-key controls | yes — single entry succeeds; two distinct keys book two entries |
+| **S3-09 service-layer dedup on the other 12 routes** | **NOT RUN — see the per-route table in §7c** |
+| **S3-09 per-line `returned_at` guard on a partial return** | **NOT RUN — no multi-line finalized-invoice fixture on the mobile return path** |
+| **S3-09 true wall-clock concurrency** | **NOT RUN — the code path is driven, the timing is not; single-process PHPUnit cannot** |
 | **Per-item publication opt-out** | **none exists — characterized by C-03, not covered** |
 | **Anonymous HTTP fetch of a public-disk file** | **NOT RUN — served by nginx, not Laravel; unmeasurable from the suite** |
 | **On-device print** | **NOT RUN — see §5** |
