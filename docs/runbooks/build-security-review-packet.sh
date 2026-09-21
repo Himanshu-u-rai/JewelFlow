@@ -28,7 +28,14 @@ OUT="${1:-/tmp/jewelflow-security-review-packet}"
 
 cd "$(git rev-parse --show-toplevel)"
 
-HEAD_SHA="$(git rev-parse HEAD)"
+# ONE export SHA, resolved once and used for every subsequent git call.
+#
+# Everything below refers to $EXPORT_SHA, never to the symbolic `HEAD`. If a
+# commit landed midway through a run -- or if this is ever invoked against a
+# moving ref -- the symbolic form would let different artifacts in the same
+# packet describe different commits. Pinning makes that impossible rather than
+# unlikely. Override to export a specific commit: EXPORT_SHA=<sha> bash ...
+EXPORT_SHA="$(git rev-parse "${EXPORT_SHA:-HEAD}")"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 if ! git cat-file -e "${BASELINE}^{commit}" 2>/dev/null; then
@@ -41,33 +48,33 @@ mkdir -p "$OUT"/{diffs,migrations,runbooks}
 
 # 1. The full source diff, and a per-commit series so a reviewer can read it in
 #    the order it was written rather than as one wall.
-git diff "${BASELINE}..HEAD"                    > "$OUT/diffs/00-full-source.patch"
-git diff "${BASELINE}..HEAD" --stat             > "$OUT/diffs/00-full-source.stat"
-git format-patch "${BASELINE}..HEAD" -o "$OUT/diffs/series" --quiet
+git diff "${BASELINE}..${EXPORT_SHA}"                    > "$OUT/diffs/00-full-source.patch"
+git diff "${BASELINE}..${EXPORT_SHA}" --stat             > "$OUT/diffs/00-full-source.stat"
+git format-patch "${BASELINE}..${EXPORT_SHA}" -o "$OUT/diffs/series" --quiet
 
 # 2. The diffs called out by name in the review request. Split out because
 #    "it is in the full patch somewhere" is not the same as supplying them.
-git diff "${BASELINE}..HEAD" -- \
+git diff "${BASELINE}..${EXPORT_SHA}" -- \
     app/Services/InvoiceSignatureRenderer.php \
     app/Services/SignatureStore.php \
     app/Services/SignatureRelocationLedger.php \
     app/Services/BillTaxPresentation.php        > "$OUT/diffs/10-resolvers.patch"
 
-git diff "${BASELINE}..HEAD" -- \
+git diff "${BASELINE}..${EXPORT_SHA}" -- \
     app/Console/Commands/RelocateShopSignatures.php \
     app/Console/Commands/RelocateKarigarInvoiceAttachments.php \
     app/Models/SignatureRelocation.php          > "$OUT/diffs/11-relocation.patch"
 
-git diff "${BASELINE}..HEAD" -- \
+git diff "${BASELINE}..${EXPORT_SHA}" -- \
     app/Services/InvoiceAccountingService.php \
     app/Services/InvoiceRenderSnapshotService.php \
     app/Services/QuickBillService.php           > "$OUT/diffs/12-finalization.patch"
 
-git diff "${BASELINE}..HEAD" -- \
+git diff "${BASELINE}..${EXPORT_SHA}" -- \
     app/Http/Controllers/Api/Mobile/ \
     app/Http/Middleware/                        > "$OUT/diffs/13-request-path.patch"
 
-git diff "${BASELINE}..HEAD" -- tests/          > "$OUT/diffs/14-tests.patch"
+git diff "${BASELINE}..${EXPORT_SHA}" -- tests/          > "$OUT/diffs/14-tests.patch"
 
 # 3. Migration bodies in full, not as a diff. A reviewer deciding whether these
 #    are safe to apply needs to read the file, not reconstruct it from a patch.
@@ -80,8 +87,8 @@ git diff "${BASELINE}..HEAD" -- tests/          > "$OUT/diffs/14-tests.patch"
 #    ponytail: word-split loop; migration filenames are git-controlled and
 #    contain no spaces. Switch to `git diff -z` + `while read -d ''` if that
 #    ever stops being true.
-for f in $(git diff --name-only --diff-filter=A "${BASELINE}..HEAD" -- database/migrations/); do
-    git show "HEAD:$f" > "$OUT/migrations/$(basename "$f")"
+for f in $(git diff --name-only --diff-filter=A "${BASELINE}..${EXPORT_SHA}" -- database/migrations/); do
+    git show "${EXPORT_SHA}:$f" > "$OUT/migrations/$(basename "$f")"
 done
 
 # 4. Prose. The containment procedure travels with the packet because the
@@ -93,7 +100,7 @@ for f in kyc-public-exposure-containment.md \
          security-multi-tenant-audit-handoff.md \
          signature-migration-release-order.md \
          known-pre-existing-test-debt.md; do
-    git show "HEAD:docs/runbooks/$f" > "$OUT/runbooks/$f"
+    git show "${EXPORT_SHA}:docs/runbooks/$f" > "$OUT/runbooks/$f"
 done
 
 # 5. The SHAs, in full. Abbreviated SHAs are ambiguous across repositories and
@@ -104,7 +111,7 @@ done
     echo "Generated:     $(date -Iseconds)"
     echo "Branch:        ${BRANCH}"
     echo "Baseline:      ${BASELINE}"
-    echo "Candidate:     ${HEAD_SHA}"
+    echo "Candidate:     ${EXPORT_SHA}"
     echo
     echo "## Deployed baseline"
     echo
@@ -129,13 +136,13 @@ done
     echo "## Commits, oldest first"
     echo
     echo '```'
-    git log --reverse --format='%H  %ad  %s' --date=short "${BASELINE}..HEAD"
+    git log --reverse --format='%H  %ad  %s' --date=short "${BASELINE}..${EXPORT_SHA}"
     echo '```'
     echo
     echo "## Cumulative diffstat"
     echo
     echo '```'
-    git diff --shortstat "${BASELINE}..HEAD"
+    git diff --shortstat "${BASELINE}..${EXPORT_SHA}"
     echo '```'
     echo
     echo "## Contents"
@@ -152,6 +159,73 @@ done
     echo "which a test count means anything."
 } > "$OUT/MANIFEST.md"
 
+# 6. Sanitization gate. This ACTUALLY SCANS rather than asserting cleanliness.
+#
+#    The packet is built from source and prose, so nothing secret should be
+#    reachable. That is a claim about a code path, and the whole point of this
+#    exercise is that claims about code paths get checked. If the scan ever
+#    trips, the ZIP is not written -- failing closed, because a packet is a
+#    thing you hand to someone outside the room.
+#
+#    Deliberately NOT a secret-detection product. It catches the specific ways
+#    this repository's own secrets are written, which is what is actually at
+#    risk here.
+echo "Scanning packet for secrets and customer data..."
+SCAN_HITS=0
+scan() {
+    local label="$1" pattern="$2"
+    local hits
+    hits="$(grep -rIlE "$pattern" "$OUT" 2>/dev/null || true)"
+    if [ -n "$hits" ]; then
+        echo "  POSSIBLE ${label}:" >&2
+        echo "$hits" | sed 's/^/    /' >&2
+        SCAN_HITS=$((SCAN_HITS + 1))
+    fi
+}
+
+# Laravel/infra secret shapes, as they appear in this repo's config and .env.
+#
+# APP_KEY requires an ASSIGNMENT, not a bare mention. The first version of this
+# pattern matched the word alone and tripped on
+# `assertStringNotContainsString('APP_KEY', $response->getContent(), ...)` --
+# a test that exists to prove the key does NOT leak. Flagging security-positive
+# code as a leak is how a scanner gets switched off, so the pattern was
+# narrowed to key material and assignments rather than the gate being relaxed.
+scan "APP_KEY"           '(APP_KEY[[:space:]]*=[[:space:]]*[^[:space:]"'"'"']|base64:[A-Za-z0-9+/]{40,})'
+scan "DB password"       '(DB_PASSWORD|PGPASSWORD)[[:space:]]*=[[:space:]]*[^[:space:]"'"'"']'
+scan "AWS credential"    '(AKIA[0-9A-Z]{16}|aws_secret_access_key)'
+scan "Cloudflare token"  '(CLOUDFLARE_API_TOKEN|CF_API_KEY)[[:space:]]*=[[:space:]]*[^[:space:]]'
+scan "private key"       'BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY'
+scan "Razorpay live key" 'rzp_live_[A-Za-z0-9]+'
+scan "SMTP credential"   'MAIL_PASSWORD[[:space:]]*=[[:space:]]*[^[:space:]]'
+
+# Structural check: nothing may have arrived from these trees at all.
+BANNED="$(find "$OUT" -type f \( -name '.env*' -o -name '*.sql' -o -name '*.dump' \
+    -o -name '*.sqlite' -o -name '*.pem' -o -name '*.key' -o -name '*.p12' \) 2>/dev/null || true)"
+if [ -n "$BANNED" ]; then
+    echo "  BANNED FILE TYPE present:" >&2
+    echo "$BANNED" | sed 's/^/    /' >&2
+    SCAN_HITS=$((SCAN_HITS + 1))
+fi
+
+if [ "$SCAN_HITS" -ne 0 ]; then
+    echo "FATAL: sanitization scan found ${SCAN_HITS} category/categories above." >&2
+    echo "       ZIP NOT WRITTEN. Inspect $OUT before distributing anything." >&2
+    exit 2
+fi
+echo "  clean — 0 findings across 8 categories"
+
+# 7. The attachable artifact itself. A /tmp path is not a deliverable.
+ZIP_DIR="${PACKET_ZIP_DIR:-$HOME/Desktop}"
+ZIP_PATH="${ZIP_DIR}/jewelflow-security-review-packet-${EXPORT_SHA:0:12}.zip"
+mkdir -p "$ZIP_DIR"
+rm -f "$ZIP_PATH"
+( cd "$(dirname "$OUT")" && zip -qr "$ZIP_PATH" "$(basename "$OUT")" )
+
+echo
 echo "Packet written to: $OUT"
-echo "Candidate SHA:     ${HEAD_SHA}"
+echo "Candidate SHA:     ${EXPORT_SHA}"
 find "$OUT" -type f | wc -l | xargs echo "Files:            "
+echo "ZIP:               $ZIP_PATH"
+echo "ZIP size:          $(du -h "$ZIP_PATH" | cut -f1)"
+echo "ZIP sha256:        $(sha256sum "$ZIP_PATH" | cut -d' ' -f1)"

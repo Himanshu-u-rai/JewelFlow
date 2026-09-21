@@ -791,19 +791,63 @@ php artisan test tests/Feature/Security tests/Feature/Mobile
 
 php artisan test --filter='Invoice|Sales|Exchange|Installment|Return|QuickBill|Repair|Gst|Tax|Snapshot|Setting' --display-skipped
   -> 610 passed, 3 skipped, 2376 assertions
-     +4 / +17 against 606 / 3 / 2359 -- the D-09..D-12 four only. This
-     filter has no 'Catalog' term, so it does NOT pick up the three new
-     PublicCatalogExposureTest cases. The two commands disagreeing by
-     exactly three tests is the expected result, not a discrepancy.
+     +4 / +17 against 606 / 3 / 2359 -- the D-09..D-12 four only.
      Skipped still 3, still all in ConstitutionalInvariantsTest.
 ```
+
+### These two selections overlap and their totals are not comparable
+
+**235 and 610 are not two measurements of one thing.** The first selects by
+*path* (`tests/Feature/Security`, `tests/Feature/Mobile`); the second selects by
+an eleven-term *name filter* that reaches across the whole suite. They overlap
+partially and neither contains the other, so subtracting one total from the
+other produces a number that means nothing. They are reported side by side and
+never summed, differenced, or reconciled against each other.
+
+**The "difference of three" is about newly added coverage only — not about
+totals.** Seven tests were added since the `eca2e8b` figures:
+
+| New tests | Picked up by path selection | Picked up by name filter |
+|---|---|---|
+| D-09…D-12 (`FinalizedInvoiceSettingsDriftTest`) | yes — 4 | yes — 4, via `Invoice` |
+| C-06…C-08 (`PublicCatalogExposureTest`) | yes — 3 | **no** — filter has no `Catalog` term |
+| **Total new tests seen** | **7** | **4** |
+
+So the path selection grew by 7 and the filter grew by 4. **That gap of three is
+C-06…C-08 being outside the filter's terms**, and it is a statement about which
+new tests each selection can see — not a statement about 235 versus 610.
+
+### Execution SHA vs package SHA — reported separately
+
+| | SHA | What |
+|---|---|---|
+| **Test execution SHA** | `25355ffee351bd8a2d9e5878ef2c0f83888fb87f` | every figure in this section was measured here |
+| **Package / documentation SHA** | `941ed749a6a399a3574e15c2fe41ea9277d278ad` | what the exported packet is pinned to |
+
+**The difference between them is documentation only**, and it is this section:
+
+```
+git diff --stat 25355ff..941ed74
+ docs/runbooks/security-multi-tenant-audit-handoff.md | 31 +++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+git diff --name-only 25355ff..941ed74 | grep -v '^docs/'
+ (no output — no non-documentation path was touched)
+```
+
+No source, test, migration or config file differs between the commit the tests
+ran at and the commit the packet ships. **The suites were deliberately not re-run
+to make the two SHAs identical** — re-running a sixty-second suite so that a
+label matches would be manufacturing the appearance of freshness, and the
+verifiable claim ("the only diff is documentation, here it is") is stronger than
+the cosmetic one.
 
 **Why this block exists at all.** The review packet tells a reviewer that measured
 results live in this section. Two commits after the `eca2e8b` re-measure added
 tests, so the numbers above it no longer described the commit the packet ships.
-Both commands were re-run verbatim at the candidate SHA rather than adjusted by
-arithmetic — the deltas reconcile, but reconciliation is the *check*, not the
-source of the figures.
+Both commands were re-run verbatim rather than adjusted by arithmetic — the
+deltas reconcile, but reconciliation is the *check*, not the source of the
+figures.
 
 **A discrepancy I raised against myself, and its resolution.** An interim report
 quoted `--filter='Security|Mobile'` at 474 / 5208 and
