@@ -172,10 +172,31 @@ done
 #    risk here.
 echo "Scanning packet for secrets and customer data..."
 SCAN_HITS=0
+# Known-public documentation literals, excluded by EXACT value.
+#
+# These are vendor-published example credentials that appear in vendor docs and
+# in this repo's own commit messages describing how the scanner was tested. They
+# match a real credential SHAPE, which is the scanner working correctly -- so
+# they are excluded one literal at a time, never by loosening the shape itself.
+#
+# AKIAIOSFODNN7EXAMPLE is AWS's own published example access-key ID. It entered
+# this packet through the commit message that records the both-arms verification
+# of the AWS pattern, and the scanner duly flagged it.
+#
+# The bar for adding a line here: the exact string must be published by its
+# vendor as a non-credential. A shape, prefix or wildcard must never be added --
+# that would be relaxing the gate wearing an allowlist's clothes.
+SCAN_ALLOWLIST='AKIAIOSFODNN7EXAMPLE'
+
 scan() {
     local label="$1" pattern="$2"
     local hits
-    hits="$(grep -rIlE "$pattern" "$OUT" 2>/dev/null || true)"
+    # -I skips binaries; the allowlist filter runs per MATCHING LINE, then the
+    # filenames are recovered, so one allowlisted line cannot suppress a real
+    # finding elsewhere in the same file.
+    hits="$(grep -rInIE "$pattern" "$OUT" 2>/dev/null \
+        | grep -vE "$SCAN_ALLOWLIST" \
+        | cut -d: -f1 | sort -u || true)"
     if [ -n "$hits" ]; then
         echo "  POSSIBLE ${label}:" >&2
         echo "$hits" | sed 's/^/    /' >&2
@@ -203,7 +224,15 @@ scan "DB password"       '(DB_PASSWORD|PGPASSWORD)[[:space:]]*=[[:space:]]*[^[:s
 # `AKIA[0-9A-Z]{16}` stays bare -- a real access-key ID is self-identifying and
 # cannot be written by accident. Only the descriptive word needs an assignment
 # to count, since the word alone is just prose.
-scan "AWS credential"    '(AKIA[0-9A-Z]{16}|aws_secret_access_key[[:space:]]*[=:][[:space:]]*[^[:space:]"'"'"'|)])'
+#
+# The value class also excludes `.` and `<`, because the SECOND thing this
+# pattern caught was the prose `aws_secret_access_key = ...` in the commit
+# message describing how the pattern was tested. A value of `...`, `<redacted>`
+# or `<your-key-here>` is a PLACEHOLDER, not key material. AWS secret keys are
+# drawn from [A-Za-z0-9/+=] and can never begin with either character, so this
+# costs no real detection -- and it fixes the whole class, rather than adding an
+# allowlist line every time the scanner is written about.
+scan "AWS credential"    '(AKIA[0-9A-Z]{16}|aws_secret_access_key[[:space:]]*[=:][[:space:]]*[^[:space:]"'"'"'|).<])'
 scan "Cloudflare token"  '(CLOUDFLARE_API_TOKEN|CF_API_KEY)[[:space:]]*=[[:space:]]*[^[:space:]]'
 scan "private key"       'BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY'
 scan "Razorpay live key" 'rzp_live_[A-Za-z0-9]+'
