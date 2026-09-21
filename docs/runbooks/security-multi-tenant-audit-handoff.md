@@ -38,7 +38,27 @@ wrote tests" becomes "it is fixed in production".
 | S3-06 catalog tenant context survives a throw | **CLOSED as a code defect** — no cross-tenant read demonstrated | Fix committed (`721c06d`), 5 tests | **OPEN — needs the deploy** |
 | S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
 | S3-06c published item images outlive the shopfront toggle | OPEN | None — recorded limitation | **OPEN** |
-| S3-07 mobile payment idempotency cache is unscoped | OPEN — LOW, not an exposure; one guard on the cache-hit path vs two on the write path | Guard pinned by 5 tests (`1b6aeb4`); key deliberately NOT changed | N/A — nothing to deploy; no repair proposed |
+| S3-07 mobile payment cache-hit path was unauthorized | **CLOSED as a code defect** — no exploit against shipped code; the binding blocked it | Guard committed (`0296431`), 9 tests | **OPEN — needs the deploy** |
+| S3-07b payment retry integrity (cache/commit not coordinated) | **OPEN — demonstrated**, two distinct defects | Characterized only (`893a49b`, 3 tests); repair proposed, not written | **OPEN** |
+| S3-08 static memoization across a long-lived worker | **CLOSED — examined, not a tenant break** | None needed; one inaccurate docblock noted | N/A |
+
+### Finding IDs — old → new, because they drifted
+
+IDs changed meaning between reports, which is a defect in the tracker rather
+than in the code. The mapping below is authoritative; **nothing is retired by
+renumbering.**
+
+| ID as used NOW | Meaning | Previously used for | Where that older item lives now |
+|---|---|---|---|
+| S3-05 | Finalized reprints drift to today's settings | Signature **relocation** | Relocation is §7, tracked under S3-04's local fix status |
+| S3-07 | Mobile payment idempotency cache | **File repairs** (purchase/karigar) | Repairs remain S3-02 / S3-03, still OPEN in the matrix above |
+| S3-07b | Payment retry integrity | *(new)* | — |
+| S3-08 | Static memoization sweep | *(new)* | — |
+
+Still visible and unclosed, listed explicitly so renumbering cannot bury them:
+repairs (S3-02, S3-03), uploads (`uploads/` at zero files, no publication
+decision recorded), the tracked backup repair, relocation preparation, and
+publication classification for item images (S3-06b/S3-06c).
 
 ### Corrections to my own earlier reports, restated here so they are not lost
 
@@ -455,14 +475,118 @@ kill-count alone I would have "strengthened" I-02 and destroyed the evidence —
 the directive's "a surviving mutation may mean another legitimate guard still
 protects access", met in the wild.
 
-**No repair is proposed, deliberately.** Adding `{shop}:{user}` to the key makes
-every in-flight key miss across the deploy window, and a retried *partial*
-payment would then be recorded twice — the overpayment guard at :194 only
-catches duplicates that push past `outstanding`, so 3,000 paid twice on a
-10,000 invoice lands twice, silently. Doing it safely means reading both key
-shapes for one release and writing only the new one. That is a migration, not a
-one-line hardening, and it is not something to slip into a security audit.
-Severity LOW; cross-shop is blocked today; recorded with the guard named.
+**How this evidence is classified — corrected.** An earlier revision of this
+section was loose about it. The **unchanged** route binding blocks the
+cross-shop request I-05 sends. No exploit has been demonstrated against
+unchanged code. What the mutation demonstrates is a **dependency on that single
+guard**. The repair below is therefore defence in depth, not an incident fix.
+
+**The key is still NOT changed — but the cache-hit path is now authorized**
+(`0296431`). Adding `{shop}:{user}` to the key makes every in-flight key miss
+across the deploy window, and a retried *partial* payment would then be
+recorded twice — the overpayment guard at :194 only catches duplicates that
+push past `outstanding`, so 3,000 paid twice on a 10,000 invoice lands twice,
+silently. Key format, 24h TTL and replay semantics are all preserved and no
+idempotency record is flushed. The missing check went where the gap actually
+was — between `Cache::get` and the return:
+
+```php
+$tenantShopId = TenantContext::get();
+abort_if($tenantShopId === null, 403, 'No active shop context.');   // fail closed
+abort_if((int) $invoice->shop_id !== (int) $tenantShopId, 404);     // as the scoped binding answers
+abort_unless($user?->can('sales.create') && $user->can('view', $invoice), 403);
+```
+
+404 rather than 403 on the tenant mismatch, so the guard is not an existence
+oracle. `InvoicePolicy::view` is reused rather than reimplemented, and
+`sales.create` is re-checked in the controller so the cache-hit path does not
+depend on route middleware configuration staying correct.
+
+Evidence: I-07, I-08 and I-09 were watched failing first, each returning **HTTP
+200 carrying shop A's `7777`**. I-06 (authorized replay, no second payment row)
+was green before and after — it characterizes the behaviour the repair had to
+leave alone. A further mutation deleting *only* the fail-closed line killed I-09
+and nothing else, so that branch is separately load-bearing. Restoration
+verified by `md5sum -c` plus an empty `diff`, not by searching for the word
+MUTATION.
+
+### S3-07b — retry integrity, a separate question from access control
+
+Every caller below is fully authorized. Both were leads in the last report and
+are now **demonstrated** (`893a49b`, characterization, stated as such):
+
+* **R-01 — the commit and the cache write are not coordinated.** `DB::transaction`
+  is durable; `Cache::put` is a later best-effort write to a different store.
+  With the entry absent for an already-processed key, the retry is reprocessed:
+  **one key, two payments, 6,000 recorded against a 3,000 collection.** The
+  overpayment guard cannot fire — a partial payment leaves headroom by
+  definition. Limitation stated: PHPUnit cannot schedule two real workers, so
+  the test models the *consequence* (a miss on a processed key); the concurrent
+  double-miss is one documented way to reach it, not something observed here.
+* **R-02 — needs no race at all.** The same key sent with a **different amount**
+  is never compared against the original payload: HTTP 200, the first receipt
+  replayed, the new payment silently dropped, the operator shown success.
+  `EnsureIdempotency` — already in this repo — answers **409** for exactly this
+  case and says so in its own docblock. This is a divergence from an in-repo
+  standard, not a design preference.
+* **R-03** is the control: two distinct keys must still record two distinct
+  payments, so a future fix cannot pass by refusing part-payments.
+
+**Repair proposed, not written:** move this route onto the existing
+`idempotency_keys` mechanism with a compatibility window that READS the legacy
+cache key while WRITING the new record, so keys in flight across the deploy are
+not orphaned. Behaviour change to a live money path; offered for its own review.
+
+### S3-08 — the cache sweep, corrected for coverage
+
+My earlier claim that the application-cache investigation was complete rested on
+a `Cache::` grep. **That establishes the coverage of that search and nothing
+more.** Re-run by category on 2026-09-21:
+
+| Category | Occurrences in `app/` | Finding |
+|---|---|---|
+| A. `Cache::` facade | 45 | As described above; keys otherwise shop-scoped |
+| B. `cache()` helper | 0 | Absent — named explicitly, not assumed |
+| C. Injected `Cache\Repository` / `CacheManager` | 0 | Absent |
+| D. Direct `Redis::` / `RedisManager` | 0 | Absent |
+| E. Static memoization | 3 holders | Examined below |
+
+Category E is the one the facade grep could not see, and it is the only
+long-lived cross-request state in `app/`:
+
+* `MetalRegistry::$shopEnabledCache` — **keyed by `$shopId`**, and every accessor
+  takes an explicit `int $shopId`. Shop A's entry cannot be returned for shop B.
+  Its docblock claims "Reset between requests", which is **inaccurate in a
+  long-lived `queue:work` process** where statics persist across jobs; the
+  keying makes that a staleness nit rather than an isolation break. Recorded,
+  not repaired.
+* `HistoricalLifecycle::$unlocked` — a privilege gate, but it saves `$previous`
+  and restores it in a `finally`, so it nests correctly and cannot leak an
+  unlocked state into the next job.
+* `AppServiceProvider` `static $tableBooleanColumns` — schema shape, no tenant
+  data.
+
+A first pass of this grep reported category E as **0**, because the pattern
+`static \$\w+` does not match `private static ?int $shopId` — the type sits
+between. The zero was a broken search, not a clean result, and is recorded
+because a wrong zero is exactly the failure mode the directive warns about.
+
+**Middleware nesting, now verified rather than assumed.** `TenantContext::runFor`
+restores `$previous`; both middlewares `clear()` to null instead, which is
+correct only while they are outermost. `catalog.shop` is registered at exactly
+one place (`bootstrap/app.php:107`) and applied to exactly one route group
+(`routes/web.php:94`), which carries **no `tenant` middleware** — so
+`ResolveCatalogShop` and `EnsureTenantUser` never nest and clear-to-null is
+equivalent to restore there today. A route group combining them would break that
+equivalence, which is the condition to re-check if one is ever added.
+
+Incidental confirmation from I-06: under PHPUnit the *second* request of a test
+404s at the binding unless the context is re-armed, because `EnsureTenantUser`
+clears it in its `finally` at the end of request one. The clearing behaviour is
+observed, not inferred.
+
+**CDN and browser caching remain separate scope** and are handled in the KYC
+containment runbook, not here.
 
 **Console-specific test adjustment, declared.** `actAs()` sets `TenantContext`
 as well as authenticating. `BelongsToShop::resolveTenantShopId()` returns null
