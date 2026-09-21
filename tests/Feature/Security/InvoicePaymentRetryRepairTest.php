@@ -521,6 +521,152 @@ class InvoicePaymentRetryRepairTest extends TestCase
             'and must not be reprocessed into a real second payment');
     }
 
+    // ==================================================================== P-12
+    /**
+     * [OBSERVED] An INCONSISTENT claim is refused, and the refusal does not
+     * fall through into taking the payment again.
+     *
+     * WHY THIS TEST EXISTS, STATED HONESTLY. `InvoicePaymentClaim`'s docblock
+     * asserted that "`shop_id` is stored and asserted by the controller before
+     * any claim body is returned". Re-reading the controller for this review,
+     * **the second half of that sentence was not true** — nothing read
+     * `$claim->shop_id`. The comment described a control that did not exist.
+     *
+     * This is NOT a demonstrated cross-tenant exploit and is not reported as
+     * one. `EnsureTenantUser` sets the context from `auth()->user()->shop_id`,
+     * the invoice arrives through a tenant-scoped binding, and the claim is
+     * written with that same shop — so all three agree on every path the
+     * shipped code can take, and a foreign caller 404s at the binding before
+     * reaching here (P-07).
+     *
+     * What it defends is the row itself being wrong: a corrupted write, a
+     * restore, a future second writer, or a migration that fills the column
+     * from a different source. In that state the pre-P-12 code would have
+     * replayed a body belonging to another shop. The claim is authorization-
+     * bearing data, so it gets checked rather than trusted.
+     *
+     * The required answer is a REFUSAL, not a fall-through: "this claim is not
+     * usable" must never resolve to "so take the payment again", which is the
+     * whole failure mode this finding family is about.
+     */
+    public function test_p12_a_claim_whose_shop_does_not_match_is_refused_without_reprocessing(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        [, $otherShop] = $this->createRetailerTenant();
+        $invoice = $this->finalizedInvoice($shop->id, 10000.00);
+        $key = 'inconsistent-key-0012';
+
+        $body = ['payment' => ['id' => 4242, 'mode' => 'cash', 'amount' => 3000.0]];
+        $payload = ['mode' => 'cash', 'amount' => 3000.00];
+
+        // THE HASH MUST MATCH, AND THE FIRST DRAFT OF THIS TEST GOT IT WRONG.
+        //
+        // That draft stored a hash of `{}`. The test PASSED on the RED run —
+        // but it passed because the payload hashes disagreed, so the controller
+        // answered 409 `idempotency_key_conflict`. A 409 for the wrong reason
+        // satisfied an assertion that only looked at the status code, exactly
+        // as P-08's first draft was satisfied by "relation does not exist".
+        //
+        // Reproducing the controller's own hash makes the payload IDENTICAL, so
+        // the only thing left wrong is `shop_id`. `TestCase::json()` encodes
+        // with `json_encode($data, 0)` (verified in
+        // Foundation/Testing/Concerns/MakesHttpRequests.php:565), so plain
+        // json_encode reproduces the raw body byte for byte.
+        $requestHash = hash(
+            'sha256',
+            'POST|api/mobile/invoices/'.$invoice->id.'/payments|'.json_encode($payload, 0)
+        );
+
+        // A claim for the RIGHT invoice, key and payload — carrying the WRONG shop.
+        DB::table('invoice_payment_claims')->insert([
+            'invoice_id'      => $invoice->id,
+            'shop_id'         => $otherShop->id,
+            'user_id'         => null,
+            'key'             => $key,
+            'request_hash'    => $requestHash,
+            'response_status' => 201,
+            'response_body'   => json_encode($body),
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        $this->actAs($owner);
+        $response = $this->postJson(sprintf(self::ROUTE, $invoice->id), $payload,
+            ['X-Idempotency-Key' => $key]);
+
+        // Refused. Not 2xx — a 2xx here would mean either the foreign body was
+        // served or a fresh payment was taken under a key already claimed.
+        $this->assertContains($response->status(), [409, 422, 503], sprintf(
+            'an inconsistent claim must be refused, got %d', $response->status()
+        ));
+
+        // AND refused for the RIGHT reason. Without this the payload-conflict
+        // path could satisfy the status assertion above all over again.
+        $this->assertNotSame('idempotency_key_conflict', $response->json('errors.0.code'),
+            'this must be refused as an inconsistent claim, not as a payload conflict');
+
+        // The foreign body must not appear in the response at all.
+        $this->assertStringNotContainsString('4242', $response->getContent(),
+            'the other shop\'s stored receipt must not be echoed back');
+
+        // AND the refusal must not have become a second charge.
+        $this->assertSame(0, $this->paymentCount($invoice->id),
+            'refusing the claim must not fall through into processing a payment');
+        $this->assertSame(0.0, $this->paidTotal($invoice->id));
+    }
+
+    // ==================================================================== P-13
+    /**
+     * [OBSERVED] Staff who have LOST payment permission cannot replay a receipt
+     * they were authorized to create earlier.
+     *
+     * The stale-authorization question: the claim was created while the user
+     * held `sales.create`. If replay were answered from the stored record
+     * without re-deciding permission, revocation would take effect for new
+     * payments but not for replays — the receipt would keep being served to
+     * someone no longer allowed to see it.
+     *
+     * The positive control is inside the same test: the SAME user, on the SAME
+     * key, succeeds before the revocation and is refused after it. Without that
+     * first call this would pass against a route that was simply broken.
+     */
+    public function test_p13_revoked_payment_permission_cannot_replay_an_earlier_receipt(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->finalizedInvoice($shop->id, 10000.00);
+        $staff = $this->createStaffUser($shop->id);
+        $key = 'revoked-key-0013';
+
+        // POSITIVE CONTROL — authorized, so the payment and its claim exist.
+        $this->actAs($staff);
+        $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash', 'amount' => 3000.00,
+        ], ['X-Idempotency-Key' => $key])->assertCreated();
+
+        $this->assertSame(1, $this->paymentCount($invoice->id));
+        $this->assertSame(1, $this->claimCount($invoice->id));
+
+        // Revoke `sales.create` from the role this user holds.
+        $role = Role::withoutTenant()->findOrFail($staff->role_id);
+        $role->revokePermission('sales.create');
+
+        // Same user, same key, same payload — now unauthorized.
+        $this->actAs($staff->fresh());
+        $replay = $this->postJson(sprintf(self::ROUTE, $invoice->id), [
+            'mode' => 'cash', 'amount' => 3000.00,
+        ], ['X-Idempotency-Key' => $key]);
+
+        $replay->assertForbidden();
+
+        // No receipt data may leak through the refusal.
+        $this->assertStringNotContainsString('outstanding_amount', $replay->getContent(),
+            'a refused replay must not carry the stored receipt body');
+
+        // And the refusal must not disturb what was already recorded.
+        $this->assertSame(1, $this->paymentCount($invoice->id));
+        $this->assertSame(3000.0, $this->paidTotal($invoice->id));
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private function actAs(User $user): void

@@ -231,7 +231,7 @@ class InvoiceController extends Controller
             // 1. DURABLE claim first. This is the record written inside the
             //    payment transaction, so its presence is proof the payment
             //    committed — which the cache entry never was.
-            $claim = $this->findPaymentClaim((int) $invoice->id, $idempotencyKey);
+            $claim = $this->findPaymentClaim((int) $invoice->id, (int) $invoice->shop_id, $idempotencyKey);
 
             if ($claim !== null) {
                 $this->authorizeCachedPaymentReplay($request, $invoice);
@@ -435,7 +435,7 @@ class InvoiceController extends Controller
             // winner's receipt is the correct answer to this request: the
             // payment the client asked for did happen, once.
             $winner = $idempotencyKey !== null
-                ? $this->findPaymentClaim((int) $invoice->id, $idempotencyKey)
+                ? $this->findPaymentClaim((int) $invoice->id, (int) $invoice->shop_id, $idempotencyKey)
                 : null;
 
             if ($winner === null) {
@@ -474,13 +474,27 @@ class InvoiceController extends Controller
      *
      * Not scoped by `BelongsToShop` — see the note on InvoicePaymentClaim for
      * why a fail-closed global scope is actively unsafe on a dedup lookup. The
-     * tenant check is upstream (scoped route binding) and downstream
-     * (`authorizeCachedPaymentReplay` before any body is returned).
+     * tenant check is upstream (scoped route binding), downstream
+     * (`authorizeCachedPaymentReplay` before any body is returned), and now
+     * ALSO on the row itself, immediately below.
+     *
+     * P-12 — THE `shop_id` ASSERTION, WHICH WAS PROMISED AND MISSING. The
+     * InvoicePaymentClaim docblock stated that "`shop_id` is stored and asserted
+     * by the controller before any claim body is returned". The storing was
+     * true; **the asserting was not** — nothing read the column. A security
+     * comment describing a control that does not exist is worse than no comment,
+     * because it stops the next reader looking. The check now exists here, in
+     * the single method both replay paths go through, rather than being repeated
+     * at each call site where one could later be forgotten.
+     *
+     * A mismatch is REFUSED, never converted into a miss. Returning `null` would
+     * mean "no claim, take the payment" — turning a corrupted row into a second
+     * charge, which is the exact failure this whole finding family is about.
      */
-    private function findPaymentClaim(int $invoiceId, string $key): ?InvoicePaymentClaim
+    private function findPaymentClaim(int $invoiceId, int $expectedShopId, string $key): ?InvoicePaymentClaim
     {
         try {
-            return InvoicePaymentClaim::query()
+            $claim = InvoicePaymentClaim::query()
                 ->where('invoice_id', $invoiceId)
                 ->where('key', $key)
                 ->first();
@@ -492,6 +506,35 @@ class InvoiceController extends Controller
 
             abort(503, 'Payment idempotency check is temporarily unavailable. Please retry.');
         }
+
+        // Not reachable from the shipped code paths — EnsureTenantUser sets the
+        // context from the user's own shop, the invoice is bound under that
+        // scope, and the claim is written with the same shop. It defends the row
+        // being wrong for a reason outside this method: a restore, a corrupted
+        // write, a later second writer, or a backfill sourcing the column
+        // differently. Claims carry a response body, so they are
+        // authorization-bearing data and get checked rather than trusted.
+        if ($claim !== null && (int) $claim->shop_id !== $expectedShopId) {
+            Log::error('storePayment: idempotency claim shop mismatch', [
+                'invoice_id'     => $invoiceId,
+                'claim_shop_id'  => (int) $claim->shop_id,
+                'expected_shop'  => $expectedShopId,
+            ]);
+
+            // 409, and deliberately NOT the `idempotency_key_conflict` code —
+            // that one tells a client "you reused a key with a different
+            // payload", which is actionable by changing the key. This is a
+            // server-side integrity problem the client cannot fix, so it is
+            // named separately and left for an operator to see in the log.
+            abort(response()->json([
+                'errors' => [[
+                    'code' => 'idempotency_claim_inconsistent',
+                    'message' => 'This payment could not be verified. Please contact support before retrying.',
+                ]],
+            ], 409));
+        }
+
+        return $claim;
     }
 
     private function normalizePaymentPayload(Request $request): array
