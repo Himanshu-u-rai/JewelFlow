@@ -1555,8 +1555,8 @@ went unread — the templates re-resolved them live. This is purely a read-path
 change. The two snapshot-writer services in the diff are **comment-only**
 edits, verified by reading the diff.
 
-**Files.** `app/Services/BillTaxPresentation.php` → `BillPresentation.php`
-(`git mv`, so history follows); `resources/views/invoice_print.blade.php`;
+**Files.** `app/Services/BillTaxPresentation.php` → `BillPresentation.php`;
+`resources/views/invoice_print.blade.php`;
 `resources/views/quick-bills/print.blade.php`. Confirmed by grep that the only
 `$billing?->` reads left in the invoice template are the sixteen rendering
 fields, and that `gst_number` no longer appears outside the resolver call.
@@ -1608,6 +1608,28 @@ silently degrading into the missing-key case D-13 already covers.
 against `pg_trigger`: that table carries **no user triggers**, so the fixture
 bypasses no constitutional guard. It is also deletion-only — it never writes a
 fabricated value, which is the thing this whole finding argues against.
+
+**CORRECTION — the rename does NOT follow in history, and `306aae1`'s own
+commit message says it does.** The message claims "`git mv`, so history
+follows". Checked after committing, and it is false in effect. `git mv` stages
+a rename but Git *stores* none — it re-detects renames at read time by content
+similarity, default threshold 50%. The file went 154 → 269 lines in the same
+commit, so similarity fell below that and the rename decomposed into an
+add plus a delete:
+
+```
+$ for t in 50 40 30 20 10; do git log --follow --find-renames=${t}% \
+      --oneline -- app/Services/BillPresentation.php | wc -l; done
+  -M50%: 1   -M40%: 1   -M30%: 1   -M20%: 2   -M10%: 2
+```
+
+`git log --follow` therefore stops at `306aae1`; it only reconnects to
+`b216b80` at `--find-renames=20%`. Renaming and substantially rewriting in one
+commit forfeits history-following — two commits would have kept it. The commit
+message is not amended, because the wrong claim being visible next to its
+correction is worth more than a tidy log. **Practical impact is contained:**
+`build-security-review-packet.sh` lists *both* paths in its pathspec, so the
+exported resolver diff spans the rename regardless.
 
 ### Stated limitations — NOT repaired
 
