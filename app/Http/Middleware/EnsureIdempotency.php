@@ -246,12 +246,17 @@ class EnsureIdempotency
         // confirm this — check before re-entering it" instead of silently
         // retrying. For money that is the correct direction to fail.
         //
-        // The burn is bounded, not permanent. PruneIdempotencyKeys runs daily
-        // (routes/console.php) with a 48h retention, so a stuck in-flight row
-        // is reaped like any other. That is also the pre-existing ceiling on
-        // replay itself — a same-key retry after 48h has always re-run the
-        // controller — so this policy does not widen that window, it only
-        // decides what happens inside it.
+        // The burn is NOT bounded by anything automatic, and an earlier version
+        // of this comment was wrong to say it was. It claimed
+        // PruneIdempotencyKeys would reap a stuck in-flight row at 48h like any
+        // other. Since S3-09b that command deliberately retains unresolved
+        // claims — deleting one is precisely what re-permits the duplicate it
+        // was holding back (see PruneIdempotencyKeys' docblock).
+        //
+        // So a burnt key stays burnt until an operator reconciles the record.
+        // That is the honest cost of this policy, and it is accepted on
+        // purpose: no timer here may decide that an operation whose outcome
+        // nobody knows has become safe to run again.
         if ($status >= 500) {
             return $response;
         }

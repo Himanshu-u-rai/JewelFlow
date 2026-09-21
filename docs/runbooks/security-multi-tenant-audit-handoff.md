@@ -900,10 +900,27 @@ it. Laravel's pipeline converts a controller exception into a response, so the
 middleware cannot distinguish "died before writing" from "wrote, then died", and
 releasing the key makes the second case double-charge. The cost is that a
 transient 5xx which wrote nothing burns that one key and the client must surface
-*"we could not confirm this — check before re-entering it"*. The burn is
-bounded, not permanent: `PruneIdempotencyKeys` is scheduled daily
-(`routes/console.php:147`) at 48h retention, which was already the ceiling on
-replay itself.
+*"we could not confirm this — check before re-entering it"*.
+
+**Correction to my own earlier wording here.** The first version of this
+paragraph said the burn was *"bounded, not permanent"* because
+`PruneIdempotencyKeys` would reap the row at 48h. That was wrong twice over and
+is withdrawn:
+
+* It treated the pruner as a **financial-safety mechanism**. It is not. It
+  bounds table size. Nothing in it decides that an uncertain operation has
+  become safe to re-run, and nothing in it could — only an operator who has
+  reconciled the underlying record can know that.
+* It conflated the **eligibility threshold** with the **deletion time**.
+  `--hours=48` is the threshold; `Schedule::command(...)->daily()`
+  (`routes/console.php:147`) runs at midnight Asia/Kolkata, so a row eligible
+  at 00:30 waits until the next midnight — real deletion age runs from 48h to
+  roughly 72h. And all of that assumes cron is actually invoking
+  `schedule:run`, which is **NOT VERIFIED** and is not verifiable from the
+  test suite.
+
+As of `e68eb31` the premise is gone anyway: the pruner no longer deletes
+unresolved claims at all. See §7c-1.
 
 Fail-soft now survives in exactly one place — recording a completed claim —
 where the mutation has already succeeded and the row already holds the key, so a
@@ -991,6 +1008,114 @@ can fire. Row counts are unusable there: `RefreshDatabase` runs the test in one
 transaction and the unique violation aborts it. That is a harness artefact, not
 a production concern — the middleware runs outside any transaction, so
 PostgreSQL rolls back the failed statement alone.
+
+### §7c-1 — the pruning contract, and the defect in it — `e68eb31`
+
+The repair in `b8673db` only holds while the claim row survives. It did not.
+`PruneIdempotencyKeys` deleted by age alone:
+
+```php
+IdempotencyKey::where('created_at', '<', $cutoff)->delete();
+```
+
+**Demonstrated, not argued**, in
+`tests/Feature/Security/MobileIdempotencyRetentionTest.php`. The sequence is
+driven through the real `POST /api/mobile/v1/cashbook` route, not assembled by
+hand, so what the pruner deletes is genuinely the row protecting a committed
+cash movement:
+
+1. A cashbook entry is posted and the cash row **commits**.
+2. `IdempotencyKey::updating` is made to throw, so the outcome is never
+   recorded — the claim is left at `response_status = 0`. This is the exact
+   window the repair leaves behind, reached by real failure injection.
+3. The claim is aged past the threshold and the command is run.
+4. The same key is retried.
+
+Before the fix, step 3 deleted the claim and step 4 **booked the cash entry a
+second time**. The test asserts the cash row count, not merely the response.
+
+The correction is **retain + report**, and deliberately not a timer:
+unresolved claims are excluded from the delete and counted into a warning.
+Two positive controls pin it from the other side so it cannot quietly degrade
+into "never delete anything" — a resolved claim past the threshold is still
+pruned, and a recent resolved claim is left alone.
+
+Also fixed here: the replay path now range-checks the stored status
+(`< 100 || > 599`) instead of comparing to the sentinel. A corrupted value must
+not be reported to a client as fact, and `response()->json($body, 0)` would
+throw a 500 from inside the one component whose job is to answer safely.
+
+**What this does NOT settle.** There is still no supported way to clear a
+retained unresolved claim, and growth — one row per crashed mutation — is slow
+but unbounded. No purge flag is offered, because deleting such a row is exactly
+the dangerous act and needs a reconciliation procedure rather than a flag.
+**This is an open decision for the operator, not a closed item.**
+
+### §7c-4 — the mobile consumer — mobile `2cad553`
+
+Inspected on the recorded mobile SHA `ffcd034`, and one piece of earlier
+documentation was **checked rather than trusted**.
+
+**Correction: the claim that "4xx responses rotate retry keys" is not what the
+code does.** `src/api/transport/request.ts` never retries a 4xx at all —
+`isRetryable()` returns true only for network faults, 408, 429 and 5xx — so
+there was no rotation-on-4xx behaviour to rely on. The key was stable across
+the transport's *own* retries (`buildHeaders` sets the same
+`X-Idempotency-Key` on every attempt, verified at `request.ts:112-114`). The
+rotation happened somewhere else entirely, and that was the defect.
+
+**The verified chain to a duplicate cash entry:**
+
+| Step | Where | Behaviour |
+|---|---|---|
+| 1 | `transport/request.ts` | 5xx → auto-retry, **same** key |
+| 2 | `EnsureIdempotency` | claim unresolved → `409 idempotency_in_flight` |
+| 3 | `utils/mutation-error.ts` | no case for that code → `default:` → `status === 409` → `conflict` |
+| 4 | `utils/mutation-error-alert.ts` | flat alert titled **"Already changed"** |
+| 5 | `app/cashbook/add.tsx` | mutation failed → Save re-enables |
+| 6 | `api/cashbook.ts` | operator taps Save → `newIdempotencyKey()` called **inside** `createCashbookEntry` → **new key** |
+| 7 | server | different key = different operation → **second cash row** |
+
+Step 4 is not merely cosmetic: it tells the operator someone else changed the
+record, which actively invites the retap at step 5.
+
+**Correction to a sub-agent's conclusion, recorded because I relied on it
+briefly.** An earlier exploration reported *"the client is SAFE by accident: it
+doesn't retry 409 at all."* That is **wrong**. Automatic retry is not the only
+path to a resubmit — the operator is, and the button re-enables for them.
+
+**The repair, and what it is keyed on.** The root cause is key *ownership*:
+the key's lifetime was one function call when it needed to be one operator
+intent. Fixed by moving the key to a caller parameter, reusing the shape
+`approveReturn(returnOrderId, idempotencyKey)` already established in
+`src/api/returns.ts:115-123`, with both screens holding it in a `useRef` and
+rotating **only on success**. Rotation-on-success matters more on
+`drawer-check.tsx`, which stays mounted and clears its form — without it a
+second genuine count would replay the first.
+
+A `pending` kind now carries `idempotency_in_flight`, titled *"Outcome
+unknown"*, with a body directing the operator to check the record. The generic
+*"Please try again"* fallback is suppressed on that path specifically, because
+trying again is the act that doubles the money. Payload conflict
+(`idempotency_key_conflict`) and definite validation failure keep their
+existing kinds, and the unlabelled-409 fallback is unchanged — pinned by test,
+since `session_already_ended` legitimately relies on it.
+
+`src/api/sessions.ts` was inspected and **deliberately left unchanged**: its
+four operations assign absolute values (`locked_at = now()` / `= null`) or
+carry their own terminal-state guards inside `DB::transaction`, verified
+against `SessionController`. None move money. That classification is recorded
+in the file so it is not "fixed" later by pattern-matching.
+
+Evidence: 15 new tests across `src/api/cashbook.test.ts`,
+`src/utils/mutation-error.test.ts`, `src/utils/mutation-error-alert.test.ts`.
+Suite at mobile `2cad553`: **40 suites / 275 tests pass, `tsc --noEmit`
+clean.** One of the four alert tests passed *before* the fix and is labelled in
+the file as a regression lock rather than as evidence of repair.
+
+**NOT RUN:** no device or emulator run. This is unit-level evidence about the
+classifier, the presenter and the key on the wire. It does not establish
+end-to-end behaviour on a handset.
 
 ## 8. Commands actually run, and their results
 
