@@ -778,7 +778,32 @@ php artisan test --filter='Invoice|Sales|Exchange|Installment|Return|QuickBill|R
   -> 606 passed, 3 skipped, 2359 assertions
      +7 / +35 against the 599 / 3 / 2324 pin, the same seven tests.
      Skipped count unchanged, and now broken out by name in section 1a D2.
+
+--- re-measured at 25355ff, the candidate SHA, both pinned commands again ---
+
+php artisan test tests/Feature/Security tests/Feature/Mobile
+  -> 235 passed, 829 assertions
+     +7 tests / +28 assertions against the 228 / 801 figure above.
+     Accounted for exactly, and by subtraction from the per-file runs
+     rather than by assuming: FinalizedInvoiceSettingsDriftTest 8 -> 12
+     (+4 tests, +17 assertions, D-09..D-12) and PublicCatalogExposureTest
+     5 -> 8 (+3, +11, C-06..C-08).
+
+php artisan test --filter='Invoice|Sales|Exchange|Installment|Return|QuickBill|Repair|Gst|Tax|Snapshot|Setting' --display-skipped
+  -> 610 passed, 3 skipped, 2376 assertions
+     +4 / +17 against 606 / 3 / 2359 -- the D-09..D-12 four only. This
+     filter has no 'Catalog' term, so it does NOT pick up the three new
+     PublicCatalogExposureTest cases. The two commands disagreeing by
+     exactly three tests is the expected result, not a discrepancy.
+     Skipped still 3, still all in ConstitutionalInvariantsTest.
 ```
+
+**Why this block exists at all.** The review packet tells a reviewer that measured
+results live in this section. Two commits after the `eca2e8b` re-measure added
+tests, so the numbers above it no longer described the commit the packet ships.
+Both commands were re-run verbatim at the candidate SHA rather than adjusted by
+arithmetic — the deltas reconcile, but reconciliation is the *check*, not the
+source of the figures.
 
 **A discrepancy I raised against myself, and its resolution.** An interim report
 quoted `--filter='Security|Mobile'` at 474 / 5208 and
@@ -839,7 +864,13 @@ is not coverage:
 | Publication consent gate, both halves | yes (C-01 enabled, C-02 not enabled) |
 | Four principals on a mobile mutation route | yes (I-01…I-04) |
 | Cached-response cross-tenant replay | yes (I-05, body-level assertion) |
+| Direct asset URL carries no gate or shop identity | yes (C-06) |
+| Shopfront disabled after publication | yes (C-07 — page 404s, file stays put) |
+| Private-disk serve route, unsigned vs signed | yes (C-08, denial + positive control) |
+| Live-setting drift, business identity | yes (D-09 bank, D-10 terms, D-11 GSTIN) |
+| Live-setting drift, genuinely cosmetic | yes (D-12 — the bound on the above) |
 | **Per-item publication opt-out** | **none exists — characterized by C-03, not covered** |
+| **Anonymous HTTP fetch of a public-disk file** | **NOT RUN — served by nginx, not Laravel; unmeasurable from the suite** |
 | **On-device print** | **NOT RUN — see §5** |
 | **Edge cache behaviour** | **NOT RUN — no Cloudflare access** |
 
