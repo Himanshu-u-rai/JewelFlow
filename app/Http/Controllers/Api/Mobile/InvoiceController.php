@@ -234,38 +234,7 @@ class InvoiceController extends Controller
             $claim = $this->findPaymentClaim((int) $invoice->id, (int) $invoice->shop_id, $idempotencyKey);
 
             if ($claim !== null) {
-                $this->authorizeCachedPaymentReplay($request, $invoice);
-
-                // Changed parameters under a key that was already used is a
-                // conflict, not a replay. Answering 200 with the ORIGINAL
-                // receipt (the pre-repair behaviour) tells the operator the
-                // amount they just keyed in succeeded when it was discarded.
-                if (! hash_equals((string) $claim->request_hash, (string) $requestHash)) {
-                    return response()->json([
-                        'errors' => [[
-                            'code' => 'idempotency_key_conflict',
-                            'message' => 'This idempotency key was already used with a different payment payload.',
-                        ]],
-                    ], 409);
-                }
-
-                // 200, NOT the stored 201.
-                //
-                // Replaying the original status was the first version of this
-                // and it broke I-06, which encodes the contract clients in the
-                // field already depend on: a replayed receipt comes back 200.
-                // That test was right and the code was wrong. A replay did not
-                // create anything *now*, so 201 would also be a worse answer on
-                // its own terms. The status is stored for the record; the fact
-                // that this is a replay is carried by the header, which is
-                // additive and breaks nobody.
-                //
-                // Keeping 200 here also makes a replay indistinguishable in
-                // status whether the durable claim or the legacy cache answered
-                // it — during the compatibility window both are live.
-                return response()
-                    ->json($claim->response_body, 200)
-                    ->header('X-Idempotent-Replay', 'true');
+                return $this->replayClaim($request, $invoice, $claim, $requestHash);
             }
 
             // 2. LEGACY cache entry, for keys in flight across the deploy.
@@ -292,6 +261,41 @@ class InvoiceController extends Controller
 
         $commitPayment = function () use ($payments, $invoice, $shopId, $request, $idempotencyKey, $requestHash) {
             $locked = Invoice::query()->where('id', $invoice->id)->lockForUpdate()->firstOrFail();
+
+            // STAKE THE CLAIM BEFORE ANY BUSINESS VALIDATION RUNS. R-C5 IS WHY.
+            //
+            // This INSERT used to sit at the END of the transaction, justified
+            // by "the lockForUpdate above already serializes concurrent
+            // requests against this invoice". The concurrency harness
+            // (docs/runbooks/payment-race-harness.sh, scenario R-C5) falsified
+            // that: three processes settling the invoice in full under ONE key
+            // produced 201, 422, 422. Serializing is not deduplicating. The
+            // serialized losers acquired the lock AFTER the winner committed,
+            // saw outstanding = 0, and were rejected by the "already fully
+            // paid" guard — never reaching the claim INSERT, so the race-loss
+            // replay below never ran. The client was told its own successful
+            // payment had failed.
+            //
+            // Staked first, a loser collides on the unique index immediately
+            // and replays the winner. PostgreSQL makes the duplicate INSERT
+            // BLOCK on the winner's uncommitted row, so this also behaves
+            // correctly when the winner ROLLS BACK: the index entry disappears
+            // and the loser proceeds as a legitimate first request.
+            //
+            // `response_body` is filled in at the end of this same transaction.
+            // The column is nullable and the row is invisible outside this
+            // transaction until commit, so no reader can observe the gap.
+            $claim = $idempotencyKey !== null
+                ? InvoicePaymentClaim::create([
+                    'invoice_id'      => (int) $locked->id,
+                    'shop_id'         => $shopId,
+                    'user_id'         => (int) $request->user()->id,
+                    'key'             => $idempotencyKey,
+                    'request_hash'    => $requestHash,
+                    'response_status' => 201,
+                    'response_body'   => null,
+                ])
+                : null;
 
             if ($locked->status !== Invoice::STATUS_FINALIZED) {
                 throw ValidationException::withMessages([
@@ -397,28 +401,16 @@ class InvoiceController extends Controller
             ];
 
             // THE REPAIR. The replay record commits WITH the payment or not at
-            // all. Previously this was a `Cache::put` after the transaction
-            // returned: a separate write, to a separate store, that could simply
-            // not happen. Anything that landed the commit without it left a
-            // charged customer and no evidence, and the next retry of the key
-            // was indistinguishable from a first request.
+            // all. Previously the receipt was a `Cache::put` after the
+            // transaction returned: a separate write, to a separate store, that
+            // could simply not happen. Anything that landed the commit without
+            // it left a charged customer and no evidence, and the next retry of
+            // the key was indistinguishable from a first request.
             //
-            // Placed at the END of the transaction rather than the start because
-            // the `lockForUpdate` above already serializes concurrent requests
-            // against this invoice. By the time a second worker reaches this
-            // INSERT the first has committed, so the unique index rejects it
-            // immediately and rolls back this worker's payment INSERT with it.
-            if ($idempotencyKey !== null) {
-                InvoicePaymentClaim::create([
-                    'invoice_id'      => (int) $locked->id,
-                    'shop_id'         => $shopId,
-                    'user_id'         => (int) $request->user()->id,
-                    'key'             => $idempotencyKey,
-                    'request_hash'    => $requestHash,
-                    'response_status' => 201,
-                    'response_body'   => $payload,
-                ]);
-            }
+            // The row itself was staked above, before validation; this only
+            // fills in the body now that there is one. Same transaction, so the
+            // claim and the payment still commit together or not at all.
+            $claim?->update(['response_body' => $payload]);
 
             return $payload;
         };
@@ -434,23 +426,48 @@ class InvoiceController extends Controller
             // Replay the winner rather than surfacing a 500. Returning the
             // winner's receipt is the correct answer to this request: the
             // payment the client asked for did happen, once.
+            // P-14 — IDENTIFY THE CONSTRAINT, DO NOT INFER IT FROM THE OUTCOME.
+            //
+            // The old test was "is there a claim for this key?", which is a
+            // proxy, and the proxy is wrong at exactly the moment it matters.
+            // Our own claim row holds the index entry while the transaction is
+            // open, so a competing worker's INSERT BLOCKS on it. If we then fail
+            // for an UNRELATED reason, our rollback releases the entry, the
+            // competitor commits, and the proxy now answers "yes" — so the
+            // unrelated database error is reported to the client as a
+            // successful payment. P-14 reproduces that sequence and it returned
+            // 200 with a stored receipt before this check existed.
+            //
+            // Matching on the index name is the narrow question actually being
+            // asked: was it OUR mutual-exclusion constraint? Anything else is
+            // rethrown, whatever happens to be in the table by then.
+            if (! str_contains($e->getMessage(), 'invoice_payment_claims_invoice_key_unique')) {
+                throw $e;
+            }
+
             $winner = $idempotencyKey !== null
                 ? $this->findPaymentClaim((int) $invoice->id, (int) $invoice->shop_id, $idempotencyKey)
                 : null;
 
             if ($winner === null) {
-                // Not our unique index — something else collided. Do not
-                // swallow it; a unique violation we cannot explain must not be
-                // reported to the client as a successful payment.
+                // Our constraint fired but the row is gone — the winner rolled
+                // back after we collided, or something outside this request
+                // removed it. Either way we cannot name a payment that happened,
+                // so the error stands rather than being dressed up as a receipt.
                 throw $e;
             }
 
-            $this->authorizeCachedPaymentReplay($request, $invoice);
-
-            // 200 for the same reason as the claim-replay path above.
-            return response()
-                ->json($winner->response_body, 200)
-                ->header('X-Idempotent-Replay', 'true');
+            // THROUGH THE SAME REPLAY PATH AS THE FRONT DOOR, AND R-C3 IS WHY.
+            //
+            // This used to return the winner's receipt directly, skipping the
+            // payload-hash comparison the front-door replay performs. Harness
+            // scenario R-C3 — same key, DIFFERENT amounts, concurrent —
+            // returned 201 and 200 instead of 201 and 409: the ₹4500 request
+            // was answered with the ₹3000 receipt, HTTP 200. The operator is
+            // told the amount they keyed in succeeded when it was discarded,
+            // which is the exact failure the front-door 409 exists to prevent.
+            // Sequentially it was already correct; only the race reached here.
+            return $this->replayClaim($request, $invoice, $winner, $requestHash);
         }
 
         // The cache is kept, unchanged, as a read accelerator in front of the
@@ -462,6 +479,60 @@ class InvoiceController extends Controller
         }
 
         return response()->json($response, 201);
+    }
+
+    /**
+     * The ONE way a durable claim is ever turned into a response.
+     *
+     * Both replay entrances go through here — the front-door lookup and the
+     * race-loss recovery — because they previously disagreed. The race-loss
+     * path returned the winner's receipt without comparing payload hashes, so a
+     * concurrent same-key/different-amount request was answered 200 with the
+     * other amount's receipt (harness R-C3). Keeping the authorization, the
+     * conflict check and the status in a single method is what stops the two
+     * entrances drifting apart again.
+     *
+     * ORDER MATTERS. Authorize first: a caller who may not see this invoice, or
+     * who has lost `sales.create`, must be refused before any stored body is
+     * consulted, let alone returned.
+     */
+    private function replayClaim(
+        Request $request,
+        Invoice $invoice,
+        InvoicePaymentClaim $claim,
+        ?string $requestHash,
+    ): JsonResponse {
+        $this->authorizeCachedPaymentReplay($request, $invoice);
+
+        // Changed parameters under a key that was already used is a conflict,
+        // not a replay. Answering 200 with the ORIGINAL receipt (the pre-repair
+        // behaviour) tells the operator the amount they just keyed in succeeded
+        // when it was discarded.
+        if (! hash_equals((string) $claim->request_hash, (string) $requestHash)) {
+            return response()->json([
+                'errors' => [[
+                    'code' => 'idempotency_key_conflict',
+                    'message' => 'This idempotency key was already used with a different payment payload.',
+                ]],
+            ], 409);
+        }
+
+        // 200, NOT the stored 201.
+        //
+        // Replaying the original status was the first version of this and it
+        // broke I-06, which encodes the contract clients in the field already
+        // depend on: a replayed receipt comes back 200. That test was right and
+        // the code was wrong. A replay did not create anything *now*, so 201
+        // would also be a worse answer on its own terms. The status is stored
+        // for the record; the fact that this is a replay is carried by the
+        // header, which is additive and breaks nobody.
+        //
+        // Keeping 200 here also makes a replay indistinguishable in status
+        // whether the durable claim or the legacy cache answered it — during
+        // the compatibility window both are live.
+        return response()
+            ->json($claim->response_body, 200)
+            ->header('X-Idempotent-Replay', 'true');
     }
 
     /**

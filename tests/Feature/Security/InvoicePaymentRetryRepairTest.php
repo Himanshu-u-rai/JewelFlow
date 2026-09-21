@@ -667,6 +667,93 @@ class InvoicePaymentRetryRepairTest extends TestCase
         $this->assertSame(3000.0, $this->paidTotal($invoice->id));
     }
 
+    // ==================================================================== P-14
+    /**
+     * [INJECTED FAILURE] A unique violation that is NOT the claim-key collision
+     * must surface as an error, never be answered with someone else's receipt.
+     *
+     * WHY THIS BECAME REACHABLE. The claim INSERT was moved to the START of the
+     * payment transaction (harness R-C5: at the end, a serialized loser was
+     * rejected by "already fully paid" before ever reaching it, and was told its
+     * own successful payment had failed). That fix widened the catch: any unique
+     * violation raised AFTER the claim insert now lands in the same handler.
+     *
+     * And the window is real, not theoretical. Our uncommitted claim row holds
+     * the index entry, so a competing worker's INSERT BLOCKS on it. If we then
+     * fail for an unrelated reason, our rollback releases the entry, the
+     * competitor commits, and by the time the handler looks up "the winner"
+     * there IS one — so the pre-fix handler would return 200 and the unrelated
+     * database error would vanish.
+     *
+     * The sequence is reproduced exactly, with real events and a real row:
+     *   - an unrelated unique violation is raised once the payment row exists;
+     *   - the competing claim is planted on the actual rollback, i.e. after our
+     *     own claim row is gone, which is the only moment it could appear.
+     *
+     * The planted hash MATCHES the request. If it did not, the handler would
+     * answer 409 and this test would pass without the guard ever running — the
+     * same false pass P-12's first draft produced.
+     */
+    public function test_p14_an_unrelated_unique_violation_is_not_reported_as_a_replay(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->finalizedInvoice($shop->id, 10000.00);
+        $key = 'repair-key-0014';
+        $payload = ['mode' => 'cash', 'amount' => 3000.00];
+
+        $requestHash = hash(
+            'sha256',
+            'POST|api/mobile/invoices/'.$invoice->id.'/payments|'.json_encode($payload, 0)
+        );
+
+        // Plant the competitor's claim at the moment our transaction rolls back.
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Database\Events\TransactionRolledBack::class,
+            function () use ($invoice, $shop, $key, $requestHash) {
+                if (DB::table('invoice_payment_claims')->where('key', $key)->exists()) {
+                    return;
+                }
+                DB::table('invoice_payment_claims')->insert([
+                    'invoice_id'      => $invoice->id,
+                    'shop_id'         => $shop->id,
+                    'user_id'         => null,
+                    'key'             => $key,
+                    'request_hash'    => $requestHash,
+                    'response_status' => 201,
+                    'response_body'   => json_encode(['totals' => ['outstanding_amount' => 7000]]),
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+            }
+        );
+
+        // An unrelated unique violation, raised after the payment row is written
+        // and therefore after the claim row was staked.
+        \App\Models\InvoicePayment::created(function () {
+            throw new \Illuminate\Database\UniqueConstraintViolationException(
+                'pgsql',
+                'insert into "some_other_table" ...',
+                [],
+                new \RuntimeException(
+                    'SQLSTATE[23505]: duplicate key value violates unique constraint "some_other_table_unique"'
+                )
+            );
+        });
+
+        $this->actAs($owner);
+        $response = $this->postJson(sprintf(self::ROUTE, $invoice->id), $payload,
+            ['X-Idempotency-Key' => $key]);
+
+        $this->assertNotSame(200, $response->getStatusCode(),
+            'an unrelated unique violation must not be answered as a successful replay');
+        $this->assertStringNotContainsString('outstanding_amount', $response->getContent(),
+            'no stored receipt body may be returned for an error we did not recognize');
+
+        // And nothing was charged: the transaction that failed took its payment
+        // row with it.
+        $this->assertSame(0, $this->paymentCount($invoice->id));
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private function actAs(User $user): void
