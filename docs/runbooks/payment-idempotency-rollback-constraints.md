@@ -4,8 +4,13 @@
 rollback, a purge or any production write.**
 
 Evidence: `docs/runbooks/payment-rollback-harness.sh` (run 2, exit 0, all checks
-green). Run 1 of that harness is retained as a worked example of a false pass —
-see "How run 1 lied" below.
+green). Run 1 of that harness is **invalidated** — see §7 for exactly what it
+covered and what it did not touch, and "How run 1 lied" for the mechanism.
+
+The baseline checkout `/tmp/jf-oldctl` is retained for source review and
+targeted re-runs. Its `vendor/` is a hardlink copy sharing inodes with the audit
+worktree — **do not modify files under it**, as edits would be seen by both
+trees.
 
 Revisions under test, resolved from Git rather than assumed:
 
@@ -84,7 +89,34 @@ started at that write, not at the deploy.
 After the window closes, a retry carrying that key reaches `70b7116` as a first
 request. If it would not overpay, it is charged again.
 
-## 4. The two ways to exclude incompatible writers
+## 4. The constraint that actually has to hold
+
+**Payment traffic must be served only by code that respects durable claims — or
+by an explicitly reviewed revision established as compatible.** Everything below
+is a way of satisfying that constraint or of narrowing the window in which it is
+violated; none of it replaces it.
+
+Stated as a release/recovery rule:
+
+1. No revision that predates `invoice_payment_claims` may take payment traffic
+   while retries for claimed keys can still arrive. `70b7116` is such a revision
+   and RB-1 measures the consequence.
+2. No period in which both claim-aware and cache-only writers serve the same
+   route. RB-4 double-charges at 54.8 ms of overlap, which is shorter than any
+   rolling restart.
+3. If a revision must be rolled back to, it has to be reviewed against this
+   constraint first and named. `0296431` is the only cache-only candidate that
+   at least carries the S3-07 authorization guard — but it is **still cache-only
+   and still double-charges on cache loss**, so it does not satisfy the
+   constraint either. It has never been deployed.
+
+**No compatibility layer is proposed.** HEAD already writes the legacy cache
+entry with the original key shape and TTL, which is the whole of the backward
+compatibility that a concrete release requirement has so far been shown to need.
+Building anything broader — a shim, a dual-write adapter, a middleware rewrite —
+would be speculative until a specific release requirement demands it.
+
+## 4a. The two ways to narrow the window, neither of them a substitute
 
 Both are procedures for review. Neither is executed here.
 
@@ -108,6 +140,16 @@ Condition 4 is the one that ordinarily fails. Any rolling deploy or partial
 rollback puts both versions behind the same load balancer.
 
 ### Option B — rehydrate the legacy cache from the durable claims first
+
+> **CLASSIFICATION: TEMPORARY COMPATIBILITY MEASURE. NOT A SAFE ROLLBACK
+> PROCEDURE ON ITS OWN.** It demonstrates replay *while a rehydrated cache entry
+> exists*. It establishes nothing about the period after that entry is evicted,
+> flushed or expires — and the existing evidence already shows what happens
+> then: **RB-1 is exactly the post-cache-loss state, and it double-charges.**
+> Rehydration moves the exposure in time; it does not remove it.
+>
+> **These cache writes are NOT APPROVED for any environment.** They are written
+> down so they can be reviewed, not so they can be run.
 
 The claims table already holds everything the legacy cache entry needs: the
 invoice id, the key, and `response_body`, which is byte-for-byte the array
@@ -159,6 +201,20 @@ Option B narrows the exposure to keys created during the rollback itself. It
 does **not** rescue condition 4 — a mixed-version period still double-charges on
 any key first seen after the rehydration ran.
 
+#### What rehydration does and does not check — answered directly
+
+| Question | Answer |
+|---|---|
+| Does it renew the key's lifetime? | **Yes.** `now()->addHours(24)` writes a **new** 24 h window per key, decoupled from the original payment time. A key written 23 h ago gets 24 h more. This is an administrative extension of the compatibility window, and it is the only mechanism found that extends a window without a fresh payment — a legacy replay does not (RB-5). |
+| Does it verify the claim is complete? | **No.** The only filter is `whereNotNull('response_body')`. It does not check `response_status`, does not confirm a matching `invoice_payments` row exists, and does not validate the JSON decodes to the expected receipt shape. |
+| Does it verify invoice ownership? | **No.** It reads `invoice_payment_claims` through the `DB` facade, so `BelongsToShop` never applies. It writes every shop's claims into the cache in one pass. The cache key contains the invoice id, so entries do not collide across shops — but no ownership assertion is performed, and none of the tenant checks that guard the request path run here. |
+| Does it verify receipt identity? | **No.** It copies `response_body` verbatim. It does not confirm the body's `payment.id` matches a live payment, nor that the stored `request_hash` corresponds to anything. |
+| Does the replay it enables re-authorize? | **No.** The revision it feeds, `70b7116`, returns `Cache::get` with **no** authorization check on the cache-hit path — that is finding S3-07, whose guard (`0296431`) has never been deployed. A rehydrated entry is therefore replayable by any caller who reaches the route with that key. |
+
+Those five answers are why the snippet is classified as a stopgap and left
+unapproved. Making it verify any of the above would mean writing and testing new
+code, which is a fix, not a recovery step — and the fix already exists in HEAD.
+
 ## 5. Failure boundaries — what is proven, and what is not
 
 `tests/Feature/Security/InvoicePaymentRetryRepairTest.php`, 250 tests / 905
@@ -185,18 +241,22 @@ commit-durability assertions and the replay assertion are testing different
 things, and that the replay assertion is the one carrying the lookup. The
 mutation was reverted and `git diff` confirms the controller is unmodified.
 
-### Remaining untested failure boundary, stated explicitly
+### NOT RUN — the in-doubt commit
 
-**The in-doubt commit.** If the database connection is lost during
-`PDO::commit()`, PHP never learns whether the transaction committed. The row may
-exist while the application believes it does not. Every test above assumes the
-process learns the commit's outcome; none covers the case where it cannot. It is
-not simulatable in-process — reproducing it needs the connection severed
-mid-commit at the network or server level, which is outside what is authorized
-here. Consequence if it occurs: the payment and claim are durable, the client
-gets an error, and the retry replays correctly — the same shape as P-15 — so the
-exposure is believed low, but that is reasoning, not a measurement, and is
-recorded as such.
+**Status: NOT RUN. Not covered by P-15 and not claimed to be.**
+
+P-15 injects a failure *after* `PDO::commit()` has returned successfully. The
+in-doubt case is different in kind: the connection is lost **during** the
+commit, so the process never learns the outcome. The row may exist while the
+application believes it does not.
+
+Reproducing it requires severing the connection mid-commit at the network or
+server level, which is outside what is authorized here. No test approximates it,
+and none of the tests above should be read as covering it.
+
+If it occurs, the shape is *expected* to match P-15 — payment and claim durable,
+client sees an error, retry replays. That is an inference from the transaction
+boundary, **not a measurement**, and it is not counted as coverage.
 
 A second, narrower gap: a retry arriving after its claim row has been deleted
 would be reprocessed as a first request. No code path deletes claims (§3, no
@@ -207,8 +267,43 @@ the application.
 
 - **Mixed-version support is not claimed.** RB-4 measured a double charge with
   real overlap. The two versions cannot safely share traffic.
-- Neither option has been executed anywhere. Both are local simulations and
-  reviewable procedures.
+- **Option B is not a safe rollback procedure.** It is a temporary compatibility
+  measure whose protection lasts exactly as long as the rehydrated cache entry.
+  After eviction or expiry the system is back in RB-1.
+- **No rollback target has been established as safe.** `70b7116` double-charges
+  (RB-1); `0296431` is also cache-only and would too, and has never been
+  deployed.
+- Nothing here has been executed outside `jewelflow_testing`. Both options are
+  local simulations and reviewable procedures; the cache writes in Option B are
+  **unapproved**.
+- **The in-doubt commit is NOT RUN**, not "low risk" — see §5.
+
+## 7. Exactly what the vendor symlink invalidated — and what it did not
+
+The blast radius is one run of one harness. It is recorded precisely because
+"some earlier results were wrong" is the kind of statement that quietly
+contaminates valid evidence.
+
+### INVALIDATED — discard
+
+| Harness | Scenarios | Run | Intended revisions | Revision ACTUALLY executed | Reported result |
+|---|---|---|---|---|---|
+| `docs/runbooks/payment-rollback-harness.sh` | RB-1 … RB-5 | run 1 (`/tmp/rollback-run1.txt`) | port 8123 = HEAD `7d20e08`, port 8124 = baseline `70b7116` | **`7d20e08` on BOTH ports.** `/tmp/jf-oldctl/vendor` was a symlink, so composer's `$baseDir` resolved to the audit worktree and `App\` loaded HEAD's controller | `5 scenarios, 0 failed checks` — **every check false**; the "baseline" 200s were HEAD's own claim replays |
+
+Superseded by run 2 (`/tmp/rollback-run2.txt`), with `vendor` hardlink-copied
+and RB-0 proving the port separation. Results in §1.
+
+### NOT AFFECTED — evidence stands
+
+| Harness / suite | Scenarios | Why the symlink is irrelevant |
+|---|---|---|
+| `docs/runbooks/payment-race-harness.sh` | **R-C1 … R-C5** | A *different harness answering a different question*: concurrency against ONE revision, not version compatibility. It uses a single server on port 8123 started from the audit worktree, whose `vendor/` is the real directory. It never references `/tmp/jf-oldctl`, never starts a second server, and has no `OLD_DIR`. Runtime revision established by the invoking worktree: `7d20e08` for the final green run. |
+| `tests/Feature/Security`, `tests/Feature/Mobile` | P-01 … P-15 | PHPUnit runs in the audit worktree against its own real `vendor/`. `/tmp/jf-oldctl` is not on any code path. |
+
+**R-C and RB are not interchangeable and must not be merged in any summary.**
+R-C found and fixed two real defects (the race-loss replay skipping the payload
+hash comparison, and the claim INSERT sitting after the balance guard). Those
+findings are independent of the rollback question and survive intact.
 
 ## How run 1 lied
 
