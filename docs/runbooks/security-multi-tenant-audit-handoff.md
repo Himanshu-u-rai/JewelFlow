@@ -56,6 +56,10 @@ renumbering.**
 | S3-07b | Payment retry integrity | *(new)* | — |
 | S3-08 | Static memoization sweep | *(new)* | — |
 | S3-09 | `EnsureIdempotency` middleware retry integrity | *(new — ID confirmed unused before assignment)* | — |
+| S3-09b | Pruning must not delete unresolved claims | *(new)* | §7c-1 |
+| S3-09c | Mobile consumer handling for an uncertain outcome | *(new)* | §7c-4 |
+| S3-10 | `CashBookController::store` writes cash and audit non-atomically | *(new — ID confirmed unused before assignment)* | §7c, OPEN |
+| S3-11 | `ReturnService::approveReturn` cancels the pending header, then can fail | *(new — ID confirmed unused before assignment)* | §7c-2, FIXED |
 
 Still visible and unclosed, listed explicitly so renumbering cannot bury them:
 repairs (S3-02, S3-03), uploads (`uploads/` at zero files, no publication
@@ -933,8 +937,24 @@ refusing.
 All 16 share the repaired middleware, so the crash window and the concurrency
 window are closed for every one of them. What is **not** uniform, and what the
 last two columns track, is each route's own service-layer duplicate behaviour.
-That is the part that still matters, because it decides what happens once the
-middleware's 48h retention lapses.
+
+That is the part that still matters, and an earlier version of this paragraph
+gave the wrong reason for it — it said service-layer dedup decides "what happens
+once the middleware's 48h retention lapses", which leaned on the pruner framing
+withdrawn in §7c. The accurate reasons are two, and neither is a timer:
+
+1. **The middleware only ever protected one key.** A duplicate submitted under a
+   *different* key is, to the middleware, a different request — it stakes a
+   fresh claim and runs. S3-09c was exactly that: a client minting a new key per
+   resubmit, so the server's protection never engaged. Only a service-layer
+   guard sees through to "this is the same business intent".
+2. **Resolved claims are pruned; unresolved ones are not.** A claim that
+   recorded a real 2xx becomes eligible for deletion at `--hours=48` and is
+   removed on the next scheduled run, after which a same-key retry is once again
+   a first-time request. That is correct and intended — the outcome is known and
+   the operator can see it. It is only unresolved claims that are retained
+   indefinitely (§7c-1), and their retention is precisely why no timer here may
+   decide an unknown outcome has become safe to repeat.
 
 `Read` = controller/service actually read for internal dedup.
 `Tested` = a test asserts the money/metal/stock consequence, not just a status.
@@ -1050,6 +1070,77 @@ retained unresolved claim, and growth — one row per crashed mutation — is sl
 but unbounded. No purge flag is offered, because deleting such a row is exactly
 the dangerous act and needs a reconciliation procedure rather than a flag.
 **This is an open decision for the operator, not a closed item.**
+
+### §7c-2 — is releasing a key after a 4xx safe? — S3-11
+
+The release-on-4xx rule was inherited, not verified. It rests on the claim that
+*a 4xx means the controller refused and wrote nothing*. Keeping the old
+behaviour does not establish that, so it was checked rather than retained on
+faith. The 4xx responses on these routes split into three classes:
+
+| Class | Where the 4xx comes from | Is a claim released? | Safe? |
+|---|---|---|---|
+| **A** | `EnsureIdempotency` itself — missing/invalid key (422), no user (401), payload conflict or in-flight (409) | No claim exists yet; the refusal happens *before* staking | Safe by construction — release is unreachable |
+| **B** | After staking, before any business write: route-level `can:` gates, route-model-binding 404s, `abort_if` shop-scope checks, `$request->validate()` 422s | Yes | Safe — nothing was written, and the release is exactly what lets a corrected resubmit run |
+| **C** | Controller ran, **persisted**, then returned 4xx | Yes | **Not safe — found once** |
+
+Class B is larger than it looks, and worth stating because it is easy to get
+backwards: the `can:` gates are **route-level**, and route middleware runs
+*after* the group's `mobile.idempotency` (`routes/mobile_v1.php:169-229`). A
+403 therefore does reach the release path.
+
+**Class C was looked for, not assumed, and it exists — once.** Three
+controllers convert a service `LogicException` into a 422:
+`ReturnController::store`, `ReturnController::approve`,
+`JobOrderController::receipt`. That shape is only dangerous if the service is
+non-atomic, so each was checked:
+
+* `JobOrderService::receive` — **safe.** `return DB::transaction(...)` wraps
+  the entire body (`JobOrderService.php:574`), so every throw rolls back.
+* `ReturnService::createPendingApproval` — **safe, and this corrects a standing
+  investigation lead.** It has the suspicious shape (no transaction,
+  `forceFill()->save()`) that earlier notes flagged. But the shape is not the
+  defect: its guard and both assertions throw *before* the single `save()`, and
+  nothing follows that save. One statement is atomic on its own. **Shape
+  present, consequence absent** — the lead is closed, not by assertion but
+  because the failure it predicted cannot occur here.
+* `ReturnService::approveReturn` — **DEFECTIVE. This is S3-11.**
+
+**S3-11, demonstrated.** `approveReturn` committed the pending header's
+cancellation with a bare `DB::table(...)->update(...)`
+(`ReturnService.php:582`) and *then* called `createPartialReturn`, which throws
+at six sites before its own transaction opens. Nothing wrapped the pair.
+
+The trigger needs no injected fault. A `pending_approval` return stores the
+settlement mode chosen at **creation** and replays it at **approval**, so an
+owner tightening `return_settlement_mode` in between is sufficient — a
+legitimate settings change.
+
+**The consequence is not a duplicate, and reporting it as one would be wrong.**
+Releasing the key here cannot double anything: the retry re-enters
+`approveReturn`, finds the header `cancelled` rather than `pending_approval`,
+and is refused by the service's own guard. The damage is the opposite failure —
+the customer's pending return is **destroyed**. Not settled, no credit note, no
+restock, and not approvable by any route. The test captures the server saying
+so: *"Return is in 'cancelled' state. Only pending_approval returns can be
+approved."*
+
+**So the fix is the service's atomicity, not the middleware's 4xx policy.** The
+middleware is deliberately unchanged. Broadening it to retain keys on 4xx would
+break class B — a corrected resubmit after a validation failure — in order to
+work around one non-atomic service. `approveReturn` is now wrapped in
+`DB::transaction`; the nested transactions in `createPartialReturn` /
+`createFullReturn` become savepoints, so every accounting write and every
+constitutional trigger runs exactly as before.
+
+Evidence: `tests/Feature/Security/ReturnApprovalAtomicityTest.php`, **4 passed
+(23 assertions)**, red before the fix and green after. It carries a positive
+control (an unobstructed approval still settles and stamps the line) and a
+separate assertion that the 422 **does** release the claim — recorded directly
+rather than inferred from the retry succeeding, so the class-B classification
+and the S3-11 finding cannot merge into one fact. Regression: `--filter=Return`
+146 passed / 1 skipped (672 assertions); `Feature/Security` + `Feature/Mobile`
+**269 passed (1016 assertions)**.
 
 ### §7c-4 — the mobile consumer — mobile `2cad553`
 

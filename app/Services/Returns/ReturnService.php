@@ -562,6 +562,36 @@ class ReturnService
 
     /**
      * Approve a pending return — transitions to settled and fires all accounting entries.
+     *
+     * ─── S3-11: why the transaction is load-bearing ───────────────────────
+     *
+     * This method does two things that must succeed or fail together: it
+     * cancels the pending header, and it creates the settled return that
+     * supersedes it. They used to be unwrapped, and the second step can fail
+     * on inputs the first step has no way to anticipate.
+     *
+     * `createPartialReturn` throws `LogicException` at six sites BEFORE its own
+     * `DB::transaction` opens — invoice no longer finalized, empty selections,
+     * the subscription gate, the shop date lock, and the two settlement-mode
+     * policy checks. None of those are exotic: a `pending_approval` return
+     * stores the settlement mode chosen at CREATION time and replays it at
+     * APPROVAL time, so an owner tightening `return_settlement_mode` in
+     * between is enough.
+     *
+     * Unwrapped, that left the cancellation committed and the settled return
+     * never created. `ReturnController::approve` turned the exception into a
+     * 422, and the customer's pending return was destroyed: not settled, and
+     * refused by this method's own guard above on every future attempt, since
+     * the header now reads `cancelled` rather than `pending_approval`. There
+     * was no supported way back.
+     *
+     * Nesting is intended and safe: `createPartialReturn` (and
+     * `createFullReturn`, which it may delegate to) open their own
+     * transactions, which become savepoints inside this one. Every accounting
+     * write and every constitutional trigger still runs exactly as before —
+     * this widens the atomic boundary, it does not move work out of it.
+     *
+     * Demonstrated in tests/Feature/Security/ReturnApprovalAtomicityTest.
      */
     public function approveReturn(ReturnOrder $returnOrder, int $approverId, array $approverLineOverrides = []): ReturnOrder
     {
@@ -578,23 +608,27 @@ class ReturnService
             ? $approverLineOverrides
             : ($data['line_overrides'] ?? []);
 
-        // Cancel the pending header — createPartialReturn will create a new settled one.
-        DB::table('return_orders')->where('id', $returnOrder->id)->update([
-            'status'              => ReturnOrder::STATUS_CANCELLED,
-            'cancellation_reason' => 'Superseded by approval-triggered return.',
-            'updated_at'          => now(),
-        ]);
+        return DB::transaction(function () use (
+            $returnOrder, $invoice, $selections, $reason, $approverId, $refundSettlement, $lineOverrides
+        ) {
+            // Cancel the pending header — createPartialReturn will create a new settled one.
+            DB::table('return_orders')->where('id', $returnOrder->id)->update([
+                'status'              => ReturnOrder::STATUS_CANCELLED,
+                'cancellation_reason' => 'Superseded by approval-triggered return.',
+                'updated_at'          => now(),
+            ]);
 
-        return $this->createPartialReturn(
-            $invoice,
-            $selections,
-            $reason,
-            $approverId,
-            null,
-            $refundSettlement,
-            false,
-            $lineOverrides,
-        );
+            return $this->createPartialReturn(
+                $invoice,
+                $selections,
+                $reason,
+                $approverId,
+                null,
+                $refundSettlement,
+                false,
+                $lineOverrides,
+            );
+        });
     }
 
     /**
