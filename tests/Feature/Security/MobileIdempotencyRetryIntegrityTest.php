@@ -19,13 +19,12 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * S3-09 — EnsureIdempotency records completion AFTER the controller.
+ * S3-09 — EnsureIdempotency recorded completion AFTER the controller.
  *
- * The middleware (app/Http/Middleware/EnsureIdempotency.php) runs the
- * controller at line 140 and only then, at line 149, persists the
- * IdempotencyKey row — and only for a 2xx. Two consequences follow, and this
- * file is about proving the *money* consequence of each on a real route
- * rather than asserting it from a code reading:
+ * ORIGINAL DEFECT. The middleware ran the controller first and only then
+ * persisted the IdempotencyKey row — and only for a 2xx. Two consequences
+ * followed, and this file proves the *money* consequence of each on a real
+ * route rather than asserting it from a code reading:
  *
  *   (a) CRASH WINDOW. Any failure after the business write commits but before
  *       the key row is written leaves no claim. The client's retry — the same
@@ -36,29 +35,53 @@ use Tests\TestCase;
  *       unique index on the key row only decides which of the two *records*
  *       its completion; both have already moved money by then.
  *
+ * REPAIR. The claim is now staked BEFORE the controller, with a sentinel
+ * `response_status` of 0 meaning in-flight. A same-key request that finds an
+ * in-flight claim is refused with 409 `idempotency_in_flight` rather than
+ * being re-run, and the unique index now admits exactly one request to the
+ * controller. A 5xx deliberately LEAVES the claim in flight, because the
+ * router pipeline converts a controller exception into a response and the
+ * middleware therefore cannot tell "died before writing" from "wrote, then
+ * died". A 4xx is a deliberate controller refusal with nothing written, so
+ * the key is released and stays retryable.
+ *
+ * These tests are the post-repair regression evidence. Each asserts BOTH that
+ * the retry is refused (409, `idempotency_in_flight`) AND — the assertion
+ * that actually matters — that the money/metal/stock rows stayed at one.
+ *
  * SCOPE NOTE — this file does NOT claim all 16 idempotency-protected routes
- * are vulnerable. Source reading established that they are not uniform:
+ * were vulnerable. Source reading established that they are not uniform, and
+ * the repair does not make them uniform — it only removes the middleware's
+ * contribution. Each route keeps whatever business-level protection it had:
  *
- *   POST /returns          PROTECTED, and MEASURED so. ReturnService carries
- *                          two durable guards — the invoice's own status and
- *                          the per-line `returned_at` stamp — and a replay is
- *                          refused regardless of middleware state. Covered
- *                          here as a control, to keep the finding honest about
- *                          its own blast radius. See that test for which of
- *                          the two guards this fixture actually reaches.
+ *   POST /returns          PROTECTED AT THE SERVICE LAYER, and MEASURED so.
+ *                          ReturnService carries two durable guards — the
+ *                          invoice's own status and the per-line `returned_at`
+ *                          stamp — and a replay is refused regardless of
+ *                          middleware state. Covered here as a control, to
+ *                          keep the finding honest about its own blast radius.
+ *                          See that test for which of the two guards this
+ *                          fixture actually reaches.
  *
- *   POST /cashbook         UNPROTECTED. No transaction and no dedup guard.
- *                          MEASURED: the retry books a second cash row.
+ *   POST /cashbook         NO SERVICE-LAYER PROTECTION AT ALL. No transaction
+ *                          and no dedup guard. Pre-repair, MEASURED: the retry
+ *                          booked a second cash row. The middleware is now the
+ *                          only thing standing between this route and a
+ *                          duplicate — which is why its test asserts the cash
+ *                          row count, not just the 409.
  *
  *   POST /job-orders/../receipt   and   POST /installments/{plan}/pay
  *                          PARTIALLY protected: both lock and both check a
  *                          status, but the status they permit is the one the
  *                          operation leaves behind (PARTIAL_RETURN / active),
  *                          so only the final receipt / final EMI is guarded.
- *                          MEASURED: the retry duplicates in both cases.
+ *                          Pre-repair, MEASURED: the retry duplicated in both
+ *                          cases.
  *
- * The remaining 12 idempotency-protected routes are NOT RUN here and must not
- * be assumed to behave like any of these four.
+ * The remaining 12 idempotency-protected routes are NOT RUN here. They share
+ * the repaired middleware, so the crash-window and concurrency defects are
+ * closed for them too, but their own service-layer duplicate behaviour is
+ * UNVERIFIED and must not be assumed to match any of these four.
  *
  * Each test states which of these it is evidence for.
  */
@@ -345,16 +368,19 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
             'expected the cash row to have been committed before the failure',
         );
 
-        // And no claim was staked, because the middleware only persists a 2xx.
-        $this->assertSame(
-            0,
-            IdempotencyKey::where('shop_id', $shop->id)->count(),
-            'expected no idempotency claim for a non-2xx response',
-        );
+        // The claim was staked BEFORE the controller and is still in flight:
+        // the 5xx path deliberately does not release it, because from here
+        // "died before writing" and "wrote, then died" are the same response.
+        // The cash row above proves this instance is the second kind.
+        $claim = IdempotencyKey::where('shop_id', $shop->id)->where('key', 'cb-s309a-fixed-key')->sole();
+        $this->assertSame(0, (int) $claim->response_status, 'expected the claim to be left in flight by the 5xx');
 
         // The client does what every mobile client does with a 500: retries,
         // same key, same body.
-        $this->postAsTenant((int) $shop->id, '/api/mobile/v1/cashbook', $payload, $headers);
+        $retry = $this->postAsTenant((int) $shop->id, '/api/mobile/v1/cashbook', $payload, $headers);
+
+        $this->assertSame(409, $retry->status());
+        $this->assertSame('idempotency_in_flight', $retry->json('errors.0.code'));
 
         $this->assertSame(
             1,
@@ -368,29 +394,142 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
         );
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // S3-09 (b) — the concurrency window
+    // ────────────────────────────────────────────────────────────────────
+
     /**
-     * Arm a one-shot failure on the middleware's OWN claim write.
+     * [INJECTED RACE — a sibling stakes the same key between our lookup and
+     * our insert]
      *
-     * This is the most faithful reproduction available, because it is the
-     * exact scenario EnsureIdempotency:166-177 already concedes in a comment:
-     * the claim write fails, the middleware fails SOFT, the client gets its
-     * 2xx, and "a future retry with the same key will simply re-run". The
-     * business write has fully committed by this point — the controller has
-     * already returned.
+     * WHY THIS IS NOT A REAL RACE, AND WHY THAT IS FINE. A single-process
+     * PHPUnit run cannot issue two simultaneous requests, and a test that
+     * pretends otherwise usually proves nothing. So this does not reproduce
+     * the timing — it reproduces the STATE the timing produces. The listener
+     * raw-inserts a conflicting claim from inside `creating`, which is after
+     * the middleware's lookup found nothing and before its own insert lands.
+     * That is precisely where a losing concurrent sibling sits.
+     *
+     * Pre-repair there was no insert at that point at all: the claim was
+     * written after the controller, so both siblings sailed past the lookup
+     * and both moved money, and the unique index only decided which of the
+     * two got to record a response. Post-repair the index is load-bearing —
+     * it is what admits exactly one request to the controller.
+     *
+     * The assertion that carries the weight is `$cashWriteAttempted`. A 409
+     * alone would still be green if the loser had run the controller and
+     * moved money before the middleware got around to answering.
+     *
+     * WHY A SPY AND NOT A ROW COUNT. Every other test here counts rows after
+     * the request. This one cannot: RefreshDatabase wraps the test in a
+     * single transaction, and the unique violation aborts it, so every
+     * subsequent read dies with SQLSTATE[25P02]. That is a harness artefact,
+     * NOT a production concern — the middleware runs outside any transaction,
+     * so PostgreSQL rolls back the failed statement alone and leaves the
+     * connection usable. A model-event spy gives stronger evidence anyway:
+     * it witnesses the controller not executing, rather than inferring it.
+     */
+    public function test_s309b_a_second_concurrent_request_for_one_key_must_not_reach_the_controller(): void
+    {
+        [$owner, $shop] = $this->actAsOwner();
+        $headers = ['X-Idempotency-Key' => 'cb-s309b-race-key'];
+        $payload = $this->cashPayload();
+
+        $cashWriteAttempted = false;
+        CashTransaction::creating(function () use (&$cashWriteAttempted) {
+            $cashWriteAttempted = true;
+
+            return;
+        });
+
+        $planted = false;
+        IdempotencyKey::creating(function ($model) use (&$planted, $shop, $owner) {
+            if ($planted) {
+                return;
+            }
+            $planted = true;
+
+            // The sibling that won the race, staked and still in flight.
+            DB::table('idempotency_keys')->insert([
+                'shop_id' => (int) $shop->id,
+                'user_id' => (int) $owner->id,
+                'key' => $model->key,
+                'request_hash' => $model->request_hash,
+                'response_status' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Bare return, not `true`. A non-null return halts Eloquent's
+            // `until()` chain and would suppress every later listener.
+            return;
+        });
+
+        $loser = $this->postAsTenant((int) $shop->id, '/api/mobile/v1/cashbook', $payload, $headers);
+
+        $this->assertTrue($planted, 'the conflicting claim was never planted — the race window was not exercised');
+        $this->assertSame(409, $loser->status(), 'expected the losing request to be refused on the unique index');
+        $this->assertSame('idempotency_in_flight', $loser->json('errors.0.code'));
+
+        $this->assertFalse(
+            $cashWriteAttempted,
+            'DUPLICATE CASH: the losing concurrent request reached the controller and moved money',
+        );
+    }
+
+    /**
+     * [POSITIVE CONTROL FOR THE SPY ABOVE]
+     *
+     * The race test's central assertion is that a flag stayed FALSE. A flag
+     * that can never go true would make it green forever and prove nothing —
+     * the same false-pass shape as an `assertSame(0, ...)` against a query
+     * that cannot match. This pins the spy to a request that really does
+     * write cash, so the negative above is load-bearing.
+     */
+    public function test_control_the_cash_write_spy_fires_on_an_unobstructed_request(): void
+    {
+        [, $shop] = $this->actAsOwner();
+
+        $cashWriteAttempted = false;
+        CashTransaction::creating(function () use (&$cashWriteAttempted) {
+            $cashWriteAttempted = true;
+
+            return;
+        });
+
+        $this->postAsTenant((int) $shop->id, '/api/mobile/v1/cashbook', $this->cashPayload(), [
+            'X-Idempotency-Key' => 'cb-s309b-spy-control-key',
+        ])->assertCreated();
+
+        $this->assertTrue($cashWriteAttempted, 'the spy never fired — the race test above proves nothing');
+    }
+
+    /**
+     * Arm a one-shot failure on the middleware's claim COMPLETION write.
+     *
+     * Targets the exact window the repair leaves behind. Post-repair the
+     * claim is staked BEFORE the controller, so the only remaining gap is:
+     * claim staked in flight → controller commits → the update that records
+     * the outcome never lands. That is what a process death after a
+     * successful mutation looks like, and it is the window a retry must not
+     * be allowed to re-run.
+     *
+     * `updating`, not `creating`: the stake must succeed, or the controller
+     * never runs and there is no mutation to duplicate.
      *
      * Same `return;` discipline as armAuditLogFailure(): a non-null return
-     * would halt the event chain.
+     * would halt the event chain and suppress later listeners.
      */
-    private function armClaimWriteFailure(): callable
+    private function armClaimCompletionFailure(): callable
     {
         $fired = false;
 
-        IdempotencyKey::creating(function () use (&$fired) {
+        IdempotencyKey::updating(function () use (&$fired) {
             if ($fired) {
                 return;
             }
             $fired = true;
-            throw new \RuntimeException('claim write failed after the business commit');
+            throw new \RuntimeException('process died after the business commit, before recording the outcome');
         });
 
         return function () use (&$fired) {
@@ -427,7 +566,7 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
 
         $plan = InstallmentPlan::withoutTenant()->where('invoice_id', $draft->id)->firstOrFail();
 
-        $didFire = $this->armClaimWriteFailure();
+        $didFire = $this->armClaimCompletionFailure();
         $headers = ['X-Idempotency-Key' => 'emi-pay-fixed-key'];
         $payload = ['amount' => 5000, 'payment_method' => 'cash'];
 
@@ -435,18 +574,22 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
 
         // The window is real: the payment SUCCEEDED and the claim was lost.
         $first->assertCreated();
-        $this->assertTrue($didFire(), 'the injected claim-write failure never fired');
-        $this->assertSame(
-            0,
-            IdempotencyKey::where('shop_id', $shop->id)->where('key', 'emi-pay-fixed-key')->count(),
-            'expected the claim write to have been swallowed by the fail-soft path',
-        );
+        $this->assertTrue($didFire(), 'the injected claim-completion failure never fired');
+
+        // completeClaim() is fail-soft on purpose: the money already moved and
+        // the claim row already holds the key, so a failure here degrades the
+        // retry to a refusal, never to a re-run. The claim is left in flight.
+        $claim = IdempotencyKey::where('shop_id', $shop->id)->where('key', 'emi-pay-fixed-key')->sole();
+        $this->assertSame(0, (int) $claim->response_status, 'expected the lost completion to leave the claim in flight');
 
         $emiCashBefore = $this->installmentCashCount((int) $shop->id, (int) $plan->id);
         $this->assertSame(1, $emiCashBefore, 'expected exactly one EMI cash-in from the first payment');
 
         // The client retries the 201 it never saw acknowledged.
-        $this->postAsTenant((int) $shop->id, "/api/mobile/v1/installments/{$plan->id}/pay", $payload, $headers);
+        $retry = $this->postAsTenant((int) $shop->id, "/api/mobile/v1/installments/{$plan->id}/pay", $payload, $headers);
+
+        $this->assertSame(409, $retry->status());
+        $this->assertSame('idempotency_in_flight', $retry->json('errors.0.code'));
 
         $this->assertSame(
             1,
@@ -489,7 +632,7 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
 
         $jobOrderId = $this->plantIssuedJobOrder((int) $shop->id, (int) $user->id);
 
-        $didFire = $this->armClaimWriteFailure();
+        $didFire = $this->armClaimCompletionFailure();
         $headers = ['X-Idempotency-Key' => 'jo-receipt-fixed-key'];
         // Partial: 10g of a 50g issue, so the order stays receivable.
         $payload = ['items' => [['gross_weight' => 10.0, 'pieces' => 1]]];
@@ -497,13 +640,20 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
         $first = $this->postAsTenant((int) $shop->id, "/api/mobile/v1/job-orders/{$jobOrderId}/receipt", $payload, $headers);
 
         $first->assertCreated();
-        $this->assertTrue($didFire(), 'the injected claim-write failure never fired');
+        $this->assertTrue($didFire(), 'the injected claim-completion failure never fired');
 
         $fineAfterFirst = (float) DB::table('job_orders')->where('id', $jobOrderId)->value('returned_fine_weight');
         $this->assertGreaterThan(0.0, $fineAfterFirst, 'expected the first receipt to have credited fine weight');
 
         $retry = $this->postAsTenant((int) $shop->id, "/api/mobile/v1/job-orders/{$jobOrderId}/receipt", $payload, $headers);
-        $this->assertNotSame(404, $retry->status(), 'the retry never reached the controller — binding lost tenant scope');
+
+        // Asserting the exact refusal, not merely "not a duplicate". An earlier
+        // draft of this test passed on a 404 — the retry never reached the
+        // controller at all because it had lost tenant scope, so of course
+        // nothing duplicated. Pinning 409/idempotency_in_flight makes that
+        // failure mode impossible to mistake for the behaviour under test.
+        $this->assertSame(409, $retry->status(), 'expected the in-flight claim to refuse the retry');
+        $this->assertSame('idempotency_in_flight', $retry->json('errors.0.code'));
 
         $this->assertSame(
             1,
@@ -537,11 +687,21 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
     // ────────────────────────────────────────────────────────────────────
 
     /**
-     * [NEGATIVE CONTROL FOR THE FINDING ITSELF — must be green TODAY]
+     * [NEGATIVE CONTROL FOR THE FINDING ITSELF]
      *
-     * POST /returns runs through the same defective middleware, on the same
-     * lost-claim path, and still does NOT double-refund. Durable business
-     * state does the deduplication the middleware failed to do.
+     * POST /returns does NOT double-refund even with the middleware taken
+     * entirely out of the picture. Durable business state does the
+     * deduplication on its own.
+     *
+     * HOW THE MIDDLEWARE IS EXCLUDED — the retry carries a DIFFERENT
+     * idempotency key. That is deliberate and it is the only honest way to
+     * run this control post-repair. A same-key retry is now answered by the
+     * middleware (a replay, or a 409 if the claim is in flight) and never
+     * reaches ReturnService at all, so it would prove nothing about the
+     * service. A fresh key is also the realistic client behaviour: an app
+     * that lost its response and re-composes the request from scratch mints a
+     * new key, and that request must still be refused. Middleware replay
+     * itself is covered by tests/Feature/Mobile/V1/IdempotencyMiddlewareTest.
      *
      * WHICH GUARD ACTUALLY FIRES — measured, not assumed. ReturnService has
      * two durable guards, and this fixture exercises the outer one:
@@ -563,9 +723,8 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
      * is corrected rather than the assertion loosened.
      *
      * This test exists to stop S3-09 from being reported as "all 16 routes
-     * double-charge". If a fix to the middleware is later written, this must
-     * still pass — and for the SAME reason, which is why it asserts the refusal
-     * message and the refund rows rather than only the row counts.
+     * double-charge". It asserts the refusal MESSAGE and the refund rows, not
+     * only the row counts, so that it cannot pass for some unrelated reason.
      */
     public function test_control_returns_retry_is_already_protected_by_a_durable_key(): void
     {
@@ -573,8 +732,6 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
         Sanctum::actingAs($user);
         TenantContext::set((int) $shop->id);
 
-        $didFire = $this->armClaimWriteFailure();
-        $headers = ['X-Idempotency-Key' => 'ret-fixed-key'];
         $payload = [
             'invoice_id' => $line->invoice_id,
             'reason' => 'Customer changed mind',
@@ -582,10 +739,16 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
             'lines' => [['invoice_item_id' => $line->id, 'condition' => 'good_condition']],
         ];
 
-        $this->postAsTenant((int) $shop->id, '/api/mobile/v1/returns', $payload, $headers)->assertCreated();
-        $this->assertTrue($didFire(), 'the injected claim-write failure never fired');
+        $this->postAsTenant((int) $shop->id, '/api/mobile/v1/returns', $payload, [
+            'X-Idempotency-Key' => 'ret-first-attempt-key',
+        ])->assertCreated();
 
-        $retry = $this->postAsTenant((int) $shop->id, '/api/mobile/v1/returns', $payload, $headers);
+        // Fresh key: the middleware has no claim to match, stakes a new one,
+        // and hands the request straight to the controller. Whatever refuses
+        // it from here is the service.
+        $retry = $this->postAsTenant((int) $shop->id, '/api/mobile/v1/returns', $payload, [
+            'X-Idempotency-Key' => 'ret-second-attempt-key',
+        ]);
 
         // Refused by the service, not by the middleware.
         $retry->assertStatus(422);
