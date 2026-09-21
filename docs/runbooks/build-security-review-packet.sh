@@ -193,7 +193,17 @@ scan() {
 # narrowed to key material and assignments rather than the gate being relaxed.
 scan "APP_KEY"           '(APP_KEY[[:space:]]*=[[:space:]]*[^[:space:]"'"'"']|base64:[A-Za-z0-9+/]{40,})'
 scan "DB password"       '(DB_PASSWORD|PGPASSWORD)[[:space:]]*=[[:space:]]*[^[:space:]"'"'"']'
-scan "AWS credential"    '(AKIA[0-9A-Z]{16}|aws_secret_access_key)'
+# Same narrowing as APP_KEY above, and for the same reason -- this one caught
+# the scanner red-handed matching ITSELF. Once this script became part of the
+# packet, its own `scan "AWS credential" '(...|aws_secret_access_key)'` line
+# shipped inside the diffs, and the bare-word pattern matched that literal. The
+# packet contained no AWS key at all: `grep -rlE 'AKIA[0-9A-Z]{16}'` over the
+# whole packet returned nothing, and the single hit was this file's own source.
+#
+# `AKIA[0-9A-Z]{16}` stays bare -- a real access-key ID is self-identifying and
+# cannot be written by accident. Only the descriptive word needs an assignment
+# to count, since the word alone is just prose.
+scan "AWS credential"    '(AKIA[0-9A-Z]{16}|aws_secret_access_key[[:space:]]*[=:][[:space:]]*[^[:space:]"'"'"'|)])'
 scan "Cloudflare token"  '(CLOUDFLARE_API_TOKEN|CF_API_KEY)[[:space:]]*=[[:space:]]*[^[:space:]]'
 scan "private key"       'BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY'
 scan "Razorpay live key" 'rzp_live_[A-Za-z0-9]+'
