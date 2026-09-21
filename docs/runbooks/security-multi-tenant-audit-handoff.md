@@ -39,7 +39,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
 | S3-06c published item images outlive the shopfront toggle | OPEN | None — recorded limitation | **OPEN** |
 | S3-07 mobile payment cache-hit path was unauthorized | **CLOSED as a code defect** — no exploit against shipped code; the binding blocked it | Guard committed (`0296431`), 9 tests | **OPEN — needs the deploy** |
-| S3-07b payment retry integrity (cache/commit not coordinated) | **OPEN — demonstrated**, two distinct defects | Characterized only (`893a49b`, 3 tests); repair proposed, not written | **OPEN** |
+| S3-07b payment retry integrity (cache/commit not coordinated) | **REPAIRED LOCALLY** — both defects closed; one compatibility limit remains and is stated (P-11) | Characterized `893a49b` (3 tests) → **repaired `2dd0875`**: durable claim inside the payment transaction, 11 new tests, the 3 characterizations inverted into regressions | **OPEN — needs the deploy** |
 | S3-08 static memoization across a long-lived worker | **CLOSED — examined, not a tenant break** | None needed; one inaccurate docblock noted | N/A |
 
 ### Finding IDs — old → new, because they drifted
@@ -468,6 +468,27 @@ every expand-window row. T-07 pins the reconciliation.
 `SignatureRelocationLedger`, which `InvoiceSignatureRenderer` and
 `RelocateShopSignatures` both depend on. No ordering relationship to Phase 3.
 
+`invoice_payment_claims` (`2026_09_21_120000`, S3-07b) sits **outside this
+sequence entirely** and has no ordering relationship to any phase above. It is a
+new table with no FK pointing *into* it, and baseline `018b3d8` neither reads nor
+writes it, so applying it early is a no-op — which is the property the runbook
+asks of a migration that must land ahead of its application change. It must not
+run *after* the S3-07b code, however. **Order is table-then-code, and the gap
+between them is safe in only that direction.**
+
+Checked rather than assumed — what code-before-table actually does:
+`InvoiceController:234` performs the claim lookup as the first act of a keyed
+payment, *before* any money moves. A missing table throws, `:487` catches it and
+`:493` aborts **503**. So the wrong order **refuses keyed payments, it does not
+double-charge them** — the failure is loud, safe and confined to requests that
+send `X-Idempotency-Key`. Unkeyed payments are untouched, since the whole block
+is inside `if ($idempotencyKey)`. Still an outage for mobile clients, so the
+order stands; but the consequence of getting it wrong is refusal, not loss.
+
+`down()` drops the table. The only loss is replay evidence for keys minted inside
+the window, which degrades to the pre-existing legacy cache behaviour rather than
+to nothing.
+
 **Rollback is not symmetric.** Phase 3 `down()` is freely reversible. Phase 1
 rollback drops the disk columns — which is the only record of which files the new
 code put on the private disk, and of which have been relocated. Treat Phase 1
@@ -661,10 +682,103 @@ are now **demonstrated** (`893a49b`, characterization, stated as such):
 * **R-03** is the control: two distinct keys must still record two distinct
   payments, so a future fix cannot pass by refusing part-payments.
 
-**Repair proposed, not written:** move this route onto the existing
-`idempotency_keys` mechanism with a compatibility window that READS the legacy
-cache key while WRITING the new record, so keys in flight across the deploy are
-not orphaned. Behaviour change to a live money path; offered for its own review.
+#### REPAIRED — `2dd0875788e21d31270c746f45bd8cf34382a750`
+
+**The repair proposal that stood here was wrong and is withdrawn.** It read:
+*"move this route onto the existing `idempotency_keys` mechanism."* Reading that
+mechanism rather than assuming it disqualified it twice over:
+
+| Disqualifying reason | Evidence |
+|---|---|
+| **Transaction boundaries.** `EnsureIdempotency` records its key *after* `$next($request)` returns, in a statement outside the controller's transaction — the same uncoordinated shape R-01 is about. | `app/Http/Middleware/EnsureIdempotency.php:140` (`$response = $next($request);`), `:149` (`IdempotencyKey::create`), `:166-177` fails soft, conceding in its own comment that a retry "will simply re-run (not ideal…)". |
+| **Identity is WIDER.** `UNIQUE (shop_id, user_id, key)` vs the legacy key's `(invoice_id, key)`. Adopting it would let two users in one shop retry one key against one invoice and charge **twice** — a regression introduced by the repair. Collapsing `user_id` to NULL does not recover it: PostgreSQL treats NULLs as DISTINCT in a UNIQUE index, so every row stays unique. | `database/migrations/2026_05_29_010000_create_idempotency_keys_table.php` — `unique(['shop_id','user_id','key'])`, `user_id` nullable. |
+
+**What was built instead.** `invoice_payment_claims`, UNIQUE on
+`(invoice_id, key)` — the legacy key's own identity, preserved rather than
+reinterpreted — with the claim written **inside** the payment transaction. The
+evidence commits with the money or not at all. Placed at the *end* of the
+transaction because the existing `lockForUpdate` on the invoice already
+serializes concurrent same-invoice requests, so a loser collides immediately and
+its whole transaction — payment row included — rolls back before replaying the
+winner.
+
+**What was deliberately NOT touched:** the legacy cache key format, its 24h TTL,
+and every already-cached receipt. The cache is retained as a read accelerator
+*ahead of* the claim table. Changing either would make every in-flight legacy key
+miss across the deploy window — precisely the condition that double-charges. No
+payment was created and no record was flushed by this change.
+
+**`InvoicePaymentClaim` omits `BelongsToShop`, and that is the safety decision,
+not an oversight.** Fail-closed is right for what you will *show*; on a
+*deduplication* lookup it answers "no rows", which the caller cannot distinguish
+from "never seen this key", and the response to that is to take the payment
+again. A fail-closed scope here converts a missing tenant context into a double
+charge. Safety comes instead from the tenant-scoped route binding on `$invoice`,
+an explicit `shop_id` assertion before any claim body is returned, and a **503
+refusal — never a fall-through** — if the lookup itself throws.
+
+**Replay keeps status 200, not the stored 201.** Replaying the stored 201 broke
+`I-06`, which encodes the contract clients in the field already depend on. The
+existing test was treated as authoritative and the code changed to match it. The
+signal travels on `X-Idempotent-Replay: true`, so a replay is
+status-indistinguishable whether the durable claim or a legacy cache entry
+answered it.
+
+**Compatibility limit — stated, not engineered around.** A legacy cache entry
+holds a response body and *no request hash*; the original payload was never
+hashed. So for keys minted before this deploy a **changed payload cannot be
+detected** and R-02's 409 is unavailable — those replay as before. Deriving a
+hash from the replayed body would manufacture the missing evidence rather than
+recover it, so it was not done. The gap is bounded by the unchanged 24h TTL and
+is covered explicitly by **P-11**.
+
+**Constitutional position.** No money column, no balance, no accounting path
+reads this table. Article I does not reach it; no protected trigger is added,
+altered or disabled. Additive, with no FK pointing *into* it, so it migrates
+ahead of the application change with no behavioural effect.
+
+##### Measured — RED before, GREEN after
+
+| Run | Command | Result |
+|---|---|---|
+| **RED** (repair absent) | `php artisan test tests/Feature/Security/InvoicePaymentRetryRepairTest.php` | **8 failed, 3 passed** (27 assertions) |
+| **GREEN** (repair applied) | same | **11 passed** (50 assertions) |
+| Characterization → regression | `…/InvoicePaymentRetryIntegrityTest.php` | **3 passed** (16 assertions) |
+| Regression band | `php artisan test tests/Feature/Security tests/Feature/Mobile` | **246 passed, 879 assertions, 0 failed** |
+
+P-04, P-07 and P-10 passed on the RED run and are recorded as **controls** for
+guards that already existed — they are not credited to this repair.
+
+R-01 and R-02 failed on the repaired code exactly as their own docblock had
+predicted they would (`Failed asserting that 1 is identical to 2.` and
+`Failed asserting that 409 is identical to 200.`), and were then **inverted into
+regression tests** with their original assertions quoted inline and their finding
+IDs preserved. R-03 was untouched and held throughout, which is what establishes
+that part-payment collection still works rather than having been refused into
+compliance.
+
+##### Scenario coverage, with mechanisms kept distinct
+
+| # | Scenario | Mechanism | Result |
+|---|---|---|---|
+| P-01 | Authorized same-key replay after the cache record is gone | `[SIMULATED CACHE LOSS]` | one payment; `payments`, `cash_transactions`, `audit_logs` all asserted |
+| P-02 | Replay returns the original receipt | — | 200 + `X-Idempotent-Replay` |
+| P-03 | Same key, changed amount | — | **409**, nothing recorded |
+| P-04 | Two valid payments, distinct keys | control | both recorded |
+| P-05 | Failure **before** commit | `[INJECTED FAILURE]` | key not burned; retry succeeds |
+| P-06 | Failure **after** payment commit, before the response/cache write | `[INJECTED FAILURE]` | claim survives; retry replays, no second charge |
+| P-07 | Foreign-shop caller | control | refused; **no receipt data in the body** |
+| P-08 | Duplicate claim insert | `[OBSERVED CONSTRAINT]` | `UniqueConstraintViolationException` |
+| P-09 | Unauthorized / inactive staff, same key | — | refused |
+| P-10 | Missing tenant context | control | refused (403/404/422/503 — *not* 500) |
+| P-11 | Legacy cache entry with no hash | — | replays; 409 **impossible**, documented above |
+| — | **Two concurrent first requests, separate processes** | **NOT RUN** | `RefreshDatabase` wraps each test body in one uncommitted transaction, so a second connection cannot see the fixtures. P-08 exercises the constraint the race would hit; it does not schedule the race. |
+
+**P-08 recorded a false pass in my own test and it is worth keeping.** The first
+draft expected `QueryException` and **passed on the RED run** — because the table
+did not yet exist and *"relation does not exist"* is also a `QueryException`. The
+assertion was being satisfied by the absence of the very thing it verifies. It
+now expects `UniqueConstraintViolationException` specifically.
 
 ### S3-08 — the cache sweep, corrected for coverage
 
@@ -819,12 +933,48 @@ new tests each selection can see — not a statement about 235 versus 610.
 
 ### Execution SHA vs package SHA — reported separately
 
-| | SHA | What |
-|---|---|---|
-| **Test execution SHA** | `25355ffee351bd8a2d9e5878ef2c0f83888fb87f` | every figure in this section was measured here |
-| **Package / documentation SHA** | `941ed749a6a399a3574e15c2fe41ea9277d278ad` | what the exported packet is pinned to |
+There are now **two** execution SHAs, because a source repair landed after the
+first set of figures was taken. They are listed separately rather than merged:
 
-**The difference between them is documentation only**, and it is this section:
+| | SHA | What was measured there |
+|---|---|---|
+| **Execution SHA — S3-05/S3-06/catalogue figures** | `25355ffee351bd8a2d9e5878ef2c0f83888fb87f` | every figure in this section *except* the S3-07b block below |
+| **Execution SHA — S3-07b figures** | `2dd0875788e21d31270c746f45bd8cf34382a750` | the repair suite, the inverted regressions, and the 246-test band |
+| **Package / documentation SHA** | *(pinned at export time; see the packet manifest)* | what the exported packet is pinned to |
+
+**A tested tree that was not the committed tree, caught and corrected.** The
+246-test band was first run *before* R-01 and R-02 were renamed, so the tree that
+produced that number was not the tree that got committed. The rename is
+cosmetic — method names only — but it touched test files, and "cosmetic" is a
+judgement, not a measurement. The band was therefore **re-run at `2dd0875` with
+`git status` showing only this handoff modified**, and reported from that run.
+That is a different situation from the documentation-only gap below, where
+re-running would have been theatre; here the tested artifact genuinely differed.
+
+```
+HEAD=2dd0875788e21d31270c746f45bd8cf34382a750
+ M docs/runbooks/security-multi-tenant-audit-handoff.md     <- only diff
+
+php artisan test tests/Feature/Security tests/Feature/Mobile
+  -> Tests: 246 passed (879 assertions)
+
+php artisan test tests/Feature/Security/InvoicePaymentRetryRepairTest.php \
+                 tests/Feature/Security/InvoicePaymentRetryIntegrityTest.php
+  -> Tests: 14 passed (66 assertions)   [P-01..P-11 + R-01..R-03]
+```
+
+The band moved from **245 passed / 1 failed** to **246 passed / 0 failed**. The
+single failure was `I-06`, `Failed asserting that 201 is identical to 200` —
+raised by my own repair replaying the stored 201. **The pre-existing test was
+treated as authoritative and the new code was changed**, not the test: clients in
+the field already depend on 200. That is recorded because the opposite choice
+would have been invisible in a green suite.
+
+**For the `25355ff` → `941ed74` pair only, the difference is documentation
+only**, and it is this section. This claim is scoped deliberately: it does **not**
+extend past `941ed74`, because `2dd0875` afterwards added source, a model, a
+migration and two test files for S3-07b. Those carry their own execution SHA in
+the table above and are not covered by the diff below.
 
 ```
 git diff --stat 25355ff..941ed74
@@ -926,15 +1076,20 @@ and chasing it is exactly how the earlier revisions of this line came to be
 wrong. Pinning it to a named commit makes it rerunnable:
 
 ```
-$ git diff --shortstat 018b3d8..1b6aeb4
- 52 files changed, 9318 insertions(+), 95 deletions(-)
+$ git diff --shortstat 018b3d8..2dd0875
+ 58 files changed, 11868 insertions(+), 100 deletions(-)
 
-$ git log --oneline 018b3d8..1b6aeb4 | wc -l
-30
+$ git log --oneline 018b3d8..2dd0875 | wc -l
+44
 ```
 
-`1b6aeb4` is the last **code** commit on the branch; every commit after it is an
+`2dd0875` is the last **code** commit on the branch; every commit after it is an
 edit to this document.
+
+**Re-pinned from `1b6aeb4`, which this line named until `2dd0875` landed.** The
+previous pin read `52 files / +9,318 / −95` over 30 commits and was correct when
+written; the S3-07b repair made it stale rather than wrong. Superseded, not
+corrected — the distinction the paragraph below insists on.
 
 Earlier pins, superseded by later work rather than corrected: `e12c6c5` at
 49 files / +8,641 / −69, and `721c06d` at 51 files / +8,920 / −95. Those two are
@@ -963,6 +1118,22 @@ b216b80  Print a finalized bill's tax as it was issued, not as today (S3-05)
 
 (plus, earlier in the same session: `a542745` migration split, `ad9babe` runbook
 de-duplication, `2f26386` S3-05 characterization tests.)
+
+Later in the branch, and the one that matters for the S3-07b claim:
+
+```
+eadabd9  Record the data-dependent skips hiding two trigger checks
+25355ff  Add a regenerable review-packet builder
+941ed74  Re-measure both pinned suites at the candidate SHA
+9a9cb92  Pin one export SHA, add a scanned + zipped deliverable
+2dd0875  fix(S3-07b): make mobile invoice payment retry durably idempotent
+```
+
+`2dd0875` is the **only** commit in that list that changes application
+behaviour — the other four are evidence tooling and documentation. Stated
+explicitly because the two must not be conflated: *documentation completion is
+not completion of the underlying security repair*, and the repair is `2dd0875`
+alone.
 
 **Working tree is clean. No dirty or untracked files in this repository.**
 Untracked-but-ignored artifacts exist and are intentional: `node_modules`
