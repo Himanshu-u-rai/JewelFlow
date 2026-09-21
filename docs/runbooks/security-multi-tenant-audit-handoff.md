@@ -39,8 +39,9 @@ wrote tests" becomes "it is fixed in production".
 | S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
 | S3-06c published item images outlive the shopfront toggle | OPEN | None — recorded limitation | **OPEN** |
 | S3-07 mobile payment cache-hit path was unauthorized | **CLOSED as a code defect** — no exploit against shipped code; the binding blocked it | Guard committed (`0296431`), 9 tests | **OPEN — needs the deploy** |
-| S3-07b payment retry integrity (cache/commit not coordinated) | **REPAIRED LOCALLY** — both defects closed; one compatibility limit remains and is stated (P-11) | Characterized `893a49b` (3 tests) → **repaired `2dd0875`**: durable claim inside the payment transaction, 11 new tests, the 3 characterizations inverted into regressions | **OPEN — needs the deploy** |
+| S3-07b payment retry integrity (cache/commit not coordinated) | **REPAIRED LOCALLY** — both defects closed; two more found by real concurrency and fixed; **rollback to the deployed baseline is measured UNSAFE** | Characterized `893a49b` (3 tests) → repaired `2dd0875` → claim scope `0cdd794` → claim staked before validation + P-14 `7d20e08` → rollback evidence, P-06 relabel, P-15 `b1a52f0`. 15 tests, 250 in band | **OPEN — needs the deploy, under the constraints in `payment-idempotency-rollback-constraints.md`** |
 | S3-08 static memoization across a long-lived worker | **CLOSED — examined, not a tenant break** | None needed; one inaccurate docblock noted | N/A |
+| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **OPEN — identified, NOT repaired** | None. Scope enumerated only (§7c) | **OPEN** |
 
 ### Finding IDs — old → new, because they drifted
 
@@ -54,6 +55,7 @@ renumbering.**
 | S3-07 | Mobile payment idempotency cache | **File repairs** (purchase/karigar) | Repairs remain S3-02 / S3-03, still OPEN in the matrix above |
 | S3-07b | Payment retry integrity | *(new)* | — |
 | S3-08 | Static memoization sweep | *(new)* | — |
+| S3-09 | `EnsureIdempotency` middleware retry integrity | *(new — ID confirmed unused before assignment)* | — |
 
 Still visible and unclosed, listed explicitly so renumbering cannot bury them:
 repairs (S3-02, S3-03), uploads (`uploads/` at zero files, no publication
@@ -841,6 +843,72 @@ principal; pointing it at the target shop would invert I-02 into a demonstration
 that shop B *can* reach shop A's invoice.
 
 ---
+
+## 7c. S3-09 — `EnsureIdempotency`, tracked separately from S3-07b
+
+**The invoice-payment repair does not cover these routes.** S3-07b was fixed
+inside `InvoiceController::storePayment` — a durable claim staked inside the
+payment transaction. The `POST /invoices/{invoice}/payments` route does **not**
+use the `EnsureIdempotency` middleware, and none of the 16 routes below go
+through `storePayment`. They are disjoint. Nothing about the S3-07b fix reaches
+them.
+
+### The defect, from the source
+
+`app/Http/Middleware/EnsureIdempotency.php`:
+
+* line 140 — `$response = $next($request);` the controller runs, commits its own
+  transaction, and returns.
+* line 149 — `IdempotencyKey::create([...])` the completion record is written
+  **afterwards**, in a separate statement, **outside any transaction**.
+
+That is the same uncoordinated-commit shape S3-07b had, in shared middleware.
+Anything that kills the process between those two lines leaves the business
+effect durable and no record that the key was used, so the retry re-runs it.
+
+Two further soft-failure paths widen it:
+
+* the unique-collision `catch (QueryException)` logs
+  `EnsureIdempotency: concurrent insert collided on unique key` and returns the
+  response — it does not replay the winner's;
+* the outer `catch (Throwable)` fails soft, with a comment that already concedes
+  *"a future retry with the same key will simply re-run (not ideal…)"*.
+
+The uniqueness is on `(shop_id, user_id, key)`. A **read** failure against the
+table returns 503, so the read side is fail-closed; it is the **write** side
+that is not.
+
+### Affected state-changing routes — 16, enumerated from `route:list`, not grep
+
+| Route | What a duplicate does |
+|---|---|
+| `POST /uploads/intent` | extra pending upload record; benign, storage only |
+| `POST /cashbook` | **duplicate cash movement** — money in/out recorded twice |
+| `POST /cashbook/drawer-check` | duplicate drawer reconciliation entry; corrupts the count trail |
+| `POST /sessions/lock` | second lock on an already-locked session |
+| `POST /sessions/unlock` | second unlock; re-opens a session an operator closed |
+| `DELETE /sessions` | second bulk revoke; idempotent in effect, audit noise |
+| `DELETE /sessions/{session}` | as above, single session |
+| `PATCH /items/{item}` | re-applies an update; last-write-wins, may clobber an edit made between the two attempts |
+| `PATCH /customers/{customer}` | as above, customer record |
+| `POST /returns` | **duplicate return order** — stock returned twice |
+| `POST /returns/{returnOrder}/approve` | second approval on an approved return; credit-note risk |
+| `POST /job-orders` | duplicate job order issued to a karigar |
+| `POST /job-orders/{jobOrder}/receipt` | **duplicate karigar receipt** — metal received twice |
+| `POST /installments/finalize` | duplicate plan finalization |
+| `POST /installments/discard-draft` | second discard; benign |
+| `POST /installments/{plan}/pay` | **duplicate installment payment** — money recorded twice |
+
+Four of these move money or metal: `cashbook`, `returns`,
+`job-orders/{jobOrder}/receipt`, `installments/{plan}/pay`.
+
+**Status: identified and scoped, NOT repaired and NOT tested.** No fix is
+attempted here, and no broad middleware rewrite is proposed. Verified by reading
+`CashBookController::store` (lines 140–186): it calls `CashTransaction::record`
+and `AuditLog::create` with no internal deduplication of its own, so the
+middleware is the only thing standing between a retry and a second ledger row.
+The other 15 controllers have **not** been read for internal dedup — that is
+NOT RUN, not "confirmed absent".
 
 ## 8. Commands actually run, and their results
 
