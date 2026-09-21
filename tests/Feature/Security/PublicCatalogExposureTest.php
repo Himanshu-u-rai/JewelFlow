@@ -203,6 +203,116 @@ class PublicCatalogExposureTest extends TestCase
         );
     }
 
+    // -------------------------------------------------------------------- C-06
+    /**
+     * THE IMAGE URL CARRIES NO TRACE OF THE GATE.
+     *
+     * `CatalogShareService::buildImageUrl` (257-273) returns
+     * `{scheme}://{host}/storage/{path}` — no signature, no expiry, no shop
+     * slug, no token. Nothing in the string ties it to the shopfront being on,
+     * and nothing in it identifies the shop, so nothing downstream of the URL
+     * can re-check the gate. This is the mechanism behind the limitation the
+     * class docblock states; asserted here rather than left as prose.
+     */
+    public function test_c06_a_catalog_image_url_carries_no_gate_and_no_shop_identity(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $item = $this->stockedItem($shop->id, 'EEE-PHOTO-5', ['image' => 'items/01HXSENTINEL.webp']);
+
+        $url = app(\App\Services\CatalogShareService::class)
+            ->resolveImageUrl(\Illuminate\Http\Request::create('https://example.test/s/whatever'), $item);
+
+        $this->assertSame('https://example.test/storage/items/01HXSENTINEL.webp', $url);
+        $this->assertStringNotContainsString('signature', (string) $url, 'no signed-URL guard');
+        $this->assertStringNotContainsString('expires', (string) $url, 'and no expiry');
+        $this->assertStringNotContainsString((string) $shop->id, (string) $url,
+            'and nothing identifying the shop, so no later check can re-derive the gate');
+    }
+
+    // -------------------------------------------------------------------- C-07
+    /**
+     * THE THREE SHOP STATES, MEASURED ON THE ONE THING THAT DIFFERS.
+     *
+     * Never-enabled, enabled, and enabled-then-disabled were asked about
+     * separately. On the *page* they differ and C-01/C-02 already pin that. On
+     * the *file* they do not differ at all, which is the answer to the question:
+     * publication state has never governed where the bytes live. The upload path
+     * writes to the public disk in every state
+     * (`ImageOptimizer::optimizeAndStore(..., 'public')`), and flipping
+     * `is_enabled` off is a row update that moves nothing.
+     */
+    public function test_c07_disabling_the_shopfront_closes_the_page_but_moves_no_file(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        [, $shop] = $this->createRetailerTenant();
+        $this->publishCatalog($shop->id, 'shop-toggle');
+        $this->stockedItem($shop->id, 'FFF-PHOTO-6', ['image' => 'items/01HXTOGGLE.webp']);
+        \Illuminate\Support\Facades\Storage::disk('public')->put('items/01HXTOGGLE.webp', 'bytes');
+
+        $this->get('/s/shop-toggle/products')->assertOk()->assertSee('FFF-PHOTO-6');
+
+        DB::table('catalog_website_settings')->where('shop_id', $shop->id)
+            ->update(['is_enabled' => DB::raw('false')]);
+        TenantContext::clear();
+
+        $this->get('/s/shop-toggle/products')->assertNotFound();
+
+        \Illuminate\Support\Facades\Storage::disk('public')
+            ->assertExists('items/01HXTOGGLE.webp');
+    }
+
+    // -------------------------------------------------------------------- C-08
+    /**
+     * THE BOUND, AND A HYPOTHESIS OF MINE THAT THE CODE REFUTED.
+     *
+     * While tracing direct asset URLs I found `GET /storage/{path}` in the route
+     * table, named `storage.local`, with **`middleware: []`** — registered by
+     * `FilesystemServiceProvider::serveFiles()` because the `local` disk sets
+     * `'serve' => true`, and rooted at `storage_path('app/private')`. An
+     * unauthenticated route serving the private disk would have undone the whole
+     * S3-04 relocation, which moves signatures onto exactly that disk.
+     *
+     * It does not. `ServeFile::hasValidSignature()` treats a disk with no
+     * `visibility` key as private and requires `hasValidRelativeSignature()`,
+     * aborting otherwise. The `local` disk has no `visibility` key
+     * (`config/filesystems.php` 5-11), so the framework default is fail-closed.
+     *
+     * I am recording the hypothesis alongside its refutation rather than
+     * deleting it, because the difference between the two disks is the whole
+     * point of this test: the public disk is reachable without a signature and
+     * the private one is not, so relocation really does change something.
+     *
+     * THE POSITIVE CONTROL IS NOT OPTIONAL HERE. A 403 could equally mean the
+     * route was never reached, which would make this test assert nothing about
+     * `ServeFile` at all. The signed half proves the route serves the file when
+     * the signature is right, so the unsigned 403 is attributable to the
+     * signature check and not to a routing miss. Note the signature must be
+     * RELATIVE — `hasValidRelativeSignature()` rejects an absolute one, and an
+     * earlier probe of mine got 403 on a correctly authorized request for
+     * exactly that reason.
+     */
+    public function test_c08_the_private_disk_serve_route_refuses_an_unsigned_anonymous_request(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        \Illuminate\Support\Facades\Storage::disk('local')->put('signatures/9/secret.png', 'bytes');
+
+        $unsigned = $this->get('/storage/signatures/9/secret.png');
+
+        $this->assertSame(403, $unsigned->getStatusCode(),
+            'the local disk has no visibility key, so ServeFile requires a signed URL');
+        $unsigned->assertDontSee('bytes');
+
+        $signed = \Illuminate\Support\Facades\URL::signedRoute(
+            'storage.local',
+            ['path' => 'signatures/9/secret.png'],
+            null,
+            absolute: false
+        );
+
+        $this->get($signed)->assertOk();
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private function publishCatalog(int $shopId, string $slug): void
