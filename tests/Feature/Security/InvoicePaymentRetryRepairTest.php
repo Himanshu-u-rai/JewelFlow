@@ -274,15 +274,17 @@ class InvoicePaymentRetryRepairTest extends TestCase
 
     // ==================================================================== P-06
     /**
-     * [INJECTED FAILURE — after payment commit, before response/cache storage]
+     * [SIMULATED CACHE LOSS — after a successful commit]
      *
-     * The precise window R-01 lives in. The payment is committed; the process
-     * then dies before the volatile record is written and before the client
-     * ever sees a response. The client, having received nothing, retries.
+     * LABEL CORRECTED. This carried `[INJECTED FAILURE — after payment commit,
+     * before response/cache storage]`, which overstated it: nothing is injected
+     * here. The request succeeds normally and the cache entry is then removed,
+     * so by this file's own taxonomy it is a cache-loss test. The genuine
+     * post-commit injected failure is P-15, written because this one was not it.
      *
-     * Modelled by committing normally and then destroying the cache entry
-     * WITHOUT touching the durable claim — which is exactly the state that
-     * window leaves behind once the claim is inside the transaction.
+     * What it does establish is still the state R-01 lives in: the payment and
+     * the claim are committed, the volatile record is not, and the client
+     * retries. The durable claim must carry the retry on its own.
      */
     public function test_p06_a_crash_after_commit_but_before_the_cache_write_does_not_double_charge(): void
     {
@@ -752,6 +754,80 @@ class InvoicePaymentRetryRepairTest extends TestCase
         // And nothing was charged: the transaction that failed took its payment
         // row with it.
         $this->assertSame(0, $this->paymentCount($invoice->id));
+    }
+
+    // ==================================================================== P-15
+    /**
+     * [INJECTED FAILURE — after commit, before the client is answered]
+     *
+     * THE BOUNDARY P-06 WAS MISLABELLED AS COVERING. P-05 proves a failure
+     * INSIDE the transaction leaves neither payment nor claim. P-06 proves a
+     * successful request survives losing its cache entry. Neither one makes the
+     * request fail AFTER the database has committed — the window where the money
+     * has irreversibly moved and the client has been told nothing at all.
+     *
+     * The failure is injected by throwing from a `TransactionCommitted`
+     * listener. That fires after `PDO::commit()` has already returned, so the
+     * payment and the claim are durable and the exception can only destroy the
+     * response. It is the closest in-process model of the process dying between
+     * commit and write-out.
+     *
+     * THE ASSERTION THAT MAKES THIS WORTH HAVING is the third one: the retry is
+     * answered from the claim with the SAME payment id. Without it the test
+     * would pass on any implementation that merely avoided a second payment —
+     * including one that answered the retry with a fresh 422 because the
+     * balance had already moved, which is what the baseline controller does
+     * (see RB-2 in docs/runbooks/payment-rollback-harness.sh).
+     */
+    public function test_p15_a_failure_after_commit_still_leaves_payment_and_claim_and_replays(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->finalizedInvoice($shop->id, 10000.00);
+        $key = 'repair-key-0015';
+        $payload = ['mode' => 'cash', 'amount' => 3000.00];
+
+        $detonated = false;
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Database\Events\TransactionCommitted::class,
+            function () use (&$detonated) {
+                if ($detonated) {
+                    return;
+                }
+                $detonated = true;
+                throw new \RuntimeException('process died after commit, before responding');
+            }
+        );
+
+        $this->actAs($owner);
+        $first = $this->postJson(sprintf(self::ROUTE, $invoice->id), $payload,
+            ['X-Idempotency-Key' => $key]);
+
+        $this->assertTrue($detonated, 'the post-commit failure never fired');
+        $this->assertNotSame(201, $first->getStatusCode(),
+            'the client must NOT have received a success it was never sent');
+
+        // The commit happened regardless of what the client was told.
+        $this->assertSame(1, $this->paymentCount($invoice->id),
+            'a committed payment must survive a failure that happens after commit');
+        $this->assertSame(1, $this->claimCount($invoice->id),
+            'the claim commits with the payment or the retry has nothing to find');
+
+        $paymentId = DB::table('invoice_payments')
+            ->where('invoice_id', $invoice->id)->value('id');
+
+        // The client saw nothing, so it retries.
+        $this->actAs($owner);
+        $replay = $this->postJson(sprintf(self::ROUTE, $invoice->id), $payload,
+            ['X-Idempotency-Key' => $key]);
+
+        $replay->assertSuccessful();
+        $replay->assertHeader('X-Idempotent-Replay', 'true');
+        $this->assertSame($paymentId, $replay->json('payment.id'),
+            'the retry must return the payment that actually happened');
+
+        $this->assertSame(1, $this->paymentCount($invoice->id));
+        $this->assertSame(3000.0, $this->paidTotal($invoice->id));
+        $this->assertSame(1, $this->cashTransactionCount($invoice->id));
     }
 
     // ------------------------------------------------------------------ helpers
