@@ -150,13 +150,24 @@ class EnsureIdempotency
             // either crashed mid-mutation, or a sibling request is executing
             // right now. Either way the only answer that cannot double-charge
             // is a refusal. See the class docblock for the reasoning.
-            if ((int) $existing->response_status === self::STATUS_IN_FLIGHT) {
+            // Anything that is not a usable HTTP status is treated as
+            // in-flight. That is the sentinel 0, a NULL if the column is ever
+            // widened, and any corrupted value — deliberately a range check
+            // rather than `=== 0`, because the one thing that must never
+            // happen is the internal sentinel escaping as a real response
+            // status. `response()->json($body, 0)` would throw inside the
+            // middleware and surface as a 500 on a route whose whole job is
+            // to answer safely, and a corrupted value would be worse: it
+            // would tell the client something definite about an operation
+            // whose outcome is unknown.
+            $status = (int) $existing->response_status;
+
+            if ($status < 100 || $status > 599) {
                 return $this->inFlightResponse($shopId, $userId, $key);
             }
 
             // Replay: return cached response, controller is not invoked.
             $body = $existing->response_body;
-            $status = $existing->response_status;
             $response = response()->json($body, $status);
             $response->headers->set('X-Idempotent-Replay', 'true');
             return $response;

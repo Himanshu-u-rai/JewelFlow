@@ -49,6 +49,19 @@ use Tests\TestCase;
  * the retry is refused (409, `idempotency_in_flight`) AND — the assertion
  * that actually matters — that the money/metal/stock rows stayed at one.
  *
+ * WHAT THIS FILE IS NOT EVIDENCE FOR, stated up front so it cannot be cited
+ * for more than it shows:
+ *
+ *   * The supported conclusion is narrow: pre-staking blocks same-key
+ *     automatic re-execution WHILE THE CLAIM IS RETAINED. That is not a proof
+ *     of atomic business completion, and not a proof of recoverable
+ *     successful replay.
+ *   * Claim retention itself is a separate contract with its own evidence —
+ *     see MobileIdempotencyRetentionTest. Pruning an unresolved claim
+ *     re-permits the operation.
+ *   * The (b) coverage below is a SIMULATED conflict path, not a real race.
+ *     Real multi-process concurrency is NOT RUN here.
+ *
  * SCOPE NOTE — this file does NOT claim all 16 idempotency-protected routes
  * were vulnerable. Source reading established that they are not uniform, and
  * the repair does not make them uniform — it only removes the middleware's
@@ -399,16 +412,24 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
     // ────────────────────────────────────────────────────────────────────
 
     /**
-     * [INJECTED RACE — a sibling stakes the same key between our lookup and
-     * our insert]
+     * [SIMULATED CONFLICT-PATH COVERAGE — not a real race]
      *
-     * WHY THIS IS NOT A REAL RACE, AND WHY THAT IS FINE. A single-process
-     * PHPUnit run cannot issue two simultaneous requests, and a test that
-     * pretends otherwise usually proves nothing. So this does not reproduce
-     * the timing — it reproduces the STATE the timing produces. The listener
-     * raw-inserts a conflicting claim from inside `creating`, which is after
-     * the middleware's lookup found nothing and before its own insert lands.
-     * That is precisely where a losing concurrent sibling sits.
+     * WHAT THIS DOES AND DOES NOT ESTABLISH. It establishes that when the
+     * middleware's own insert loses on the unique index, the request is
+     * refused and never reaches the controller. That is the conflict PATH.
+     *
+     * It does NOT establish real competing-transaction behaviour: not the
+     * constraint's behaviour under two genuinely concurrent PostgreSQL
+     * transactions, not lock ordering, not what each of two real processes
+     * observes. A single-process PHPUnit run cannot issue simultaneous
+     * requests. This reproduces the STATE the timing produces, not the
+     * timing — the listener raw-inserts a conflicting claim from inside
+     * `creating`, which is after the lookup found nothing and before the
+     * middleware's own insert lands.
+     *
+     * Real multi-process evidence is tracked separately and is NOT RUN here.
+     * See the audit handoff §7c-3. This test must not be cited as concurrency
+     * proof on its own.
      *
      * Pre-repair there was no insert at that point at all: the claim was
      * written after the controller, so both siblings sailed past the lookup
@@ -429,7 +450,7 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
      * connection usable. A model-event spy gives stronger evidence anyway:
      * it witnesses the controller not executing, rather than inferring it.
      */
-    public function test_s309b_a_second_concurrent_request_for_one_key_must_not_reach_the_controller(): void
+    public function test_s309b_simulated_claim_conflict_must_not_reach_the_controller(): void
     {
         [$owner, $shop] = $this->actAsOwner();
         $headers = ['X-Idempotency-Key' => 'cb-s309b-race-key'];
