@@ -41,7 +41,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-07 mobile payment cache-hit path was unauthorized | **CLOSED as a code defect** — no exploit against shipped code; the binding blocked it | Guard committed (`0296431`), 9 tests | **OPEN — needs the deploy** |
 | S3-07b payment retry integrity (cache/commit not coordinated) | **REPAIRED LOCALLY** — both defects closed; two more found by real concurrency and fixed; **rollback to the deployed baseline is measured UNSAFE** | Characterized `893a49b` (3 tests) → repaired `2dd0875` → claim scope `0cdd794` → claim staked before validation + P-14 `7d20e08` → rollback evidence, P-06 relabel, P-15 `b1a52f0`. 15 tests, 250 in band | **OPEN — needs the deploy, under the constraints in `payment-idempotency-rollback-constraints.md`** |
 | S3-08 static memoization across a long-lived worker | **CLOSED — examined, not a tenant break** | None needed; one inaccurate docblock noted | N/A |
-| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **REPAIR IMPLEMENTED; VERIFICATION INCOMPLETE.** Supported conclusion is narrow: pre-staking blocks same-key automatic re-execution *while the claim is retained*. It does NOT by itself establish atomic business completion, recoverable successful replay, or that key retention survives pruning | Characterized `8cddbc3` → repaired `b8673db`. 17 tests / 89 assertions; 9 contract tests still green; 273 passed (1028 assertions) across `Feature/Security` + `Feature/Mobile`, no regressions. Concurrency is now **REAL multi-process** (§7c-3): pre-repair blob `6a8c4cc` produced 4×201 / 4 cash rows / sum 10000 under one key; repaired produces 1×201 + 3×409 / 1 cash row. Recoverable successful replay is now measured too | **OPEN. Closed sub-items: 4xx-release safety (§7c-2), real concurrency (§7c-3), mobile consumer handling (§7c-4). Still open: retained-claim disposal (§7c-1 — the pruning *code* defect is fixed in `e68eb31`; what remains open is an operator decision, since a retained unresolved claim has no supported clearing path and growth is slow but unbounded), 12 routes NOT RUN (§7c). New limit found — payload-conflict detection is sequential-path only; a concurrent different-payload loser gets `idempotency_in_flight`, not `idempotency_key_conflict`** |
+| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **REPAIR IMPLEMENTED; VERIFICATION INCOMPLETE.** Supported conclusion is narrow: pre-staking blocks same-key automatic re-execution *while the claim is retained*. It does NOT by itself establish atomic business completion, recoverable successful replay, or that key retention survives pruning | Characterized `8cddbc3` → repaired `b8673db`. 17 tests / 89 assertions; 9 contract tests still green; 273 passed (1028 assertions) across `Feature/Security` + `Feature/Mobile`, no regressions. Concurrency is now **REAL multi-process** (§7c-3): pre-repair blob `6a8c4cc` produced 4×201 / 4 cash rows / sum 10000 under one key; repaired produces 1×201 + 3×409 / 1 cash row. Recoverable successful replay is now measured too | **OPEN. Closed sub-items: 4xx-release safety (§7c-2), real concurrency (§7c-3), mobile consumer handling (§7c-4). Still open: retained-claim disposal (§7c-1 — the pruning *code* defect is fixed in `e68eb31`; what remains open is an operator decision, since a retained unresolved claim has no supported clearing path and growth is slow but unbounded), 12 routes now REVIEWED (§7c-6) — no write-then-4xx on any of the 16, so the release-on-4xx policy is supported rather than assumed; three routes (`drawer-check`, `job-orders`, `uploads/intent`) have no duplicate guard and inherit S3-09c; two NEW defects found and characterized but NOT repaired (S3-09e, S3-12). New limit found — payload-conflict detection is sequential-path only; a concurrent different-payload loser gets `idempotency_in_flight`, not `idempotency_key_conflict`** |
 
 ### Finding IDs — old → new, because they drifted
 
@@ -60,7 +60,9 @@ renumbering.**
 | S3-09d | Payload-conflict detection is sequential-path only — a concurrent different-payload loser is refused as `idempotency_in_flight`, never `idempotency_key_conflict` | *(new — ID confirmed unused before assignment)* | §7c-3 |
 | S3-09c | Mobile consumer handling for an uncertain outcome | *(new)* | §7c-4 |
 | S3-10 | `CashBookController::store` / `storeDrawerCheck` write subject and audit non-atomically | *(new — ID confirmed unused before assignment)* | §7c-5, FIXED |
+| S3-09e | Replayed responses drop every header, wedging the two `PATCH` routes whose contract needs `ETag`. **Predates S3-09** — pre-repair blob `6a8c4cc` behaves identically | *(new — ID confirmed unused before assignment)* | §7c-6, CHARACTERIZED, NOT REPAIRED |
 | S3-11 | `ReturnService::approveReturn` cancels the pending header, then can fail | *(new — ID confirmed unused before assignment)* | §7c-2, FIXED |
+| S3-12 | `If-Match` validator is one-second granular (`updated_at` is `timestamp(0)`), so a concurrent write is silently lost | *(new — ID confirmed unused before assignment)* | §7c-6, CHARACTERIZED, NOT REPAIRED |
 
 Still visible and unclosed, listed explicitly so renumbering cannot bury them:
 repairs (S3-02, S3-03), uploads (`uploads/` at zero files, no publication
@@ -968,7 +970,7 @@ withdrawn in §7c. The accurate reasons are two, and neither is a timer:
 | `POST /returns` | **duplicate return order** — stock returned twice | yes | yes | **Full, and independent of the middleware.** `ReturnService` carries two durable guards: the invoice's own status, and the per-line `invoice_items.returned_at` stamp. This route was never part of the finding. |
 | `POST /returns/{returnOrder}/approve` | second approval on an approved return; credit-note risk | partial | no | `ReturnController::approve` guards `status === STATUS_PENDING_APPROVAL`, which *is* terminal — approval moves the order off that status. Read only; **NOT RUN.** |
 | `POST /uploads/intent` | extra pending upload record; benign, storage only | no | no | NOT RUN |
-| `POST /cashbook/drawer-check` | duplicate drawer reconciliation entry; corrupts the count trail | no | no | NOT RUN |
+| `POST /cashbook/drawer-check` | duplicate drawer reconciliation entry; corrupts the count trail | yes | yes | **NONE** against duplicates. Row was stale — it read "no / no", but S3-10 read this route and `CashbookWriteAtomicityTest` tests it. Atomicity is fixed (§7c-5); duplicate protection is still middleware-only. No unique index on `(shop_id, business_date)`, and the append-only trigger makes a duplicate row **unremovable**. |
 | `POST /sessions/lock` | second lock on an already-locked session | no | no | NOT RUN |
 | `POST /sessions/unlock` | second unlock; re-opens a session an operator closed | no | no | NOT RUN |
 | `DELETE /sessions` | second bulk revoke; idempotent in effect, audit noise | no | no | NOT RUN |
@@ -1339,6 +1341,122 @@ service-layer duplicate guard — a second call is a valid second entry as far a
 the service is concerned, and the middleware remains the only thing standing
 between that route and a duplicate.
 
+
+### §7c-6 — the remaining 12 routes, reviewed against the repaired middleware
+
+The other four (`/cashbook`, `/installments/{plan}/pay`,
+`/job-orders/{jobOrder}/receipt`, `/returns`) were already classified above and
+were not re-read. Route set re-derived from `route:list --json` filtered on the
+middleware — **16, matching the table**, so the enumeration is measured rather
+than inherited.
+
+#### The question that mattered most, and its answer
+
+§7c-2 established that releasing a claim on 4xx is safe *for `/returns/approve`*
+because that service is atomic. The open risk was that some **other** route
+persists a business effect and then returns 4xx — the release would then hand a
+retry the chance to duplicate that effect.
+
+**Checked all 12. None has that shape.** On every route, each 4xx path is
+reached strictly BEFORE any write: authorization, `validate()`, route-model
+binding 404s, ETag preconditions, and status guards all precede the first
+persist. The routes that catch a `LogicException` after calling a service
+(`/returns/approve`, `/job-orders`, `/installments/discard-draft`) each call a
+service whose writes are wrapped in `DB::transaction`, so the throw rolls back
+before the 4xx is rendered.
+
+**So the "release on 4xx" policy is now supported across all 16 routes, not
+assumed.** Recording the method because the conclusion is only as good as it:
+this is a READ of every 4xx path, not a behavioural test of each one. It is
+inspection-grade evidence, and the four atomicity-relevant services additionally
+have tests.
+
+#### Duplicate behaviour, per route
+
+| Route | Duplicate effect | Naturally idempotent | Guard that makes it so |
+|---|---|---|---|
+| `POST /returns/{returnOrder}/approve` | none — 409 | yes | status guard, `ReturnController:238` |
+| `POST /uploads/intent` | a second `pending_uploads` row | no | none; benign, expires in 15 min |
+| `POST /cashbook/drawer-check` | **second drawer check + audit row, unremovable** | **no** | **none** |
+| `POST /sessions/lock` | `locked_at` overwritten | yes | same row |
+| `POST /sessions/unlock` | `locked_at` nulled again | yes | same row |
+| `DELETE /sessions` | extra audit row, `sessions_revoked: 0` | no (audit noise) | session set already empty |
+| `DELETE /sessions/{session}` | none — 409 | yes | `logged_out_at` guard, `:202` |
+| `PATCH /items/{item}` | last-write-wins on one row | yes | — see S3-12 below |
+| `PATCH /customers/{customer}` | last-write-wins on one row | yes | — see S3-12 below |
+| `POST /job-orders` | **second job order, second metal draw, second advance** | **no** | **none** |
+| `POST /installments/finalize` | none — 422 | yes | plan-exists + draft-status under `lockForUpdate` |
+| `POST /installments/discard-draft` | none — 422 | yes | status guard, `InstallmentService:370` |
+
+**Three routes have no duplicate guard**: `drawer-check`, `job-orders`, and
+`uploads/intent`. For all three the middleware is the only protection, which
+means they inherit S3-09c exactly — a client that mints a **fresh key** per
+resubmit is not protected by anything. `job-orders` has the worst blast radius
+(the same physical gold recorded as issued to a karigar twice); `uploads/intent`
+is benign.
+
+**No new tests were written for those three.** The risk is not new and not
+route-specific: it is S3-09c, already characterized in §7c-4, and a per-route
+test would restate it 3 times without adding a fact. Recording that as a
+deliberate choice, per "tests for concrete uncovered risks, not to increase
+counts."
+
+#### Two NEW defects found during this review
+
+Both were found by testing, not by reading, and both are **characterized and
+deliberately NOT repaired**. Their tests pass against current code and are
+written as regression locks whose failure messages read "appears repaired".
+
+**S3-09e — a replayed response drops its headers.**
+`completeClaim` persists only `response_status` and `response_body`; the replay
+path rebuilds with `response()->json($body, $status)`. Every header is lost.
+For 14 routes that is cosmetic. For the two `PATCH` routes it is not, because
+`If-Match` is **mandatory** (428 if absent) and the client's only source for the
+next tag is the `ETag` response header. Measured: the live PATCH carries a tag,
+the replay's is `null`, and a client following the replay gets **428**. A
+control shows the same client following the *live* response proceeds fine, so
+the replay is the cause rather than the route.
+
+**Not a regression from S3-09.** Verified: pre-repair blob `6a8c4cc` stores the
+same two columns and rebuilds the same way. The gap predates the repair.
+Not repaired because the fix means persisting headers in `idempotency_keys` —
+the table under the open S3-09 rollback constraints — to cure a defect that
+self-heals on the client's next GET.
+Evidence: `tests/Feature/Security/MobileIdempotencyReplayFidelityTest.php`,
+5 passed.
+
+**S3-12 — the `If-Match` validator has one-second resolution, so writes can be
+silently lost.** Found by accident: a precondition asserting "a successful write
+moves the ETag" failed. **My first hypothesis was that the PATCH had no-op'd,
+and it was wrong** — a probe showed status 200 with `selling_price` 1000 → 2500
+genuinely persisted and the tag unchanged either side.
+
+Root cause is the schema, not the format string:
+
+```sql
+select datetime_precision from information_schema.columns
+ where table_name = 'items' and column_name = 'updated_at';   -- 0
+```
+
+`entityTagFor` hashes `(id | updated_at ATOM | class)`, and the column is
+`timestamp(0)`. Widening the format would read sub-second data that Postgres
+never stored. Consequence, demonstrated end to end: operator A reads tag T,
+operator B writes in the same second, A writes with `If-Match: T`, the
+precondition **passes**, and B's value is clobbered. Both report 200.
+
+Honest severity: not a tenancy break, not a ledger break — a silent
+data-integrity defect on catalogue and customer rows, needing two operators in
+the same one-second window. Controls in the test show a plainly wrong tag still
+gets 412 and a missing one still gets 428, so the failure is specifically one of
+resolution, not a broken guard.
+
+Not repaired: both candidate fixes (migrate to `timestamp(6)`, or re-base the
+validator on row content) change a client contract that mobile clients already
+hold. Operator decision.
+Evidence: `tests/Feature/Security/EntityTagResolutionTest.php`, 5 passed.
+
+**Regression after both additions:** `Feature/Security` + `Feature/Mobile`
+**283 passed (1052 assertions)**, up from 273/1028.
 
 ### §7c-4 — the mobile consumer — mobile `2cad553`
 
