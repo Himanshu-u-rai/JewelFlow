@@ -39,12 +39,30 @@ use Tests\TestCase;
  * identical either way. D-03 pins that bound so a reader who sees "GST
  * presentation changed" does not conclude the totals moved. They did not.
  *
- * SCOPE, STATED HONESTLY
- * ----------------------
+ * SCOPE, STATED HONESTLY — AND ONE EARLIER SENTENCE WITHDRAWN
+ * -----------------------------------------------------------
  * The repair covers igst_mode and the HSN map — the two statutory fields. The
- * other 43 reads are still live and still cosmetic; they are NOT fixed here and
- * the finding stays open for them. Pinning paper size or theme colour to a
- * snapshot is a separate, larger change with its own review.
+ * rest are still live and NOT fixed here; the finding stays open for them.
+ *
+ * This docblock previously said "the other 43 reads are still live and still
+ * cosmetic". Both halves of that were wrong and are withdrawn.
+ *
+ *   THE COUNT. Measured on this file's template, not carried forward:
+ *   `$billing?->` appears 44 times and `$shop?->` 26 times in
+ *   invoice_print.blade.php, over 26 and 13 distinct fields. The old figure
+ *   counted only `$billing?->`, was off by one against even that, and omitted
+ *   the shop-identity reads entirely.
+ *
+ *   "COSMETIC". D-09, D-10 and D-11 measure three of them drifting, and none
+ *   of the three is cosmetic: bank account number, printed terms, and the
+ *   GSTIN on a tax invoice. D-12 measures theme colour drifting by the same
+ *   mechanism and IS cosmetic, which is the bound that keeps this a claim
+ *   about field meaning rather than about live reads in general.
+ *
+ * Pinning paper size or theme colour to a snapshot is still a separate, larger
+ * change with its own review. Pinning the four in D-09 to D-11 is not the same
+ * size of job: the snapshot already captures every one of those fields
+ * (InvoiceRenderSnapshotService lines 91-132) and nothing reads them.
  *
  * LEGACY INVOICES ARE NOT REPAIRED BY THIS, EITHER. An invoice finalized before
  * invoice_render_snapshots carried these keys has no record of what it printed.
@@ -262,6 +280,144 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
 
         $this->assertStringContainsString('IGST', $html, 'an inter-state shop still prints IGST');
         $this->assertStringNotContainsString('CGST', $html, 'and not the intra-state split');
+    }
+
+    // -------------------------------------------------------------------- D-09
+    /**
+     * CLASSIFICATION, not repair. D-09 to D-12 exist to answer one question the
+     * earlier revision of this file answered by assertion rather than by
+     * measurement: are the remaining live reads really all "cosmetic"?
+     *
+     * They are not. The reading MECHANISM is uniform — every one of them is
+     * `$billing?->x` or `$shop?->x` evaluated at render time — so the mechanism
+     * cannot be what separates them. What separates them is the meaning of the
+     * field. D-09 through D-11 drift things a printed bill ASSERTS about the
+     * transaction; D-12 drifts a thing it merely looks like. Only D-12 is
+     * cosmetic, and it is here so that claim is bounded rather than asserted.
+     *
+     * These four pin the CURRENT behaviour deliberately, the way this file's
+     * first revision did for igst_mode. Each was first written asserting the
+     * desired behaviour and run, so the drift is a measured failure and not an
+     * inference from reading the template; the recorded failures are in
+     * docs/runbooks/security-multi-tenant-audit-handoff.md §3. When the
+     * remaining half of S3-05 is repaired, these must flip.
+     *
+     * PAYMENT INSTRUCTIONS. The highest-consequence member of the set, which is
+     * why it is first. A reprint of a bill issued against one account prints
+     * today's account number instead. A customer settling an outstanding balance
+     * from a reprinted copy is being given instructions that were never the ones
+     * issued, and the bill carries no indication that they changed.
+     */
+    public function test_d09_bank_details_on_a_reprint_follow_todays_settings(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, [
+            'bank_name'           => 'Issued Bank',
+            'bank_account_number' => '11110000',
+        ]);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $this->setBilling($shop->id, [
+            'bank_name'           => 'Replacement Bank',
+            'bank_account_number' => '99990000',
+        ]);
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringContainsString('99990000', $html,
+            'measured: the reprint carries the CURRENT account number');
+        $this->assertStringNotContainsString('11110000', $html,
+            'measured: and not the one the bill was issued against');
+    }
+
+    // -------------------------------------------------------------------- D-10
+    /**
+     * TERMS. The printed terms are the ones the customer was handed at the
+     * counter. A reprint produced for a dispute shows whatever the shop
+     * configured most recently, so the document cannot evidence its own terms.
+     * Note the snapshot ALREADY captures terms_and_conditions — nothing reads
+     * it. That makes this the cheapest member of the set to repair.
+     */
+    public function test_d10_terms_on_a_reprint_follow_todays_settings(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['terms_and_conditions' => 'Exchange within 7 days.']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $this->setBilling($shop->id, ['terms_and_conditions' => 'No exchange under any circumstances.']);
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringContainsString('No exchange under any circumstances.', $html,
+            'measured: the reprint carries the CURRENT terms');
+        $this->assertStringNotContainsString('Exchange within 7 days.', $html,
+            'measured: and not the terms the customer was given');
+    }
+
+    // -------------------------------------------------------------------- D-11
+    /**
+     * PRINTED BUSINESS IDENTITY, and the statutory case inside it.
+     *
+     * GSTIN is a required particular of a tax invoice, so a reprint showing a
+     * GSTIN other than the one the supply was made under is not a presentation
+     * question. This one is worse than D-09 and D-10 in one specific way: the
+     * snapshot captures `shop.gst_number`, and the template does not read it —
+     * it reads `auth()->user()->shop`. That is the LOGGED-IN user's shop rather
+     * than the invoice's. Tenant scoping means the two coincide today, so this
+     * is not a cross-tenant finding and is not reported as one; it is recorded
+     * because the correct source is one hop away and already snapshotted.
+     */
+    public function test_d11_shop_gstin_on_a_reprint_follows_todays_settings(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['show_gstin' => DB::raw('true')]);
+        DB::table('shops')->where('id', $shop->id)->update(['gst_number' => '29AAAAA1111A1Z5']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        DB::table('shops')->where('id', $shop->id)->update(['gst_number' => '29BBBBB9999B1Z5']);
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringContainsString('29BBBBB9999B1Z5', $html,
+            'measured: the reprint carries the CURRENT GSTIN');
+        $this->assertStringNotContainsString('29AAAAA1111A1Z5', $html,
+            'measured: and not the GSTIN the supply was made under');
+    }
+
+    // -------------------------------------------------------------------- D-12
+    /**
+     * THE BOUND ON D-09 TO D-11, and the one field in this group that really is
+     * cosmetic. Theme colour drifts by exactly the same mechanism, and nothing
+     * about the transaction changes when it does — an old bill reprinted in a
+     * new house colour still asserts the same facts.
+     *
+     * Without this test the group would read as "live reads are bad", which is
+     * the overreach the directive warns against. With it the finding is the
+     * narrower and defensible one: the drift is uniform, the CONSEQUENCE is not,
+     * and only the fields a bill asserts something with need pinning.
+     */
+    public function test_d12_theme_colour_also_drifts_and_that_one_is_cosmetic(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['theme_color' => '#111111']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $this->setBilling($shop->id, ['theme_color' => '#ABCDEF']);
+        $html = $this->printInvoice($owner, $invoice);
+
+        // Re-read rather than using $invoice: the fixture returns the DRAFT
+        // model and invoice_number is assigned during finalization. The first
+        // draft of this test asserted against the stale in-memory model and
+        // died on a null needle — a fixture bug, easy to mistake for the
+        // template failing to print the number at all.
+        $number = (string) Invoice::withoutTenant()->find($invoice->id)->invoice_number;
+        $this->assertNotSame('', $number, 'finalization must have assigned a number');
+
+        $this->assertStringContainsString('#ABCDEF', $html,
+            'same drift mechanism as D-09 to D-11');
+        $this->assertStringContainsString($number, $html,
+            'but the bill still asserts the same transaction, which is why this one is cosmetic');
     }
 
     // ------------------------------------------------------------------ helpers
