@@ -22,14 +22,30 @@ use Tests\TestCase;
  * correctness property it never tested. Every caller below is fully
  * authorized; nobody is attacking anything.
  *
- * WHAT THESE TESTS ARE
- * --------------------
- * CHARACTERIZATION. They passed the first time they ran, and that is stated up
- * front rather than dressed up as TDD. They exist to convert three suspicions
- * into demonstrated behaviour, because "this looks racy" is a lead, not a
- * finding. Each one asserts what the code does TODAY. If the fix sketched at
- * the bottom is ever applied, R-01 and R-02 SHOULD fail — that failure is the
- * repair landing.
+ * WHAT THESE TESTS WERE, AND WHAT THEY ARE NOW
+ * --------------------------------------------
+ * They began as CHARACTERIZATION. They passed the first time they ran, and that
+ * was stated up front rather than dressed up as TDD. They existed to convert
+ * three suspicions into demonstrated behaviour, because "this looks racy" is a
+ * lead, not a finding. The docblock then said:
+ *
+ *     "If the fix sketched at the bottom is ever applied, R-01 and R-02 SHOULD
+ *      fail — that failure is the repair landing."
+ *
+ * THE FIX HAS BEEN APPLIED AND THEY DID FAIL. Measured, before inverting them:
+ *
+ *     R-01  Failed asserting that 1 is identical to 2.      (2 payments → 1)
+ *     R-02  Failed asserting that 409 is identical to 200.  (silent → refused)
+ *     R-03  still passing, untouched — the control held.
+ *
+ * R-01 and R-02 now assert the REPAIRED behaviour and serve as regression
+ * guards. Their original assertions are quoted inline at each site rather than
+ * deleted, so the defect that justified the change is still legible. The
+ * finding IDs are deliberately unchanged so the tracker keeps continuity.
+ *
+ * The desired-behaviour tests written RED first for this repair are in
+ * `InvoicePaymentRetryRepairTest` (P-01…P-11); this file is the historical
+ * record plus two guards, not the primary evidence for the fix.
  *
  * THE MECHANISM UNDER TEST
  * ------------------------
@@ -81,12 +97,26 @@ use Tests\TestCase;
  * race and no eviction — it is reachable by a client that reuses a key by
  * mistake, which is precisely what idempotency keys are supposed to make safe.
  *
- * NOT FIXED HERE, AND WHY. The repair is a migration of this route onto the
- * existing `idempotency_keys` mechanism with a compatibility window that READS
- * the legacy cache key and WRITES the new record, so keys in flight across the
- * deploy are not orphaned. That is a behaviour change to a live money path,
- * separable from the access-control repair already committed, and it is
- * offered for its own review rather than smuggled in beside one.
+ * HOW THE REPAIR DIFFERED FROM WHAT THIS FILE ORIGINALLY PROPOSED
+ * ---------------------------------------------------------------
+ * This docblock used to propose "a migration of this route onto the existing
+ * `idempotency_keys` mechanism". That proposal was WRONG and is withdrawn.
+ * Inspecting `EnsureIdempotency` rather than trusting its docblock showed two
+ * disqualifying problems:
+ *
+ *   - it records its key AFTER `$next($request)` returns, outside the
+ *     controller's transaction — the same uncoordinated shape as the cache
+ *     write, so adopting it would not have fixed R-01 at all; and
+ *   - it is UNIQUE on (shop_id, user_id, key), which is WIDER than the legacy
+ *     (invoice_id, key). Adopting it would have let two users in one shop
+ *     charge the same key twice — a regression introduced by the repair.
+ *
+ * What shipped instead is a dedicated `invoice_payment_claims` record, keyed
+ * exactly (invoice_id, key), written INSIDE the payment transaction. The
+ * compatibility window over the legacy cache key is as described — it still
+ * READS the legacy entry — with one limit that cannot be engineered away and is
+ * documented at `InvoicePaymentRetryRepairTest::test_p11...`: legacy entries
+ * carry no request hash, so for them a changed payload cannot be detected.
  */
 class InvoicePaymentRetryIntegrityTest extends TestCase
 {
@@ -107,7 +137,11 @@ class InvoicePaymentRetryIntegrityTest extends TestCase
      * all of those are identical: a key it has already processed reads as
      * absent.
      */
-    public function test_r01_a_processed_key_whose_cache_record_is_absent_charges_a_second_time(): void
+    // Renamed when the assertions were inverted. The old name,
+    // `..._charges_a_second_time`, described the DEFECT, and a test whose name
+    // contradicts its own assertions is read as a bug in the test. The R-01 ID
+    // is preserved so the finding mapping still resolves.
+    public function test_r01_a_processed_key_whose_cache_record_is_absent_does_not_charge_again(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         $invoice = $this->finalizedInvoice($shop->id, 10000.00);
@@ -130,17 +164,36 @@ class InvoicePaymentRetryIntegrityTest extends TestCase
         $this->postJson(sprintf(self::ROUTE, $invoice->id), [
             'mode' => 'cash',
             'amount' => 3000.00,
-        ], ['X-Idempotency-Key' => $key])->assertCreated();
+        ], ['X-Idempotency-Key' => $key])
+            // 200, NOT 201. Before the fix this retry CREATED a second payment
+            // and 201 was the honest answer. It is now a replay of the durable
+            // claim, and a replay is not a creation. This line failed with
+            //
+            //     Failed asserting that 200 is identical to 201.
+            //
+            // which is the same repair landing as the assertion below, observed
+            // on the status line instead of the row count.
+            ->assertOk()
+            ->assertHeader('X-Idempotent-Replay', 'true');
 
-        // CHARACTERIZATION of today's behaviour, not an endorsement of it.
-        // The same idempotency key produced two payments and the customer is
-        // recorded as having paid 6,000 against a 3,000 collection.
+        // REPAIRED — this assertion was INVERTED when the fix landed.
+        //
+        // It previously read `assertSame(2, ...)` with the note "characterization:
+        // a cache miss on an already-processed key is reprocessed", and 6,000
+        // against a 3,000 collection. When the durable claim moved inside the
+        // payment transaction this test failed with
+        //
+        //     Failed asserting that 1 is identical to 2.
+        //
+        // and that failure is the repair landing, precisely as this file's
+        // docblock predicted it would. The assertion now states the required
+        // behaviour, so it guards the fix instead of recording the defect.
         $this->assertSame(
-            2,
+            1,
             $this->paymentCount($invoice->id),
-            'characterization: a cache miss on an already-processed key is reprocessed'
+            'REPAIRED: the durable claim answers the retry; no second INSERT'
         );
-        $this->assertSame(6000.0, $this->paidTotal($invoice->id));
+        $this->assertSame(3000.0, $this->paidTotal($invoice->id));
     }
 
     // -------------------------------------------------------------------- R-02
@@ -152,7 +205,8 @@ class InvoicePaymentRetryIntegrityTest extends TestCase
      * for exactly this case; the legacy cache answers 200 with a receipt for a
      * payment the operator did not just take.
      */
-    public function test_r02_the_same_key_with_a_different_amount_silently_records_nothing(): void
+    // Renamed for the same reason as R-01; was `..._silently_records_nothing`.
+    public function test_r02_the_same_key_with_a_different_amount_is_refused_as_a_conflict(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         $invoice = $this->finalizedInvoice($shop->id, 10000.00);
@@ -171,19 +225,26 @@ class InvoicePaymentRetryIntegrityTest extends TestCase
             'amount' => 4500.00,
         ], ['X-Idempotency-Key' => $key]);
 
-        // 200, not 409: the payload is never compared.
-        $second->assertOk();
-
-        // The body describes the FIRST payment. An operator reading this
-        // screen is told 4,500 went through.
-        $this->assertSame(3000.0, (float) $second->json('payment.amount'));
-        $this->assertSame(3000.0, (float) $second->json('totals.paid_amount'));
+        // REPAIRED — this assertion was INVERTED when the fix landed.
+        //
+        // It previously read `$second->assertOk()` and then asserted the body
+        // described the FIRST payment (3,000), with the note "characterization:
+        // the 4,500 was never recorded and no error was raised". The operator
+        // was shown a success for a collection that had been discarded.
+        //
+        // The fix produced:
+        //
+        //     Failed asserting that 409 is identical to 200.
+        //
+        // 409 is now the required answer: a key already used with a different
+        // payload is a conflict, not a replay.
+        $second->assertStatus(409);
 
         $this->assertSame(1, $this->paymentCount($invoice->id));
         $this->assertSame(
             3000.0,
             $this->paidTotal($invoice->id),
-            'characterization: the 4,500 was never recorded and no error was raised'
+            'REPAIRED: the 4,500 is refused loudly rather than dropped silently'
         );
     }
 
