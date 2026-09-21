@@ -63,6 +63,7 @@ renumbering.**
 | S3-09e | Replayed responses drop every header, wedging the two `PATCH` routes whose contract needs `ETag`. **Predates S3-09** — pre-repair blob `6a8c4cc` behaves identically | *(new — ID confirmed unused before assignment)* | §7c-6, CHARACTERIZED, NOT REPAIRED |
 | S3-11 | `ReturnService::approveReturn` cancels the pending header, then can fail | *(new — ID confirmed unused before assignment)* | §7c-2, FIXED |
 | S3-12 | `If-Match` validator is one-second granular (`updated_at` is `timestamp(0)`), so a concurrent write is silently lost | *(new — ID confirmed unused before assignment)* | §7c-6, CHARACTERIZED, NOT REPAIRED |
+| S3-13 | Editing a quick bill re-captures `shop_snapshot` on the shared save path, so an edit to an unrelated field re-states the supply type on a bill that keeps its number. **Presentation only** — bill number and every stored figure verified unchanged | *(new — ID confirmed unused before assignment)* | §7d-1, CHARACTERIZED, NOT REPAIRED |
 
 Still visible and unclosed, listed explicitly so renumbering cannot bury them:
 repairs (S3-02, S3-03), uploads (`uploads/` at zero files, no publication
@@ -1646,6 +1647,82 @@ exported resolver diff spans the rename regardless.
   recorded.
 * **NOT RUN:** no visual/PDF comparison and no device run. The evidence is
   rendered-HTML assertions through the real print route.
+
+### §7d-1 — the ORIGINAL-reprint path, and S3-13 found while covering it
+
+`quick-bills.print-original` had **no test coverage of any kind** — a grep for
+`printOriginal` across `tests/` returned nothing before this session. It is the
+one route whose entire purpose is to reproduce an as-issued document, so
+claiming S3-05 repaired while leaving it unexercised would have been claiming
+the repair on a path never run.
+
+`tests/Feature/Security/QuickBillOriginalReprintTest.php` — **3 passed, 21
+assertions.** Band after adding it: **290 passed, 1114 assertions.**
+
+**Q-01 — the repair holds on the original path.** Issue intra-state, flip the
+shop to inter-state and change the terms, edit the bill, then print both:
+
+| | live bill | frozen original |
+|---|---|---|
+| tax | IGST | **CGST** |
+| terms | today's | **as issued** |
+
+Both halves are asserted in one test on purpose. "The original prints CGST"
+alone would be satisfied by a system that never re-resolved anything; the live
+bill printing IGST beside it is what shows the two documents genuinely resolve
+from different snapshots. **Control:** the route 404s for a bill that was never
+edited, so Q-01 cannot be passing against a route that serves the as-issued
+document unconditionally.
+
+**S3-13 — CHARACTERIZED, NOT REPAIRED.** `QuickBillService` writes
+`'shop_snapshot' => $this->shopSnapshot($shop)` on the **shared** save path
+used by both `create` and `update` (line 313), with no branch on whether the
+bill already has one. So **every edit overwrites it with today's settings.**
+Measured sequence: bill issued intra-state as `QB-1`; shop later switches to
+inter-state for unrelated reasons; an operator corrects a typo in the
+**customer name**; `QB-1` now prints IGST instead of CGST/SGST, and nothing in
+the edit screen mentions tax.
+
+*Two readings, and the test picks neither.* **Defensible:** an edit is a
+re-issue — `edited_at` is set, the UI marks the bill edited, and the as-issued
+original stays frozen and printable, which Q-01 proves. **Troubling:** the
+re-characterization is a silent side effect of editing an unrelated field, on a
+document whose number does not change. Which governs is a business decision
+about what a quick-bill edit *means*, and it is the operator's, not an audit
+repair to slip in.
+
+*Severity bounded by measurement, not asserted.* Across the edit the bill
+number and **every** stored figure are unchanged:
+
+```
+bill_number QB-1  cgst 1080.00  sgst 1080.00  igst 0.00
+taxable 72000.00  total 74160.00        (identical before and after)
+```
+
+`igst_amount` is hard-coded to `0` on that save path and the template derives
+the IGST line from the CGST/SGST pair, so total tax is identical under either
+presentation. This is a **characterization** change, not an arithmetic one —
+the same shape as S3-05 itself. It is not a tenancy finding and not a money
+finding.
+
+**CORRECTION — a guard I claimed was covered, and is not.** The test docblock
+first said Q-01 holds `BillPresentation::forQuickBill`'s `spl_object_id` memo
+key in place. It does not. I replaced the key with `$quickBill->id` and re-ran:
+**all three tests stayed green.** The guard is unreachable today, for two
+compounding reasons, both checked rather than reasoned:
+
+* `BillPresentation` has **no container binding** (`grep` over `app/Providers/`
+  returns nothing), so `app()` hands back a fresh instance per resolve and the
+  memo dies with the render.
+* Each template resolves it **once** and renders **one** bill; `print` and
+  `print-original` are separate requests.
+
+The memo therefore never holds two quick bills at once and the key cannot
+collide. `spl_object_id` is the right defensive choice — it stays correct if
+the class is ever bound as a singleton or a view ever renders both — but no
+test can bind it without fabricating a scenario that does not exist, and
+fabricating one would be writing a test to raise a count. **Recorded as
+unbound, in both the test and the resolver, rather than implied to be covered.**
 
 ## 8. Commands actually run, and their results
 

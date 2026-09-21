@@ -155,8 +155,17 @@ class BillPresentation
 
         // Keyed by object identity, not by id: QuickBillController::printOriginal
         // renders a second, non-persisted QuickBill carrying the SAME id as the
-        // live bill but the as-issued snapshot. Keying on id would serve the
-        // edited bill's presentation for the original.
+        // live bill but the as-issued snapshot, so an id key would be ambiguous
+        // between the two.
+        //
+        // DEFENSIVE, AND CURRENTLY UNREACHABLE — measured, not assumed. Swapping
+        // this for $quickBill->id changes no test result, because this class has
+        // no container binding (app() hands back a fresh instance per resolve)
+        // and each template resolves it once and renders one bill, so the memo
+        // never holds two quick bills at once. Kept as object identity because it
+        // stays correct if this is ever bound as a singleton or a view ever
+        // renders both; recorded as unbound rather than implied to be covered.
+        // See QuickBillOriginalReprintTest.
         return $this->memo['quickbill:'.spl_object_id($quickBill)] ??= $this->resolve(
             (int) $quickBill->shop_id,
             // Bills issued before this finding have no igst_mode key. Treating a
