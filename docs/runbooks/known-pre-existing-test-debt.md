@@ -36,6 +36,56 @@ Several tests fail intermittently with `SQLSTATE[40P01]: Deadlock detected`. The
 
 ---
 
+## 3. Data-dependent skips hide two constitutional trigger checks — `ConstitutionalInvariantsTest`
+
+Surfaced by the multi-tenant security audit (2026-09-21), which was asked to
+explain the suite's "3 skipped" and found all three in this one file, sharing
+one cause.
+
+| Test | Skip message |
+|---|---|
+| `invoice_items_finalized_guard_blocks_update` | "No invoice_items rows available to test the guard trigger against." |
+| `enabled_metals_for_shop_returns_tier_1` | "No shops exist to test enabledMetalsForShop against." |
+| `stone_snapshot_guard…` | "No snapshotted stone_components row available." |
+
+**One cause.** Each does `SELECT … LIMIT 1` against the **ambient** database
+rather than building its own fixture, then `markTestSkipped()` when the query
+returns nothing. On `jewelflow_testing` those tables are empty — measured:
+`invoice_items` 0, `stone_components` 0, `credit_notes` 0, `shops` 0 — so they
+skip every run.
+
+**Why this is worse than an ordinary skip.** Two of the three exercise
+constitutionally-protected triggers (CONSTITUTION Art. IX.A). A data-dependent
+skip reports itself as a pass in every summary line, so the suite has been
+reporting green on guards it never exercised. The risk is not that the guards
+are broken; it is that nothing in CI would notice if they became so.
+
+**Verified pre-existing:** `git diff 018b3d8..HEAD -- tests/Feature/ConstitutionalInvariantsTest.php`
+is empty. The file was last touched in `defb62c` (2026-05-28), well before the
+audit branch.
+
+**The gap, stated at its real size.** The skips hide whether the triggers
+*fire*, not whether they *exist*. Queried directly from `pg_trigger`:
+
+```
+credit_notes        credit_notes_accounting_guard_trigger      enabled=O
+credit_notes        credit_notes_numbering_event_trigger       enabled=O
+invoice_items       invoice_items_finalized_guard_trigger      enabled=O
+stone_components    stone_components_snapshot_guard_trigger    enabled=O
+```
+
+All four present, all `tgenabled = 'O'`.
+
+**Fix path (when scoped):** give the three tests their own fixtures, the way
+`FinalizedInvoiceSettingsDriftTest::finalizedInvoice()` does — seed the draft
+and its line directly (Art. I money columns are guarded, so `forceFill`), then
+finalize through the controller. Do **not** relax the guards or disable a
+trigger to make a fixture convenient (CONSTITUTION §2, Art. IX.B). Once
+fixtured, the `markTestSkipped` branches should be deleted rather than left as
+dead fallbacks, or the hole reopens the next time a table is empty.
+
+---
+
 ## What was fixed (for context)
 
 The subscription release's `test(env)` commit recovered ~89 pre-existing failures (114 → ~25) by correcting the **test environment only** (no production code):
