@@ -34,7 +34,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-02b karigar CHECK lacks the allowed-disk term | OPEN (logged, deliberately not fixed) | None by design | N/A |
 | S3-03 purchase attachment public | OPEN | Authenticated route committed | **OPEN** |
 | S3-04 signature public + mutable | OPEN | Option B implemented; immutability proven end to end | **OPEN** |
-| S3-05 finalized invoice reprints with today's settings | **PARTIAL** — `igst_mode` + HSN fixed, 43 cosmetic reads still drift | Fix committed (`b216b80`), 8 tests | **OPEN** |
+| S3-05 finalized invoice reprints with today's settings | **PARTIAL** — `igst_mode` + HSN fixed. The rest still drift, and they are **not** all cosmetic: bank details, printed terms and the GSTIN drift too (§1a) | Fix `b216b80`; classification `2a6c7ce`; 12 tests | **OPEN** |
 | S3-06 catalog tenant context survives a throw | **CLOSED as a code defect** — no cross-tenant read demonstrated | Fix committed (`721c06d`), 5 tests | **OPEN — needs the deploy** |
 | S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
 | S3-06c published item images outlive the shopfront toggle | OPEN | None — recorded limitation | **OPEN** |
@@ -92,6 +92,135 @@ publication classification for item images (S3-06b/S3-06c).
   folder name did not establish consent here either — the **feature and its
   opt-in default** did. Verified by test, not by reading the route table:
   `PublicCatalogExposureTest` C-01/C-02 pin both halves.
+
+---
+
+## 1a. The earlier review requests, accounted for one by one
+
+Four check families were asked for before this release could be called ready.
+Status is given against the check as asked, not against the nearest thing that
+happened to be done.
+
+| # | Check as asked | Status | Evidence |
+|---|---|---|---|
+| A1 | Signature relocation identity — the right file follows the right row | **DONE** | G-25 follows a recorded, digest-verified relocation; G-26 refuses one whose digest no longer matches; G-29 pins re-recording as idempotent; R-17 records a digest-matched relocation in the ledger |
+| A2 | Conflicting files with the same name across disks | **DONE** | G-24 a public reference does not follow an unrecorded private file; G-27 a private reference never falls back to the public tree; G-28 another shop's relocation does not vouch for this shop's reference; G-31 a legacy flat path does not follow another shop's relocation |
+| A3 | Interrupted relocation runs | **DONE** | R-01 the default run is dry and moves nothing; R-08 running twice is a no-op; R-06 a row whose source is missing keeps its recorded disk; R-09 `--shop` bounds the blast radius; R-18 purge refuses an original with no recorded relocation; R-12 refuses wholesale when any private copy is missing |
+| A4 | Silent substitution prevented | **DONE** | G-12 untrusted disk name refused rather than read; G-17 traversal path refused on a trusted disk; G-30 a path outside the shop's signature directory refused; G-20 a signature absent from every allowed disk is *reported* missing rather than replaced |
+| B1 | Baseline application behaviour against the proposed migrations | **DONE** | T-01/T-03/T-05 reject baseline-shaped writes once the contract phase exists; T-02 is the expand-only positive control; T-07 pins the reconciliation sweep; T-06 asserts `convalidated` |
+| B2 | Signature creation / replacement / removal across the window | **DONE** | T-01 creation, T-04 path-only update over an existing disk, T-03 removal — the deployed remove branch nulls the path and strands the disk, which violates the CHECK from the other direction |
+| B3 | Application rollback after private uploads | **DONE as analysis, NOT as a drill** | §6 states the asymmetry: phase-3 `down()` is freely reversible; phase-1 rollback drops the only record of which files went private or were relocated, so it is one-way after any private upload. **No rollback was rehearsed against a populated database.** |
+| C1 | Finalize → A → B → disable/remove → reprint, **invoices** | **DONE** | E-02 (A survives B's replacement *and* signatures being disabled), E-03 (a later invoice gets B), E-04 (finalized-while-disabled stays unsigned), G-09 (…and then removed), G-10 (replacing does not delete the previous file), G-16 (replacement through the real settings route) |
+| C2 | The same chain for **quick bills** | **DONE** | E-05 (A survives replacement + disable), E-06 (a later bill gets B), G-18 (quick-bill print embeds and emits no storage URL) |
+| C3 | Relocated-then-purged signature still prints | **DONE** | E-07, R-14 |
+| D1 | Vite rendering failures | **RESOLVED — environmental** | 63 failures, all `Vite manifest not found`, 212 occurrences, no second cause. `.gitignore:20` excludes `/public/build` and `git worktree add` materialises only tracked files. Fixed by building assets in the worktree. Not caused by, and did not mask, any branch change. |
+| D2 | The three skipped tests | **EXPLAINED — below** | all three in `ConstitutionalInvariantsTest`, one root cause |
+| D3 | Two-copy vs three-copy | **RESOLVED — there is no three-copy path** | below |
+
+### D2 — the three skipped tests, named
+
+The earlier "3 skipped" was a count that was never broken out. Under
+`--display-skipped`:
+
+| Test | Skip message | What goes unverified |
+|---|---|---|
+| `invoice_items_finalized_guard_blocks_update` | "No invoice_items rows available to test the guard trigger against." | whether the Art. IX.A trigger *fires* |
+| `enabled_metals_for_shop_returns_tier_1` | "No shops exist to test enabledMetalsForShop against." | `MetalRegistry` tier resolution |
+| `stone_snapshot_guard…` | "No snapshotted stone_components row available." | whether the stone-snapshot guard *fires* |
+
+One root cause for all three: each does `SELECT … LIMIT 1` against the **ambient**
+database instead of building its own fixture, and in `jewelflow_testing` those
+tables are empty. Measured: `invoice_items` 0, `stone_components` 0,
+`credit_notes` 0, `shops` 0.
+
+**Not this branch's doing.** `git diff 018b3d8..HEAD -- tests/Feature/ConstitutionalInvariantsTest.php`
+is empty; the file was last touched in `defb62c` (2026-05-28).
+
+**Positive control, so the gap is stated at its real size.** The skips hide
+whether the triggers fire, not whether they exist. From `pg_trigger`:
+
+```
+credit_notes        credit_notes_accounting_guard_trigger      enabled=O
+credit_notes        credit_notes_numbering_event_trigger       enabled=O
+invoice_items       invoice_items_finalized_guard_trigger      enabled=O
+stone_components    stone_components_snapshot_guard_trigger    enabled=O
+```
+
+All present, all `tgenabled = 'O'`. The firing behaviour of two
+constitutionally-protected triggers is nevertheless unverified on an empty
+database, and a data-dependent skip is a coverage hole that reports itself as a
+pass. The fix is to give those three tests fixtures. Out of scope for this
+branch; logged so it is not lost.
+
+### D3 — two copies versus three
+
+There is no three-copy path anywhere in the code. Five layers agree on a maximum
+of two, independently:
+
+| Layer | Value |
+|---|---|
+| Column | `unsignedTinyInteger copy_count` default 1 (`2026_03_25_200000:30`) |
+| Settings UI | `<select>` offers only `1` and `2` (`settings.blade.php:2917-2919`) |
+| Validation | `'copy_count' => 'nullable\|integer\|in:1,2'` (`SettingsController:498`) |
+| Invoice template | `max(1, min(2, $copyCount))` (`invoice_print.blade.php:51`) |
+| Quick-bill template | `max(1, min(2, $copyCount))` (`quick-bills/print.blade.php:49`) |
+
+The column type would accept 255; validation plus both clamps make that
+unreachable through the application. **The discrepancy was in my reporting, not
+in the code** — "three copies" appears in no template, controller, migration or
+test. G-14 measures the payload at the real supported maximum, two.
+
+### The "43 live-setting reads" — classified, and the count corrected
+
+The directive asked for these to be classified against the snapshot contract,
+and for "cosmetic" not to be asserted without checking effects. Doing that
+invalidated the number as well as the label.
+
+**The count.** Measured on `invoice_print.blade.php`, not carried forward:
+`$billing?->` appears 44 times over 26 distinct fields; `$shop?->` 26 times over
+13 distinct fields. The old "43" counted only `$billing?->`, was off by one
+against even that, and omitted shop identity entirely.
+`quick-bills/print.blade.php` adds 14 more occurrences over 12 distinct fields.
+
+**The classification**, by what the printed document *asserts* with the field:
+
+| Class | Fields | Drifts? | Consequence | Already in the snapshot? |
+|---|---|---|---|---|
+| **Statutory / transaction** | `igst_mode`, HSN map | **No — repaired** | would re-characterize an issued supply | yes, and read |
+| **Printed business identity** | shop `name`, `gst_number`, `address`, `address_line1/2`, `city`, `state`, `state_code`, `pincode`, `phone`, `shop_whatsapp`, `shop_email`, `shop_registration_number`; `shop_subtitle`, `custom_tagline`, `show_gstin` | **Yes** | a reprint shows a GSTIN other than the one the supply was made under — a required particular of a tax invoice | **yes, all of them; nothing reads them** |
+| **Payment instructions** | `upi_id`, `bank_name`, `bank_account_holder`, `bank_account_number`, `bank_ifsc`, `bank_account_type`, `bank_branch`, `bank_details` | **Yes** | a customer settling from a reprint is given account details that were never the ones issued | **yes; nothing reads them** |
+| **Terms** | `terms_and_conditions` | **Yes** | the document cannot evidence its own terms in a dispute | **yes; nothing reads it** |
+| **Layout preference** | `theme_color`, `font_size`, `paper_size`, `show_huid`, `show_stone_columns`, `show_purity`, `show_customer_address`, `show_customer_id_pan`, `show_mode`, `show_time`, `show_bis_logo`, `copy_count`, `invoice_copy_label`, `second_signature_label` | Yes | none — the bill asserts the same facts | mostly |
+
+Only the last row is cosmetic. Three of the other rows were **measured**, not
+inferred: each test was first written asserting the desired behaviour and run.
+The recorded failures are
+
+```
+D-09  Not to contain: 99990000                             (reprint carries the replacement A/C)
+D-10  Not to contain: No exchange under any circumstances.  (reprint carries the replacement terms)
+D-11  Not to contain: 29BBBBB9999B1Z5                       (reprint carries the replacement GSTIN)
+```
+
+then inverted to characterization and committed green (`2a6c7ce`,
+`FinalizedInvoiceSettingsDriftTest` D-09…D-12 — file now 12 passed, 48
+assertions). D-12 is the bound: theme colour drifts by the identical mechanism
+and genuinely is cosmetic. Without it this reads as "live reads are bad", which
+is the overreach the directive warned against; with it the finding is the
+narrower one — the drift is uniform, the consequence is not.
+
+**One observation recorded without being reported as a finding.** Both print
+templates read `auth()->user()->shop`, i.e. the *viewer's* shop, not
+`$invoice->shop`. Tenant scoping makes the two coincide, so this is **not** a
+cross-tenant issue and is not claimed as one. It is noted only because the
+correct source is one hop away and is already snapshotted.
+
+**Size of the outstanding repair.** Smaller than the finding sounds.
+`InvoiceRenderSnapshotService:91-132` already persists every field in the
+identity, payment-instruction and terms rows at finalization; the templates
+simply never read them. That is a template change, not a schema change. Not done
+here — it alters what every reprint in the system prints, and belongs in its own
+reviewed commit.
 
 ---
 
@@ -636,6 +765,46 @@ php artisan test --filter='Invoice|Sales|Exchange|Installment|Return|QuickBill|R
      Was 594 / 3 / 2311. The delta is exactly the 5 tests and 13 assertions
      of InvoicePaymentIdempotencyScopeTest, which this filter picks up on
      'Invoice'. No pre-existing test changed result.
+
+--- re-measured at eca2e8b, both pinned commands re-run verbatim ---
+
+php artisan test tests/Feature/Security tests/Feature/Mobile
+  -> 228 passed, 801 assertions
+     +7 tests / +35 assertions against the 221 / 766 pin. Accounted for
+     exactly: InvoicePaymentIdempotencyScopeTest 5 -> 9 (+4 tests, +19
+     assertions) and InvoicePaymentRetryIntegrityTest (+3, +16).
+
+php artisan test --filter='Invoice|Sales|Exchange|Installment|Return|QuickBill|Repair|Gst|Tax|Snapshot|Setting' --display-skipped
+  -> 606 passed, 3 skipped, 2359 assertions
+     +7 / +35 against the 599 / 3 / 2324 pin, the same seven tests.
+     Skipped count unchanged, and now broken out by name in section 1a D2.
+```
+
+**A discrepancy I raised against myself, and its resolution.** An interim report
+quoted `--filter='Security|Mobile'` at 474 / 5208 and
+`--filter='Invoice|Payment|QuickBill|Pos'` at 428 / 1 skipped / 1517, and noted
+these did not match the 221 / 766 and 599 / 3 / 2324 pins above. **They were
+never meant to.** Neither of those is the pinned command: the first pin selects
+by *path* and the second uses an eleven-term filter, while the interim figures
+came from two ad-hoc filters I had typed for other reasons. Re-running both
+pinned commands verbatim, as above, reconciles to the test. **No test vanished
+and none changed result** — the apparent gap was filter drift in my own
+reporting. It is recorded rather than silently corrected because "the numbers
+moved" was my claim, and the retraction should be as visible as the claim.
+
+```
+php artisan test tests/Feature/Security/FinalizedInvoiceSettingsDriftTest.php
+  -> D-09/D-10/D-11 asserting the DESIRED behaviour: 4 failed (12 assertions)
+     D-09  Not to contain: 99990000
+     D-10  Not to contain: No exchange under any circumstances.
+     D-11  Not to contain: 29BBBBB9999B1Z5
+     D-12 failed separately on a TypeError -- null needle, because the
+     fixture returns the DRAFT model and invoice_number is assigned during
+     finalization. A fixture bug, easy to mistake for the template failing
+     to print the number at all. Fixed by re-reading the row.
+  -> inverted to characterization: 12 passed, 48 assertions
+     File restored from a pre-mutation copy; md5sum identical and
+     `git diff --stat` showed additions only.
 ```
 
 **The Vite failures, reported explicitly.** The second command first returned
