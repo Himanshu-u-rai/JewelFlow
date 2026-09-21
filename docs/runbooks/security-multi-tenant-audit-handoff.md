@@ -34,7 +34,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-02b karigar CHECK lacks the allowed-disk term | OPEN (logged, deliberately not fixed) | None by design | N/A |
 | S3-03 purchase attachment public | OPEN | Authenticated route committed | **OPEN** |
 | S3-04 signature public + mutable | OPEN | Option B implemented; immutability proven end to end | **OPEN** |
-| S3-05 finalized invoice reprints with today's settings | **PARTIAL** — `igst_mode` + HSN fixed. The rest still drift, and they are **not** all cosmetic: bank details, printed terms and the GSTIN drift too (§1a) | Fix `b216b80`; classification `2a6c7ce`; 12 tests | **OPEN** |
+| S3-05 finalized invoice reprints with today's settings | **FIXED for every ASSERTED field** — tax (`igst_mode`, HSN), tax identity (`show_gstin`, `gst_number`), terms, and all payment instructions now come from the bill's own snapshot. RENDERING fields (theme, font, paper, subtitle, tagline, other `show_*`) stay live **on purpose**; D-12 pins that bound. Quick bills carry less and the gap is named (§7d) | Fix `b216b80` (tax half) + this commit (asserted half); 16 tests, 89 assertions; 2 mutations run | **OPEN** — local only, not deployed |
 | S3-06 catalog tenant context survives a throw | **CLOSED as a code defect** — no cross-tenant read demonstrated | Fix committed (`721c06d`), 5 tests | **OPEN — needs the deploy** |
 | S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
 | S3-06c published item images outlive the shopfront toggle | OPEN | None — recorded limitation | **OPEN** |
@@ -212,8 +212,11 @@ D-11  Not to contain: 29BBBBB9999B1Z5                       (reprint carries the
 ```
 
 then inverted to characterization and committed green (`2a6c7ce`,
-`FinalizedInvoiceSettingsDriftTest` D-09…D-12 — file now 12 passed, 48
-assertions). D-12 is the bound: theme colour drifts by the identical mechanism
+`FinalizedInvoiceSettingsDriftTest` D-09…D-12 — file was 12 passed, 48
+assertions at that point). **Those three have since flipped back to asserting
+the desired behaviour, because the repair landed — see §7d.** The failures
+above are retained as the measured pre-repair evidence they were derived from.
+D-12 is the bound: theme colour drifts by the identical mechanism
 and genuinely is cosmetic. Without it this reads as "live reads are bad", which
 is the overreach the directive warned against; with it the finding is the
 narrower one — the drift is uniform, the consequence is not.
@@ -1524,6 +1527,104 @@ the file as a regression lock rather than as evidence of repair.
 classifier, the presenter and the key on the wire. It does not establish
 end-to-end behaviour on a handset.
 
+## 7d. S3-05 second half — the asserted/rendering split — FIXED
+
+The first half (`b216b80`) pinned `igst_mode` and the HSN map. This completes
+the finding for every remaining field that **the document asserts about the
+transaction**, and deliberately closes it no further than that.
+
+**The line drawn, and why it is not "pin everything".** A reprint carries two
+kinds of field and they want opposite treatment:
+
+| | fields | source after this change |
+|---|---|---|
+| **ASSERTED** — what the bill *claims* about the sale | `igst_mode`, `hsn_map`, `show_gstin`, `shop.gst_number`, `terms_and_conditions`, `upi_id`, `bank_name`, `bank_account_holder`, `bank_account_number`, `bank_ifsc`, `bank_account_type`, `bank_branch`, `bank_details` | the bill's own snapshot |
+| **RENDERING** — how it is physically produced *today* | theme colour, font tier, paper size, subtitle, tagline, copy label + count, and the ten `show_*` column toggles other than `show_gstin` | **stays live, deliberately** |
+
+Freezing paper size to a 2024 setting would be a defect, not a repair. **D-12
+is the standing proof the rendering half was left alone** — it still asserts
+theme colour drifting, and still passes.
+
+`show_gstin` is the one `show_*` flag on the asserted side. Its neighbours
+choose which *columns* appear; it chooses whether a statutory particular of a
+tax invoice is on the page.
+
+**No migration. Nothing new is captured.** Every one of these fields was
+*already* written by `InvoiceRenderSnapshotService` (lines 91–132) and simply
+went unread — the templates re-resolved them live. This is purely a read-path
+change. The two snapshot-writer services in the diff are **comment-only**
+edits, verified by reading the diff.
+
+**Files.** `app/Services/BillTaxPresentation.php` → `BillPresentation.php`
+(`git mv`, so history follows); `resources/views/invoice_print.blade.php`;
+`resources/views/quick-bills/print.blade.php`. Confirmed by grep that the only
+`$billing?->` reads left in the invoice template are the sixteen rendering
+fields, and that `gst_number` no longer appears outside the resolver call.
+
+**Legacy rows resolve per KEY, not per section.** A snapshot written before a
+key existed has no record of it → live settings. A snapshot that recorded the
+key as `NULL` is recording that the bill printed *nothing* there → it must keep
+printing nothing. `array_key_exists()` separates those; `??` collapses them.
+Snapshots are never rewritten; all defaulting is at read time, so a mixed
+estate resolves correctly at every intermediate state.
+
+### Evidence, and one coverage claim that was wrong
+
+`tests/Feature/Security/FinalizedInvoiceSettingsDriftTest.php` — **16 passed,
+89 assertions.** Full band `tests/Feature/Security tests/Feature/Mobile` —
+**287 passed, 1093 assertions.** Both re-run by me, not taken on report.
+
+D-09, D-10 and D-11 were written in `2a6c7ce` as *characterization* tests
+asserting the broken behaviour, with "when the remaining half is repaired,
+these must flip" recorded in the file. **They are inverted here, and that flip
+is the fix landing, not a test being weakened.** D-11b, D-13, D-13b and D-13c
+are new.
+
+Two mutations were actually applied and run, rather than reasoned about:
+
+| mutation | killed | survived |
+|---|---|---|
+| `resolve()` ignores the asserted keys, always using live settings | D-09, D-10, D-11, D-11b | the rest, **incl. D-12 and D-13** |
+| `resolve()` uses `??` in place of `array_key_exists()` | **D-13c only** | the rest, **incl. D-13** |
+
+**CORRECTION — a claimed mutation result that measurement contradicted.** The
+second row was first written as killing *D-13*, inferred from what D-13 is for.
+When the mutation was actually applied, **all fifteen tests stayed green.** The
+per-key fallback — the behaviour the resolver's docblock spends a paragraph
+justifying — was described but bound by nothing. `??` and `array_key_exists()`
+agree on an *absent* key, which is the only shape D-13 creates; they diverge
+only on a key recorded as `NULL`. D-13c was written against the live mutation,
+watched fail on the right assertion (`Not to contain: 77770000`), and passes
+once reverted. The scenario it now pins: a shop invoices for months with no
+bank account on the bill, then opens one — under `??` every already-issued bill
+reprints carrying an account that was never on it, invisible because the
+reprint looks *more* complete than the original rather than less.
+
+The fixture's precondition assertion is load-bearing: it proves the key is
+present-and-`NULL` before asserting anything, so the test cannot pass by
+silently degrading into the missing-key case D-13 already covers.
+
+`stripSnapshotKeys` updates `invoice_render_snapshots` directly. Checked
+against `pg_trigger`: that table carries **no user triggers**, so the fixture
+bypasses no constitutional guard. It is also deletion-only — it never writes a
+fabricated value, which is the thing this whole finding argues against.
+
+### Stated limitations — NOT repaired
+
+* **Quick bills carry less.** `QuickBillService::shopSnapshot` writes a FLAT
+  payload holding `gst_number`, `terms_and_conditions`, `bank_details`,
+  `upi_id` and `igst_mode`. It has **never** carried `show_gstin` or the
+  itemised `bank_name`/`ifsc`/`branch` group, and this change does not start
+  capturing them. The template's reads of those keys are left exactly as they
+  were — routing them through the resolver would make a quick bill begin
+  printing today's bank fields. Quick bills print no GSTIN at all.
+* **Invoices finalized before these keys were captured** have no record of
+  their presentation and fall back to live settings (D-06, D-13). A stated
+  limitation, not a repair. Nothing can reconstruct a presentation never
+  recorded.
+* **NOT RUN:** no visual/PDF comparison and no device run. The evidence is
+  rendered-HTML assertions through the real print route.
+
 ## 8. Commands actually run, and their results
 
 ```
@@ -1708,6 +1809,37 @@ php artisan test tests/Feature/Security/FinalizedInvoiceSettingsDriftTest.php
      `git diff --stat` showed additions only.
 ```
 
+**Those three flipped when the second half landed (§7d).** The runs:
+
+```
+php artisan test tests/Feature/Security/FinalizedInvoiceSettingsDriftTest.php
+  -> after the repair, D-09/D-10/D-11 re-inverted to assert the AS-ISSUED
+     value: 15 passed (80 assertions)
+
+MUTATION 4 -- resolve() ignores the asserted keys, always using live settings
+  -> 4 failed, 11 passed (75 assertions)
+     killed:    D-09 D-10 D-11 D-11b
+     survived:  D-12 (rendering left alone, as intended) and D-13
+
+MUTATION 5 -- resolve() uses `??` in place of array_key_exists()
+  -> 15 passed (80 assertions)   <-- KILLED NOTHING. The coverage claim
+     written for this row said it killed D-13. Measurement contradicted it.
+
+  D-13c added against the live mutation:
+  -> RED: 1 failed (6 assertions), "Not to contain: 77770000"
+          -- the 6 assertions confirm the present-and-NULL precondition ran
+             first, so the failure is the resolver, not the fixture
+  -> mutation reverted, md5sum verified against the pre-mutation copy
+  -> GREEN: 16 passed (89 assertions)
+
+php artisan test tests/Feature/Security tests/Feature/Mobile
+  -> 287 passed (1093 assertions)
+```
+
+Every one of these was re-run directly rather than accepted from a report; the
+band figure differs from the 286/1084 first reported to me by exactly D-13c
+(+1 test, +9 assertions).
+
 **The Vite failures, reported explicitly.** The second command first returned
 **63 failed**. Every one of them was `Vite manifest not found` — 212 occurrences
 across 63 tests, with no second cause. `.gitignore:20` excludes `/public/build`,
@@ -1880,14 +2012,21 @@ covered by `.gitignore`.
 
 ## 10. Next, while production approval is pending
 
-1. S3-05's **statutory half is fixed** (`b216b80`): `igst_mode` and the HSN map
-   now come from the bill's own snapshot on all five render paths (web invoice,
-   web quick bill, quick-bill original, and both mobile HTML endpoints), with
-   the same read-time legacy defaulting the signature snapshot uses. **The
-   cosmetic half is not fixed** — 43 live settings reads (theme colour, font
-   tier, paper size, subtitle, tagline) still re-resolve at reprint, and bills
-   finalized before these keys were captured still fall back to live settings.
-   S3-05 therefore stays PARTIAL, not closed.
+1. S3-05 is now fixed for **every field the document asserts about the
+   transaction** — the statutory half in `b216b80` (`igst_mode`, HSN map) and
+   the rest in this session: `show_gstin`, `shop.gst_number`,
+   `terms_and_conditions` and all nine payment-instruction fields. See §7d.
+   What remains is **not** a gap to close but a deliberate bound: theme colour,
+   font tier, paper size, subtitle, tagline, copy label and the other `show_*`
+   toggles describe the printer in front of you, not the sale, and pinning them
+   to an old snapshot would be a defect rather than a repair. D-12 exists to
+   keep that bound honest.
+
+   Two things genuinely remain open and are recorded as limitations, not
+   repairs: **quick-bill snapshots carry less** than invoice ones (no
+   `show_gstin`, no itemised bank group — capturing them is a separate change),
+   and **bills finalized before these keys were captured** have no record to
+   fall back on and still resolve live.
 2. The mobile on-screen "Signature unavailable" banner (§5). The printed
    document already carries the marker; what is missing is the in-app banner in
    `app/invoice/[id].tsx` / `app/quick-bill/[id].tsx`, which today only raise

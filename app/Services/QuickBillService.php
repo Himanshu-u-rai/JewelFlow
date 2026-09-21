@@ -634,7 +634,7 @@ class QuickBillService
             // Without it, flipping the shop setting re-characterizes the tax on
             // every already-issued bill. Bills predating this key have no
             // igst_mode entry and fall back to live settings — see
-            // BillTaxPresentation::forQuickBill. HSN needs no entry here: quick
+            // BillPresentation::forQuickBill. HSN needs no entry here: quick
             // bill lines carry their own hsn_code column and never resolved
             // through shop settings.
             'igst_mode'                 => (bool) ($billing?->igst_mode ?? false),

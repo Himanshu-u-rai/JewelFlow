@@ -34,19 +34,26 @@
     $showHuid    = $billing?->show_huid          ?? true;
     $showStone   = $billing?->show_stone_columns ?? true;
     $showPurity  = $billing?->show_purity        ?? true;
-    $showGstin   = $billing?->show_gstin         ?? true;
     $showAddr    = $billing?->show_customer_address ?? true;
     $showIdPan   = $billing?->show_customer_id_pan  ?? true;
     $showMode    = $billing?->show_mode             ?? true;
     $showTime    = $billing?->show_time             ?? true;
-    // S3-05. igst_mode and the HSN map are the two STATUTORY fields on this
-    // page, and both used to re-resolve from live settings at reprint, so a
-    // finalized bill could describe itself as a different kind of supply than
-    // the one it was issued for. They now come from the bill's own snapshot.
-    // Everything else in this @php block is presentation and still lives —
-    // that part of S3-05 is open.
-    $taxPresentation = app(\App\Services\BillTaxPresentation::class)->forInvoice($invoice);
-    $igstMode    = $taxPresentation['igst_mode'];
+    // S3-05. One lookup, resolved from the bill's OWN snapshot, for everything
+    // this page ASSERTS about the transaction: how the supply was taxed
+    // (igst_mode, HSN), the tax identity it was made under (GSTIN and whether
+    // it was shown), the terms the customer was handed, and the account the
+    // customer was told to pay into. All of these used to re-resolve from live
+    // settings at reprint, so an old bill re-stated itself in today's terms.
+    //
+    // Every OTHER $billing?-> read in this @php block stays live on purpose —
+    // theme colour, font tier, paper size, subtitle, tagline, copy label and
+    // the remaining column toggles describe the printer in front of you, not
+    // the sale. Freezing those would be a defect, not a repair. See
+    // BillPresentation for the asserted/rendering split and D-12 for its bound.
+    $presentation = app(\App\Services\BillPresentation::class)->forInvoice($invoice);
+    $igstMode    = $presentation['igst_mode'];
+    $showGstin   = $presentation['show_gstin'];
+    $gstNumber   = $presentation['gst_number'];
     $copyCount   = (int) ($billing?->copy_count  ?? 1);
     $copyCount   = max(1, min(2, $copyCount));
 
@@ -130,7 +137,10 @@
         return 'Rupees ' . number_format($amount, 2, '.', '') . ' only';
     };
 
-    $termsRaw     = trim((string) ($billing?->terms_and_conditions ?? ''));
+    // S3-05: the terms the customer was HANDED, from the bill's snapshot. A
+    // reprint pulled for a dispute must evidence its own terms, not whatever
+    // the shop configured most recently.
+    $termsRaw     = trim((string) ($presentation['terms_and_conditions'] ?? ''));
     $defaultTerms = \App\Models\ShopBillingSettings::defaultTerms();
     $terms = $termsRaw !== ''
         ? array_slice(array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $termsRaw)))), 0, 6)
@@ -154,10 +164,13 @@
         ? "{$stateCode} - {$stateName}"
         : ($stateName !== '' ? $stateName : ($stateCode !== '' ? $stateCode : '—'));
 
-    $hasPaymentDetails = !empty($billing?->upi_id)
-        || !empty($billing?->bank_name)
-        || !empty($billing?->bank_account_number)
-        || !empty($billing?->bank_details);
+    // S3-05: payment instructions come from the snapshot too. A customer
+    // settling from a reprint must be given the account the bill was issued
+    // against, not today's.
+    $hasPaymentDetails = !empty($presentation['upi_id'])
+        || !empty($presentation['bank_name'])
+        || !empty($presentation['bank_account_number'])
+        || !empty($presentation['bank_details']);
 
     // HSN helper: resolve per metal type (with a legacy category fallback)
     // against the map THIS BILL WAS ISSUED UNDER, so platinum/copper get their
@@ -165,9 +178,9 @@
     // shop's map does not rewrite a finalized line (S3-05). The resolution rules
     // still live in one place, ShopBillingSettings::hsnFromMap; only the source
     // of the map changed.
-    $hsnFor = function (?string $metalType, ?string $category = null) use ($taxPresentation): string {
+    $hsnFor = function (?string $metalType, ?string $category = null) use ($presentation): string {
         return \App\Models\ShopBillingSettings::hsnFromMap(
-            $taxPresentation['hsn_map'], $metalType, $category
+            $presentation['hsn_map'], $metalType, $category
         );
     };
 
@@ -488,7 +501,10 @@
 <div class="invoice-shell{{ $copy > 1 ? ' copy-break' : '' }}">
     <div class="invoice-body">
         <div class="row between top-line">
-            <div>@if($showGstin && $shop?->gst_number)GSTIN: {{ $shop->gst_number }}@endif</div>
+            {{-- S3-05: the GSTIN the supply was MADE under, off the bill's own
+                 snapshot. This is a required particular of a tax invoice, so a
+                 reprint showing a different one is not a presentation question. --}}
+            <div>@if($showGstin && $gstNumber)GSTIN: {{ $gstNumber }}@endif</div>
             <div class="strong">{{ $copyCount > 1 ? ($copy === 1 ? 'Customer Copy' : 'Shop Copy') : $copyLabel }}</div>
         </div>
 
@@ -810,32 +826,36 @@
         <div class="footer-col footer-col--payment">
             <h4 class="footer-title">Payment Details</h4>
             <div class="footer-body">
-                @if(!empty($billing?->upi_id))
-                    <div><span class="strong">UPI:</span> {{ $billing?->upi_id }}</div>
+                {{-- S3-05: every field in this block is as-ISSUED, off the
+                     bill's own snapshot. A reprint that quotes today's account
+                     hands the customer instructions that were never the ones
+                     issued, with nothing on the page saying they changed. --}}
+                @if(!empty($presentation['upi_id']))
+                    <div><span class="strong">UPI:</span> {{ $presentation['upi_id'] }}</div>
                 @endif
-                @if(!empty($billing?->bank_name) || !empty($billing?->bank_account_number))
-                    @if(!empty($billing?->bank_account_holder))
-                        <div><span class="strong">A/C Holder:</span> {{ $billing?->bank_account_holder }}</div>
+                @if(!empty($presentation['bank_name']) || !empty($presentation['bank_account_number']))
+                    @if(!empty($presentation['bank_account_holder']))
+                        <div><span class="strong">A/C Holder:</span> {{ $presentation['bank_account_holder'] }}</div>
                     @endif
-                    @if(!empty($billing?->bank_name))
-                        <div><span class="strong">Bank:</span> {{ $billing?->bank_name }}</div>
+                    @if(!empty($presentation['bank_name']))
+                        <div><span class="strong">Bank:</span> {{ $presentation['bank_name'] }}</div>
                     @endif
-                    @if(!empty($billing?->bank_account_number))
-                        <div><span class="strong">A/C No:</span> {{ $billing?->bank_account_number }}</div>
+                    @if(!empty($presentation['bank_account_number']))
+                        <div><span class="strong">A/C No:</span> {{ $presentation['bank_account_number'] }}</div>
                     @endif
-                    @if(!empty($billing?->bank_ifsc))
-                        <div><span class="strong">IFSC:</span> {{ $billing?->bank_ifsc }}</div>
+                    @if(!empty($presentation['bank_ifsc']))
+                        <div><span class="strong">IFSC:</span> {{ $presentation['bank_ifsc'] }}</div>
                     @endif
-                    @if(!empty($billing?->bank_account_type))
-                        <div><span class="strong">Type:</span> {{ ucfirst($billing?->bank_account_type) }}</div>
+                    @if(!empty($presentation['bank_account_type']))
+                        <div><span class="strong">Type:</span> {{ ucfirst((string) $presentation['bank_account_type']) }}</div>
                     @endif
-                    @if(!empty($billing?->bank_branch))
-                        <div><span class="strong">Branch:</span> {{ $billing?->bank_branch }}</div>
+                    @if(!empty($presentation['bank_branch']))
+                        <div><span class="strong">Branch:</span> {{ $presentation['bank_branch'] }}</div>
                     @endif
-                @elseif(!empty($billing?->bank_details))
-                    <div style="white-space: pre-line;"><span class="strong">Bank:</span> {{ $billing?->bank_details }}</div>
+                @elseif(!empty($presentation['bank_details']))
+                    <div style="white-space: pre-line;"><span class="strong">Bank:</span> {{ $presentation['bank_details'] }}</div>
                 @endif
-                @if(empty($billing?->upi_id) && empty($billing?->bank_name) && empty($billing?->bank_account_number) && empty($billing?->bank_details))
+                @if(empty($presentation['upi_id']) && empty($presentation['bank_name']) && empty($presentation['bank_account_number']) && empty($presentation['bank_details']))
                     <div class="footer-empty">—</div>
                 @endif
             </div>

@@ -118,9 +118,16 @@ class InvoiceRenderSnapshotService
                 'igst_mode' => (bool) ($billing?->igst_mode ?? false),
                 // S3-05: the HSN map this bill was issued under. igst_mode above
                 // was already captured but nothing read it; both are now read by
-                // BillTaxPresentation. These two are the statutory fields on this
-                // document — the rest of this section is presentation.
+                // BillPresentation.
                 'hsn_map' => $billing?->hsnMap() ?? [],
+                // S3-05 second half. These were ALREADY captured here and were
+                // also going unread — the templates re-resolved them live, so a
+                // reprint re-stated the terms and the payment instructions in
+                // today's terms. BillPresentation now reads them, per key, so a
+                // snapshot predating any one of them falls back rather than
+                // rendering blank. Nothing new is captured for this change; the
+                // same is true of show_gstin above and of shop.gst_number in the
+                // 'shop' section, which are read by the same resolver.
                 'terms_and_conditions' => $billing?->terms_and_conditions,
                 'upi_id' => $billing?->upi_id,
                 'bank_name' => $billing?->bank_name,

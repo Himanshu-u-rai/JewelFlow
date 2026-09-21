@@ -42,9 +42,17 @@
     $showAddr   = $billing?->show_customer_address ?? true;
     // S3-05: from the bill's own shop_snapshot, not from today's settings, so
     // flipping the shop between intra- and inter-state does not re-characterize
-    // the tax on a bill that was already issued. HSN on this template already
-    // came from the line's own hsn_code column and never drifted.
-    $igstMode   = app(\App\Services\BillTaxPresentation::class)->forQuickBill($quickBill)['igst_mode'];
+    // the tax on a bill that was already issued, and so the terms and payment
+    // instructions stay the ones the customer was handed. HSN on this template
+    // already came from the line's own hsn_code column and never drifted.
+    //
+    // The quick-bill snapshot is FLAT and carries less than the invoice one: it
+    // has terms_and_conditions, bank_details and upi_id, but has never carried
+    // the itemised bank_name/ifsc/branch group. Those reads below are left
+    // exactly as they were — resolving them live would start printing today's
+    // bank fields on bills that never printed any. A stated limitation.
+    $presentation = app(\App\Services\BillPresentation::class)->forQuickBill($quickBill);
+    $igstMode   = $presentation['igst_mode'];
     $copyCount  = (int) ($billing?->copy_count    ?? 1);
     $copyCount  = max(1, min(2, $copyCount));
 
@@ -79,7 +87,11 @@
     $noGst         = ($quickBill->pricing_mode ?? null) === 'no_gst';
 
     // ── Terms ────────────────────────────────────────────────────────────
-    $termsRaw = trim((string) ($quickBill->terms ?? ($snapshot['terms_and_conditions'] ?? '')));
+    // The bill's own terms field wins where it was set; otherwise the terms the
+    // shop had AT ISSUE. Routing the snapshot read through BillPresentation
+    // adds the live-settings fallback for bills predating the key, which the
+    // raw $snapshot read did not have — those used to drop to defaultTerms().
+    $termsRaw = trim((string) ($quickBill->terms ?? ($presentation['terms_and_conditions'] ?? '')));
     $defaultTerms = \App\Models\ShopBillingSettings::defaultTerms();
     $terms = $termsRaw !== ''
         ? array_slice(array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $termsRaw)))), 0, 6)
@@ -522,8 +534,17 @@
         <div class="footer-col footer-col--payment">
             <h4 class="footer-title">Payment Details</h4>
             <div class="footer-body">
-                @if(!empty($snapshot['upi_id']))
-                    <div><span class="strong">UPI:</span> {{ $snapshot['upi_id'] }}</div>
+                {{-- upi_id and bank_details go through BillPresentation: still
+                     as-issued, but now with a live fallback for bills whose
+                     snapshot predates those keys, which previously printed a
+                     bare dash. The itemised bank_* reads below stay on the raw
+                     $snapshot deliberately — QuickBillService::shopSnapshot has
+                     never written them, so they are always absent and this
+                     branch never fires. Resolving them through the service
+                     would make a quick bill start printing today's bank fields.
+                     Capturing them is a separate change (S3-05 limitation). --}}
+                @if(!empty($presentation['upi_id']))
+                    <div><span class="strong">UPI:</span> {{ $presentation['upi_id'] }}</div>
                 @endif
                 @if(!empty($snapshot['bank_name']) || !empty($snapshot['bank_account_number']))
                     @if(!empty($snapshot['bank_account_holder']))
@@ -544,10 +565,10 @@
                     @if(!empty($snapshot['bank_branch']))
                         <div><span class="strong">Branch:</span> {{ $snapshot['bank_branch'] }}</div>
                     @endif
-                @elseif(!empty($snapshot['bank_details']))
-                    <div style="white-space: pre-line;"><span class="strong">Bank:</span> {{ $snapshot['bank_details'] }}</div>
+                @elseif(!empty($presentation['bank_details']))
+                    <div style="white-space: pre-line;"><span class="strong">Bank:</span> {{ $presentation['bank_details'] }}</div>
                 @endif
-                @if(empty($snapshot['upi_id']) && empty($snapshot['bank_name']) && empty($snapshot['bank_account_number']) && empty($snapshot['bank_details']))
+                @if(empty($presentation['upi_id']) && empty($snapshot['bank_name']) && empty($snapshot['bank_account_number']) && empty($presentation['bank_details']))
                     <div class="footer-empty">-</div>
                 @endif
             </div>

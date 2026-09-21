@@ -41,34 +41,52 @@ use Tests\TestCase;
  *
  * SCOPE, STATED HONESTLY — AND ONE EARLIER SENTENCE WITHDRAWN
  * -----------------------------------------------------------
- * The repair covers igst_mode and the HSN map — the two statutory fields. The
- * rest are still live and NOT fixed here; the finding stays open for them.
+ * The repair covers what the document ASSERTS about the transaction:
+ *
+ *   igst_mode, hsn_map                        how the supply was taxed
+ *   show_gstin, shop.gst_number               the tax identity it was made under
+ *   terms_and_conditions                      what the customer agreed to
+ *   upi_id, bank_name, bank_account_holder,   where the customer was told to pay
+ *   bank_account_number, bank_ifsc,
+ *   bank_account_type, bank_branch,
+ *   bank_details
+ *
+ * It deliberately does NOT cover how the document is RENDERED today: theme
+ * colour, font tier, paper size, subtitle, tagline, copy label and count, and
+ * the show_* column toggles other than show_gstin. Those describe the printer,
+ * not the sale, and freezing them to an old snapshot would be a defect. D-12 is
+ * the standing proof that they were left alone.
  *
  * This docblock previously said "the other 43 reads are still live and still
  * cosmetic". Both halves of that were wrong and are withdrawn.
  *
  *   THE COUNT. Measured on this file's template, not carried forward:
- *   `$billing?->` appears 44 times and `$shop?->` 26 times in
+ *   `$billing?->` appeared 44 times and `$shop?->` 26 times in
  *   invoice_print.blade.php, over 26 and 13 distinct fields. The old figure
  *   counted only `$billing?->`, was off by one against even that, and omitted
  *   the shop-identity reads entirely.
  *
- *   "COSMETIC". D-09, D-10 and D-11 measure three of them drifting, and none
- *   of the three is cosmetic: bank account number, printed terms, and the
- *   GSTIN on a tax invoice. D-12 measures theme colour drifting by the same
- *   mechanism and IS cosmetic, which is the bound that keeps this a claim
- *   about field meaning rather than about live reads in general.
+ *   "COSMETIC". D-09, D-10 and D-11 measured three of them drifting, and none
+ *   of the three was cosmetic: bank account number, printed terms, and the
+ *   GSTIN on a tax invoice. All three are pinned now. D-12 measures theme
+ *   colour drifting by the same mechanism and IS cosmetic, which is the bound
+ *   that keeps this a claim about field meaning rather than about live reads in
+ *   general.
  *
- * Pinning paper size or theme colour to a snapshot is still a separate, larger
- * change with its own review. Pinning the four in D-09 to D-11 is not the same
- * size of job: the snapshot already captures every one of those fields
- * (InvoiceRenderSnapshotService lines 91-132) and nothing reads them.
+ * QUICK BILLS GET LESS, AND THE GAP IS NAMED. Their snapshot is flat and has
+ * only terms_and_conditions, bank_details, upi_id, gst_number and igst_mode. It
+ * has never carried the itemised bank_name/ifsc/branch group, and this change
+ * does not start capturing it — the template's reads of those keys are left
+ * exactly as they were. Quick bills print no GSTIN at all. See
+ * BillPresentation::forQuickBill.
  *
  * LEGACY INVOICES ARE NOT REPAIRED BY THIS, EITHER. An invoice finalized before
  * invoice_render_snapshots carried these keys has no record of what it printed.
- * D-06 pins that it falls back to live settings and still renders rather than
- * erroring — a stated limitation, not a repair. Nothing can reconstruct a
- * presentation that was never recorded.
+ * D-06 pins that a bill with NO snapshot falls back to live settings and still
+ * renders rather than erroring; D-13 pins the same for a snapshot that exists
+ * but predates the asserted keys, which is the commoner case and the one that
+ * would otherwise reprint BLANK. Both are stated limitations, not repairs.
+ * Nothing can reconstruct a presentation that was never recorded.
  *
  * WHAT EACH TEST ACTUALLY BINDS
  * -----------------------------
@@ -78,21 +96,44 @@ use Tests\TestCase;
  * intended additions, plus a green rerun. Grepping for the absence of the word
  * MUTATION would not have shown any of this.
  *
+ * The first three rows were recorded against the FIRST half of the repair
+ * (commit b216b80), when the class was still called BillTaxPresentation and
+ * D-09 to D-12 were characterization tests. The last two were recorded against
+ * the second half, on the tests as they now stand.
+ *
  *   Mutation                                          Killed        Survived
  *   ------------------------------------------------  ------------  -----------------
- *   BillTaxPresentation::resolve ignores the snapshot  D-01 D-04     D-02 D-03 D-05
+ *   BillPresentation::resolve ignores the snapshot     D-01 D-04     D-02 D-03 D-05
  *   (`if (false)`), always using live settings         D-07          D-06 D-08
  *   InvoiceRenderSnapshotService drops 'hsn_map'       D-04 D-05     the rest
  *   QuickBillService::shopSnapshot drops 'igst_mode'   D-07          the rest
+ *   resolve() ignores the ASSERTED keys, always using  D-09 D-10     the rest,
+ *   live settings for them                             D-11 D-11b    incl. D-12 D-13
+ *   resolve() uses `??` for the asserted keys instead  D-13c         the rest,
+ *   of array_key_exists()                                            incl. D-13
+ *
+ * THE LAST ROW IS A CORRECTION, AND D-13c EXISTS BECAUSE OF IT. That row first
+ * read "D-13", by inference from what D-13 was for rather than from a run. The
+ * mutation was then actually applied and ALL FIFTEEN tests stayed green: the
+ * per-key fallback was justified at length in BillPresentation's docblock and
+ * bound by nothing. D-13c was written against the live mutation, watched fail
+ * on the right assertion, and passes once it is reverted. An unrun mutation
+ * table is a claim, not evidence, and this one was wrong.
  *
  * The survivors are survivors for good reasons, and the reasons differ:
  *  - D-02, D-05, D-08 are POSITIVE CONTROLS. A positive control that died under
  *    a mutation would be bounding nothing; it must pass under both the broken
  *    and the fixed implementation, or it is just a second copy of the
  *    regression test.
- *  - D-06 asserts the live-settings FALLBACK, which mutation 1 makes universal.
- *    It passes there by definition.
+ *  - D-06 and D-13 assert the live-settings FALLBACK, which mutations 1 and 4
+ *    make universal. They pass there by definition. D-13 survives mutation 5
+ *    too, and that is not a weakness in it: `??` and array_key_exists() agree
+ *    on an ABSENT key, which is the only shape D-13 creates. D-13c is the pair
+ *    that separates them, on a key recorded as NULL.
  *  - D-03 is about stored figures, which no mutation here touches.
+ *  - D-12 survives everything, which is the point of it. A mutation to the
+ *    asserted-field resolution that killed D-12 would mean the repair had
+ *    leaked into rendering.
  *
  * ONE SURVIVOR WAS NOT LEGITIMATE, AND THE TEST WAS FIXED RATHER THAN EXCUSED.
  * D-04 originally issued its invoice under HSN 7113 — which is
@@ -284,31 +325,36 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
 
     // -------------------------------------------------------------------- D-09
     /**
-     * CLASSIFICATION, not repair. D-09 to D-12 exist to answer one question the
-     * earlier revision of this file answered by assertion rather than by
-     * measurement: are the remaining live reads really all "cosmetic"?
+     * THE SECOND HALF OF THE REPAIR, AND THESE THREE HAVE NOW FLIPPED.
      *
-     * They are not. The reading MECHANISM is uniform — every one of them is
+     * D-09 to D-11 were written as CLASSIFICATION tests to answer one question
+     * the first revision of this file answered by assertion rather than by
+     * measurement: are the remaining live reads really all "cosmetic"? They are
+     * not. The reading MECHANISM was uniform — every one of them was
      * `$billing?->x` or `$shop?->x` evaluated at render time — so the mechanism
-     * cannot be what separates them. What separates them is the meaning of the
-     * field. D-09 through D-11 drift things a printed bill ASSERTS about the
-     * transaction; D-12 drifts a thing it merely looks like. Only D-12 is
-     * cosmetic, and it is here so that claim is bounded rather than asserted.
+     * could not be what separated them. What separates them is the MEANING of
+     * the field. D-09 to D-11b drift things a printed bill ASSERTS about the
+     * transaction; D-12 drifts a thing the bill merely looks like.
      *
-     * These four pin the CURRENT behaviour deliberately, the way this file's
-     * first revision did for igst_mode. Each was first written asserting the
-     * desired behaviour and run, so the drift is a measured failure and not an
-     * inference from reading the template; the recorded failures are in
-     * docs/runbooks/security-multi-tenant-audit-handoff.md §3. When the
-     * remaining half of S3-05 is repaired, these must flip.
+     * Those three asserted the broken behaviour on purpose, and said so: "when
+     * the remaining half of S3-05 is repaired, these must flip." That is this
+     * commit. They are inverted here and now pin the repair — the as-issued
+     * value is printed, today's is not. If you are bisecting and see them flip,
+     * that flip is the fix landing, not a test being weakened. The measured
+     * pre-repair failures they were derived from are recorded in
+     * docs/runbooks/security-multi-tenant-audit-handoff.md §3.
+     *
+     * D-12 did NOT flip and must not. Theme colour drifts by the identical
+     * mechanism and is left drifting deliberately, which is what keeps this a
+     * claim about field meaning rather than a blanket freeze on live reads.
      *
      * PAYMENT INSTRUCTIONS. The highest-consequence member of the set, which is
-     * why it is first. A reprint of a bill issued against one account prints
-     * today's account number instead. A customer settling an outstanding balance
-     * from a reprinted copy is being given instructions that were never the ones
-     * issued, and the bill carries no indication that they changed.
+     * why it is first. Before the repair, a reprint of a bill issued against one
+     * account printed today's account number instead: a customer settling an
+     * outstanding balance from a reprinted copy was given instructions that were
+     * never the ones issued, with nothing on the bill saying they had changed.
      */
-    public function test_d09_bank_details_on_a_reprint_follow_todays_settings(): void
+    public function test_d09_bank_details_on_a_reprint_are_the_ones_the_bill_was_issued_with(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
 
@@ -324,10 +370,14 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
         ]);
         $html = $this->printInvoice($owner, $invoice);
 
-        $this->assertStringContainsString('99990000', $html,
-            'measured: the reprint carries the CURRENT account number');
-        $this->assertStringNotContainsString('11110000', $html,
-            'measured: and not the one the bill was issued against');
+        $this->assertStringContainsString('11110000', $html,
+            'the reprint carries the account the bill was issued against');
+        $this->assertStringContainsString('Issued Bank', $html,
+            'and the bank that went with it');
+        $this->assertStringNotContainsString('99990000', $html,
+            'S3-05: a customer settling from a reprint must not be handed an account that was never the one issued');
+        $this->assertStringNotContainsString('Replacement Bank', $html,
+            'and the shop changing banks must not rewrite an already-issued document');
     }
 
     // -------------------------------------------------------------------- D-10
@@ -338,7 +388,7 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
      * Note the snapshot ALREADY captures terms_and_conditions — nothing reads
      * it. That makes this the cheapest member of the set to repair.
      */
-    public function test_d10_terms_on_a_reprint_follow_todays_settings(): void
+    public function test_d10_terms_on_a_reprint_are_the_ones_the_customer_was_given(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
 
@@ -348,10 +398,10 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
         $this->setBilling($shop->id, ['terms_and_conditions' => 'No exchange under any circumstances.']);
         $html = $this->printInvoice($owner, $invoice);
 
-        $this->assertStringContainsString('No exchange under any circumstances.', $html,
-            'measured: the reprint carries the CURRENT terms');
-        $this->assertStringNotContainsString('Exchange within 7 days.', $html,
-            'measured: and not the terms the customer was given');
+        $this->assertStringContainsString('Exchange within 7 days.', $html,
+            'the reprint evidences the terms the customer was handed at the counter');
+        $this->assertStringNotContainsString('No exchange under any circumstances.', $html,
+            'S3-05: a reprint pulled for a dispute must not restate the terms in whatever the shop configured since');
     }
 
     // -------------------------------------------------------------------- D-11
@@ -367,7 +417,7 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
      * is not a cross-tenant finding and is not reported as one; it is recorded
      * because the correct source is one hop away and already snapshotted.
      */
-    public function test_d11_shop_gstin_on_a_reprint_follows_todays_settings(): void
+    public function test_d11_shop_gstin_on_a_reprint_is_the_one_the_supply_was_made_under(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
 
@@ -378,23 +428,57 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
         DB::table('shops')->where('id', $shop->id)->update(['gst_number' => '29BBBBB9999B1Z5']);
         $html = $this->printInvoice($owner, $invoice);
 
-        $this->assertStringContainsString('29BBBBB9999B1Z5', $html,
-            'measured: the reprint carries the CURRENT GSTIN');
+        $this->assertStringContainsString('29AAAAA1111A1Z5', $html,
+            'the reprint carries the GSTIN the supply was made under');
+        $this->assertStringNotContainsString('29BBBBB9999B1Z5', $html,
+            'S3-05: GSTIN is a required particular of a tax invoice, so a reprint must not substitute a later one');
+    }
+
+    // ------------------------------------------------------------------- D-11b
+    /**
+     * show_gstin is pinned alongside gst_number, and the pair has to move
+     * together or the repair is half-done: a bill issued WITHOUT a GSTIN on it
+     * must not grow one when the shop later switches the toggle on. Asserting
+     * only the value would leave that hole open, because the value is only
+     * reached when the flag lets it through.
+     *
+     * This is the one show_* flag treated as asserted rather than rendering.
+     * Its neighbours choose which COLUMNS appear; this one chooses whether a
+     * statutory particular is on the page.
+     */
+    public function test_d11b_hiding_the_gstin_at_issue_survives_the_toggle_being_switched_on(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['show_gstin' => DB::raw('false')]);
+        DB::table('shops')->where('id', $shop->id)->update(['gst_number' => '29AAAAA1111A1Z5']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $this->setBilling($shop->id, ['show_gstin' => DB::raw('true')]);
+        $html = $this->printInvoice($owner, $invoice);
+
         $this->assertStringNotContainsString('29AAAAA1111A1Z5', $html,
-            'measured: and not the GSTIN the supply was made under');
+            'S3-05: the bill was issued without a GSTIN printed and must reprint that way');
     }
 
     // -------------------------------------------------------------------- D-12
     /**
-     * THE BOUND ON D-09 TO D-11, and the one field in this group that really is
-     * cosmetic. Theme colour drifts by exactly the same mechanism, and nothing
-     * about the transaction changes when it does — an old bill reprinted in a
-     * new house colour still asserts the same facts.
+     * THE BOUND ON D-09 TO D-11b, and the one field in this group that really
+     * is cosmetic. Theme colour drifts by exactly the same mechanism, and
+     * nothing about the transaction changes when it does — an old bill
+     * reprinted in a new house colour still asserts the same facts.
      *
-     * Without this test the group would read as "live reads are bad", which is
-     * the overreach the directive warns against. With it the finding is the
-     * narrower and defensible one: the drift is uniform, the CONSEQUENCE is not,
-     * and only the fields a bill asserts something with need pinning.
+     * THIS TEST STILL ASSERTS THE DRIFT, ON PURPOSE, AND STILL PASSES. That is
+     * the whole point of it after the repair. Paper size, font tier and theme
+     * colour describe the printer in front of you today, not the sale; pinning
+     * them to a 2024 snapshot would be a defect rather than a repair. If a later
+     * change makes this test fail, the repair has over-reached into rendering
+     * and the change is wrong, not this test.
+     *
+     * Without it the group would read as "live reads are bad", which is the
+     * overreach the directive warns against. With it the finding is the narrower
+     * and defensible one: the drift is uniform, the CONSEQUENCE is not, and only
+     * the fields a bill asserts something with need pinning.
      */
     public function test_d12_theme_colour_also_drifts_and_that_one_is_cosmetic(): void
     {
@@ -420,7 +504,201 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
             'but the bill still asserts the same transaction, which is why this one is cosmetic');
     }
 
+    // -------------------------------------------------------------------- D-13
+    /**
+     * THE REGRESSION THAT WOULD OTHERWISE HIT EVERY OLD BILL IN THE ESTATE.
+     *
+     * D-06 covers an invoice with NO snapshot row at all. This covers the more
+     * common and more dangerous case: a snapshot row that exists but was written
+     * before the asserted keys were in it. Those rows are real — the 'billing'
+     * section grew over time, and nothing rewrites the old ones.
+     *
+     * If the resolver read them with `??` instead of array_key_exists(), a
+     * missing key and a recorded NULL would look identical, and the natural
+     * "just use the snapshot value" implementation would print an EMPTY payment
+     * block, empty terms and no GSTIN on every pre-existing bill — a blank
+     * document, which is worse than the drift this finding is about. The
+     * fallback has to be per KEY, and this pins that.
+     *
+     * The fixture strips the keys from the STORED payload to reproduce the old
+     * shape. It never writes a fabricated value in: an invented snapshot is the
+     * exact thing this whole finding argues against.
+     */
+    public function test_d13_a_snapshot_predating_the_asserted_keys_still_renders_from_live_settings(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, [
+            'bank_name'            => 'Issued Bank',
+            'bank_account_number'  => '11110000',
+            'terms_and_conditions' => 'Exchange within 7 days.',
+            'show_gstin'           => DB::raw('true'),
+        ]);
+        DB::table('shops')->where('id', $shop->id)->update(['gst_number' => '29AAAAA1111A1Z5']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $this->stripSnapshotKeys($invoice, [
+            'billing' => ['show_gstin', 'terms_and_conditions', 'upi_id', 'bank_name',
+                'bank_account_holder', 'bank_account_number', 'bank_ifsc',
+                'bank_account_type', 'bank_branch', 'bank_details'],
+            'shop' => ['gst_number'],
+        ]);
+
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringContainsString('11110000', $html,
+            'with no record of the account, live settings are the only information that exists');
+        $this->assertStringContainsString('Issued Bank', $html, 'same for the bank name');
+        $this->assertStringContainsString('Exchange within 7 days.', $html, 'same for the terms');
+        $this->assertStringContainsString('29AAAAA1111A1Z5', $html,
+            'and the GSTIN, which show_gstin must default to VISIBLE for — a legacy bill that '
+            .'recorded no toggle printed one');
+        // The em-dash placeholder the template prints when it has no payment
+        // details at all. Matched with its markup, not by the class name alone:
+        // `.footer-empty` is also a CSS rule in the <style> block, so the bare
+        // string is present on every render and would assert nothing.
+        $this->assertStringNotContainsString('<div class="footer-empty">', $html,
+            'the payment block must not come back blank; a blank reprint is worse than a drifting one');
+    }
+
+    /**
+     * The bound on D-13's GSTIN assertion. D-13 proves a MISSING show_gstin
+     * defaults to visible; this proves a snapshot that recorded FALSE is not
+     * being read as missing. Without it, a resolver that ignored the key
+     * entirely and always returned true would satisfy D-13.
+     *
+     * D-11b is the behavioural twin of this at the template level. This one
+     * exists because the two failure modes — "missing key" and "recorded false"
+     * — are one `??` apart in the resolver and collapse into each other
+     * silently.
+     */
+    public function test_d13b_a_recorded_false_show_gstin_is_not_mistaken_for_a_missing_key(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        $this->setBilling($shop->id, ['show_gstin' => DB::raw('false')]);
+        DB::table('shops')->where('id', $shop->id)->update(['gst_number' => '29AAAAA1111A1Z5']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        // Only the SHOP section loses its key. 'billing.show_gstin' stays, and
+        // it is false, so the GSTIN must stay off the page even though the
+        // number itself now falls back to the live shop row.
+        $this->stripSnapshotKeys($invoice, ['shop' => ['gst_number']]);
+
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringNotContainsString('29AAAAA1111A1Z5', $html,
+            'a recorded false is a decision the bill made, not an absence of one');
+    }
+
+    // ------------------------------------------------------------------- D-13c
+    /**
+     * THE OTHER HALF OF THE PER-KEY FALLBACK, AND IT WAS MISSING.
+     *
+     * This test was added after the repair, because a mutation run contradicted
+     * the coverage claim written above it. The table in this docblock asserted
+     * that D-13 kills a resolver using `??` in place of array_key_exists(). It
+     * does not. Running that mutation left all fifteen tests green, so the
+     * per-key fallback — the thing BillPresentation's own docblock spends a
+     * paragraph justifying — was described but never bound. This closes it.
+     *
+     * WHY D-13 CANNOT COVER THIS. `??` and array_key_exists() agree on a
+     * MISSING key: both fall back to live. They disagree only on a key that is
+     * PRESENT and NULL. D-13 strips its keys, so it exercises the case where
+     * the two are identical. The two shapes mean opposite things:
+     *
+     *   key absent        this bill has no record of the field  → live settings
+     *   key present, NULL this bill recorded printing NOTHING   → print nothing
+     *
+     * THE SCENARIO. A shop invoices for months with no bank account on the
+     * bill, then opens one. Under `??` every one of those already-issued bills
+     * reprints carrying an account number that was never on it — the same class
+     * of defect as D-09, arriving through the fallback rather than through the
+     * live read, and invisible because the reprint looks more complete than the
+     * original rather than less.
+     */
+    public function test_d13c_a_bill_issued_with_no_payment_details_does_not_grow_them_on_reprint(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+
+        // Issued with no payment instructions at all.
+        $this->setBilling($shop->id, [
+            'upi_id' => null, 'bank_name' => null, 'bank_account_holder' => null,
+            'bank_account_number' => null, 'bank_ifsc' => null, 'bank_account_type' => null,
+            'bank_branch' => null, 'bank_details' => null,
+        ]);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        // Load-bearing precondition. The whole test turns on the key being
+        // PRESENT and NULL; if finalization ever stopped capturing it, the
+        // fixture would be testing the missing-key case D-13 already covers.
+        $this->assertSnapshotRecordsNull($invoice, 'billing', 'bank_account_number');
+
+        // The shop opens an account AFTER the bill was issued.
+        $this->setBilling($shop->id, [
+            'bank_name' => 'Later Bank', 'bank_account_number' => '77770000', 'upi_id' => 'later@upi',
+        ]);
+
+        $html = $this->printInvoice($owner, $invoice);
+
+        $this->assertStringNotContainsString('77770000', $html,
+            'S3-05: a bill issued with no account must not acquire one on reprint');
+        $this->assertStringNotContainsString('Later Bank', $html, 'nor the bank that came with it');
+        $this->assertStringNotContainsString('later@upi', $html, 'nor a UPI handle it never carried');
+        $this->assertStringContainsString('<div class="footer-empty">', $html,
+            'the payment block must reprint empty, the way the original printed');
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    /**
+     * Assert a snapshot key is PRESENT and NULL — the shape D-13c turns on, and
+     * the one array_key_exists() distinguishes from an absent key.
+     */
+    private function assertSnapshotRecordsNull(Invoice $invoice, string $section, string $key): void
+    {
+        $row = DB::table('invoice_render_snapshots')->where('invoice_id', $invoice->id)->first();
+        $this->assertNotNull($row, 'finalization must have captured a snapshot');
+
+        $payload = json_decode((string) $row->snapshot, true);
+
+        $this->assertArrayHasKey($key, $payload[$section] ?? [],
+            "{$section}.{$key} must be CAPTURED for this fixture to mean anything");
+        $this->assertNull($payload[$section][$key],
+            "{$section}.{$key} must be captured as NULL, not merely absent");
+    }
+
+    /**
+     * Rewrite a stored render snapshot to the SHAPE it would have had before
+     * some keys existed, by deleting them. Fixture-only, and deletion-only on
+     * purpose: nothing here invents a value a bill never recorded.
+     *
+     * @param  array<string, list<string>>  $sections
+     */
+    private function stripSnapshotKeys(Invoice $invoice, array $sections): void
+    {
+        $row = DB::table('invoice_render_snapshots')->where('invoice_id', $invoice->id)->first();
+        $this->assertNotNull($row, 'finalization must have captured a snapshot to strip');
+
+        $payload = json_decode((string) $row->snapshot, true);
+
+        foreach ($sections as $section => $keys) {
+            $this->assertIsArray($payload[$section] ?? null, "snapshot has no '{$section}' section to strip");
+
+            foreach ($keys as $key) {
+                $this->assertArrayHasKey(
+                    $key,
+                    $payload[$section],
+                    "{$section}.{$key} is not captured at all — this fixture would be stripping nothing"
+                );
+                unset($payload[$section][$key]);
+            }
+        }
+
+        DB::table('invoice_render_snapshots')
+            ->where('invoice_id', $invoice->id)
+            ->update(['snapshot' => json_encode($payload)]);
+    }
 
     /**
      * A finalized invoice created through the REAL path.

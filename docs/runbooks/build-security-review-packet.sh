@@ -58,6 +58,7 @@ git diff "${BASELINE}..${EXPORT_SHA}" -- \
     app/Services/InvoiceSignatureRenderer.php \
     app/Services/SignatureStore.php \
     app/Services/SignatureRelocationLedger.php \
+    app/Services/BillPresentation.php \
     app/Services/BillTaxPresentation.php        > "$OUT/diffs/10-resolvers.patch"
 
 git diff "${BASELINE}..${EXPORT_SHA}" -- \
