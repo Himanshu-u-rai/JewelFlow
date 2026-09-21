@@ -41,7 +41,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-07 mobile payment cache-hit path was unauthorized | **CLOSED as a code defect** — no exploit against shipped code; the binding blocked it | Guard committed (`0296431`), 9 tests | **OPEN — needs the deploy** |
 | S3-07b payment retry integrity (cache/commit not coordinated) | **REPAIRED LOCALLY** — both defects closed; two more found by real concurrency and fixed; **rollback to the deployed baseline is measured UNSAFE** | Characterized `893a49b` (3 tests) → repaired `2dd0875` → claim scope `0cdd794` → claim staked before validation + P-14 `7d20e08` → rollback evidence, P-06 relabel, P-15 `b1a52f0`. 15 tests, 250 in band | **OPEN — needs the deploy, under the constraints in `payment-idempotency-rollback-constraints.md`** |
 | S3-08 static memoization across a long-lived worker | **CLOSED — examined, not a tenant break** | None needed; one inaccurate docblock noted | N/A |
-| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **REPAIR IMPLEMENTED; VERIFICATION INCOMPLETE.** Supported conclusion is narrow: pre-staking blocks same-key automatic re-execution *while the claim is retained*. It does NOT by itself establish atomic business completion, recoverable successful replay, or that key retention survives pruning | Characterized `8cddbc3` → repaired `b8673db`. 17 tests / 89 assertions; 9 contract tests still green; 98 `Feature/Mobile`, 160 `Feature/Security`, no regressions. Concurrency coverage is **simulated**, not multi-process | **OPEN. Open sub-items: pruning contract (§7c-1), 4xx-release safety (§7c-2), real concurrency (§7c-3), mobile consumer handling (§7c-4), 12 routes NOT RUN (§7c)** |
+| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **REPAIR IMPLEMENTED; VERIFICATION INCOMPLETE.** Supported conclusion is narrow: pre-staking blocks same-key automatic re-execution *while the claim is retained*. It does NOT by itself establish atomic business completion, recoverable successful replay, or that key retention survives pruning | Characterized `8cddbc3` → repaired `b8673db`. 17 tests / 89 assertions; 9 contract tests still green; 273 passed (1028 assertions) across `Feature/Security` + `Feature/Mobile`, no regressions. Concurrency is now **REAL multi-process** (§7c-3): pre-repair blob `6a8c4cc` produced 4×201 / 4 cash rows / sum 10000 under one key; repaired produces 1×201 + 3×409 / 1 cash row. Recoverable successful replay is now measured too | **OPEN. Closed sub-items: 4xx-release safety (§7c-2), real concurrency (§7c-3), mobile consumer handling (§7c-4). Still open: retained-claim disposal (§7c-1 — the pruning *code* defect is fixed in `e68eb31`; what remains open is an operator decision, since a retained unresolved claim has no supported clearing path and growth is slow but unbounded), 12 routes NOT RUN (§7c). New limit found — payload-conflict detection is sequential-path only; a concurrent different-payload loser gets `idempotency_in_flight`, not `idempotency_key_conflict`** |
 
 ### Finding IDs — old → new, because they drifted
 
@@ -57,8 +57,9 @@ renumbering.**
 | S3-08 | Static memoization sweep | *(new)* | — |
 | S3-09 | `EnsureIdempotency` middleware retry integrity | *(new — ID confirmed unused before assignment)* | — |
 | S3-09b | Pruning must not delete unresolved claims | *(new)* | §7c-1 |
+| S3-09d | Payload-conflict detection is sequential-path only — a concurrent different-payload loser is refused as `idempotency_in_flight`, never `idempotency_key_conflict` | *(new — ID confirmed unused before assignment)* | §7c-3 |
 | S3-09c | Mobile consumer handling for an uncertain outcome | *(new)* | §7c-4 |
-| S3-10 | `CashBookController::store` / `storeDrawerCheck` write subject and audit non-atomically | *(new — ID confirmed unused before assignment)* | §7c-3, FIXED |
+| S3-10 | `CashBookController::store` / `storeDrawerCheck` write subject and audit non-atomically | *(new — ID confirmed unused before assignment)* | §7c-5, FIXED |
 | S3-11 | `ReturnService::approveReturn` cancels the pending header, then can fail | *(new — ID confirmed unused before assignment)* | §7c-2, FIXED |
 
 Still visible and unclosed, listed explicitly so renumbering cannot bury them:
@@ -961,7 +962,7 @@ withdrawn in §7c. The accurate reasons are two, and neither is a timer:
 
 | Route | What a duplicate does | Read | Tested | Own service-layer guard |
 |---|---|---|---|---|
-| `POST /cashbook` | **duplicate cash movement** — money in/out recorded twice | yes | yes | **NONE** against duplicates; the middleware is the only guard. Atomicity was ALSO missing and is now fixed (S3-10, §7c-3) — the cash/audit write pair is wrapped. The two are independent: the transaction stops a half-written entry, it does nothing about a second entry. |
+| `POST /cashbook` | **duplicate cash movement** — money in/out recorded twice | yes | yes | **NONE** against duplicates; the middleware is the only guard. Atomicity was ALSO missing and is now fixed (S3-10, §7c-5) — the cash/audit write pair is wrapped. The two are independent: the transaction stops a half-written entry, it does nothing about a second entry. |
 | `POST /installments/{plan}/pay` | **duplicate installment payment** — money recorded twice | yes | yes | Partial. `InstallmentService::recordPayment` is transactional and locks the plan, but its `status === 'active'` check is not an idempotency guard — `active` is the state a non-final EMI *leaves* the plan in. Only the final EMI is guarded. |
 | `POST /job-orders/{jobOrder}/receipt` | **duplicate karigar receipt** — metal received twice | yes | yes | Partial, same shape. `JobOrderService::receive` locks and guards on status, but permits `ISSUED` and `PARTIAL_RETURN`, and a partial receipt leaves `PARTIAL_RETURN`. Only the final receipt is guarded. Worst blast radius of the four: a replay mints a fresh `items` row marked in-stock and a fresh `manufacture` metal movement. |
 | `POST /returns` | **duplicate return order** — stock returned twice | yes | yes | **Full, and independent of the middleware.** `ReturnService` carries two durable guards: the invoice's own status, and the per-line `invoice_items.returned_at` stamp. This route was never part of the finding. |
@@ -1142,7 +1143,112 @@ and the S3-11 finding cannot merge into one fact. Regression: `--filter=Return`
 146 passed / 1 skipped (672 assertions); `Feature/Security` + `Feature/Mobile`
 **269 passed (1016 assertions)**.
 
-### §7c-3 — the cashbook write pair — S3-10 — FIXED
+### §7c-3 — real multi-process concurrency — S3-09 — MEASURED
+
+**This is the first REAL concurrency evidence in this audit.** Everything prior
+under S3-09 was simulated: a `creating` hook or a pre-seeded row standing in for
+a competing transaction. This section is separate PROCESSES, separate database
+connections, separate transactions, racing on a wall-clock start.
+
+**Correcting the harness premise.** The directive said to reuse "the existing
+local multi-process harness". There wasn't one. `pcntl_fork|proc_open|curl_multi`
+matched nothing in the repo, and handoff lines 781/1577 already recorded real
+concurrency as NOT RUN — those two facts agree. What existed was the P-01..P-11
+*scenario structure*, which is reused; the process spawning is new.
+
+**Why PHPUnit could not have produced this.** `RefreshDatabase` wraps each test
+in a single uncommitted transaction. A second connection cannot see the
+fixtures, so a genuine competing process has nothing to race against. That
+limitation is structural, not an oversight — it is exactly why the earlier
+coverage was simulated.
+
+**Harness.** `tests/Concurrency/idempotency_race.php`. Each child boots the HTTP
+kernel and dispatches a real `Request` through the real middleware stack to
+`POST /api/mobile/v1/cashbook`. No web server: real OS processes, real
+connections, real constitutional triggers. The parent `proc_open`s every child
+first, hands each the same future wall-clock start (`microtime(true) + 2.0`),
+and only then collects — so the children overlap rather than queue.
+
+#### Before / after, same harness, same machine
+
+Baseline is the repair's parent. `git rev-parse 8cddbc3:app/.../EnsureIdempotency.php`
+and `2cc4b4c:...` are the **same blob `6a8c4cc`**, so the pre-repair file used
+here is byte-identical to what `b8673db` replaced.
+
+| Scenario | Pre-repair `6a8c4cc` | Repaired `fb351f4` |
+|---|---|---|
+| **A** — 4 concurrent, same key, same payload | `{"201":4}` — **4 cash rows, sum 10000** | `{"201":1,"409 idempotency_in_flight":3}` — **1 cash row, sum 2500** |
+| **B** — 2 concurrent, same key, different payload | `{"201":2}` — **2 cash rows, sum 12499** | `{"201":1,"409 idempotency_in_flight":1}` — **1 cash row** |
+| **C** — positive control, 4 distinct keys | *(not run)* | `{"201":4}` — 4 cash rows, sum 10000 |
+| **D** — DB-error control, missing database | *(not run)* | `{"500":1}` — 0 cash rows |
+
+**A is the finding, measured rather than argued.** Four concurrent requests
+carrying one idempotency key produced four cash movements against an immutable
+ledger. The unique index admits exactly one claim row (`claim rows: 1`), and
+after the repair that single claim is staked *before* the controller, so the
+three losers never reach it.
+
+**C is load-bearing.** Without it, the repair could satisfy A and B by refusing
+concurrency generally. C shows four genuinely distinct operations still run
+concurrently to completion.
+
+**D is honest about its own result.** A database-wide outage surfaces as **500**,
+*not* the middleware's 503 `idempotency_unavailable`. `auth:sanctum` touches the
+database before `mobile.idempotency` runs, so for a total outage the middleware
+never executes. The 503 path is therefore reachable only for failures that spare
+authentication and hit the claim write — narrower than the code alone suggests.
+
+#### Two new behavioural facts
+
+**1. Payload-conflict detection is a SEQUENTIAL-path guarantee only.** In B the
+different-payload loser received `idempotency_in_flight`, **not**
+`idempotency_key_conflict`. It collides on the unique index before any
+payload-hash comparison happens. Still a refusal, still no second write — but
+the 409-conflict contract documented elsewhere describes the sequential path,
+and should not be quoted as concurrent behaviour.
+
+**2. Both refusal paths fire inside a single real race.** Shop 295, scenario A,
+three losers, five log lines:
+
+```
+concurrent request lost the claim race    ×2
+refused a retry against an in-flight claim ×3
+```
+
+**Correcting my own earlier reading of this:** I first reported it as "one lost
+the unique-index insert, two read the staked claim at lookup", counting one line
+per request. That is wrong. `EnsureIdempotency.php:202` calls
+`inFlightResponse()` immediately after logging the lost race, and
+`inFlightResponse()` (line 319) *always* logs. So an insert-loser emits **both**
+lines and a lookup-finder emits **one**: 2 insert-losers + 1 lookup-finder = 5
+lines, 3 losers. Verified by reading the two call sites, not by inference.
+
+**The race is genuinely nondeterministic.** Scenario B's winner changed between
+runs — sum 9999 on one, 2500 on another. The ordering is not fixed by the
+harness.
+
+#### What A2 closes
+
+Line 44 listed **recoverable successful replay** as explicitly NOT established.
+A2 replays the same key sequentially after the race settles: **200 with
+`X-Idempotent-Replay: 'true'`, the original row returned, still exactly one cash
+row**. That sub-claim is now measured. It does not upgrade the rest of S3-09.
+
+#### Scope limits — what this does NOT establish
+
+- One machine, one PostgreSQL instance. **No connection pooler** (PgBouncer in
+  transaction mode could change claim visibility), **no multi-node**.
+- 4 concurrent requests is contention, not production load.
+- One route (`POST /cashbook`). The middleware is shared, but the other 15 routes
+  are not covered by this section — see §7c for their individual status.
+- Rows are retained: ledger/audit `DELETE` is refused by constitutional trigger,
+  so each run provisions a fresh shop rather than cleaning up.
+
+**Status.** S3-09's concurrency sub-item moves from NOT RUN to **MEASURED**. The
+finding as a whole stays open — pruning (§7c-1) and the 12 untested routes (§7c)
+are unchanged by this.
+
+### §7c-5 — the cashbook write pair — S3-10 — FIXED
 
 **Defect.** `CashBookController::store` wrote `CashTransaction::record` and then
 `AuditLog::create` as two unwrapped statements. `storeDrawerCheck` has the
