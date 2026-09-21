@@ -76,12 +76,19 @@ use Tests\TestCase;
  *                          See that test for which of the two guards this
  *                          fixture actually reaches.
  *
- *   POST /cashbook         NO SERVICE-LAYER PROTECTION AT ALL. No transaction
- *                          and no dedup guard. Pre-repair, MEASURED: the retry
- *                          booked a second cash row. The middleware is now the
- *                          only thing standing between this route and a
+ *   POST /cashbook         NO DEDUP GUARD. Pre-repair, MEASURED: the retry
+ *                          booked a second cash row. The middleware is still
+ *                          the only thing standing between this route and a
  *                          duplicate — which is why its test asserts the cash
  *                          row count, not just the 409.
+ *
+ *                          It is no longer true that the route has "no
+ *                          transaction": S3-10 wrapped the cash/audit write
+ *                          pair in `CashBookController::store` (and the same
+ *                          pair in `storeDrawerCheck`). That fixes ATOMICITY
+ *                          only — it does nothing about duplicates, because a
+ *                          second call is a perfectly valid second entry as
+ *                          far as the service layer is concerned.
  *
  *   POST /job-orders/../receipt   and   POST /installments/{plan}/pay
  *                          PARTIALLY protected: both lock and both check a
@@ -350,12 +357,34 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
     // ────────────────────────────────────────────────────────────────────
 
     /**
-     * [INJECTED FAILURE — after the cash write commits, before the key row]
+     * [INJECTED FAILURE — inside the controller, after the claim is staked]
      *
-     * The assertion that matters is the LAST one: cash_transactions stays at
-     * 1 across the retry. Everything before it is there to prove the test is
-     * exercising the window it claims to, so that a green run cannot be the
-     * accidental result of the first request never having written anything.
+     * ─── UPDATED BY S3-10, and the expectations genuinely changed ─────────
+     *
+     * This test used to assert that cash_transactions held 1 row immediately
+     * after the injected failure, with the comment "the money write survived
+     * the failure". That was true, and it was the S3-10 defect: `store` wrote
+     * the cash row and the audit row unwrapped, so a failure at the seam left
+     * an orphaned money row behind.
+     *
+     * `CashBookController::store` is now wrapped in a transaction, so the
+     * interrupted attempt leaves NOTHING. The expected counts moved from 1 to
+     * 0 for that reason — not because the idempotency behaviour changed.
+     *
+     * The middleware property under test is unchanged and still asserted: the
+     * claim is staked before the controller, a 5xx leaves it in flight, and the
+     * same-key retry is refused with `idempotency_in_flight`.
+     *
+     * ─── Why the post-retry assertion is now STRONGER ────────────────────
+     *
+     * The injection is one-shot. If the middleware had let the retry through to
+     * the controller, the second `AuditLog::create` would NOT throw, the write
+     * pair would commit, and cash_transactions would hold 1 row. So asserting 0
+     * after the retry proves the controller was never re-entered.
+     *
+     * The old version asserted 1 both before and after the retry, which could
+     * not distinguish "the retry was refused" from "the retry ran and was
+     * deduplicated somewhere". This one can.
      */
     public function test_s309a_cashbook_retry_after_an_interrupted_first_attempt_must_not_move_cash_twice(): void
     {
@@ -368,23 +397,23 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
         $first = $this->postAsTenant((int) $shop->id, '/api/mobile/v1/cashbook', $payload, $headers);
 
         // The window is real: the injected failure fired, and the request did
-        // not succeed.
+        // not succeed. Without this the whole test could pass by never having
+        // reached the controller at all.
         $this->assertTrue($didFire(), 'the injected AuditLog failure never fired — the window was not exercised');
         $this->assertSame(500, $first->status());
 
-        // The money write survived the failure. This is the no-transaction
-        // defect in CashBookController::store, visible on its own: cash moved
-        // and the audit row that is supposed to explain it does not exist.
+        // S3-10: the write pair is atomic, so the failed attempt rolled back.
         $this->assertSame(
-            1,
+            0,
             $this->ledgerCount(CashTransaction::class, (int) $shop->id),
-            'expected the cash row to have been committed before the failure',
+            'ORPHANED CASH: the cash row outlived the failed audit write (S3-10 regression)',
         );
 
         // The claim was staked BEFORE the controller and is still in flight:
         // the 5xx path deliberately does not release it, because from here
         // "died before writing" and "wrote, then died" are the same response.
-        // The cash row above proves this instance is the second kind.
+        // This instance happens to be the first kind, but the middleware has no
+        // way to know that, and must refuse either way.
         $claim = IdempotencyKey::where('shop_id', $shop->id)->where('key', 'cb-s309a-fixed-key')->sole();
         $this->assertSame(0, (int) $claim->response_status, 'expected the claim to be left in flight by the 5xx');
 
@@ -395,15 +424,17 @@ class MobileIdempotencyRetryIntegrityTest extends TestCase
         $this->assertSame(409, $retry->status());
         $this->assertSame('idempotency_in_flight', $retry->json('errors.0.code'));
 
+        // The injection has already fired, so a retry that REACHED the
+        // controller would succeed and leave 1 row. 0 proves it did not.
         $this->assertSame(
-            1,
+            0,
             $this->ledgerCount(CashTransaction::class, (int) $shop->id),
-            'DUPLICATE CASH: the retry re-ran the controller and moved money a second time',
+            'the retry re-entered the controller — the in-flight claim did not hold it back',
         );
         $this->assertSame(
-            2500.00,
+            0.0,
             $this->ledgerSum(CashTransaction::class, (int) $shop->id, 'amount'),
-            'DUPLICATE CASH: the drawer total reflects the entry twice',
+            'the retry moved money despite the in-flight refusal',
         );
     }
 

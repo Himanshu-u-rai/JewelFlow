@@ -58,7 +58,7 @@ renumbering.**
 | S3-09 | `EnsureIdempotency` middleware retry integrity | *(new — ID confirmed unused before assignment)* | — |
 | S3-09b | Pruning must not delete unresolved claims | *(new)* | §7c-1 |
 | S3-09c | Mobile consumer handling for an uncertain outcome | *(new)* | §7c-4 |
-| S3-10 | `CashBookController::store` writes cash and audit non-atomically | *(new — ID confirmed unused before assignment)* | §7c, OPEN |
+| S3-10 | `CashBookController::store` / `storeDrawerCheck` write subject and audit non-atomically | *(new — ID confirmed unused before assignment)* | §7c-3, FIXED |
 | S3-11 | `ReturnService::approveReturn` cancels the pending header, then can fail | *(new — ID confirmed unused before assignment)* | §7c-2, FIXED |
 
 Still visible and unclosed, listed explicitly so renumbering cannot bury them:
@@ -961,7 +961,7 @@ withdrawn in §7c. The accurate reasons are two, and neither is a timer:
 
 | Route | What a duplicate does | Read | Tested | Own service-layer guard |
 |---|---|---|---|---|
-| `POST /cashbook` | **duplicate cash movement** — money in/out recorded twice | yes | yes | **NONE.** No transaction either: `CashBookController::store` writes `CashTransaction::record` then `AuditLog::create` unwrapped, so a failure between them commits cash with no audit row. Measured. See below. |
+| `POST /cashbook` | **duplicate cash movement** — money in/out recorded twice | yes | yes | **NONE** against duplicates; the middleware is the only guard. Atomicity was ALSO missing and is now fixed (S3-10, §7c-3) — the cash/audit write pair is wrapped. The two are independent: the transaction stops a half-written entry, it does nothing about a second entry. |
 | `POST /installments/{plan}/pay` | **duplicate installment payment** — money recorded twice | yes | yes | Partial. `InstallmentService::recordPayment` is transactional and locks the plan, but its `status === 'active'` check is not an idempotency guard — `active` is the state a non-final EMI *leaves* the plan in. Only the final EMI is guarded. |
 | `POST /job-orders/{jobOrder}/receipt` | **duplicate karigar receipt** — metal received twice | yes | yes | Partial, same shape. `JobOrderService::receive` locks and guards on status, but permits `ISSUED` and `PARTIAL_RETURN`, and a partial receipt leaves `PARTIAL_RETURN`. Only the final receipt is guarded. Worst blast radius of the four: a replay mints a fresh `items` row marked in-stock and a fresh `manufacture` metal movement. |
 | `POST /returns` | **duplicate return order** — stock returned twice | yes | yes | **Full, and independent of the middleware.** `ReturnService` carries two durable guards: the invoice's own status, and the per-line `invoice_items.returned_at` stamp. This route was never part of the finding. |
@@ -1141,6 +1141,98 @@ rather than inferred from the retry succeeding, so the class-B classification
 and the S3-11 finding cannot merge into one fact. Regression: `--filter=Return`
 146 passed / 1 skipped (672 assertions); `Feature/Security` + `Feature/Mobile`
 **269 passed (1016 assertions)**.
+
+### §7c-3 — the cashbook write pair — S3-10 — FIXED
+
+**Defect.** `CashBookController::store` wrote `CashTransaction::record` and then
+`AuditLog::create` as two unwrapped statements. `storeDrawerCheck` has the
+identical shape with `CashDrawerCheck::record`. Either pair could half-complete.
+
+**Correction to my own earlier wording here.** The 16-route table previously
+described this as "Measured." That overstated the evidence in a specific way
+worth naming: the measurement was an **injected** `AuditLog::creating` hook, not
+an observation of a real interruption, and the row did not say so.
+
+**Is it input-driven? No — checked, not assumed.** I looked for anything the
+validator accepts that could make the *second* write fail after the first
+succeeded, and found nothing:
+
+| Checked | Result |
+|---|---|
+| `audit_logs.description` type | `text` — no length ceiling, so the 100-char `source_type` feeding it cannot overflow |
+| `action`, `model_type` | varchar(255) holding fixed literals (`cash_in`, `CashTransaction`) |
+| CHECK constraints on `audit_logs` | none |
+| Unique indexes | only `audit_logs_pkey`; **no** unique index on `prev_hash`/`row_hash`, so concurrent inserts cannot collide there |
+| INSERT triggers | only `audit_logs_hash_trigger`, which computes a hash chain and never raises |
+| FKs | `shop_id`, `user_id` — same values the cash write already accepted |
+
+So this is **not** in the same class as S3-11, where a routine owner settings
+change fired the defect. There is no user action that reaches it. The trigger is
+process-level interruption between the two statements — dropped connection, PHP
+fatal or `max_execution_time`, OOM kill, deploy restart.
+
+**Why it was still worth fixing.** Because the result is *permanent*, in the two
+tables the constitution protects most strongly:
+
+* `cash_transactions` carries `prevent_ledger_mutation` plus an append-only
+  guard, and `cash_drawer_checks` an append-only guard. The orphaned row cannot
+  be edited or deleted — only offset by a compensating entry, which leaves two
+  rows describing one operator action.
+* `audit_logs` is append-only **and** hash-chained over `prev_hash`. The missing
+  entry cannot be slotted back into its original position; a late insert lands
+  at the chain tip, permanently out of order.
+
+A half-written pair is therefore not a transient inconsistency that a retry or a
+reconciliation pass can settle.
+
+**Repair.** `DB::transaction` around each write pair. Bounded to the two methods
+that demonstrate the defect — **not** applied across the 16 routes.
+Deliberately left OUTSIDE the transaction: `assertShopWritable` and the
+`$expected` ledger read, both of which run before any write, so including them
+would lengthen the transaction without adding atomicity. The
+`$expected`-then-insert gap in `storeDrawerCheck` is a separate read-write race
+and is **NOT** addressed here.
+
+**Evidence — `tests/Feature/Security/CashbookWriteAtomicityTest`, 4 passed, 12
+assertions.** RED first on both defect tests (`Failed asserting that 1 is
+identical to 0` — the orphan survived), green after.
+
+**Evidence class: SIMULATED INTERRUPTION.** The failure is injected at the real
+seam, through the real route, but it stands in for a process death rather than
+reproducing one. It does **not** establish that any such interruption has
+occurred in this system. What it establishes is the atomicity property: given a
+failure at that seam, no money row survives it.
+
+Two positive controls are included so the fix cannot pass by writing *less*:
+an unobstructed entry and an unobstructed drawer check must each still produce
+**both** their subject row and their audit row.
+
+**A test-harness defect found and fixed in the process.** My first reporter
+closure was `fn () => $fired`. PHP arrow functions capture by value at creation
+time and have no by-reference form, so it captured `false` and kept reporting
+`false` even though the injection had fired and the route had returned the
+injected 500. The `assertTrue($didFire())` guard is what caught it — which is
+precisely the reason that guard exists, and a case where the "assert the
+injection actually fired" discipline paid for itself.
+
+**Knock-on: one existing test changed expectations, honestly.**
+`MobileIdempotencyRetryIntegrityTest::test_s309a_...` asserted `cash_transactions`
+held **1** row immediately after the injected failure, commented "the money
+write survived the failure". That assertion *was* S3-10, recorded as a
+precondition. With the pair wrapped, the interrupted attempt leaves nothing, so
+the counts moved 1 → 0. The idempotency behaviour under test did not change.
+
+The post-retry assertion is now **stronger** rather than weaker: the injection is
+one-shot, so a retry that reached the controller would succeed and leave 1 row.
+Asserting 0 after the retry proves the controller was never re-entered. The old
+version asserted 1 both before and after, which could not distinguish "the retry
+was refused" from "the retry ran and was deduplicated somewhere".
+
+**Scope note.** This fixes atomicity only. `POST /cashbook` still has **no**
+service-layer duplicate guard — a second call is a valid second entry as far as
+the service is concerned, and the middleware remains the only thing standing
+between that route and a duplicate.
+
 
 ### §7c-4 — the mobile consumer — mobile `2cad553`
 
