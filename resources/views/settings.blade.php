@@ -2785,13 +2785,24 @@
                     <div class="form-row cols-2">
                         <div class="field">
                             <label class="field-label">{{ __('Upload Signature Image') }}</label>
-                            @if($billing->digital_signature_path)
+                            @php
+                                $signaturePreview = $billing->digital_signature_path
+                                    ? app(\App\Services\InvoiceSignatureRenderer::class)->forSettingsPreview($billing)
+                                    : null;
+                            @endphp
+                            @if($signaturePreview && $signaturePreview['dataUri'])
+                                {{-- Inline, never a /storage/ URL: since S3-04 the file is on the private disk. --}}
                                 <div class="settings-signature-box">
-                                    <img src="{{ asset('storage/' . $billing->digital_signature_path) }}"
+                                    <img src="{{ $signaturePreview['dataUri'] }}"
                                          alt="Current Signature" id="sig-preview"
                                          class="settings-signature-img">
                                 </div>
                                 <div class="settings-signature-note">Current signature uploaded. Upload a new one to replace it.</div>
+                            @elseif($signaturePreview)
+                                <div class="settings-signature-preview-wrap">
+                                    <img id="sig-preview" src="" alt="Digital signature preview" class="settings-signature-preview">
+                                </div>
+                                <div class="settings-signature-note">Signature file unavailable. Upload it again.</div>
                             @else
                                 <div class="settings-signature-preview-wrap">
                                     <img id="sig-preview" src="" alt="Digital signature preview" class="settings-signature-preview">

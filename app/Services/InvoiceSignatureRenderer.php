@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Invoice;
 use App\Models\InvoiceRenderSnapshot;
 use App\Models\QuickBill;
+use App\Models\ShopBillingSettings;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -157,6 +158,28 @@ class InvoiceSignatureRenderer
      * mobile HTML endpoints) and a future fifth caller must not be able to inline
      * signature bytes by forgetting a gate.
      */
+    /**
+     * The settings page's preview of the CURRENT signature, through the same
+     * hardened read as the printed bill, so no public URL is ever emitted for
+     * it. Drawn whether or not "show on invoices" is on: the preview is of the
+     * uploaded file, not of a document. Gated on shop only — the route already
+     * requires settings.view, and borrowing the print path's sales.view would
+     * 403 the whole settings page for a settings-only user.
+     */
+    public function forSettingsPreview(ShopBillingSettings $billing): array
+    {
+        $activeShopId = TenantContext::get() ?? Auth::user()?->shop_id;
+
+        abort_if($activeShopId === null || (int) $activeShopId !== (int) $billing->shop_id, 404);
+
+        return $this->build(
+            (int) $billing->shop_id,
+            true,
+            $billing->digital_signature_path,
+            $billing->digital_signature_disk ?? 'public',
+        );
+    }
+
     private function authorize(int $shopId): void
     {
         $activeShopId = TenantContext::get() ?? Auth::user()?->shop_id;
