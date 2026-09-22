@@ -1817,6 +1817,47 @@ sensitive columns. Already behaviourally covered by
 `ExportDownloadAuthzTest` and `UrlKnowledgeAuthorizationTest`; not re-tested
 here.
 
+### Relationships
+
+A relationship query on a `BelongsToShop` model carries that model's global
+scope, so an ordinary `hasMany`/`belongsTo` is scoped twice: by the FK and by
+the trait. The traversals worth checking are therefore the ones onto models
+that do **not** carry the trait, and the ones that widen.
+
+Cross-referencing the 114 tables carrying a `shop_id` column against the models
+that map to them gives **13 models with a `shop_id` column and no
+`BelongsToShop`**. Seven are platform surfaces where cross-shop is the feature
+(`PlatformFraudFlag`, `PlatformImpersonationSession`, `PlatformInvoice`,
+`ShopSubscription`, `SubscriptionEvent`, `ShopEditionAssignment`,
+`ShopStorageStat`); `User` is global by necessity (login precedes tenancy).
+The five tenant-facing ones were each traced to how they are reached:
+
+* `StockPurchaseItem` — `StockPurchaseController:609` does
+  `StockPurchaseItem::find($lineData['id'])` with an id **taken from request
+  input** on a model with no global scope. The next line is
+  `if ($line && $line->stock_purchase_id === $purchase->id)`, and `$purchase`
+  is tenant-resolved, so a foreign line id falls through to `create()` on this
+  shop's purchase instead of updating someone else's row. Guarded — but this is
+  the one site in the sweep where the guard is the *only* thing standing there.
+* `ScanSession` — the mobile endpoints (`Api/Mobile/ScanController:22,83`) add
+  `->where('shop_id', $request->user()->shop_id)` explicitly. The two web
+  endpoints that do not (`ScanSessionController:242,269`) are the
+  deliberately **unauthenticated** phone-facing pages, where the 48-character
+  token on a temporary signed route *is* the credential and there is no user to
+  scope against; they derive the shop from the session row
+  (`shopAccessClosed($session->shop_id)`).
+* `PendingUpload` — `UploadController:80,129` filter on `shop_id` and, for the
+  write path, `user_id` as well.
+* `ShopCounter`, `MetalRate` — reached only through services that pass a shop
+  id (`BusinessIdentifierService`, `ShopPricingService`; the latter's
+  `withoutTenant()` key is built with `shop_id` at line 272).
+
+Widening traversals: `hasManyThrough` appears once
+(`JobOrder::receiptItems`, both hops scoped and rooted at a tenant-resolved
+`JobOrder`) and `belongsToMany` twice (the `role_permission` pivot, where
+`Role` carries the trait and `Permission` is global by design). No relationship
+is keyed on `shop_id` from a non-`Shop` model.
+
 ### The gap this exposed, and its repair
 
 Every conclusion above rests on the fail-closed branch. **No test bound it.**
