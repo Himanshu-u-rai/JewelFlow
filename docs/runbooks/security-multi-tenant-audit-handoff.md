@@ -1724,6 +1724,141 @@ test can bind it without fabricating a scenario that does not exist, and
 fabricating one would be writing a test to raise a count. **Recorded as
 unbound, in both the test and the resolver, rather than implied to be covered.**
 
+## 7e. Cross-shop queries, relationships, jobs and exports — a NEGATIVE result, and the one gap it exposed
+
+**Outcome first: no cross-shop defect was found in this sweep.** A negative
+result is worth recording only if the method that produced it is stated, so
+that a later reader can judge what it did and did not cover. What the sweep
+DID produce is a coverage gap — the most load-bearing line in the tenancy
+design was bound by no test — which is now closed and mutation-verified.
+
+### Why the surface is much smaller than it looks
+
+`BelongsToShop::bootBelongsToShop` **fails closed**. When no shop id resolves
+it appends `whereRaw('1 = 0')` rather than leaving the query unfiltered. That
+single choice inverts the usual multi-tenant audit:
+
+* The classic risk — *forgetting* a `where('shop_id', …)` — cannot leak. A
+  forgotten filter on a `BelongsToShop` model in a context-free path returns
+  **zero rows**, not everyone's rows.
+* The real surface is therefore the places that **drop the scope on purpose**:
+  `withoutTenant()`.
+
+So the audit collapses from "every query in the codebase" to a countable list.
+
+### What was scanned, and how it narrowed
+
+| Step | Population | Figure |
+|------|-----------|--------|
+| `withoutTenant()` call sites in `app/` | all | **144 across 58 files** |
+| …excluding `app/Console/` (operator-run, shop argument explicit) | — | — |
+| …with **no** `shop_id` / `shopId` / `whereKey` / `find` / `where('id'…)` within 12 lines | candidates | **18** |
+| …surviving individual inspection as a genuine question | — | **0** |
+
+The 18 resolve into five explained groups, each read in full:
+
+1. **Global-uniqueness existence checks** — `CatalogShareService:354,363`
+   (`share_token`, catalog `token`). Cross-shop by necessity: a token must be
+   unique across the estate. Returns a boolean, never a row.
+2. **Deliberately public, token-keyed** — `PublicCatalogController:16,32`.
+   Already covered by `PublicCatalogExposureTest`.
+3. **Platform-admin surfaces** — `Admin/DashboardController`,
+   `Admin/UserManagementController`. Cross-shop is the feature.
+4. **Counts over a foreign key whose parent is already tenant-resolved** —
+   `ProductController:201`, `CategoryController:128,129`,
+   `PaymentMethodController:54,56`. The id being counted against belongs to
+   this shop, so the FK cannot reach another's rows.
+5. **Constrained by a key the regex did not see** — `ShopPricingService:291,294`
+   (`$key` is built at line 272 and **contains `shop_id`**),
+   `AuthController:164` (keyed on the caller's own `token_id`),
+   `InvoiceSignatureRenderer:112` (keyed on `invoice_id`, plus its own
+   authorization gate).
+
+### Raw SQL, which the global scope cannot reach
+
+Eloquent global scopes do not apply to `DB::table()`. 227 raw call sites exist
+in `app/`. Restricted to tenant-facing code (excluding `Admin/` and
+`Console/`) and filtered for those with no `shop_id`/`shopId` within 18 lines:
+**31 hits, 0 defects.** They are platform tables with no tenant dimension
+(`platform_counters`, `failed_jobs`, `razorpay_webhooks`, `sessions`, `roles`,
+`personal_access_tokens`), or updates keyed on the primary key of a model that
+was already tenant-resolved (`items`, `metal_lots`, `return_orders`,
+`kyc_documents`).
+
+`AuditService:42` was read closely because `DB::table('users')->whereIn('id', …)`
+looks unscoped: the ids come from this shop's own invoices and credit notes, so
+the names returned are this shop's operators.
+
+### The write side
+
+The `creating` hook fills `shop_id` from context **only when the attribute is
+empty**, so a client-supplied `shop_id` would survive. Two greps close that:
+
+* `create($request->all())` / `update($request->all())` / `fill($request->all())`
+  in `app/Http/Controllers/` and `app/Services/` — **0 hits** (the 8 matches for
+  `->all())` are all Collection `->all()`, not Request).
+* `'shop_id' => '…'` inside a `validate()` rule set — **0 hits**, so no route
+  accepts a client-supplied shop id in the first place.
+
+### Jobs
+
+9 `ShouldQueue` classes. `GenerateQueuedExportJob` — the one at the
+intersection of "job" and "export" — wraps its entire body in
+`TenantContext::runFor((int) $p['shop_id'], …)`. Because the trait fails
+closed, a job that *omitted* that wrapper would read nothing rather than
+everything.
+
+### Exports
+
+`ExportDownloadController` requires signed URL **and** session auth **and**
+`$export->shop_id === $user->shop_id` **and** the originating report's
+view/export permission **and** `reports.export_sensitive` when the file carries
+sensitive columns. Already behaviourally covered by
+`ExportDownloadAuthzTest` and `UrlKnowledgeAuthorizationTest`; not re-tested
+here.
+
+### The gap this exposed, and its repair
+
+Every conclusion above rests on the fail-closed branch. **No test bound it.**
+`ConstitutionalInvariantsTest` names `BelongsToShop` only in comments. A
+future reader who deletes `whereRaw('1 = 0')` as apparent dead weight converts
+every context-free query in the application into a cross-tenant read, and the
+application keeps working.
+
+`tests/Feature/Security/TenantScopeFailClosedTest.php` — **4 passed, 7
+assertions.** Two tenants, one item each; a precondition proves both rows exist
+so that a later zero cannot mean an empty table; a positive control proves the
+denial is the missing context rather than a scope that denies unconditionally.
+
+**Mutation, run rather than claimed:**
+
+| # | Mutation | Result |
+|---|----------|--------|
+| 1 | `whereRaw('1 = 0')` → bare `return;` (scope degrades to "no filter") | **2 failed, 2 passed** — killed |
+
+The failure is the informative one: `Failed asserting that 2 is identical to 0`
+— the context-free query saw **both** shops. The precondition and the positive
+control correctly survive, since neither depends on the deny branch. Reverted
+and re-verified: `md5 ed2014819134cc65d58daedf29293ea8`, `git diff` empty,
+4 passed again.
+
+### Stated limitations
+
+* **Inspected, not behaviourally tested:** the 18 `withoutTenant()` sites and
+  the 31 raw-SQL sites. They were read; no test was written per site. Writing
+  ~49 route probes to re-prove a guard that is visible in three lines of source
+  would be raising a count.
+* The new test binds the **read** side. A context-free create is caught by the
+  column's `NOT NULL` constraint, which is the database's guarantee and is
+  pinned where the schema is pinned.
+* The `withoutTenant()` scan used a 12-line window and the raw-SQL scan an
+  18-line window. A call whose shop constraint is applied further away than
+  that would have surfaced as a candidate and been read anyway — the windows
+  bound false negatives in the *filter*, not in the inspection.
+* `app/Console/` was excluded from the `withoutTenant()` narrowing. Operator-run
+  commands take an explicit shop argument and are covered by
+  `ConstitutionalInvariantsTest::test_no_writes_in_reconciliation_commands`.
+
 ## 8. Commands actually run, and their results
 
 ```
@@ -2034,6 +2169,48 @@ is not coverage:
 | **Anonymous HTTP fetch of a public-disk file** | **NOT RUN — served by nginx, not Laravel; unmeasurable from the suite** |
 | **On-device print** | **NOT RUN — see §5** |
 | **Edge cache behaviour** | **NOT RUN — no Cloudflare access** |
+| Tenant scope denies with no context (queue-worker state) | yes — mutation-killed, with a precondition proving the rows exist |
+| Tenant scope reads its own shop under explicit context | yes — positive control, so the denial is not a dead scope |
+| `runFor` restores the previous context on exit | yes |
+| **The 18 `withoutTenant()` sites with no nearby shop constraint** | **INSPECTED, NOT BEHAVIOURALLY TESTED — see §7e** |
+| **The 31 tenant-facing raw-SQL sites with no nearby `shop_id`** | **INSPECTED, NOT BEHAVIOURALLY TESTED — see §7e** |
+| **Context-free CREATE on a tenant model** | **NOT BOUND HERE — caught by the column's `NOT NULL`, pinned with the schema** |
+
+### §7e run figures
+
+```
+php artisan test tests/Feature/Security/TenantScopeFailClosedTest.php
+  -> 4 passed (7 assertions)
+
+# mutation: BelongsToShop.php:23  whereRaw('1 = 0')  ->  bare `return;`
+php artisan test tests/Feature/Security/TenantScopeFailClosedTest.php
+  -> 2 failed, 2 passed (7 assertions)
+     "Failed asserting that 2 is identical to 0"   <- saw BOTH shops
+
+# reverted
+md5sum app/Models/Concerns/BelongsToShop.php
+  -> ed2014819134cc65d58daedf29293ea8    (matches pre-mutation)
+git diff --stat app/Models/Concerns/BelongsToShop.php
+  -> (empty)
+
+php artisan test tests/Feature/Security/
+  -> 196 passed (786 assertions)      [192/779 before this file]
+```
+
+Scan figures, for reproduction:
+
+```
+grep -rn "withoutTenant(" app/            -> 144 occurrences, 58 files
+  minus app/Console/, minus a shop/key constraint within 12 lines
+                                          -> 18 candidates, 0 defects
+
+grep -rn "DB::table(|DB::select(" app/    -> 227 occurrences
+  restricted to app/{Reporting,Services,Models,Http/Controllers} less Admin/
+  and with no shop_id within 18 lines     -> 31 candidates, 0 defects
+
+grep for create/update/fill($request->all())      -> 0 (8 matches are Collection->all())
+grep for 'shop_id' => '...' in a validate() ruleset -> 0
+```
 
 ## 9. Commits, diff, working tree
 
