@@ -45,12 +45,12 @@ use Illuminate\Console\Command;
  *   * All of which assumes cron is actually invoking `schedule:run`. That is
  *     NOT VERIFIED here and is not verifiable from the test suite.
  *
- * OPEN DECISION — what should eventually happen to a retained unresolved
- * claim? Growth is slow (one row per crashed mutation) but unbounded, and
- * there is currently no supported way to clear one. No purge option is
- * offered here on purpose: deleting an unresolved claim is exactly the
- * dangerous act, and it needs an explicit decision plus a reconciliation
- * procedure, not a flag. See §7c-1 of the audit handoff.
+ * What happens to a retained unresolved claim: an operator reconciles it,
+ * one at a time and with evidence, through `mobile:idempotency-claims`
+ * (docs/runbooks/idempotency-unresolved-claims.md). No purge option is
+ * offered HERE on purpose: deleting an unresolved claim is exactly the
+ * dangerous act, and it needs the evidence and approval that tool records,
+ * not a flag on a scheduled job.
  *
  * @see app/Http/Middleware/EnsureIdempotency.php
  */
@@ -91,8 +91,9 @@ class PruneIdempotencyKeys extends Command
             // learned, still holding its key so the client cannot re-run it.
             $this->warn(
                 "Retained {$retained} UNRESOLVED claim(s) past the window. Each one is a mutation whose "
-                . 'outcome is unknown and whose key is still blocked. Reconcile the underlying record '
-                . 'before deciding what to do with them; do not delete them to unblock a client.'
+                . 'outcome is unknown and whose key is still blocked. List them with '
+                . '`mobile:idempotency-claims` and reconcile each against the underlying record '
+                . '(docs/runbooks/idempotency-unresolved-claims.md); do not delete them to unblock a client.'
             );
         }
 
