@@ -70,12 +70,27 @@ class RelocateKarigarInvoiceAttachments extends Command
 
     private const SOURCE_DISK = 'public';
 
+    /**
+     * What this command relocates. Overridden by RelocatePurchaseInvoiceImages
+     * (S3-03), which is the same procedure on stock_purchases.
+     *
+     * ponytail: a subclass overriding four constants. Extract an abstract base
+     * if a third attachment table ever needs this.
+     */
+    protected const TABLE = 'karigar_invoices';
+
+    protected const PATH_COLUMN = 'invoice_file_path';
+
+    protected const DISK_COLUMN = 'invoice_file_disk';
+
+    protected const MANIFEST_PREFIX = 'karigar-invoices';
+
     private const MANIFEST_DIR = 'relocation-manifests';
 
     /** @var array<int, array<string, mixed>> */
     private array $manifest = [];
 
-    private function targetDisk(): string
+    protected function targetDisk(): string
     {
         return KarigarInvoice::ATTACHMENT_DISK;
     }
@@ -118,7 +133,7 @@ class RelocateKarigarInvoiceAttachments extends Command
     private function backlog(): \Illuminate\Support\Collection
     {
         return $this->baseQuery()
-            ->where('invoice_file_disk', self::SOURCE_DISK)
+            ->where(static::DISK_COLUMN, self::SOURCE_DISK)
             ->when($this->option('limit'), fn ($q) => $q->limit((int) $this->option('limit')))
             ->get();
     }
@@ -127,15 +142,15 @@ class RelocateKarigarInvoiceAttachments extends Command
     private function relocated(): \Illuminate\Support\Collection
     {
         return $this->baseQuery()
-            ->where('invoice_file_disk', $this->targetDisk())
+            ->where(static::DISK_COLUMN, $this->targetDisk())
             ->get();
     }
 
     private function baseQuery(): \Illuminate\Database\Query\Builder
     {
-        return DB::table('karigar_invoices')
-            ->select('id', 'shop_id', 'invoice_file_path', 'invoice_file_disk')
-            ->whereNotNull('invoice_file_path')
+        return DB::table(static::TABLE)
+            ->select('id', 'shop_id', static::PATH_COLUMN.' as path', static::DISK_COLUMN.' as disk')
+            ->whereNotNull(static::PATH_COLUMN)
             ->when($this->option('shop'), fn ($q) => $q->where('shop_id', (int) $this->option('shop')))
             ->orderBy('id');
     }
@@ -151,7 +166,7 @@ class RelocateKarigarInvoiceAttachments extends Command
         $relocated = $failed = $planned = 0;
 
         foreach ($rows as $row) {
-            $path = $row->invoice_file_path;
+            $path = $row->path;
 
             if (! $source->exists($path)) {
                 // The row points at a file that is not there. Flipping the disk
@@ -193,11 +208,11 @@ class RelocateKarigarInvoiceAttachments extends Command
             // in the predicate, so a row that changed underneath us (a
             // concurrent re-upload) is not clobbered. Fires the finalized guard
             // trigger but touches none of its frozen columns.
-            $updated = DB::table('karigar_invoices')
+            $updated = DB::table(static::TABLE)
                 ->where('id', $row->id)
-                ->where('invoice_file_disk', self::SOURCE_DISK)
-                ->where('invoice_file_path', $path)
-                ->update(['invoice_file_disk' => $this->targetDisk()]);
+                ->where(static::DISK_COLUMN, self::SOURCE_DISK)
+                ->where(static::PATH_COLUMN, $path)
+                ->update([static::DISK_COLUMN => $this->targetDisk()]);
 
             if ($updated !== 1) {
                 $this->record($row, 'failed', 'row_changed_concurrently', $sourceDigest);
@@ -268,12 +283,12 @@ class RelocateKarigarInvoiceAttachments extends Command
                 continue;
             }
 
-            if ($source->delete($row->invoice_file_path)) {
+            if ($source->delete($row->path)) {
                 $this->record($row, 'purged', 'original_deleted');
                 $purged++;
             } else {
                 $this->record($row, 'failed', 'original_delete_failed');
-                $this->warn("  #{$row->id} could not delete original: {$row->invoice_file_path}");
+                $this->warn("  #{$row->id} could not delete original: {$row->path}");
             }
         }
 
@@ -311,7 +326,7 @@ class RelocateKarigarInvoiceAttachments extends Command
         $purgeable = [];
 
         foreach ($this->relocated() as $row) {
-            $path = $row->invoice_file_path;
+            $path = $row->path;
 
             if (! $target->exists($path)) {
                 $failures[] = ['id' => (string) $row->id, 'path' => $path, 'reason' => 'private copy missing'];
@@ -401,10 +416,11 @@ class RelocateKarigarInvoiceAttachments extends Command
     private function record(object $row, string $action, string $reason, ?string $digest = null): void
     {
         $this->manifest[] = [
+            'table' => static::TABLE,
             'invoice_id' => $row->id,
             'shop_id' => $row->shop_id,
-            'path' => $row->invoice_file_path,
-            'from_disk' => $row->invoice_file_disk,
+            'path' => $row->path,
+            'from_disk' => $row->disk,
             'to_disk' => $this->targetDisk(),
             'source_sha256' => $digest,
             'action' => $action,
@@ -429,8 +445,9 @@ class RelocateKarigarInvoiceAttachments extends Command
         );
 
         $file = sprintf(
-            '%s/karigar-invoices-%s-%s-%s.jsonl',
+            '%s/%s-%s-%s-%s.jsonl',
             self::MANIFEST_DIR,
+            static::MANIFEST_PREFIX,
             $mode,
             $this->option('execute') ? 'execute' : 'dryrun',
             now()->format('Ymd-His-v')
