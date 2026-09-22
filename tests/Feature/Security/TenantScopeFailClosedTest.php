@@ -9,7 +9,7 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * The single line the whole tenancy design rests on, and nothing bound it.
+ * Missing tenant context must deny, not unfilter — pinned directly at the scope.
  *
  * ─── What this pins ───────────────────────────────────────────────────────
  *
@@ -18,39 +18,38 @@ use Tests\TestCase;
  *
  *     $builder->whereRaw('1 = 0');
  *
- * That is a DENY, not an absence of a filter. The difference is the entire
- * security posture of every background context in the application:
+ * That is a DENY, not an absence of a filter. For a `BelongsToShop` model read
+ * with NO context — a queued job that forgot `TenantContext::runFor`, a console
+ * path — the difference is zero rows versus every shop's rows.
  *
- *   * DENY (today)  a queued job that forgets `TenantContext::runFor` reads
- *                   zero rows and, loudly, does nothing.
- *   * NO FILTER     the same job reads EVERY shop's rows and cannot tell.
+ * ─── What this does NOT pin ───────────────────────────────────────────────
  *
- * Both compile. Both pass every other test in this suite. The only thing
- * separating them is a branch no assertion referenced until this file.
+ *   * WRONG or STALE non-null context. The scope trusts whatever id is set; a
+ *     job handed the wrong shop id reads that shop faithfully. Fail-closed says
+ *     nothing about it. Lifecycle evidence for that half is `runFor`'s restore
+ *     (last test below) and `EnsureTenantUser`'s `finally`; see handoff §7e.
+ *   * Anything that never reaches the scope: raw `DB::table()`, models without
+ *     the trait, `withoutTenant()` / `withoutGlobalScope(s)()`.
+ *   * The WRITE side. `creating` fills `shop_id` only when empty; a context-free
+ *     create on a trait model is refused by the column instead — every
+ *     `shop_id` on a trait model is NOT NULL (the only four nullable ones,
+ *     `metal_rates`, `shop_subscriptions`, `subscription_events`, `users`,
+ *     belong to models without the trait). Schema query, not a test.
  *
- * ─── Why this is not a count-raiser ───────────────────────────────────────
+ * ─── Evidence, including a correction ─────────────────────────────────────
  *
- * Verified by mutation, not assumed. Replacing the `whereRaw('1 = 0')` with a
- * bare `return;` — the shape a future reader reaches for when the 1=0 looks
- * like dead weight — leaves the application working, leaves the rest of the
- * band green, and silently converts every context-free query in the codebase
- * into a cross-tenant read. The mutation figures are in the handoff at §7e.
+ * Mutation `whereRaw('1 = 0')` → bare `return;` kills the two denial tests
+ * here; the precondition and the positive control correctly survive.
  *
- * ─── Why the test environment is the right environment ────────────────────
+ * This is NOT the first test to bind the branch, as first claimed. Run under
+ * the same mutation, `tests/Feature/Security` also fails
+ * `InvoicePaymentRetryRepairTest::test_p10_missing_tenant_context_...`, which
+ * binds it indirectly through one route. This file adds direct coverage of the
+ * scope itself, independent of any route. The full suite was not run under the
+ * mutation. Figures in handoff §7e.
  *
- * `resolveTenantShopId()` short-circuits on `app()->runningInConsole()` BEFORE
- * consulting `Auth`, so under PHPUnit a cleared TenantContext reproduces the
- * queue worker's state exactly: no context, no usable auth fallback. This is
- * the one place where that test-environment characteristic is an asset rather
- * than an obstacle to work around.
- *
- * ─── Stated limitation ────────────────────────────────────────────────────
- *
- * This binds the READ side only. The `creating` hook fills `shop_id` from
- * context only when the attribute is empty, so a context-free create is caught
- * by the column's NOT NULL constraint rather than by the trait. That is the
- * database's guarantee, not this trait's, and it is pinned where the schema is
- * pinned — not duplicated here.
+ * `resolveTenantShopId()` checks `runningInConsole()` before `Auth`, so under
+ * PHPUnit a cleared TenantContext reproduces the no-context worker state.
  */
 class TenantScopeFailClosedTest extends TestCase
 {
@@ -108,7 +107,7 @@ class TenantScopeFailClosedTest extends TestCase
     // ────────────────────────────────────────────────────────────────────
 
     /**
-     * [PINS THE REPAIR-RELEVANT INVARIANT] No context ⇒ no rows.
+     * [PINS THE INVARIANT] No context ⇒ no rows.
      *
      * This is the state a queued job runs in. The rows exist — the previous
      * test proves it — and a scoped query still returns none of them.
