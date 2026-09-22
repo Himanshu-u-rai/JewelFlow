@@ -26,6 +26,11 @@ set -euo pipefail
 BASELINE="018b3d810e37d534f498033ab582ee41f3197c27"
 OUT="${1:-/tmp/jewelflow-security-review-packet}"
 
+# The mobile audit commits live in a separate repository. Its baseline is the
+# SHA recorded when the audit opened (handoff header), not a deployment fact.
+MOBILE_REPO="${MOBILE_REPO:-/home/himanshu/Desktop/jewelflowMobileApp}"
+MOBILE_BASELINE="d8a07819ac41291bd3a7e4ba27d31261d96aef28"
+
 cd "$(git rev-parse --show-toplevel)"
 
 # ONE export SHA, resolved once and used for every subsequent git call.
@@ -42,6 +47,13 @@ if ! git cat-file -e "${BASELINE}^{commit}" 2>/dev/null; then
     echo "FATAL: baseline ${BASELINE} is not present in this repository." >&2
     exit 1
 fi
+if ! git -C "$MOBILE_REPO" cat-file -e "${MOBILE_BASELINE}^{commit}" 2>/dev/null; then
+    echo "FATAL: mobile baseline ${MOBILE_BASELINE} is not present in ${MOBILE_REPO}." >&2
+    exit 1
+fi
+# Pinned once, like EXPORT_SHA. Override: MOBILE_SHA=<sha> bash ...
+MOBILE_SHA="$(git -C "$MOBILE_REPO" rev-parse "${MOBILE_SHA:-HEAD}")"
+MOBILE_BRANCH="$(git -C "$MOBILE_REPO" rev-parse --abbrev-ref HEAD)"
 
 rm -rf "$OUT"
 mkdir -p "$OUT"/{diffs,migrations,runbooks}
@@ -77,6 +89,12 @@ git diff "${BASELINE}..${EXPORT_SHA}" -- \
 
 git diff "${BASELINE}..${EXPORT_SHA}" -- tests/          > "$OUT/diffs/14-tests.patch"
 
+# 2b. Mobile, commit-to-commit. That tree carries a pre-existing dirty file
+#     unrelated to the audit; reading from commits keeps it out by construction.
+git -C "$MOBILE_REPO" diff "${MOBILE_BASELINE}..${MOBILE_SHA}"        > "$OUT/diffs/20-mobile.patch"
+git -C "$MOBILE_REPO" diff "${MOBILE_BASELINE}..${MOBILE_SHA}" --stat > "$OUT/diffs/20-mobile.stat"
+git -C "$MOBILE_REPO" format-patch "${MOBILE_BASELINE}..${MOBILE_SHA}" -o "$OUT/diffs/mobile-series" --quiet
+
 # 3. Migration bodies in full, not as a diff. A reviewer deciding whether these
 #    are safe to apply needs to read the file, not reconstruct it from a patch.
 #
@@ -100,6 +118,7 @@ done
 for f in kyc-public-exposure-containment.md \
          security-multi-tenant-audit-handoff.md \
          signature-migration-release-order.md \
+         payment-idempotency-rollback-constraints.md \
          known-pre-existing-test-debt.md; do
     git show "${EXPORT_SHA}:docs/runbooks/$f" > "$OUT/runbooks/$f"
 done
@@ -113,6 +132,10 @@ done
     echo "Branch:        ${BRANCH}"
     echo "Baseline:      ${BASELINE}"
     echo "Candidate:     ${EXPORT_SHA}"
+    echo
+    echo "Mobile repo:   ${MOBILE_REPO} (${MOBILE_BRANCH})"
+    echo "Mobile base:   ${MOBILE_BASELINE}"
+    echo "Mobile HEAD:   ${MOBILE_SHA}"
     echo
     echo "## Deployed baseline"
     echo
@@ -133,6 +156,22 @@ done
     else
         echo "Clean — every change in this packet is committed."
     fi
+    echo
+    echo "## Mobile working tree at generation time"
+    echo
+    echo "Tracked changes only; untracked scratch files are not listed."
+    echo
+    echo '```'
+    git -C "$MOBILE_REPO" status --porcelain --untracked-files=no
+    echo '```'
+    echo
+    echo "Anything listed here is EXCLUDED: the mobile diffs are commit-to-commit."
+    echo
+    echo "## Mobile commits, oldest first"
+    echo
+    echo '```'
+    git -C "$MOBILE_REPO" log --reverse --format='%H  %ad  %s' --date=short "${MOBILE_BASELINE}..${MOBILE_SHA}"
+    echo '```'
     echo
     echo "## Commits, oldest first"
     echo
@@ -157,7 +196,8 @@ done
     echo "Not reproduced here. They are recorded in"
     echo "\`runbooks/security-multi-tenant-audit-handoff.md\` §8 beside the exact"
     echo "command and the commit each was measured at, which is the only form in"
-    echo "which a test count means anything."
+    echo "which a test count means anything. §0 reconciles every requested item;"
+    echo "§11 is the release-readiness assessment."
 } > "$OUT/MANIFEST.md"
 
 # 6. Sanitization gate. This ACTUALLY SCANS rather than asserting cleanliness.

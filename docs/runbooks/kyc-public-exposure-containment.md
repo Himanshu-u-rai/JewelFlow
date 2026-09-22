@@ -31,7 +31,7 @@ approved without the other. Nothing below has been executed.
 | Rollback | §7 | §7 |
 | Stops a fresh origin fetch | Yes | Yes |
 | Stops a fetch served from Cloudflare's cache | **No** | Yes |
-| Standing status | **PARTIAL** (§4a) — edge-cache exposure unresolved | Complete for the paths verified |
+| Standing status | **PARTIAL** (§4a) — edge-cache exposure unresolved | Complete for the paths verified, **once** §3 and §5 are executed and §6 passes — none of which can be done from this session |
 | Blocked dependency | none identified | **Cloudflare API/dashboard access, which I do not have.** §3 and §5 cannot be executed or verified by me |
 
 **Option A is a real reduction and is offered on its own** precisely because
@@ -249,7 +249,7 @@ sudo sha256sum /root/nginx-backups/jewelflow.*.pre-s3-01.conf
 ```
 
 `/root` is mode 0700 and is not under any `root` directive. Record the sha256 in
-the change log; the rollback in §6 verifies against it.
+the change log; the rollback in §7 verifies against it.
 
 ### 4.4 Apply, test, reload
 

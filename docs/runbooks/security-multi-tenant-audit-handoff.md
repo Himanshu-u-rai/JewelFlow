@@ -13,11 +13,45 @@ Verified as a local git object on 2026-09-21T00:37+05:30. That is a check of the
 SHA I was **given**, not an observation of what is running on the servers.
 Recheck for drift against the deployed tree before executing any approved step.
 
-Mobile repository `/home/himanshu/Desktop/jewelflowMobileApp` at `d8a0781`
-("chore(brand): close remaining JewelFlows branding gaps"). **I made no change to
-that repository.** It carries one pre-existing dirty file, `src/utils/storage.ts`
-(last written 2026-07-09, two months before this audit opened), plus untracked
-scratch files that are not mine.
+Mobile repository `/home/himanshu/Desktop/jewelflowMobileApp`, branch
+`rebrand/jewelflows-mobile`. Audit baseline
+`d8a07819ac41291bd3a7e4ba27d31261d96aef28`; current HEAD
+`2cad553b50e77890088488a43b72a2e7bd4f68ef`. Two audit commits, not pushed:
+`ffcd034` (S3-04 mobile half — warn when a bill printed without its signature)
+and `2cad553` (S3-09c — uncertain mutation outcome). **Correction:** this
+paragraph used to say "I made no change to that repository"; true when written,
+stale after `ffcd034`. The repository carries one pre-existing dirty file,
+`src/utils/storage.ts` (last written 2026-07-09, before this audit opened; a
+web-preview fallback from SecureStore to `localStorage`) — unrelated, not
+reviewed, and excluded from the packet — plus untracked scratch files that are
+not mine.
+
+---
+
+## 0. Reconciliation — every requested item, one table
+
+The tenant-query work (§7e) is one row here. It does not establish the status of
+any other row. "Local" means `jewelflow_testing` only; **no row is deployed**.
+Test files named below are all green inside selection A (`tests/Feature/Security`,
+202 passed) at execution SHA `06ec0e0`, unless the row says otherwise.
+
+| # | Item | Status | Commit(s) | Evidence | Still open |
+|---|---|---|---|---|---|
+| 1 | S3-09b uncertain-claim pruning | **Code defect FIXED locally.** Retain + report; no timer permits re-execution | `e68eb31`; `c26a0fa` withdraws "pruning bounds the burn" | `MobileIdempotencyRetentionTest` (7): real route, real failure injection, cash row count asserted; positive controls keep resolved-claim pruning working | **Disposal of retained unresolved claims** — no supported clearing path, slow unbounded growth. Operator decision (§7c-1). Scheduler invocation NOT VERIFIED |
+| 2 | 4xx release behaviour | **VERIFIED by inspection on all 16 routes**; one class-C defect found and fixed separately (row 6). Middleware policy deliberately unchanged | `2057a73` (review); `4e70660` (S3-11) | §7c-2 three-class analysis; §7c-6 read of every 4xx path; `ReturnApprovalAtomicityTest` records that the 422 releases the claim | 12 routes' 4xx paths are inspection-grade, not individually tested |
+| 3 | Mobile retry-key handling (S3-09c) | **FIXED in mobile** — key owned per operator intent, rotated only on success; "Outcome unknown" for `idempotency_in_flight` | mobile `2cad553` | 15 new unit tests; mobile suite 40 suites / 275 tests, `tsc` clean at `2cad553` (re-run this session) | **No device or emulator run.** Three routes with no service-layer guard (`drawer-check`, `job-orders`, `uploads/intent`) remain protected only while clients keep one key per intent |
+| 4 | Real concurrency, changed shared middleware | **MEASURED on one route** (`POST /cashbook`), separate processes and connections | `b85e296`; harness `tests/Concurrency/idempotency_race.php` | Pre-repair blob: 4×201, 4 cash rows; repaired: 1×201 + 3×409, 1 row; distinct-key control 4×201; DB-outage control | Other 15 routes not raced; one machine, no pooler, 4-way contention. S3-09d (concurrent payload-conflict reported as in-flight) characterized |
+| 5 | Cashbook transaction repair (S3-10) | **FIXED locally** — both write pairs wrapped; bounded to those two methods | `fb351f4` | `CashbookWriteAtomicityTest` (4 / 12), RED then GREEN; evidence class **SIMULATED INTERRUPTION** | `POST /cashbook` still has no service-layer duplicate guard; the drawer-check `$expected`-then-insert race not addressed |
+| 6 | Return-service investigation | **Lead CLOSED** (`createPendingApproval`: shape present, consequence absent). **S3-11 FIXED** (`approveReturn` atomic, through the existing service path) | `4e70660` | `ReturnApprovalAtomicityTest` (4 / 23), RED then GREEN, positive control; `--filter=Return` 146 passed / 1 skipped at the time | Per-line `returned_at` guard NOT RUN (single-line fixture) |
+| 7 | Coverage of all 16 affected routes | **PARTIAL.** Middleware repair shared by all 16; behavioural crash/duplicate tests on 4 money/metal routes + drawer-check atomicity; 12 reviewed by reading | `8cddbc3`, `b8673db`, `2057a73` | §7c table and §7c-6 per-route duplicate table | 12 routes inspection-only at the service layer. **S3-09e** (replay drops headers; wedges the two PATCH routes) and **S3-12** (1-second `If-Match`) characterized, **NOT repaired** — operator decisions |
+| 8 | S3-05 snapshot rendering | **FIXED locally for every ASSERTED field**; RENDERING fields live by design (D-12 bound) | `b216b80`, `306aae1` (`0c4af44` corrects its message) | `FinalizedInvoiceSettingsDriftTest` (16 / 89); two mutations run, one falsified a coverage claim and produced D-13c | Quick-bill snapshots carry less (no `show_gstin`, no itemised bank group) |
+| 9 | Historical / original reprints | **Original-reprint path COVERED**; bills finalized before the keys existed resolve live — **cannot be repaired**, no record exists | `e8e039e` | `QuickBillOriginalReprintTest` (3 / 21) incl. 404 route control | **S3-13** (quick-bill edit re-captures the snapshot; presentation only, figures unchanged) characterized, **NOT repaired** — business decision |
+| 10 | Tenant isolation — queries, relationships, jobs, exports | **No defect found in the inspected candidate set; missing-context fail-closed behaviour now has regression coverage** | `4877ae1`, `10a525c`, `06ec0e0` | §7e: `TenantScopeFailClosedTest` (4), `StockPurchaseLineOwnershipTest` (6); targeted mutations | Categories NOT inventoried (parent-owned tables, foreign related ids elsewhere); wrong/stale context only partly tested; 8 jobs unread |
+| 11 | Catalogue / direct-file access | S3-06 **FIXED locally**; S3-02/S3-03 authenticated routes **committed**, findings **OPEN**; S3-06b/S3-06c **OPEN** (product decision / limitation) | `721c06d`; `545c001`; S3-02/03 routes on branch | `PublicCatalogExposureTest` (8) incl. C-06 direct URL carries no gate, C-08 private-disk serve route; `PurchaseInvoiceAttachmentTest`, `KarigarInvoiceAttachmentTest` | Anonymous HTTP fetch of a public-disk file NOT RUN (served by nginx); edge cache NOT RUN; relocation and purge not executed; `products`, `shop-logos`, `catalog-heroes` and two upload writers unclassified |
+| 12 | KYC containment (S3-01 / S3-01c) | **OPEN — nothing executed.** Two packages written, independently approvable; ORIGIN-ONLY is **PARTIAL** while edge-cache exposure is unresolved | `25b638f`; route fix `4b6e5f3` (S3-01c) | `kyc-public-exposure-containment.md`; `KycLegacyPublicDiskTest` (3) | Cloudflare access unavailable; external consumers unverified; baseline last observed 2026-09-20 |
+| 13 | Backup repair | **OPEN — NOT STARTED on this branch** | — | none | "Backup fix A+C" is not defined anywhere in this branch or its runbooks; needs the definition from whoever tracked it |
+| 14 | Migration / rollback | **PROPOSED, not executed anywhere but `jewelflow_testing`.** Expand → application → contract order; S3-07b rollback **measured UNSAFE** | `a542745`, `b1a52f0`, `c4f6a97` | `DiskColumnReleaseOrderTest` (7) T-01…T-07; `payment-idempotency-rollback-constraints.md` | No rollback drilled against a populated database; Phase-1 rollback one-way after any private upload |
+| 15 | Device checks | **NOT RUN** | mobile `ffcd034` (signature warning) is unit-tested only | §5 | Android/iOS print and share, multiple copies, desktop browser print, CSP `data:`, S3-09c on a handset |
 
 ---
 
@@ -34,7 +68,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-02b karigar CHECK lacks the allowed-disk term | OPEN (logged, deliberately not fixed) | None by design | N/A |
 | S3-03 purchase attachment public | OPEN | Authenticated route committed | **OPEN** |
 | S3-04 signature public + mutable | OPEN | Option B implemented; immutability proven end to end | **OPEN** |
-| S3-05 finalized invoice reprints with today's settings | **FIXED for every ASSERTED field** — tax (`igst_mode`, HSN), tax identity (`show_gstin`, `gst_number`), terms, and all payment instructions now come from the bill's own snapshot. RENDERING fields (theme, font, paper, subtitle, tagline, other `show_*`) stay live **on purpose**; D-12 pins that bound. Quick bills carry less and the gap is named (§7d) | Fix `b216b80` (tax half) + this commit (asserted half); 16 tests, 89 assertions; 2 mutations run | **OPEN** — local only, not deployed |
+| S3-05 finalized invoice reprints with today's settings | **FIXED for every ASSERTED field** — tax (`igst_mode`, HSN), tax identity (`show_gstin`, `gst_number`), terms, and all payment instructions now come from the bill's own snapshot. RENDERING fields (theme, font, paper, subtitle, tagline, other `show_*`) stay live **on purpose**; D-12 pins that bound. Quick bills carry less and the gap is named (§7d) | Fix `b216b80` (tax half) + `306aae1` (asserted half) + `e8e039e` (original-reprint path, 3 tests / 21 assertions); drift file 16 tests / 89 assertions; 2 mutations run | **OPEN** — local only, not deployed |
 | S3-06 catalog tenant context survives a throw | **CLOSED as a code defect** — no cross-tenant read demonstrated | Fix committed (`721c06d`), 5 tests | **OPEN — needs the deploy** |
 | S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
 | S3-06c published item images outlive the shopfront toggle | OPEN | None — recorded limitation | **OPEN** |
@@ -445,7 +479,7 @@ in the **in-memory** cache for up to `gcTime` (24 h). Memory, not disk.
 | Multiple copies on device | **NOT RUN** | Set `copy_count` = 2, confirm both copies carry the image and the PDF is not rejected for size |
 | Desktop browser print dialog | **NOT RUN** | `GET /invoices/{id}/print` in Chrome and Firefox, confirm the image survives into the print preview |
 | CSP behaviour for `data:` images | **NOT RUN** | No `Content-Security-Policy` header is currently emitted on the print routes; if one is added, `img-src` must include `data:` |
-| Mobile "Signature unavailable" on-screen banner | **NOT DONE** | Both screens currently only `Alert.alert('Print Failed', …)`. The printed document *does* carry the marker (it is in the HTML); the on-screen banner is separate and unbuilt |
+| Mobile "Signature unavailable" warning | **DONE in mobile `ffcd034`; device render NOT RUN** | Both consumers (`app/invoice/[id].tsx`, `app/quick-bill/[id].tsx`) warn after print/share when a signature was expected and unavailable, and stay silent when the shop has signatures off. Unit-tested (`src/lib/signature-warning.test.ts`, inside the 275 at `2cad553`). This row read NOT DONE until that commit |
 
 ---
 
@@ -1724,181 +1758,140 @@ test can bind it without fabricating a scenario that does not exist, and
 fabricating one would be writing a test to raise a count. **Recorded as
 unbound, in both the test and the resolver, rather than implied to be covered.**
 
-## 7e. Cross-shop queries, relationships, jobs and exports — a NEGATIVE result, and the one gap it exposed
+## 7e. Tenant isolation — cross-shop queries, relationships, jobs, exports
 
-**Outcome first: no cross-shop defect was found in this sweep.** A negative
-result is worth recording only if the method that produced it is stated, so
-that a later reader can judge what it did and did not cover. What the sweep
-DID produce is a coverage gap — the most load-bearing line in the tenancy
-design was bound by no test — which is now closed and mutation-verified.
+**Conclusion, at the strength the evidence supports: no defect found in the
+inspected candidate set; missing-context fail-closed behaviour now has
+regression coverage.** That is a statement about the candidates listed below,
+not about the application. Every category has named gaps, and several were not
+inventoried at all.
 
-### Why the surface is much smaller than it looks
+### Corrections to the first version of this section (`4877ae1`, `10a525c`)
 
-`BelongsToShop::bootBelongsToShop` **fails closed**. When no shop id resolves
-it appends `whereRaw('1 = 0')` rather than leaving the query unfiltered. That
-single choice inverts the usual multi-tenant audit:
+Stated here rather than overwritten; the commits keep the original wording.
 
-* The classic risk — *forgetting* a `where('shop_id', …)` — cannot leak. A
-  forgotten filter on a `BelongsToShop` model in a context-free path returns
-  **zero rows**, not everyone's rows.
-* The real surface is therefore the places that **drop the scope on purpose**:
-  `withoutTenant()`.
+1. **"The real surface is `withoutTenant()`" is withdrawn.** It said the audit
+   collapses to the places that drop the scope on purpose. My own inventory
+   contradicted it in the same section: 227 raw-SQL sites the global scope never
+   sees, and 13 models with a `shop_id` column and no `BelongsToShop`. It also
+   ignored `withoutGlobalScope('shop')` / `withoutGlobalScopes()` (not covered by
+   a `withoutTenant(` grep), tenant ownership that runs through a parent record,
+   request-supplied related ids, and WRONG non-null context — which fail-closed
+   does nothing about. Those are categories below, each with its own status.
+2. **"No test bound the fail-closed branch" was false.** Run under the
+   `whereRaw('1 = 0')` → `return;` mutation, `tests/Feature/Security` fails
+   `InvoicePaymentRetryRepairTest::test_p10_missing_tenant_context_refuses_rather_than_reprocessing`
+   (S3-07b) as well as the two new denial tests. P-10 binds the branch
+   indirectly, through one route. The new test is direct coverage of the scope,
+   not the first coverage. The test docblock made the same claim plus "leaves
+   the rest of the band green"; corrected in `06ec0e0`.
+3. **The route-binding check in `10a525c` was broken.** The grep pattern was
+   `"$M \$"`, and a trailing `$` is an end-of-line anchor, so it matched nothing
+   and reported nothing. Re-run as a fixed string: `StockPurchaseItem` is
+   route-bound in `vaultLineForm` and `vaultLine` (`StockPurchaseController:183,200`).
+   Both were missed; both are now tested.
+4. **"The single site in the sweep with no second layer behind it" is
+   withdrawn as a framing.** A correctly placed single guard is not a weakness
+   for lacking a second one, and no production check was added to satisfy that
+   label. There are three such sites, not one (item 3), and all three now have
+   behavioural evidence.
+5. **`[192/779 before this file]` in the §7e run figures was subtraction, not a
+   run.** Removed. Selections are now reported separately with their commands.
 
-So the audit collapses from "every query in the codebase" to a countable list.
+### What `10a525c` covers, exactly
 
-### What was scanned, and how it narrowed
+Documentation only — no test, no code. Inspection-grade:
 
-| Step | Population | Figure |
-|------|-----------|--------|
-| `withoutTenant()` call sites in `app/` | all | **144 across 58 files** |
-| …excluding `app/Console/` (operator-run, shop argument explicit) | — | — |
-| …with **no** `shop_id` / `shopId` / `whereKey` / `find` / `where('id'…)` within 12 lines | candidates | **18** |
-| …surviving individual inspection as a genuine question | — | **0** |
+| Covered by `10a525c` | Not covered by `10a525c` |
+|---|---|
+| Relationship **definitions** (reads): one `hasManyThrough`, two `belongsToMany`, zero relationships keyed on `shop_id` from a non-`Shop` model | Any behavioural evidence |
+| Classification of the 13 unscoped models; how 5 tenant-facing ones are reached **by static call** | Route-model binding (its binding grep was broken, correction 3) |
+| One request-supplied related-id **write**, `syncLines:609`, by reading | Foreign related-id assignment in general (other controllers, `exists:` rules, `find($request->…)`) |
+| — | Writes in general; joins and eager loads onto unscoped models |
 
-The 18 resolve into five explained groups, each read in full:
+### Categories — inspected, behavioural, excluded, remaining
 
-1. **Global-uniqueness existence checks** — `CatalogShareService:354,363`
-   (`share_token`, catalog `token`). Cross-shop by necessity: a token must be
-   unique across the estate. Returns a boolean, never a row.
-2. **Deliberately public, token-keyed** — `PublicCatalogController:16,32`.
-   Already covered by `PublicCatalogExposureTest`.
-3. **Platform-admin surfaces** — `Admin/DashboardController`,
-   `Admin/UserManagementController`. Cross-shop is the feature.
-4. **Counts over a foreign key whose parent is already tenant-resolved** —
-   `ProductController:201`, `CategoryController:128,129`,
-   `PaymentMethodController:54,56`. The id being counted against belongs to
-   this shop, so the FK cannot reach another's rows.
-5. **Constrained by a key the regex did not see** — `ShopPricingService:291,294`
-   (`$key` is built at line 272 and **contains `shop_id`**),
-   `AuthController:164` (keyed on the caller's own `token_id`),
-   `InvoiceSignatureRenderer:112` (keyed on `invoice_id`, plus its own
-   authorization gate).
+"Inspected" means read. "Behavioural" means a test exercises it. The 18 and 31
+candidate sets are **inspected, not individually exercised.**
 
-### Raw SQL, which the global scope cannot reach
+| Category | Inspected | Behavioural evidence | Explicit exclusions | Remaining gaps |
+|---|---|---|---|---|
+| **Missing context** (null) on `BelongsToShop` models | Trait source; `resolveTenantShopId` order | `TenantScopeFailClosedTest` 4 tests, mutation kills both denial tests; P-10 (indirect, one route) also fails under it | Models without the trait; raw SQL | Full suite not run under the mutation |
+| **Wrong or stale non-null context** | Every `set`/`clear` in `app/`: `EnsureTenantUser` (set `:28`, clear in `finally` `:32`), `ResolveCatalogShop` (`:35`/`:65`), `PaymentRaceHarness` (console harness, one shop per process); 22 `runFor` sites (restore in `finally`); `GenerateQueuedExportJob` looks its row up inside the payload's context, so a mismatched id finds nothing | `ProductionTenantResolutionTest::test_tenant_context_does_not_persist_across_sequential_requests`; S3-06 (`721c06d`, context released on throw); `runFor` restore (`TenantScopeFailClosedTest` test 4); S3-08 examined and closed | — | **Fail-closed gives no protection here** — the scope trusts any non-null id. No test hands a job a mismatched shop id; no test runs two tenants' jobs in one long-lived worker |
+| **Scope removal: `withoutTenant()`** | 144 sites / 58 files; 18 with no shop/key constraint within 12 lines, each read, 0 defects | Not individually exercised (the two public-catalog sites are covered by `PublicCatalogExposureTest`) | `app/Console/` (16 sites, operator-run) | 110 sites (144 − 16 − 18, derived) were **filtered out by the regex, not read**; a constraint within 12 lines was taken as sufficient |
+| **Scope removal: `withoutGlobalScope('shop')` / `withoutGlobalScopes()`** | Not in the original sweep. Enumerated now: 15 code sites outside the trait — 9 platform-admin, 4 Dhiran, 2 tenant-facing. Both tenant-facing ones read: `ScanSessionController:232` and `SettingsController:1018` (audit-log CSV, streamed after context is cleared) carry an explicit `shop_id` | None | 9 platform-admin (cross-shop is the feature); 4 Dhiran (separate business audit, §2) | The 13 excluded sites were not read |
+| **Raw SQL** (`DB::table`, `DB::select`) | 227 sites; in `Reporting`/`Services`/`Models`/`Http/Controllers` less `Admin/`, 31 with no `shop_id` within 18 lines, each read, 0 defects | Not individually exercised | `Admin/`, `Console/` | Sites with a nearby `shop_id` were not read; `DB::statement`/`update`/`insert`/`delete` and `whereRaw` joins not enumerated |
+| **Models with `shop_id`, no trait** (13) | All 13 classified; 5 tenant-facing traced, now including route binding | `StockPurchaseItem`: `StockPurchaseLineOwnershipTest` (below) | 7 platform models; `User` (global by necessity) | `ScanSession`, `PendingUpload`, `ShopCounter`, `MetalRate`: explicit shop filters read in source, no new tests |
+| **Ownership through a parent record** (tables with no `shop_id`) | `ScanEvent`, reached only through a token-resolved session | None new | — | **Not inventoried.** The tables outside the 114-table `shop_id` list were not enumerated. A route resolving such a child by request-supplied id without a parent check would bypass every scope |
+| **Request-supplied related ids** | `syncLines:609` (body), `vaultLineForm`/`vaultLine` (URL), `vendor_id` (`Vendor::activeOrCurrentExistsRule`, shop-scoped) | `StockPurchaseLineOwnershipTest` L01–L03, V01–V03 (new); `PurchaseAndVendorAccessTest::test_purchase_create_rejects_another_shops_vendor` (pre-existing) | — | No inventory of `exists:` rules or `find($request->…)` in other controllers |
+| **Relationship definitions** (reads) | As `10a525c` | None | — | Eager loads and joins onto unscoped models not enumerated |
+| **Writes / mass assignment** | `create/update/fill($request->all())`: 0; `'shop_id' => '…'` in a `validate()` rule set: 0 | `PurchaseAndVendorAccessTest::test_vendor_create_forces_auth_shop_id` (pre-existing). Context-free create on a trait model is refused by the column: every such `shop_id` is NOT NULL (the four nullable ones — `metal_rates`, `shop_subscriptions`, `subscription_events`, `users` — belong to models without the trait; schema query, not a test) | — | Foreign **related** ids inside validated payloads — see above |
+| **Jobs** (9 `ShouldQueue`) | `GenerateQueuedExportJob` only | None new | — | The other 8 not read in this pass |
+| **Exports** | `ExportDownloadController`; audit-log CSV (`SettingsController:1018`) | `ExportDownloadAuthzTest`, `UrlKnowledgeAuthorizationTest` (pre-existing) | — | `ExportController::exportAllWorkbook` and per-report dataset builders not read; no test located for the audit-log CSV |
 
-Eloquent global scopes do not apply to `DB::table()`. 227 raw call sites exist
-in `app/`. Restricted to tenant-facing code (excluding `Admin/` and
-`Console/`) and filtered for those with no `shop_id`/`shopId` within 18 lines:
-**31 hits, 0 defects.** They are platform tables with no tenant dimension
-(`platform_counters`, `failed_jobs`, `razorpay_webhooks`, `sessions`, `roles`,
-`personal_access_tokens`), or updates keyed on the primary key of a model that
-was already tenant-resolved (`items`, `metal_lots`, `return_orders`,
-`kyc_documents`).
+### Stock-purchase line ids — the evidence asked for
 
-`AuditService:42` was read closely because `DB::table('users')->whereIn('id', …)`
-looks unscoped: the ids come from this shop's own invoices and credit notes, so
-the names returned are this shop's operators.
+`StockPurchaseItem` has `shop_id` but not `BelongsToShop`, so `find()` and
+implicit binding resolve a line from any shop. Three paths take that id from
+the request, each guarded by one check against a purchase that is itself
+tenant-scoped by its own binding:
 
-### The write side
+| Site | Source of the id | Guard | Refusal shape |
+|---|---|---|---|
+| `syncLines:609-613` | `lines.*.id`, validated only `nullable\|integer` | `$line->stock_purchase_id === $purchase->id` | **Not a refusal.** The id is disregarded and the submitted attributes become a new line on the caller's own purchase — data the caller could write anyway. The foreign row is never modified |
+| `vaultLineForm:186` | `{line}` route binding | same | 404 before anything else |
+| `vaultLine:203` | `{line}` route binding | same | 404 before validation or any write |
 
-The `creating` hook fills `shop_id` from context **only when the attribute is
-empty**, so a client-supplied `shop_id` would survive. Two greps close that:
+The guard compares **purchase** identity, not only shop identity, so it also
+covers a line from the caller's own *other* purchase — which the operation
+requires, since an edit to one draft must not reach into a second.
 
-* `create($request->all())` / `update($request->all())` / `fill($request->all())`
-  in `app/Http/Controllers/` and `app/Services/` — **0 hits** (the 8 matches for
-  `->all())` are all Collection `->all()`, not Request).
-* `'shop_id' => '…'` inside a `validate()` rule set — **0 hits**, so no route
-  accepts a client-supplied shop id in the first place.
+`tests/Feature/Security/StockPurchaseLineOwnershipTest.php` — **6 passed,
+39 assertions.** Every foreign fixture satisfies every *other* precondition of
+its route (`bullion_reserve`, no lot yet, confirmed purchase), so ownership is
+the only thing that can produce the refusal.
 
-### Jobs
+| Test | Asserts |
+|---|---|
+| L01 (control) | own line id edited **in place** — same row id, new value |
+| L02 | foreign-shop id: B's line row, B's purchase row and B's `items`/`metal_lots`/`metal_movements` counts byte-identical; A's footprint unchanged too; neither of B's values in A's PUT response or the following show page (and the page is proven to be the edited purchase); A gains one new line, not B's id |
+| L03 | same shop, other purchase: that line unmoved and unedited |
+| V01 (control) | own qualifying line opens the vault form (200) — so the 404s are ownership, not route, edition, `vault.manage` or fixture |
+| V02 | foreign-shop line: 404 on GET and POST, no values leaked, no lot minted on either shop |
+| V03 | same shop, other purchase: 404, no lot |
 
-9 `ShouldQueue` classes. `GenerateQueuedExportJob` — the one at the
-intersection of "job" and "export" — wraps its entire body in
-`TenantContext::runFor((int) $p['shop_id'], …)`. Because the trait fails
-closed, a job that *omitted* that wrapper would read nothing rather than
-everything.
+Targeted mutations, run on the tree that became `06ec0e0` (test code identical):
 
-### Exports
+| Mutation | Result |
+|---|---|
+| `:610` guard → `if ($line)` | **L02, L03 fail; the other 4 pass** — `Failed asserting that two arrays are identical` (the foreign row changed) |
+| both vault ownership `abort_unless` lines deleted | **V02, V03 fail; the other 4 pass** — V02 `200 is identical to 404` (the form rendered shop B's line for shop A); V03 `302` |
 
-`ExportDownloadController` requires signed URL **and** session auth **and**
-`$export->shop_id === $user->shop_id` **and** the originating report's
-view/export permission **and** `reports.export_sensitive` when the file carries
-sensitive columns. Already behaviourally covered by
-`ExportDownloadAuthzTest` and `UrlKnowledgeAuthorizationTest`; not re-tested
-here.
+Reverted each time: `md5 d80737994849ad718ea9e39e5a3f3751`, empty `git diff`,
+6 passed again. No production change was made: each guard is correctly placed,
+and the evidence now shows it holds.
 
-### Relationships
+### Fail-closed scope — retained evidence
 
-A relationship query on a `BelongsToShop` model carries that model's global
-scope, so an ordinary `hasMany`/`belongsTo` is scoped twice: by the FK and by
-the trait. The traversals worth checking are therefore the ones onto models
-that do **not** carry the trait, and the ones that widen.
+`tests/Feature/Security/TenantScopeFailClosedTest.php` — 4 passed, 7
+assertions: a precondition (both shops hold a row, so zero cannot mean an empty
+table), the denial, a positive control (explicit context reads exactly its own
+shop), and `runFor` restoring the previous context.
 
-Cross-referencing the 114 tables carrying a `shop_id` column against the models
-that map to them gives **13 models with a `shop_id` column and no
-`BelongsToShop`**. Seven are platform surfaces where cross-shop is the feature
-(`PlatformFraudFlag`, `PlatformImpersonationSession`, `PlatformInvoice`,
-`ShopSubscription`, `SubscriptionEvent`, `ShopEditionAssignment`,
-`ShopStorageStat`); `User` is global by necessity (login precedes tenancy).
-The five tenant-facing ones were each traced to how they are reached:
+| Mutation `BelongsToShop.php:23` `whereRaw('1 = 0')` → `return;` | Result |
+|---|---|
+| this file alone | **2 failed, 2 passed** — `Failed asserting that 2 is identical to 0`: the context-free query saw both shops |
+| all of `tests/Feature/Security` (202 tests at the time) | **3 failed, 199 passed (824 assertions)** — the two above plus P-10 |
 
-* `StockPurchaseItem` — `StockPurchaseController:609` does
-  `StockPurchaseItem::find($lineData['id'])` with an id **taken from request
-  input** on a model with no global scope. The next line is
-  `if ($line && $line->stock_purchase_id === $purchase->id)`, and `$purchase`
-  is tenant-resolved, so a foreign line id falls through to `create()` on this
-  shop's purchase instead of updating someone else's row. Guarded — but this is
-  the one site in the sweep where the guard is the *only* thing standing there.
-* `ScanSession` — the mobile endpoints (`Api/Mobile/ScanController:22,83`) add
-  `->where('shop_id', $request->user()->shop_id)` explicitly. The two web
-  endpoints that do not (`ScanSessionController:242,269`) are the
-  deliberately **unauthenticated** phone-facing pages, where the 48-character
-  token on a temporary signed route *is* the credential and there is no user to
-  scope against; they derive the shop from the session row
-  (`shopAccessClosed($session->shop_id)`).
-* `PendingUpload` — `UploadController:80,129` filter on `shop_id` and, for the
-  write path, `user_id` as well.
-* `ShopCounter`, `MetalRate` — reached only through services that pass a shop
-  id (`BusinessIdentifierService`, `ShopPricingService`; the latter's
-  `withoutTenant()` key is built with `shop_id` at line 272).
+Reverted: `md5 ed2014819134cc65d58daedf29293ea8`, empty diff.
 
-Widening traversals: `hasManyThrough` appears once
-(`JobOrder::receiptItems`, both hops scoped and rooted at a tenant-resolved
-`JobOrder`) and `belongsToMany` twice (the `role_permission` pivot, where
-`Role` carries the trait and `Permission` is global by design). No relationship
-is keyed on `shop_id` from a non-`Shop` model.
+### Where the audit's own sweep was weakest
 
-### The gap this exposed, and its repair
-
-Every conclusion above rests on the fail-closed branch. **No test bound it.**
-`ConstitutionalInvariantsTest` names `BelongsToShop` only in comments. A
-future reader who deletes `whereRaw('1 = 0')` as apparent dead weight converts
-every context-free query in the application into a cross-tenant read, and the
-application keeps working.
-
-`tests/Feature/Security/TenantScopeFailClosedTest.php` — **4 passed, 7
-assertions.** Two tenants, one item each; a precondition proves both rows exist
-so that a later zero cannot mean an empty table; a positive control proves the
-denial is the missing context rather than a scope that denies unconditionally.
-
-**Mutation, run rather than claimed:**
-
-| # | Mutation | Result |
-|---|----------|--------|
-| 1 | `whereRaw('1 = 0')` → bare `return;` (scope degrades to "no filter") | **2 failed, 2 passed** — killed |
-
-The failure is the informative one: `Failed asserting that 2 is identical to 0`
-— the context-free query saw **both** shops. The precondition and the positive
-control correctly survive, since neither depends on the deny branch. Reverted
-and re-verified: `md5 ed2014819134cc65d58daedf29293ea8`, `git diff` empty,
-4 passed again.
-
-### Stated limitations
-
-* **Inspected, not behaviourally tested:** the 18 `withoutTenant()` sites and
-  the 31 raw-SQL sites. They were read; no test was written per site. Writing
-  ~49 route probes to re-prove a guard that is visible in three lines of source
-  would be raising a count.
-* The new test binds the **read** side. A context-free create is caught by the
-  column's `NOT NULL` constraint, which is the database's guarantee and is
-  pinned where the schema is pinned.
-* The `withoutTenant()` scan used a 12-line window and the raw-SQL scan an
-  18-line window. A call whose shop constraint is applied further away than
-  that would have surfaced as a candidate and been read anyway — the windows
-  bound false negatives in the *filter*, not in the inspection.
-* `app/Console/` was excluded from the `withoutTenant()` narrowing. Operator-run
-  commands take an explicit shop argument and are covered by
-  `ConstitutionalInvariantsTest::test_no_writes_in_reconciliation_commands`.
+The regex filters decided which sites got read. A constraint appearing inside
+the window was treated as sufficient without checking that it constrains the
+right thing — that is where a subtle defect would survive this sweep. The
+categories marked "not inventoried" are larger unknowns than anything in the
+candidate sets.
 
 ## 8. Commands actually run, and their results
 
@@ -2213,63 +2206,96 @@ is not coverage:
 | Tenant scope denies with no context (queue-worker state) | yes — mutation-killed, with a precondition proving the rows exist |
 | Tenant scope reads its own shop under explicit context | yes — positive control, so the denial is not a dead scope |
 | `runFor` restores the previous context on exit | yes |
-| **The 18 `withoutTenant()` sites with no nearby shop constraint** | **INSPECTED, NOT BEHAVIOURALLY TESTED — see §7e** |
-| **The 31 tenant-facing raw-SQL sites with no nearby `shop_id`** | **INSPECTED, NOT BEHAVIOURALLY TESTED — see §7e** |
-| **Context-free CREATE on a tenant model** | **NOT BOUND HERE — caught by the column's `NOT NULL`, pinned with the schema** |
+| **Wrong or stale non-null tenant context** | **PARTIAL — sequential-request persistence and throw-release tested; mismatched job payload and multi-tenant long-lived worker NOT RUN** |
+| Request-supplied stock-purchase line id, body and URL | yes — L01–L03, V01–V03; both guards mutation-killed |
+| **The 18 `withoutTenant()` candidates** | **INSPECTED, NOT INDIVIDUALLY EXERCISED — §7e** |
+| **The 31 tenant-facing raw-SQL candidates** | **INSPECTED, NOT INDIVIDUALLY EXERCISED — §7e** |
+| **Tables owned through a parent record** | **NOT INVENTORIED — §7e** |
+| **Foreign related ids outside stock purchases** | **NOT INVENTORIED — §7e** |
+| **Context-free CREATE on a tenant model** | **NOT TESTED — refused by NOT NULL on every trait model's `shop_id` (schema query)** |
 
 ### §7e run figures
 
+Execution SHA for everything in this block: **`06ec0e0bcdefbe2f952757fd3f4a0b408aede656`**,
+`git status --porcelain` empty. The mutation runs were made on the working tree
+that became that commit; the only difference is docblock text in
+`TenantScopeFailClosedTest`.
+
+**The two selections below are different selections and are not comparable
+totals.** Selection A is one directory; B is two. Earlier figures are listed
+with their own selection so none of them is read as a before/after of another.
+
 ```
+# A — tests/Feature/Security only
+php artisan test tests/Feature/Security/
+  -> 202 passed (825 assertions)                     at 06ec0e0
+     (earlier A-selection runs: 196/786 at 4877ae1's tree)
+
+# B — tests/Feature/Security + tests/Feature/Mobile
+php artisan test tests/Feature/Security tests/Feature/Mobile
+  -> 300 passed (1160 assertions)                    at 06ec0e0
+     (earlier B-selection runs, each recorded where it was made:
+      290/1114 §7d-1, 287/1093 §7d, 283/1052 §7c-6, 273/1028 §1, 269/1016 §7c-2)
+
+php artisan test tests/Feature/Security/StockPurchaseLineOwnershipTest.php
+  -> 6 passed (39 assertions)
+  mutation :610 guard -> `if ($line)`            -> 2 failed (L02, L03), 4 passed
+  mutation vault ownership aborts deleted        -> 2 failed (V02, V03), 4 passed
+  reverted: md5 d80737994849ad718ea9e39e5a3f3751, git diff empty, 6 passed
+
 php artisan test tests/Feature/Security/TenantScopeFailClosedTest.php
   -> 4 passed (7 assertions)
+  mutation BelongsToShop.php:23 -> `return;`     -> 2 failed, 2 passed
+  same mutation, php artisan test tests/Feature/Security/
+                                                 -> 3 failed, 199 passed (824 assertions)
+                                                    failures: the 2 above + P-10
+  reverted: md5 ed2014819134cc65d58daedf29293ea8, git diff empty
 
-# mutation: BelongsToShop.php:23  whereRaw('1 = 0')  ->  bare `return;`
-php artisan test tests/Feature/Security/TenantScopeFailClosedTest.php
-  -> 2 failed, 2 passed (7 assertions)
-     "Failed asserting that 2 is identical to 0"   <- saw BOTH shops
-
-# reverted
-md5sum app/Models/Concerns/BelongsToShop.php
-  -> ed2014819134cc65d58daedf29293ea8    (matches pre-mutation)
-git diff --stat app/Models/Concerns/BelongsToShop.php
-  -> (empty)
-
-php artisan test tests/Feature/Security/
-  -> 196 passed (786 assertions)      [192/779 before this file]
+# Mobile — /home/himanshu/Desktop/jewelflowMobileApp
+HEAD=2cad553b50e77890088488a43b72a2e7bd4f68ef
+ M src/utils/storage.ts        <- pre-existing, unrelated, not part of the audit
+npx jest --ci                  -> 40 suites, 275 tests passed
+npx tsc --noEmit               -> exit 0
 ```
 
 Scan figures, for reproduction:
 
 ```
 grep -rn "withoutTenant(" app/            -> 144 occurrences, 58 files
-  minus app/Console/, minus a shop/key constraint within 12 lines
-                                          -> 18 candidates, 0 defects
-
+  minus app/Console/ (16), minus a shop/key constraint within 12 lines
+                                          -> 18 candidates read, 0 defects
+grep -rn "withoutGlobalScope" app/        -> 15 code sites outside the trait
+                                             (9 admin, 4 Dhiran, 2 tenant-facing read)
 grep -rn "DB::table(|DB::select(" app/    -> 227 occurrences
   restricted to app/{Reporting,Services,Models,Http/Controllers} less Admin/
-  and with no shop_id within 18 lines     -> 31 candidates, 0 defects
-
-grep for create/update/fill($request->all())      -> 0 (8 matches are Collection->all())
+  and with no shop_id within 18 lines     -> 31 candidates read, 0 defects
+grep -rnF "StockPurchaseItem \$" app/Http/Controllers/
+                                          -> 2 route-bound sites (the earlier
+                                             grep used a trailing `$` anchor
+                                             and matched nothing)
+grep for create/update/fill($request->all())        -> 0 (8 matches are Collection->all())
 grep for 'shop_id' => '...' in a validate() ruleset -> 0
+information_schema: shop_id nullable                -> 4 tables, none on a trait model
 ```
 
 ## 9. Commits, diff, working tree
 
-**Measured at `1b6aeb4`, not at HEAD — deliberately.** A diffstat recorded inside
+**Measured at `06ec0e0`, not at HEAD — deliberately.** A diffstat recorded inside
 a tracked file changes the diffstat, so "the figure at HEAD" has no fixed point,
 and chasing it is exactly how the earlier revisions of this line came to be
 wrong. Pinning it to a named commit makes it rerunnable:
 
 ```
-$ git diff --shortstat 018b3d8..2dd0875
- 58 files changed, 11868 insertions(+), 100 deletions(-)
+$ git diff --shortstat 018b3d8..06ec0e0
+ 76 files changed, 19303 insertions(+), 225 deletions(-)
 
-$ git log --oneline 018b3d8..2dd0875 | wc -l
-44
+$ git log --oneline 018b3d8..06ec0e0 | wc -l
+67
 ```
 
-`2dd0875` is the last **code** commit on the branch; every commit after it is an
-edit to this document.
+`06ec0e0` is the last commit on the branch that touches anything outside
+`docs/`. Re-pinned from `2dd0875` (58 files / +11,868 / −100, 44 commits), which
+S3-09, S3-10, S3-11, S3-05 and the tenancy tests superseded.
 
 **Re-pinned from `1b6aeb4`, which this line named until `2dd0875` landed.** The
 previous pin read `52 files / +9,318 / −95` over 30 commits and was correct when
@@ -2331,7 +2357,7 @@ covered by `.gitignore`.
 
 1. S3-05 is now fixed for **every field the document asserts about the
    transaction** — the statutory half in `b216b80` (`igst_mode`, HSN map) and
-   the rest in this session: `show_gstin`, `shop.gst_number`,
+   the rest in `306aae1`: `show_gstin`, `shop.gst_number`,
    `terms_and_conditions` and all nine payment-instruction fields. See §7d.
    What remains is **not** a gap to close but a deliberate bound: theme colour,
    font tier, paper size, subtitle, tagline, copy label and the other `show_*`
@@ -2344,20 +2370,51 @@ covered by `.gitignore`.
    `show_gstin`, no itemised bank group — capturing them is a separate change),
    and **bills finalized before these keys were captured** have no record to
    fall back on and still resolve live.
-2. The mobile on-screen "Signature unavailable" banner (§5). The printed
-   document already carries the marker; what is missing is the in-app banner in
-   `app/invoice/[id].tsx` / `app/quick-bill/[id].tsx`, which today only raise
-   `Alert.alert('Print Failed', …)`. **I have made no change to the mobile
-   repository** (still `d8a0781`).
-3. Remaining model/route/job investigations. **The cache investigation is
-   DONE** — every `Cache::` call site in `app/` was reviewed; see §7b. No
-   rendered document, and therefore no signature byte, is held in any
-   application cache. The one unscoped key is S3-07.
-4. The tracked backup repair, including spelling out what "backup fix A+C"
-   changes.
+2. Device verification (§5). The mobile signature warning is implemented in
+   `ffcd034` and unit-tested; nothing has run on a handset.
+3. Tenant-isolation gaps named in §7e: parent-owned tables and foreign related
+   ids outside stock purchases (not inventoried), wrong/stale context (partly
+   tested), 8 unread jobs. **The cache investigation is DONE** (§7b); the one
+   unscoped key is S3-07.
+4. The tracked backup repair — **NOT STARTED**. "Backup fix A+C" is not defined
+   anywhere on this branch; get the definition before starting.
 5. Candidate-public asset classification. **Item images are now classified**
    (§7a): they have a real, opt-in publishing feature and are NOT relocation
    candidates. Still unclassified: `products`, `shop-logos`, `catalog-heroes`,
    `UploadIntentService:110,251`, `Api\Mobile\ItemController:226,495`.
 6. S3-06b, if the business wants it: a per-item publication flag. Adding it
    should break C-03, which is where to record the change.
+
+---
+
+## 11. Release readiness
+
+**Not ready to release, and not ready to call reviewed.** Source review is
+pending until the reviewer has the packet; nothing here substitutes for it.
+
+What the branch supports, locally: the S3-05, S3-06, S3-07/07b, S3-09
+(middleware, pruning), S3-10 and S3-11 repairs behave as their tests say on
+`jewelflow_testing`, and the tenant sweep found no defect in the candidates it
+read.
+
+Conditions that must be met, or explicitly accepted by a named owner, before
+release:
+
+1. **Independent source review** of the packet at the candidate SHA it names.
+2. **KYC containment decision** — approve ORIGIN-ONLY (PARTIAL), EDGE+ORIGIN, or
+   neither. Exposure is live today and does not depend on this branch.
+3. **S3-09 retained-claim disposal** — an operator procedure for unresolved
+   claims, since none may be cleared by timer.
+4. **Migration order** — S3-07b table-then-code; disk columns expand →
+   application on every node → contract. Rollback of S3-07b is measured unsafe.
+5. **Operator decisions on characterized, unrepaired defects:** S3-09e, S3-12,
+   S3-13, S3-06b; and on the three routes with no service-layer duplicate guard.
+6. **Device verification** (§5) for printing and for the S3-09c client
+   behaviour.
+7. **Drift check** — re-read `git rev-parse HEAD` on the server; the baseline was
+   last observed 2026-09-20.
+8. **Backup repair** — define "A+C" and schedule it; it is not started.
+
+Known unknowns that release would carry: the tenant categories marked "not
+inventoried" in §7e, the 12 routes reviewed only by reading, and the untested
+wrong-context paths.
