@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Security;
 
+use App\Models\IdempotencyKey;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -9,22 +10,28 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * S3-09e — a replayed response drops the headers the route's own contract
- * requires, and carries only its body.
+ * S3-09e — a replayed response dropped the headers the route's own contract
+ * requires, and carried only its body.
  *
- * ─── CHARACTERIZATION ONLY. NOT REPAIRED. ─────────────────────────────────
+ * ─── REPAIRED. These tests were a regression lock first. ──────────────────
  *
- * These tests pass against the CURRENT code. They are a regression lock, not
- * proof of a repair. Every assertion that encodes the defect says so in its
- * failure message, so a future fix reads as "S3-09e repaired", not as a break.
+ * They were written against the defect and passed against it, with failure
+ * messages reading "appears repaired". The two defect assertions are now
+ * inverted, and they failed against the unrepaired middleware before the
+ * repair landed.
  *
- * Deliberately not repaired here. The fix is to persist the response headers
- * alongside the body, and the only place to persist them is the
- * `idempotency_keys` table — which is the subject of the still-open S3-09 and
- * is governed by `payment-idempotency-rollback-constraints.md`. Adding a
- * column to that table while its rollback path is constrained couples an
- * availability fix to a money-path finding, for a defect that self-heals the
- * moment the client re-GETs. That trade is the operator's to make, not mine.
+ * Repair: `EnsureIdempotency` persists the headers the controller set that a
+ * replay must carry — `ETag` and `X-Has-Entity-Tag`, the only two any of the
+ * 16 routes set — in a nullable `idempotency_keys.response_headers` column,
+ * and restores them on replay. An allowlist, not every header: a replayed
+ * `Set-Cookie` or rate-limit header would describe the wrong request.
+ *
+ * The earlier reason for not repairing — that the column would sit under
+ * `payment-idempotency-rollback-constraints.md` — was wrong on the facts.
+ * That document governs `invoice_payment_claims` (S3-07b); it mentions
+ * `idempotency_keys` only as the table the pruner targets. The column is
+ * additive and nullable: baseline code ignores it, and a claim completed
+ * without it replays exactly as before (test below).
  *
  * ─── How this was found, and what it is NOT ───────────────────────────────
  *
@@ -158,18 +165,9 @@ class MobileIdempotencyReplayFidelityTest extends TestCase
     // ────────────────────────────────────────────────────────────────────
 
     /**
-     * [LOCKS THE DEFECT] The replay carries no ETag at all.
-     *
-     * The live response carries one; the replay's is null. A client that
-     * trusts the replay's 200 has no value to use as its next `If-Match`.
-     *
-     * Written as a lock rather than as a demand, for the reason in the class
-     * docblock: repairing it means persisting response headers, and the only
-     * place to persist them is `idempotency_keys` — the table under the open
-     * S3-09 rollback constraints. If that repair lands, this test fails and
-     * the message below says so.
+     * [REPAIR] The replay carries the original response's entity tag.
      */
-    public function test_a_replayed_patch_currently_drops_the_entity_tag(): void
+    public function test_a_replayed_patch_carries_the_entity_tag_of_the_original(): void
     {
         [$first, $replay] = $this->patchTwiceUnderOneKey();
 
@@ -178,21 +176,92 @@ class MobileIdempotencyReplayFidelityTest extends TestCase
             'The live PATCH must carry an ETag for the comparison to mean anything.',
         );
 
-        $this->assertNull(
-            $replay->headers->get('ETag'),
-            'The replay now carries an ETag — S3-09e appears repaired. Update the handoff and '
-                . 'switch this assertion to assertSame() against the live response.',
+        $this->assertSame($first->headers->get('ETag'), $replay->headers->get('ETag'),
+            'S3-09e: the replay must hand back the tag the original response carried.');
+        $this->assertSame('yes', $replay->headers->get('X-Has-Entity-Tag'));
+    }
+
+    /**
+     * [REPAIR] Only the allowlisted headers are persisted — nothing that
+     * describes the original request rather than the resource.
+     */
+    public function test_only_the_replayable_headers_are_persisted(): void
+    {
+        [$first] = $this->patchTwiceUnderOneKey();
+
+        $stored = IdempotencyKey::withoutGlobalScopes()
+            ->where('key', 'patch-replay-fidelity')
+            ->value('response_headers');
+
+        $this->assertSame(
+            ['ETag' => $first->headers->get('ETag'), 'X-Has-Entity-Tag' => 'yes'],
+            $stored,
         );
     }
 
     /**
-     * [LOCKS THE DEFECT] The consequence, demonstrated end to end.
-     *
-     * Takes whatever tag the replay actually offered and tries the next write
-     * with it — precisely what a well-behaved client would do. It gets 428
-     * `precondition_required`, because the replay offered nothing.
+     * [COMPATIBILITY] A claim completed without the column — by baseline code
+     * during the expand window, or before this repair — replays as it always
+     * did: status and body, no entity tag. Nothing is invented for it.
      */
-    public function test_a_client_following_the_replay_cannot_make_its_next_write(): void
+    public function test_a_claim_recorded_without_headers_replays_as_before(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        Sanctum::actingAs($owner);
+        TenantContext::set((int) $shop->id);
+
+        $item = $this->createItem((int) $shop->id, null, ['selling_price' => 1000]);
+
+        TenantContext::set((int) $shop->id);
+        $tag = $this->getJson("/api/mobile/v1/items/{$item->id}")->headers->get('ETag');
+        $headers = ['X-Idempotency-Key' => 'legacy-claim', 'If-Match' => $tag];
+
+        TenantContext::set((int) $shop->id);
+        $this->withHeaders($headers)->patchJson("/api/mobile/v1/items/{$item->id}", ['selling_price' => 2500])->assertOk();
+
+        IdempotencyKey::withoutGlobalScopes()->where('key', 'legacy-claim')->update(['response_headers' => null]);
+
+        TenantContext::set((int) $shop->id);
+        $replay = $this->withHeaders($headers)->patchJson("/api/mobile/v1/items/{$item->id}", ['selling_price' => 2500]);
+
+        $replay->assertOk();
+        $this->assertSame('true', $replay->headers->get('X-Idempotent-Replay'));
+        $this->assertNull($replay->headers->get('ETag'));
+    }
+
+    /**
+     * [DEGRADATION] If the headers cannot be written — the column dropped by a
+     * migration rollback while this code still serves — the claim is still
+     * resolved and replays without them, rather than staying in flight and
+     * refusing every retry.
+     *
+     * SIMULATED: the write is refused by an `updating` listener, because a
+     * real failed statement would abort the RefreshDatabase transaction. The
+     * real column drop is measured in the migration rollback rehearsal.
+     */
+    public function test_a_failed_header_write_still_resolves_the_claim(): void
+    {
+        IdempotencyKey::updating(function (IdempotencyKey $claim) {
+            if ($claim->isDirty('response_headers')) {
+                throw new \RuntimeException('simulated: column "response_headers" does not exist');
+            }
+        });
+
+        [$first, $replay] = $this->patchTwiceUnderOneKey();
+
+        $first->assertOk();
+        $replay->assertOk();
+        $this->assertSame('true', $replay->headers->get('X-Idempotent-Replay'), 'resolved, so replayed — not refused as in flight');
+        $this->assertNull($replay->headers->get('ETag'), 'only the headers were lost');
+        $this->assertSame(200, IdempotencyKey::withoutGlobalScopes()
+            ->where('key', 'patch-replay-fidelity')->value('response_status'));
+    }
+
+    /**
+     * [REPAIR] The consequence, end to end: a client that takes the tag the
+     * replay offered can make its next write. Before the repair it got 428.
+     */
+    public function test_a_client_following_the_replay_can_make_its_next_write(): void
     {
         [$owner, $shop] = $this->createRetailerTenant();
         Sanctum::actingAs($owner);
@@ -218,12 +287,8 @@ class MobileIdempotencyReplayFidelityTest extends TestCase
             'If-Match' => (string) $replay->headers->get('ETag'),
         ])->patchJson("/api/mobile/v1/items/{$item->id}", ['selling_price' => 3100]);
 
-        $this->assertSame(
-            428,
-            $next->getStatusCode(),
-            'The client is no longer wedged after a replay — S3-09e appears repaired. Update the '
-                . 'handoff and invert this assertion.',
-        );
+        $this->assertSame(200, $next->getStatusCode(),
+            'S3-09e: a client following the replay must not be wedged (it got 428 before the repair).');
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -233,10 +298,9 @@ class MobileIdempotencyReplayFidelityTest extends TestCase
     /**
      * A client that follows the LIVE response is not wedged.
      *
-     * Load-bearing. Without it, the 428 above would be equally explained by
-     * `PATCH /items` being unusable in sequence for some unrelated reason.
-     * This shows the second write works fine when the client is given the
-     * header the replay withheld — so the replay is the cause.
+     * Kept from the characterization, where it proved the replay — not the
+     * route — caused the 428. It now pins that the repair did not change the
+     * live path.
      */
     public function test_control_a_client_following_the_live_response_can_make_its_next_write(): void
     {

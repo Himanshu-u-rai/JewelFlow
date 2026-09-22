@@ -47,6 +47,14 @@ class EnsureIdempotency
     private const KEY_PATTERN = '/^[A-Za-z0-9_-]{8,80}$/';
 
     /**
+     * S3-09e. Headers a controller sets that a replay must carry: the entity
+     * tag is the client's only source for its next `If-Match`. An allowlist on
+     * purpose — a replayed `Set-Cookie` or rate-limit header would describe
+     * the original request, not the resource.
+     */
+    private const REPLAYED_HEADERS = ['ETag', 'X-Has-Entity-Tag'];
+
+    /**
      * Sentinel stored in `response_status` while the controller is running.
      *
      * S3-09. The claim is now staked BEFORE the controller so that a failure
@@ -169,6 +177,11 @@ class EnsureIdempotency
             // Replay: return cached response, controller is not invoked.
             $body = $existing->response_body;
             $response = response()->json($body, $status);
+            // S3-09e. A claim completed before response_headers existed has
+            // none, and replays exactly as it always did.
+            foreach ($existing->response_headers ?? [] as $name => $value) {
+                $response->headers->set($name, $value);
+            }
             $response->headers->set('X-Idempotent-Replay', 'true');
             return $response;
         }
@@ -285,6 +298,35 @@ class EnsureIdempotency
             ]);
         } catch (Throwable $e) {
             Log::warning('EnsureIdempotency: failed to record claim completion', [
+                'error' => $e->getMessage(),
+                'shop_id' => $claim->shop_id,
+                'user_id' => $claim->user_id,
+                'key' => $claim->key,
+            ]);
+
+            return;
+        }
+
+        // S3-09e. A second statement on purpose: if response_headers is ever
+        // missing (migration rolled back under this code), the claim above is
+        // still resolved and replays without headers — the pre-repair
+        // behaviour — instead of staying in flight and refusing every retry.
+        $headers = array_filter(
+            array_combine(self::REPLAYED_HEADERS, array_map(
+                fn (string $name) => $response->headers->get($name),
+                self::REPLAYED_HEADERS,
+            )),
+            fn (?string $value) => $value !== null,
+        );
+
+        if ($headers === []) {
+            return;
+        }
+
+        try {
+            $claim->update(['response_headers' => $headers]);
+        } catch (Throwable $e) {
+            Log::warning('EnsureIdempotency: recorded the claim but not its replay headers', [
                 'error' => $e->getMessage(),
                 'shop_id' => $claim->shop_id,
                 'user_id' => $claim->user_id,

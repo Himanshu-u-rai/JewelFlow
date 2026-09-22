@@ -23,6 +23,7 @@ class IdempotencyKey extends Model
         'request_hash',
         'response_status',
         'response_body',
+        'response_headers',
     ];
 
     protected $casts = [
@@ -30,6 +31,7 @@ class IdempotencyKey extends Model
         'user_id' => 'integer',
         'response_status' => 'integer',
         'response_body' => 'array',
+        'response_headers' => 'array',
     ];
 
     public function shop(): BelongsTo
