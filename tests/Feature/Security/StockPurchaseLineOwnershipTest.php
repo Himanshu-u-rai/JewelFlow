@@ -251,6 +251,36 @@ class StockPurchaseLineOwnershipTest extends TestCase
         $this->assertNotSame($otherLine->id, $editingLines->first()->id);
     }
 
+    /**
+     * [CONTRACT] Why L02/L03 are "disregarded", not "rejected".
+     *
+     * The edit form (inventory/purchases/create.blade.php) posts each existing
+     * line's own id and '' for a new one; syncLines has treated any id that
+     * does not name one of THIS purchase's lines as a new line since the
+     * module was added (86cfcd8). The legitimate way to arrive with such an id
+     * is a stale form: the line was removed in another tab. The operator's
+     * values are kept as a new line instead of being lost to an error.
+     *
+     * A foreign id takes the same path, and that uniformity is itself worth
+     * keeping: refusing only ids that exist elsewhere would tell a caller which
+     * ids belong to other shops.
+     */
+    public function test_l04_a_stale_id_from_a_removed_line_becomes_a_new_line(): void
+    {
+        [$ownerA, $shopA] = $this->createRetailerTenant();
+        $purchaseA = $this->purchase($shopA, 'draft');
+        $removed = $this->line($purchaseA, ['line_type' => 'ornament', 'design' => 'removed-elsewhere']);
+        $staleId = $removed->id;
+        $removed->delete();
+
+        $this->editLines($ownerA, $purchaseA, [$this->submittedLine($staleId, 'kept-from-stale-form')]);
+
+        $lines = StockPurchaseItem::where('stock_purchase_id', $purchaseA->id)->get();
+        $this->assertCount(1, $lines);
+        $this->assertNotSame($staleId, $lines->first()->id);
+        $this->assertSame('kept-from-stale-form', $lines->first()->design);
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // vaultLineForm / vaultLine — {line} bound from the URL
     // ────────────────────────────────────────────────────────────────────
