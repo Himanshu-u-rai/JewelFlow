@@ -14,19 +14,18 @@ return [
                 /*
                  * The list of directories and files that will be included in the backup.
                  */
-                'include' => [
-                    base_path(),
-                ],
+                'include' => \App\Support\BackupScope::includePaths(base_path()),
 
                 /*
-                 * These directories and files will be excluded from the backup.
+                 * Excluded from inside the included directories. Directories used
+                 * by the backup process (the local destination, the temporary
+                 * directory) are also excluded automatically at run time.
                  *
-                 * Directories used by the backup process will automatically be excluded.
+                 * .git, .claude, output, vendor, node_modules and every .env.*
+                 * snapshot are not listed: they are never walked, because the
+                 * include list does not reach them (App\Support\BackupScope).
                  */
                 'exclude' => [
-                    base_path('vendor'),
-                    base_path('node_modules'),
-
                     /*
                      * The backup destination itself must never be a backup source: the
                      * 'local' disk root is storage/app/private/{name}, where {name} is
@@ -46,47 +45,11 @@ return [
                     storage_path('app/private/JewelFlow'),
 
                     /*
-                     * Non-runtime secret snapshots and Claude-agent files. These are
-                     * root-owned, mode 600, unreadable by the www-data scheduler user.
-                     * ZipArchive::addFile() defers the actual read to close(), so an
-                     * unreadable source file here doesn't fail until the archive is
-                     * being finalized ("ZipArchive::close(): Permission denied"),
-                     * aborting the whole backup. None of these are needed in the
-                     * archive: .claude/ is editor/agent tooling state, and .env.save /
-                     * .env.testing / .env.pre-* are point-in-time secret snapshots that
-                     * duplicate what's already rotated into the live .env. The glob
-                     * below is re-evaluated on every run, so it also excludes
-                     * .env.pre-* snapshots created after this deploy. The live .env is
-                     * intentionally NOT excluded.
+                     * Compiled config is a plaintext copy of every env secret, taken
+                     * whenever config:cache last ran — an unintended secret snapshot.
+                     * Regenerated on deploy; nothing in it is needed to restore.
                      */
-                    base_path('.claude'),
-                    base_path('.env.save'),
-                    base_path('.env.testing'),
-                    base_path('.env.pre-*'),
-
-                    /*
-                     * VCS metadata, not application/business backup data. Also
-                     * closes off a whole class of failure: a root-run git
-                     * operation can leave an object directory with a mode that
-                     * www-data can't traverse (seen on staging: a single
-                     * .git/objects/xx dir at 0700 root:root broke the entire
-                     * archive at finalization, the same lazy-read failure mode
-                     * as the secret-snapshot files above).
-                     */
-                    base_path('.git'),
-
-                    /*
-                     * Deploy/hotfix audit trail (scripts, rollback manifests,
-                     * checksums, log snapshots), not application/business
-                     * data. Seen on staging as a root:root 0700 tree left by
-                     * a prior hotfix run. Excluding it here only keeps its
-                     * contents out of the archive once Finder can enter the
-                     * directory — the directory itself still needs read+
-                     * traverse permission for www-data, or the walk throws
-                     * before this exclusion is ever consulted (same lesson
-                     * as the .git fix above).
-                     */
-                    base_path('output'),
+                    base_path('bootstrap/cache'),
                 ],
 
                 /*
@@ -96,6 +59,11 @@ return [
 
                 /*
                  * Determines if it should avoid unreadable folders.
+                 *
+                 * Must stay false. true turns an unreadable directory of real
+                 * data into a silently incomplete archive; it was considered and
+                 * rejected. The walk is kept away from unreadable tooling
+                 * directories by the include list instead.
                  */
                 'ignore_unreadable_directories' => false,
 

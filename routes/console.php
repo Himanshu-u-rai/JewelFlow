@@ -8,6 +8,24 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+Artisan::command('backup:scope-check {path? : Directory to check; defaults to base_path()}', function (?string $path = null) {
+    $unclassified = \App\Support\BackupScope::unclassified($path ?? base_path());
+
+    foreach ($unclassified as $entry) {
+        $this->error("UNCLASSIFIED top-level entry: {$entry}");
+    }
+
+    if ($unclassified === []) {
+        $this->info('Every top-level entry is either archived or deliberately not archived.');
+
+        return 0;
+    }
+
+    $this->line('Classify each in App\Support\BackupScope: INCLUDE if a restore needs it, NOT_ARCHIVED if not.');
+
+    return 1;
+})->purpose('Report top-level paths the backup scope does not account for (read-only)');
+
 Artisan::command('assets:verify-fresh', function () {
     $manifestPath = public_path('build/manifest.json');
 
