@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\SignatureRelocationLedger;
 use App\Services\SignatureStore;
+use App\Console\Commands\Concerns\PublishesVerifiedCopies;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
@@ -66,6 +67,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class RelocateShopSignatures extends Command
 {
+    use PublishesVerifiedCopies;
+
     protected $signature = 'signatures:relocate
         {--execute : Perform writes. Without this flag the command is a dry run and changes nothing.}
         {--shop= : Restrict to a single shop_id.}
@@ -173,6 +176,16 @@ class RelocateShopSignatures extends Command
                 continue;
             }
 
+            // XR-03. Ownership BEFORE any byte moves. The ledger refuses a
+            // foreign path too, but only inside its write — after the copy had
+            // already landed, over whatever was at that path.
+            if (! $this->ledger()->pathBelongsToShop($path, (int) $row->shop_id)) {
+                $this->record($row, 'failed', 'foreign_path');
+                $this->warn("  shop {$row->shop_id} path is not in this shop's signature directory; skipped.");
+                $failed++;
+                continue;
+            }
+
             if (! $source->exists($path)) {
                 $this->record($row, 'failed', 'source_missing');
                 $this->warn("  shop {$row->shop_id} source missing.");
@@ -193,8 +206,16 @@ class RelocateShopSignatures extends Command
                 continue;
             }
 
-            if (! $this->copyVerified($source, $target, $path, $sourceDigest)) {
-                $target->delete($path);
+            $outcome = $this->publishVerifiedCopy($source, $target, $path, $sourceDigest);
+
+            if ($outcome === 'conflict') {
+                $this->record($row, 'failed', 'destination_conflict', $sourceDigest);
+                $this->warn("  shop {$row->shop_id} a different file is already at the destination; both left untouched.");
+                $failed++;
+                continue;
+            }
+
+            if ($outcome === 'failed') {
                 $this->record($row, 'failed', 'copy_verification_failed', $sourceDigest);
                 $this->warn("  shop {$row->shop_id} copy did not verify.");
                 $failed++;
@@ -236,6 +257,14 @@ class RelocateShopSignatures extends Command
                     );
                 });
             } catch (ConcurrentSignatureChange) {
+                // A concurrent mover may have flipped it first — done, not failed.
+                $now = DB::table('shop_billing_settings')->where('id', $row->id)->first(['digital_signature_path', 'digital_signature_disk']);
+                if ($now !== null && $now->digital_signature_path === $path && $now->digital_signature_disk === $this->targetDisk()) {
+                    $this->record($row, 'relocated', 'already_relocated', $sourceDigest);
+                    $relocated++;
+                    continue;
+                }
+
                 $this->record($row, 'failed', 'row_changed_concurrently', $sourceDigest);
                 $this->warn("  shop {$row->shop_id} row changed during relocation; left alone.");
                 $failed++;
@@ -249,7 +278,7 @@ class RelocateShopSignatures extends Command
                 continue;
             }
 
-            $this->record($row, 'relocated', 'ok', $sourceDigest);
+            $this->record($row, 'relocated', $outcome === 'identical' ? 'identical_copy_resumed' : 'ok', $sourceDigest);
             $relocated++;
         }
 
@@ -457,27 +486,6 @@ class RelocateShopSignatures extends Command
             'failures' => $failures,
             'purgeable' => $purgeable,
         ];
-    }
-
-    private function copyVerified(Filesystem $source, Filesystem $target, string $path, string $expectedDigest): bool
-    {
-        $stream = $source->readStream($path);
-        if ($stream === null || $stream === false) {
-            return false;
-        }
-
-        $written = $target->writeStream($path, $stream);
-        if (is_resource($stream)) {
-            fclose($stream);
-        }
-
-        if ($written !== true) {
-            return false;
-        }
-
-        $actual = $this->digest($target, $path);
-
-        return $actual !== null && hash_equals($expectedDigest, $actual);
     }
 
     private function digest(Filesystem $disk, string $path): ?string

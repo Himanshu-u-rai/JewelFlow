@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\KarigarInvoice;
+use App\Console\Commands\Concerns\PublishesVerifiedCopies;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,11 @@ use Illuminate\Support\Facades\Storage;
  *   - --shop and --limit bound the blast radius.                      R-09/R-10
  *   - --purge-originals refuses WHOLESALE if any copy in scope fails
  *     verification.                                                   R-12/R-13
+ *   - Nothing already at the destination is ever overwritten or deleted:
+ *     an identical file is resumed, a different one is refused with both
+ *     files and the row untouched, and a mover deletes only its own
+ *     temporary. Safe with concurrent movers (XR-03;
+ *     RelocationNonDestructiveTest, tests/Concurrency/relocation_race.php).
  *
  * CONSTITUTIONAL NOTE
  * karigar_invoices_finalized_guard_trigger (Art. IX.A #15) is BEFORE UPDATE OR
@@ -59,6 +65,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class RelocateKarigarInvoiceAttachments extends Command
 {
+    use PublishesVerifiedCopies;
+
     protected $signature = 'karigar-invoices:relocate-attachments
         {--execute : Perform writes. Without this flag the command is a dry run and changes nothing.}
         {--shop= : Restrict to a single shop_id.}
@@ -192,12 +200,21 @@ class RelocateKarigarInvoiceAttachments extends Command
                 continue;
             }
 
-            if (! $this->copyVerified($source, $target, $path, $sourceDigest)) {
-                // Remove the bad copy. A row still recorded on 'public' cannot
-                // have a legitimate file at this path on the private disk — a
-                // real new upload would already have flipped the row — so the
-                // only thing here is our own failed attempt.
-                $target->delete($path);
+            // XR-03. Never written over, never deleted: an existing file at
+            // the destination is either this same file (resume) or someone
+            // else's (refuse). The earlier comment here assumed nothing
+            // legitimate could be at this path; that is not a safe assumption
+            // for a command whose job is moving files between trees.
+            $outcome = $this->publishVerifiedCopy($source, $target, $path, $sourceDigest);
+
+            if ($outcome === 'conflict') {
+                $this->record($row, 'failed', 'destination_conflict', $sourceDigest);
+                $this->warn("  #{$row->id} a different file is already at the destination; both left untouched: {$path}");
+                $failed++;
+                continue;
+            }
+
+            if ($outcome === 'failed') {
                 $this->record($row, 'failed', 'copy_verification_failed', $sourceDigest);
                 $this->warn("  #{$row->id} copy did not verify: {$path}");
                 $failed++;
@@ -215,13 +232,22 @@ class RelocateKarigarInvoiceAttachments extends Command
                 ->update([static::DISK_COLUMN => $this->targetDisk()]);
 
             if ($updated !== 1) {
+                // A concurrent mover may have flipped it first — that is done,
+                // not failed. Anything else is a genuine concurrent change.
+                $now = DB::table(static::TABLE)->where('id', $row->id)->first([static::PATH_COLUMN.' as path', static::DISK_COLUMN.' as disk']);
+                if ($now !== null && $now->path === $path && $now->disk === $this->targetDisk()) {
+                    $this->record($row, 'relocated', 'already_relocated', $sourceDigest);
+                    $relocated++;
+                    continue;
+                }
+
                 $this->record($row, 'failed', 'row_changed_concurrently', $sourceDigest);
                 $this->warn("  #{$row->id} row changed during relocation; left alone.");
                 $failed++;
                 continue;
             }
 
-            $this->record($row, 'relocated', 'ok', $sourceDigest);
+            $this->record($row, 'relocated', $outcome === 'identical' ? 'identical_copy_resumed' : 'ok', $sourceDigest);
             $relocated++;
         }
 
@@ -361,33 +387,6 @@ class RelocateKarigarInvoiceAttachments extends Command
             'failures' => $failures,
             'purgeable' => $purgeable,
         ];
-    }
-
-    /**
-     * Copy, then re-read the DESTINATION and hash what is actually there.
-     * Trusting put()'s return value would accept a truncated write on a full
-     * disk — and the configured disks have 'throw' => false, so a failed write
-     * is a false return, not an exception.
-     */
-    private function copyVerified(Filesystem $source, Filesystem $target, string $path, string $expectedDigest): bool
-    {
-        $stream = $source->readStream($path);
-        if ($stream === null || $stream === false) {
-            return false;
-        }
-
-        $written = $target->writeStream($path, $stream);
-        if (is_resource($stream)) {
-            fclose($stream);
-        }
-
-        if ($written !== true) {
-            return false;
-        }
-
-        $actual = $this->digest($target, $path);
-
-        return $actual !== null && hash_equals($expectedDigest, $actual);
     }
 
     /** Streamed sha256 so a large attachment is never held in memory. */
