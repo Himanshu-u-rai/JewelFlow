@@ -47,8 +47,9 @@ class ItemController extends Controller
             'pricing_review_notes'    => ['sometimes', 'nullable', 'string', 'max:1000'],
         ]);
 
-        $item->fill($data)->save();
-        $item->refresh();
+        // XR-05: the early check above fails fast; this one, under the row
+        // lock, is the one that decides.
+        $item = $this->saveIfMatch($request, $item, $data);
 
         return response()
             ->json($this->present($item))

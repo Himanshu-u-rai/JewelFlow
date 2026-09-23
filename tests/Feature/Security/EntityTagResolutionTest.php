@@ -10,16 +10,17 @@ use Tests\Feature\Traits\CreatesTestTenant;
 use Tests\TestCase;
 
 /**
- * S3-12 — the `If-Match` validator has one-second resolution, so a write can
+ * S3-12 — the `If-Match` validator had one-second resolution, so a write could
  * be silently lost.
  *
- * ─── CHARACTERIZATION ONLY. NOT REPAIRED. ─────────────────────────────────
+ * ─── REPAIRED (XR-05). Written first as a characterization. ───────────────
  *
- * This file records behaviour that exists today. It is deliberately written
- * to pass against the CURRENT code, so it is a regression lock, NOT proof of
- * a repair. If someone later fixes the resolution, the two tests marked
- * "LOCKS THE DEFECT" will fail — and that failure is the fix landing, not a
- * regression. Read their messages before changing them.
+ * The two tests that locked the defect are inverted: a same-second write now
+ * moves the tag, and a stale If-Match is refused. The validator hashes
+ * PostgreSQL's row version (xmin), and the write re-checks it under the row
+ * lock. No datetime migration: the schema assertion below still holds, and the
+ * tag no longer depends on it. The concurrent case — two workers from one
+ * version — is measured in tests/Concurrency/etag_race.php.
  *
  * ─── How it was found ─────────────────────────────────────────────────────
  *
@@ -125,9 +126,8 @@ class EntityTagResolutionTest extends TestCase
     /**
      * The column cannot express sub-second time.
      *
-     * Asserted directly so the finding does not rest on my reading of a format
-     * constant. If a migration later widens this, this test fails and points
-     * at the two below.
+     * Still true, and no longer load-bearing: the repair does not widen the
+     * column. Kept so the finding's root cause stays recorded against the schema.
      */
     public function test_the_timestamp_backing_the_validator_has_no_subsecond_precision(): void
     {
@@ -140,23 +140,23 @@ class EntityTagResolutionTest extends TestCase
         $this->assertSame(
             0,
             (int) $precision,
-            'items.updated_at now stores sub-second time. The ETag may no longer be one-second '
-                . 'granular — re-check EntityTagResolutionTest, the defect it locks may be fixed.',
+            'items.updated_at now stores sub-second time; update this record of the schema.',
         );
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // LOCKS THE DEFECT — these passing means the defect is still present
+    // The repair (inverted from the characterization)
     // ────────────────────────────────────────────────────────────────────
 
     /**
-     * [LOCKS THE DEFECT] A real, persisted write does not move the validator.
+     * [REPAIR] A real, persisted write moves the validator, even within the
+     * same second.
      *
      * The assertions on status and on the stored value are load-bearing: they
      * are what distinguishes "the tag did not move" from "nothing happened",
      * which is the exact mistake I made when I first hit this.
      */
-    public function test_a_successful_write_within_the_same_second_leaves_the_entity_tag_unchanged(): void
+    public function test_a_successful_write_within_the_same_second_moves_the_entity_tag(): void
     {
         [, $shop] = $this->actAsOwner();
         $item = $this->createItem((int) $shop->id, null, ['selling_price' => 1000]);
@@ -172,20 +172,15 @@ class EntityTagResolutionTest extends TestCase
             'The write must actually have persisted, otherwise an unchanged tag proves nothing.',
         );
 
-        $this->assertSame(
-            $before,
-            $response->headers->get('ETag'),
-            'The ETag moved. If this is a deliberate fix, S3-12 is repaired — update the handoff.',
-        );
+        $this->assertNotSame($before, $response->headers->get('ETag'), 'S3-12: every write must move the tag.');
     }
 
     /**
-     * [LOCKS THE DEFECT] The lost update itself, end to end.
-     *
-     * Two operators, one row, one second. B's write is overwritten by A using
-     * a validator A obtained BEFORE B wrote, and A is told 200.
+     * [REPAIR] The lost update, end to end: two operators, one row, one second.
+     * A's validator was obtained BEFORE B wrote, so A is refused and B's value
+     * survives.
      */
-    public function test_a_stale_if_match_is_accepted_and_silently_clobbers_a_concurrent_write(): void
+    public function test_a_stale_if_match_is_refused_and_the_other_write_survives(): void
     {
         [, $shop] = $this->actAsOwner();
         $item = $this->createItem((int) $shop->id, null, ['selling_price' => 1000]);
@@ -207,18 +202,13 @@ class EntityTagResolutionTest extends TestCase
         // Operator A now writes using the validator it read BEFORE B wrote.
         $responseToA = $this->patchPrice($shopId, $itemId, 'etag-resolution-b2', $tagHeldByA, 3333);
 
-        $this->assertNotSame(
-            412,
-            $responseToA->getStatusCode(),
-            'A stale If-Match was correctly rejected — S3-12 appears repaired. Update the handoff.',
-        );
-
-        $responseToA->assertOk();
+        $this->assertSame(412, $responseToA->getStatusCode(), 'S3-12: a stale If-Match must be refused.');
+        $this->assertSame('precondition_failed', $responseToA->json('errors.0.code'));
 
         $this->assertSame(
-            '3333.00',
+            '7777.00',
             (string) Item::withoutTenant()->find($itemId)->selling_price,
-            "Operator B's value survived, so no update was lost — S3-12 may be repaired.",
+            "Operator B's value must survive.",
         );
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Concerns;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * EmitsEntityTag — RFC 7232 optimistic concurrency control for mobile v1.
@@ -18,8 +19,13 @@ use Illuminate\Http\Request;
  * Contract:
  *   - entityTagFor($model) → quoted, RFC-7232-compliant strong validator.
  *     Format: "<sha256-hex>:<class-basename>:<id>". Hash inputs are
- *     (id | updated_at ISO-8601 | class basename) so:
- *       * Same row + same updated_at  ⇒ same ETag (idempotent reads)
+ *     (id | updated_at ISO-8601 | row version | class basename) so:
+ *       * Same row version            ⇒ same ETag (idempotent reads)
+ *       * ANY write to the row        ⇒ a new ETag, even within one second
+ *         (XR-05 / S3-12). The row version is PostgreSQL's xmin, which every
+ *         UPDATE changes whatever code path wrote it — Eloquent, raw
+ *         DB::table, a trigger — with no column to maintain. updated_at stays
+ *         in the hash so a reused xid can never reproduce an old tag.
  *       * Same id across different models (Customer 42 vs Item 42)
  *         produce different ETags (no cross-resource collisions)
  *       * The visible suffix lets server logs disambiguate at a glance.
@@ -33,6 +39,12 @@ use Illuminate\Http\Request;
  *         current ETag in params so the          with params { expected,
  *         client can refresh.                    received }.
  *       * If matches                            → void (request proceeds)
+ *
+ *   - saveIfMatch($request, $model, $data): the check and the write as ONE
+ *     step. The row is locked FOR UPDATE, the precondition is re-checked
+ *     against the locked row, and only then is it written (XR-05). A check
+ *     against the model bound at the start of the request cannot close the
+ *     race: two writers from the same version would both pass it.
  *
  * Errors are emitted as JSON envelope error-arrays via HttpResponseException;
  * the mobile.envelope middleware tops them up with meta/data fields. They
@@ -63,9 +75,46 @@ trait EmitsEntityTag
             ? $updatedAt->format(\DateTimeInterface::ATOM)
             : (string) $updatedAt;
 
-        $hash = hash('sha256', $id . '|' . $stamp . '|' . $class);
+        $hash = hash('sha256', $id . '|' . $stamp . '|' . $this->rowVersion($model) . '|' . $class);
 
         return '"' . $hash . ':' . strtolower($class) . ':' . $id . '"';
+    }
+
+    /**
+     * The row's current version: PostgreSQL xmin, read from the table so it is
+     * the committed (or this transaction's own) value, never a cached one.
+     */
+    private function rowVersion(Model $model): string
+    {
+        if ($model->getConnection()->getDriverName() !== 'pgsql' || ! $model->exists) {
+            return '';
+        }
+
+        return (string) DB::connection($model->getConnectionName())
+            ->table($model->getTable())
+            ->where($model->getKeyName(), $model->getKey())
+            ->value('xmin');
+    }
+
+    /**
+     * Check If-Match and write in one step, under the row lock.
+     *
+     * @template T of Model
+     * @param  T  $model
+     * @return T  the saved model, refreshed
+     */
+    public function saveIfMatch(Request $request, Model $model, array $data): Model
+    {
+        return DB::transaction(function () use ($request, $model, $data) {
+            $locked = $model->newQuery()->whereKey($model->getKey())->lockForUpdate()->firstOrFail();
+
+            // Throws 412 inside the transaction, so nothing is written.
+            $this->assertIfMatchOrFail($request, $locked);
+
+            $locked->fill($data)->save();
+
+            return $locked->refresh();
+        });
     }
 
     /**

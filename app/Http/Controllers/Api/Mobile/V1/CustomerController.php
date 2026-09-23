@@ -59,8 +59,9 @@ class CustomerController extends Controller
             'notes'      => ['sometimes', 'nullable', 'string', 'max:2000'],
         ]);
 
-        $customer->fill($data)->save();
-        $customer->refresh();
+        // XR-05: the early check above fails fast; this one, under the row
+        // lock, is the one that decides.
+        $customer = $this->saveIfMatch($request, $customer, $data);
 
         return response()
             ->json($this->present($customer))
