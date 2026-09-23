@@ -682,9 +682,12 @@ T-01/T-03/T-05; T-02 is the expand-only positive control.
 
 Phase 3 reconciles **immediately before** enforcing, in both directions, because
 the Phase 1 backfill ran before the window it authorises. It adds each constraint
-`NOT VALID` then `VALIDATE`s it — `NOT VALID` takes `ACCESS EXCLUSIVE` only
-briefly and still enforces on every subsequent INSERT/UPDATE; `VALIDATE` scans
-under `SHARE UPDATE EXCLUSIVE`, blocking neither reads nor writes. T-06 asserts
+`NOT VALID` then `VALIDATE`s it, with explicit per-table transaction boundaries
+since XR-04: `ACCESS EXCLUSIVE` only for the catalogue change, released before
+`VALIDATE` scans under `SHARE UPDATE EXCLUSIVE`. **Correction:** until XR-04 the
+whole migration ran inside the migrator's transaction, so those locks lasted to
+its end and blocked reads and writes on every finished table — measured by
+`tests/Rehearsal/contract_migration_locks.php`, see §0b. T-06 asserts
 `pg_constraint.convalidated`, which is the only signal separating a validated
 constraint from one that reports a successful deploy while permanently exempting
 every expand-window row. T-07 pins the reconciliation.

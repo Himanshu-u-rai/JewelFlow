@@ -46,15 +46,38 @@ use Illuminate\Support\Facades\Schema;
  * public tree is recorded as 'public', and a disk with no file left to describe
  * is cleared. Neither moves a byte.
  *
- * LOCKING
- * -------
- * ADD CONSTRAINT ... NOT VALID takes ACCESS EXCLUSIVE only briefly, because it
- * skips the scan of existing rows. It still enforces the CHECK on every INSERT
- * and UPDATE from that moment on. VALIDATE CONSTRAINT then does the scan under
- * SHARE UPDATE EXCLUSIVE, which does not block reads or writes. Doing it in one
- * plain ADD CONSTRAINT instead would hold ACCESS EXCLUSIVE for the whole scan
- * and stall the table. T-06 asserts convalidated, so the second step cannot be
- * quietly dropped.
+ * LOCKING — explicit boundaries (XR-04)
+ * ------------------------------------
+ * CORRECTION. An earlier revision described NOT VALID-then-VALIDATE as brief
+ * locking, but it ran inside the one transaction Laravel's migrator wraps
+ * around up() on PostgreSQL ($withinTransaction defaults to true). Each
+ * ADD CONSTRAINT's ACCESS EXCLUSIVE was therefore held to the end of the whole
+ * migration — through every VALIDATE and every later table. Measured by
+ * tests/Rehearsal/contract_migration_locks.php: held at the third table, the
+ * migrator still held ACCESS EXCLUSIVE on the other two, and reads and writes
+ * there were blocked.
+ *
+ * Now $withinTransaction is false, and each table gets:
+ *
+ *   1. ONE short transaction: LOCK ... IN SHARE ROW EXCLUSIVE MODE, which
+ *      blocks writes and not reads; reconcile; DROP IF EXISTS; ADD CONSTRAINT
+ *      ... NOT VALID, which takes ACCESS EXCLUSIVE only for the catalogue
+ *      change. From the commit on, every new or changed row is checked.
+ *      Because writes are blocked between the reconcile and the ADD, no
+ *      unreconciled row can slip in between them, so step 2 cannot fail on
+ *      one.
+ *   2. VALIDATE CONSTRAINT as its own statement, holding only SHARE UPDATE
+ *      EXCLUSIVE: reads and writes continue while it scans.
+ *
+ * PARTIAL FAILURE. A table whose step 1 failed is unchanged, and one that
+ * finished stays constrained and validated. The migration is not recorded,
+ * so re-running `migrate` repeats all three steps. That is idempotent: the
+ * reconcile relabels nothing twice, and DROP IF EXISTS / ADD / VALIDATE
+ * rebuild a finished table's constraint. If step 2 ever failed, the
+ * constraint would stay NOT VALID — still enforced on new writes — until the
+ * re-run. Measured: killed mid-run, then re-run to completion.
+ *
+ * T-06 asserts convalidated, so the second step cannot be quietly dropped.
  *
  * ONE INCONSISTENCY, RECORDED RATHER THAN SILENTLY FIXED
  * -----------------------------------------------------
@@ -74,6 +97,9 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    /** XR-04: explicit per-table boundaries instead of one migration-long transaction. */
+    public $withinTransaction = false;
+
     /**
      * table => [path column, disk column, constraint name, CHECK body]
      *
@@ -124,17 +150,24 @@ return new class extends Migration
                 continue;
             }
 
-            [$labelled, $cleared] = $this->reconcile($table, $pathColumn, $diskColumn);
+            // Step 1 — one short transaction (see LOCKING).
+            [$labelled, $cleared] = DB::transaction(function () use ($table, $pathColumn, $diskColumn, $constraint, $check) {
+                DB::statement("LOCK TABLE {$table} IN SHARE ROW EXCLUSIVE MODE");
+
+                $result = $this->reconcile($table, $pathColumn, $diskColumn);
+
+                DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS {$constraint}");
+                DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$constraint} CHECK ({$check}) NOT VALID");
+
+                return $result;
+            });
 
             if ($labelled || $cleared) {
                 echo "[contract/130000] {$table}: recorded 'public' for {$labelled} expand-window "
                     ."attachment(s), cleared {$cleared} stranded disk value(s).\n";
             }
 
-            DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS {$constraint}");
-
-            DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$constraint} CHECK ({$check}) NOT VALID");
-
+            // Step 2 — its own statement, after step 1's commit released ACCESS EXCLUSIVE.
             DB::statement("ALTER TABLE {$table} VALIDATE CONSTRAINT {$constraint}");
         }
     }

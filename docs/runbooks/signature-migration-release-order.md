@@ -80,11 +80,19 @@ This migration:
    Phase 1 backfill ran *before* those rows existed. Without a second sweep,
    `VALIDATE CONSTRAINT` aborts the deploy on exactly the rows the plan told the
    old code it was free to write. Pinned by T-07.
-2. **Adds each constraint `NOT VALID`, then `VALIDATE`s it.** A plain
-   `ADD CONSTRAINT` holds `ACCESS EXCLUSIVE` for a full table scan. `NOT VALID`
-   takes that lock only briefly and still enforces the CHECK on every subsequent
-   INSERT and UPDATE; `VALIDATE` then scans under `SHARE UPDATE EXCLUSIVE`,
-   which blocks neither reads nor writes.
+2. **Adds each constraint `NOT VALID`, then `VALIDATE`s it, with explicit
+   transaction boundaries (XR-04).** Per table, one short transaction takes
+   `SHARE ROW EXCLUSIVE` (writes wait, reads continue), reconciles, and adds
+   the constraint `NOT VALID` — `ACCESS EXCLUSIVE` only for the catalogue change,
+   released at that transaction's commit. `VALIDATE` then runs as its own
+   statement under `SHARE UPDATE EXCLUSIVE`, blocking neither reads nor writes.
+   **Correction:** before XR-04 the migration ran inside the transaction
+   Laravel's migrator wraps around `up()` on PostgreSQL, so every
+   `ACCESS EXCLUSIVE` lasted to the end of the whole migration. Measured by
+   `tests/Rehearsal/contract_migration_locks.php`: the finished tables were
+   unreadable and unwritable while the migrator worked on the next one. A
+   migration interrupted part-way leaves finished tables constrained and the
+   rest untouched; re-running `migrate` completes it (measured).
 
 The `VALIDATE` step is load-bearing and easy to lose: a migration that adds the
 constraint and skips it reports a **successful deploy** while permanently
