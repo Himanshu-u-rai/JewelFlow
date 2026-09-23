@@ -369,16 +369,56 @@ for h in jewelflows.com www.jewelflows.com dhiran.jewelflows.com unknown.example
 done
 # Expected after §4: 403 403 403 403   (baseline today: 404 404 404 404)
 
-# Edge
+# Edge — see "Telling an edge block from an origin 403" below. A 403 status
+# alone does NOT show the edge rule works: once §4 is in place the origin
+# answers 403 too, and Cloudflare passes that through.
+PE="/storage/kyc/__edge-probe-$(date +%s)-$RANDOM"   # unique per run: nothing can be cached for it
 for h in jewelflows.com www.jewelflows.com dhiran.jewelflows.com; do
-  curl -sS -o /dev/null -w "$h %{http_code}\n" "https://$h$P"
+  curl -sS -o /tmp/edge-body.$h -w "$h %{http_code}\n" "https://$h$PE"
 done
-# Expected after §3: Cloudflare block response (403), not a 404 from origin
+# Then, on the origin, for that exact probe path:
+sudo grep -F "$PE" /var/log/nginx/access.log | wc -l
+# Expected after §3: 403 at the edge AND 0 origin log lines — the request never
+# reached the origin, so the edge blocked it.
+
+# Positive control for that absence: a probe that DID reach the origin must be
+# found in the same log. If this prints 0, the log cannot show absence and the
+# edge check above proves nothing.
+PO="/storage/kyc/__origin-probe-$(date +%s)-$RANDOM"
+curl -sS -o /dev/null -k --resolve "jewelflows.com:443:127.0.0.1" "https://jewelflows.com$PO"
+sudo grep -F "$PO" /var/log/nginx/access.log | wc -l     # expected: 1
 
 # HTTP path still funnels into a covered hostname
 curl -sSI http://dhiran.jewelflows.com$P | head -2
 # Expected: 301 -> https://jewelflows.com/...
 ```
+
+**Telling an edge block from an origin 403 (correction).** An earlier
+revision expected "a Cloudflare block response (403)" at the edge. After §4,
+that check cannot fail: the origin itself answers 403 for the prefix, Cloudflare
+proxies that answer, and both carry `server: cloudflare` and a `cf-ray` header.
+A passing check therefore proved nothing about the edge rule. What
+distinguishes them:
+
+1. **Origin access log (decisive).** A request the edge blocks never reaches
+   nginx. Probe with a path unique to this run, then grep the origin log for
+   that exact path: **0 lines** means the edge blocked it; a **403 line** means
+   the origin denied it, so the edge rule is missing, misordered or not matching.
+   Absence counts only next to the positive control, which shows the same log
+   does record a probe that reached the origin. Whoever executes §3 has
+   Cloudflare access and can confirm from the edge side too: Security → Events
+   lists a Block by that rule for the response's `cf-ray`.
+2. **Order.** In Option B the edge rule goes first. Verified then, before §4
+   exists, the origin would answer **404** for the probe, so a 403 can only be
+   the edge. Record that result before applying §4, and repeat check 1 after.
+3. **Body, as corroboration only.** nginx's own 403 page names nginx. The
+   Cloudflare block page names Cloudflare and a Ray ID. Keep the bodies
+   (`/tmp/edge-body.*`) with the change record. Body wording can change, so
+   this is not the decisive check.
+
+For ORIGIN-ONLY (§4a) there is no edge rule to verify. Check 1 then shows the
+origin log line with 403, which is the expected result for that option. It
+does not address edge-cached copies; that is why the option stays **PARTIAL**.
 
 **First-party positive control — the check that matters most.** After §4, an
 authorized user must still be able to view a KYC document through the
