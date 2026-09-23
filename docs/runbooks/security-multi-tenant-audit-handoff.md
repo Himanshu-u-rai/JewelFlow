@@ -14,8 +14,14 @@ read-only `git rev-parse HEAD` in `/var/www/jewelflow`
 (`kyc-public-exposure-containment.md` §1). **It has not been re-observed since.**
 Nothing in this document describes the server's current state or current
 exposure: every production statement is as of that observation or earlier.
-Re-read the deployed SHA, and abort on drift, before executing any approved
-step.
+Before executing any approved step, run that phase's drift check
+(`signature-migration-release-order.md` § Drift checks) and stop on drift.
+
+**Code answered in this round:** `751acc4ca3b84f40a7ab619cd25462f4aa2bd787`
+(the last commit that changes anything outside `docs/`). The independent
+source review covered packet `7b1d709162109fe51f56d03d77c14e3e50d7b9ea`; its
+seven findings and their dispositions are in §0b. This document's own commit
+is later than `751acc4` and changes documentation only.
 
 Mobile repository `/home/himanshu/Desktop/jewelflowMobileApp`, branch
 `rebrand/jewelflows-mobile`. Audit baseline
@@ -36,26 +42,119 @@ not mine.
 
 "Local" means `jewelflow_testing` only; **no row is deployed**. The tenant-query
 work (row 10) is one row and settles no other. Test files named below are green
-in the full-suite run at execution SHA `9d48331` (§8) unless a row says
-otherwise.
+in the full-suite run at execution SHA `751acc4` (§8: 3355 passed, 7
+pre-existing skips, 0 failed) unless a row says otherwise.
 
 | # | Item | Status | Commit(s) | Evidence | Still open |
 |---|---|---|---|---|---|
-| 1 | S3-09b unresolved claims: pruning, and what an operator may do with one | **Pruning defect FIXED locally.** **Operator procedure and tool PROPOSED** — evidence-gated, one claim at a time, two-person approval, audited; no age or bulk path | `e68eb31`; `c26a0fa`; tool + procedure `8d5a066` | `MobileIdempotencyRetentionTest` (7); `IdempotencyClaimReconciliationTest` (6) — both outcomes reached through the real cashbook route; `docs/runbooks/idempotency-unresolved-claims.md` | Running the tool on production needs its own approval. The mobile app has no message for the new `idempotency_outcome_reconciled` code. Scheduler invocation NOT VERIFIED |
+| 1 | S3-09b unresolved claims: pruning, and what an operator may do with one | **Pruning defect FIXED locally; retention aligned with the middleware (XR-02).** **Operator procedure and tool PROPOSED** — evidence-gated, one claim at a time, two-person approval, audited; no age or bulk path; acts only when the claim's advisory lock proves the writer has ended (XR-02) | `e68eb31`; `c26a0fa`; tool + procedure `8d5a066`; `9d673a7` | `MobileIdempotencyRetentionTest` (7); `IdempotencyClaimReconciliationTest` (9) — both outcomes reached through the real cashbook route; `claim_release_race.php` (§0b); `docs/runbooks/idempotency-unresolved-claims.md` | Running the tool on production needs its own approval. The mobile app has no message for the new `idempotency_outcome_reconciled` code. Scheduler invocation NOT VERIFIED |
 | 2 | 4xx release behaviour | **VERIFIED by inspection on all 16 routes**; the one class-C defect found was fixed separately (row 6); middleware policy deliberately unchanged | `2057a73`; `4e70660` | §7c-2; §7c-6 | 12 routes' 4xx paths are inspection-grade |
 | 3 | Mobile retry-key handling (S3-09c) | **FIXED in mobile** — one key per operator intent, rotated only on success | mobile `2cad553` | 40 suites / 275 tests, `tsc` clean at `2cad553` | **No device or emulator run** |
 | 4 | Real concurrency, changed shared middleware | **MEASURED on one route** (`POST /cashbook`), separate processes | `b85e296` | §7c-3 | Other 15 routes not raced; one machine, no pooler |
 | 5 | Cashbook transaction repair (S3-10) | **FIXED locally** | `fb351f4` | `CashbookWriteAtomicityTest` (4); evidence class SIMULATED INTERRUPTION | No service-layer duplicate guard on `POST /cashbook` — see §0a on why that is not a separate defect |
 | 6 | Return-service investigation | Lead **CLOSED**; **S3-11 FIXED** | `4e70660` | `ReturnApprovalAtomicityTest` (4) | Per-line `returned_at` guard NOT RUN |
-| 7 | Coverage of the 16 affected routes | **PARTIAL.** Behavioural tests on 4 money/metal routes plus drawer-check atomicity; 12 reviewed by reading. **S3-09e REPAIRED** | `8cddbc3`, `b8673db`, `2057a73`, `b79f182` | §7c; `MobileIdempotencyReplayFidelityTest` (8) | 12 routes inspection-only at the service layer; S3-12 open (§0a) |
-| 8 | S3-05 snapshot rendering | **FIXED locally for every ASSERTED field** | `b216b80`, `306aae1` | `FinalizedInvoiceSettingsDriftTest` (16) | Quick-bill snapshots carry less |
+| 7 | Coverage of the 16 affected routes | **PARTIAL.** Behavioural tests on 4 money/metal routes plus drawer-check atomicity; 12 reviewed by reading. **S3-09e REPAIRED** | `8cddbc3`, `b8673db`, `2057a73`, `b79f182`, `751acc4` | §7c; `MobileIdempotencyReplayFidelityTest` (9) | 12 routes inspection-only at the service layer. S3-12 **REPAIRED locally** (XR-05, §0b) |
+| 8 | S3-05 snapshot rendering | **FIXED locally for tax, terms, payment instructions and — since XR-06 — the parties' identity.** Narrowed: the seller's contact line stays live pending a product decision | `b216b80`, `306aae1`, `d31ab16` | `FinalizedInvoiceSettingsDriftTest` (20) | Contact line (D-17) is a decision, not done. Quick-bill snapshots carry less |
 | 9 | Historical / original reprints | **Original-reprint path COVERED**; bills finalized before the keys existed cannot be repaired | `e8e039e` | `QuickBillOriginalReprintTest` (3) | S3-13 open (§0a) |
 | 10 | Tenant isolation | **No defect found in the inspected candidate set; missing-context fail-closed behaviour now has regression coverage** | `4877ae1`, `10a525c`, `06ec0e0`, `32ca54f` | §7e | Categories NOT inventoried; wrong/stale context partly tested |
-| 11 | Catalogue / direct-file access | S3-06 **FIXED**; **S3-04b FIXED** (settings preview); S3-02/S3-03 code and relocation tooling **complete locally**, findings **OPEN** until relocation runs; S3-06b/S3-06c **OPEN** | `721c06d`, `51ca987`, `9d48331` | §0a; `PublicCatalogExposureTest` (8), `SettingsSignaturePreviewTest` (5), `PurchaseInvoiceImageRelocationTest` (5), `KarigarInvoiceRelocationTest` | Relocation and purge not executed; anonymous fetch of a public-disk file and edge cache NOT RUN |
+| 11 | Catalogue / direct-file access | S3-06 **FIXED**; **S3-04b FIXED** (settings preview); S3-02/S3-03 code and relocation tooling **complete locally**, findings **OPEN** until relocation runs; S3-06b/S3-06c **OPEN** | `721c06d`, `51ca987`, `9d48331`, `cb5f983` | §0a; `PublicCatalogExposureTest` (8), `SettingsSignaturePreviewTest` (5), `PurchaseInvoiceImageRelocationTest` (5), `KarigarInvoiceRelocationTest`, `RelocationNonDestructiveTest` (7) | Relocation and purge not executed; anonymous fetch of a public-disk file and edge cache NOT RUN. Superseded signature versions stay public after relocation (§7) |
 | 12 | KYC containment (S3-01 / S3-01c) | **OPEN — nothing executed.** Two packages; ORIGIN-ONLY is PARTIAL while edge exposure is unresolved | `25b638f`; `4b6e5f3` | `kyc-public-exposure-containment.md` | Cloudflare access unavailable; external consumers unverified |
 | 13 | Backup A+C | **A IMPLEMENTED locally** (allowlist, no traversal of `.git`/`.claude`/`output`, only `.env` archived). **C PROPOSED** (procedure text only) | A `3f1bd85`; C `2d0b5f5` | §7g; `BackupSourceExclusionTest` (11) + real `backup:run --only-files` | A needs a deploy. C needs the operator's procedure owner to apply it; its current step text was not visible here |
-| 14 | Migration / rollback | **REHEARSED on a populated synthetic database** — up, down newest-first and re-apply on the same data, outside any test transaction | `01f37a6` | §6a: 26 checks pass, 17 measurements | Phase-1 rollback measured one-way; no rehearsal on production-sized data; code rollback of S3-07b stays prohibited |
+| 14 | Migration / rollback | **REHEARSED on a populated synthetic database** — up, down newest-first and re-apply on the same data, outside any test transaction. Contract lock boundaries **MEASURED** with the real migrator (XR-04). Recovery keeps the schema and moves the code forward | `01f37a6`, `48981ff` | §6a: 26 checks pass, 17 measurements; `contract_migration_locks.php` (§0b) | Phase-1 rollback measured one-way; no rehearsal on production-sized data; serving `018b3d8` again is prohibited (runbook § Recovery) |
 | 15 | Device checks | **NOT RUN** | — | §5 | Android/iOS print and share, multiple copies, desktop browser print, CSP `data:`, S3-09c on a handset |
+
+## 0b. Independent source review of `7b1d709` — seven findings, answered
+
+The review covered packet `7b1d709162109fe51f56d03d77c14e3e50d7b9ea` and mobile
+`2cad553`. Its findings were source-level conclusions, not executed
+demonstrations. Each was checked against the code before anything changed:
+**all seven were confirmed, so no counter-evidence is offered.** Each was then
+reproduced by a test or a real-process harness that failed first. S3
+identities are kept; the XR ids map onto them.
+
+| XR | S3 | Disposition | Commit | Before the repair | After | Mutation |
+|---|---|---|---|---|---|---|
+| XR-01 | S3-09 | Confirmed. **REPAIRED locally** | `bf37898` | Resolved middleware order: idempotency before authorization on 15 of 16 routes. 4 defect tests RED — a stored success served after revocation or downgrade | `IdempotentReplayAuthorizationTest` 7 passed (36) | Priority entry removed → the 4 defect tests fail, the 3 controls pass |
+| XR-02 | S3-09b | Confirmed, both halves. **REPAIRED locally** | `9d673a7` | `claim_release_race.php`: claim released under a live writer → **2 cash rows** for one key. A committed-reconciled claim pruned with age; statuses −1/99/700 pruned | Reconciler refused while the writer lived; **1 row**; retry replayed. `IdempotencyClaimReconciliationTest` 9 passed | Writer-side lock removed → UNSAFE again |
+| XR-03 | S3-02, S3-03, S3-04 (movers) | Confirmed. **REPAIRED locally** | `cb5f983` | 5 of 7 RED: a different destination overwritten; another shop's private signature overwritten before the ledger refused. `relocation_race.php`: **UNSAFE 3/3** — rows recorded private with no file | 7 passed; race **SAFE 3/3**; relocation and immutability suites 45 passed (213) | — the old movers are the negative control |
+| XR-04 | S3-02, S3-03, S3-04 (contract migration) | Confirmed by measurement. **REPAIRED locally** | `48981ff` | `contract_migration_locks.php`: ACCESS EXCLUSIVE held to the end of the migration; finished tables unreadable and unwritable | A, B, C pass: locks only on the table in progress; only SHARE UPDATE EXCLUSIVE during VALIDATE, probe completed mid-VALIDATE; killed run leaves 2 validated + 1 untouched, re-run completes. `DiskColumnReleaseOrderTest` 8 passed | — the old migration is the negative control |
+| XR-05 | S3-12 | Confirmed. **REPAIRED locally, no migration** | `69b4439` | `etag_race.php`, two workers, distinct keys, same starting tag: **[200, 200]**, one price lost | **[200, 412]**, stored price = the winner's | Locked re-check removed → UNSAFE |
+| XR-06 | S3-05 | Confirmed. Identity **REPAIRED locally**; contact line **UNRESOLVED** (product decision) | `d31ab16` | D-14 seller, D-15 recipient, D-16 recorded-null vs missing key: RED | Drift file 20 passed (129); every print-related test: 258 passed, 1 skipped | `array_key_exists` → null check: D-16 fails alone |
+| XR-07 | S3-09e | Confirmed. **REPAIRED locally** | `751acc4` | Boundary test RED: between the two writes, a resolved claim without its headers | Replay fidelity 9 passed; idempotency suites 42 passed (237); rehearsal with the column really dropped: claim resolves, status 200 | — |
+
+Final-SHA figures for the harnesses, the rehearsal and the full suite are in §8.
+
+**XR-01 — scope, stated exactly.** Claims are keyed by (shop, user, key), and
+the different-shop control confirms it. What was served was a **stale
+authorization decision**, not a cross-shop exploit and not a second write.
+Authorization now runs before the replay on every route, whatever order a
+route declares, because `EnsureIdempotency` follows `Authorize` in the
+middleware priority list. Cash Book keeps its stricter policy (owner or
+manager **and** `cash.create`, with its own message) as the route gate
+`mobile-cashbook-write`. The session revocations became gates with their
+messages unchanged.
+
+**XR-02 — the proof is a lock, not a timeout.** The writer holds a
+session-level advisory lock on the claim from before staking until the claim
+is resolved; the tool must take the same lock before it may act.
+`max_execution_time` is withdrawn as evidence: it does not count database
+waits. The lock needs a connection that stays with the request, so release
+check D1 verifies there is no transaction-mode pooler and `DB_PERSISTENT` is
+off. The pruner now deletes only 2xx claims, so a claim reconciled as committed
+keeps refusing its key. "Unresolved" means a status outside 100–599 in the
+middleware, the tool and the pruner alike. The baseline never stakes a claim
+before its controller runs, so every unresolved claim was staked by code that
+takes the lock.
+
+**XR-03 — non-destructive, all three movers.** Ownership is validated before
+any byte moves. An absent destination is published from a verified temporary
+with `link()`, which is atomic and refuses to replace. An identical one is
+resumed. A conflicting one is refused, and both files, the row and the ledger
+are left untouched. A mover deletes only its own temporary. Covered: conflict,
+resumption, failed copy, a stray temporary from an interrupted run, the
+foreign-shop signature path, and two concurrent movers — each by running the
+commands themselves. Local disks only: on any other adapter `link()` fails and
+the row is reported, never overwritten.
+
+**XR-04 — boundaries measured with the real migrator**, from separate
+connections. Partial failure: finished tables stay constrained and validated,
+the failed one is unchanged, the migration is not recorded, and re-running
+`migrate` completes it. No trigger is touched. Limits: synthetic data (3M
+karigar rows), one PostgreSQL 16 instance, no production load.
+
+**XR-05 — version and atomicity, two separate defects.** The tag now hashes
+PostgreSQL's `xmin`, which every UPDATE changes whatever code path wrote it.
+`saveIfMatch()` locks the row, re-checks If-Match against the locked row, and
+writes in one transaction. No datetime migration: the `timestamp(6)` repair
+proposed earlier for S3-12 is not needed, and the next-day rounding hazard it
+carried does not arise. Transition cost: every tag changes once at deploy, so
+an edit screen open across the deploy gets one 412 and the app refetches.
+
+**XR-06 — completion narrowed.** Seller and recipient identity print as the
+bill stated it. A recorded NULL stays empty; only a key the snapshot never
+recorded falls back, to exactly what the template printed before. Layout stays
+live (D-12). The seller's phone, WhatsApp and email stay live **pending a
+product decision** on what a reprint's contact line is for (D-17 pins today's
+behaviour). S3-05 is therefore not claimed complete. S3-13 is separate and
+untouched.
+
+**XR-07 — one statement.** Status, body and headers are published in one
+UPDATE. The only failure that still resolves the claim is the one the old
+two-statement design existed for: `response_headers` missing after a rollback
+under this code. It is detected as a `QueryException` naming that column, and
+the claim then resolves as legacy claims did. Any other failure leaves the
+claim unresolved, so a retry is refused, never re-run. **Supersedes** the
+`b79f182` rationale for two statements, which bought the degradation at the
+price of the window XR-07 found.
+
+### The release package, corrected in the same round
+
+| Item | Was | Now |
+|---|---|---|
+| Drift checks | One check for every step: server `HEAD` = `018b3d8`. Wrong for Phase 3, which runs only after the nodes have left `018b3d8` | D0–D3, one per phase: code, migrations, constraints, the database connection (D1), fresh workers and baseline-shaped rows since the switch (D2), `convalidated` (D3). `signature-migration-release-order.md` § Drift checks |
+| Recovery | "Revert the code, keep the columns — costs nothing" | Keep the schema and revert forward. Serving `018b3d8` again is prohibited while traffic flows: cache-only payments (RB-1), and stale disk labels — the baseline rewrites paths without disks, and `reconcile()` does not repair a stale label. § Recovery |
+| KYC edge check | "Cloudflare block (403), not a 404 from origin" — once the origin deny exists, it passes whichever layer answered | Unique probe path; **0 origin log lines** is decisive, alongside a positive control proving the log records a probe that reached the origin; edge verified before the origin deny in Option B; bodies corroborate only. KYC stays **unexecuted**; ORIGIN-ONLY stays **PARTIAL** |
+| Superseded signatures | Residual named in §7; no option | Residual stated after R6, and an unexecuted origin-deny option for `/storage/signatures/` (§7) |
 
 ## 0a. Remaining findings — actionable
 
@@ -75,12 +174,15 @@ and the question is whether that is what the business wants.
 * **Class:** demonstrated (`MobileIdempotencyReplayFidelityTest`, RED then GREEN).
 * **Impact:** availability only. No duplicate write, no cross-shop effect.
 * **Repair:** a nullable `idempotency_keys.response_headers` column stores
-  exactly `ETag` and `X-Has-Entity-Tag`, and replays restore them. It is written
-  as a second statement, so if the column is ever missing the claim still
-  resolves; measured with the column really dropped in §6a.
+  exactly `ETag` and `X-Has-Entity-Tag`, and replays restore them. Since XR-07
+  (`751acc4`) it is written in the same statement as status and body. If the
+  column is missing (a rollback under this code), the claim falls back to the
+  legacy status-and-body write and still resolves — re-measured with the column
+  really dropped. **Correction:** the earlier second statement left a window in
+  which a concurrent retry replayed success without the tag (§0b, XR-07).
 * **Release:** the migration goes out with the code, table first (condition R3).
 
-### S3-12 — two edits in the same second: the second can silently win
+### S3-12 — two edits in the same second: the second can silently win — **REPAIRED locally, `69b4439` (XR-05)**
 
 * **What goes wrong.** An item's or customer's version tag is derived from
   `updated_at`, which the database stores to the whole second
@@ -89,25 +191,28 @@ and the question is whether that is what the business wants.
   overwrites B's change. Both see success.
 * **Affected operations:** `PATCH /api/mobile/v1/items/{item}` and
   `PATCH /api/mobile/v1/customers/{customer}`.
-* **Class:** demonstrated (`EntityTagResolutionTest`, 5 tests). Present in the
-  deployed baseline; not introduced by this branch.
+* **Class:** demonstrated — version identity by `EntityTagResolutionTest`
+  (its defect locks are now inverted to pin the repair), atomicity by
+  `etag_race.php`. Present in the deployed baseline; not introduced by this
+  branch.
 * **Impact:** a silently lost edit to a catalogue or customer row. It needs two
-  writers inside one second. Not a ledger or tenant defect.
-* **Smallest repair:** tag on sub-second time. `ALTER … updated_at TYPE
-  timestamp(6)` on `items` and `customers` — a precision increase that
-  PostgreSQL applies without rewriting the table (measured on 16.15 with a temp
-  table: `relfilenode` unchanged) — plus a model date format with
-  microseconds. The tag should include microseconds only when they are non-zero,
-  so rows not written since the change keep their current tag and no client is
-  forced into a spurious 412.
-* **Why it is not done here:** the model date format applies to every datetime
-  column on those two models. Any that stays `timestamp(0)` would **round** a
-  fractional second — measured: `'2026-09-23 23:59:59.6'::timestamp(0)` is
-  `2026-09-24 00:00:00`, the next business day — so the precision change
-  must cover every such column, or writes must truncate. That is a design
-  choice to review, not a mechanical fix.
-* **Status:** OPEN. Not a condition of this release, since it predates the
-  branch. Recorded as a known defect.
+  writers inside one second, or two writers whose checks both land before
+  either write. Not a ledger or tenant defect.
+* **Repair (XR-05):** the tag hashes PostgreSQL's `xmin` — the row version,
+  which every UPDATE changes — alongside id, `updated_at` and class, and
+  `saveIfMatch()` re-checks If-Match against the row locked `FOR UPDATE` before
+  writing. The review showed version identity alone was not enough: two writers
+  from one version both passed a check against their own loaded copy.
+  Measured by `tests/Concurrency/etag_race.php` (§0b).
+* **Superseded proposal.** An earlier revision proposed `timestamp(6)` on both
+  tables and called it the smallest repair. It is not needed, and the
+  next-day rounding hazard it carried (`'2026-09-23 23:59:59.6'::timestamp(0)`
+  is `2026-09-24 00:00:00`, measured) does not arise, because no column type
+  changes.
+* **Transition cost:** every tag changes once at deploy. An edit screen open
+  across the deploy gets one 412; the app refetches.
+* **Status:** repaired locally. It predates the branch, and the repair now ships
+  with this release's code.
 
 ### S3-13 — editing a quick bill re-states its supply type
 
@@ -245,14 +350,14 @@ wrote tests" becomes "it is fixed in production".
 | S3-02b karigar CHECK lacks the allowed-disk term | OPEN (logged, deliberately not fixed) | None by design | N/A |
 | S3-03 purchase attachment public | OPEN | Authenticated route committed; relocation tooling `purchases:relocate-invoice-images` (`9d48331`) | **OPEN** — until relocation runs (§0a, R5) |
 | S3-04 signature public + mutable | OPEN | Option B implemented; immutability proven end to end. S3-04b (settings preview broken for private signatures, a regression from this change) FIXED `51ca987` | **OPEN** |
-| S3-05 finalized invoice reprints with today's settings | **FIXED for every ASSERTED field** — tax (`igst_mode`, HSN), tax identity (`show_gstin`, `gst_number`), terms, and all payment instructions now come from the bill's own snapshot. RENDERING fields (theme, font, paper, subtitle, tagline, other `show_*`) stay live **on purpose**; D-12 pins that bound. Quick bills carry less and the gap is named (§7d) | Fix `b216b80` (tax half) + `306aae1` (asserted half) + `e8e039e` (original-reprint path, 3 tests / 21 assertions); drift file 16 tests / 89 assertions; 2 mutations run | **OPEN** — local only, not deployed |
+| S3-05 finalized invoice reprints with today's settings | **FIXED for the asserted fields below and, since XR-06 (`d31ab16`), the parties' identity; the seller's contact line stays live pending a decision (D-17).** **Correction:** this cell said "every ASSERTED field" — identity had been missed (§0b). Tax (`igst_mode`, HSN), tax identity (`show_gstin`, `gst_number`), terms, and all payment instructions now come from the bill's own snapshot. RENDERING fields (theme, font, paper, subtitle, tagline, other `show_*`) stay live **on purpose**; D-12 pins that bound. Quick bills carry less and the gap is named (§7d) | Fix `b216b80` (tax half) + `306aae1` (asserted half) + `e8e039e` (original-reprint path, 3 tests / 21 assertions); drift file 16 tests / 89 assertions then, 20 / 129 at `d31ab16`; 3 mutations run | **OPEN** — local only, not deployed |
 | S3-06 catalog tenant context survives a throw | **CLOSED as a code defect** — no cross-tenant read demonstrated | Fix committed (`721c06d`), 5 tests | **OPEN — needs the deploy** |
 | S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
 | S3-06c published item images outlive the shopfront toggle | OPEN | None — recorded limitation | **OPEN** |
 | S3-07 mobile payment cache-hit path was unauthorized | **CLOSED as a code defect** — no exploit against shipped code; the binding blocked it | Guard committed (`0296431`), 9 tests | **OPEN — needs the deploy** |
 | S3-07b payment retry integrity (cache/commit not coordinated) | **REPAIRED LOCALLY** — both defects closed; two more found by real concurrency and fixed; **rollback to the deployed baseline is measured UNSAFE** | Characterized `893a49b` (3 tests) → repaired `2dd0875` → claim scope `0cdd794` → claim staked before validation + P-14 `7d20e08` → rollback evidence, P-06 relabel, P-15 `b1a52f0`. 15 tests, 250 in band | **OPEN — needs the deploy, under the constraints in `payment-idempotency-rollback-constraints.md`** |
 | S3-08 static memoization across a long-lived worker | **CLOSED — examined, not a tenant break** | None needed; one inaccurate docblock noted | N/A |
-| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **REPAIR IMPLEMENTED; VERIFICATION INCOMPLETE.** Supported conclusion is narrow: pre-staking blocks same-key automatic re-execution *while the claim is retained*. It does NOT by itself establish atomic business completion, recoverable successful replay, or that key retention survives pruning | Characterized `8cddbc3` → repaired `b8673db`. 17 tests / 89 assertions; 9 contract tests still green; 273 passed (1028 assertions) across `Feature/Security` + `Feature/Mobile`, no regressions. Concurrency is now **REAL multi-process** (§7c-3): pre-repair blob `6a8c4cc` produced 4×201 / 4 cash rows / sum 10000 under one key; repaired produces 1×201 + 3×409 / 1 cash row. Recoverable successful replay is now measured too | **OPEN. Closed sub-items: 4xx-release safety (§7c-2), real concurrency (§7c-3), mobile consumer handling (§7c-4). Still open: retained-claim disposal (§7c-1 — the pruning *code* defect is fixed in `e68eb31`; what remains open is an operator decision, since a retained unresolved claim has no supported clearing path and growth is slow but unbounded), 12 routes now REVIEWED (§7c-6) — no write-then-4xx on any of the 16, so the release-on-4xx policy is supported rather than assumed; three routes (`drawer-check`, `job-orders`, `uploads/intent`) have no duplicate guard and inherit S3-09c; two NEW defects found by testing: S3-09e since REPAIRED locally (`b79f182`), S3-12 characterized and NOT repaired (§0a). New limit found — payload-conflict detection is sequential-path only; a concurrent different-payload loser gets `idempotency_in_flight`, not `idempotency_key_conflict`** |
+| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **REPAIR IMPLEMENTED; VERIFICATION INCOMPLETE.** Supported conclusion is narrow: pre-staking blocks same-key automatic re-execution *while the claim is retained*. It does NOT by itself establish atomic business completion, recoverable successful replay, or that key retention survives pruning | Characterized `8cddbc3` → repaired `b8673db`. 17 tests / 89 assertions; 9 contract tests still green; 273 passed (1028 assertions) across `Feature/Security` + `Feature/Mobile`, no regressions. Concurrency is now **REAL multi-process** (§7c-3): pre-repair blob `6a8c4cc` produced 4×201 / 4 cash rows / sum 10000 under one key; repaired produces 1×201 + 3×409 / 1 cash row. Recoverable successful replay is now measured too | **OPEN. Closed sub-items: 4xx-release safety (§7c-2), real concurrency (§7c-3), mobile consumer handling (§7c-4). Still open: retained-claim disposal (§7c-1 — the pruning *code* defect is fixed in `e68eb31`; what remains open is an operator decision, since a retained unresolved claim has no supported clearing path and growth is slow but unbounded), 12 routes now REVIEWED (§7c-6) — no write-then-4xx on any of the 16, so the release-on-4xx policy is supported rather than assumed; three routes (`drawer-check`, `job-orders`, `uploads/intent`) have no duplicate guard and inherit S3-09c; two NEW defects found by testing: S3-09e since REPAIRED locally (`b79f182`), S3-12 characterized here, since REPAIRED locally (`69b4439`, XR-05; §0b). New limit found — payload-conflict detection is sequential-path only; a concurrent different-payload loser gets `idempotency_in_flight`, not `idempotency_key_conflict`** |
 
 ### Finding IDs — old → new, because they drifted
 
@@ -273,7 +378,7 @@ renumbering.**
 | S3-10 | `CashBookController::store` / `storeDrawerCheck` write subject and audit non-atomically | *(new — ID confirmed unused before assignment)* | §7c-5, FIXED |
 | S3-09e | Replayed responses drop every header, wedging the two `PATCH` routes whose contract needs `ETag`. **Predates S3-09** — pre-repair blob `6a8c4cc` behaves identically | *(new — ID confirmed unused before assignment)* | §7c-6; **REPAIRED locally `b79f182`** (§0a) |
 | S3-11 | `ReturnService::approveReturn` cancels the pending header, then can fail | *(new — ID confirmed unused before assignment)* | §7c-2, FIXED |
-| S3-12 | `If-Match` validator is one-second granular (`updated_at` is `timestamp(0)`), so a concurrent write is silently lost | *(new — ID confirmed unused before assignment)* | §7c-6, CHARACTERIZED, NOT REPAIRED |
+| S3-12 | `If-Match` validator is one-second granular (`updated_at` is `timestamp(0)`), so a concurrent write is silently lost | *(new — ID confirmed unused before assignment)* | §7c-6, characterized; since REPAIRED locally, `69b4439` (XR-05, §0b) |
 | S3-13 | Editing a quick bill re-captures `shop_snapshot` on the shared save path, so an edit to an unrelated field re-states the supply type on a bill that keeps its number. **Presentation only** — bill number and every stored figure verified unchanged | *(new — ID confirmed unused before assignment)* | §7d-1, CHARACTERIZED, NOT REPAIRED |
 | S3-04b | The settings page previews the current signature from `/storage/…`, broken for every signature stored on the private disk since S3-04 — a regression from this branch | *(new — ID confirmed unused before assignment)* | §0a, **REPAIRED locally `51ca987`** |
 
@@ -492,6 +597,11 @@ not depend on it.
 
 Cloudflare can convert a cacheable HEAD into an origin GET and cache the full
 response, so verification uses a nonexistent probe path, not a real document.
+**Edge verification, corrected:** a 403 at the edge does not show the edge rule
+works — once the origin deny exists, Cloudflare passes the origin's 403 through.
+The decisive check is a probe path unique to the run with **no line for it in
+the origin access log**, beside a positive control showing that log does record
+a probe that reached the origin (runbook §6).
 No real KYC file has been repeatedly probed. Any production canary must be part
 of the separately approved procedure.
 
@@ -672,6 +782,9 @@ PROPOSED. Nothing executed anywhere but `jewelflow_testing`.**
 | 2 APPLICATION | deploy the new code to **every** serving node | — |
 | 3 CONTRACT | `2026_09_20_130000` all three both-or-neither CHECKs | **No.** Must not run before Phase 2 completes |
 
+`invoice_payment_claims` and `response_headers` run in Phase 1 too, one file per
+command. Each phase has its own drift check, D0–D3 (runbook § Drift checks).
+
 The correction this split exists for: I called the original three migrations
 "additive" and treated that as safe-while-serving. The column and backfill are
 additive. **The constraint is not** — it forbids a row with a path and no disk,
@@ -719,9 +832,14 @@ to nothing.
 
 **Rollback is not symmetric.** Phase 3 `down()` is freely reversible. Phase 1
 rollback drops the disk columns — which is the only record of which files the new
-code put on the private disk, and of which have been relocated. Treat Phase 1
-rollback as **one-way** once any private upload or relocation has occurred;
-revert the code and leave the columns.
+code put on the private disk, and of which have been relocated. Phase 1 rollback
+is **never a recovery step**. Recovery keeps the schema and reverts forward on
+top of the release (runbook § Recovery). **Correction:** this paragraph used to
+say "revert the code and leave the columns". Serving `018b3d8` on the retained
+schema is prohibited while traffic flows: its payment route is cache-only
+(RB-1), and it rewrites file paths without their disk columns. A row already
+labelled `local` then keeps that label beside a file stored publicly, and
+`reconcile()` does not repair it.
 
 ---
 
@@ -809,9 +927,33 @@ what makes that safe, and E-07 proves it on the printed page.
   unclassified and stay under review. Enumerated by grep over
   `Storage::disk('public')` writes on 2026-09-21; that enumerates *writers*, not
   consumers, and a consumer is what decides publication.
-* Superseded signature versions are named by no settings row — only by snapshots.
-  `--orphans` reports them; the default pass does not move them, because moving a
-  file that no row names would strip the only pointer to it.
+* **Superseded signature versions stay public after R6.** They are named by no
+  settings row — only by snapshots. The default pass does not move them, because
+  moving a file that no row names would strip the only pointer to it, and the
+  purge deletes only originals whose private copy verifies. So after the
+  relocation and the purge, every superseded version is still reachable at its
+  `/storage/signatures/…` URL. `signatures:relocate --orphans` counts them,
+  read-only; the production count is not known here.
+  **Option SIG-ORIGIN — independently approvable, not executed, PARTIAL.** Add
+  `location ^~ /storage/signatures/ { deny all; }` beside the KYC deny, in the
+  same server block and form as KYC §4.2. Why it is safe for first-party use,
+  checked at `751acc4`: every signature the application renders is read on the
+  server and inlined as a `data:` URI (`InvoiceSignatureRenderer:359`), including
+  the settings preview since S3-04b; no view or API builds a `/storage/signatures/`
+  URL — the literal prefix appears only in two comments
+  (`invoice_print.blade.php:163`, `quick-bills/print.blade.php:122`), and of
+  every `digital_signature_path` reader and every public `->url()` builder,
+  none takes a signature path; the mobile app has no signature consumer. Reprints of superseded versions read the file through the
+  filesystem, which an nginx deny does not affect. Constraints:
+  * **after Phase 2 only.** `018b3d8` prints every signature through that URL
+    (`invoice_print.blade.php:845`, `quick-bills/print.blade.php:565`,
+    `settings.blade.php:2790`), so a deny under the baseline blanks every printed
+    signature;
+  * **external consumers unverified** — for example an emailed bill that
+    references the URL. The access-log check in KYC §6 applies unchanged;
+  * **PARTIAL for the same reason as KYC ORIGIN-ONLY:** copies already cached at
+    the edge stay reachable until an edge rule and a purge run, and those need
+    the Cloudflare access this session does not have.
 * **If an image was already overwritten or deleted by the baseline's
   `Storage::delete()` calls, it is gone. It cannot be reconstructed.** Nothing
   here claims otherwise.
@@ -1734,6 +1876,8 @@ the same one-second window. Controls in the test show a plainly wrong tag still
 gets 412 and a missing one still gets 428, so the failure is specifically one of
 resolution, not a broken guard.
 
+**Since repaired (`69b4439`, XR-05, §0b)** — on the row version, with the
+check and write made atomic; the text below is the reasoning as it stood then.
 Not repaired: both candidate fixes (migrate to `timestamp(6)`, or re-base the
 validator on row content) change a client contract that mobile clients already
 hold. Operator decision.
@@ -1808,11 +1952,18 @@ the file as a regression lock rather than as evidence of repair.
 classifier, the presenter and the key on the wire. It does not establish
 end-to-end behaviour on a handset.
 
-## 7d. S3-05 second half — the asserted/rendering split — FIXED
+## 7d. S3-05 second half — the asserted/rendering split — FIXED, narrowed by XR-06
 
 The first half (`b216b80`) pinned `igst_mode` and the HSN map. This completes
 the finding for every remaining field that **the document asserts about the
 transaction**, and deliberately closes it no further than that.
+
+**Correction (XR-06).** That claim was wrong when written. The parties'
+identity — seller name, address, state (and so the place-of-supply line),
+registration number; recipient name, mobile, address, ID and PAN — was
+captured in the snapshot but still printed from the live shop and customer.
+Repaired in `d31ab16` (§0b). The seller's phone, WhatsApp and email stay live
+pending a product decision (D-17), so S3-05 is not claimed complete.
 
 **The line drawn, and why it is not "pin everything".** A reprint carries two
 kinds of field and they want opposite treatment:
@@ -2588,6 +2739,9 @@ information_schema: shop_id nullable                -> 4 tables, none on a trait
 
 ### Round-3 run figures — execution SHA `9d483314be5f402796681ac6aba5fffc6398f0f1`
 
+Superseded as the latest full-suite measurement by the XR round below; kept as
+the record of that SHA.
+
 Every run below was made at `9d48331` with `git status` showing only `docs/`
 files modified — the handoff, the packet builder, two runbooks. None of those
 is read by any test. The per-file figures further down were measured when each
@@ -2701,23 +2855,103 @@ by a session restart before the results were read. Both were re-run at the
 same SHA, and the figures above are from the re-runs. No figure here was carried
 over from a run whose output no longer exists.
 
+### XR round — execution SHA `751acc4ca3b84f40a7ab619cd25462f4aa2bd787`
+
+Run 2026-09-24T02:30:19+05:30 to 02:35:20+05:30, in this order, with
+`git status` showing only `docs/` files modified. No test reads them.
+
+```
+# php tests/Concurrency/claim_release_race.php            (XR-02)
+writer blocked inside its business transaction: yes; claim staked: id 1 (status 0)
+cash rows visible to the operator: 0; reconciler exit 1; claim still present: yes
+  reconciler said: Refused: the original request still holds this claim and may still commit. Nothing was changed.
+writer finished: {"status":201,"replay":null}
+same-key retry: 201 (replay: true); cash rows for this shop: 1
+RESULT: SAFE — release refused while the writer could still commit; one cash row
+
+# php tests/Concurrency/etag_race.php                      (XR-05)
+workers waiting on the row: 2
+responses: [{"status":200,"code":null,"price":"2500"},{"status":412,"code":"precondition_failed","price":"3100"}]
+stored price: 2500.00
+RESULT: SAFE — one edit won, the other was refused as stale
+
+# php tests/Rehearsal/migration_rollback_rehearsal.php
+  -> REHEARSAL: all checks passed — 26 PASS, 17 MEASURED, including
+     "S3-09e: replay carries the original ETag" and
+     "headers column dropped under new code: claim still resolves ... claim status 200"
+
+# FULL — php artisan test
+  -> 3355 passed, 7 skipped, 0 failed (16357 assertions), 290.97 s
+     skipped: the same 7 as at 9d48331 — 6 data-dependent ConstitutionalInvariantsTest
+     skips and 1 browser-only contract
+```
+
+**Reused, not re-run: the code they exercise has not changed since.**
+`git diff --stat cb5f983 751acc4 -- app/Console tests/Concurrency/relocation_race.php`
+and `git diff --stat 48981ff 751acc4 -- database tests/Rehearsal` are both
+empty.
+
+```
+# php tests/Concurrency/relocation_race.php — 3 runs each   (XR-03)
+old movers:  rows wrong 4 / 40 / 6; e.g. karigar-invoices/51/race-6.pdf: disk=local private=MISSING
+             -> RESULT: UNSAFE, 3 of 3
+at cb5f983:  rows wrong 0; temporaries left 0; conflicts/failed copies reported 0
+             -> RESULT: SAFE, 3 of 3
+
+# php tests/Rehearsal/contract_migration_locks.php         (XR-04, 3,000,000 karigar rows)
+old migration:  A still holds karigar_invoices:AccessExclusiveLock, shop_billing_settings:AccessExclusiveLock;
+                both read=BLOCKED write=BLOCKED. B AccessExclusiveLock during VALIDATE.
+                C killed run left all three absent (one transaction); re-run completed
+                -> RESULT: 3 check(s) FAILED
+at 48981ff:     A holds only stock_purchases:RowExclusiveLock, ShareRowExclusiveLock; finished tables read=ok write=ok
+                B karigar_invoices:ShareUpdateExclusiveLock only; read=ok write=ok; VALIDATE still running after the probe: yes
+                C after kill: shop_billing_settings=validated, karigar_invoices=validated, stock_purchases=absent;
+                  re-run exit 0, all three validated, recorded
+                -> RESULT: all checks passed
+```
+
+Before-repair and mutation runs, recorded when each repair was made:
+
+```
+claim_release_race, before 9d673a7:   reconciler exit 0; claim deleted; retry 201 (replay: no); cash rows 2 -> UNSAFE
+claim_release_race, writer lock removed: cash rows 2 -> UNSAFE
+etag_race, before 69b4439:            workers waiting 2; [200, 200]; stored 2500.00 -> UNSAFE
+etag_race, locked re-check removed:   [200, 200] -> UNSAFE
+```
+
+**Harness defects, recorded because they looked like results.** The first
+before-run of `claim_release_race.php` read "writer blocked: NO", and the first
+of `etag_race.php` read "workers waiting on the row: 0". Both probes used
+`pg_stat_activity`, which a session sees as one snapshot per transaction, and
+the probing session was inside one. Both now read `pg_locks`, which is live;
+only runs made after that change are counted above. The first lock harness ran
+on 1.5M rows and counted a probe that completed only after the migration
+committed; it now opens its probe connection in advance, uses 3M rows, and
+counts a probe only if VALIDATE was still running when it finished.
+
 ## 9. Commits, diff, working tree
 
-**Measured at `9d48331`, not at HEAD — deliberately.** A diffstat recorded inside
+**Measured at `751acc4`, not at HEAD — deliberately.** A diffstat recorded inside
 a tracked file changes the diffstat, so "the figure at HEAD" has no fixed point,
 and chasing it is exactly how the earlier revisions of this line came to be
 wrong. Pinning it to a named commit makes it rerunnable:
 
 ```
-$ git diff --shortstat 018b3d8..9d48331
- 91 files changed, 21371 insertions(+), 398 deletions(-)
+$ git diff --shortstat 018b3d8..751acc4
+ 105 files changed, 23498 insertions(+), 427 deletions(-)
 
-$ git log --oneline 018b3d8..9d48331 | wc -l
-76
+$ git log --oneline 018b3d8..751acc4 | wc -l
+84
+
+$ git diff --shortstat 7b1d709..751acc4      # the XR round, since the reviewed packet
+ 30 files changed, 1946 insertions(+), 289 deletions(-)
 ```
 
-`9d48331` is the last commit on the branch that touches anything outside
-`docs/`. Re-pinned from `06ec0e0` (76 files / +19,303 / −225, 67 commits),
+`751acc4` is the last commit on the branch that touches anything outside
+`docs/`. Re-pinned from `9d48331` (91 files / +21,371 / −398, 76 commits),
+superseded by `7b1d709` (documentation) and the seven XR commits `bf37898`,
+`9d673a7`, `cb5f983`, `48981ff`, `69b4439`, `d31ab16`, `751acc4`. Earlier
+re-pinned from `06ec0e0` (76 files / +19,303 / −225, 67 commits),
 superseded by this round: `3f1bd85` backup A, `b79f182` S3-09e, `32ca54f`
 stock-purchase contract, `8d5a066` claim procedure, `01f37a6` rehearsal,
 `2d0b5f5` backup C, `51ca987` S3-04b, `9d48331` S3-03 relocation. Earlier pin,
@@ -2783,7 +3017,8 @@ covered by `.gitignore`.
 
 Local work that remains, none of it blocking the conditions in §11:
 
-1. S3-12 — decide the timestamp-precision design (§0a), then implement it.
+1. S3-05 contact line — a product decision on whether a reprint shows the
+   seller's phone, WhatsApp and email as issued or as today (D-17).
 2. A mobile message for `idempotency_outcome_reconciled`. It currently falls
    into the generic 409 alert.
 3. The tenant categories marked "not inventoried" in §7e: parent-owned tables,
@@ -2796,8 +3031,10 @@ Local work that remains, none of it blocking the conditions in §11:
 
 ## 11. Release readiness
 
-**Not ready. Source review is pending until the reviewer has the packet**, and
-nothing in this document substitutes for it. Every production statement here
+**Not ready.** The independent review of `7b1d709` returned seven findings.
+All seven are answered on the branch (§0b), locally only; answering them is not
+the same as a reviewer accepting the answers. Nothing in this document
+substitutes for that re-review. Every production statement here
 dates from the last observation of the server (2026-09-20T18:36:08+00:00), not
 from today.
 
@@ -2812,13 +3049,13 @@ it is named as an approval **and** as the evidence that follows it.
 
 | # | Condition | Closes when | Findings it carries |
 |---|---|---|---|
-| R1 | Independent source review of the packet at its pinned SHA | the reviewer's findings are answered on the branch and the packet is regenerated | all |
-| R2 | Drift check | `git rev-parse HEAD` on the server equals `018b3d8` immediately before any step. On drift, stop and re-derive | all deploy steps |
-| R3 | Migration order | expand (4) + `invoice_payment_claims` + `response_headers` applied; code deployed to every node; contract applied last; `migrate:status` output recorded. Rehearsed in §6a | S3-04, S3-07b, S3-09e, S3-02/S3-03 disk columns |
+| R1 | Independent source review | XR-01…07 answered (§0b) and the packet regenerated at this round's SHA — **done locally**. Closes when the reviewer re-reviews the regenerated packet and raises nothing further | all |
+| R2 | Drift checks, one per phase | D0 before Phase 1, D1 before Phase 2, D2 before Phase 3, D3 after it, each recorded (`signature-migration-release-order.md` § Drift checks). **Corrected:** the single check "`HEAD` = `018b3d8` before any step" was wrong for Phase 3. On drift, stop and re-derive | all deploy steps |
+| R3 | Migration order | the six Phase 1 migrations applied, one file per command; code deployed to every node, with the D1 connection check passed (no transaction-mode pooler; XR-02); contract applied last; D3 shows all three constraints validated. Rehearsed in §6a; contract lock boundaries measured (XR-04) | S3-04, S3-07b, S3-09b, S3-09e, S3-02/S3-03 disk columns |
 | R4 | Karigar attachments off the public path | after R3: `karigar-invoices:relocate-attachments` dry run reviewed → approved `--execute` → `--verify` clean → separately approved `--purge-originals`. The manifest is kept. Until the purge, the public copy stays reachable at its URL | **S3-02** |
 | R5 | Purchase images off the public path | the same sequence with `purchases:relocate-invoice-images` (`9d48331`). The production count must be established first — it is not known here | **S3-03** |
-| R6 | Signatures off the public path | `signatures:relocate`, same gating (§7) | S3-04 |
-| R7 | KYC exposure | an approved package executed and its §6 verification output recorded. ORIGIN-ONLY leaves the edge-cache residual open until §3 and §5 run | S3-01, S3-01c |
+| R6 | Signatures off the public path | `signatures:relocate`, same gating (§7). **Closes for current signatures only.** Superseded versions stay public: count them with `--orphans`, then either approve Option SIG-ORIGIN (§7, after Phase 2; PARTIAL) or record the residual as accepted | S3-04 |
+| R7 | KYC exposure | an approved package executed and its §6 verification output recorded. For the edge layer that means a unique probe path with **0 origin log lines**, next to a positive control; a 403 alone does not show the edge rule works (corrected). ORIGIN-ONLY leaves the edge-cache residual open until §3 and §5 run, and stays PARTIAL | S3-01, S3-01c |
 | R8 | Device verification | the §5 checks run on Android and iOS, with results recorded, for the inline signature and for S3-09c handling | S3-04, S3-09c |
 | R9 | Backup A in production | after deploy: `backup:scope-check` clean as `www-data`, and one `backup:run` whose archive listing shows the allowlist | backup A |
 
@@ -2828,7 +3065,9 @@ Each predates the branch and is unchanged by it, or is a question of policy.
 Each stays OPEN, with its smallest repair in §0a. Listing them here is not
 acceptance.
 
-* **S3-12** — a design decision on timestamp precision is pending.
+* **S3-05 contact line** — whether a reprint shows the seller's phone,
+  WhatsApp and email as issued or as today is a product decision (D-17). The
+  rest of S3-05 ships with this release; this part is not claimed.
 * **S3-13** — the billing policy on edits is undecided.
 * **S3-06b** — publication consent is per shop, not per item.
 * **S3-06c** — item photos outlive the shopfront toggle.

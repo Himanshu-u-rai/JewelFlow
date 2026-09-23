@@ -31,6 +31,10 @@ OUT="${1:-/tmp/jewelflow-security-review-packet}"
 MOBILE_REPO="${MOBILE_REPO:-/home/himanshu/Desktop/jewelflowMobileApp}"
 MOBILE_BASELINE="d8a07819ac41291bd3a7e4ba27d31261d96aef28"
 
+# The packet the last independent review covered. A re-review starts from the
+# delta since then (diffs/15-*). Override: REVIEWED_SHA=<sha> bash ...
+REVIEWED_SHA="${REVIEWED_SHA:-7b1d709162109fe51f56d03d77c14e3e50d7b9ea}"
+
 cd "$(git rev-parse --show-toplevel)"
 
 # ONE export SHA, resolved once and used for every subsequent git call.
@@ -45,6 +49,10 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 if ! git cat-file -e "${BASELINE}^{commit}" 2>/dev/null; then
     echo "FATAL: baseline ${BASELINE} is not present in this repository." >&2
+    exit 1
+fi
+if ! git cat-file -e "${REVIEWED_SHA}^{commit}" 2>/dev/null; then
+    echo "FATAL: reviewed packet SHA ${REVIEWED_SHA} is not present in this repository." >&2
     exit 1
 fi
 if ! git -C "$MOBILE_REPO" cat-file -e "${MOBILE_BASELINE}^{commit}" 2>/dev/null; then
@@ -76,6 +84,8 @@ git diff "${BASELINE}..${EXPORT_SHA}" -- \
 git diff "${BASELINE}..${EXPORT_SHA}" -- \
     app/Console/Commands/RelocateShopSignatures.php \
     app/Console/Commands/RelocateKarigarInvoiceAttachments.php \
+    app/Console/Commands/RelocatePurchaseInvoiceImages.php \
+    app/Console/Commands/Concerns/PublishesVerifiedCopies.php \
     app/Models/SignatureRelocation.php          > "$OUT/diffs/11-relocation.patch"
 
 git diff "${BASELINE}..${EXPORT_SHA}" -- \
@@ -88,6 +98,11 @@ git diff "${BASELINE}..${EXPORT_SHA}" -- \
     app/Http/Middleware/                        > "$OUT/diffs/13-request-path.patch"
 
 git diff "${BASELINE}..${EXPORT_SHA}" -- tests/          > "$OUT/diffs/14-tests.patch"
+
+# 2a. Everything since the last reviewed packet, code and prose, so a re-review
+#     reads the answers to its own findings rather than the whole branch again.
+git diff "${REVIEWED_SHA}..${EXPORT_SHA}"                > "$OUT/diffs/15-since-reviewed-${REVIEWED_SHA:0:7}.patch"
+git diff "${REVIEWED_SHA}..${EXPORT_SHA}" --stat         > "$OUT/diffs/15-since-reviewed-${REVIEWED_SHA:0:7}.stat"
 
 # 2b. Mobile, commit-to-commit. That tree carries a pre-existing dirty file
 #     unrelated to the audit; reading from commits keeps it out by construction.
@@ -135,6 +150,7 @@ done
     echo "Branch:        ${BRANCH}"
     echo "Baseline:      ${BASELINE}"
     echo "Candidate:     ${EXPORT_SHA}"
+    echo "Last reviewed: ${REVIEWED_SHA}  (delta: diffs/15-since-reviewed-${REVIEWED_SHA:0:7}.patch)"
     echo
     echo "Mobile repo:   ${MOBILE_REPO} (${MOBILE_BRANCH})"
     echo "Mobile base:   ${MOBILE_BASELINE}"
