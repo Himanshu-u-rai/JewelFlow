@@ -54,6 +54,11 @@
     $igstMode    = $presentation['igst_mode'];
     $showGstin   = $presentation['show_gstin'];
     $gstNumber   = $presentation['gst_number'];
+    // XR-06: the parties as the bill stated them. Contact details (phone,
+    // WhatsApp, email) are NOT here — they stay live pending a product
+    // decision, and are read from $shop below.
+    $seller      = $presentation['seller'];
+    $recipient   = $presentation['recipient'];
     $copyCount   = (int) ($billing?->copy_count  ?? 1);
     $copyCount   = max(1, min(2, $copyCount));
 
@@ -158,8 +163,8 @@
     // /storage/signatures/ URL.
     $signature = app(\App\Services\InvoiceSignatureRenderer::class)->forInvoice($invoice);
     $showDigitalSignature = $signature['show'];
-    $stateCode = trim((string) ($shop?->state_code ?? ''));
-    $stateName = trim((string) ($shop?->state ?? ''));
+    $stateCode = trim((string) ($seller['state_code'] ?? ''));
+    $stateName = trim((string) ($seller['state'] ?? ''));
     $stateAndCode = $stateCode !== '' && $stateName !== ''
         ? "{$stateCode} - {$stateName}"
         : ($stateName !== '' ? $stateName : ($stateCode !== '' ? $stateCode : '—'));
@@ -515,39 +520,38 @@
             </div>
             @endif
             <div class="header-center">
-                <h1 class="shop-title">{{ $shop?->name ?? 'Jewellery Store' }}</h1>
+                <h1 class="shop-title">{{ $seller['name'] ?? 'Jewellery Store' }}</h1>
                 <p class="shop-subtitle">{{ $subtitle }}</p>
                 {{-- Always render the tagline line so the shop-head block has
                      a fixed height. Non-breaking space keeps the line visible
                      when the shop hasn't configured a tagline. --}}
                 <p class="shop-tagline">{!! $tagline !== '' ? e($tagline) : '&nbsp;' !!}</p>
                 <p class="shop-meta">
-                    {{ $shop?->address_line1 ?: ($shop?->address ?: '') }}
-                    @if($shop?->address_line2), {{ $shop->address_line2 }}@endif
-                    @if($shop?->city), {{ $shop->city }}@endif
-                    @if($shop?->state), @if($shop->state_code){{ $shop->state_code }}-@endif{{ $shop->state }}@endif
-                    @if($shop?->pincode) - {{ $shop->pincode }}@endif
+                    {{ $seller['address_line1'] ?: ($seller['address'] ?: '') }}
+                    @if($seller['address_line2']), {{ $seller['address_line2'] }}@endif
+                    @if($seller['city']), {{ $seller['city'] }}@endif
+                    @if($seller['state']), @if($seller['state_code']){{ $seller['state_code'] }}-@endif{{ $seller['state'] }}@endif
+                    @if($seller['pincode']) - {{ $seller['pincode'] }}@endif
                 </p>
                 <p class="shop-meta">
                     Phone: {{ $shop?->phone ?: '-' }}
                     @if($shop?->shop_whatsapp) &nbsp;|&nbsp; WhatsApp: {{ $shop->shop_whatsapp }}@endif
                     @if($shop?->shop_email) &nbsp;|&nbsp; {{ $shop->shop_email }}@endif
                 </p>
-                @if($shop?->shop_registration_number)<p class="shop-meta">Reg: {{ $shop->shop_registration_number }}</p>@endif
+                @if($seller['shop_registration_number'])<p class="shop-meta">Reg: {{ $seller['shop_registration_number'] }}</p>@endif
             </div>
         </div>
 
         <div class="bill-block row">
             <div class="bill-col">
-                <div class="kv"><div class="k">To</div><div class="v">: {{ $customer?->name ?? 'Walk-in Customer' }}</div></div>
+                <div class="kv"><div class="k">To</div><div class="v">: {{ $recipient['name'] ?? 'Walk-in Customer' }}</div></div>
                 @if($showAddr)
-                <div class="kv"><div class="k">Address</div><div class="v">: {{ $customer?->address ?: '—' }}</div></div>
+                <div class="kv"><div class="k">Address</div><div class="v">: {{ $recipient['address'] ?: '—' }}</div></div>
                 @endif
-                <div class="kv"><div class="k">Mobile</div><div class="v">: {{ \App\Support\Mobile::forDisplay($customer?->mobile) ?: '—' }}</div></div>
+                <div class="kv"><div class="k">Mobile</div><div class="v">: {{ \App\Support\Mobile::forDisplay($recipient['mobile']) ?: '—' }}</div></div>
                 @if($showIdPan)
-                @php $snap = $invoice->complianceSnapshot; @endphp
-                <div class="kv"><div class="k">ID</div><div class="v">: {{ ($snap?->snapshot_id_number ?: $customer?->id_number) ?: '—' }}</div></div>
-                <div class="kv"><div class="k">PAN</div><div class="v">: {{ ($snap?->snapshot_pan ?: $customer?->pan) ?: '—' }}</div></div>
+                <div class="kv"><div class="k">ID</div><div class="v">: {{ $recipient['id_number'] ?: '—' }}</div></div>
+                <div class="kv"><div class="k">PAN</div><div class="v">: {{ $recipient['pan'] ?: '—' }}</div></div>
                 @endif
             </div>
             <div class="bill-col right">
@@ -871,7 +875,7 @@
         </div>
 
         <div class="footer-col footer-col--sign">
-            <h4 class="footer-title">For {{ $shop?->name ?? 'Jewellery Store' }}</h4>
+            <h4 class="footer-title">For {{ $seller['name'] ?? 'Jewellery Store' }}</h4>
             <div class="footer-body footer-sign-body">
                 @if($secondSig)
                 <div class="footer-sign-second">

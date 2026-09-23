@@ -651,6 +651,93 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
 
     // ------------------------------------------------------------------ helpers
 
+    // ────────────────────────────────────────────────────────────────────
+    // XR-06 — the parties' identity, as issued (asserted fields)
+    // ────────────────────────────────────────────────────────────────────
+
+    private function setShop(int $shopId, array $values): void
+    {
+        DB::table('shops')->where('id', $shopId)->update($values);
+    }
+
+    private function setCustomerOf(Invoice $invoice, array $values): void
+    {
+        DB::table('customers')->where('id', $invoice->customer_id)->update($values);
+    }
+
+    /** D-14 — the seller as the bill named them, and the state the supply was made from. */
+    public function test_d14_seller_identity_on_a_reprint_is_the_one_on_the_bill(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->setShop($shop->id, ['name' => 'Asha Jewellers', 'address_line1' => '12 Old Market', 'city' => 'Jaipur',
+            'state' => 'Rajasthan', 'state_code' => '08', 'pincode' => '302001', 'shop_registration_number' => 'REG-OLD-1']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+
+        $this->setShop($shop->id, ['name' => 'Asha Gold House', 'address_line1' => '99 New Plaza', 'city' => 'Mumbai',
+            'state' => 'Maharashtra', 'state_code' => '27', 'pincode' => '400001', 'shop_registration_number' => 'REG-NEW-2']);
+
+        $html = $this->printInvoice($owner, $invoice);
+
+        foreach (['Asha Jewellers', '12 Old Market', 'Jaipur', 'Rajasthan', '302001', 'REG-OLD-1'] as $asIssued) {
+            $this->assertStringContainsString($asIssued, $html, "as issued: {$asIssued}");
+        }
+        foreach (['Asha Gold House', '99 New Plaza', 'Mumbai', 'Maharashtra', '400001', 'REG-NEW-2'] as $today) {
+            $this->assertStringNotContainsString($today, $html, "today's value must not appear: {$today}");
+        }
+    }
+
+    /** D-15 — the recipient as the bill named them. */
+    public function test_d15_recipient_identity_on_a_reprint_is_the_one_on_the_bill(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $invoice = $this->finalizedInvoice($owner, $shop->id,
+            ['first_name' => 'Meera', 'last_name' => 'Rao', 'address' => '4 Lake Road', 'mobile' => '9811111111', 'id_number' => 'ID-OLD', 'pan' => 'ABCDE1234F']);
+
+        $this->setCustomerOf($invoice, ['first_name' => 'Meera R.', 'last_name' => 'Kapoor', 'address' => '77 Hill View', 'mobile' => '9822222222', 'id_number' => 'ID-NEW', 'pan' => 'ZZZZZ9999Z']);
+
+        $html = $this->printInvoice($owner, $invoice);
+
+        foreach (['Meera Rao', '4 Lake Road', '98111', 'ID-OLD', 'ABCDE1234F'] as $asIssued) {
+            $this->assertStringContainsString($asIssued, $html, "as issued: {$asIssued}");
+        }
+        foreach (['Meera R. Kapoor', '77 Hill View', '98222', 'ID-NEW', 'ZZZZZ9999Z'] as $today) {
+            $this->assertStringNotContainsString($today, $html, "today's value must not appear: {$today}");
+        }
+    }
+
+    /** D-16 — a line the bill printed empty stays empty; a key the bill never recorded falls back. */
+    public function test_d16_recorded_null_stays_empty_and_a_missing_key_falls_back(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->setShop($shop->id, ['address_line2' => null]);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+        $this->assertSnapshotRecordsNull($invoice, 'shop', 'address_line2');
+
+        $this->setShop($shop->id, ['address_line2' => 'Added Later Wing']);
+        $this->assertStringNotContainsString('Added Later Wing', $this->printInvoice($owner, $invoice),
+            'recorded NULL: the bill printed no second line and must not grow one');
+
+        $this->stripSnapshotKeys($invoice, ['shop' => ['address_line2']]);
+        $this->assertStringContainsString('Added Later Wing', $this->printInvoice($owner, $invoice),
+            'a snapshot that never recorded the key falls back to the live value, as before');
+    }
+
+    /**
+     * D-17 — UNRESOLVED PRODUCT DECISION, pinned as it stands: the seller's
+     * contact details (phone, WhatsApp, email) stay LIVE on a reprint. Whether
+     * a reprint should show how to reach the shop today or what the bill said
+     * then is not decided; this records the current choice, not a fix.
+     */
+    public function test_d17_seller_contact_details_stay_live_pending_a_decision(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->setShop($shop->id, ['phone' => '0141-1111111']);
+        $invoice = $this->finalizedInvoice($owner, $shop->id);
+        $this->setShop($shop->id, ['phone' => '0141-2222222']);
+
+        $this->assertStringContainsString('0141-2222222', $this->printInvoice($owner, $invoice));
+    }
+
     /**
      * Assert a snapshot key is PRESENT and NULL — the shape D-13c turns on, and
      * the one array_key_exists() distinguishes from an absent key.
@@ -710,9 +797,12 @@ class FinalizedInvoiceSettingsDriftTest extends TestCase
      * disabled or altered. Finalization itself goes through the controller so
      * the render snapshot is captured by production code, not by the fixture.
      */
-    private function finalizedInvoice(User $owner, int $shopId): Invoice
+    private function finalizedInvoice(User $owner, int $shopId, array $customerValues = []): Invoice
     {
         $customer = $this->createCustomer($shopId);
+        if ($customerValues !== []) {
+            DB::table('customers')->where('id', $customer->id)->update($customerValues);
+        }
 
         $invoice = TenantContext::runFor($shopId, function () use ($shopId, $customer) {
             $invoice = new Invoice();

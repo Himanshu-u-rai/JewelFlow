@@ -45,6 +45,18 @@ use App\Models\ShopBillingSettings;
  *   show_gstin, gst_number the shop's tax identity as printed
  *   terms_and_conditions   the terms the customer was actually given
  *   upi_id, bank_*         every payment instruction on the bill
+ *   seller                 the supplier particulars: name, address lines,
+ *                          city, state and state code (which also drive the
+ *                          place-of-supply line), pincode, registration no.
+ *                          (XR-06)
+ *   recipient              name, mobile, address, ID and PAN (XR-06)
+ *
+ * NOT PINNED, AND SAID SO. The seller's phone, WhatsApp and email stay live,
+ * pending a product decision about what a reprint's contact line is for (D-17).
+ * The snapshot's capture of the recipient's address, ID and PAN prefers the
+ * compliance record and falls back to the customer profile with `?:` — a
+ * compliance record with no address prints the profile's. Whether a compliance
+ * sale may do that is also a product decision. It is recorded, not changed.
  *
  * WHAT THIS DOES NOT CLAIM. Money was never affected and this repairs no
  * figure. The amounts come off the bill's own row; CGST and SGST are half the
@@ -116,6 +128,22 @@ class BillPresentation
     ];
 
     /**
+     * XR-06. The supplier particulars a tax invoice states: who sold, from
+     * where. Captured in the snapshot's 'shop' section since schema_version 1
+     * and, until XR-06, rendered from the live shop row. The seller's CONTACT
+     * details — phone, WhatsApp, email — are deliberately absent: whether a
+     * reprint should show how to reach the shop today or what the bill said
+     * is an open product decision, and they stay live until it is made (D-17).
+     */
+    private const ASSERTED_SELLER = [
+        'name', 'address', 'address_line1', 'address_line2', 'city',
+        'state', 'state_code', 'pincode', 'shop_registration_number',
+    ];
+
+    /** XR-06. The recipient particulars, from the snapshot's 'customer' section. */
+    private const ASSERTED_RECIPIENT = ['name', 'mobile', 'address', 'id_number', 'pan'];
+
+    /**
      * Per-instance memoization. Resolved once per request; the template calls
      * hsnFor() once per LINE and reads the rest once per printed COPY, so
      * without this a two-copy ten-line bill re-decodes the snapshot dozens of
@@ -136,13 +164,17 @@ class BillPresentation
                 ->value('snapshot');
 
             $billing = $this->section($snapshot, 'billing');
+            $shop = $this->section($snapshot, 'shop');
 
             return $this->resolve(
                 (int) $invoice->shop_id,
                 $billing,
                 $billing,
-                $this->section($snapshot, 'shop'),
-            );
+                $shop,
+            ) + [
+                'seller' => $this->seller((int) $invoice->shop_id, $shop),
+                'recipient' => $this->recipient($invoice, $this->section($snapshot, 'customer')),
+            ];
         })();
     }
 
@@ -262,6 +294,64 @@ class BillPresentation
             : $this->text(Shop::query()->whereKey($shopId)->value('gst_number'));
 
         return $resolved;
+    }
+
+    /**
+     * XR-06. Per key, like the billing fields: a recorded NULL stays empty (the
+     * bill printed nothing there), and only a key the snapshot never recorded
+     * falls back to the live shop row.
+     *
+     * @param  array<string, mixed>|null  $section
+     * @return array<string, string|null>
+     */
+    private function seller(int $shopId, ?array $section): array
+    {
+        $live = null;
+        $seller = [];
+
+        foreach (self::ASSERTED_SELLER as $key) {
+            if ($section !== null && array_key_exists($key, $section)) {
+                $seller[$key] = $this->text($section[$key]);
+
+                continue;
+            }
+
+            $live ??= Shop::query()->whereKey($shopId)->first();
+            $seller[$key] = $this->text($live?->{$key});
+        }
+
+        return $seller;
+    }
+
+    /**
+     * XR-06. Per key as above. The fallback for a key the snapshot never
+     * recorded is exactly what the template rendered before XR-06, so a legacy
+     * bill prints as it always has: the live customer, and for ID/PAN the
+     * compliance record first.
+     *
+     * @param  array<string, mixed>|null  $section
+     * @return array<string, string|null>
+     */
+    private function recipient(Invoice $invoice, ?array $section): array
+    {
+        $recipient = [];
+
+        foreach (self::ASSERTED_RECIPIENT as $key) {
+            if ($section !== null && array_key_exists($key, $section)) {
+                $recipient[$key] = $this->text($section[$key]);
+
+                continue;
+            }
+
+            $customer = $invoice->customer;
+            $recipient[$key] = $this->text(match ($key) {
+                'id_number' => $invoice->complianceSnapshot?->snapshot_id_number ?: $customer?->id_number,
+                'pan' => $invoice->complianceSnapshot?->snapshot_pan ?: $customer?->pan,
+                default => $customer?->{$key},
+            });
+        }
+
+        return $recipient;
     }
 
     /**
