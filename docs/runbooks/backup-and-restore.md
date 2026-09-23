@@ -10,6 +10,27 @@ single zip per run, stored on the configured destination disk(s).
 
 ---
 
+## What the file half archives
+
+An allowlist, `App\Support\BackupScope::INCLUDE` (read by `config/backup.php`):
+`.env` (the only env file), `storage/app` (uploads), and the application code
+and lockfiles. `bootstrap/cache` and the backup destination are excluded.
+Nothing else under the project root is walked, so an unreadable `.git`,
+`.claude` or `output` directory cannot abort a run, and no `.env.*` snapshot
+can be archived.
+
+```bash
+# Read-only: list top-level entries the scope does not account for (exit 1 if any).
+runuser -u www-data -- /usr/bin/php /var/www/jewelflow/artisan backup:scope-check
+```
+
+A new top-level path must go in `INCLUDE` (a restore needs it) or
+`NOT_ARCHIVED` (with the reason). `ignore_unreadable_directories` stays
+`false`: it would turn an unreadable directory of real data into a silently
+incomplete archive.
+
+---
+
 ## Where backups are stored
 
 - **Disk:** `local` → `storage/app/<APP_NAME>/` (configured in `config/backup.php` →

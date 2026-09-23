@@ -119,6 +119,9 @@ for f in kyc-public-exposure-containment.md \
          security-multi-tenant-audit-handoff.md \
          signature-migration-release-order.md \
          payment-idempotency-rollback-constraints.md \
+         idempotency-unresolved-claims.md \
+         backup-and-restore.md \
+         deploy-claude-ownership.md \
          known-pre-existing-test-debt.md; do
     git show "${EXPORT_SHA}:docs/runbooks/$f" > "$OUT/runbooks/$f"
 done
@@ -139,10 +142,10 @@ done
     echo
     echo "## Deployed baseline"
     echo
-    echo "\`${BASELINE}\` is the *reported* deployed baseline. A commit existing as a"
-    echo "local git object is not evidence of what is running on a server — the two"
-    echo "are different facts about different machines. See the containment runbook"
-    echo "for when the server was last actually observed."
+    echo "\`${BASELINE}\` is the LAST OBSERVED deployed baseline: read-only"
+    echo "\`git rev-parse HEAD\` on the production server, 2026-09-20T18:36:08+00:00."
+    echo "It has not been re-observed since. Nothing in this packet describes the"
+    echo "server's current state or current exposure."
     echo
     echo "## Working tree at generation time"
     echo

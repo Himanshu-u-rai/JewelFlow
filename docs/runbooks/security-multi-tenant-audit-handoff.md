@@ -8,10 +8,14 @@ environment other than the local `jewelflow_testing` database.** Every number
 below is local evidence. Production exposure status is tracked separately and is
 not improved by any of it.
 
-Reported deployed baseline: `018b3d810e37d534f498033ab582ee41f3197c27`.
-Verified as a local git object on 2026-09-21T00:37+05:30. That is a check of the
-SHA I was **given**, not an observation of what is running on the servers.
-Recheck for drift against the deployed tree before executing any approved step.
+**Last observed deployed baseline:** `018b3d810e37d534f498033ab582ee41f3197c27`,
+observed on the production server at **2026-09-20T18:36:08+00:00** by a
+read-only `git rev-parse HEAD` in `/var/www/jewelflow`
+(`kyc-public-exposure-containment.md` §1). **It has not been re-observed since.**
+Nothing in this document describes the server's current state or current
+exposure: every production statement is as of that observation or earlier.
+Re-read the deployed SHA, and abort on drift, before executing any approved
+step.
 
 Mobile repository `/home/himanshu/Desktop/jewelflowMobileApp`, branch
 `rebrand/jewelflows-mobile`. Audit baseline
@@ -30,28 +34,201 @@ not mine.
 
 ## 0. Reconciliation — every requested item, one table
 
-The tenant-query work (§7e) is one row here. It does not establish the status of
-any other row. "Local" means `jewelflow_testing` only; **no row is deployed**.
-Test files named below are all green inside selection A (`tests/Feature/Security`,
-202 passed) at execution SHA `06ec0e0`, unless the row says otherwise.
+"Local" means `jewelflow_testing` only; **no row is deployed**. The tenant-query
+work (row 10) is one row and settles no other. Test files named below are green
+in the full-suite run at execution SHA `9d48331` (§8) unless a row says
+otherwise.
 
 | # | Item | Status | Commit(s) | Evidence | Still open |
 |---|---|---|---|---|---|
-| 1 | S3-09b uncertain-claim pruning | **Code defect FIXED locally.** Retain + report; no timer permits re-execution | `e68eb31`; `c26a0fa` withdraws "pruning bounds the burn" | `MobileIdempotencyRetentionTest` (7): real route, real failure injection, cash row count asserted; positive controls keep resolved-claim pruning working | **Disposal of retained unresolved claims** — no supported clearing path, slow unbounded growth. Operator decision (§7c-1). Scheduler invocation NOT VERIFIED |
-| 2 | 4xx release behaviour | **VERIFIED by inspection on all 16 routes**; one class-C defect found and fixed separately (row 6). Middleware policy deliberately unchanged | `2057a73` (review); `4e70660` (S3-11) | §7c-2 three-class analysis; §7c-6 read of every 4xx path; `ReturnApprovalAtomicityTest` records that the 422 releases the claim | 12 routes' 4xx paths are inspection-grade, not individually tested |
-| 3 | Mobile retry-key handling (S3-09c) | **FIXED in mobile** — key owned per operator intent, rotated only on success; "Outcome unknown" for `idempotency_in_flight` | mobile `2cad553` | 15 new unit tests; mobile suite 40 suites / 275 tests, `tsc` clean at `2cad553` (re-run this session) | **No device or emulator run.** Three routes with no service-layer guard (`drawer-check`, `job-orders`, `uploads/intent`) remain protected only while clients keep one key per intent |
-| 4 | Real concurrency, changed shared middleware | **MEASURED on one route** (`POST /cashbook`), separate processes and connections | `b85e296`; harness `tests/Concurrency/idempotency_race.php` | Pre-repair blob: 4×201, 4 cash rows; repaired: 1×201 + 3×409, 1 row; distinct-key control 4×201; DB-outage control | Other 15 routes not raced; one machine, no pooler, 4-way contention. S3-09d (concurrent payload-conflict reported as in-flight) characterized |
-| 5 | Cashbook transaction repair (S3-10) | **FIXED locally** — both write pairs wrapped; bounded to those two methods | `fb351f4` | `CashbookWriteAtomicityTest` (4 / 12), RED then GREEN; evidence class **SIMULATED INTERRUPTION** | `POST /cashbook` still has no service-layer duplicate guard; the drawer-check `$expected`-then-insert race not addressed |
-| 6 | Return-service investigation | **Lead CLOSED** (`createPendingApproval`: shape present, consequence absent). **S3-11 FIXED** (`approveReturn` atomic, through the existing service path) | `4e70660` | `ReturnApprovalAtomicityTest` (4 / 23), RED then GREEN, positive control; `--filter=Return` 146 passed / 1 skipped at the time | Per-line `returned_at` guard NOT RUN (single-line fixture) |
-| 7 | Coverage of all 16 affected routes | **PARTIAL.** Middleware repair shared by all 16; behavioural crash/duplicate tests on 4 money/metal routes + drawer-check atomicity; 12 reviewed by reading | `8cddbc3`, `b8673db`, `2057a73` | §7c table and §7c-6 per-route duplicate table | 12 routes inspection-only at the service layer. **S3-09e** (replay drops headers; wedges the two PATCH routes) and **S3-12** (1-second `If-Match`) characterized, **NOT repaired** — operator decisions |
-| 8 | S3-05 snapshot rendering | **FIXED locally for every ASSERTED field**; RENDERING fields live by design (D-12 bound) | `b216b80`, `306aae1` (`0c4af44` corrects its message) | `FinalizedInvoiceSettingsDriftTest` (16 / 89); two mutations run, one falsified a coverage claim and produced D-13c | Quick-bill snapshots carry less (no `show_gstin`, no itemised bank group) |
-| 9 | Historical / original reprints | **Original-reprint path COVERED**; bills finalized before the keys existed resolve live — **cannot be repaired**, no record exists | `e8e039e` | `QuickBillOriginalReprintTest` (3 / 21) incl. 404 route control | **S3-13** (quick-bill edit re-captures the snapshot; presentation only, figures unchanged) characterized, **NOT repaired** — business decision |
-| 10 | Tenant isolation — queries, relationships, jobs, exports | **No defect found in the inspected candidate set; missing-context fail-closed behaviour now has regression coverage** | `4877ae1`, `10a525c`, `06ec0e0` | §7e: `TenantScopeFailClosedTest` (4), `StockPurchaseLineOwnershipTest` (6); targeted mutations | Categories NOT inventoried (parent-owned tables, foreign related ids elsewhere); wrong/stale context only partly tested; 8 jobs unread |
-| 11 | Catalogue / direct-file access | S3-06 **FIXED locally**; S3-02/S3-03 authenticated routes **committed**, findings **OPEN**; S3-06b/S3-06c **OPEN** (product decision / limitation) | `721c06d`; `545c001`; S3-02/03 routes on branch | `PublicCatalogExposureTest` (8) incl. C-06 direct URL carries no gate, C-08 private-disk serve route; `PurchaseInvoiceAttachmentTest`, `KarigarInvoiceAttachmentTest` | Anonymous HTTP fetch of a public-disk file NOT RUN (served by nginx); edge cache NOT RUN; relocation and purge not executed; `products`, `shop-logos`, `catalog-heroes` and two upload writers unclassified |
-| 12 | KYC containment (S3-01 / S3-01c) | **OPEN — nothing executed.** Two packages written, independently approvable; ORIGIN-ONLY is **PARTIAL** while edge-cache exposure is unresolved | `25b638f`; route fix `4b6e5f3` (S3-01c) | `kyc-public-exposure-containment.md`; `KycLegacyPublicDiskTest` (3) | Cloudflare access unavailable; external consumers unverified; baseline last observed 2026-09-20 |
-| 13 | Backup repair | **OPEN — NOT STARTED on this branch** | — | none | "Backup fix A+C" is not defined anywhere in this branch or its runbooks; needs the definition from whoever tracked it |
-| 14 | Migration / rollback | **PROPOSED, not executed anywhere but `jewelflow_testing`.** Expand → application → contract order; S3-07b rollback **measured UNSAFE** | `a542745`, `b1a52f0`, `c4f6a97` | `DiskColumnReleaseOrderTest` (7) T-01…T-07; `payment-idempotency-rollback-constraints.md` | No rollback drilled against a populated database; Phase-1 rollback one-way after any private upload |
-| 15 | Device checks | **NOT RUN** | mobile `ffcd034` (signature warning) is unit-tested only | §5 | Android/iOS print and share, multiple copies, desktop browser print, CSP `data:`, S3-09c on a handset |
+| 1 | S3-09b unresolved claims: pruning, and what an operator may do with one | **Pruning defect FIXED locally.** **Operator procedure and tool PROPOSED** — evidence-gated, one claim at a time, two-person approval, audited; no age or bulk path | `e68eb31`; `c26a0fa`; tool + procedure `8d5a066` | `MobileIdempotencyRetentionTest` (7); `IdempotencyClaimReconciliationTest` (6) — both outcomes reached through the real cashbook route; `docs/runbooks/idempotency-unresolved-claims.md` | Running the tool on production needs its own approval. The mobile app has no message for the new `idempotency_outcome_reconciled` code. Scheduler invocation NOT VERIFIED |
+| 2 | 4xx release behaviour | **VERIFIED by inspection on all 16 routes**; the one class-C defect found was fixed separately (row 6); middleware policy deliberately unchanged | `2057a73`; `4e70660` | §7c-2; §7c-6 | 12 routes' 4xx paths are inspection-grade |
+| 3 | Mobile retry-key handling (S3-09c) | **FIXED in mobile** — one key per operator intent, rotated only on success | mobile `2cad553` | 40 suites / 275 tests, `tsc` clean at `2cad553` | **No device or emulator run** |
+| 4 | Real concurrency, changed shared middleware | **MEASURED on one route** (`POST /cashbook`), separate processes | `b85e296` | §7c-3 | Other 15 routes not raced; one machine, no pooler |
+| 5 | Cashbook transaction repair (S3-10) | **FIXED locally** | `fb351f4` | `CashbookWriteAtomicityTest` (4); evidence class SIMULATED INTERRUPTION | No service-layer duplicate guard on `POST /cashbook` — see §0a on why that is not a separate defect |
+| 6 | Return-service investigation | Lead **CLOSED**; **S3-11 FIXED** | `4e70660` | `ReturnApprovalAtomicityTest` (4) | Per-line `returned_at` guard NOT RUN |
+| 7 | Coverage of the 16 affected routes | **PARTIAL.** Behavioural tests on 4 money/metal routes plus drawer-check atomicity; 12 reviewed by reading. **S3-09e REPAIRED** | `8cddbc3`, `b8673db`, `2057a73`, `b79f182` | §7c; `MobileIdempotencyReplayFidelityTest` (8) | 12 routes inspection-only at the service layer; S3-12 open (§0a) |
+| 8 | S3-05 snapshot rendering | **FIXED locally for every ASSERTED field** | `b216b80`, `306aae1` | `FinalizedInvoiceSettingsDriftTest` (16) | Quick-bill snapshots carry less |
+| 9 | Historical / original reprints | **Original-reprint path COVERED**; bills finalized before the keys existed cannot be repaired | `e8e039e` | `QuickBillOriginalReprintTest` (3) | S3-13 open (§0a) |
+| 10 | Tenant isolation | **No defect found in the inspected candidate set; missing-context fail-closed behaviour now has regression coverage** | `4877ae1`, `10a525c`, `06ec0e0`, `32ca54f` | §7e | Categories NOT inventoried; wrong/stale context partly tested |
+| 11 | Catalogue / direct-file access | S3-06 **FIXED**; **S3-04b FIXED** (settings preview); S3-02/S3-03 code and relocation tooling **complete locally**, findings **OPEN** until relocation runs; S3-06b/S3-06c **OPEN** | `721c06d`, `51ca987`, `9d48331` | §0a; `PublicCatalogExposureTest` (8), `SettingsSignaturePreviewTest` (5), `PurchaseInvoiceImageRelocationTest` (5), `KarigarInvoiceRelocationTest` | Relocation and purge not executed; anonymous fetch of a public-disk file and edge cache NOT RUN |
+| 12 | KYC containment (S3-01 / S3-01c) | **OPEN — nothing executed.** Two packages; ORIGIN-ONLY is PARTIAL while edge exposure is unresolved | `25b638f`; `4b6e5f3` | `kyc-public-exposure-containment.md` | Cloudflare access unavailable; external consumers unverified |
+| 13 | Backup A+C | **A IMPLEMENTED locally** (allowlist, no traversal of `.git`/`.claude`/`output`, only `.env` archived). **C PROPOSED** (procedure text only) | A `3f1bd85`; C `2d0b5f5` | §7g; `BackupSourceExclusionTest` (11) + real `backup:run --only-files` | A needs a deploy. C needs the operator's procedure owner to apply it; its current step text was not visible here |
+| 14 | Migration / rollback | **REHEARSED on a populated synthetic database** — up, down newest-first and re-apply on the same data, outside any test transaction | `01f37a6` | §6a: 26 checks pass, 17 measurements | Phase-1 rollback measured one-way; no rehearsal on production-sized data; code rollback of S3-07b stays prohibited |
+| 15 | Device checks | **NOT RUN** | — | §5 | Android/iOS print and share, multiple copies, desktop browser print, CSP `data:`, S3-09c on a handset |
+
+## 0a. Remaining findings — actionable
+
+Each entry gives what goes wrong in plain terms, how it is known, and the
+smallest repair. "Demonstrated" means a test reproduces it. "Inspection" means
+it was found by reading. "Policy" means the code does what it was built to do
+and the question is whether that is what the business wants.
+
+### S3-09e — a retried edit lost its version tag — **REPAIRED locally, `b79f182`**
+
+* **What went wrong.** The mobile app edits an item or customer with `PATCH`,
+  sending the version tag (`If-Match`) it last received. If the connection
+  dropped and the app retried under the same idempotency key, the server
+  answered from its stored reply — without the `ETag` header. The app then had
+  no tag for its next edit and got `428`. It stayed stuck until it re-loaded the
+  record.
+* **Class:** demonstrated (`MobileIdempotencyReplayFidelityTest`, RED then GREEN).
+* **Impact:** availability only. No duplicate write, no cross-shop effect.
+* **Repair:** a nullable `idempotency_keys.response_headers` column stores
+  exactly `ETag` and `X-Has-Entity-Tag`, and replays restore them. It is written
+  as a second statement, so if the column is ever missing the claim still
+  resolves; measured with the column really dropped in §6a.
+* **Release:** the migration goes out with the code, table first (condition R3).
+
+### S3-12 — two edits in the same second: the second can silently win
+
+* **What goes wrong.** An item's or customer's version tag is derived from
+  `updated_at`, which the database stores to the whole second
+  (`timestamp(0)`). If operator B saves between operator A's read and A's save,
+  within the same second, A's save still passes the version check and
+  overwrites B's change. Both see success.
+* **Affected operations:** `PATCH /api/mobile/v1/items/{item}` and
+  `PATCH /api/mobile/v1/customers/{customer}`.
+* **Class:** demonstrated (`EntityTagResolutionTest`, 5 tests). Present in the
+  deployed baseline; not introduced by this branch.
+* **Impact:** a silently lost edit to a catalogue or customer row. It needs two
+  writers inside one second. Not a ledger or tenant defect.
+* **Smallest repair:** tag on sub-second time. `ALTER … updated_at TYPE
+  timestamp(6)` on `items` and `customers` — a precision increase that
+  PostgreSQL applies without rewriting the table (measured on 16.15 with a temp
+  table: `relfilenode` unchanged) — plus a model date format with
+  microseconds. The tag should include microseconds only when they are non-zero,
+  so rows not written since the change keep their current tag and no client is
+  forced into a spurious 412.
+* **Why it is not done here:** the model date format applies to every datetime
+  column on those two models. Any that stays `timestamp(0)` would **round** a
+  fractional second — measured: `'2026-09-23 23:59:59.6'::timestamp(0)` is
+  `2026-09-24 00:00:00`, the next business day — so the precision change
+  must cover every such column, or writes must truncate. That is a design
+  choice to review, not a mechanical fix.
+* **Status:** OPEN. Not a condition of this release, since it predates the
+  branch. Recorded as a known defect.
+
+### S3-13 — editing a quick bill re-states its supply type
+
+* **What goes wrong.** Saving any edit to a quick bill re-captures its shop
+  snapshot on the shared save path. If the shop switched between intra-state and
+  inter-state since the bill was issued, the edited bill prints the new
+  presentation (IGST vs CGST+SGST) under its **original** number.
+* **Class:** demonstrated (`QuickBillOriginalReprintTest` Q-02). Present in the
+  baseline.
+* **Impact:** presentation only. The bill number and every stored figure were
+  verified unchanged across the edit; total tax is identical either way.
+* **Smallest repair:** re-capture the snapshot only on creation. This is a
+  one-line guard on the shared path in `QuickBillService`.
+* **Why not done:** there are two defensible readings. An edit can be a
+  re-issue, which should re-state, or a correction, which should not. That is a
+  billing-policy decision, not a code defect to fix by choosing one.
+* **Status:** OPEN. Policy question; not a condition of this release.
+
+### S3-02 — karigar invoice attachments on the public web path
+
+* **What goes wrong.** Karigar invoice files uploaded by the deployed baseline
+  sit under `storage/app/public`. Anyone holding a URL can fetch them, with no
+  login, because nginx serves that tree.
+* **Class:** inspection, confirmed by the files' location. The last read-only
+  production inventory counted **one** karigar attachment.
+* **Impact:** confidential supplier documents readable by anyone holding a URL.
+* **Repair, local:** complete. New uploads go to the private disk; the
+  authenticated route reads each row's recorded disk (`KarigarInvoiceAttachmentTest`);
+  `karigar-invoices:relocate-attachments` moves existing files with digest
+  verification (`KarigarInvoiceRelocationTest`).
+* **Status:** OPEN until run. **Release condition R4** closes it: deploy (R3),
+  relocate, verify, then a separately approved purge.
+
+### S3-03 — purchase invoice images on the public web path
+
+* **What goes wrong.** The same as S3-02, for stock-purchase invoice images.
+* **Class:** inspection, confirmed by the files' location. The production count
+  of purchase images is **not known here** — it is inside the "13 across all
+  confidential classes" figure.
+* **Repair, local:** complete as of this round. New uploads go to the private
+  disk and the authenticated route was already on the branch.
+  **`purchases:relocate-invoice-images` (`9d48331`) is new**: before it,
+  existing purchase images had no remediation path.
+  `PurchaseInvoiceImageRelocationTest` includes the consumer check that the
+  route serves identical bytes before and after.
+* **Status:** OPEN until run. **Release condition R5.**
+
+### S3-04b — the settings page could not show a newly uploaded signature — **REPAIRED locally, `51ca987`**
+
+* **What went wrong.** Found this round. Since S3-04 moved new signatures to the
+  private disk, the settings page still pointed its preview at `/storage/…`, so
+  an owner who uploaded a signature saw a broken image.
+* **Class:** demonstrated (RED through the real upload route). A regression from
+  this branch's own S3-04 change.
+* **Repair:** the preview uses the printed bill's hardened read and embeds the
+  image inline. A settings-only user still gets the page; the mutation that
+  borrows the print path's gate fails with 403.
+
+### S3-06b — turning on the shopfront publishes every in-stock item
+
+* **What happens.** Consent is per shop, publication is per item. Enabling the
+  public shopfront lists every in-stock item — design, price, photo — with no
+  way to leave one out.
+* **Class:** policy (characterized by C-03). The code does what it was built to
+  do.
+* **Impact:** a shop may publish more than it intended.
+* **Smallest repair:** a product decision first. A per-item flag is the
+  obvious shape, but **no per-item control is invented here** to settle a
+  classification question.
+* **Status:** OPEN policy question. Not a condition of this release: baseline
+  behaviour, unchanged by the branch.
+
+### S3-06c — item photos stay reachable after the shopfront is turned off
+
+* **What happens.** Turning the shopfront off makes its pages 404 but moves no
+  files. A photo URL that was ever shared, logged or screenshotted keeps working
+  (`/storage/items/<ULID>.webp`). The names carry 80 random bits, so they
+  cannot be guessed.
+* **Class:** policy, with a measured behaviour (C-07).
+* **Impact:** photos outlive the owner's decision to unpublish.
+* **Smallest repair, if the decision is to unpublish:** serve item images through
+  a route that checks the shopfront gate, and move them off the public disk,
+  like S3-02/S3-03. That is a feature-sized change with its own consumers — the
+  POS and inventory views read item images today.
+* **Status:** OPEN policy question. Not a condition of this release: baseline
+  behaviour, unchanged by the branch.
+
+### The three routes with no service-layer duplicate guard — not a separate defect
+
+The routes are `POST /api/mobile/v1/cashbook/drawer-check`,
+`POST /api/mobile/v1/job-orders` and `POST /api/mobile/v1/uploads/intent`.
+
+**Required protection:** a retry of the same operator intent must not repeat
+the effect. A genuinely new intent — a second real drawer count — must be
+allowed.
+
+**Does the middleware provide it?** Yes, for any client that keeps one key per
+intent:
+
+* The repaired `EnsureIdempotency` stakes a claim before the controller, so a
+  same-key retry is replayed or refused, never re-run. This is measured under
+  real concurrency on the same shared code (§7c-3).
+* Every 4xx on these routes happens before any write (§7c-6), so releasing the
+  key on a 4xx cannot repeat an effect.
+
+A service-layer guard could not do better. The server cannot tell an
+accidental resubmit from a genuine second count except by the key — the key
+*is* the intent identifier.
+
+**Clients.** Only `drawer-check` has a consumer in the mobile app at
+`2cad553`. It keeps the key in a `useRef` and rotates it only on success
+(`app/cashbook/drawer-check.tsx:85-91`), pinned by "createDrawerCheck — key
+ownership" in `src/api/cashbook.test.ts`. `job-orders` and `uploads/intent`
+have **no consumer** in the mobile repository, so no client can currently
+break key discipline on them.
+
+**Residual, stated as a contract rather than a defect:** a future client that
+mints a key per tap would duplicate on these routes with no server backstop.
+That is exactly how S3-09c happened on cashbook. The worst case is
+`job-orders`, where the same gold would be issued twice. Any new consumer must
+hold one key per intent.
 
 ---
 
@@ -66,8 +243,8 @@ wrote tests" becomes "it is fixed in production".
 | S3-01c legacy KYC rows | OPEN | Route fix committed (`4b6e5f3`) | **PENDING — not applicable is wrong; it needs the deploy** |
 | S3-02 karigar attachment public | OPEN | Authenticated route + relocation command | **OPEN** |
 | S3-02b karigar CHECK lacks the allowed-disk term | OPEN (logged, deliberately not fixed) | None by design | N/A |
-| S3-03 purchase attachment public | OPEN | Authenticated route committed | **OPEN** |
-| S3-04 signature public + mutable | OPEN | Option B implemented; immutability proven end to end | **OPEN** |
+| S3-03 purchase attachment public | OPEN | Authenticated route committed; relocation tooling `purchases:relocate-invoice-images` (`9d48331`) | **OPEN** — until relocation runs (§0a, R5) |
+| S3-04 signature public + mutable | OPEN | Option B implemented; immutability proven end to end. S3-04b (settings preview broken for private signatures, a regression from this change) FIXED `51ca987` | **OPEN** |
 | S3-05 finalized invoice reprints with today's settings | **FIXED for every ASSERTED field** — tax (`igst_mode`, HSN), tax identity (`show_gstin`, `gst_number`), terms, and all payment instructions now come from the bill's own snapshot. RENDERING fields (theme, font, paper, subtitle, tagline, other `show_*`) stay live **on purpose**; D-12 pins that bound. Quick bills carry less and the gap is named (§7d) | Fix `b216b80` (tax half) + `306aae1` (asserted half) + `e8e039e` (original-reprint path, 3 tests / 21 assertions); drift file 16 tests / 89 assertions; 2 mutations run | **OPEN** — local only, not deployed |
 | S3-06 catalog tenant context survives a throw | **CLOSED as a code defect** — no cross-tenant read demonstrated | Fix committed (`721c06d`), 5 tests | **OPEN — needs the deploy** |
 | S3-06b enabling a shopfront publishes every in-stock item | OPEN — product-consent gap, not a tenant break | Characterized (C-03), deliberately not repaired | N/A — feature decision, not an audit repair |
@@ -75,7 +252,7 @@ wrote tests" becomes "it is fixed in production".
 | S3-07 mobile payment cache-hit path was unauthorized | **CLOSED as a code defect** — no exploit against shipped code; the binding blocked it | Guard committed (`0296431`), 9 tests | **OPEN — needs the deploy** |
 | S3-07b payment retry integrity (cache/commit not coordinated) | **REPAIRED LOCALLY** — both defects closed; two more found by real concurrency and fixed; **rollback to the deployed baseline is measured UNSAFE** | Characterized `893a49b` (3 tests) → repaired `2dd0875` → claim scope `0cdd794` → claim staked before validation + P-14 `7d20e08` → rollback evidence, P-06 relabel, P-15 `b1a52f0`. 15 tests, 250 in band | **OPEN — needs the deploy, under the constraints in `payment-idempotency-rollback-constraints.md`** |
 | S3-08 static memoization across a long-lived worker | **CLOSED — examined, not a tenant break** | None needed; one inaccurate docblock noted | N/A |
-| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **REPAIR IMPLEMENTED; VERIFICATION INCOMPLETE.** Supported conclusion is narrow: pre-staking blocks same-key automatic re-execution *while the claim is retained*. It does NOT by itself establish atomic business completion, recoverable successful replay, or that key retention survives pruning | Characterized `8cddbc3` → repaired `b8673db`. 17 tests / 89 assertions; 9 contract tests still green; 273 passed (1028 assertions) across `Feature/Security` + `Feature/Mobile`, no regressions. Concurrency is now **REAL multi-process** (§7c-3): pre-repair blob `6a8c4cc` produced 4×201 / 4 cash rows / sum 10000 under one key; repaired produces 1×201 + 3×409 / 1 cash row. Recoverable successful replay is now measured too | **OPEN. Closed sub-items: 4xx-release safety (§7c-2), real concurrency (§7c-3), mobile consumer handling (§7c-4). Still open: retained-claim disposal (§7c-1 — the pruning *code* defect is fixed in `e68eb31`; what remains open is an operator decision, since a retained unresolved claim has no supported clearing path and growth is slow but unbounded), 12 routes now REVIEWED (§7c-6) — no write-then-4xx on any of the 16, so the release-on-4xx policy is supported rather than assumed; three routes (`drawer-check`, `job-orders`, `uploads/intent`) have no duplicate guard and inherit S3-09c; two NEW defects found and characterized but NOT repaired (S3-09e, S3-12). New limit found — payload-conflict detection is sequential-path only; a concurrent different-payload loser gets `idempotency_in_flight`, not `idempotency_key_conflict`** |
+| S3-09 `EnsureIdempotency` records completion AFTER the controller, outside any transaction | **REPAIR IMPLEMENTED; VERIFICATION INCOMPLETE.** Supported conclusion is narrow: pre-staking blocks same-key automatic re-execution *while the claim is retained*. It does NOT by itself establish atomic business completion, recoverable successful replay, or that key retention survives pruning | Characterized `8cddbc3` → repaired `b8673db`. 17 tests / 89 assertions; 9 contract tests still green; 273 passed (1028 assertions) across `Feature/Security` + `Feature/Mobile`, no regressions. Concurrency is now **REAL multi-process** (§7c-3): pre-repair blob `6a8c4cc` produced 4×201 / 4 cash rows / sum 10000 under one key; repaired produces 1×201 + 3×409 / 1 cash row. Recoverable successful replay is now measured too | **OPEN. Closed sub-items: 4xx-release safety (§7c-2), real concurrency (§7c-3), mobile consumer handling (§7c-4). Still open: retained-claim disposal (§7c-1 — the pruning *code* defect is fixed in `e68eb31`; what remains open is an operator decision, since a retained unresolved claim has no supported clearing path and growth is slow but unbounded), 12 routes now REVIEWED (§7c-6) — no write-then-4xx on any of the 16, so the release-on-4xx policy is supported rather than assumed; three routes (`drawer-check`, `job-orders`, `uploads/intent`) have no duplicate guard and inherit S3-09c; two NEW defects found by testing: S3-09e since REPAIRED locally (`b79f182`), S3-12 characterized and NOT repaired (§0a). New limit found — payload-conflict detection is sequential-path only; a concurrent different-payload loser gets `idempotency_in_flight`, not `idempotency_key_conflict`** |
 
 ### Finding IDs — old → new, because they drifted
 
@@ -94,10 +271,11 @@ renumbering.**
 | S3-09d | Payload-conflict detection is sequential-path only — a concurrent different-payload loser is refused as `idempotency_in_flight`, never `idempotency_key_conflict` | *(new — ID confirmed unused before assignment)* | §7c-3 |
 | S3-09c | Mobile consumer handling for an uncertain outcome | *(new)* | §7c-4 |
 | S3-10 | `CashBookController::store` / `storeDrawerCheck` write subject and audit non-atomically | *(new — ID confirmed unused before assignment)* | §7c-5, FIXED |
-| S3-09e | Replayed responses drop every header, wedging the two `PATCH` routes whose contract needs `ETag`. **Predates S3-09** — pre-repair blob `6a8c4cc` behaves identically | *(new — ID confirmed unused before assignment)* | §7c-6, CHARACTERIZED, NOT REPAIRED |
+| S3-09e | Replayed responses drop every header, wedging the two `PATCH` routes whose contract needs `ETag`. **Predates S3-09** — pre-repair blob `6a8c4cc` behaves identically | *(new — ID confirmed unused before assignment)* | §7c-6; **REPAIRED locally `b79f182`** (§0a) |
 | S3-11 | `ReturnService::approveReturn` cancels the pending header, then can fail | *(new — ID confirmed unused before assignment)* | §7c-2, FIXED |
 | S3-12 | `If-Match` validator is one-second granular (`updated_at` is `timestamp(0)`), so a concurrent write is silently lost | *(new — ID confirmed unused before assignment)* | §7c-6, CHARACTERIZED, NOT REPAIRED |
 | S3-13 | Editing a quick bill re-captures `shop_snapshot` on the shared save path, so an edit to an unrelated field re-states the supply type on a bill that keeps its number. **Presentation only** — bill number and every stored figure verified unchanged | *(new — ID confirmed unused before assignment)* | §7d-1, CHARACTERIZED, NOT REPAIRED |
+| S3-04b | The settings page previews the current signature from `/storage/…`, broken for every signature stored on the private disk since S3-04 — a regression from this branch | *(new — ID confirmed unused before assignment)* | §0a, **REPAIRED locally `51ca987`** |
 
 Still visible and unclosed, listed explicitly so renumbering cannot bury them:
 repairs (S3-02, S3-03), uploads (`uploads/` at zero files, no publication
@@ -543,6 +721,57 @@ rollback as **one-way** once any private upload or relocation has occurred;
 revert the code and leave the columns.
 
 ---
+
+## 6a. Migration and rollback rehearsal on a populated database — MEASURED (`01f37a6`)
+
+B3 above was "DONE as analysis, NOT as a drill". This is the drill.
+`php tests/Rehearsal/migration_rollback_rehearsal.php` applies the branch's
+seven migrations to a **populated baseline schema**, rolls them back
+newest-first **on the same data**, and re-applies them. Each step is its own
+statement, outside any test transaction. It refuses any database not named
+`jewelflow_testing` and ends with `migrate:fresh`.
+
+* **Baseline schema:** built from exactly the 373 migration files in `018b3d8`,
+  checked against `git ls-tree` (the branch adds seven and modifies none).
+  Baseline *application* code is not run; its writes are reproduced by their
+  SQL shape.
+* **Data:** 3 shops; 1,200 karigar invoices, half of them paid and therefore
+  frozen by `karigar_invoices_finalized_guard`; 1,200 stock purchases; 3
+  billing settings; 3,000 idempotency claims.
+* **Not done, deliberately:** no code rollback. The cache-only payment
+  controller is never run — traffic-serving rollback to it is measured as
+  double-charging (`b1a52f0`) and stays prohibited. The
+  `invoice_payment_claims` down() is a schema step, valid only after the code
+  that needs the table is gone.
+
+| Step | Result |
+|---|---|
+| Expand (4) + claims + headers on populated data | each 5–22 ms; every file-bearing row labelled `public` (801 karigar), none invented; **paid karigar invoices backfilled past the finalized guard**; signatures 2 of 2 |
+| `response_headers` added | **no table rewrite** (`relfilenode` unchanged); no headers invented for existing claims |
+| Expand window, then contract | 5 + 5 baseline-shaped rows labelled, 1 stranded disk cleared, private labels untouched; all three constraints **VALIDATED**; a baseline-shaped write is then **refused** — hence code before contract |
+| New code, full schema | S3-09e replay carries the original ETag |
+| Contract down | constraints gone; baseline-shaped writes accepted again |
+| Headers down **under new code** | claim still resolves (status 200); replay loses only the headers — the degradation designed in `b79f182`, measured with the column really dropped |
+| Claims down | table dropped (schema step only) |
+| Expand down, then re-apply | **Phase-1 rollback is one-way, measured:** 11 private-disk labels before, 0 after re-apply — every private file relabelled `public` — and the relocation ledger is empty |
+| Everything | nothing pending at the end; **no business row lost** across every up and down |
+
+Result: 26 checks passed and 17 timings recorded; full output in §8.
+**Correction:** the commit message of `01f37a6` says "all 30 checks pass". The
+run shows 26 `PASS` lines. I wrote the number without counting it.
+
+All three failures in the first run were in the script, not the product. They
+are recorded because they looked like findings:
+
+* The pending-migrations check parsed `migrate:status` output. The script now
+  compares the `migrations` table to the files instead.
+* Both S3-09e checks — the replay, and the headers-down case — made in-process
+  requests without tenant context. Route binding 404s under the CLI exactly as
+  it does under PHPUnit, so both failed for the wrong reason.
+
+**Limits:** synthetic data at modest volume, one PostgreSQL instance, no
+connection pooler, no concurrent traffic during DDL. Lock behaviour under
+production load is not measured.
 
 ## 7. File repairs and relocation — still OPEN
 
@@ -1111,6 +1340,20 @@ retained unresolved claim, and growth — one row per crashed mutation — is sl
 but unbounded. No purge flag is offered, because deleting such a row is exactly
 the dangerous act and needs a reconciliation procedure rather than a flag.
 **This is an open decision for the operator, not a closed item.**
+
+**Since then (`8d5a066`): a procedure and a tool, both PROPOSED.**
+`docs/runbooks/idempotency-unresolved-claims.md` sets out the evidence required
+per claim (`request_hash` verifies a candidate payload; which ledger table to
+search for each route), two-person approval, and the audit query.
+`mobile:idempotency-claims` lists unresolved claims read-only, and reconciles
+ONE claim with an outcome, evidence and an approver. It writes nothing without
+`--confirm`, and writes the change and an `audit_logs` row in one transaction.
+It has no age option and no bulk option. `not-committed` releases the key;
+`committed` keeps it refused with a definite
+`409 idempotency_outcome_reconciled`. A wrong `committed` fails closed; a wrong
+`not-committed` can duplicate, so the procedure demands the stronger evidence
+for it. Tested through the real cashbook route
+(`IdempotencyClaimReconciliationTest`, 6).
 
 ### §7c-2 — is releasing a key after a 4xx safe? — S3-11
 
@@ -1838,7 +2081,7 @@ tenant-scoped by its own binding:
 
 | Site | Source of the id | Guard | Refusal shape |
 |---|---|---|---|
-| `syncLines:609-613` | `lines.*.id`, validated only `nullable\|integer` | `$line->stock_purchase_id === $purchase->id` | **Not a refusal.** The id is disregarded and the submitted attributes become a new line on the caller's own purchase — data the caller could write anyway. The foreign row is never modified |
+| `syncLines:609-613` | `lines.*.id`, validated only `nullable\|integer` | `$line->stock_purchase_id === $purchase->id` | **Not a rejected request.** The id is disregarded and the submitted attributes become a new line on the caller's own purchase — data the caller could write anyway. The foreign row is never modified. **This matches the existing upsert contract:** the edit form posts each line's own id and `''` for a new one, and since the module was added (`86cfcd8`) an id that does not name one of this purchase's lines has meant "new line". The legitimate way to send one is a stale form — the line was removed in another tab — which L04 pins (`32ca54f`). Refusing only foreign ids would tell a caller which ids belong to other shops. No behaviour change proposed |
 | `vaultLineForm:186` | `{line}` route binding | same | 404 before anything else |
 | `vaultLine:203` | `{line}` route binding | same | 404 before validation or any write |
 
@@ -1846,8 +2089,8 @@ The guard compares **purchase** identity, not only shop identity, so it also
 covers a line from the caller's own *other* purchase — which the operation
 requires, since an edit to one draft must not reach into a second.
 
-`tests/Feature/Security/StockPurchaseLineOwnershipTest.php` — **6 passed,
-39 assertions.** Every foreign fixture satisfies every *other* precondition of
+`tests/Feature/Security/StockPurchaseLineOwnershipTest.php` — **7 passed,
+46 assertions** (6 / 39 at `06ec0e0`; L04 added in `32ca54f`). Every foreign fixture satisfies every *other* precondition of
 its route (`bullion_reserve`, no lot yet, confirmed purchase), so ownership is
 the only thing that can produce the refusal.
 
@@ -1892,6 +2135,68 @@ the window was treated as sufficient without checking that it constrains the
 right thing — that is where a subtle defect would survive this sweep. The
 categories marked "not inventoried" are larger unknowns than anything in the
 candidate sets.
+
+## 7g. Backup — A implemented locally, C proposed
+
+**A (`3f1bd85`) — archive an allowlist instead of walking `base_path()`.**
+spatie/laravel-backup 9.3.6 (`Tasks/Backup/FileSelection.php`) walks every
+included directory in full and applies `shouldExclude()` to what the walk
+yields. So an unreadable directory anywhere under the root aborts the run even
+when it is excluded — the known traversal failure. An included **file** is
+yielded without consulting `shouldExclude()` at all. The include list is now
+`App\Support\BackupScope::INCLUDE`:
+
+| Archived | Why |
+|---|---|
+| `.env` | APP_KEY; the **only** env file — nothing else named `.env*` can be selected |
+| `storage/app` | uploads; every local disk root is inside it (tested) |
+| `app`, `bootstrap`, `config`, `database`, `lang`, `public`, `resources`, `routes`, `artisan`, composer and npm lockfiles, build configs | the application at the deployed commit |
+
+Excluded inside those: the backup destination (current and legacy), and
+`bootstrap/cache` — its compiled `config.php` is a plaintext copy of every env
+secret. Everything else at the top level is classified `NOT_ARCHIVED` with a
+reason. `ignore_unreadable_directories` stays `false`, and a test pins it.
+
+**No longer archived:** tests, docs, `*.md`, `bin`, `deploy`, `.github`,
+`phpunit.xml`, `storage/logs`, `storage/framework` (sessions, cache, views),
+`bootstrap/cache`, `.env.example`, and any `.env.*` the old exclude list did not
+name — `.env.backup`, for example, would have been archived before. None is
+restore content under `backup-and-restore.md`.
+
+**Detecting future additions:** a new tracked top-level path, or a new local
+disk rooted outside the archive, fails `BackupSourceExclusionTest`.
+`php artisan backup:scope-check [path]` (read-only, exit 1) reports server-only
+top-level entries nobody has classified.
+
+**Evidence.** The old test built selections from a hand-copied exclude list, so
+it stayed green whatever `config/backup.php` said. It now evaluates the real
+config against a synthetic tree with unreadable `.git/objects`, `.claude` and
+`output` directories:
+
+* RED against the old config: `AccessDeniedException`; `.env.backup` and logs
+  selected.
+* GREEN: 11 tests.
+* A fixture control shows the old shape still throws on the same tree.
+
+A real `backup:run --only-files` on this worktree produced 2,604 entries. Its
+top level was exactly the allowlist, and `.env` was the only env file. The
+archive was deleted afterwards.
+
+**Measured property:** if `.env` is missing, the run fails loudly with
+`DirectoryNotFoundException` rather than producing an archive that cannot
+decrypt encrypted columns. The DB dump for that run is lost with it, because
+the job fails as a whole.
+
+**C (`2d0b5f5`) — procedure change, not executed.**
+`docs/runbooks/deploy-claude-ownership.md` contains the rule (no deploy step
+changes ownership under `.claude/`), the exact replacement for each command
+shape, read-only before/after verification, and the rollback. **The current
+step's text was not visible here.** It is in none of the tracked files, the
+ignored `output/audit` scripts, or earlier transcripts, so the reviewer has to
+locate it in the operator's procedure.
+
+A and C are independent. A removes the backup's dependency on `.claude/`
+permissions; C removes a privilege concern and needs its own approval.
 
 ## 8. Commands actually run, and their results
 
@@ -2278,24 +2583,142 @@ grep for 'shop_id' => '...' in a validate() ruleset -> 0
 information_schema: shop_id nullable                -> 4 tables, none on a trait model
 ```
 
+### Round-3 run figures — execution SHA `9d483314be5f402796681ac6aba5fffc6398f0f1`
+
+Every run below was made at `9d48331` with `git status` showing only `docs/`
+files modified — the handoff, the packet builder, two runbooks. None of those
+is read by any test. The per-file figures further down were measured when each
+file was added, and the full-suite run supersedes them as the final
+measurement.
+
+**These are four different selections. Their totals are not comparable with
+one another or with earlier rounds.**
+
+```
+# FULL — php artisan test (the whole suite)
+php artisan test
+  -> 3333 passed, 7 skipped, 0 failed (16222 assertions), 285.42 s
+     skipped, all pre-existing: 6 data-dependent skips in ConstitutionalInvariantsTest
+     (unchanged by the branch; see known-pre-existing-test-debt.md) and 1 browser-only
+     contract ("typing triggered auto expansion is a browser only contract")
+
+# A — tests/Feature/Security only
+php artisan test tests/Feature/Security/
+  -> 222 passed (940 assertions)
+
+# B — tests/Feature/Security + tests/Feature/Mobile
+php artisan test tests/Feature/Security tests/Feature/Mobile
+  -> 320 passed (1275 assertions)
+
+# Rehearsal — php tests/Rehearsal/migration_rollback_rehearsal.php
+== A. Baseline schema from the 018b3d8 migration set ==
+PASS      the branch adds exactly the seven migrations under test — 373 baseline files
+PASS      no baseline migration was removed
+MEASURED  baseline migrate:fresh — 7119 ms
+PASS      with default paths, exactly the seven branch migrations are pending — 2026_09_15_120000_add_invoice_file_disk_to_karigar_invoices, 2026_09_15_140000_add_invoice_image_disk_to_stock_purchases
+PASS      none of their objects exist yet
+== B. Synthetic population at the baseline schema ==
+MEASURED  populated — {"karigar_invoices":1200,"stock_purchases":1200,"idempotency_keys":3000,"shop_billing_settings":3}
+== C. Expand phase and the independent tables, applied to populated data ==
+MEASURED  up 2026_09_15_120000_add_invoice_file_disk_to_karigar_invoices — 24 ms
+MEASURED  up 2026_09_15_140000_add_invoice_image_disk_to_stock_purchases — 21 ms
+MEASURED  up 2026_09_16_120000_add_digital_signature_disk_to_billing_settings — 14 ms
+MEASURED  up 2026_09_20_120000_create_signature_relocations_table — 25 ms
+MEASURED  up 2026_09_21_120000_create_invoice_payment_claims_table — 19 ms
+MEASURED  up 2026_09_23_120000_add_response_headers_to_idempotency_keys — 6 ms
+PASS      karigar backfill: every row with a file labelled public — 801 rows
+PASS      karigar backfill: no disk invented for a row without a file
+PASS      paid (frozen) karigar invoices were backfilled past the finalized guard
+PASS      purchase backfill complete
+PASS      signature backfill: the two shops with a signature
+PASS      relocation ledger and payment-claim tables created
+PASS      response_headers added without rewriting idempotency_keys — relfilenode 10636891 unchanged
+PASS      no headers invented for existing claims
+== D. The window between expand and contract, then contract ==
+[contract/130000] karigar_invoices: recorded 'public' for 5 expand-window attachment(s), cleared 0 stranded disk value(s).
+[contract/130000] stock_purchases: recorded 'public' for 5 expand-window attachment(s), cleared 1 stranded disk value(s).
+MEASURED  up 2026_09_20_130000_add_disk_column_check_constraints — 21 ms
+PASS      all three constraints present and VALIDATED — [{"conname":"shop_billing_settings_digital_signature_disk_check","convalidated":true},{"conname":"karigar_invoices_attachment_disk_check","conva
+PASS      window rows written by baseline code were labelled, not rejected
+PASS      the stranded disk value was cleared
+PASS      private labels untouched by the reconcile
+PASS      a baseline-shaped write is refused once the contract phase exists — hence code before contract
+== E. New code on the fully migrated schema ==
+PASS      S3-09e: replay carries the original ETag
+== F. Rollback, newest first, on the same data ==
+MEASURED  down 2026_09_20_130000_add_disk_column_check_constraints — 12 ms
+PASS      contract down: constraints gone
+PASS      contract down: baseline-shaped writes accepted again
+MEASURED  down 2026_09_23_120000_add_response_headers_to_idempotency_keys — 9 ms
+PASS      headers column dropped under new code: claim still resolves, replay loses only the headers — claim status 200
+MEASURED  down 2026_09_21_120000_create_invoice_payment_claims_table — 8 ms
+PASS      claims down: table dropped (schema step only — see header)
+MEASURED  down 2026_09_20_120000_create_signature_relocations_table — 9 ms
+MEASURED  down 2026_09_16_120000_add_digital_signature_disk_to_billing_settings — 10 ms
+MEASURED  down 2026_09_15_140000_add_invoice_image_disk_to_stock_purchases — 10 ms
+MEASURED  down 2026_09_15_120000_add_invoice_file_disk_to_karigar_invoices — 9 ms
+PASS      expand down: columns and relocation ledger gone
+== G. Re-apply — and what the Phase-1 rollback cost ==
+MEASURED  private-disk labels — before expand rollback: 11; after re-apply: 0
+PASS      Phase-1 rollback is ONE-WAY: every private file is relabelled public on re-apply, and the relocation ledger is empty — relocations: 0
+PASS      fully re-applied: nothing pending
+PASS      no business row lost across every up and down — {"karigar_invoices":1210,"stock_purchases":1211,"idempotency_keys":3002,"shop_billing_settings":3}
+(jewelflow_testing reset with migrate:fresh)
+REHEARSAL: all checks passed
+```
+
+Measured when each was added (commit in brackets):
+
+```
+BackupSourceExclusionTest + BackupConfigurationTest + BackupScheduleTest
+  -> 19 passed (70 assertions)                                     [3f1bd85]
+  RED against the old config: AccessDeniedException; .env.backup and logs selected
+  real `backup:run --only-files`: 2604 entries, top level = the allowlist, .env the only env file
+MobileIdempotencyReplayFidelityTest -> 8 passed (25 assertions)    [b79f182]
+  RED: replay ETag null; next write 428
+  mutation, headers folded into the single update -> degradation test fails 409
+StockPurchaseLineOwnershipTest -> 7 passed (46 assertions)         [32ca54f]
+IdempotencyClaimReconciliationTest -> 6 passed (56 assertions)     [8d5a066]
+  clean RED with the command removed: 6 failed on CommandNotFoundException
+  after 25 fixture assertions passed
+SettingsSignaturePreviewTest -> 5 passed (17 assertions)           [51ca987]
+  RED: preview src http://localhost/storage/signatures/1/<ulid>.webp
+  mutation, preview borrows the print gate -> settings-only test 403
+  the four signature suites together -> 51 passed (199 assertions)
+PurchaseInvoiceImageRelocationTest + KarigarInvoiceRelocationTest
+  + PurchaseInvoiceAttachmentTest -> 29 passed (102 assertions)    [9d48331]
+PostgreSQL 16.15, temp table (S3-12 claims)
+  timestamp(0) -> timestamp(6): relfilenode unchanged (no rewrite)
+  '2026-09-23 23:59:59.6'::timestamp(0) = 2026-09-24 00:00:00
+```
+
+**Evidence lost and re-run.** The first full-suite run and rehearsal at this
+SHA wrote their output to a session scratch directory. That directory was wiped
+by a session restart before the results were read. Both were re-run at the
+same SHA, and the figures above are from the re-runs. No figure here was carried
+over from a run whose output no longer exists.
+
 ## 9. Commits, diff, working tree
 
-**Measured at `06ec0e0`, not at HEAD — deliberately.** A diffstat recorded inside
+**Measured at `9d48331`, not at HEAD — deliberately.** A diffstat recorded inside
 a tracked file changes the diffstat, so "the figure at HEAD" has no fixed point,
 and chasing it is exactly how the earlier revisions of this line came to be
 wrong. Pinning it to a named commit makes it rerunnable:
 
 ```
-$ git diff --shortstat 018b3d8..06ec0e0
- 76 files changed, 19303 insertions(+), 225 deletions(-)
+$ git diff --shortstat 018b3d8..9d48331
+ 91 files changed, 21371 insertions(+), 398 deletions(-)
 
-$ git log --oneline 018b3d8..06ec0e0 | wc -l
-67
+$ git log --oneline 018b3d8..9d48331 | wc -l
+76
 ```
 
-`06ec0e0` is the last commit on the branch that touches anything outside
-`docs/`. Re-pinned from `2dd0875` (58 files / +11,868 / −100, 44 commits), which
-S3-09, S3-10, S3-11, S3-05 and the tenancy tests superseded.
+`9d48331` is the last commit on the branch that touches anything outside
+`docs/`. Re-pinned from `06ec0e0` (76 files / +19,303 / −225, 67 commits),
+superseded by this round: `3f1bd85` backup A, `b79f182` S3-09e, `32ca54f`
+stock-purchase contract, `8d5a066` claim procedure, `01f37a6` rehearsal,
+`2d0b5f5` backup C, `51ca987` S3-04b, `9d48331` S3-03 relocation. Earlier pin,
+`2dd0875`: 58 files / +11,868 / −100, 44 commits.
 
 **Re-pinned from `1b6aeb4`, which this line named until `2dd0875` landed.** The
 previous pin read `52 files / +9,318 / −95` over 30 commits and was correct when
@@ -2355,66 +2778,60 @@ covered by `.gitignore`.
 
 ## 10. Next, while production approval is pending
 
-1. S3-05 is now fixed for **every field the document asserts about the
-   transaction** — the statutory half in `b216b80` (`igst_mode`, HSN map) and
-   the rest in `306aae1`: `show_gstin`, `shop.gst_number`,
-   `terms_and_conditions` and all nine payment-instruction fields. See §7d.
-   What remains is **not** a gap to close but a deliberate bound: theme colour,
-   font tier, paper size, subtitle, tagline, copy label and the other `show_*`
-   toggles describe the printer in front of you, not the sale, and pinning them
-   to an old snapshot would be a defect rather than a repair. D-12 exists to
-   keep that bound honest.
+Local work that remains, none of it blocking the conditions in §11:
 
-   Two things genuinely remain open and are recorded as limitations, not
-   repairs: **quick-bill snapshots carry less** than invoice ones (no
-   `show_gstin`, no itemised bank group — capturing them is a separate change),
-   and **bills finalized before these keys were captured** have no record to
-   fall back on and still resolve live.
-2. Device verification (§5). The mobile signature warning is implemented in
-   `ffcd034` and unit-tested; nothing has run on a handset.
-3. Tenant-isolation gaps named in §7e: parent-owned tables and foreign related
-   ids outside stock purchases (not inventoried), wrong/stale context (partly
-   tested), 8 unread jobs. **The cache investigation is DONE** (§7b); the one
-   unscoped key is S3-07.
-4. The tracked backup repair — **NOT STARTED**. "Backup fix A+C" is not defined
-   anywhere on this branch; get the definition before starting.
-5. Candidate-public asset classification. **Item images are now classified**
-   (§7a): they have a real, opt-in publishing feature and are NOT relocation
-   candidates. Still unclassified: `products`, `shop-logos`, `catalog-heroes`,
-   `UploadIntentService:110,251`, `Api\Mobile\ItemController:226,495`.
-6. S3-06b, if the business wants it: a per-item publication flag. Adding it
-   should break C-03, which is where to record the change.
+1. S3-12 — decide the timestamp-precision design (§0a), then implement it.
+2. A mobile message for `idempotency_outcome_reconciled`. It currently falls
+   into the generic 409 alert.
+3. The tenant categories marked "not inventoried" in §7e: parent-owned tables,
+   and foreign related ids outside stock purchases.
+4. Candidate-public asset classification: `products`, `shop-logos`,
+   `catalog-heroes`, and the two upload writers (§7).
+5. S3-13, S3-06b and S3-06c, once their policy questions are answered.
 
 ---
 
 ## 11. Release readiness
 
-**Not ready to release, and not ready to call reviewed.** Source review is
-pending until the reviewer has the packet; nothing here substitutes for it.
+**Not ready. Source review is pending until the reviewer has the packet**, and
+nothing in this document substitutes for it. Every production statement here
+dates from the last observation of the server (2026-09-20T18:36:08+00:00), not
+from today.
 
-What the branch supports, locally: the S3-05, S3-06, S3-07/07b, S3-09
-(middleware, pruning), S3-10 and S3-11 repairs behave as their tests say on
-`jewelflow_testing`, and the tenant sweep found no defect in the candidates it
-read.
+What the branch supports, locally only: the repairs listed in §0 behave as their
+tests say on `jewelflow_testing`, the full suite result in §8, and a populated
+migration rollback rehearsal (§6a).
 
-Conditions that must be met, or explicitly accepted by a named owner, before
-release:
+### Conditions — each with what closes it
 
-1. **Independent source review** of the packet at the candidate SHA it names.
-2. **KYC containment decision** — approve ORIGIN-ONLY (PARTIAL), EDGE+ORIGIN, or
-   neither. Exposure is live today and does not depend on this branch.
-3. **S3-09 retained-claim disposal** — an operator procedure for unresolved
-   claims, since none may be cleared by timer.
-4. **Migration order** — S3-07b table-then-code; disk columns expand →
-   application on every node → contract. Rollback of S3-07b is measured unsafe.
-5. **Operator decisions on characterized, unrepaired defects:** S3-09e, S3-12,
-   S3-13, S3-06b; and on the three routes with no service-layer duplicate guard.
-6. **Device verification** (§5) for printing and for the S3-09c client
-   behaviour.
-7. **Drift check** — re-read `git rev-parse HEAD` on the server; the baseline was
-   last observed 2026-09-20.
-8. **Backup repair** — define "A+C" and schedule it; it is not started.
+"Closes when" names evidence, not approval alone. Where an approval is needed,
+it is named as an approval **and** as the evidence that follows it.
 
-Known unknowns that release would carry: the tenant categories marked "not
-inventoried" in §7e, the 12 routes reviewed only by reading, and the untested
-wrong-context paths.
+| # | Condition | Closes when | Findings it carries |
+|---|---|---|---|
+| R1 | Independent source review of the packet at its pinned SHA | the reviewer's findings are answered on the branch and the packet is regenerated | all |
+| R2 | Drift check | `git rev-parse HEAD` on the server equals `018b3d8` immediately before any step. On drift, stop and re-derive | all deploy steps |
+| R3 | Migration order | expand (4) + `invoice_payment_claims` + `response_headers` applied; code deployed to every node; contract applied last; `migrate:status` output recorded. Rehearsed in §6a | S3-04, S3-07b, S3-09e, S3-02/S3-03 disk columns |
+| R4 | Karigar attachments off the public path | after R3: `karigar-invoices:relocate-attachments` dry run reviewed → approved `--execute` → `--verify` clean → separately approved `--purge-originals`. The manifest is kept. Until the purge, the public copy stays reachable at its URL | **S3-02** |
+| R5 | Purchase images off the public path | the same sequence with `purchases:relocate-invoice-images` (`9d48331`). The production count must be established first — it is not known here | **S3-03** |
+| R6 | Signatures off the public path | `signatures:relocate`, same gating (§7) | S3-04 |
+| R7 | KYC exposure | an approved package executed and its §6 verification output recorded. ORIGIN-ONLY leaves the edge-cache residual open until §3 and §5 run | S3-01, S3-01c |
+| R8 | Device verification | the §5 checks run on Android and iOS, with results recorded, for the inline signature and for S3-09c handling | S3-04, S3-09c |
+| R9 | Backup A in production | after deploy: `backup:scope-check` clean as `www-data`, and one `backup:run` whose archive listing shows the allowlist | backup A |
+
+### Open, and deliberately NOT conditions of this release
+
+Each predates the branch and is unchanged by it, or is a question of policy.
+Each stays OPEN, with its smallest repair in §0a. Listing them here is not
+acceptance.
+
+* **S3-12** — a design decision on timestamp precision is pending.
+* **S3-13** — the billing policy on edits is undecided.
+* **S3-06b** — publication consent is per shop, not per item.
+* **S3-06c** — item photos outlive the shopfront toggle.
+  A product decision on whether "disable" must unpublish them. The branch
+  does not change item-image exposure.
+* **Unresolved S3-09 claims** — retaining them is safe. The procedure
+  (`8d5a066`) is needed only to clear one, and each use needs approval.
+* **Backup C** — a procedure change for the operator's deploy runbook. It is
+  independent of this code release.

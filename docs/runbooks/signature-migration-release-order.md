@@ -6,7 +6,7 @@ Findings S3-02, S3-03, S3-04 (attachment/signature disk recording).
 has run anywhere but the local `jewelflow_testing` database. Applying any of it
 to production or staging needs explicit approval.
 
-Reported deployed baseline: `018b3d810e37d534f498033ab582ee41f3197c27`
+Last observed deployed baseline: `018b3d810e37d534f498033ab582ee41f3197c27` (observed on the server 2026-09-20T18:36:08+00:00; not re-observed since)
 (authored 2026-09-15, subject "Stop the read-only KPI calling a lapsed shop
 'unattributed'"). Verified as a local git object on 2026-09-21T00:37+05:30.
 That is a check of the SHA I was *given*, not an observation of what is running
