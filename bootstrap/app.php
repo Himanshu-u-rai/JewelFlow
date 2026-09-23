@@ -85,6 +85,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsureRealm::class,
             \App\Http\Middleware\EnsureShopExists::class,
             \Illuminate\Auth\Middleware\Authorize::class,
+            // XR-01: EnsureIdempotency returns a stored response without
+            // reaching the controller, so every authorization check must run
+            // before it — on a replay as much as on a fresh request. Listing it
+            // after Authorize makes that hold whatever order a route declares.
+            \App\Http\Middleware\EnsureIdempotency::class,
         ]);
 
         // Register middleware aliases

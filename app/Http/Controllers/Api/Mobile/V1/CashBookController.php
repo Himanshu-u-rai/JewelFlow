@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\CashDrawerCheck;
 use App\Models\CashTransaction;
+use App\Models\User;
 use App\Reporting\LedgerService;
 use App\Reporting\ReportPeriod;
 use App\Services\SubscriptionGateService;
@@ -33,6 +34,21 @@ class CashBookController extends Controller
 
     private const MODES = ['cash', 'upi', 'bank', 'card', 'wallet', 'other'];
 
+    public const DENIED = 'You do not have permission to access Cash Book.';
+
+    /**
+     * Cash Book's policy: owner or manager AND the permission. Stricter than a
+     * plain permission gate — staff and cashiers who carry cash.* are refused.
+     * Also applied as the `mobile-cashbook-write` gate on the mutation routes,
+     * so a replay meets it before EnsureIdempotency (XR-01).
+     */
+    public static function allows(?User $user, string $permission): bool
+    {
+        return $user !== null
+            && ($user->isOwner() || $user->isManager())
+            && $user->hasPermission($permission);
+    }
+
     /**
      * Mobile Cash Book access rule (stricter than the web `can:cash.*` gate):
      * only an owner or a manager may reach it, and the manager must additionally
@@ -49,13 +65,7 @@ class CashBookController extends Controller
      */
     private function authorizeCashbook(Request $request, string $permission): void
     {
-        $user = $request->user();
-
-        $allowed = $user
-            && ($user->isOwner() || $user->isManager())
-            && $user->hasPermission($permission);
-
-        abort_unless($allowed, 403, 'You do not have permission to access Cash Book.');
+        abort_unless(self::allows($request->user(), $permission), 403, self::DENIED);
     }
 
     /**

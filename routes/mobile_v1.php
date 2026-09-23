@@ -168,10 +168,16 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
         // ─── Mutation routes (idempotency-protected) ───────────────────
         Route::middleware(['mobile.idempotency'])->group(function () {
 
-            // Cash Book (Phase 4) — manual entry + drawer check
+            // Cash Book (Phase 4) — manual entry + drawer check.
+            // Unlike the reads above, the writes carry the policy at route level:
+            // a replay never reaches the controller, so its check must run before
+            // EnsureIdempotency (XR-01). The gate denies with Cash Book's own
+            // stable message.
             Route::post('/cashbook', [CashBookController::class, 'store'])
+                ->middleware('can:mobile-cashbook-write')
                 ->name('mobile.v1.cashbook.store');
             Route::post('/cashbook/drawer-check', [CashBookController::class, 'storeDrawerCheck'])
+                ->middleware('can:mobile-cashbook-write')
                 ->name('mobile.v1.cashbook.drawer_check');
 
             // M7 — session mutations
@@ -180,8 +186,10 @@ Route::middleware(array_merge($authMiddleware, ['mobile.envelope']))
             Route::post('/sessions/unlock', [SessionController::class, 'unlock'])
                 ->name('mobile.v1.sessions.unlock');
             Route::delete('/sessions', [SessionController::class, 'destroyForUser'])
+                ->middleware('can:revoke-user-sessions')
                 ->name('mobile.v1.sessions.destroy_for_user');
             Route::delete('/sessions/{session}', [SessionController::class, 'destroy'])
+                ->middleware('can:revoke-mobile-session,session')
                 ->name('mobile.v1.sessions.destroy');
 
             // M5 — item + customer PATCH

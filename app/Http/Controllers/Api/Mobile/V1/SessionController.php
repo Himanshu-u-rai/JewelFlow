@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -183,19 +184,11 @@ class SessionController extends Controller
 
         abort_if($session->shop_id !== $shopId, 404);
 
-        $canRevoke = $request->user()->isOwner()
-            || $request->user()->can('returns.approve');
-
-        if (! $canRevoke) {
+        // Same gate the route applies before EnsureIdempotency (XR-01).
+        $decision = Gate::inspect('revoke-mobile-session', $session);
+        if ($decision->denied()) {
             return response()->json([
-                'errors' => [['code' => 'permission_denied', 'message' => 'You do not have permission to revoke sessions.']],
-            ], 403);
-        }
-
-        // Managers cannot revoke the owner's sessions.
-        if (! $request->user()->isOwner() && $session->user?->isOwner()) {
-            return response()->json([
-                'errors' => [['code' => 'permission_denied', 'message' => 'Only an owner can revoke another owner\'s session.']],
+                'errors' => [['code' => 'permission_denied', 'message' => $decision->message()]],
             ], 403);
         }
 
@@ -237,7 +230,7 @@ class SessionController extends Controller
      */
     public function destroyForUser(Request $request): JsonResponse
     {
-        abort_unless($request->user()->isOwner(), 403);
+        abort_unless(Gate::allows('revoke-user-sessions'), 403);
 
         $validated = $request->validate([
             'user_id' => ['required', 'integer'],

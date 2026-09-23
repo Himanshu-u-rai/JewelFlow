@@ -125,6 +125,25 @@ class AppServiceProvider extends ServiceProvider
             return null;
         });
 
+        // XR-01: policies that lived only inside mobile controllers, as gates
+        // the routes apply BEFORE EnsureIdempotency, so a replay is refused
+        // exactly as a fresh request would be. The controllers call the same
+        // gates, so each policy has one definition.
+        Gate::define('mobile-cashbook-write', fn ($user) => \App\Http\Controllers\Api\Mobile\V1\CashBookController::allows($user, 'cash.create')
+            ? \Illuminate\Auth\Access\Response::allow()
+            : \Illuminate\Auth\Access\Response::deny(\App\Http\Controllers\Api\Mobile\V1\CashBookController::DENIED));
+        Gate::define('revoke-mobile-session', function ($user, \App\Models\MobileDeviceSession $session) {
+            if (! $user->isOwner() && ! $user->can('returns.approve')) {
+                return \Illuminate\Auth\Access\Response::deny('You do not have permission to revoke sessions.');
+            }
+            if (! $user->isOwner() && $session->user?->isOwner()) {
+                return \Illuminate\Auth\Access\Response::deny("Only an owner can revoke another owner's session.");
+            }
+
+            return \Illuminate\Auth\Access\Response::allow();
+        });
+        Gate::define('revoke-user-sessions', fn ($user) => $user->isOwner());
+
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(SubCategory::class, SubCategoryPolicy::class);
