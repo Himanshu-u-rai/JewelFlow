@@ -243,7 +243,8 @@ class MobileIdempotencyReplayFidelityTest extends TestCase
     {
         IdempotencyKey::updating(function (IdempotencyKey $claim) {
             if ($claim->isDirty('response_headers')) {
-                throw new \RuntimeException('simulated: column "response_headers" does not exist');
+                throw new \Illuminate\Database\QueryException('pgsql', 'update "idempotency_keys" ...', [],
+                    new \Exception('SQLSTATE[42703]: Undefined column: column "response_headers" of relation "idempotency_keys" does not exist'));
             }
         });
 
@@ -255,6 +256,28 @@ class MobileIdempotencyReplayFidelityTest extends TestCase
         $this->assertNull($replay->headers->get('ETag'), 'only the headers were lost');
         $this->assertSame(200, IdempotencyKey::withoutGlobalScopes()
             ->where('key', 'patch-replay-fidelity')->value('response_status'));
+    }
+
+    /**
+     * [XR-07] The boundary between the completion writes. A retry that reads
+     * the claim at ANY moment must never find it resolved without the headers
+     * its response carried. Recorded after every update of the claim row —
+     * the persisted state a concurrent retry would replay.
+     */
+    public function test_the_claim_is_never_resolved_without_its_replay_headers(): void
+    {
+        $observed = [];
+        IdempotencyKey::updated(function (IdempotencyKey $claim) use (&$observed) {
+            $row = IdempotencyKey::withoutGlobalScopes()->whereKey($claim->id)->first(['response_status', 'response_headers']);
+            $observed[] = [(int) $row->response_status, $row->response_headers];
+        });
+
+        [$first] = $this->patchTwiceUnderOneKey();
+        $this->assertNotNull($first->headers->get('ETag'));
+
+        $resolvedWithoutHeaders = array_filter($observed, fn ($state) => $state[0] >= 200 && $state[0] < 300 && empty($state[1]));
+        $this->assertSame([], array_values($resolvedWithoutHeaders),
+            'XR-07: at some point the claim was persisted as resolved without its ETag — a retry then would replay success without it');
     }
 
     /**

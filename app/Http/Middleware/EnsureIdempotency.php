@@ -310,28 +310,18 @@ class EnsureIdempotency
      */
     private function completeClaim(IdempotencyKey $claim, Response $response, int $status): void
     {
-        try {
-            $decoded = json_decode($response->getContent(), true);
+        $decoded = json_decode($response->getContent(), true);
 
-            $claim->update([
-                'response_status' => $status,
-                'response_body' => is_array($decoded) ? $decoded : null,
-            ]);
-        } catch (Throwable $e) {
-            Log::warning('EnsureIdempotency: failed to record claim completion', [
-                'error' => $e->getMessage(),
-                'shop_id' => $claim->shop_id,
-                'user_id' => $claim->user_id,
-                'key' => $claim->key,
-            ]);
+        $values = [
+            'response_status' => $status,
+            'response_body' => is_array($decoded) ? $decoded : null,
+        ];
 
-            return;
-        }
-
-        // S3-09e. A second statement on purpose: if response_headers is ever
-        // missing (migration rolled back under this code), the claim above is
-        // still resolved and replays without headers — the pre-repair
-        // behaviour — instead of staying in flight and refusing every retry.
+        // S3-09e / XR-07. Status, body and replay headers are published in ONE
+        // statement, so no retry can ever read this claim as resolved without
+        // the headers its response carried. (An earlier revision wrote the
+        // headers in a second statement, and a retry landing between the two
+        // replayed success without its ETag.)
         $headers = array_filter(
             array_combine(self::REPLAYED_HEADERS, array_map(
                 fn (string $name) => $response->headers->get($name),
@@ -340,14 +330,35 @@ class EnsureIdempotency
             fn (?string $value) => $value !== null,
         );
 
-        if ($headers === []) {
+        try {
+            $claim->update($values + ['response_headers' => $headers === [] ? null : $headers]);
+
             return;
+        } catch (Throwable $e) {
+            // The one failure that is not a reason to leave the claim in
+            // flight: response_headers does not exist (migration rolled back
+            // under this code). Then the claim is recorded as a legacy claim
+            // was — status and body — and replays exactly as legacy claims do.
+            // Measured with the column really dropped in the rollback
+            // rehearsal. Any other failure keeps the claim unresolved: a retry
+            // is refused, never re-run.
+            if (! ($e instanceof QueryException && str_contains($e->getMessage(), 'response_headers'))) {
+                Log::warning('EnsureIdempotency: failed to record claim completion', [
+                    'error' => $e->getMessage(),
+                    'shop_id' => $claim->shop_id,
+                    'user_id' => $claim->user_id,
+                    'key' => $claim->key,
+                ]);
+
+                return;
+            }
         }
 
         try {
-            $claim->update(['response_headers' => $headers]);
+            $claim->setRawAttributes($claim->getRawOriginal());
+            $claim->update($values);
         } catch (Throwable $e) {
-            Log::warning('EnsureIdempotency: recorded the claim but not its replay headers', [
+            Log::warning('EnsureIdempotency: failed to record claim completion without headers', [
                 'error' => $e->getMessage(),
                 'shop_id' => $claim->shop_id,
                 'user_id' => $claim->user_id,
