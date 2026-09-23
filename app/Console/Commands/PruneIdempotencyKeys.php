@@ -75,15 +75,31 @@ class PruneIdempotencyKeys extends Command
         $hours  = max(1, (int) $this->option('hours'));
         $cutoff = now()->subHours($hours);
 
+        // XR-02. Only a claim that recorded its original 2xx response is
+        // pruned. Everything else is retained: an unresolved claim (anything
+        // outside 100–599, which EnsureIdempotency refuses as in flight — not
+        // only the sentinel 0), and a claim an operator reconciled as committed,
+        // whose 409 is the only thing stopping that key from booking the entry
+        // again. Its created_at is the original staking time, so an age rule
+        // would delete it on the next run.
         $deleted = IdempotencyKey::where('created_at', '<', $cutoff)
-            ->where('response_status', '!=', self::STATUS_IN_FLIGHT)
+            ->whereBetween('response_status', [200, 299])
             ->delete();
 
         $this->info("Pruned {$deleted} resolved idempotency key(s) older than {$hours} hours.");
 
         $retained = IdempotencyKey::where('created_at', '<', $cutoff)
-            ->where('response_status', self::STATUS_IN_FLIGHT)
+            ->where(fn ($q) => $q->where('response_status', '<', 100)->orWhere('response_status', '>', 599))
             ->count();
+
+        $reconciled = IdempotencyKey::where('created_at', '<', $cutoff)
+            ->whereBetween('response_status', [100, 599])
+            ->where(fn ($q) => $q->where('response_status', '<', 200)->orWhere('response_status', '>', 299))
+            ->count();
+
+        if ($reconciled > 0) {
+            $this->line("Retained {$reconciled} reconciled or non-2xx claim(s); they keep their key refused.");
+        }
 
         if ($retained > 0) {
             // Surfaced as a warning, not an error: the command did its job.

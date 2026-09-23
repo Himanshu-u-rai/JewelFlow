@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -186,97 +187,117 @@ class EnsureIdempotency
             return $response;
         }
 
-        // ─── First time seeing this key: STAKE THE CLAIM, then run ────────
-        //
-        // S3-09. This insert used to live AFTER the controller, which meant a
-        // same-key retry re-ran the mutation whenever the claim never got
-        // written, and meant two concurrent same-key requests both sailed past
-        // the lookup above and both moved money. Staking first closes both:
-        // the unique index on (shop_id, user_id, key) now admits exactly one
-        // request to the controller.
-        try {
-            $claim = IdempotencyKey::create([
-                'shop_id' => $shopId,
-                'user_id' => $userId,
-                'key' => $key,
-                'request_hash' => $requestHash,
-                'response_status' => self::STATUS_IN_FLIGHT,
-                'response_body' => null,
-            ]);
-        } catch (QueryException $e) {
-            // Lost the race on the unique index. The sibling that won is the
-            // one executing. Refuse rather than run a second copy — the winner
-            // will record its response and the client's next retry replays it.
-            Log::info('EnsureIdempotency: concurrent request lost the claim race', [
-                'shop_id' => $shopId,
-                'user_id' => $userId,
-                'key' => $key,
-            ]);
+        // XR-02. Hold a session-level advisory lock on this key from before
+        // the claim is staked until the claim is resolved. The operator tool
+        // (mobile:idempotency-claims) must take the same lock before it may
+        // release a claim, so it cannot act while this request can still
+        // commit — including while it sits in a database wait, which PHP's
+        // max_execution_time does not count on Linux. If the process dies,
+        // PostgreSQL drops the lock together with the session, and with it any
+        // uncommitted work, so a free lock means the writer can no longer
+        // commit. A try-lock rather than a wait: a same-key request that finds
+        // the lock held is refused as in flight, as before.
+        $lockKey = self::claimLockKey($shopId, $userId, $key);
+
+        if (! self::tryLockClaim($lockKey)) {
             return $this->inFlightResponse($shopId, $userId, $key);
-        } catch (Throwable $e) {
-            // Cannot stake the claim → cannot promise the mutation runs once.
-            // Fail CLOSED, matching the read path above. The previous code
-            // failed soft here, but it could afford to: it had already run the
-            // controller. We have not, so nothing is lost by refusing.
-            Log::error('EnsureIdempotency: failed to stake claim', [
-                'error' => $e->getMessage(),
-                'shop_id' => $shopId,
-                'user_id' => $userId,
-                'key' => $key,
-            ]);
-            return $this->errorResponse(
-                503,
-                'idempotency_unavailable',
-                'Idempotency check is temporarily unavailable. Please retry.',
-            );
         }
 
-        $response = $next($request);
-        $status = $response->getStatusCode();
+        try {
+            // ─── First time seeing this key: STAKE THE CLAIM, then run ────────
+            //
+            // S3-09. This insert used to live AFTER the controller, which meant a
+            // same-key retry re-ran the mutation whenever the claim never got
+            // written, and meant two concurrent same-key requests both sailed past
+            // the lookup above and both moved money. Staking first closes both:
+            // the unique index on (shop_id, user_id, key) now admits exactly one
+            // request to the controller.
+            try {
+                $claim = IdempotencyKey::create([
+                    'shop_id' => $shopId,
+                    'user_id' => $userId,
+                    'key' => $key,
+                    'request_hash' => $requestHash,
+                    'response_status' => self::STATUS_IN_FLIGHT,
+                    'response_body' => null,
+                ]);
+            } catch (QueryException $e) {
+                // Lost the race on the unique index. The sibling that won is the
+                // one executing. Refuse rather than run a second copy — the winner
+                // will record its response and the client's next retry replays it.
+                Log::info('EnsureIdempotency: concurrent request lost the claim race', [
+                    'shop_id' => $shopId,
+                    'user_id' => $userId,
+                    'key' => $key,
+                ]);
+                return $this->inFlightResponse($shopId, $userId, $key);
+            } catch (Throwable $e) {
+                // Cannot stake the claim → cannot promise the mutation runs once.
+                // Fail CLOSED, matching the read path above. The previous code
+                // failed soft here, but it could afford to: it had already run the
+                // controller. We have not, so nothing is lost by refusing.
+                Log::error('EnsureIdempotency: failed to stake claim', [
+                    'error' => $e->getMessage(),
+                    'shop_id' => $shopId,
+                    'user_id' => $userId,
+                    'key' => $key,
+                ]);
+                return $this->errorResponse(
+                    503,
+                    'idempotency_unavailable',
+                    'Idempotency check is temporarily unavailable. Please retry.',
+                );
+            }
 
-        if ($status >= 200 && $status < 300) {
-            $this->completeClaim($claim, $response, $status);
+            $response = $next($request);
+            $status = $response->getStatusCode();
+
+            if ($status >= 200 && $status < 300) {
+                $this->completeClaim($claim, $response, $status);
+
+                return $response;
+            }
+
+            // ─── Non-2xx: decide whether the key is reusable ──────────────────
+            //
+            // 4xx is a deliberate refusal by the controller — validation failed,
+            // the caller lacked a permission, the resource was in the wrong state.
+            // Nothing was written, so the key is released and stays retryable,
+            // preserving the behaviour this middleware has always had.
+            //
+            // 5xx is NOT that. A 500 can mean the controller blew up before
+            // touching anything, or it can mean it committed a cash row and then
+            // blew up — and from here those are indistinguishable, because the
+            // router pipeline hands us a response either way. Releasing the key
+            // would make the second case double-charge, which is the whole of
+            // S3-09. So a 5xx leaves the claim in flight and the retry is refused.
+            //
+            // This is the deliberate trade: a transient 5xx that wrote nothing
+            // burns that one key, and the client must surface "we could not
+            // confirm this — check before re-entering it" instead of silently
+            // retrying. For money that is the correct direction to fail.
+            //
+            // The burn is NOT bounded by anything automatic, and an earlier version
+            // of this comment was wrong to say it was. It claimed
+            // PruneIdempotencyKeys would reap a stuck in-flight row at 48h like any
+            // other. Since S3-09b that command deliberately retains unresolved
+            // claims — deleting one is precisely what re-permits the duplicate it
+            // was holding back (see PruneIdempotencyKeys' docblock).
+            //
+            // So a burnt key stays burnt until an operator reconciles the record.
+            // That is the honest cost of this policy, and it is accepted on
+            // purpose: no timer here may decide that an operation whose outcome
+            // nobody knows has become safe to run again.
+            if ($status >= 500) {
+                return $response;
+            }
+
+            $this->releaseClaim($claim, $shopId, $userId, $key);
 
             return $response;
+        } finally {
+            self::unlockClaim($lockKey);
         }
-
-        // ─── Non-2xx: decide whether the key is reusable ──────────────────
-        //
-        // 4xx is a deliberate refusal by the controller — validation failed,
-        // the caller lacked a permission, the resource was in the wrong state.
-        // Nothing was written, so the key is released and stays retryable,
-        // preserving the behaviour this middleware has always had.
-        //
-        // 5xx is NOT that. A 500 can mean the controller blew up before
-        // touching anything, or it can mean it committed a cash row and then
-        // blew up — and from here those are indistinguishable, because the
-        // router pipeline hands us a response either way. Releasing the key
-        // would make the second case double-charge, which is the whole of
-        // S3-09. So a 5xx leaves the claim in flight and the retry is refused.
-        //
-        // This is the deliberate trade: a transient 5xx that wrote nothing
-        // burns that one key, and the client must surface "we could not
-        // confirm this — check before re-entering it" instead of silently
-        // retrying. For money that is the correct direction to fail.
-        //
-        // The burn is NOT bounded by anything automatic, and an earlier version
-        // of this comment was wrong to say it was. It claimed
-        // PruneIdempotencyKeys would reap a stuck in-flight row at 48h like any
-        // other. Since S3-09b that command deliberately retains unresolved
-        // claims — deleting one is precisely what re-permits the duplicate it
-        // was holding back (see PruneIdempotencyKeys' docblock).
-        //
-        // So a burnt key stays burnt until an operator reconciles the record.
-        // That is the honest cost of this policy, and it is accepted on
-        // purpose: no timer here may decide that an operation whose outcome
-        // nobody knows has become safe to run again.
-        if ($status >= 500) {
-            return $response;
-        }
-
-        $this->releaseClaim($claim, $shopId, $userId, $key);
-
-        return $response;
     }
 
     /**
@@ -353,6 +374,46 @@ class EnsureIdempotency
                 'user_id' => $userId,
                 'key' => $key,
             ]);
+        }
+    }
+
+    /** The advisory-lock name for one claim's logical key. Shared with the operator tool. */
+    public static function claimLockKey(int $shopId, ?int $userId, string $key): string
+    {
+        return "idempotency-claim:{$shopId}:".($userId ?? '').":{$key}";
+    }
+
+    /**
+     * Session-level, so it outlives the business transaction and ends with the
+     * connection. A no-op off PostgreSQL. Requires a connection that stays with
+     * this session for the whole request: direct or session-pooled, never a
+     * transaction-mode pooler.
+     */
+    public static function tryLockClaim(string $lockKey): bool
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            return true;
+        }
+
+        return (bool) DB::selectOne('select pg_try_advisory_lock(hashtextextended(?, 0)) as locked', [$lockKey])->locked;
+    }
+
+    /**
+     * Fail-soft: an unlock that cannot run means either the connection is gone
+     * (and the lock with it) or the session is inside an aborted transaction,
+     * where the lock stays until the session ends. Both leave the operator tool
+     * refusing, which is the safe direction.
+     */
+    public static function unlockClaim(string $lockKey): void
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
+        try {
+            DB::selectOne('select pg_advisory_unlock(hashtextextended(?, 0))', [$lockKey]);
+        } catch (Throwable $e) {
+            Log::warning('EnsureIdempotency: could not release a claim lock', ['error' => $e->getMessage()]);
         }
     }
 

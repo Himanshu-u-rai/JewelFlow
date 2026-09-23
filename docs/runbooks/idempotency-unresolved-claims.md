@@ -2,7 +2,7 @@
 
 **Status: PROPOSED.** The procedure and its tool (`mobile:idempotency-claims`)
 exist on branch `security/multi-tenant-audit` and are tested against synthetic
-data in `jewelflow_testing` only (`IdempotencyClaimReconciliationTest`, 6 tests).
+data in `jewelflow_testing` only (`IdempotencyClaimReconciliationTest`, 9 tests; `tests/Concurrency/claim_release_race.php`, separate processes).
 Nothing here has been run on any server. Running `--confirm` on production is a
 production data change and needs its own approval.
 
@@ -94,17 +94,44 @@ created at or after `staked_at`, by that `user_id` in that `shop_id`:
 Read-only queries only. Reading production for this needs the same access
 approval as any other production read.
 
-### 4.4 Decide
+### 4.4 First: has the original request ended?
 
-| Finding | Outcome |
+Evidence gathered while the original request can still commit is worthless: an
+uncommitted row is invisible to the operator and can appear later. **Run the
+tool as a dry run first.** It tries to take the claim's advisory lock. The
+original request takes that lock before it stakes the claim and holds it until
+the claim is resolved, and PostgreSQL drops it if the process dies — along with
+any uncommitted work.
+
+* **Lock free:** the original writer has ended and can never commit. Evidence
+  gathered from now on is final.
+* **Lock held:** the tool refuses and changes nothing. Wait. The request is
+  still running, or the operator tool is already working on this claim.
+
+**Correction (XR-02).** An earlier revision used "older than PHP
+`max_execution_time` plus a margin" as the proof that the request had stopped.
+That is withdrawn. On Linux, `max_execution_time` counts only the script's own
+execution time. Time spent waiting on the database is not counted, so a request
+blocked in a lock wait can outlive it indefinitely. Measured in
+`tests/Concurrency/claim_release_race.php`: a writer paused in a lock wait
+inside its business transaction; the claim released under it; the writer
+committed; the same key then booked a second cash row. A timeout cannot replace
+the lock.
+
+The lock is session-level. It needs a database connection that stays with the
+request for the whole request: direct, or session-pooled. **A transaction-mode
+pooler (PgBouncer `pool_mode=transaction`) would void it.** If `DB_PERSISTENT`
+is ever enabled, a PHP fatal error can leave the lock held until the worker
+exits. The tool then refuses, which is safe but blocks reconciliation until the
+worker recycles.
+
+### 4.5 Decide
+
+| Finding, gathered after 4.4 shows the lock free | Outcome |
 |---|---|
 | Exactly one matching record, created after `staked_at`, by that user, and it matches the request identified in 4.2 | `committed` |
-| No matching record, and the claim is older than any request could still be running (PHP `max_execution_time` plus a margin) | `not-committed` |
+| No matching record | `not-committed` |
 | Anything else — several candidates, route unknown, payload unknown, partial rows | **Do nothing.** Leave the claim |
-
-The age condition in the second row is not evidence that nothing committed. It
-only rules out a request that is still executing. The evidence is the absence
-of the record.
 
 ## 5. Execute (after approval)
 
@@ -121,12 +148,16 @@ runuser -u www-data -- php /var/www/jewelflow/artisan mobile:idempotency-claims 
 | Outcome | What the tool does |
 |---|---|
 | `not-committed` | Deletes the claim. The same key may run again, once |
-| `committed` | Keeps the key refused, but answers with a definite `409 idempotency_outcome_reconciled` instead of "in progress". The claim then counts as resolved, and the pruner removes it on its normal schedule |
+| `committed` | Keeps the key refused, but answers with a definite `409 idempotency_outcome_reconciled` instead of "in progress". **The pruner retains it:** it deletes only claims that recorded a 2xx, so the refusal cannot lapse with age. (An earlier revision let the next prune delete it, because the claim keeps its original `created_at`. Measured, and fixed in the same change.) |
 
 The tool refuses: a missing outcome, evidence or approver; any outcome other
-than those two; an id that is not an unresolved claim; and a claim that
-another process resolved while it ran (re-checked under a row lock). It acts on
-one claim per invocation.
+than those two; an id that is not an unresolved claim; a claim whose original
+request still holds its lock; and a claim that another process resolved while
+it ran (re-checked under a row lock). It acts on one claim per invocation.
+
+**Retention, aligned.** "Unresolved" means one thing everywhere: a status
+outside 100–599. The middleware refuses those, the tool lists and reconciles
+them, and the pruner retains them — along with every other non-2xx claim.
 
 ## 6. Audit trail
 

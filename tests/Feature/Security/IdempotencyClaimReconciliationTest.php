@@ -242,4 +242,76 @@ class IdempotencyClaimReconciliationTest extends TestCase
 
         $this->artisan(self::COMMAND)->doesntExpectOutputToContain('rec-committed')->assertExitCode(0);
     }
+
+    // ────────────────────────────────────────────────────────────────────
+    // XR-02 — reconciliation and retention compose safely
+    // ────────────────────────────────────────────────────────────────────
+
+    private function age(IdempotencyKey $claim, int $days): void
+    {
+        IdempotencyKey::whereKey($claim->id)->update(['created_at' => now()->subDays($days), 'updated_at' => now()->subDays($days)]);
+    }
+
+    /**
+     * An old claim reconciled as committed must not be pruned before the client
+     * has any chance to see the answer. Reconciling changes its status to 409
+     * but keeps the old created_at, so a pruner that removes every non-zero
+     * status older than 48 h deletes it on its next run — and the same key then
+     * books the entry a second time.
+     */
+    public function test_an_aged_committed_reconciliation_survives_the_real_pruner(): void
+    {
+        [$shop, $claim] = $this->committedButUnresolved('rec-aged-committed');
+        $this->age($claim, 3);
+
+        $this->reconcile($claim->id, [
+            '--outcome' => 'committed', '--evidence' => 'cash row found', '--approved-by' => 'A. Owner', '--confirm' => true,
+        ])->assertExitCode(0);
+
+        $this->artisan('mobile:prune-idempotency-keys')->assertSuccessful();
+
+        $retry = $this->postCash((int) $shop->id, 'rec-aged-committed');
+        $retry->assertStatus(409);
+        $this->assertSame('idempotency_outcome_reconciled', $retry->json('errors.0.code'));
+        $this->assertSame(1, $this->cashCount((int) $shop->id), 'never a second entry');
+    }
+
+    /**
+     * The middleware treats every status outside 100–599 as unresolved and
+     * refuses a retry. The pruner must retain exactly what the middleware
+     * refuses — not only the sentinel 0 — or a corrupted status is deleted
+     * after 48 h and the retry runs.
+     */
+    public function test_an_out_of_range_status_is_retained_by_the_pruner_and_still_refused(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        Sanctum::actingAs($owner);
+        $this->postCash((int) $shop->id, 'rec-out-of-range')->assertCreated();
+        $claim = IdempotencyKey::where('key', 'rec-out-of-range')->sole();
+
+        foreach ([-1, 99, 700] as $status) {
+            IdempotencyKey::whereKey($claim->id)->update(['response_status' => $status]);
+            $this->age($claim, 3);
+
+            $this->artisan('mobile:prune-idempotency-keys')->assertSuccessful();
+
+            $this->assertTrue(IdempotencyKey::whereKey($claim->id)->exists(), "status {$status} is unresolved to the middleware, so it is retained");
+            $this->postCash((int) $shop->id, 'rec-out-of-range')->assertStatus(409);
+            $this->assertSame(1, $this->cashCount((int) $shop->id), "status {$status}: no second entry");
+        }
+    }
+
+    /** [CONTROL] An ordinary completed claim past the window is still pruned. */
+    public function test_an_ordinary_completed_claim_is_still_pruned(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        Sanctum::actingAs($owner);
+        $this->postCash((int) $shop->id, 'rec-ordinary')->assertCreated();
+        $claim = IdempotencyKey::where('key', 'rec-ordinary')->sole();
+        $this->age($claim, 3);
+
+        $this->artisan('mobile:prune-idempotency-keys')->assertSuccessful();
+
+        $this->assertFalse(IdempotencyKey::whereKey($claim->id)->exists());
+    }
 }

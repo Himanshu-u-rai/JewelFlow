@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Http\Middleware\EnsureIdempotency;
 use App\Models\AuditLog;
 use App\Models\IdempotencyKey;
 use App\Support\TenantContext;
@@ -19,11 +20,15 @@ use Illuminate\Support\Facades\DB;
  *
  *   not-committed  the claim is deleted, so the same key may run again.
  *   committed      the claim keeps refusing the key, now with a definite 409
- *                  instead of "in progress". It then counts as resolved, and
- *                  the pruner removes it on its normal schedule.
+ *                  instead of "in progress". The pruner retains it (it prunes
+ *                  only claims that recorded a 2xx), so the refusal does not
+ *                  lapse with age.
  *
- * The change and its audit_logs row are written in one transaction, under a
- * row lock, after re-checking that the claim is still unresolved.
+ * Before acting it must acquire the claim's advisory lock, which the original
+ * request holds until its claim is resolved (XR-02): a free lock proves that
+ * writer can no longer commit. The change and its audit_logs row are then
+ * written in one transaction, under a row lock, after re-checking that the
+ * claim is still unresolved.
  */
 class ReconcileIdempotencyClaim extends Command
 {
@@ -62,6 +67,28 @@ class ReconcileIdempotencyClaim extends Command
             return self::FAILURE;
         }
 
+        // XR-02. The original request holds this lock from before it staked
+        // the claim until the claim is resolved; PostgreSQL drops it if that
+        // process dies. Acquiring it is the proof that the original writer
+        // can no longer commit. Age is not.
+        $lockKey = EnsureIdempotency::claimLockKey((int) $claim->shop_id, $claim->user_id, (string) $claim->key);
+
+        if (! EnsureIdempotency::tryLockClaim($lockKey)) {
+            $this->error('Refused: the original request still holds this claim and may still commit. Nothing was changed.');
+
+            return self::FAILURE;
+        }
+
+        try {
+            return $this->reconcileLocked($claim, $outcome, $evidence, $approvedBy);
+        } finally {
+            EnsureIdempotency::unlockClaim($lockKey);
+        }
+    }
+
+    private function reconcileLocked(IdempotencyKey $claim, string $outcome, string $evidence, string $approvedBy): int
+    {
+        $this->line('The original request has ended: its claim lock is free.');
         $this->table(['id', 'shop', 'user', 'key', 'request_hash', 'staked_at'], [$this->row($claim)]);
         $this->line($outcome === 'committed'
             ? 'Planned: keep refusing this key, with a definite "already recorded" answer.'
