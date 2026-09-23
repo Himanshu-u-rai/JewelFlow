@@ -123,7 +123,8 @@ request for the whole request: direct, or session-pooled. **A transaction-mode
 pooler (PgBouncer `pool_mode=transaction`) would void it.** If `DB_PERSISTENT`
 is ever enabled, a PHP fatal error can leave the lock held until the worker
 exits. The tool then refuses, which is safe but blocks reconciliation until the
-worker recycles.
+worker recycles. Release check D1 verifies both before the code goes live
+(`signature-migration-release-order.md` § Drift checks).
 
 ### 4.5 Decide
 

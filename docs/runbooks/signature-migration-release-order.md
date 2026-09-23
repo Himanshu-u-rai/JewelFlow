@@ -10,8 +10,8 @@ Last observed deployed baseline: `018b3d810e37d534f498033ab582ee41f3197c27` (obs
 (authored 2026-09-15, subject "Stop the read-only KPI calling a lapsed shop
 'unattributed'"). Verified as a local git object on 2026-09-21T00:37+05:30.
 That is a check of the SHA I was *given*, not an observation of what is running
-on the servers — recheck for drift against the deployed tree before executing
-any step below.
+on the servers. Each phase has its own drift check (§ Drift checks) — run the
+one for the phase you are about to execute, immediately before it.
 
 ---
 
@@ -52,9 +52,20 @@ This is demonstrated, not argued: `tests/Feature/Security/DiskColumnReleaseOrder
 | `2026_09_15_140000_add_invoice_image_disk_to_stock_purchases.php` | `stock_purchases.invoice_image_disk` + backfill |
 | `2026_09_16_120000_add_digital_signature_disk_to_billing_settings.php` | `shop_billing_settings.digital_signature_disk` + backfill |
 | `2026_09_20_120000_create_signature_relocations_table.php` | new `signature_relocations` table |
+| `2026_09_21_120000_create_invoice_payment_claims_table.php` | new `invoice_payment_claims` table (S3-07b). Must precede the code: code without the table refuses keyed payments with 503 (handoff §6) |
+| `2026_09_23_120000_add_response_headers_to_idempotency_keys.php` | nullable `idempotency_keys.response_headers` (S3-09e) |
 
-All four are nullable-column / new-table additions. The baseline neither reads
+All six are nullable-column / new-table additions. The baseline neither reads
 nor writes any of them.
+
+Run them from a checkout of the release SHA that is **not** the serving tree,
+one file per command, in the order above — the form rehearsed in handoff §6a.
+Naming each file is what keeps the contract from running early:
+
+```bash
+php artisan migrate --force --pretend --path=database/migrations/<file>.php   # prints the SQL, writes nothing
+php artisan migrate --force --path=database/migrations/<file>.php
+```
 
 The backfills record `'public'` for rows that already hold a path, because that
 is where those bytes physically are. **This is a truthful relabel of the status
@@ -94,6 +105,8 @@ This migration:
    migration interrupted part-way leaves finished tables constrained and the
    rest untouched; re-running `migrate` completes it (measured).
 
+Run it the same way: `php artisan migrate --force --path=database/migrations/2026_09_20_130000_add_disk_column_check_constraints.php`.
+
 The `VALIDATE` step is load-bearing and easy to lose: a migration that adds the
 constraint and skips it reports a **successful deploy** while permanently
 exempting every row written during the expand window. T-06 asserts
@@ -101,12 +114,137 @@ exempting every row written during the expand window. T-06 asserts
 
 ---
 
-## Rollback
+## Drift checks — one per phase
+
+**Correction.** An earlier revision had a single check: the server's `HEAD`
+equals `018b3d8` before any step. That is wrong for Phase 3, which may run only
+after every node has moved **off** `018b3d8`. Applied literally it blocks
+Phase 3; skipped, it checks nothing. Each phase has its own expected state. On
+any mismatch: stop, change nothing by hand, and re-derive the plan from what
+was observed.
+
+The seven branch migrations, for the queries below:
+
+```sql
+-- :seven
+('2026_09_15_120000_add_invoice_file_disk_to_karigar_invoices',
+ '2026_09_15_140000_add_invoice_image_disk_to_stock_purchases',
+ '2026_09_16_120000_add_digital_signature_disk_to_billing_settings',
+ '2026_09_20_120000_create_signature_relocations_table',
+ '2026_09_21_120000_create_invoice_payment_claims_table',
+ '2026_09_23_120000_add_response_headers_to_idempotency_keys',
+ '2026_09_20_130000_add_disk_column_check_constraints')
+```
+
+### D0 — before Phase 1
+
+| Check | Expected |
+|---|---|
+| `git -C /var/www/jewelflow rev-parse HEAD` on **every** serving node | `018b3d810e37d534f498033ab582ee41f3197c27` |
+| `git -C /var/www/jewelflow status --porcelain --untracked-files=no` | empty |
+| `php artisan migrate:status --pending`, from the serving tree | nothing pending: every `018b3d8` migration is applied |
+| `select migration from migrations where migration in :seven` | 0 rows |
+| `select to_regclass('signature_relocations'), to_regclass('invoice_payment_claims')` | both NULL |
+| `select table_name, column_name from information_schema.columns where (table_name, column_name) in (('karigar_invoices','invoice_file_disk'), ('stock_purchases','invoice_image_disk'), ('shop_billing_settings','digital_signature_disk'), ('idempotency_keys','response_headers'))` | 0 rows — nothing added by hand |
+| `git rev-parse HEAD` in the release checkout | the SHA the reviewer approved |
+| each `--pretend` output | only the DDL and backfills of that file |
+
+### D1 — before Phase 2
+
+| Check | Expected |
+|---|---|
+| serving nodes' `HEAD` | still `018b3d8` — nothing else deployed meanwhile |
+| `select migration from migrations where migration in :seven` | exactly the six Phase 1 names; the contract absent |
+| `select conname from pg_constraint where conname in ('shop_billing_settings_digital_signature_disk_check', 'karigar_invoices_attachment_disk_check', 'stock_purchases_invoice_image_disk_check')` | 0 rows |
+| the database connection the application uses (XR-02): `grep -E '^DB_(HOST\|PORT\|PERSISTENT)=' .env`, then `sudo ss -ltnp` for that port | the listener is `postgres`, or a pooler in **session** mode — never transaction mode; `DB_PERSISTENT` unset or `false` |
+
+The connection check exists because the new idempotency middleware holds a
+session-level advisory lock for each claim it stakes. A transaction-mode pooler
+voids the proof the reconciliation tool relies on
+(`idempotency-unresolved-claims.md` §4.4). It is a precondition of the code,
+so it is checked before the code goes live.
+
+### D2 — before Phase 3
+
+| Check | Expected |
+|---|---|
+| serving nodes' `HEAD` | the release SHA on **every** node — **not** `018b3d8` |
+| PHP-FPM pool workers (`ps -eo lstart,cmd \| grep 'php-fpm: pool'`) and any queue worker or scheduler daemon | every one started **after** the code switch. Opcache and long-running workers otherwise keep executing baseline code |
+| migrations and constraints | as D1: six applied, contract absent, 0 constraints |
+| baseline-shaped rows written since the switch, per table: `select count(*) from karigar_invoices where updated_at > :switch and ((invoice_file_path is not null and invoice_file_disk is null) or (invoice_file_path is null and invoice_file_disk is not null))`, and the same for `stock_purchases` (`invoice_image`, `invoice_image_disk`) and `shop_billing_settings` (`digital_signature_path`, `digital_signature_disk`) | 0 on all three. The release always writes both columns, so any such row since the switch shows a baseline writer still serving somewhere |
+
+### D3 — after Phase 3
+
+| Check | Expected |
+|---|---|
+| `select migration from migrations where migration in :seven` | all seven |
+| `select conname, convalidated from pg_constraint where conname in (…the three…)` | three rows, all `t` (T-06's signal; `f` means the deploy "succeeded" without validating) |
+| `php artisan migrate:status --pending` | nothing pending |
+
+---
+
+## Recovery — keep the schema, move the code forward
+
+| Step | Status |
+|---|---|
+| Phase 3 `down()` — drop the three constraints | Allowed and reversible: re-running the contract reconciles again. **Required before any baseline-shaped writer serves.** |
+| Revert forward: revert the faulty commit(s) on top of the release SHA | **The default recovery.** The schema stays. The recovery revision is reviewed against three properties before it serves: it writes path **and** disk for all three columns; its payment route honours durable claims (`payment-idempotency-rollback-constraints.md` §4); it takes the claim advisory lock. It then goes through D1 → Phase 2 → D2 under its own SHA |
+| Serve `018b3d8` again | **Prohibited while serving traffic** — below |
+| `down()` of `invoice_payment_claims`, `response_headers` or any Phase 1 migration | Not a recovery step. Phase 1 down is one-way (measured, handoff §6a); claims down destroys the only durable record of served payment keys |
+
+**Why the baseline cannot serve on the retained schema.** Each reason is
+sufficient on its own:
+
+1. **Payments.** `018b3d8`'s payment route is cache-only and double-charges a
+   retry once the cache entry is gone (RB-1) or during any mixed-version
+   overlap (RB-4) — `payment-idempotency-rollback-constraints.md` §1.
+2. **Uploads fail** while the contract's constraints exist (T-01/T-03/T-05).
+   That one is avoidable by running Phase 3 `down()` first.
+3. **Disk labels go stale.** The baseline writes paths and never the disk
+   columns (`018b3d8`: `SettingsController:520-527`,
+   `KarigarInvoiceService:110-114`, `StockPurchaseController:350-354`). On a
+   row the release already labelled `local`, a baseline re-upload stores the
+   new file on the public disk and leaves `local` beside it. The contract's
+   `reconcile()` fills only NULL disks and clears only stranded ones, so running
+   it again does not repair this. The release then looks for the new file on the
+   private disk and does not find it. The movers' `--verify` reports such rows as
+   a missing private copy; correcting the label is a data change that needs its
+   own approval. Source-level, not executed.
+
+**Correction.** The previous revision of this section said that keeping the
+columns under baseline code "costs nothing". Keeping them is right. It does not
+cost nothing: reason 3 is the cost.
+
+**Effects of switching code, in either direction** — expected, and refusals
+rather than losses:
+
+* **Version tags.** Since XR-05 the tag includes the row version, so a tag
+  minted by one version never matches the other's. Each edit screen open across
+  the switch gets one `412`, and the mobile app refetches (`mutation-error-alert.ts`,
+  stale path).
+* **Unresolved claims under the baseline.** The baseline replays any stored
+  claim's status as-is. A claim the release staked and never resolved has
+  status 0; `new JsonResponse(null, 0)` throws `The HTTP status code "0" is not
+  valid.` (measured with the installed vendor), so every retry of that key gets
+  a 500 — no duplicate. The baseline itself never stakes a claim before the
+  controller runs, so it leaves none unresolved.
+
+**If `018b3d8` must be restored anyway** because the release cannot serve at
+all: stop serving first (maintenance mode), run Phase 3 `down()`, switch the
+code, and satisfy `payment-idempotency-rollback-constraints.md` §4a before
+payment traffic resumes. Before moving forward again, run each mover's
+`--verify` to find the rows the baseline window left stale (reason 3). Not
+rehearsed at the code level: §6a rehearsed the schema only, and running the
+cache-only payment code is prohibited.
+
+---
+
+## Rollback — schema steps, as rehearsed
 
 | From | Rolling back | Result |
 |---|---|---|
 | Phase 3 | `down()` drops the three constraints | Returns to the expand-only window, which the baseline tolerates. Fully reversible. |
-| Phase 2 | Redeploy baseline code | See the caveats below — schema rollback alone does not undo what the new code wrote. |
+| Phase 2 | Redeploy baseline code | **Prohibited while serving** — § Recovery. Recover by reverting forward instead. |
 | Phase 1 | `down()` drops the columns and the relocations table | Reversible as schema, but destroys the record of which disk each file is on. |
 
 ### What a rollback cannot undo
@@ -123,11 +261,11 @@ State this plainly rather than implying the change is freely reversible:
   ledger that maps a historical reference to its verified private copy is
   dropped with it.
 
-Practical consequence: **roll back Phase 3 freely; treat Phase 1 rollback as
-one-way once any private upload or relocation has occurred.** If the application
-must be reverted after that point, revert the code (Phase 2) and leave the
-columns in place — the baseline ignores them, so keeping them costs nothing and
-preserves the only record of where the bytes are.
+Practical consequence: **roll back Phase 3 freely; never use Phase 1
+rollback as recovery.** Recover by moving the code forward on the retained
+schema (§ Recovery). An earlier revision advised reverting the code to the
+baseline and leaving the columns, "which costs nothing"; see the correction
+there.
 
 ---
 
