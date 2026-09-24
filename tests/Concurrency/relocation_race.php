@@ -18,6 +18,13 @@
  *
  * Cleans up the files it created (this shop's directory on both disks). Rows
  * stay: karigar_invoices is append-only by constitutional trigger.
+ *
+ * SCENARIO 2 (second review — the signature ledger now reuses or refuses
+ * evidence under a row lock): 10 shops, each with a public signature, and two
+ * `signatures:relocate --execute --shop=<id>` movers per shop, all 20 released
+ * at one instant. Safe: every settings row on the private disk with a verified
+ * copy, exactly one ledger row per shop recording the source digest, no
+ * conflict or ledger failure reported, no temporary left, every mover exit 0.
  */
 
 use App\Models\Karigar;
@@ -43,7 +50,8 @@ if (($argv[1] ?? null) === 'mover') {
     while (microtime(true) < (float) $argv[3]) {
         usleep(1000);
     }
-    $code = Illuminate\Support\Facades\Artisan::call('karigar-invoices:relocate-attachments', ['--execute' => true, '--shop' => (int) $argv[2]]);
+    $command = ($argv[4] ?? 'karigar') === 'signatures' ? 'signatures:relocate' : 'karigar-invoices:relocate-attachments';
+    $code = Illuminate\Support\Facades\Artisan::call($command, ['--execute' => true, '--shop' => (int) $argv[2]]);
     echo json_encode(['exit' => $code, 'out' => Illuminate\Support\Facades\Artisan::output()]), "\n";
     exit(0);
 }
@@ -106,7 +114,71 @@ foreach (array_slice($bad, 0, 5) as $line) {
 Storage::disk('public')->deleteDirectory($dir);
 Storage::disk('local')->deleteDirectory($dir);
 
-$safe = $bad === [] && $temps === [] && $conflicts === 0 && $results[1]['exit'] === 0 && $results[2]['exit'] === 0;
-echo $safe ? "RESULT: SAFE — 40 rows, two concurrent movers, every file verified, nothing left behind\n"
-           : "RESULT: UNSAFE\n";
-exit($safe ? 0 : 1);
+$safe1 = $bad === [] && $temps === [] && $conflicts === 0 && $results[1]['exit'] === 0 && $results[2]['exit'] === 0;
+echo $safe1 ? "RESULT: SAFE — 40 rows, two concurrent movers, every file verified, nothing left behind\n"
+            : "RESULT: UNSAFE\n";
+
+// ── scenario 2: signatures, two movers per shop ───────────────────────────
+echo "\n== signatures: 10 shops, two concurrent movers each ==\n";
+$shops = [];
+for ($i = 1; $i <= 10; $i++) {
+    [, $sigShop] = (new MoverFixture)->build();
+    $sid = (int) $sigShop->id;
+    $path = "signatures/{$sid}/race.png";
+    $bytes = random_bytes(64 * 1024);
+    Storage::disk('public')->put($path, $bytes);
+    DB::table('shop_billing_settings')->where('shop_id', $sid)->update([
+        'digital_signature_path' => $path, 'digital_signature_disk' => 'public', 'show_digital_signature' => DB::raw('true'),
+    ]);
+    $shops[$sid] = [$path, hash('sha256', $bytes)];
+}
+
+$start = microtime(true) + 3.0;
+$procs = $pipes = [];
+foreach (array_keys($shops) as $sid) {
+    foreach ([1, 2] as $n) {
+        $procs["{$sid}-{$n}"] = proc_open(['php', __FILE__, 'mover', (string) $sid, sprintf('%.6f', $start), 'signatures'],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes["{$sid}-{$n}"], dirname(__DIR__, 2));
+    }
+}
+$exits = $outs = [];
+foreach ($procs as $k => $proc) {
+    $r = json_decode(trim(stream_get_contents($pipes[$k][1])), true) ?? ['exit' => -1, 'out' => stream_get_contents($pipes[$k][2])];
+    proc_close($proc);
+    $exits[] = $r['exit'];
+    $outs[] = $r['out'];
+}
+
+$bad = [];
+foreach ($shops as $sid => [$path, $digest]) {
+    $disk = DB::table('shop_billing_settings')->where('shop_id', $sid)->value('digital_signature_disk');
+    $ledger = DB::table('signature_relocations')->where('shop_id', $sid)->where('path', $path)->get();
+    $local = Storage::disk('local')->exists($path) ? hash('sha256', Storage::disk('local')->get($path)) : null;
+    if ($disk !== 'local' || $local !== $digest || $ledger->count() !== 1 || $ledger[0]->sha256 !== $digest) {
+        $bad[] = "shop {$sid}: disk={$disk} private=".($local === null ? 'MISSING' : ($local === $digest ? 'ok' : 'TORN'))
+            ." ledger_rows={$ledger->count()}";
+    }
+}
+$reported = implode("\n", $outs);
+$problems = substr_count($reported, 'existing relocation evidence') + substr_count($reported, 'ledger write failed')
+    + substr_count($reported, 'already at the destination') + substr_count($reported, 'copy did not verify');
+$temps = 0;
+foreach ($shops as $sid => [$path]) {
+    $temps += count(array_filter(Storage::disk('local')->files("signatures/{$sid}"), fn ($f) => str_contains($f, '.relocating-')));
+}
+
+printf("mover exits non-zero: %d of %d\n", count(array_filter($exits, fn ($e) => $e !== 0)), count($exits));
+printf("shops wrong: %d; ledger conflicts/failures reported: %d; temporaries left: %d\n", count($bad), $problems, $temps);
+foreach (array_slice($bad, 0, 5) as $line) {
+    echo "  {$line}\n";
+}
+
+foreach ($shops as $sid => $unused) {
+    Storage::disk('public')->deleteDirectory("signatures/{$sid}");
+    Storage::disk('local')->deleteDirectory("signatures/{$sid}");
+}
+
+$safe2 = $bad === [] && $problems === 0 && $temps === 0 && ! array_filter($exits, fn ($e) => $e !== 0);
+echo $safe2 ? "RESULT: SAFE — 10 signatures, two movers each, one ledger row per shop, nothing left behind\n"
+            : "RESULT: UNSAFE\n";
+exit($safe1 && $safe2 ? 0 : 1);

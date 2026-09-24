@@ -200,4 +200,79 @@ class RelocationNonDestructiveTest extends TestCase
         $this->assertSame(0, DB::table('signature_relocations')->count());
         $this->assertStringContainsString('foreign_path', $this->manifest());
     }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Existing relocation evidence (second review)
+    //
+    // An inconsistent-state recovery case, not a normal upload path: a ledger
+    // row already vouches for (shop, path) with one digest, and the settings
+    // row names that path on the public disk again. The ledger is what lets an
+    // immutable snapshot find its original bytes, so its identity is not the
+    // mover's to rewrite.
+    // ────────────────────────────────────────────────────────────────────
+
+    /** A ledger row for $path recording $bytes' digest, dated in the past. */
+    private function existingEvidence(int $shopId, string $path, string $bytes): object
+    {
+        DB::table('signature_relocations')->insert([
+            'shop_id' => $shopId, 'path' => $path, 'source_disk' => 'public', 'target_disk' => 'local',
+            'sha256' => hash('sha256', $bytes), 'bytes' => strlen($bytes), 'relocated_at' => '2026-01-01 00:00:00',
+        ]);
+
+        return DB::table('signature_relocations')->where('shop_id', $shopId)->where('path', $path)->first();
+    }
+
+    private function assertEvidenceUnchanged(object $before): void
+    {
+        $this->assertEquals($before, DB::table('signature_relocations')->where('id', $before->id)->first(),
+            'the existing ledger row keeps its digest, target, size and date');
+        $this->assertSame(1, DB::table('signature_relocations')->count());
+    }
+
+    public function test_evidence_for_other_bytes_is_refused_even_when_source_and_destination_agree(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $path = "signatures/{$shop->id}/sig.png";
+        $evidence = $this->existingEvidence((int) $shop->id, $path, 'SIGNATURE_A');
+        $this->publicSignature((int) $shop->id, $path, 'SIGNATURE_B');
+        Storage::disk('local')->put($path, 'SIGNATURE_B');
+
+        $this->artisan('signatures:relocate', ['--execute' => true])->assertExitCode(1);
+
+        $this->assertEvidenceUnchanged($evidence);
+        $this->assertSame('public', $this->signatureRow((int) $shop->id)->digital_signature_disk);
+        $this->assertSame('SIGNATURE_B', Storage::disk('public')->get($path));
+        $this->assertSame('SIGNATURE_B', Storage::disk('local')->get($path));
+        $this->assertStringContainsString('ledger_conflict', $this->manifest());
+    }
+
+    public function test_evidence_for_other_bytes_is_refused_before_anything_is_published(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $path = "signatures/{$shop->id}/sig.png";
+        $evidence = $this->existingEvidence((int) $shop->id, $path, 'SIGNATURE_A');
+        $this->publicSignature((int) $shop->id, $path, 'SIGNATURE_B');
+
+        $this->artisan('signatures:relocate', ['--execute' => true])->assertExitCode(1);
+
+        $this->assertEvidenceUnchanged($evidence);
+        $this->assertFalse(Storage::disk('local')->exists($path), 'nothing was published under conflicting evidence');
+        $this->assertSame('public', $this->signatureRow((int) $shop->id)->digital_signature_disk);
+        $this->assertSame('SIGNATURE_B', Storage::disk('public')->get($path));
+        $this->assertStringContainsString('ledger_conflict', $this->manifest());
+    }
+
+    public function test_identical_evidence_is_reused_not_rewritten(): void
+    {
+        [, $shop] = $this->createRetailerTenant();
+        $path = "signatures/{$shop->id}/sig.png";
+        $evidence = $this->existingEvidence((int) $shop->id, $path, 'SIGNATURE_A');
+        $this->publicSignature((int) $shop->id, $path, 'SIGNATURE_A');
+
+        $this->artisan('signatures:relocate', ['--execute' => true])->assertExitCode(0);
+
+        $this->assertEvidenceUnchanged($evidence);
+        $this->assertSame('local', $this->signatureRow((int) $shop->id)->digital_signature_disk);
+        $this->assertSame('SIGNATURE_A', Storage::disk('local')->get($path));
+    }
 }

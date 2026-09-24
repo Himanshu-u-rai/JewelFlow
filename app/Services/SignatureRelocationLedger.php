@@ -42,9 +42,14 @@ class SignatureRelocationLedger
     /**
      * Record a completed, destination-verified copy.
      *
-     * Idempotent on (shop_id, path, source_disk): re-running an interrupted
-     * relocation pass updates the existing mapping instead of creating a rival
-     * one. The unique index makes that a database guarantee, not a convention.
+     * One row per (shop_id, path, source_disk), by unique index. An existing
+     * row is EVIDENCE — the digest an immutable snapshot's bytes are verified
+     * against — so it is reused only when it vouches for exactly this copy and
+     * is otherwise refused, never rewritten (XR-03, second review; an earlier
+     * revision replaced its digest, target and size with updateOrCreate).
+     * Checked under a row lock: call inside the transaction that relies on it.
+     *
+     * @throws ConflictingRelocationEvidence
      */
     public function record(
         int $shopId,
@@ -72,15 +77,39 @@ class SignatureRelocationLedger
             );
         }
 
-        return SignatureRelocation::withoutTenant()->updateOrCreate(
-            ['shop_id' => $shopId, 'path' => $path, 'source_disk' => $sourceDisk],
-            [
-                'target_disk'  => $targetDisk,
-                'sha256'       => $sha256,
-                'bytes'        => $bytes,
-                'relocated_at' => now(),
-            ],
-        );
+        $key = ['shop_id' => $shopId, 'path' => $path, 'source_disk' => $sourceDisk];
+        $existing = SignatureRelocation::withoutTenant()->where($key)->lockForUpdate()->first();
+
+        if ($existing !== null) {
+            if (! $this->vouchesFor($existing, $targetDisk, $sha256, $bytes)) {
+                throw new ConflictingRelocationEvidence('Existing relocation evidence records other bytes for this path; it is not rewritten.');
+            }
+
+            return $existing;
+        }
+
+        return SignatureRelocation::withoutTenant()->create($key + [
+            'target_disk'  => $targetDisk,
+            'sha256'       => $sha256,
+            'bytes'        => $bytes,
+            'relocated_at' => now(),
+        ]);
+    }
+
+    /** Existing evidence for a public reference, if any. Read-only. */
+    public function existingFor(int $shopId, string $path): ?SignatureRelocation
+    {
+        return SignatureRelocation::withoutTenant()
+            ->where('shop_id', $shopId)->where('path', $path)->where('source_disk', self::SOURCE_DISK)
+            ->first();
+    }
+
+    /** Does this evidence describe exactly this copy? */
+    public function vouchesFor(SignatureRelocation $evidence, string $targetDisk, string $sha256, int $bytes): bool
+    {
+        return $evidence->target_disk === $targetDisk
+            && hash_equals($evidence->sha256, $sha256)
+            && (int) $evidence->bytes === $bytes;
     }
 
     /**
@@ -198,3 +227,5 @@ class SignatureRelocationLedger
         return (int) $segment === $shopId;
     }
 }
+
+final class ConflictingRelocationEvidence extends \RuntimeException {}

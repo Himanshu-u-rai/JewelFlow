@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\ConflictingRelocationEvidence;
 use App\Services\SignatureRelocationLedger;
 use App\Services\SignatureStore;
 use App\Console\Commands\Concerns\PublishesVerifiedCopies;
@@ -39,6 +40,11 @@ use Illuminate\Support\Facades\Storage;
  * recorded. Without that row, purging a public original would break the reprint
  * of every invoice finalized before the move — which is why purgePass() refuses
  * any original that has no row (R-18).
+ *
+ * An existing row is that evidence, so it is never rewritten (XR-03, second
+ * review). A row vouching for other bytes is refused as ledger_conflict,
+ * checked before anything is published and again under a lock at write time;
+ * a row vouching for exactly this copy is reused as it is.
  *
  * CORRECTS AN EARLIER CLAIM IN THIS DOCBLOCK. It used to argue the move was
  * safe because the renderer resolves a recorded path across ALLOWED_DISKS,
@@ -200,6 +206,18 @@ class RelocateShopSignatures extends Command
                 continue;
             }
 
+            // XR-03 (second review). Evidence already recorded for this path is
+            // what an immutable snapshot's bytes are verified against. If it
+            // vouches for other bytes, refuse — before anything is published,
+            // in a dry run too. The ledger re-checks under a lock at write time.
+            $evidence = $this->ledger()->existingFor((int) $row->shop_id, $path);
+            if ($evidence !== null && ! $this->ledger()->vouchesFor($evidence, $this->targetDisk(), $sourceDigest, (int) $source->size($path))) {
+                $this->record($row, 'failed', 'ledger_conflict', $sourceDigest);
+                $this->warn("  shop {$row->shop_id} existing relocation evidence records other bytes; nothing changed.");
+                $failed++;
+                continue;
+            }
+
             if (! $this->option('execute')) {
                 $this->record($row, 'planned', 'would_relocate', $sourceDigest);
                 $planned++;
@@ -267,6 +285,12 @@ class RelocateShopSignatures extends Command
 
                 $this->record($row, 'failed', 'row_changed_concurrently', $sourceDigest);
                 $this->warn("  shop {$row->shop_id} row changed during relocation; left alone.");
+                $failed++;
+                continue;
+            } catch (ConflictingRelocationEvidence) {
+                // Evidence appeared after the check above; the flip rolled back.
+                $this->record($row, 'failed', 'ledger_conflict', $sourceDigest);
+                $this->warn("  shop {$row->shop_id} existing relocation evidence records other bytes; nothing changed.");
                 $failed++;
                 continue;
             } catch (\Throwable $e) {
