@@ -26,7 +26,7 @@ class ReportExport extends Model
         'format', 'filters', 'sensitive_included',
         'mode', 'status', 'row_count',
         'file_disk', 'file_path', 'expires_at', 'finished_at', 'error',
-        'generated_at',
+        'generated_at', 'notified_at', 'notification_error',
     ];
 
     protected $casts = [
@@ -36,6 +36,7 @@ class ReportExport extends Model
         'expires_at'         => 'datetime',
         'finished_at'        => 'datetime',
         'generated_at'       => 'datetime',
+        'notified_at'        => 'datetime',
     ];
 
     /** Columns that are write-once after creation. */
@@ -52,7 +53,7 @@ class ReportExport extends Model
                 if ($export->isDirty($column)) {
                     throw new LogicException(
                         "report_exports.{$column} is immutable; only the queued lifecycle "
-                        . '(status, row_count, file_*, finished_at, error) may change.'
+                        . '(status, row_count, file_*, finished_at, error, notified_at, notification_error) may change.'
                     );
                 }
             }

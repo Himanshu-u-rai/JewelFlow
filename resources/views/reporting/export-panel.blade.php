@@ -47,6 +47,22 @@
             </div>
         @endif
 
+        @if (($readyExports ?? collect())->isNotEmpty())
+            <div class="report-export-status report-export-ready" data-testid="ready-exports">
+                <strong>Ready to download</strong>
+                <ul>
+                    @foreach ($readyExports as $note)
+                        <li>
+                            <a href="{{ $note->data['download_url'] ?? '#' }}" data-turbo="false">{{ \Illuminate\Support\Str::headline($note->data['report_key'] ?? 'Export') }}</a>
+                            @if (! empty($note->data['expires_at']))
+                                <span>· link expires {{ \Illuminate\Support\Carbon::parse($note->data['expires_at'])->diffForHumans() }}</span>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="report-export-grid">
             <form method="POST" action="{{ route('reporting.export', ['report' => $definition->key]) }}"
                   data-turbo="false" class="report-export-card report-export-form js-report-export-form">

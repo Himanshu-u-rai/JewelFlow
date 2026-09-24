@@ -3,6 +3,12 @@
 namespace App\Services\Reporting;
 
 use App\Models\Reporting\ReportExport;
+use App\Models\User;
+use App\Notifications\Reporting\ExportReadyNotification;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 use App\Services\Reporting\Dataset\ReportRequest;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -65,6 +71,48 @@ class ExportAuditService
         ]);
 
         return $export;
+    }
+
+    /**
+     * S3-17. Tell the requester a finished export is ready, and record whether
+     * that worked — separately from the export's own status, which a delivery
+     * failure must never change. A delivery failure is recorded, not thrown:
+     * the export already succeeded. Safe to call again, and concurrently; it
+     * regenerates nothing and never delivers one export twice.
+     */
+    public function deliverReadyNotification(ReportExport $export): bool
+    {
+        try {
+            $user = $export->user_id !== null ? User::withoutGlobalScopes()->find($export->user_id) : null;
+            if ($user === null) {
+                throw new \RuntimeException('The export has no requesting user to notify.');
+            }
+
+            // One unit under the export's row lock: the stored notification and
+            // its record commit together, and a retry that waited on the lock
+            // finds it delivered and adds nothing. Inside a caller's transaction
+            // this is a savepoint — a failed insert rolls back to it instead of
+            // aborting the caller's transaction.
+            DB::transaction(function () use ($user, $export) {
+                $locked = ReportExport::withoutGlobalScopes()->lockForUpdate()->findOrFail($export->id);
+                if ($locked->notified_at === null) {
+                    $user->notify(new ExportReadyNotification($locked));
+                    $locked->update(['notified_at' => Carbon::now(), 'notification_error' => null]);
+                }
+            });
+
+            return true;
+        } catch (Throwable $e) {
+            // The driver's message, not QueryException's: Laravel appends the SQL
+            // with its bindings, and the bindings carry the signed download link.
+            $reason = $e instanceof QueryException && $e->getPrevious() !== null ? $e->getPrevious()->getMessage() : $e->getMessage();
+            Log::warning('Export finished but its ready-notification was not delivered', [
+                'export_id' => $export->id, 'shop_id' => $export->shop_id, 'error' => $reason,
+            ]);
+            $export->update(['notification_error' => mb_substr($reason, 0, 500)]);
+
+            return false;
+        }
     }
 
     public function markFailed(ReportExport $export, string $error): ReportExport

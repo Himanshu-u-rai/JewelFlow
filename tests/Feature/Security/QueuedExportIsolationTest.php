@@ -35,9 +35,8 @@ use Tests\TestCase;
  * two exports landed in one second by chance; here the clock is frozen so it
  * is deterministic.
  *
- * Notifications are faked so the job can finish: in this schema the
- * `database` channel it uses has no table, which fails every queued export
- * after its file is written (S3-17, separate).
+ * Notifications are faked here; delivery itself (S3-17) is tested on the real
+ * `database` channel in ExportNotificationDeliveryTest.
  */
 class QueuedExportIsolationTest extends TestCase
 {

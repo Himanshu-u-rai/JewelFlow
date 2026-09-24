@@ -3,8 +3,6 @@
 namespace App\Jobs\Reporting;
 
 use App\Models\Reporting\ReportExport;
-use App\Models\User;
-use App\Notifications\Reporting\ExportReadyNotification;
 use App\Services\Reporting\Dataset\ReportRequest as DatasetRequest;
 use App\Services\Reporting\Definition\ExportFormat;
 use App\Services\Reporting\Definition\ReportProfile;
@@ -56,6 +54,13 @@ class GenerateQueuedExportJob implements ShouldQueue
             if ($export === null) {
                 return;
             }
+            // A re-run of a finished export (the queue retrying a job whose
+            // worker died before delivery) only delivers what is still owed.
+            if ($export->status === ExportAuditService::STATUS_DONE) {
+                $audit->deliverReadyNotification($export);
+
+                return;
+            }
 
             try {
                 $definition = $registry->definition($p['report_key']);
@@ -93,14 +98,17 @@ class GenerateQueuedExportJob implements ShouldQueue
                 $expiresAt = CarbonImmutable::now()->addDays((int) config('reporting.download_expiry_days', 7));
 
                 $audit->markFinished($export, $result->rowCount, $disk, $path, $expiresAt);
-
-                if ($request->userId !== null) {
-                    User::find($request->userId)?->notify(new ExportReadyNotification($export->fresh()));
-                }
             } catch (Throwable $e) {
                 $audit->markFailed($export, $e->getMessage());
                 throw $e;
             }
+
+            // S3-17: outside the generation try. A notification failure used
+            // to mark an already-generated export failed; now the export stays
+            // done and the delivery outcome is recorded on its own
+            // (notified_at / notification_error), retryable with
+            // `reporting:notify-export` without regenerating anything.
+            $audit->deliverReadyNotification($export->fresh());
         });
     }
 }

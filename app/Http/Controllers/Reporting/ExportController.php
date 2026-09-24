@@ -87,6 +87,10 @@ class ExportController extends Controller
             // filtering") — prefilled from whatever query string got the user
             // here (e.g. the screen's Export link, see generic-screen.blade.php).
             'filterControls' => $this->filterControls->forReport($definition, (int) $user->shop_id, request()),
+            // S3-17: the in-app notification the frozen plan requires, read back.
+            'readyExports' => $user->unreadNotifications()
+                ->where('type', \App\Notifications\Reporting\ExportReadyNotification::class)
+                ->latest()->limit(10)->get(),
         ]));
     }
 

@@ -49,6 +49,10 @@ class AuditExportFiles extends Command
         $this->line('shared files: '.count($shared).' — same shop only: '.(count($shared) - count($crossShop)).', CROSS-SHOP: '.count($crossShop));
         $this->line('disk locations: '.json_encode($this->locations()));
         $this->line('notifications table: '.(Schema::hasTable('notifications') ? 'present' : 'ABSENT (no export-ready notification can have been stored)'));
+        if (Schema::hasColumn('report_exports', 'notified_at')) {
+            $this->line('finished queued exports not recorded as notified: '.ReportExport::withoutGlobalScopes()
+                ->where('mode', 'queued')->where('status', 'done')->whereNull('notified_at')->count());
+        }
 
         foreach ($crossShop as $key => $group) {
             [$location, $path] = explode('|', $key, 2);
@@ -106,6 +110,7 @@ class AuditExportFiles extends Command
             return 'n/a';
         }
 
-        return (string) DB::table('notifications')->where('data->export_id', $exportId)->count();
+        // `data` is text in Laravel's schema: cast before reading the key.
+        return (string) DB::table('notifications')->whereRaw("(data::jsonb ->> 'export_id') = ?", [(string) $exportId])->count();
     }
 }

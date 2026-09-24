@@ -37,11 +37,10 @@
  * after it saw the leaked shop. Refuses any database not named
  * jewelflow_testing.
  *
- * Each export is judged on the file it wrote (markFinished ran), not on its
- * final status: in this schema every queued export then fails at its
- * ExportReadyNotification, whose `database` channel needs a `notifications`
- * table no migration creates (S3-17, reported separately; not an isolation
- * question). The status is printed as found.
+ * Each export is judged on the file it wrote and on its delivery. Before
+ * S3-17's repair every export here ended `failed` at its ready-notification
+ * (no `notifications` table); now A and B must end `done`, each notified to
+ * its own requester only.
  */
 
 use App\Jobs\Reporting\GenerateQueuedExportJob;
@@ -185,8 +184,15 @@ $safe = $saw('before-A') === null && $saw('after-A') === null && $saw('after-fai
     && str_contains($contents($b), 'BravoOnlyXR') && ! str_contains($contents($b), 'AlphaOnlyXR')
     && $a2?->status === ExportAuditService::STATUS_FAILED && ! $a2?->file_path
     && $bUnrun?->status === ExportAuditService::STATUS_QUEUED && ! $bUnrun?->file_path;
-printf("final status of exports A and B: %s, %s%s\n", $a?->status, $b?->status,
-    $a?->status === ExportAuditService::STATUS_FAILED ? ' — S3-17: '.mb_substr((string) $a->error, 0, 80) : '');
+// S3-17 in a real worker: done, and notified to its own requester only.
+$delivered = fn (?ReportExport $e) => DB::table('notifications')
+    ->whereRaw("(data::jsonb ->> 'export_id') = ?", [(string) $e?->id])->pluck('notifiable_id')->map(fn ($id) => (int) $id)->all();
+$safe = $safe && $a?->status === ExportAuditService::STATUS_DONE && $b?->status === ExportAuditService::STATUS_DONE
+    && $a?->notified_at !== null && $b?->notified_at !== null
+    && $delivered($a) === [(int) $ownerA->id] && $delivered($b) === [(int) $ownerB->id];
+printf("S3-17 — export A: %s, notified %s, to users %s; export B: %s, notified %s, to users %s (owners A=%d, B=%d)\n",
+    $a?->status, $a?->notified_at ?? 'NO', json_encode($delivered($a)), $b?->status, $b?->notified_at ?? 'NO',
+    json_encode($delivered($b)), $ownerA->id, $ownerB->id);
 
 echo 'defensive control — after a job that set context and did not restore it, the next job saw: ',
     json_encode($saw('after-leaky')), $saw('after-leaky') === null ? ' (cleared on Looping)' : ' (NOT cleared)', "\n";
@@ -198,6 +204,6 @@ foreach ([$a, $b] as $e) {
 }
 @unlink($probeFile);
 
-echo $safe ? "RESULT: SAFE — sequential shops in one worker, context restored after success and failure, each export only its own shop\n"
+echo $safe ? "RESULT: SAFE — sequential shops in one worker, context restored after success and failure, each export only its own shop, delivered to its own requester\n"
            : "RESULT: UNSAFE\n".mb_substr($workerOut, -1500)."\n";
 exit($safe ? 0 : 1);
