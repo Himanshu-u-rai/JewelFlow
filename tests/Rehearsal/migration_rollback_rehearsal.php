@@ -144,6 +144,47 @@ function mobile(int $shopId, string $method, string $uri, string $token, array $
     return app(Kernel::class)->handle(Request::create($uri, $method, [], [], [], $server, $body === null ? null : json_encode($body)));
 }
 
+/** One in-process web request as $user (session guard), in the user's tenant context. */
+function web($user, string $url)
+{
+    $request = Request::create($url, 'GET', [], [], [], ['HTTP_ACCEPT' => 'text/html']);
+    app()->instance('request', $request);
+    Illuminate\Support\Facades\Auth::guard('web')->setUser($user);
+    App\Support\TenantContext::set((int) $user->shop_id);
+    $response = app(Kernel::class)->handle($request);
+    $body = $response instanceof Symfony\Component\HttpFoundation\StreamedResponse
+        ? (function () use ($response) { ob_start(); $response->sendContent(); return (string) ob_get_clean(); })()
+        : (string) $response->getContent();
+
+    return [$response->getStatusCode(), $body];
+}
+
+/** A queued export row and its job payload, as ExportController::dispatchQueued() builds them. */
+function queued_export($owner, $shop): array
+{
+    return App\Support\TenantContext::runFor((int) $shop->id, function () use ($owner, $shop) {
+        $definition = app(App\Services\Reporting\Definition\ReportRegistry::class)->definition('customers');
+        $period = app(App\Services\Reporting\Filters\FilterResolver::class)->resolve(App\Services\Reporting\Filters\DatePreset::ThisMonth);
+        $columns = app(App\Services\Reporting\ColumnPolicy::class)->resolve($definition, App\Services\Reporting\Definition\ReportProfile::Detailed, $owner);
+        $request = new App\Services\Reporting\Dataset\ReportRequest(definition: $definition, shopId: (int) $shop->id, userId: (int) $owner->id,
+            userName: (string) $owner->name, profile: App\Services\Reporting\Definition\ReportProfile::Detailed,
+            format: App\Services\Reporting\Definition\ExportFormat::Csv, filters: ['period' => ['from' => $period->from, 'to' => $period->to]],
+            columnKeys: $columns->columnKeys, includeSensitive: false, revealMasked: false);
+        $export = app(App\Services\Reporting\ExportAuditService::class)->recordQueued($request, false);
+
+        return [$export->id, [
+            'export_id' => $export->id, 'report_key' => 'customers', 'shop_id' => (int) $shop->id, 'user_id' => (int) $owner->id,
+            'user_name' => (string) $owner->name, 'profile' => App\Services\Reporting\Definition\ReportProfile::Detailed->value,
+            'format' => App\Services\Reporting\Definition\ExportFormat::Csv->value, 'date_preset' => App\Services\Reporting\Filters\DatePreset::ThisMonth->value,
+            'date_from' => $period->from->toIso8601String(), 'date_to' => $period->to->toIso8601String(), 'fy_name' => null,
+            'filters' => $request->filters, 'column_keys' => $request->columnKeys, 'include_sensitive' => false, 'reveal_masked' => false,
+            'filters_applied' => ['Period' => $period->label], 'watermark' => null,
+            'shop' => ['legal_name' => (string) $shop->name, 'address' => null, 'gstin' => null, 'state_code' => null],
+        ]];
+    });
+}
+
+$exportDirs = [];
 try {
     // ─────────────────────────────────────────────────────────────────────
     section('A. Baseline schema from the 018b3d8 migration set');
@@ -267,6 +308,43 @@ try {
     result(count_where('idempotency_keys', fn ($q) => $q->whereNotNull('response_headers')) === 0, 'no headers invented for existing claims');
 
     // ─────────────────────────────────────────────────────────────────────
+    section('C2. Phase 2 — the new code serving the Phase-1 schema (no notifications table)');
+
+    result(! Schema::hasTable('notifications'), 'Phase 1 created no notifications table: a baseline export still fails at its notification until the code is live');
+    // A queue worker runs under the console kernel, which binds a request from
+    // app.url for URL generation (SetRequestForConsole); this script booted the
+    // HTTP kernel, so bind the same.
+    app()->instance('request', Request::create((string) config('app.url')));
+    [$ownerA, $shopA] = $tenants[0];
+    [$ownerB] = $tenants[1];
+    App\Support\TenantContext::runFor((int) $shopA->id, fn () => (new RehearsalFixture)->customer((int) $shopA->id)->forceFill(['first_name' => 'PhaseTwoMarker'])->save());
+    [$exportId, $payload] = queued_export($ownerA, $shopA);
+    App\Jobs\Reporting\GenerateQueuedExportJob::dispatchSync($payload);
+    $export = App\Models\Reporting\ReportExport::withoutGlobalScopes()->find($exportId);
+    $exportDirs[] = $export->storageDirectory();
+    result($export->status === 'done' && $export->notified_at === null && str_contains((string) $export->notification_error, 'notifications'),
+        'the job finishes the export and records the missing table', (string) $export->notification_error);
+    $link = (new App\Notifications\Reporting\ExportReadyNotification($export))->toDatabase($ownerA)['download_url'];
+    [$panelStatus] = web($ownerA, url('/reports/customers/export'));
+    result($panelStatus === 200, 'the export panel is served without the table', "HTTP {$panelStatus}");
+    [$downloadStatus, $downloadBody] = web($ownerA, $link);
+    result($downloadStatus === 200 && str_contains($downloadBody, 'PhaseTwoMarker'), 'an authorized download is served without the table', "HTTP {$downloadStatus}");
+    [$foreignStatus, $foreignBody] = web($ownerB, $link);
+    result($foreignStatus === 404 && ! str_contains($foreignBody, 'PhaseTwoMarker'), "another shop's user following the link is refused", "HTTP {$foreignStatus}");
+    [$legacyId] = queued_export($ownerA, $shopA);
+    Illuminate\Support\Facades\Storage::disk('local')->put('reporting-exports/customers-rehearsal-legacy.csv', 'legacy');
+    App\Support\TenantContext::runFor((int) $shopA->id, fn () => app(App\Services\Reporting\ExportAuditService::class)->markFinished(
+        App\Models\Reporting\ReportExport::withoutGlobalScopes()->find($legacyId), 1, 'local', 'reporting-exports/customers-rehearsal-legacy.csv', now()->addDay()));
+    $legacyLink = (new App\Notifications\Reporting\ExportReadyNotification(App\Models\Reporting\ReportExport::withoutGlobalScopes()->find($legacyId)))->toDatabase($ownerA)['download_url'];
+    $appExports = 2;   // written by the application in this section, counted in the final check
+    [$legacyStatus] = web($ownerA, $legacyLink);
+    result($legacyStatus === 410, 'a file stored in the old flat layout is still refused', "HTTP {$legacyStatus}");
+    config(['loyalty.expiry_active_from' => null]);
+    $expireCode = Artisan::call('loyalty:expire');
+    result($expireCode === 0 && str_contains(Artisan::output(), 'NOT ACTIVATED')
+        && DB::table('loyalty_transactions')->whereNotNull('expires_lot_id')->count() === 0, 'loyalty:expire with activation unset writes nothing');
+
+    // ─────────────────────────────────────────────────────────────────────
     section('D. The window between expand and contract, then contract');
 
     [, $s1] = $tenants[0];
@@ -294,6 +372,15 @@ try {
     // Phase 2b — after the code, before the contract.
     measured('up '.NOTIFICATIONS, sprintf('%.0f ms', up(NOTIFICATIONS)));
     result(Schema::hasTable('notifications'), 'notifications table created (Phase 2b)');
+    $sendCode = Artisan::call('reporting:notify-export', ['--send' => true]);
+    $delivered = DB::table('notifications')->whereRaw("(data::jsonb ->> 'export_id') = ?", [(string) $exportId])->count();
+    result($sendCode === 0 && $delivered === 1, 'Phase 2b: the export finished without the table is delivered once, not regenerated',
+        'file '.(App\Models\Reporting\ReportExport::withoutGlobalScopes()->find($exportId)->file_path === $export->file_path ? 'unchanged' : 'CHANGED'));
+    [$panelStatus, $panelBody] = web($ownerA, url('/reports/customers/export'));
+    result($panelStatus === 200 && str_contains($panelBody, 'Ready to download'), 'Phase 2b: the panel lists it');
+    [$downloadStatus] = web($ownerA, $link);
+    $readAt = DB::table('notifications')->whereRaw("(data::jsonb ->> 'export_id') = ?", [(string) $exportId])->value('read_at');
+    result($downloadStatus === 200 && $readAt !== null, 'Phase 2b: the download is served and marks it read', "HTTP {$downloadStatus}");
 
     ob_start();
     measured('up '.CONTRACT, sprintf('%.0f ms', up(CONTRACT)));
@@ -413,11 +500,15 @@ try {
     result($after['karigar_invoices'] === $before['karigar_invoices'] + $window['karigar_invoices']
         && $after['stock_purchases'] === $before['stock_purchases'] + $window['stock_purchases']
         && $after['shop_billing_settings'] === $before['shop_billing_settings']
-        && $after['report_exports'] === $before['report_exports'] && $after['loyalty_transactions'] === $before['loyalty_transactions'],
+        && $after['report_exports'] === $before['report_exports'] + $appExports && $after['loyalty_transactions'] === $before['loyalty_transactions'],
         'no business row lost across every up and down', json_encode($after));
 } catch (Throwable $e) {
     result(false, 'rehearsal aborted', get_class($e).': '.$e->getMessage());
 } finally {
+    foreach ($exportDirs as $dir) {
+        Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory($dir);
+    }
+    Illuminate\Support\Facades\Storage::disk('local')->delete('reporting-exports/customers-rehearsal-legacy.csv');
     foreach (glob(sys_get_temp_dir().'/jf-rehearsal-baseline-'.getmypid().'/*') ?: [] as $link) {
         unlink($link);
     }

@@ -216,4 +216,80 @@ class ExportNotificationDeliveryTest extends TestCase
         $this->as($owner->fresh(), $shop, $link)->assertForbidden();
         $this->assertSame(ExportAuditService::STATUS_DONE, $this->export($id)->status);
     }
+    // ── The Phase-2 window: new code serving, `notifications` not yet created ──
+    //
+    // The release applies the table only after the code (Phase 2b), so for a
+    // while the new code runs on a schema without it. Dropped here inside the
+    // test's transaction, which restores it.
+
+    /** A finished export whose ready-notification could not be stored, and its signed link. */
+    private function finishedWithoutTheTable(User $owner, Shop $shop): array
+    {
+        Schema::drop('notifications');
+        [$id, $payload] = $this->queued($owner, $shop);
+        GenerateQueuedExportJob::dispatchSync($payload);
+        $export = $this->export($id);
+        $this->assertSame(ExportAuditService::STATUS_DONE, $export->status);
+
+        return [$export, (new ExportReadyNotification($export))->toDatabase($owner)['download_url']];
+    }
+
+    public function test_phase_2_the_export_panel_is_served_without_the_notifications_table(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        Schema::drop('notifications');
+
+        $this->as($owner, $shop, '/reports/customers/export')->assertOk()->assertDontSee('Ready to download');
+    }
+
+    public function test_phase_2_an_authorized_download_is_served_without_the_notifications_table(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->createCustomer((int) $shop->id, ['first_name' => 'AlphaOnlyXR']);
+        [, $link] = $this->finishedWithoutTheTable($owner, $shop);
+
+        $download = $this->as($owner, $shop, $link);
+
+        $download->assertOk();
+        $this->assertStringContainsString('AlphaOnlyXR', $download->streamedContent());
+    }
+
+    public function test_phase_2_authorization_and_the_legacy_refusal_hold_without_the_table(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        [$ownerB, $shopB] = $this->createRetailerTenant();
+        [$export, $link] = $this->finishedWithoutTheTable($owner, $shop);
+
+        $this->as($ownerB, $shopB, $link)->assertNotFound();
+
+        // An export stored in the old flat layout is still refused.
+        $disk = (string) config('reporting.queue_disk', 'local');
+        Storage::disk($disk)->put('reporting-exports/customers-legacy.csv', 'legacy bytes');
+        [$legacyId] = $this->queued($owner, $shop);
+        TenantContext::runFor((int) $shop->id, fn () => app(ExportAuditService::class)
+            ->markFinished($this->export($legacyId), 1, $disk, 'reporting-exports/customers-legacy.csv', now()->addDays(7)));
+        $legacyLink = (new ExportReadyNotification($this->export($legacyId)))->toDatabase($owner)['download_url'];
+        $this->as($owner, $shop, $legacyLink)->assertStatus(410);
+
+        $this->grantOnlyPermissions($owner, ['reports.view']);
+        $owner->unsetRelation('role');
+        $this->as($owner->fresh(), $shop, $link)->assertForbidden();
+    }
+    public function test_a_failure_marking_the_notification_read_does_not_block_the_download(): void
+    {
+        [$owner, $shop] = $this->createRetailerTenant();
+        $this->createCustomer((int) $shop->id, ['first_name' => 'AlphaOnlyXR']);
+        [$id, $payload] = $this->queued($owner, $shop);
+        GenerateQueuedExportJob::dispatchSync($payload);
+        $row = $this->notificationsFor($id)[0];
+        // Injected: the read-state update is refused (a test trigger, rolled back with the test).
+        DB::unprepared("create function jf_test_refuse_read() returns trigger language plpgsql as $$ begin raise exception 'read-state refused (injected)'; end $$;
+            create trigger jf_test_refuse_read before update on notifications for each row execute function jf_test_refuse_read();");
+
+        $download = $this->as($owner, $shop, json_decode($row->data, true)['download_url']);
+
+        $download->assertOk();
+        $this->assertStringContainsString('AlphaOnlyXR', $download->streamedContent());
+        $this->assertNull(DB::table('notifications')->where('id', $row->id)->value('read_at'), 'the refused bookkeeping changed nothing');
+    }
 }

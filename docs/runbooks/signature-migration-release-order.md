@@ -81,7 +81,7 @@ Deploy the new application code to every serving node. Until this completes,
 Phase 2b and Phase 3 must not run. `LOYALTY_EXPIRY_ACTIVE_FROM` stays unset:
 loyalty expiry activates only by its own decision (handoff §0a, S3-16).
 
-### Phase 2b — NOTIFICATIONS TABLE (only after Phase 2 is live everywhere, D2 clean)
+### Phase 2b — NOTIFICATIONS TABLE (only after Phase 2 is live everywhere and D2 is clean)
 
 | Migration | Adds |
 |---|---|
@@ -103,7 +103,7 @@ finished exports not recorded as notified; `--send` delivers them, without
 regenerating anything. If D0 found a `notifications` table already present,
 S3-18 was reachable live — see handoff R10.
 
-### Phase 3 — CONTRACT (only after Phase 2 is live everywhere)
+### Phase 3 — CONTRACT (only after Phase 2 is live everywhere and D2b is clean)
 
 | Migration | Adds |
 |---|---|
@@ -175,7 +175,7 @@ The ten branch migrations, for the queries below:
 | `select migration from migrations where migration in :ten` | 0 rows |
 | `select to_regclass('signature_relocations'), to_regclass('invoice_payment_claims')` | both NULL |
 | `select table_name, column_name from information_schema.columns where (table_name, column_name) in (('karigar_invoices','invoice_file_disk'), ('stock_purchases','invoice_image_disk'), ('shop_billing_settings','digital_signature_disk'), ('idempotency_keys','response_headers'), ('report_exports','notified_at'), ('report_exports','notification_error'), ('loyalty_transactions','expires_lot_id'))` | 0 rows — nothing added by hand |
-| `select to_regclass('notifications')` | **record the answer; it is evidence, not a gate.** NULL: every queued export has been failing at its notification, and S3-18's shared files could not be downloaded through the application. Not NULL: queued exports have been finishing `done` on shared paths — S3-18 was reachable live (handoff R10) |
+| `select to_regclass('notifications')` | **record the answer — the current configuration only, not a gate.** It says nothing on its own about the past: a table present now may postdate the exports in question, and an absent one may have existed before. Whether exports finished, whether a notification was stored, whether a file was downloaded and whether anything was disclosed are separate questions with separate evidence — `report_exports` status and error text, `notifications` rows naming an export, the web server's access log (handoff §0d Part 1, R10) |
 | `git rev-parse HEAD` in the release checkout | the SHA the reviewer approved |
 | each `--pretend` output | only the DDL and backfills of that file |
 
@@ -245,15 +245,35 @@ persistent connection can keep a lock past a fatal error; the tool then
 refuses, which is safe but blocks reconciliation. Checked before the code goes
 live, because it is a precondition of the code.
 
-### D2 — before Phase 3
+### D2 — after Phase 2, before Phase 2b
+
+**Corrected.** This checkpoint used to be headed "before Phase 3" while
+expecting the notifications migration absent — but Phase 2b applies it before
+Phase 3. It is the gate for Phase 2b; D2b below is the gate for Phase 3.
 
 | Check | Expected |
 |---|---|
 | serving nodes' `HEAD` | the release SHA on **every** node — **not** `018b3d8` |
-| PHP-FPM pool workers (`ps -eo lstart,cmd \| grep 'php-fpm: pool'`) and any queue worker or scheduler daemon | every one started **after** the code switch. Opcache and long-running workers otherwise keep executing baseline code |
+| PHP-FPM pool workers (`ps -eo lstart,cmd \| grep 'php-fpm: pool'`) and any queue worker or scheduler daemon | every one started **after** the code switch. Opcache and long-running workers otherwise keep executing baseline code — and a baseline **queue worker** is exactly what Phase 2b must not meet |
 | migrations and constraints | as D1: eight applied, notifications and contract absent, 0 constraints |
 | `php artisan config:show loyalty.expiry_active_from` (release checkout, as the web user) | empty — or the date the S3-16 decision approved, recorded with that approval |
+| queued exports written since the switch in the old flat layout: `select count(*) from report_exports where created_at > :switch and file_path is not null and file_path !~ '^reporting-exports/[0-9]+/[0-9]+/[^/]+$'` | 0. Any row means a baseline export job still ran after the switch; creating the notifications table would let such exports finish `done` |
 | baseline-shaped rows written since the switch, per table: `select count(*) from karigar_invoices where updated_at > :switch and ((invoice_file_path is not null and invoice_file_disk is null) or (invoice_file_path is null and invoice_file_disk is not null))`, and the same for `stock_purchases` (`invoice_image`, `invoice_image_disk`) and `shop_billing_settings` (`digital_signature_path`, `digital_signature_disk`) | 0 on all three. The release always writes both columns, so any such row since the switch shows a baseline writer still serving somewhere |
+
+The new code serves the export panel and authorized downloads without the
+table (rehearsed: handoff §8, section C2; `ExportNotificationDeliveryTest`);
+exports finished meanwhile record the missing table and are delivered after
+Phase 2b.
+
+### D2b — after Phase 2b, before Phase 3
+
+| Check | Expected |
+|---|---|
+| `select migration from migrations where migration in :ten` | the eight Phase 1 names and `2026_09_24_120000_create_notifications_table`; the contract absent |
+| `select to_regclass('notifications')` | not NULL |
+| `select conname from pg_constraint where conname in (…the three…)` | 0 rows |
+| `php artisan reporting:notify-export` | the list of unexpired finished exports not recorded as notified, recorded; `--send` only as approved |
+| the flat-layout export count and the baseline-shaped row counts from D2, re-run | still 0 — the contract must not meet a baseline writer either |
 
 ### D3 — after Phase 3
 

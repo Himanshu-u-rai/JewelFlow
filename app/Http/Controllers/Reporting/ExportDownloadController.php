@@ -63,8 +63,9 @@ class ExportDownloadController extends Controller
         $disk = \Illuminate\Support\Facades\Storage::disk($export->file_disk);
         abort_unless($disk->exists($export->file_path), 410, 'This export file is no longer available. Please run the export again.');
 
-        // S3-17: the ready-notification has done its job.
-        $user->unreadNotifications()->whereRaw("(data::jsonb ->> 'export_id') = ?", [(string) $export->id])->update(['read_at' => now()]);
+        // S3-17: the ready-notification has done its job. Bookkeeping only —
+        // it never fails the download (nor before the table exists).
+        app(ExportAuditService::class)->markReadyNotificationRead($user, $export);
 
         return $disk->download($export->file_path, basename($export->file_path));
     }

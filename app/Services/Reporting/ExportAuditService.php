@@ -8,6 +8,7 @@ use App\Notifications\Reporting\ExportReadyNotification;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 use App\Services\Reporting\Dataset\ReportRequest;
 use Carbon\CarbonInterface;
@@ -112,6 +113,41 @@ class ExportAuditService
             $export->update(['notification_error' => mb_substr($reason, 0, 500)]);
 
             return false;
+        }
+    }
+
+    /**
+     * S3-17. The user's unread ready-notifications, for the export panel.
+     * Empty while the `notifications` table does not exist yet — the release
+     * serves this code before creating it (Phase 2b).
+     *
+     * @return \Illuminate\Support\Collection<int, \Illuminate\Notifications\DatabaseNotification>
+     */
+    public function readyNotificationsFor(User $user)
+    {
+        if (! Schema::hasTable('notifications')) {
+            return collect();
+        }
+
+        return $user->unreadNotifications()->where('type', ExportReadyNotification::class)->latest()->limit(10)->get();
+    }
+
+    /**
+     * S3-17. Mark the user's ready-notification for this export read. Only
+     * bookkeeping: it never throws, so it can never stand between an
+     * authorized user and the file. A savepoint keeps a failed statement from
+     * aborting a caller's transaction.
+     */
+    public function markReadyNotificationRead(User $user, ReportExport $export): void
+    {
+        try {
+            if (Schema::hasTable('notifications')) {
+                DB::transaction(fn () => $user->unreadNotifications()
+                    ->whereRaw("(data::jsonb ->> 'export_id') = ?", [(string) $export->id])
+                    ->update(['read_at' => Carbon::now()]));
+            }
+        } catch (Throwable $e) {
+            Log::warning('Could not mark an export-ready notification read', ['export_id' => $export->id, 'error' => $e->getMessage()]);
         }
     }
 
