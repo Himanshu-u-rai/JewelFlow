@@ -53,10 +53,14 @@ COUNTED=(shops users customers invoices invoice_items invoice_payments cash_tran
 
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 WORK=/root/security-batch/$ENVN-$ACTION-$STAMP
-umask 077
-mkdir -p "$WORK"
+mkdir -p "$WORK" && chmod 700 /root/security-batch "$WORK"   # evidence and dumps: root only
 LOG=$WORK/run.log
 exec > >(tee -a "$LOG") 2>&1
+# Everything the deploy writes into the served tree must stay readable by
+# www-data: the checkout, composer and caches run under the normal umask
+# (sudo carries it to the owner). A 077 umask here once left changed files
+# 0600 and stopped a staging deploy at its checkout gate.
+umask 022
 
 PHASE=preflight
 ART() { ( cd "$DIR" && sudo -u www-data php artisan "$@" ); }
@@ -119,6 +123,7 @@ ok "D0 clean"
 
 # The backup: custom-format dump, checksummed, then read end to end.
 sudo -u postgres pg_dump -Fc -d "$DB" > "$WORK/$DB.dump" || fail "pg_dump failed"
+chmod 600 "$WORK/$DB.dump"
 sha256sum "$WORK/$DB.dump" > "$WORK/$DB.dump.sha256"
 TOC=$(pg_restore -l "$WORK/$DB.dump" 2>/dev/null | grep -c "TABLE DATA") || true
 [ "${TOC:-0}" -gt 50 ] || fail "backup TOC lists only ${TOC:-0} table-data entries"
