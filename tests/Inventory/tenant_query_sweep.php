@@ -32,7 +32,13 @@
  *
  * Tenant ownership comes from the schema: a table with shop_id, or one that
  * reaches a shop_id table through foreign keys — any number of levels, the
- * chain is printed (via:parent>grandparent).
+ * chain is printed (via:parent>grandparent). Tables the schema cannot place
+ * are classified by hand ($globalTables, $conventionTables below): global
+ * (no shop's rows), convention (rows owned through an untyped column — read),
+ * `shops` (owned by its own id). Any other name is `?` — unknown, read, never
+ * global. Raw SQL is tokenized for every table it names (joins, subqueries,
+ * FROM lists); a statement naming more than one non-global table, or an
+ * unknown one, is never trusted.
  *
  * A `shop_id` mention is not a constraint. Each expression's constraints are
  * found — where/insert/raw/colEq on shop_id, key (an id or *_id column,
@@ -54,7 +60,9 @@
  * no orWhere breaking the conjunction. `--trace=<method>` prints every call
  * site a parameter trace visits, so any via> classification can be checked.
  *
- * Rows to read: tenant-owned (or unknown table) and not trusted. Each row has
+ * Rows to read: tenant-owned, convention-owned or unknown, and not trusted.
+ * Status: `trusted` (constrained), `global` (global tables only), a verdict,
+ * or UNREAD. Each row has
  * a stable key (file + method + expression); tests/Inventory/reviewed.tsv
  * records the verdict of every row that has been read, and rows without one
  * print UNREAD — an edited expression gets a new key and is read again.
@@ -120,13 +128,58 @@ $chainTo = function (string $t, array $seen = []) use (&$chainTo, $shopTables, $
 
     return $best;
 };
-$owned = function (string $t) use ($chainTo): string {
-    if ($t === '?') {
+// Tables with no shop_id and no foreign-key path to one, classified by hand.
+// global: rows that belong to no shop — catalogs, platform configuration and
+// staff. convention: rows that belong to a shop or a person through a column
+// the schema does not type (a polymorphic target, a login identifier, a
+// serialized payload) — read like tenant tables, never assumed global.
+// `shops` is the tenant registry: a shop row is owned by its own id. Any
+// other name — a table this schema does not have, a CTE the parser missed,
+// a dynamic table — is `?`: unknown, read, never global.
+$globalTables = [
+    'migrations' => 'schema history', 'plans' => 'plan catalog', 'permissions' => 'permission catalog',
+    'platform_products' => 'product catalog', 'platform_settings' => 'platform settings',
+    'platform_feature_flags' => 'feature flags (per-shop overrides are platform configuration)',
+    'platform_counters' => 'platform sequences (shop codes, platform invoices)', 'platform_backup_log' => 'whole-database backup runs',
+    'platform_admins' => 'platform staff', 'platform_admin_password_reset_tokens' => 'platform staff',
+];
+$conventionTables = [
+    'notifications' => 'notifiable', 'sessions' => 'user_id', 'password_reset_tokens' => 'email', 'otps' => 'mobile',
+    'cache' => 'key', 'cache_locks' => 'key', 'jobs' => 'payload', 'job_batches' => 'payload', 'failed_jobs' => 'payload',
+    'platform_audit_logs' => 'target', 'platform_audit_logs_archive' => 'target', 'platform_announcements' => 'target',
+];
+$globalWhy = fn (string $t) => $t === '-' ? 'names no table'
+    : ($globalTables[$t] ?? (preg_match('/^(information_schema\.|pg_)/', $t) ? 'system catalog' : null));
+$ownedOne = function (string $t) use ($chainTo, $globalWhy, $conventionTables): string {
+    if ($globalWhy($t) !== null) {
+        return '';
+    }
+    if ($t === '?' || ! preg_match('/^[a-z_][a-z0-9_$]*(\.[a-z_][a-z0-9_$]*)?$/', $t)) {
         return '?';
+    }
+    if ($t === 'shops') {
+        return 'self:id';
+    }
+    if (isset($conventionTables[$t])) {
+        return 'convention:'.$conventionTables[$t];
     }
     $c = $chainTo($t);
 
-    return $c === null ? '' : ($c === [] ? 'shop_id' : 'via:'.implode('>', $c));
+    return $c === null ? '?' : ($c === [] ? 'shop_id' : 'via:'.implode('>', $c));
+};
+// A statement's tables, comma-separated: `?` if any is unknown, '' if all are
+// global, otherwise each table that is not global with its ownership.
+$owned = function (string $t) use ($ownedOne): string {
+    if (! str_contains($t, ',')) {
+        return $ownedOne($t);
+    }
+    $each = array_map($ownedOne, $tables = explode(',', $t));
+    if (in_array('?', $each, true)) {
+        return '?';
+    }
+    $named = array_filter(array_combine($tables, $each), fn ($o) => $o !== '');
+
+    return implode(' ', array_map(fn ($tb, $o) => "{$tb}={$o}", array_keys($named), $named));
 };
 $allTables = collect(DB::select("select table_name from information_schema.tables where table_schema = current_schema() and table_type = 'BASE TABLE'"))->pluck('table_name');
 $deepOwned = $allTables->filter(fn ($t) => count($chainTo($t) ?? []) >= 2)->mapWithKeys(fn ($t) => [$t => $owned($t)])->all();
@@ -164,7 +217,88 @@ $joins = ['join', 'leftJoin', 'rightJoin', 'crossJoin', 'joinSub', 'leftJoinSub'
 $removals = ['withoutTenant', 'withoutGlobalScope', 'withoutGlobalScopes', 'newQueryWithoutScopes', 'newModelQuery'];
 $connMethods = array_merge(['table'], $sqlMethods);
 $isDb = fn ($name) => $name instanceof Node\Name && in_array($name->toString(), ['DB', 'Illuminate\Support\Facades\DB'], true);
-$tablesInSql = fn (string $sql) => preg_match_all('/\b(?:from|join|into|update)\s+"?([a-z_][a-z0-9_]*)"?/i', $sql, $m) ? array_values(array_unique(array_map('strtolower', $m[1]))) : [];
+// The SQL an argument carries, each dynamic part replaced by ⟨?⟩.
+$sqlText = function (?Node $e) use (&$sqlText): string {
+    return match (true) {
+        $e instanceof Node\Scalar\String_ => $e->value,
+        $e instanceof Node\Scalar\InterpolatedString => implode('', array_map(fn ($p) => $p instanceof Node\InterpolatedStringPart ? $p->value : ' ⟨?⟩ ', $e->parts)),
+        $e instanceof Node\Expr\BinaryOp\Concat => $sqlText($e->left).$sqlText($e->right),
+        default => ' ⟨?⟩ ',
+    };
+};
+// Every table the SQL names, in order — FROM lists, joins, subqueries, INTO,
+// UPDATE, DELETE … USING, TRUNCATE/LOCK — with `?` where a table position
+// holds anything but a name (a dynamic part, a placeholder). Not tables: a
+// function after FROM/JOIN (NOW(), generate_series()), the FROM inside
+// EXTRACT/SUBSTRING/TRIM/OVERLAY and IS [NOT] DISTINCT FROM, FOR UPDATE and
+// DO UPDATE, CTE names, anything in a string literal or a comment. For a
+// whole statement that names no table: `-`, or `?` if any of it is dynamic.
+// ponytail: a tokenizer, not a SQL grammar — it covers the statement shapes
+// in app/ (fixtures in tests/Inventory/Fixtures/RawSqlFixtures.php); a new
+// shape it misreads surfaces as `?` or an extra table, both of which are read.
+$sqlTables = function (?Node $e, bool $statement) use ($sqlText): array {
+    $sql = preg_replace(['/--[^\n]*/', '#/\*.*?\*/#s', "/'(?:[^']|'')*'/s", '/\$([a-z_]*)\$.*?\$\1\$/s'], [' ', ' ', "''", "''"],
+        strtolower($sqlText($e)));
+    preg_match_all('/⟨\?⟩|"[^"]*"(?:\."[^"]*")?|[a-z_][a-z0-9_$]*(?:\.(?:"[^"]*"|[a-z_][a-z0-9_$]*))?|\S/u', $sql, $m);
+    $tok = array_map(fn ($t) => str_replace('"', '', $t), $m[0]);
+    preg_match_all('/(?:\bwith(?:\s+recursive)?|,)\s*"?([a-z_][a-z0-9_]*)"?\s*(?:\([^()]*\)\s*)?as\s+(?:not\s+)?(?:materialized\s+)?\(/', $sql, $c);
+    $name = fn (string $t) => (bool) preg_match('/^[a-z_][a-z0-9_$]*(\.[a-z_][a-z0-9_$]*)?$/', $t);
+    $notAlias = ['where', 'join', 'inner', 'left', 'right', 'full', 'cross', 'natural', 'on', 'using', 'group', 'order', 'limit', 'offset',
+        'union', 'except', 'intersect', 'having', 'window', 'for', 'returning', 'set', 'values', 'select', 'default', 'and', 'or'];
+    $tables = [];
+    $opened = [];   // the token before each open parenthesis
+    foreach ($tok as $i => $t) {
+        if ($t === '(' || $t === ')') {
+            $t === '(' ? $opened[] = ($tok[$i - 1] ?? '') : array_pop($opened);
+
+            continue;
+        }
+        $prev = $tok[$i - 1] ?? '';
+        $starts = match ($t) {
+            'from' => ! in_array(end($opened), ['extract', 'substring', 'trim', 'overlay'], true) && $prev !== 'distinct',
+            'join', 'into' => true,
+            'update' => ! in_array($prev, ['for', 'do', 'key', 'on'], true),
+            'using' => ($tok[0] ?? '') === 'delete',
+            'truncate' => true,
+            'table' => in_array($prev, ['lock', 'alter', 'create', 'drop'], true),
+            default => false,
+        };
+        for ($j = $i + 1, $list = $starts; $list;) {
+            while (in_array($tok[$j] ?? '', ['only', 'lateral', 'table', 'if', 'not', 'exists'], true)) {
+                $j++;
+            }
+            $x = $tok[$j] ?? '';
+            if ($x === '(') {
+                // a subquery or VALUES (its own tables come in turn); a parenthesised join starts with its first table
+                $x = $tok[$j + 1] ?? '';
+                if (! $name($x) || in_array($x, ['select', 'values', 'with', 'table'], true)) {
+                    break;
+                }
+                $j++;
+            }
+            if (! $name($x)) {
+                $tables[] = '?';
+
+                break;
+            }
+            if (($tok[$j + 1] ?? '') === '(' && $t !== 'into') {
+                break;   // a function
+            }
+            if (! in_array($x, $c[1], true)) {
+                $tables[] = preg_replace('/^public\./', '', $x);
+            }
+            $j += ($tok[$j + 1] ?? '') === 'as' ? 2 : 1;
+            if ($name($tok[$j] ?? '') && ! in_array($tok[$j], $notAlias, true)) {
+                $j++;   // an alias
+            }
+            $list = in_array($t, ['from', 'using'], true) && ($tok[$j] ?? '') === ',';
+            $j++;
+        }
+    }
+    $tables = array_values(array_unique($tables));
+
+    return $tables === [] && $statement ? [str_contains($sql, '⟨?⟩') ? '?' : '-'] : $tables;
+};
 
 $files = 0;
 $parseFailures = [];
@@ -206,6 +340,17 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/'.
         return null;
     };
     $fnOf = fn (Node $n) => $up($n, Node\Stmt\ClassMethod::class, Node\Stmt\Function_::class, Node\Expr\Closure::class, Node\Expr\ArrowFunction::class);
+    // SQL held in a variable assigned exactly once in its function (never
+    // appended to): the expression it was given. Anything else stays dynamic.
+    $sqlArg = function (?Node $a0) use ($fnOf, $finder): ?Node {
+        if (! $a0 instanceof Node\Expr\Variable || ! is_string($a0->name) || ! ($fn = $fnOf($a0))) {
+            return $a0;
+        }
+        $writes = $finder->find($fn->getStmts() ?? [], fn (Node $n) => ($n instanceof Node\Expr\Assign || $n instanceof Node\Expr\AssignOp)
+            && $n->var instanceof Node\Expr\Variable && $n->var->name === $a0->name);
+
+        return count($writes) === 1 && $writes[0] instanceof Node\Expr\Assign ? $writes[0]->expr : $a0;
+    };
     $methodName = function (Node $n) use ($up): string {
         $m = $up($n, Node\Stmt\ClassMethod::class, Node\Stmt\Function_::class);
 
@@ -571,10 +716,9 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/'.
             if ($method === 'table') {
                 $record('raw', 'raw DB::table', $a0 instanceof Node\Scalar\String_ ? explode(' ', $a0->value)[0] : '?', $call);
             } elseif (in_array($method, $sqlMethods, true)) {
-                $t = $a0 ? $tablesInSql($print($a0)) : [];
-                $record('raw', 'raw DB::<sql>', $t[0] ?? '?', $call);
+                $record('raw', 'raw DB::<sql>', implode(',', $sqlTables($sqlArg($a0), true)), $call);
             } elseif ($method === 'raw' && $a0) {
-                foreach ($tablesInSql($print($a0)) as $t) {
+                foreach ($sqlTables($a0, false) as $t) {
                     if ($owned($t) !== '') {
                         $record('embedded', 'embedded raw fragment', $t, $call, $a0);
                     }
@@ -643,16 +787,16 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/'.
                 $recv instanceof Node\Expr\MethodCall => 'conn ->getConnection()->…',
                 default => 'conn injected $db/$conn',
             };
-            $t = $method === 'table' ? ($a0 instanceof Node\Scalar\String_ ? explode(' ', $a0->value)[0] : '?') : ($tablesInSql($print($a0))[0] ?? '?');
+            $t = $method === 'table' ? ($a0 instanceof Node\Scalar\String_ ? explode(' ', $a0->value)[0] : '?') : implode(',', $sqlTables($sqlArg($a0), true));
             $record('conn', $form, $t, $call);
         } elseif (in_array($method, $joins, true) && $a0 instanceof Node\Scalar\String_) {
             $t = strtolower(explode(' ', trim($a0->value))[0]);
-            if ($owned($t) !== '') {
+            if (preg_match('/^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)?$/', $t) && $owned($t) !== '') {
                 $record('embedded', in_array($method, ['from', 'fromSub'], true) ? 'embedded ->from()' : 'embedded join', $t, $call,
                     $method === 'from' ? $chainTop($call) : $call);
             }
         } elseif (in_array($method, $rawFragments, true) && $a0) {
-            foreach ($tablesInSql($print($a0)) as $t) {
+            foreach ($sqlTables($a0, false) as $t) {
                 if ($owned($t) !== '') {
                     $record('embedded', 'embedded raw fragment', $t, $call, $a0);
                 }
@@ -759,8 +903,11 @@ foreach ($rows as &$r) {
     // cross-shop lookup pattern without one.
     $requestKey = array_filter($cs, fn ($c) => in_array($c[0], ['key', 'token'], true) && str_contains($c[1], 'REQUEST'));
     $goodKey = array_filter($cs, fn ($c) => $c[0] === 'key' && ! $c[2] && $trustedFrom($c[1]));
+    // An unknown table, or a statement naming more than one table that is not
+    // global (one shop filter does not show which table it constrains), is read.
+    $uncertain = $r['owned'] === '?' || count(array_filter(explode(',', $r['table']), fn ($t) => $ownedOne($t) !== '')) > 1;
     // An orWhere in the chain breaks the conjunction.
-    $r['trusted'] = $badShop === [] && ! $r['or'] && ($goodShop !== [] || $goodKey !== []);
+    $r['trusted'] = ! $uncertain && $badShop === [] && ! $r['or'] && ($goodShop !== [] || $goodKey !== []);
     $show = $badShop ? reset($badShop) : ($goodShop ? reset($goodShop) : ($requestKey ? reset($requestKey) : ($goodKey ? reset($goodKey) : ($cs ? reset($cs) : null))));
     // `or` marks a constraint applied through orWhere; where-not/assign are weak by kind.
     $r['shop'] = $show ? ($show[2] && ! in_array($show[0], ['where-not', 'assign'], true) ? 'or' : '').$show[0] : ($r['mention'] ? 'mention' : 'none');
@@ -794,7 +941,8 @@ if ($resolved) {
     foreach ($rows as $r) {
         [$verdict, $note] = $toRead($r)
             ? (isset($reviewed[$r['key']]) ? array_pad(explode(' — ', $reviewed[$r['key']], 2), 2, '') : ['UNREAD', ''])
-            : ['trusted', 'constraint from '.$r['from']];
+            : ($r['owned'] === '' ? ['global', 'no tenant table: '.implode('; ', array_map(fn ($t) => "{$t} — ".$globalWhy($t), explode(',', $r['table'])))]
+                : ['trusted', 'constraint from '.$r['from']]);
         echo implode("\t", [$verdict, $note, $r['area'], $r['file'].':'.$r['line'], $r['kind'], $r['op'], $r['table'], $r['owned'] ?: '-',
             $r['shop'].':'.$r['from'], $r['key'], str_replace("\t", ' ', $r['full'])]), "\n";
     }
@@ -845,7 +993,7 @@ foreach (['tenant', 'admin', 'console'] as $a) {
 echo "\n";
 foreach ($list as $r) {
     echo implode("\t", [$r['key'], $r['area'], $r['file'].':'.$r['line'], $r['kind'], $r['op'], $r['table'], $r['owned'] ?: '-',
-        $r['shop'].':'.$r['from'], $r['request'], $toRead($r) ? ($reviewed[$r['key']] ?? 'UNREAD') : 'trusted', $r['src']]), "\n";
+        $r['shop'].':'.$r['from'], $r['request'], $toRead($r) ? ($reviewed[$r['key']] ?? 'UNREAD') : ($r['owned'] === '' ? 'global' : 'trusted'), $r['src']]), "\n";
 }
 
 exit($parseFailures === [] ? 0 : 3);
