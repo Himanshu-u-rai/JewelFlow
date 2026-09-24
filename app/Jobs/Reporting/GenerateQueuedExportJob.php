@@ -85,7 +85,11 @@ class GenerateQueuedExportJob implements ShouldQueue
                 $result = $pipeline->run($request, $meta);
 
                 $disk = (string) config('reporting.queue_disk', 'local');
-                $path = $result->output->storeOn($disk, 'reporting-exports');
+                // S3-18: one directory per export. The renderers name files
+                // {report}-{Ymd-His}; stored flat, two shops' exports in the
+                // same second shared a path, and the second overwrote the
+                // first — whose download then served the other shop's data.
+                $path = $result->output->storeOn($disk, 'reporting-exports/'.(int) $p['shop_id'].'/'.$export->id);
                 $expiresAt = CarbonImmutable::now()->addDays((int) config('reporting.download_expiry_days', 7));
 
                 $audit->markFinished($export, $result->rowCount, $disk, $path, $expiresAt);
