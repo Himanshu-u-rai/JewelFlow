@@ -4,6 +4,9 @@
 #
 #   deploy-security-batch.sh <staging|production> preflight <target-sha>
 #   deploy-security-batch.sh <staging|production> deploy    <target-sha>
+#   deploy-security-batch.sh <staging|production> continue  <target-sha> <work-dir of the stopped run>
+#       resumes a run that stopped at D2 or later, from D2, with the :switch
+#       that run recorded (Phase 1 and Phase 2 are not repeated)
 #
 # Implements docs/runbooks/signature-migration-release-order.md inside one
 # maintenance window: D0 → Phase 1 (eight files, one per command) → D1 →
@@ -79,7 +82,24 @@ counts() { for t in "${COUNTED[@]}"; do printf '%s=%s ' "$t" "$(PSQL "select cou
 
 echo "########## security batch: $ENVN $ACTION target=$TARGET at $STAMP (UTC) ##########"
 
+if [ "$ACTION" = continue ]; then
+  PHASE=continue
+  PREV=${4:?continue needs the work directory of the stopped run}
+  cd "$DIR" || fail "no directory $DIR"
+  [ -f "$PREV/switch" ] && [ -f "$PREV/counts.before" ] || fail "$PREV has no recorded :switch — the stopped run did not complete Phase 2"
+  [ "$(git -C "$DIR" rev-parse HEAD)" = "$TARGET" ] || fail "HEAD is not the target $TARGET"
+  [ -f "$DIR/storage/framework/down" ] || fail "the site is not in maintenance — refusing to resume"
+  IFS='|' read -r SWITCH SWITCH_EPOCH FLAT_AT_SWITCH RELOAD_EPOCH < "$PREV/switch"
+  RELOAD_EPOCH=${RELOAD_EPOCH:-$((SWITCH_EPOCH - 4))}   # runs before this field was recorded: reload preceded the switch by ~4 s
+  COUNTS_BEFORE=$(cat "$PREV/counts.before")
+  OTHER_HEAD_BEFORE=$(git -C "$OTHER" rev-parse HEAD)
+  LOGF=$DIR/storage/logs/laravel.log
+  LOG_MARK=$(stat -c %s "$LOGF" 2>/dev/null || echo 0)
+  ok "resuming from D2: :switch $SWITCH (from $PREV); new errors are counted from now"
+fi
+
 # ── PREFLIGHT (read-only gates, the fetch, the backup) ──────────────────────
+if [ "$ACTION" != continue ]; then
 cd "$DIR" || fail "no directory $DIR"
 CFG=$(sudo -u www-data php -r '$c = require "bootstrap/cache/config.php"; echo $c["app"]["env"]."|".$c["app"]["url"]."|".$c["database"]["connections"]["pgsql"]["database"];' 2>/dev/null)
 [ "$CFG" = "$ENVN|$APPURL|$DB" ] || fail "effective (cached) config is '$CFG', expected '$ENVN|$APPURL|$DB'"
@@ -210,8 +230,9 @@ sleep 3
 SWITCH=$(now_app)
 SWITCH_EPOCH=$(date +%s)
 FLAT_AT_SWITCH=$(PSQL "select count(*) from report_exports where file_path is not null and file_path !~ '$NEW_LAYOUT'")
-echo "$SWITCH|$SWITCH_EPOCH|$FLAT_AT_SWITCH" > "$WORK/switch"
+echo "$SWITCH|$SWITCH_EPOCH|$FLAT_AT_SWITCH|$RELOAD_EPOCH" > "$WORK/switch"
 ok "Phase 2 complete. :switch = $SWITCH (application clock and timezone); flat-layout exports at the switch: $FLAT_AT_SWITCH"
+fi   # end of the preflight-to-Phase-2 path; `continue` starts below
 
 d2_checks() {
   local label=$1
@@ -222,8 +243,12 @@ d2_checks() {
     [ "$s" -ge "$RELOAD_EPOCH" ] || old=$((old + 1))
   done < <(pgrep -P "$(cat /run/php/php8.2-fpm.pid)"; pgrep -f "$DIR/artisan queue:work")
   [ "$old" = 0 ] || fail "$label: $old php8.2-fpm pool or queue worker process(es) predate the switch"
+  # A worker that runs to empty and exits (staging's) has no process between
+  # runs; one that is running must have started after the reload.
   local wpid; wpid=$(systemctl show -p MainPID --value "$WORKER")
-  [ "$wpid" -gt 0 ] && [ "$(date -d "$(ps -o lstart= -p "$wpid")" +%s)" -ge "$RELOAD_EPOCH" ] || fail "$label: $WORKER not restarted after the switch"
+  if [ "${wpid:-0}" -gt 0 ]; then
+    [ "$(date -d "$(ps -o lstart= -p "$wpid")" +%s)" -ge "$RELOAD_EPOCH" ] || fail "$label: $WORKER (pid $wpid) predates the switch"
+  fi
   [ "$(PSQL "select count(*) from report_exports where finished_at > '$SWITCH' and file_path is not null and file_path !~ '$NEW_LAYOUT'")" = 0 ] \
     || fail "$label: a flat-layout export finished after :switch — a baseline writer ran"
   [ "$(PSQL "select count(*) from report_exports where file_path is not null and file_path !~ '$NEW_LAYOUT'")" = "$FLAT_AT_SWITCH" ] \
