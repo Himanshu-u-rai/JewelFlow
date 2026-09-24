@@ -262,7 +262,10 @@ try {
     check($mine->getStatusCode() === 200 && $theirs->getStatusCode() === 404, 'exports: the requester downloads; another shop\'s user following the link gets 404',
         $mine->getStatusCode().'/'.$theirs->getStatusCode());
     if ($onStaging) {
-        check(probe('/storage/'.$export->file_path) === '404', 'exports: the private file is not served under /storage (nginx)', probe('/storage/'.$export->file_path));
+        // 404, or 403 from the private disk's signed serve route that an
+        // unmatched /storage/ path falls through to: either way, not served.
+        $served = probe('/storage/'.$export->file_path);
+        check(in_array($served, ['403', '404'], true), 'exports: the private file is not served under /storage', $served);
     }
 
     // ── signature snapshot on a reprint (quick bill) ─────────────────────────
