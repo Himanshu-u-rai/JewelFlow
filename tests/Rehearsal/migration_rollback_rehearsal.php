@@ -1,8 +1,9 @@
 <?php
 
 /**
- * Populated-database migration and rollback rehearsal — the branch's seven
- * migrations, up and down, against synthetic data at the baseline schema.
+ * Populated-database migration and rollback rehearsal — the branch's ten
+ * migrations, up and down in release order, against synthetic data at the
+ * baseline schema.
  *
  *   php tests/Rehearsal/migration_rollback_rehearsal.php
  *
@@ -14,7 +15,7 @@
  * behave as they do on a server. This runs every step as its own statement,
  * as a deploy would.
  *
- * BASELINE SCHEMA. The branch adds seven migrations and modifies none, so the
+ * BASELINE SCHEMA. The branch adds ten migrations and modifies none, so the
  * baseline schema is built from exactly the migration files in 018b3d8 —
  * checked against `git ls-tree`, not assumed — rather than from a second code
  * tree. Baseline APPLICATION code is not run. Its writes are reproduced by
@@ -54,6 +55,8 @@ final class RehearsalFixture
     public function tenant(): array { return $this->createRetailerTenant(); }
 
     public function item(int $shopId) { return $this->createItem($shopId); }
+
+    public function customer(int $shopId) { return $this->createCustomer($shopId); }
 }
 
 const BASELINE = '018b3d810e37d534f498033ab582ee41f3197c27';
@@ -66,6 +69,10 @@ const EXPAND = [
 const CLAIMS = '2026_09_21_120000_create_invoice_payment_claims_table';
 const HEADERS = '2026_09_23_120000_add_response_headers_to_idempotency_keys';
 const CONTRACT = '2026_09_20_130000_add_disk_column_check_constraints';
+// This round: Phase 1 (before the code), and Phase 2b (after it, before the contract).
+const OUTCOME = '2026_09_24_120100_add_notification_outcome_to_report_exports';
+const EXPIRY_LOT = '2026_09_24_130000_add_expires_lot_id_to_loyalty_transactions';
+const NOTIFICATIONS = '2026_09_24_120000_create_notifications_table';
 
 $failures = 0;
 function result(bool $ok, string $label, string $detail = ''): void
@@ -146,9 +153,9 @@ try {
     $treeNames = array_map(fn ($f) => basename($f, '.php'), glob(database_path('migrations/*.php')));
     $branchOnly = array_values(array_diff($treeNames, $baselineNames));
     sort($branchOnly);
-    $expectedBranchOnly = array_merge(EXPAND, [CONTRACT, CLAIMS, HEADERS]);
+    $expectedBranchOnly = array_merge(EXPAND, [CONTRACT, CLAIMS, HEADERS, OUTCOME, EXPIRY_LOT, NOTIFICATIONS]);
     sort($expectedBranchOnly);
-    result($branchOnly === $expectedBranchOnly, 'the branch adds exactly the seven migrations under test', count($baselineNames).' baseline files');
+    result($branchOnly === $expectedBranchOnly, 'the branch adds exactly the ten migrations under test', count($baselineNames).' baseline files');
     result(array_diff($baselineNames, $treeNames) === [], 'no baseline migration was removed');
 
     $dir = sys_get_temp_dir().'/jf-rehearsal-baseline-'.getmypid();
@@ -162,9 +169,10 @@ try {
 
     $pending = pending();
     sort($pending);
-    result($pending === $expectedBranchOnly, 'with default paths, exactly the seven branch migrations are pending', implode(', ', $pending));
+    result($pending === $expectedBranchOnly, 'with default paths, exactly the ten branch migrations are pending', implode(', ', $pending));
     result(! Schema::hasColumn('karigar_invoices', 'invoice_file_disk') && ! Schema::hasTable('invoice_payment_claims')
-        && ! Schema::hasColumn('idempotency_keys', 'response_headers'), 'none of their objects exist yet');
+        && ! Schema::hasColumn('idempotency_keys', 'response_headers') && ! Schema::hasColumn('report_exports', 'notified_at')
+        && ! Schema::hasColumn('loyalty_transactions', 'expires_lot_id') && ! Schema::hasTable('notifications'), 'none of their objects exist yet');
 
     // ─────────────────────────────────────────────────────────────────────
     section('B. Synthetic population at the baseline schema');
@@ -194,6 +202,21 @@ try {
             DB::table('shop_billing_settings')->where('shop_id', $sid)->update(['digital_signature_path' => "signatures/{$sid}/sig.png"]);
         }
 
+        // Queued exports as the baseline leaves them — every one failed at its
+        // notification — and a loyalty ledger (earns, redemptions, one
+        // pre-trigger expiry flag), for the S3-16/S3-17 columns.
+        DB::statement("
+            insert into report_exports (shop_id, user_id, report_key, report_version, format, mode, status, file_disk, file_path, error, generated_at, created_at, updated_at)
+            select ?, ?, 'customers', 'customers@1', 'csv', 'queued', 'failed', 'local', 'reporting-exports/customers-' || g || '.csv',
+                   'relation \"notifications\" does not exist', now(), now(), now()
+            from generate_series(1, 200) g", [$sid, $owner->id]);
+        $customer = $fixture->customer($sid);
+        DB::statement("
+            insert into loyalty_transactions (shop_id, customer_id, type, points, description, balance_after, expires_at, expired, created_at, updated_at)
+            select ?, ?, case when g % 4 = 0 then 'redeem' else 'earn' end, 10, 'rehearsal', 0,
+                   case when g % 4 = 0 then null else now() + (g || ' days')::interval end, g = 1, now(), now()
+            from generate_series(1, 400) g", [$sid, $customer->id]);
+
         // 1000 claims per shop, as baseline code leaves them: resolved.
         DB::statement("
             insert into idempotency_keys (shop_id, user_id, key, request_hash, response_status, response_body, created_at, updated_at)
@@ -206,6 +229,8 @@ try {
         'stock_purchases' => DB::table('stock_purchases')->count(),
         'idempotency_keys' => DB::table('idempotency_keys')->count(),
         'shop_billing_settings' => DB::table('shop_billing_settings')->count(),
+        'report_exports' => DB::table('report_exports')->count(),
+        'loyalty_transactions' => DB::table('loyalty_transactions')->count(),
     ];
     measured('populated', json_encode($before));
 
@@ -213,11 +238,21 @@ try {
     section('C. Expand phase and the independent tables, applied to populated data');
 
     $idemNode = relfilenode('idempotency_keys');
+    $exportsNode = relfilenode('report_exports');
+    $loyaltyNode = relfilenode('loyalty_transactions');
+    $loyaltyGuard = fn () => (int) DB::selectOne("select count(*) c from pg_trigger where tgname = 'loyalty_transactions_append_only_trigger' and tgenabled = 'O'")->c;
     foreach (EXPAND as $m) {
         measured("up {$m}", sprintf('%.0f ms', up($m)));
     }
     measured('up '.CLAIMS, sprintf('%.0f ms', up(CLAIMS)));
     measured('up '.HEADERS, sprintf('%.0f ms', up(HEADERS)));
+    measured('up '.OUTCOME, sprintf('%.0f ms', up(OUTCOME)));
+    measured('up '.EXPIRY_LOT, sprintf('%.0f ms', up(EXPIRY_LOT)));
+    result(relfilenode('report_exports') === $exportsNode && count_where('report_exports', fn ($q) => $q->whereNotNull('notified_at')->orWhereNotNull('notification_error')) === 0,
+        'S3-17 columns added without rewriting report_exports, nothing invented for existing rows', "relfilenode {$exportsNode} unchanged");
+    result(relfilenode('loyalty_transactions') === $loyaltyNode && count_where('loyalty_transactions', fn ($q) => $q->whereNotNull('expires_lot_id')) === 0,
+        'S3-16 column added without rewriting loyalty_transactions, no expiry invented', "relfilenode {$loyaltyNode} unchanged");
+    result($loyaltyGuard() === 1, 'the protected append-only trigger is present and enabled after the S3-16 column');
 
     $withFile = count_where('karigar_invoices', fn ($q) => $q->whereNotNull('invoice_file_path'));
     result($withFile > 0 && count_where('karigar_invoices', fn ($q) => $q->whereNotNull('invoice_file_path')->where('invoice_file_disk', 'public')) === $withFile,
@@ -255,6 +290,10 @@ try {
     DB::table('stock_purchases')->where('id', $stranded)->update(['invoice_image' => null]);
 
     $window = ['karigar_invoices' => 10, 'stock_purchases' => 10];
+
+    // Phase 2b — after the code, before the contract.
+    measured('up '.NOTIFICATIONS, sprintf('%.0f ms', up(NOTIFICATIONS)));
+    result(Schema::hasTable('notifications'), 'notifications table created (Phase 2b)');
 
     ob_start();
     measured('up '.CONTRACT, sprintf('%.0f ms', up(CONTRACT)));
@@ -297,6 +336,30 @@ try {
     result(true, 'contract down: baseline-shaped writes accepted again');
     $window['stock_purchases']++;
 
+    measured('down '.NOTIFICATIONS, sprintf('%.0f ms', down(NOTIFICATIONS)));
+    result(Schema::hasTable('notifications'), 'notifications down keeps the table: it may predate the release, and holds delivered notifications');
+
+    // An expiry row makes the S3-16 column evidence: its down() must refuse.
+    // Tried inside a transaction that is rolled back, because the row itself
+    // can never be deleted (append-only trigger).
+    DB::beginTransaction();
+    $lot = (int) DB::table('loyalty_transactions')->where('type', 'earn')->value('id');
+    $lotRow = DB::table('loyalty_transactions')->find($lot);
+    DB::table('loyalty_transactions')->insert(['shop_id' => $lotRow->shop_id, 'customer_id' => $lotRow->customer_id, 'type' => 'redeem', 'points' => 1,
+        'description' => 'Points expired', 'balance_after' => 0, 'expires_lot_id' => $lot, 'expired' => DB::raw('false'), 'created_at' => now(), 'updated_at' => now()]);
+    try {
+        down(EXPIRY_LOT);
+        $refused = false;
+    } catch (Throwable $e) {
+        $refused = str_contains($e->getMessage(), 'identifies recorded expiries');
+    }
+    DB::rollBack();
+    result($refused && Schema::hasColumn('loyalty_transactions', 'expires_lot_id'), 'S3-16 column down refuses while an expiry row exists');
+    measured('down '.EXPIRY_LOT, sprintf('%.0f ms', down(EXPIRY_LOT)));
+    result(! Schema::hasColumn('loyalty_transactions', 'expires_lot_id') && $loyaltyGuard() === 1, 'with no expiry rows it drops; the protected trigger is untouched');
+    measured('down '.OUTCOME, sprintf('%.0f ms', down(OUTCOME)));
+    result(! Schema::hasColumn('report_exports', 'notified_at'), 'S3-17 columns dropped');
+
     measured('down '.HEADERS, sprintf('%.0f ms', down(HEADERS)));
     // New code keeps serving with the column really gone.
     $tag = mobile($sid1, 'GET', "/api/mobile/v1/items/{$item->id}", $token)->headers->get('ETag');
@@ -333,6 +396,9 @@ try {
 
     up(CLAIMS);
     up(HEADERS);
+    up(OUTCOME);
+    up(EXPIRY_LOT);
+    up(NOTIFICATIONS);   // skips creating: the table survived its down()
     up(CONTRACT);
     result(pending() === [], 'fully re-applied: nothing pending');
 
@@ -341,10 +407,13 @@ try {
         'stock_purchases' => DB::table('stock_purchases')->count(),
         'idempotency_keys' => DB::table('idempotency_keys')->count(),
         'shop_billing_settings' => DB::table('shop_billing_settings')->count(),
+        'report_exports' => DB::table('report_exports')->count(),
+        'loyalty_transactions' => DB::table('loyalty_transactions')->count(),
     ];
     result($after['karigar_invoices'] === $before['karigar_invoices'] + $window['karigar_invoices']
         && $after['stock_purchases'] === $before['stock_purchases'] + $window['stock_purchases']
-        && $after['shop_billing_settings'] === $before['shop_billing_settings'],
+        && $after['shop_billing_settings'] === $before['shop_billing_settings']
+        && $after['report_exports'] === $before['report_exports'] && $after['loyalty_transactions'] === $before['loyalty_transactions'],
         'no business row lost across every up and down', json_encode($after));
 } catch (Throwable $e) {
     result(false, 'rehearsal aborted', get_class($e).': '.$e->getMessage());

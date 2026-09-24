@@ -54,9 +54,12 @@ This is demonstrated, not argued: `tests/Feature/Security/DiskColumnReleaseOrder
 | `2026_09_20_120000_create_signature_relocations_table.php` | new `signature_relocations` table |
 | `2026_09_21_120000_create_invoice_payment_claims_table.php` | new `invoice_payment_claims` table (S3-07b). Must precede the code: code without the table refuses keyed payments with 503 (handoff §6) |
 | `2026_09_23_120000_add_response_headers_to_idempotency_keys.php` | nullable `idempotency_keys.response_headers` (S3-09e) |
+| `2026_09_24_120100_add_notification_outcome_to_report_exports.php` | nullable `report_exports.notified_at`, `notification_error` (S3-17). Must precede the code, which records every delivery outcome there |
+| `2026_09_24_130000_add_expires_lot_id_to_loyalty_transactions.php` | nullable, unique, self-referencing `loyalty_transactions.expires_lot_id` (S3-16). Must precede the code: a reversal reads it. Validating the new key scans the table and the unique index is built in place, so writes to `loyalty_transactions` wait for both; not measured on production-sized data |
 
-All six are nullable-column / new-table additions. The baseline neither reads
-nor writes any of them.
+All eight are nullable-column / new-table additions. The baseline neither reads
+nor writes any of them. Adding a column fires no row trigger, so the
+append-only `loyalty_transactions` guard is not involved.
 
 Run them from a checkout of the release SHA that is **not** the serving tree,
 one file per command, in the order above — the form rehearsed in handoff §6a.
@@ -75,7 +78,30 @@ separately-approved relocation procedure runs.
 ### Phase 2 — APPLICATION
 
 Deploy the new application code to every serving node. Until this completes,
-Phase 3 must not run.
+Phase 2b and Phase 3 must not run. `LOYALTY_EXPIRY_ACTIVE_FROM` stays unset:
+loyalty expiry activates only by its own decision (handoff §0a, S3-16).
+
+### Phase 2b — NOTIFICATIONS TABLE (only after Phase 2 is live everywhere, D2 clean)
+
+| Migration | Adds |
+|---|---|
+| `2026_09_24_120000_create_notifications_table.php` | Laravel's `notifications` table (S3-17); skipped if one exists, and its `down()` never drops it |
+
+**Why after the code, not in Phase 1.** The baseline stores each queued export
+at a path any two exports finishing in the same second share (S3-18), and —
+when this table is absent — marks every queued export `failed` at its
+notification, after the file is written. A `failed` export is refused by the
+download route, so today the absent table keeps shared files from being
+served. Created while the baseline serves, the table would let those exports
+finish `done` and make S3-18's shared files downloadable in the window. The new
+code stores one directory per export and survives the missing table (the
+delivery failure is recorded and the export stays `done` —
+`ExportNotificationDeliveryTest`).
+
+After applying: `php artisan reporting:notify-export` lists the unexpired
+finished exports not recorded as notified; `--send` delivers them, without
+regenerating anything. If D0 found a `notifications` table already present,
+S3-18 was reachable live — see handoff R10.
 
 ### Phase 3 — CONTRACT (only after Phase 2 is live everywhere)
 
@@ -123,16 +149,19 @@ Phase 3; skipped, it checks nothing. Each phase has its own expected state. On
 any mismatch: stop, change nothing by hand, and re-derive the plan from what
 was observed.
 
-The seven branch migrations, for the queries below:
+The ten branch migrations, for the queries below:
 
 ```sql
--- :seven
+-- :ten
 ('2026_09_15_120000_add_invoice_file_disk_to_karigar_invoices',
  '2026_09_15_140000_add_invoice_image_disk_to_stock_purchases',
  '2026_09_16_120000_add_digital_signature_disk_to_billing_settings',
  '2026_09_20_120000_create_signature_relocations_table',
  '2026_09_21_120000_create_invoice_payment_claims_table',
  '2026_09_23_120000_add_response_headers_to_idempotency_keys',
+ '2026_09_24_120100_add_notification_outcome_to_report_exports',
+ '2026_09_24_130000_add_expires_lot_id_to_loyalty_transactions',
+ '2026_09_24_120000_create_notifications_table',
  '2026_09_20_130000_add_disk_column_check_constraints')
 ```
 
@@ -143,9 +172,10 @@ The seven branch migrations, for the queries below:
 | `git -C /var/www/jewelflow rev-parse HEAD` on **every** serving node | `018b3d810e37d534f498033ab582ee41f3197c27` |
 | `git -C /var/www/jewelflow status --porcelain --untracked-files=no` | empty |
 | `php artisan migrate:status --pending`, from the serving tree | nothing pending: every `018b3d8` migration is applied |
-| `select migration from migrations where migration in :seven` | 0 rows |
+| `select migration from migrations where migration in :ten` | 0 rows |
 | `select to_regclass('signature_relocations'), to_regclass('invoice_payment_claims')` | both NULL |
-| `select table_name, column_name from information_schema.columns where (table_name, column_name) in (('karigar_invoices','invoice_file_disk'), ('stock_purchases','invoice_image_disk'), ('shop_billing_settings','digital_signature_disk'), ('idempotency_keys','response_headers'))` | 0 rows — nothing added by hand |
+| `select table_name, column_name from information_schema.columns where (table_name, column_name) in (('karigar_invoices','invoice_file_disk'), ('stock_purchases','invoice_image_disk'), ('shop_billing_settings','digital_signature_disk'), ('idempotency_keys','response_headers'), ('report_exports','notified_at'), ('report_exports','notification_error'), ('loyalty_transactions','expires_lot_id'))` | 0 rows — nothing added by hand |
+| `select to_regclass('notifications')` | **record the answer; it is evidence, not a gate.** NULL: every queued export has been failing at its notification, and S3-18's shared files could not be downloaded through the application. Not NULL: queued exports have been finishing `done` on shared paths — S3-18 was reachable live (handoff R10) |
 | `git rev-parse HEAD` in the release checkout | the SHA the reviewer approved |
 | each `--pretend` output | only the DDL and backfills of that file |
 
@@ -154,7 +184,7 @@ The seven branch migrations, for the queries below:
 | Check | Expected |
 |---|---|
 | serving nodes' `HEAD` | still `018b3d8` — nothing else deployed meanwhile |
-| `select migration from migrations where migration in :seven` | exactly the six Phase 1 names; the contract absent |
+| `select migration from migrations where migration in :ten` | exactly the eight Phase 1 names; the notifications table and the contract absent |
 | `select conname from pg_constraint where conname in ('shop_billing_settings_digital_signature_disk_check', 'karigar_invoices_attachment_disk_check', 'stock_purchases_invoice_image_disk_check')` | 0 rows |
 | the connection the application will **actually** use (XR-02) — see below | the effective endpoint is PostgreSQL itself, or a pooler whose mode is **session**; `persistent` is `false` |
 
@@ -221,14 +251,15 @@ live, because it is a precondition of the code.
 |---|---|
 | serving nodes' `HEAD` | the release SHA on **every** node — **not** `018b3d8` |
 | PHP-FPM pool workers (`ps -eo lstart,cmd \| grep 'php-fpm: pool'`) and any queue worker or scheduler daemon | every one started **after** the code switch. Opcache and long-running workers otherwise keep executing baseline code |
-| migrations and constraints | as D1: six applied, contract absent, 0 constraints |
+| migrations and constraints | as D1: eight applied, notifications and contract absent, 0 constraints |
+| `php artisan config:show loyalty.expiry_active_from` (release checkout, as the web user) | empty — or the date the S3-16 decision approved, recorded with that approval |
 | baseline-shaped rows written since the switch, per table: `select count(*) from karigar_invoices where updated_at > :switch and ((invoice_file_path is not null and invoice_file_disk is null) or (invoice_file_path is null and invoice_file_disk is not null))`, and the same for `stock_purchases` (`invoice_image`, `invoice_image_disk`) and `shop_billing_settings` (`digital_signature_path`, `digital_signature_disk`) | 0 on all three. The release always writes both columns, so any such row since the switch shows a baseline writer still serving somewhere |
 
 ### D3 — after Phase 3
 
 | Check | Expected |
 |---|---|
-| `select migration from migrations where migration in :seven` | all seven |
+| `select migration from migrations where migration in :ten` | all ten |
 | `select conname, convalidated from pg_constraint where conname in (…the three…)` | three rows, all `t` (T-06's signal; `f` means the deploy "succeeded" without validating) |
 | `php artisan migrate:status --pending` | nothing pending |
 

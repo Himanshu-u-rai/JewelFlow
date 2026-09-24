@@ -67,8 +67,19 @@ $app = require __DIR__ . '/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
 // Guards both entry points (the parent and every `fire` child): no fixture,
-// request or query runs against any other database.
-if (DB::connection()->getDatabaseName() !== 'jewelflow_testing') {
+// request or query runs against any other database. The one exception is
+// control D's child, pointed at a database that must NOT exist — and it is
+// refused too unless connecting to that name really fails.
+$database = DB::connection()->getDatabaseName();
+if ($database === 'jewelflow_testing_absent' && ($argv[1] ?? null) === 'fire') {
+    try {
+        DB::connection()->getPdo();
+        fwrite(STDERR, "REFUSED: jewelflow_testing_absent exists; control D needs a missing database\n");
+        exit(2);
+    } catch (Throwable) {
+        // Absent, as control D requires: carry on and observe the outage.
+    }
+} elseif ($database !== 'jewelflow_testing') {
     fwrite(STDERR, "REFUSED: not jewelflow_testing\n");
     exit(2);
 }
@@ -372,7 +383,7 @@ $verdicts[] = report(
 $tokenD = $userD->createToken('race-probe')->plainTextToken;
 
 $results = race($tokenD, [
-    ['race-dberror-control-d', basePayload(), ['DB_DATABASE' => 'jewelflow_no_such_db']],
+    ['race-dberror-control-d', basePayload(), ['DB_DATABASE' => 'jewelflow_testing_absent']],
 ]);
 
 $verdicts[] = report(
