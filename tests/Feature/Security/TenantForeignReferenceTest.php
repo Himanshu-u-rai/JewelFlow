@@ -203,4 +203,55 @@ class TenantForeignReferenceTest extends TestCase
         TenantContext::runFor((int) $shopA->id, fn () => $this->actingAs($ownerA)->get(self::ERP.'/billing/'.$invoiceA->id))
             ->assertOk()->assertSee('PLT-SHOP-A-0001');
     }
+
+    // ── Read-only release checks (handoff §0a, R10), exercised ────────────
+    //
+    // Rows written before the S3-14/S3-15 fixes are inserted directly, as the
+    // old routes wrote them, beside rows that name their own shop's records.
+    // The documented queries must return the foreign ones and nothing else.
+
+    public const S3_14_CHECK = 'select ip.id, ip.shop_id, spm.shop_id as account_shop_id from invoice_payments ip '
+        .'join shop_payment_methods spm on spm.id = ip.payment_method_id where ip.shop_id <> spm.shop_id';
+
+    public const S3_15_CHECK = 'select ki.id, ki.shop_id, jo.shop_id as job_order_shop_id from karigar_invoices ki '
+        .'join job_orders jo on jo.id = ki.job_order_id where ki.shop_id <> jo.shop_id';
+
+    public function test_the_s3_14_check_finds_a_historical_foreign_account_and_nothing_else(): void
+    {
+        [, $shopB] = $this->createRetailerTenant();
+        $accountB = $this->account($shopB->id, 'ShopBUpi');
+        [$ownerA, $shopA, $customerA, $itemA] = $this->retailShopReadyToSell();
+        $accountA = $this->account($shopA->id, 'ShopAUpi');
+        $this->sell($ownerA, $shopA, $customerA->id, $itemA->id, $accountA->id)->assertOk();   // own account: must not be found
+        $invoiceId = (int) DB::table('invoices')->where('shop_id', $shopA->id)->value('id');
+        $foreign = DB::table('invoice_payments')->insertGetId([   // as the pre-fix route wrote it
+            'invoice_id' => $invoiceId, 'shop_id' => $shopA->id, 'mode' => 'upi', 'amount' => 1,
+            'payment_method_id' => $accountB->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $rows = DB::select(self::S3_14_CHECK);
+
+        $this->assertSame([$foreign], array_map(fn ($r) => (int) $r->id, $rows));
+        $this->assertSame((int) $shopB->id, (int) $rows[0]->account_shop_id);
+    }
+
+    public function test_the_s3_15_check_finds_a_historical_foreign_job_order_and_nothing_else(): void
+    {
+        [$ownerB, $shopB] = $this->createRetailerTenant();
+        $jobB = $this->jobOrder($shopB->id, $this->karigar($shopB->id, 'KarigarB'), $ownerB->id, 'JO-B-9');
+        [$ownerA, $shopA] = $this->createRetailerTenant();
+        $karigarA = $this->karigar($shopA->id, 'KarigarA');
+        $jobA = $this->jobOrder($shopA->id, $karigarA, $ownerA->id, 'JO-A-9');
+        $this->karigarInvoice($ownerA, $shopA, $karigarA, $jobA, 'KI-A-OWN')->assertSessionHasNoErrors();
+        $foreign = DB::table('karigar_invoices')->insertGetId([   // as the pre-fix route wrote it
+            'shop_id' => $shopA->id, 'karigar_id' => $karigarA, 'job_order_id' => $jobB, 'karigar_invoice_number' => 'KI-A-OLD',
+            'karigar_invoice_date' => now()->toDateString(), 'payment_status' => 'unpaid', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $rows = DB::select(self::S3_15_CHECK);
+
+        $this->assertSame([$foreign], array_map(fn ($r) => (int) $r->id, $rows));
+        $this->assertSame((int) $shopB->id, (int) $rows[0]->job_order_shop_id);
+    }
 }
+

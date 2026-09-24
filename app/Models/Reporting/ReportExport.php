@@ -67,4 +67,34 @@ class ReportExport extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * S3-18. The one directory this export's file may live in. Queued files
+     * are written here (GenerateQueuedExportJob) and served only from here
+     * (ExportDownloadController), so a file's location proves which export —
+     * and which shop — it belongs to.
+     */
+    public function storageDirectory(): string
+    {
+        return 'reporting-exports/'.(int) $this->shop_id.'/'.(int) $this->id;
+    }
+
+    /**
+     * Is the recorded file directly inside storageDirectory()? False for every
+     * file stored before that layout (flat reporting-exports/{report}-{time}):
+     * two exports may name one such file, and even a file only one row names
+     * may have been overwritten by a job that failed before recording its own
+     * path, so nothing recorded proves whose bytes it holds.
+     */
+    public function fileIsInOwnDirectory(): bool
+    {
+        $path = (string) $this->file_path;
+        $prefix = $this->storageDirectory().'/';
+
+        return str_starts_with($path, $prefix)
+            && ! str_contains(substr($path, strlen($prefix)), '/')
+            && ! str_contains($path, '..')
+            && ! str_contains($path, '\\')
+            && strlen($path) > strlen($prefix);
+    }
 }

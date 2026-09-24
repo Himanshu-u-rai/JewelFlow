@@ -259,17 +259,24 @@ class UrlKnowledgeAuthorizationTest extends TestCase
     private function makeExport(int $shopId, array $overrides = []): ReportExport
     {
         return TenantContext::runFor($shopId, function () use ($shopId, $overrides) {
-            $path = 'reporting-exports/'.uniqid('exp_').'.csv';
-            Storage::disk('local')->put($path, "col\nEXPORT_SENTINEL_9c1");
-
-            return ReportExport::create(array_merge([
+            $export = ReportExport::create(array_merge([
                 'shop_id' => $shopId, 'user_id' => null,
                 'report_key' => StubReportService::KEY, 'report_version' => 'stub-report@1',
                 'profile' => 'detailed', 'format' => 'csv', 'filters' => [],
                 'sensitive_included' => false, 'mode' => 'queued', 'status' => 'done',
-                'row_count' => 1, 'file_disk' => 'local', 'file_path' => $path,
+                'row_count' => 1, 'file_disk' => 'local', 'file_path' => null,
                 'expires_at' => now()->addDays(7), 'generated_at' => now(),
             ], $overrides));
+
+            // Stored where the queued job writes it: inside the export's own
+            // directory (S3-18). A flat path is refused at download.
+            if (! array_key_exists('file_path', $overrides)) {
+                $path = $export->storageDirectory().'/'.uniqid('exp_').'.csv';
+                Storage::disk('local')->put($path, "col\nEXPORT_SENTINEL_9c1");
+                $export->update(['file_path' => $path]);
+            }
+
+            return $export;
         });
     }
 

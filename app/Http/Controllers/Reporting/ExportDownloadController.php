@@ -50,6 +50,16 @@ class ExportDownloadController extends Controller
         abort_if($export->expires_at !== null && $export->expires_at->isPast(), 410, 'This export link has expired. Please run the export again.');
         abort_if($export->file_disk === null || $export->file_path === null, 404);
 
+        // S3-18, exports stored before the per-export layout: nothing recorded
+        // proves whose bytes a flat file holds, so it is not served to anyone.
+        // The file and the row are left exactly as they are.
+        if (! $export->fileIsInOwnDirectory()) {
+            \Illuminate\Support\Facades\Log::warning('Refused an export whose file is outside its own directory', [
+                'export_id' => $export->id, 'shop_id' => $export->shop_id,
+            ]);
+            abort(410, 'This export was stored in an older layout that cannot be shown to belong to your shop. Please run the export again.');
+        }
+
         $disk = \Illuminate\Support\Facades\Storage::disk($export->file_disk);
         abort_unless($disk->exists($export->file_path), 410, 'This export file is no longer available. Please run the export again.');
 

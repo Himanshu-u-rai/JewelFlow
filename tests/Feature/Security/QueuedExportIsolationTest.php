@@ -141,4 +141,129 @@ class QueuedExportIsolationTest extends TestCase
         $this->assertNull($b->file_path);
         $this->assertSame([], Storage::disk((string) config('reporting.queue_disk', 'local'))->allFiles());
     }
+
+    // ── Existing exports stored before the per-export layout ──────────────
+    //
+    // 11e91c3 protects NEW exports. A file written earlier sits at a flat
+    // reporting-exports/{report}-{Ymd-His}.{ext}, and nothing recorded proves
+    // whose bytes it holds: two rows may name it, or one row may name a file
+    // that a later job overwrote and then crashed before recording its own
+    // path. These cases are built directly — rows and bytes exactly as the
+    // old job left them — and fetched through the real download route.
+
+    /** A finished export row pointing at $path, as the old job recorded it. */
+    private function legacyRow(User $owner, Shop $shop, string $path): ReportExport
+    {
+        [$id] = $this->queued($owner, $shop);
+        TenantContext::runFor((int) $shop->id, fn () => app(ExportAuditService::class)->markFinished(
+            $this->row($id), 1, (string) config('reporting.queue_disk', 'local'), $path,
+            \Carbon\CarbonImmutable::now()->addDays(7)));
+
+        return $this->row($id);
+    }
+
+    private function download(User $owner, Shop $shop, ReportExport $export)
+    {
+        $link = (new ExportReadyNotification($export))->toDatabase($owner)['download_url'];
+
+        return TenantContext::runFor((int) $shop->id, fn () => $this->actingAs($owner)->get($link));
+    }
+
+    public function test_s3_18_a_legacy_file_shared_by_two_shops_is_not_served_to_either(): void
+    {
+        [$ownerA, $shopA] = $this->shopWithCustomer('AlphaOnlyXR');
+        [$ownerB, $shopB] = $this->shopWithCustomer('BravoOnlyXR');
+        $flat = 'reporting-exports/customers-20260101-100000.csv';
+        $a = $this->legacyRow($ownerA, $shopA, $flat);
+        $b = $this->legacyRow($ownerB, $shopB, $flat);
+        $disk = Storage::disk((string) config('reporting.queue_disk', 'local'));
+        $disk->put($flat, "Full Name\nBravoOnlyXR Customer\n");   // B's job wrote last
+
+        $resA = $this->download($ownerA, $shopA, $a);
+        // Only a served file can carry B's rows. (A refusal here is an HTML
+        // error page, which in the debug test environment lists every query
+        // the process ran — fixture inserts included — so it is not searched.)
+        if ($resA->baseResponse instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
+            $this->assertStringNotContainsString('BravoOnlyXR', $resA->streamedContent(), "shop A must not receive shop B's customers");
+        }
+        $resA->assertStatus(410);
+        $this->download($ownerB, $shopB, $b)->assertStatus(410);
+
+        // Evidence preserved: the file and both rows exactly as they were.
+        $this->assertSame("Full Name\nBravoOnlyXR Customer\n", $disk->get($flat));
+        $this->assertSame($flat, $this->row($a->id)->file_path);
+        $this->assertSame(ExportAuditService::STATUS_DONE, $this->row($b->id)->status);
+    }
+
+    /**
+     * Why the rule is not "refuse duplicates": here only ONE row names the
+     * path, yet the bytes are another shop's — a later job overwrote the file
+     * and failed before recording its own path. No metadata shows it.
+     */
+    public function test_s3_18_a_legacy_file_named_by_one_row_is_still_not_proof_of_ownership(): void
+    {
+        [$ownerA, $shopA] = $this->shopWithCustomer('AlphaOnlyXR');
+        $flat = 'reporting-exports/customers-20260101-110000.csv';
+        $a = $this->legacyRow($ownerA, $shopA, $flat);
+        Storage::disk((string) config('reporting.queue_disk', 'local'))->put($flat, "Full Name\nBravoOnlyXR Customer\n");
+
+        $res = $this->download($ownerA, $shopA, $a);
+
+        $res->assertStatus(410);
+        $this->assertSame(1, ReportExport::withoutGlobalScopes()->where('file_path', $flat)->count(), 'no duplicate metadata exists');
+    }
+
+    public function test_s3_18_a_path_that_climbs_out_of_its_directory_is_refused(): void
+    {
+        [$ownerA, $shopA] = $this->shopWithCustomer('AlphaOnlyXR');
+        [$id] = $this->queued($ownerA, $shopA);
+        $climb = "reporting-exports/{$shopA->id}/{$id}/../../other/customers-20260101-120000.csv";
+        $a = $this->legacyRow($ownerA, $shopA, $climb);
+        // Where that path actually resolves: two levels up, outside its directory.
+        Storage::disk((string) config('reporting.queue_disk', 'local'))->put('reporting-exports/other/customers-20260101-120000.csv', 'X');
+
+        $this->download($ownerA, $shopA, $a)->assertStatus(410);
+    }
+
+    // ── The read-only audit for existing files (R10) ──────────────────────
+
+    public function test_the_export_file_audit_groups_by_physical_file_and_separates_cross_shop_sharing(): void
+    {
+        // A second disk name for the same place, as a server's config might have.
+        config(['filesystems.disks.exports_alias' => config('filesystems.disks.local')]);
+        [$ownerA, $shopA] = $this->shopWithCustomer('AlphaOnlyXR');
+        [$ownerB, $shopB] = $this->shopWithCustomer('BravoOnlyXR');
+
+        $crossA = $this->legacyRow($ownerA, $shopA, 'reporting-exports/customers-20260101-090000.csv');
+        $crossB = $this->legacyRow($ownerB, $shopB, 'reporting-exports//customers-20260101-090000.csv'); // same file, unnormalized
+        $sameA1 = $this->legacyRow($ownerA, $shopA, 'reporting-exports/customers-20260102-090000.csv');
+        $sameA2 = $this->legacyRow($ownerA, $shopA, 'reporting-exports/customers-20260102-090000.csv');
+        $aliasA = $this->legacyRow($ownerA, $shopA, 'reporting-exports/customers-20260103-090000.csv');
+        $aliasB = $this->legacyRow($ownerB, $shopB, 'reporting-exports/customers-20260103-090000.csv');
+        TenantContext::runFor((int) $shopB->id, fn () => $aliasB->update(['file_disk' => 'exports_alias']));
+        $before = ReportExport::withoutGlobalScopes()->orderBy('id')->get()->toArray();
+
+        $exit = \Illuminate\Support\Facades\Artisan::call('reporting:audit-export-files');
+        $out = \Illuminate\Support\Facades\Artisan::output();
+
+        $this->assertSame(1, $exit, 'a cross-shop shared file fails the audit');
+        $this->assertStringContainsString('shared files: 3 — same shop only: 1, CROSS-SHOP: 2', $out);
+        $this->assertStringContainsString("export {$crossA->id}  shop {$shopA->id}", $out);
+        $this->assertStringContainsString("export {$crossB->id}  shop {$shopB->id}", $out);
+        $this->assertStringContainsString("export {$aliasB->id}  shop {$shopB->id}", $out, 'the alias disk resolves to the same file');
+        $this->assertStringNotContainsString("export {$sameA1->id} ", $out, 'same-shop sharing is counted, not listed as cross-shop');
+        $this->assertStringContainsString('outside their own directory (refused at download since S3-18): 6', $out);
+        $this->assertSame($before, ReportExport::withoutGlobalScopes()->orderBy('id')->get()->toArray(), 'read-only');
+    }
+
+    public function test_the_export_file_audit_passes_when_every_file_is_its_own(): void
+    {
+        [$ownerA, $shopA] = $this->shopWithCustomer('AlphaOnlyXR');
+        [, $payload] = $this->queued($ownerA, $shopA);
+        GenerateQueuedExportJob::dispatchSync($payload);
+
+        $this->assertSame(0, \Illuminate\Support\Facades\Artisan::call('reporting:audit-export-files'));
+        $this->assertStringContainsString('outside their own directory (refused at download since S3-18): 0', \Illuminate\Support\Facades\Artisan::output());
+    }
 }
+
