@@ -33,7 +33,7 @@ MOBILE_BASELINE="d8a07819ac41291bd3a7e4ba27d31261d96aef28"
 
 # The packet the last independent review covered. A re-review starts from the
 # delta since then (diffs/15-*). Override: REVIEWED_SHA=<sha> bash ...
-REVIEWED_SHA="${REVIEWED_SHA:-d37879b6c36991f17bafec50137adaaaba7c677b}"
+REVIEWED_SHA="${REVIEWED_SHA:-c9d30b05da4c0c43362eb897bd0ca3aeaa893927}"
 
 cd "$(git rev-parse --show-toplevel)"
 

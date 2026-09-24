@@ -224,9 +224,10 @@ the stronger evidence.
 
 * Attribution depends on logs or the device, because the claim stores neither
   route nor payload — only their hash.
-* The mobile app (`2cad553`) has no message for
-  `idempotency_outcome_reconciled`. It falls into the generic 409 "Already
-  changed" alert. That prevents re-entry but gives the wrong reason. A dedicated
-  message is a mobile follow-up and has not been built.
+* The mobile app has a message for `idempotency_outcome_reconciled` since
+  `4f10a3b`: "Already recorded", with the server's text or "This was recorded.
+  Check the record; do not enter it again.", and no retry. Before it, the code
+  fell into the generic 409 "Already changed" alert — re-entry prevented, wrong
+  reason. Not run on a device.
 * Tested on synthetic data only. Both outcomes are reached through the real
   cashbook route with injected failures. No server run.

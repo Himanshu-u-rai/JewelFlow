@@ -17,33 +17,287 @@ exposure: every production statement is as of that observation or earlier.
 Before executing any approved step, run that phase's drift check
 (`signature-migration-release-order.md` § Drift checks) and stop on drift.
 
-**This round (tenant-isolation completion, §7e):** application code last
-changed at `11e91c3` (S3-14/15/18); tests and harnesses through `1089ba0`;
-full SHAs and measurements in §8. The reviewed candidate is
-`d37879b6c36991f17bafec50137adaaaba7c677b`; the packet carries the delta from
-it. **Previous round:** code answered at `9a3fec8`. Two independent source reviews so far:
-the first covered packet `7b1d709162109fe51f56d03d77c14e3e50d7b9ea` (seven
-findings, §0b); the second covered candidate
-`9aaf1af8f366cb1b3d038a383586d6cf9ae81112`, accepted XR-01, XR-04 and XR-06,
-and found XR-02, XR-03, XR-05 and XR-07 partially resolved (§0c). A third
-review, of candidate `d37879b6c36991f17bafec50137adaaaba7c677b`, **accepted the
-bounded repairs for XR-02, XR-03, XR-05 and XR-07**. Source-review acceptance
-is not deployment approval and does not certify the application as a whole.
-This document's own commit is later than `9a3fec8` and changes documentation
-only.
+**This round (§0d — answering the review of `c9d30b0`):** web code through
+`70681a41785e479ee1fae47901b1c45cbf534704` (S3-16 `5efc66f`, S3-17 `cfda2a0`,
+worker boundary `f507208`, S3-18 existing exports `b2b6e77`, inventory
+`530e634`, release order and harness `70681a4`); mobile
+`4f10a3b5df7d64c11b39b90713169155c713d233`. The reviewed candidate is
+`c9d30b05da4c0c43362eb897bd0ca3aeaa893927`; the packet carries the delta from
+it. That review accepted the bounded S3-14/S3-15 validation repairs and S3-18's
+protection for newly generated exports, and kept the earlier XR acceptances;
+**it is not release approval.** **Round before:** tenant-isolation completion
+(§7e), code at `11e91c3`, reviewed as candidate `d37879b6c36991f17bafec50137adaaaba7c677b`.
+Four independent source reviews so far: packet
+`7b1d709162109fe51f56d03d77c14e3e50d7b9ea` (seven findings, §0b); candidate
+`9aaf1af8f366cb1b3d038a383586d6cf9ae81112` (XR-01, XR-04, XR-06 accepted;
+XR-02, XR-03, XR-05, XR-07 partial, §0c); candidate
+`d37879b6c36991f17bafec50137adaaaba7c677b` (**XR-02, XR-03, XR-05 and XR-07
+accepted**); candidate `c9d30b05da4c0c43362eb897bd0ca3aeaa893927` (above).
+Source-review acceptance is not deployment approval and does not certify the
+application as a whole. This document's own commit is later than `70681a4`
+and changes documentation and the packet builder only.
 
 Mobile repository `/home/himanshu/Desktop/jewelflowMobileApp`, branch
 `rebrand/jewelflows-mobile`. Audit baseline
 `d8a07819ac41291bd3a7e4ba27d31261d96aef28`; current HEAD
-`2cad553b50e77890088488a43b72a2e7bd4f68ef`. Two audit commits, not pushed:
-`ffcd034` (S3-04 mobile half — warn when a bill printed without its signature)
-and `2cad553` (S3-09c — uncertain mutation outcome). **Correction:** this
+`4f10a3b5df7d64c11b39b90713169155c713d233`. Three audit commits, not pushed:
+`ffcd034` (S3-04 mobile half — warn when a bill printed without its signature),
+`2cad553` (S3-09c — uncertain mutation outcome) and `4f10a3b` (a dedicated
+message for `idempotency_outcome_reconciled`, §0d Part 6). **Correction:** this
 paragraph used to say "I made no change to that repository"; true when written,
 stale after `ffcd034`. The repository carries one pre-existing dirty file,
 `src/utils/storage.ts` (last written 2026-07-09, before this audit opened; a
 web-preview fallback from SecureStore to `localStorage`) — unrelated, not
 reviewed, and excluded from the packet — plus untracked scratch files that are
 not mine.
+
+---
+
+## 0d. Review of `c9d30b0` — this round
+
+The reviewer accepted the bounded S3-14/S3-15 validation repairs and S3-18's
+protection for newly generated exports; the earlier XR acceptances stand.
+**Not release approval.** Everything below is local to `jewelflow_testing`:
+nothing pushed, deployed, purged or relocated; no production database fix.
+"Executed" means a test, harness or command ran; "inspected" means read.
+
+| Part | ID | Status (local) | Commit | Executed evidence |
+|---|---|---|---|---|
+| 1 | S3-18 — exports stored before the fix | **Contained**: the download route refuses (410) any file outside its export's own directory; rows and files untouched, nothing reassigned | `b2b6e77` | `QueuedExportIsolationTest` +3 against the current controller: a legacy file two shops' rows name is served to neither; a legacy file only one row names is still refused; a path climbing out of its directory is refused |
+| 1 | R10 (corrected) | **Read-only checks prepared, NOT RUN on any server**: four separate questions, below | `b2b6e77`, `530e634`, `70681a4` | `reporting:audit-export-files` (+2 tests); `tenant:audit-foreign-references` (+2 tests); D0 records `to_regclass('notifications')` |
+| 2 | §7e inventory | **Blind spots closed in the tools; every tenant-facing row read; admin/console rows listed UNREAD** | `530e634` | the three sweeps; `MobileLookupIsolationTest` (3) with a mutation control |
+| 3 | worker boundary | **Implemented**: tenant context cleared on the worker's `Looping` event | `f507208` | `queue_worker_tenant_reuse.php`; `TenantBackgroundExecutionTest` +3 |
+| 3 | harness guards | **Fixed**, both entry points; **and a regression it caused, found this round and fixed** | `f507208`, `70681a4` | refusal run for every guarded script (§8) |
+| 4 | S3-17 | **REPAIRED** | `cfda2a0` | `ExportNotificationDeliveryTest` (6, the real `database` channel); worker harness |
+| 5 | S3-16 | **Mechanism REPAIRED, inactive by default; activation OPEN (decision below)** | `5efc66f` | `LoyaltyExpiryTest` (7); `loyalty_expiry_race.php`; the S3-16 characterization inverted |
+| 6 | mobile `idempotency_outcome_reconciled` | **Built** | mobile `4f10a3b` | jest 280/280, `tsc` clean |
+
+### Part 1 — S3-18's existing exports, and R10 corrected
+
+**Containment.** An export whose `file_path` is not
+`reporting-exports/{shop}/{export}/<file>` gets 410 and a log line; nothing is
+read from the file, and no row or file changes. Proof of ownership comes only
+from the layout: a flat path cannot be shown to hold its own export's bytes,
+because a job that overwrote it and then failed before recording its path
+leaves no row. So even a legacy file named by exactly one row is refused.
+
+**R10, corrected.** The earlier text grouped rows by `file_path` alone and read
+a duplicate as a collision. Duplicate metadata identifies **candidates**; it
+establishes neither the bytes served nor a disclosure. Four separate questions,
+each with its own check — **all NOT RUN; server state unverified:**
+
+| Question | Read-only check | What it cannot tell |
+|---|---|---|
+| (a) Was a file overwritten by another export? | `php artisan reporting:audit-export-files` — rows grouped by the **physical** location (disk resolved to driver + root or bucket, so two disk names for one place count as one) and the normalized path; same-shop duplicates reported apart from **cross-shop** ones; exit 1 on any cross-shop group | whose bytes the file now holds; an overwrite by a job that crashed before recording its path leaves no row |
+| (b) Was a ready-notification stored? | D0's `to_regclass('notifications')`. NULL: none could be — every queued export ended `failed` at its notification. Present: the audit prints, per cross-shop row, how many notifications name that export | whether anyone opened it |
+| (c) Was the file downloaded, by whom? | the web server's access log for `/reporting/exports/{id}/download`, status 200. The application logs no downloads (since `cfda2a0` a download marks its notification read — new code only). A `failed` export is refused by the route | nothing, if the log is gone |
+| (d) Actual exposure | (a) cross-shop **and** (c) a 200 to a user of a shop other than the one whose bytes the file held, after the overwrite (log time against `generated_at`) | not decidable from the database alone |
+
+Historical S3-14/S3-15 references, and every other stored reference between
+shops: `php artisan tenant:audit-foreign-references` — read-only (READ ONLY
+transaction, 120 s statement timeout), counts rows whose reference names
+another shop's row for **238** references on this schema (232 declared foreign
+keys between shop tables whatever the column name, 2 implied by name, 4 held
+by rows owned through a parent such as `invoice_items`), prints examples, and
+lists the 20 polymorphic or external `*_id` columns it cannot cover. Exit 1 on
+any. Tested by injecting the pre-fix S3-14 and S3-15 rows and a line on shop
+A's invoice naming shop B's item: exactly those are reported. On
+`jewelflow_testing`: 0 crossing.
+
+### Part 2 — the inventory's blind spots
+
+Scanner matches, inspected rows and behavioural tests are reported separately.
+
+**Scanner (`tests/Inventory/tenant_query_sweep.php`, 871 expressions).** Names
+now resolve through imports and aliases; `static::`/`self::` resolve inside
+models and traits. Forms, each counted, **absent ones stated**: `DB::table`
+196, `DB::<sql>` 45, `DB::connection()->…` **absent**, `app('db')->…`
+**absent**, `->getConnection()->…` **absent**, injected `$db`/`$conn`
+**absent**, unscoped `Model::…` 402, `static::`/`self::` in a model 27, a model
+reached through an import alias 1, instance `newQuery()` 2,
+`withoutTenant`/`withoutGlobalScope(s)` 153, `newQueryWithoutScopes`/`newModelQuery`
+**absent**, tenant tables embedded in joins 41, `->from()` 4, raw fragments 1.
+Ownership through parents: 7 tables one level; **none two or more levels
+deep** (checked from the schema's foreign keys); 23 tables with no path are
+listed — `notifications` among them (owned by its polymorphic user, not
+traced). Parse failures are counted and exit 3: **0**.
+
+A `shop_id` mention is no longer counted as a constraint. Every filter, key and
+insert value is classified by source — context, a record, `REQUEST` (only an
+HTTP-typed parameter), or traced to what reaches it (callers matched by method
+name **and** receiver class, DTO constructors, `$this->method()` returns;
+three levels; `--trace=<method>` prints the call sites). A request-supplied
+`shop_id` is never excused; an `orWhere` breaks the conjunction.
+
+**Inspected.** Rows to read: tenant-facing **179, all read** — 114 this round,
+65 carried from the 11e91c3 round (their files unchanged since). Verdicts, each
+keyed to file + method + expression in `tests/Inventory/reviewed.tsv`: 50
+ok-context, 4 ok-record, 30 ok-fk-join, 26 ok-platform, 4 latent, 65 earlier.
+**Admin 35 and console 122 stay listed as UNREAD** — visible, not claimed.
+No new defect. Latent (no caller today): `MetalRate::latestFor()` without a
+shop returns any shop's newest rate; `OrchestrationEventService`'s two report
+methods. Observation, not isolation: `FraudDetectionService` copies full PANs
+into platform fraud flags.
+
+Joins that follow a foreign key from a shop-filtered row reach another shop
+only if that key names another shop's row — the S3-14/S3-15 class, which
+`tenant:audit-foreign-references` now counts for every reference.
+
+**Request ids (`request_id_sweep.php`).** 168 validation keys: 102
+exists+shop (this now counts the `*ExistsRule($shopId)` factories and
+shop-built rule objects, read and confirmed), 3 exists+parent, 7 exists-only, 56
+shape-only. New: 37 reads of id-like request fields outside validation,
+including dynamic keys and whole-request bags into writes; 28 to read, **all
+read** — list filters and preselects inside the caller's shop, lookups
+constrained to it, platform billing callbacks (signature-verified), platform
+admin screens. No finding.
+
+**Behavioural, mapped (`test_family_map.php`).** 239 cross-shop test files; 246
+families (110 tenant models, 136 route prefixes, matched by URI or route
+name); 171 referenced by at least one cross-shop test, **75 by none** —
+listed. A reference is a pointer, not proof. Prioritised the tenant-facing
+reads with none: `MobileLookupIsolationTest` covers the mobile customer and
+item searches, vendor and karigar lookups, vendors, stock, catalog items and
+POS bootstrap (both shops' records share one search marker), the vendor
+ledger, and the stock batch-status write naming another shop's item (422,
+nothing changes in either shop). With the scope's shop filter removed, five of
+the eight reads leak and the test fails; the other three filter explicitly
+as well.
+
+### Part 3 — the worker boundary
+
+Laravel 12.46, read before choosing: `Worker::daemon()` fires `Looping` before
+each fetch (`daemonShouldRun()`), `runNextJob` (`--once`) fires none, and the
+`sync` connection fires `JobProcessing`/`JobProcessed` exactly as a worker
+does. A clear in `Queue::before` would therefore wipe the **caller's** context
+whenever a request dispatches on the sync connection — demonstrated by the
+control test. Clearing on `Looping` touches only the daemon loop, between
+jobs. Executed:
+
+* one real `queue:work` across shop A, a job throwing inside A's context, a
+  job that sets context and returns (an **injected leak — a defensive-control
+  test**: no application job does that), and shop B: every probe saw no
+  context; each export holds only its own shop and — since S3-17 — is
+  delivered to its own requester;
+* a job run on the sync connection keeps its caller's context; nested
+  `runFor` restores each level.
+
+Also found: tenant context leaked between PHPUnit tests; `TestCase` now clears
+it in `setUp`/`tearDown`.
+
+Harness guards: every entry point refuses a database not named
+`jewelflow_testing` before any fixture or request — including the child
+processes of `production_binding_path.php` (the defect named in the review)
+and `idempotency_race.php`. **Correction:** the guard added in `f507208` also
+refused `idempotency_race.php`'s control D, whose child is pointed at a
+missing database on purpose, so D stopped observing the outage; the harness
+prints no single verdict, and my earlier "harnesses SAFE" did not catch it.
+Fixed in `70681a4`: the child accepts only the sentinel
+`jewelflow_testing_absent`, and only after connecting to it fails. D again
+answers 500 with no cash row.
+
+### Part 4 — S3-17, repaired
+
+**Contract.** The frozen reporting plan requires the in-app notification with
+its link (`REPORT_EXPORT_ARCHITECTURE_PLAN.md:483`; `REPORT_EXPORT_IMPLEMENTATION_PLAN.md:81`,
+"in-app + optional email"), and nothing read it back. The `database` channel is
+kept; the table is created (skipped if one exists; its `down()` never drops it).
+
+**Repair.** Delivery runs after the generation `try`, so a notification
+failure can no longer turn `done` into `failed`. Delivery is one savepoint
+under the export's row lock: the stored notification and `notified_at` commit
+together, and a concurrent retry cannot notify twice. A failure is recorded in
+`notification_error` (the driver's message — not `QueryException`'s, whose
+bindings carry the signed link). A re-run of a finished job only delivers what
+is owed; it regenerates nothing. `reporting:notify-export` lists the unexpired
+finished queued exports not recorded as notified (failed, or a worker that
+died before trying) and `--send` delivers them. Consumer: the export panel
+lists the user's unread ready exports; a download marks its notification read.
+
+**Executed, no notification fake:** persistence (a real row for the
+requester), the panel and the download; an injected delivery failure (export
+stays `done`, error recorded, no row), then retry (one row; file bytes,
+`file_path` and `finished_at` unchanged; a second retry refused); the original
+missing-table failure inside an enclosing transaction (export stays `done`, no
+signed link stored); a job re-run after its worker died (no regeneration, one
+notification); another shop's user sees nothing and following the link gets
+404; permission revoked after delivery → 403. RED at `b2b6e77`: 4 of 4 failed
+(`relation "notifications" does not exist`). Mutants: without the re-run
+guard the file is regenerated; without the re-check under the lock two
+notifications are stored.
+
+**Release order.** The table goes in **Phase 2b, after the code** — see
+`signature-migration-release-order.md`: with no table the baseline fails every
+queued export after writing it, which keeps S3-18's shared files from being
+downloaded; creating it under the baseline would open them.
+
+### Part 5 — S3-16: an append-only expiry, and the decision it needs
+
+**Mechanism (inactive until activated).** An expiry is a new `redeem` row
+naming the lot it expires (`loyalty_transactions.expires_lot_id`, unique — one
+expiry per lot whoever runs). No row is updated; the protected trigger (Art.
+IX.A #9) and every historical row are untouched. What a lot still holds comes
+from replaying the customer's ledger under the customer's row lock: a reversal
+takes from its own invoice's lot, other debits take the earliest-expiring
+points first. A customer whose cached balance differs from the ledger is
+skipped and reported, never corrected. A reversal takes the same lock and never
+takes back what expiry already took. `loyalty:expire` enters each shop's
+context and reports per shop; `--dry-run` reports what is due.
+
+**Synthetic examples** (clock 2026-10-15; activation 2026-10-01), each a test in
+`LoyaltyExpiryTest`:
+
+| Ledger | Run |
+|---|---|
+| earn 100 due 10-10, earn 40 due 09-01, earn 25 due 2027-01-01 | 100 expires (fell due after activation); 40 kept (backlog); 25 untouched; balance 165 → 65 |
+| earn 100 due 10-10, earn 100 future, redeem 150 | the redemption used the due lot: nothing expires; balance 50 |
+| the same with redeem 30 | the 70 left in the due lot expires; balance 170 → 100 |
+| a sale earns 100 (due), cancelled before the run | the reversal took the lot: nothing expires |
+| a sale earns 100 (due), the run expires it, then it is cancelled | the reversal takes nothing more |
+| cached balance set outside the ledger | skipped, reported, nothing written |
+| a pre-trigger expiry (flag and debit) | not expired again |
+| the run twice; three processes at once over 150 customers | one expiry row per lot (with the lock removed, the unique index refused the duplicates — the harness then reports UNSAFE) |
+| not activated | reports each shop's overdue lots and writes nothing |
+
+**The decision — not made here, and nothing retroactive is enabled:**
+
+1. **Activation date** (`LOYALTY_EXPIRY_ACTIVE_FROM`): the first expiry date
+   enforced. Unset (the shipped default) nothing expires. Suggest no earlier
+   than the deploy date plus whatever customer notice the business requires.
+2. **The backlog** — lots whose expiry fell before activation, the ones S3-16
+   left unexpired. This implementation never expires them: they stay
+   spendable. Expiring them at activation, or after a grace date with notice,
+   would be retroactive and needs its own decision and code. Size it first:
+   `loyalty:expire` prints per shop "overdue, kept: N lot(s) / P pts" (NOT RUN
+   on production).
+3. **Which points a redemption uses** — earliest expiry first (expires the
+   least; one sort in `LoyaltyService::replay`). The backlog lots sort first,
+   so after activation a redemption spends honoured backlog points before
+   points that can still expire; treating the backlog as never-expiring would
+   expire less. Decide.
+4. **Customers whose balance was set outside the ledger** (imports, seeds):
+   skipped. The alternative — the difference as a non-expiring opening lot —
+   is a policy. The dry run lists them.
+5. **Reporting** — an expiry row is a `redeem` row (the type enum is
+   unchanged) marked by `expires_lot_id`; the loyalty dashboard's "points
+   redeemed" and the loyalty dataset count it as a redemption unless changed
+   (reversals already are).
+
+### Part 6 — mobile, and KYC
+
+Mobile `4f10a3b`: 409 `idempotency_outcome_reconciled` gets its own kind —
+title "Already recorded", the server's message or "This was recorded. Check
+the record; do not enter it again." — and no retry or refresh affordance. RED
+first (3 failing), then jest 280/280 in three consecutive full runs and `tsc`
+clean; the first full run had one failure I did not capture by name, not
+reproduced in the next three. `src/utils/storage.ts` untouched and uncommitted.
+
+KYC containment is unchanged: its own package, **unexecuted**, awaiting its own
+approval; **ORIGIN-ONLY remains PARTIAL** (§2).
+
+**Do not read this section as tenant isolation complete.** It covers the
+categories, forms and paths named; admin and console expressions are listed,
+not read; production state is unobserved.
 
 ---
 
@@ -56,7 +310,7 @@ pre-existing skips, 0 failed) unless a row says otherwise.
 
 | # | Item | Status | Commit(s) | Evidence | Still open |
 |---|---|---|---|---|---|
-| 1 | S3-09b unresolved claims: pruning, and what an operator may do with one | **Pruning defect FIXED locally; retention aligned with the middleware (XR-02).** **Operator procedure and tool PROPOSED** — evidence-gated, one claim at a time, two-person approval, audited; no age or bulk path; acts only when the claim's advisory lock proves the writer has ended (XR-02) | `e68eb31`; `c26a0fa`; tool + procedure `8d5a066`; `9d673a7` | `MobileIdempotencyRetentionTest` (7); `IdempotencyClaimReconciliationTest` (9) — both outcomes reached through the real cashbook route; `claim_release_race.php`, both scenarios (§0b, §0c); `docs/runbooks/idempotency-unresolved-claims.md` | Running the tool on production needs its own approval. The mobile app has no message for the new `idempotency_outcome_reconciled` code. Scheduler invocation NOT VERIFIED |
+| 1 | S3-09b unresolved claims: pruning, and what an operator may do with one | **Pruning defect FIXED locally; retention aligned with the middleware (XR-02).** **Operator procedure and tool PROPOSED** — evidence-gated, one claim at a time, two-person approval, audited; no age or bulk path; acts only when the claim's advisory lock proves the writer has ended (XR-02) | `e68eb31`; `c26a0fa`; tool + procedure `8d5a066`; `9d673a7` | `MobileIdempotencyRetentionTest` (7); `IdempotencyClaimReconciliationTest` (9) — both outcomes reached through the real cashbook route; `claim_release_race.php`, both scenarios (§0b, §0c); `docs/runbooks/idempotency-unresolved-claims.md` | Running the tool on production needs its own approval. The mobile message for `idempotency_outcome_reconciled` is built (mobile `4f10a3b`, §0d Part 6); no device run. Scheduler invocation NOT VERIFIED |
 | 2 | 4xx release behaviour | **VERIFIED by inspection on all 16 routes**; the one class-C defect found was fixed separately (row 6); middleware policy deliberately unchanged | `2057a73`; `4e70660` | §7c-2; §7c-6 | 12 routes' 4xx paths are inspection-grade |
 | 3 | Mobile retry-key handling (S3-09c) | **FIXED in mobile** — one key per operator intent, rotated only on success | mobile `2cad553` | 40 suites / 275 tests, `tsc` clean at `2cad553` | **No device or emulator run** |
 | 4 | Real concurrency, changed shared middleware | **MEASURED on one route** (`POST /cashbook`), separate processes | `b85e296` | §7c-3 | Other 15 routes not raced; one machine, no pooler |
@@ -71,7 +325,12 @@ pre-existing skips, 0 failed) unless a row says otherwise.
 | 13 | Backup A+C | **A IMPLEMENTED locally** (allowlist, no traversal of `.git`/`.claude`/`output`, only `.env` archived). **C PROPOSED** (procedure text only) | A `3f1bd85`; C `2d0b5f5` | §7g; `BackupSourceExclusionTest` (11) + real `backup:run --only-files` | A needs a deploy. C needs the operator's procedure owner to apply it; its current step text was not visible here |
 | 14 | Migration / rollback | **REHEARSED on a populated synthetic database** — up, down newest-first and re-apply on the same data, outside any test transaction. Contract lock boundaries **MEASURED** with the real migrator (XR-04). Recovery keeps the schema and moves the code forward | `01f37a6`, `48981ff` | §6a: 26 checks pass, 17 measurements; `contract_migration_locks.php` (§0b) | Phase-1 rollback measured one-way; no rehearsal on production-sized data; serving `018b3d8` again is prohibited (runbook § Recovery) |
 | 15 | Device checks | **NOT RUN** | — | §5 | Android/iOS print and share, multiple copies, desktop browser print, CSP `data:`, S3-09c on a handset |
-| 16 | Tenant isolation — the §7e categories never inventoried | **Inventoried, every category** (§7e completion table). Five findings: **S3-14, S3-15, S3-18 FIXED locally**; **S3-16, S3-17 OPEN** (decisions) | `9f633e1`, `11e91c3`; evidence `7c242d7`, `4a4011a`, `7a9ffb0`, `f3b1eba`, `1089ba0` | `TenantForeignReferenceTest` (5), `QueuedExportIsolationTest` (2), `BackupWorkbookIsolationTest` (2), `TenantBackgroundExecutionTest` (1, characterization), `ReturnsApiTest` (+1); harnesses `queue_worker_tenant_reuse.php`, `production_binding_path.php`; sweeps `tests/Inventory/*` | Octane, transaction pooler, production queue driver and `notifications` table not observed; admin/console expressions not read individually |
+| 16 | Tenant isolation — the §7e categories never inventoried | **Inventoried, every category** (§7e completion table); **blind spots closed this round (§0d Part 2)**. Five findings: **S3-14, S3-15, S3-18 FIXED locally**; S3-17 **REPAIRED** and S3-16's mechanism **REPAIRED, inactive** this round (rows 18, 19) | `9f633e1`, `11e91c3`; evidence `7c242d7`, `4a4011a`, `7a9ffb0`, `f3b1eba`, `1089ba0` | `TenantForeignReferenceTest` (5), `QueuedExportIsolationTest` (2), `BackupWorkbookIsolationTest` (2), `TenantBackgroundExecutionTest` (1, characterization), `ReturnsApiTest` (+1); harnesses `queue_worker_tenant_reuse.php`, `production_binding_path.php`; sweeps `tests/Inventory/*` | Octane, transaction pooler, production queue driver and `notifications` table not observed; 35 admin and 122 console rows listed UNREAD |
+| 17 | S3-18 — exports stored before the fix | **Contained locally**: flat-layout files refused (410), nothing moved or reassigned; R10 split into four read-only questions | `b2b6e77` | `QueuedExportIsolationTest` (+3, +2 audit); `reporting:audit-export-files` | the four R10 checks **NOT RUN** on any server |
+| 18 | S3-17 — queued exports failed after writing their file | **REPAIRED locally**: table, failure boundary, recorded outcome, retry without regeneration, in-app consumer | `cfda2a0` | `ExportNotificationDeliveryTest` (6, real channel); worker harness | table applied **after** the code (release order Phase 2b); production table not observed |
+| 19 | S3-16 — scheduled loyalty expiry expired nothing | **Mechanism REPAIRED locally, inactive by default**; activation, backlog and allocation **OPEN (decision, §0d Part 5)** | `5efc66f` | `LoyaltyExpiryTest` (7); `loyalty_expiry_race.php` | no retroactive expiry enabled; backlog size on production unknown |
+| 20 | Worker boundary; harness guards | **Implemented** (context cleared on `Looping`); **guards on every entry point**, and the control-D regression the guard caused **fixed** | `f507208`, `70681a4` | worker harness; `TenantBackgroundExecutionTest` (+3); refusal runs (§8) | Octane NOT RUN |
+| 21 | Every stored cross-shop reference | **Read-only audit built**, 238 references | `530e634` | `tenant:audit-foreign-references` (+2 tests); 0 on `jewelflow_testing` | **NOT RUN** on production (R10) |
 
 ## 0b. Independent source review of `7b1d709` — seven findings, answered
 
@@ -355,7 +614,10 @@ and the question is whether that is what the business wants.
   path was found: every reader goes through the scoped `jobOrder` relation.
 * **Repair:** the same shop-constrained `exists` rule.
 
-### S3-16 — scheduled loyalty expiry expires nothing — **OPEN (decision)**
+### S3-16 — scheduled loyalty expiry expires nothing — **mechanism REPAIRED locally (`5efc66f`), inactive; activation OPEN (decision, §0d Part 5)**
+
+*Superseded by §0d Part 5; the original entry follows as the record.*
+
 
 * **What goes wrong.** `loyalty:expire` (daily) calls a shop-scoped service
   with no tenant context: every query is `AND 1 = 0`, nothing expires, and the
@@ -369,7 +631,12 @@ and the question is whether that is what the business wants.
 * **Evidence:** `TenantBackgroundExecutionTest` pins the current behaviour
   (characterization, to be inverted when decided).
 
-### S3-17 — every queued export fails after writing its file — **OPEN (decision)**
+### S3-17 — every queued export fails after writing its file — **REPAIRED locally, `cfda2a0`** (§0d Part 4)
+
+*The decision this entry asked for was taken by the requirement: the frozen
+plan requires the in-app notification, so the table is created and the
+channel kept. The original entry follows as the record.*
+
 
 * **What goes wrong.** `ExportReadyNotification` uses the `database` channel;
   no migration creates a `notifications` table. The job stores the file, marks
@@ -396,11 +663,16 @@ and the question is whether that is what the business wants.
   with shop B's customer as the only row.
 * **Repair:** one directory per export, `reporting-exports/{shop}/{export}/`;
   the file name users see is unchanged. Flat files already stored are left.
-* **Release check (read-only, not run on any server; syntax checked on
-  `jewelflow_testing`):** `select file_path, count(*) as n, array_agg(distinct shop_id)
-  as shops from report_exports where file_path is not null group by file_path
-  having count(*) > 1` — any row is a collision that already happened, naming
-  the shops whose exports shared a file.
+* **Existing exports — contained, `b2b6e77` (§0d Part 1):** no file outside
+  its export's own directory is served (410); nothing is moved, deleted or
+  reassigned.
+* **Release check — corrected (§0d Part 1).** The query that stood here
+  grouped by `file_path` alone and called every group "a collision that
+  already happened". Wrong on three counts: two disk names can mean one place
+  and one path on two disks is two files; a group of one shop's rows is not a
+  cross-shop question; and shared metadata shows neither the bytes served nor
+  a disclosure. Replaced by `reporting:audit-export-files` and the four
+  questions of §0d Part 1.
 
 ### S3-02 — karigar invoice attachments on the public web path
 
@@ -2328,6 +2600,21 @@ unbound, in both the test and the resolver, rather than implied to be covered.**
 
 ## 7e. Tenant isolation — cross-shop queries, relationships, jobs, exports
 
+### This round (§0d Part 2) — what changed in the table below
+
+* **Raw queries, scope removals:** now read per expression with the value of
+  every shop filter traced (§0d Part 2): 179 tenant-facing rows read, each with
+  a keyed verdict (`tests/Inventory/reviewed.tsv`); **35 admin and 122 console
+  rows listed UNREAD**, visible in the sweep's output.
+* **Request-supplied keys:** plus 37 reads outside validation, all read.
+* **Relationships and joins:** every stored cross-shop reference is now
+  countable, read-only: `tenant:audit-foreign-references`.
+* **Queued jobs:** S3-17 repaired; the worker clears context between jobs.
+* **Scheduled work:** S3-16's mechanism repaired, inactive by default.
+* **Context lifecycle:** the recommendation below is implemented (on
+  `Looping`, not `Queue::before` — §0d Part 3).
+* **Files and downloads:** exports stored before S3-18's fix are refused.
+
 ### Completion round — every category inventoried (code at `11e91c3`, tests at `f3b1eba`)
 
 The table below replaces the "Remaining gaps" column of the earlier table
@@ -2577,6 +2864,76 @@ A and C are independent. A removes the backup's dependency on `.claude/`
 permissions; C removes a privilege concern and needs its own approval.
 
 ## 8. Commands actually run, and their results
+
+### This round (§0d) — sequential, nothing else using `jewelflow_testing`
+
+```
+php artisan test                                   # at 530e6344ed2ed721aa3c09930a338fc28cd8f054
+  -> 3398 passed, 7 skipped (the pre-existing seven), 0 failed; 631.73 s
+     (70681a4 changes no application file and no PHPUnit test)
+
+php artisan test tests/Feature/Security/ExportNotificationDeliveryTest.php
+  -> at b2b6e77 with the S3-17 code set aside: 4 failed, 0 assertions
+     (relation "notifications" does not exist); with it: 6 passed, 44 assertions
+     mutant, no re-run guard in the job   -> the re-run test fails ('not regenerated')
+     mutant, no re-check under the lock   -> the re-run test fails (2 notifications)
+php artisan test tests/Feature/Reporting tests/Feature/Security
+  -> 536 passed (at cfda2a0, before the later Security additions)
+
+php artisan test tests/Feature/Loyalty/LoyaltyExpiryTest.php
+  -> before 5efc66f: 7 failed (column "expires_lot_id" does not exist)
+     after: 7 passed, 47 assertions
+     mutants — no tenant context: 7 failed; reversal ignoring expiry: 1 failed
+     (cancellation); latest-expiry first: 1 failed (redemption); no balance
+     check: 1 failed (drift)
+php artisan test tests/Feature/Loyalty tests/Feature/Returns tests/Feature/Historical \
+  tests/Feature/Security tests/Feature/ConstitutionalInvariantsTest.php tests/Feature/InvoiceFlowTest.php \
+  tests/Feature/RefundPolicyMathTest.php tests/Feature/CustomerContextTest.php
+  -> 787 passed, 7 skipped (at 5efc66f)
+
+php artisan test tests/Feature/Security/TenantForeignReferenceTest.php    -> 9 passed, 39 assertions
+php artisan test tests/Feature/Security/MobileLookupIsolationTest.php     -> 3 passed, 32 assertions
+  mutant, the scope applies no shop filter -> lookups test fails; diagnostic:
+  customers/search, items/search, vendors/lookup, karigars/lookup, vendors leak;
+  stock, catalog/items, pos/bootstrap stay clean (explicit filters)
+
+php artisan migrate:rollback --step=1   # expires_lot_id with 150 expiry rows present
+  -> RuntimeException, column and rows kept
+
+php tests/Concurrency/queue_worker_tenant_reuse.php   -> SAFE (every probe null; A and B done, each
+                                                          notified to its own owner)
+php tests/Concurrency/production_binding_path.php     -> SAFE
+php tests/Concurrency/loyalty_expiry_race.php         -> SAFE: 3 runs overlapping 1.47 s, 150 lots expired
+                                                          once, balances 10, ledger = balance
+  control, customer lock removed                      -> UNSAFE: 2 of 3 runs failed on the unique index;
+                                                          still one expiry per lot (the wrapper masked
+                                                          exit codes in that run; fixed before the SAFE run)
+php tests/Concurrency/idempotency_race.php            -> A one 201 + 3 in-flight, 1 row; A2 replay; B 1 row;
+                                                          C 4 rows; D 500, 0 rows (after the 70681a4 fix;
+                                                          before it D's child was refused, "no_output")
+php tests/Concurrency/claim_release_race.php          -> SAFE, both scenarios
+php tests/Concurrency/etag_race.php                   -> SAFE
+php tests/Concurrency/etag_image_race.php             -> SAFE
+php tests/Concurrency/relocation_race.php             -> SAFE, both scenarios
+php tests/Rehearsal/migration_rollback_rehearsal.php  -> 34 PASS, 23 MEASURED, all ten migrations; populated
+                                                          600 exports + 1200 loyalty rows; no row lost
+php tests/Rehearsal/contract_migration_locks.php      -> all checks passed
+
+DB_DATABASE=refusal_probe_nonexistent php <script>    -> "REFUSED" before any query, for:
+  production_binding_path.php (parent, and the `request` child), idempotency_race.php (parent, and the
+  `fire` child), queue_worker_tenant_reuse.php, loyalty_expiry_race.php, tenant_query_sweep.php,
+  migration_rollback_rehearsal.php; DB_DATABASE=jewelflow_testing_absent (the parent) -> refused
+
+php tests/Inventory/tenant_query_sweep.php   -> 871 expressions; parse failures 0; tenant 179 read,
+                                                admin 35 and console 122 UNREAD
+php tests/Inventory/request_id_sweep.php     -> 168 keys; 37 request reads, 28 to read (all read)
+php tests/Inventory/test_family_map.php      -> 239 cross-shop files; 246 families; 75 with none
+php artisan tenant:audit-foreign-references  -> 238 references, 0 crossing (READ ONLY transaction)
+
+mobile 4f10a3b: npx jest src/utils/mutation-error*.test.ts -> before: 3 failed, 29 passed; after: all pass
+                npx jest -> 280/280 in three consecutive runs (the run before them: 1 failed, name not
+                captured, not reproduced); npx tsc --noEmit -> clean
+```
 
 ```
 php artisan test tests/Feature/Security/SignatureImmutabilityEndToEndTest.php
@@ -3400,12 +3757,16 @@ Local work that remains, none of it blocking the conditions in §11:
 
 ## 11. Release readiness
 
-**Not ready.** Two independent reviews: `7b1d709` (seven findings, §0b) and
+**Not ready.** Independent reviews: `7b1d709` (seven findings, §0b),
 `9aaf1af` (XR-01, XR-04, XR-06 accepted; XR-02, XR-03, XR-05, XR-07 partial —
-answered in §0c, locally only). Answering a finding is not a reviewer accepting
+answered in §0c), `d37879b` (those four accepted) and `c9d30b0` (S3-14/S3-15
+validation repairs and S3-18's protection for new exports accepted; answered
+further in §0d, locally only). Answering a finding is not a reviewer accepting
 the answer. **Nothing here establishes that the application as a whole is
-secure:** these results cover the named findings and routes, and the
-tenant-isolation categories in §7e are still not inventoried. Every production statement here
+secure:** these results cover the named findings and routes; the
+tenant-isolation inventory (§7e, §0d Part 2) covers the forms and paths it
+names, lists 157 admin and console rows it has not read, and does not make
+isolation complete. Every production statement here
 dates from the last observation of the server (2026-09-20T18:36:08+00:00), not
 from today.
 
@@ -3420,16 +3781,16 @@ it is named as an approval **and** as the evidence that follows it.
 
 | # | Condition | Closes when | Findings it carries |
 |---|---|---|---|
-| R1 | Independent source review | XR-01…07 **accepted** at source level (XR-01/04/06 at `9aaf1af`, XR-02/03/05/07 at `d37879b`). Open for this round's tenant-isolation work (§7e): closes when the reviewer re-reviews the packet regenerated with the delta from `d37879b` | all |
+| R1 | Independent source review | XR-01…07 **accepted** at source level (XR-01/04/06 at `9aaf1af`, XR-02/03/05/07 at `d37879b`); S3-14/S3-15 and S3-18 for new exports accepted at `c9d30b0`. Open for this round (§0d): closes when the reviewer re-reviews the packet regenerated with the delta from `c9d30b0` | all |
 | R2 | Drift checks, one per phase | D0 before Phase 1, D1 before Phase 2, D2 before Phase 3, D3 after it, each recorded (`signature-migration-release-order.md` § Drift checks). **Corrected:** the single check "`HEAD` = `018b3d8` before any step" was wrong for Phase 3. On drift, stop and re-derive | all deploy steps |
-| R3 | Migration order | the six Phase 1 migrations applied, one file per command; code deployed to every node, with the D1 connection check passed on the **effective** configuration — `DB_URL`, the pooler switch and any cached config resolved, pooler mode from the pooler's own configuration (XR-02, corrected in §0c); contract applied last; D3 shows all three constraints validated. Rehearsed in §6a; contract lock boundaries measured (XR-04) | S3-04, S3-07b, S3-09b, S3-09e, S3-02/S3-03 disk columns |
+| R3 | Migration order | the eight Phase 1 migrations applied, one file per command; the `notifications` table only in Phase 2b, after the code is live everywhere (S3-18 reasoning in the runbook); code deployed to every node, with the D1 connection check passed on the **effective** configuration — `DB_URL`, the pooler switch and any cached config resolved, pooler mode from the pooler's own configuration (XR-02, corrected in §0c); contract applied last; D3 shows all three constraints validated. Rehearsed in §6a; contract lock boundaries measured (XR-04) | S3-04, S3-07b, S3-09b, S3-09e, S3-02/S3-03 disk columns |
 | R4 | Karigar attachments off the public path | after R3: `karigar-invoices:relocate-attachments` dry run reviewed → approved `--execute` → `--verify` clean → separately approved `--purge-originals`. The manifest is kept. Until the purge, the public copy stays reachable at its URL | **S3-02** |
 | R5 | Purchase images off the public path | the same sequence with `purchases:relocate-invoice-images` (`9d48331`). The production count must be established first — it is not known here | **S3-03** |
 | R6 | Signatures off the public path | `signatures:relocate`, same gating (§7). **Closes for current signatures only.** Superseded versions stay public: count them with `--orphans`, then either approve Option SIG-ORIGIN (§7, after Phase 2; PARTIAL) or record the residual as accepted | S3-04 |
 | R7 | KYC exposure | an approved package executed and its §6 verification output recorded. For the edge layer that means a unique probe path with **0 origin log lines**, next to a positive control; a 403 alone does not show the edge rule works (corrected). ORIGIN-ONLY leaves the edge-cache residual open until §3 and §5 run, and stays PARTIAL | S3-01, S3-01c |
 | R8 | Device verification | the §5 checks run on Android and iOS, with results recorded, for the inline signature and for S3-09c handling | S3-04, S3-09c |
 | R9 | Backup A in production | after deploy: `backup:scope-check` clean as `www-data`, and one `backup:run` whose archive listing shows the allowlist | backup A |
-| R10 | Tenant-isolation findings in production | read-only checks recorded before deploy: payment rows naming another shop's account (S3-14), export rows sharing a file path (S3-18), whether a `notifications` table exists and which queue driver serves (S3-17/S3-18 reachability). Any hit is a data question with its own decision | S3-14, S3-17, S3-18 |
+| R10 | Tenant-isolation findings in production | read-only checks recorded before deploy (§0d Part 1): `tenant:audit-foreign-references` (every stored cross-shop reference, S3-14 and S3-15 included); `reporting:audit-export-files` (cross-shop candidates by physical file); `to_regclass('notifications')` and the queue driver (whether S3-18's files could be served); the access log for the download route (whether any was). Each answers its own question; none alone shows a disclosure. Any hit is a data question with its own decision — nothing is corrected by hand | S3-14, S3-15, S3-17, S3-18 |
 
 ### Open, and deliberately NOT conditions of this release
 
@@ -3441,6 +3802,9 @@ acceptance.
   WhatsApp and email as issued or as today is a product decision (D-17). The
   rest of S3-05 ships with this release; this part is not claimed.
 * **S3-13** — the billing policy on edits is undecided.
+* **S3-16 activation** — the expiry mechanism ships inactive; the activation
+  date, the backlog, the allocation order and drifted balances are a product
+  and accounting decision (§0d Part 5). Shipping changes no balance.
 * **S3-06b** — publication consent is per shop, not per item.
 * **S3-06c** — item photos outlive the shopfront toggle.
   A product decision on whether "disable" must unpublish them. The branch
