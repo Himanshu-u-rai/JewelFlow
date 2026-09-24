@@ -28,7 +28,7 @@ class AuthController extends Controller
         return view('super-admin.auth.login', compact('hasSuperAdmin'));
     }
 
-    public function showRegister(): View
+    public function showRegister(): View|RedirectResponse
     {
         $hasSuperAdmin = PlatformAdmin::where('role', 'super_admin')->exists();
         if ($hasSuperAdmin) {
@@ -51,10 +51,12 @@ class AuthController extends Controller
 
         try {
             $admin = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
-                // Lock the platform_admins table row to prevent race condition
-                $exists = PlatformAdmin::where('role', 'super_admin')
-                    ->lockForUpdate()
-                    ->exists();
+                // S3-21: serialize the bootstrap itself. With no super admin
+                // there is no row for FOR UPDATE to lock, so two first
+                // registrations both passed this check. The advisory lock is
+                // held to commit; a waiter then sees the committed admin.
+                \Illuminate\Support\Facades\DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['platform_admin_bootstrap']);
+                $exists = PlatformAdmin::where('role', 'super_admin')->exists();
 
                 if ($exists) {
                     return null;
