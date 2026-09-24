@@ -29,6 +29,9 @@ class CustomerController extends Controller
     {
         abort_if($customer->shop_id !== (int) $request->user()->shop_id, 404);
 
+        // XR-05: data and tag from one row image.
+        $customer = $this->versioned($customer);
+
         return response()
             ->json($this->present($customer))
             ->header('ETag', $this->entityTagFor($customer))
@@ -39,7 +42,7 @@ class CustomerController extends Controller
     {
         abort_if($customer->shop_id !== (int) $request->user()->shop_id, 404);
 
-        $this->assertIfMatchOrFail($request, $customer);
+        $this->assertIfMatchOrFail($request, $this->versioned($customer));
 
         $data = $request->validate([
             'first_name' => ['sometimes', 'string', 'max:255'],

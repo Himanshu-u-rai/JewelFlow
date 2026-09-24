@@ -27,6 +27,9 @@ class ItemController extends Controller
     {
         abort_if($item->shop_id !== (int) $request->user()->shop_id, 404);
 
+        // XR-05: data and tag from one row image.
+        $item = $this->versioned($item);
+
         return response()
             ->json($this->present($item))
             ->header('ETag', $this->entityTagFor($item))
@@ -37,7 +40,7 @@ class ItemController extends Controller
     {
         abort_if($item->shop_id !== (int) $request->user()->shop_id, 404);
 
-        $this->assertIfMatchOrFail($request, $item);
+        $this->assertIfMatchOrFail($request, $this->versioned($item));
 
         $data = $request->validate([
             'selling_price'           => ['sometimes', 'numeric', 'min:0'],

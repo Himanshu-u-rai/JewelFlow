@@ -93,6 +93,8 @@ class ReturnController extends Controller
     {
         abort_if($returnOrder->shop_id !== (int) $request->user()->shop_id, 404);
 
+        // XR-05: the tag's version is read with the row it describes.
+        $returnOrder = $this->versioned($returnOrder);
         $returnOrder->load([
             'customer:id,first_name,last_name,mobile',
             'invoice:id,invoice_number,total,created_at',

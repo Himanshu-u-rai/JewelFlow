@@ -74,6 +74,8 @@ class JobOrderController extends Controller
     {
         abort_if($jobOrder->shop_id !== (int) $request->user()->shop_id, 404);
 
+        // XR-05: the tag's version is read with the row it describes.
+        $jobOrder = $this->versioned($jobOrder);
         $jobOrder->load([
             'karigar:id,name,mobile',
             'issuances.metalLot:id,lot_number,purity,source',

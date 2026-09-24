@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /**
  * EmitsEntityTag — RFC 7232 optimistic concurrency control for mobile v1.
@@ -21,14 +22,26 @@ use Illuminate\Support\Facades\DB;
  *     Format: "<sha256-hex>:<class-basename>:<id>". Hash inputs are
  *     (id | updated_at ISO-8601 | row version | class basename) so:
  *       * Same row version            ⇒ same ETag (idempotent reads)
- *       * ANY write to the row        ⇒ a new ETag, even within one second
- *         (XR-05 / S3-12). The row version is PostgreSQL's xmin, which every
- *         UPDATE changes whatever code path wrote it — Eloquent, raw
- *         DB::table, a trigger — with no column to maintain. updated_at stays
- *         in the hash so a reused xid can never reproduce an old tag.
+ *       * A change committed by another transaction ⇒ a new ETag, even
+ *         within one stored second (XR-05 / S3-12).
  *       * Same id across different models (Customer 42 vs Item 42)
  *         produce different ETags (no cross-resource collisions)
  *       * The visible suffix lets server logs disambiguate at a glance.
+ *
+ *     The row version is PostgreSQL's xmin: the id of the TRANSACTION that
+ *     wrote this row version. It is not a per-update counter. Two updates in
+ *     one transaction share it (no other session can see the first); a frozen
+ *     row reports 2, so a tag can change once when vacuum freezes an
+ *     unchanged row — a spurious 412, the safe direction; and xids are 32-bit,
+ *     so a value recurs after wraparound. updated_at stays in the hash, which
+ *     leaves only a theoretical collision: a writer that does not bump
+ *     updated_at, combined with freezing or wraparound.
+ *
+ *     The version must come from the SAME row image as the data the tag is
+ *     sent with (second review): versioned() reads both in one statement,
+ *     and entityTagFor() refuses a model that was not read that way. An
+ *     earlier revision fetched xmin in a separate query, so a response could
+ *     carry state A's data under state B's tag.
  *
  *   - assertIfMatchOrFail($request, $model):
  *       * If `If-Match` header is ABSENT      → 428 Precondition Required
@@ -81,19 +94,34 @@ trait EmitsEntityTag
     }
 
     /**
-     * The row's current version: PostgreSQL xmin, read from the table so it is
-     * the committed (or this transaction's own) value, never a cached one.
+     * The row and its version from ONE statement — one row image, so the
+     * representation built from it and its tag describe the same state. Scoped
+     * by the model's own query (tenant scopes included); 404 if the row is
+     * gone. $lock takes the row lock in the same statement.
      */
+    public function versioned(Model $model, bool $lock = false): Model
+    {
+        $query = $model->newQuery()->whereKey($model->getKey());
+
+        if ($model->getConnection()->getDriverName() === 'pgsql') {
+            $query->select($model->qualifyColumn('*'))->selectRaw('xmin::text as entity_row_version');
+        }
+
+        return ($lock ? $query->lockForUpdate() : $query)->firstOrFail()->makeHidden('entity_row_version');
+    }
+
+    /** The version read with this model's data, by versioned(). Never fetched here. */
     private function rowVersion(Model $model): string
     {
-        if ($model->getConnection()->getDriverName() !== 'pgsql' || ! $model->exists) {
+        if ($model->getConnection()->getDriverName() !== 'pgsql') {
             return '';
         }
 
-        return (string) DB::connection($model->getConnectionName())
-            ->table($model->getTable())
-            ->where($model->getKeyName(), $model->getKey())
-            ->value('xmin');
+        if (! array_key_exists('entity_row_version', $model->getAttributes())) {
+            throw new LogicException(class_basename($model).' was not read with its row version; load it with versioned().');
+        }
+
+        return (string) $model->getAttributes()['entity_row_version'];
     }
 
     /**
@@ -101,19 +129,21 @@ trait EmitsEntityTag
      *
      * @template T of Model
      * @param  T  $model
-     * @return T  the saved model, refreshed
+     * @return T  the saved model as written, with its version
      */
     public function saveIfMatch(Request $request, Model $model, array $data): Model
     {
         return DB::transaction(function () use ($request, $model, $data) {
-            $locked = $model->newQuery()->whereKey($model->getKey())->lockForUpdate()->firstOrFail();
+            $locked = $this->versioned($model, lock: true);
 
             // Throws 412 inside the transaction, so nothing is written.
             $this->assertIfMatchOrFail($request, $locked);
 
             $locked->fill($data)->save();
 
-            return $locked->refresh();
+            // The written image and its version, read under this write's own
+            // lock, before commit: a later writer cannot relabel it.
+            return $this->versioned($locked);
         });
     }
 
