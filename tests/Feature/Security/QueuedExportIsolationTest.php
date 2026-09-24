@@ -246,7 +246,7 @@ class QueuedExportIsolationTest extends TestCase
         $out = \Illuminate\Support\Facades\Artisan::output();
 
         $this->assertSame(1, $exit, 'a cross-shop shared file fails the audit');
-        $this->assertStringContainsString('shared files: 3 — same shop only: 1, CROSS-SHOP: 2', $out);
+        $this->assertStringContainsString('shared files among resolved rows: 3 — same shop only: 1, CROSS-SHOP: 2', $out);
         $this->assertStringContainsString("export {$crossA->id}  shop {$shopA->id}", $out);
         $this->assertStringContainsString("export {$crossB->id}  shop {$shopB->id}", $out);
         $this->assertStringContainsString("export {$aliasB->id}  shop {$shopB->id}", $out, 'the alias disk resolves to the same file');
@@ -264,5 +264,60 @@ class QueuedExportIsolationTest extends TestCase
         $this->assertSame(0, \Illuminate\Support\Facades\Artisan::call('reporting:audit-export-files'));
         $this->assertStringContainsString('outside their own directory (refused at download since S3-18): 0', \Illuminate\Support\Facades\Artisan::output());
     }
-}
+    /** A legacy row moved onto another disk name, as a server's configuration might record it. */
+    private function onDisk(ReportExport $row, Shop $shop, string $disk, string $path): ReportExport
+    {
+        TenantContext::runFor((int) $shop->id, fn () => $row->update(['file_disk' => $disk, 'file_path' => $path]));
 
+        return $this->row($row->id);
+    }
+
+    public function test_the_export_file_audit_meets_overlapping_roots_and_scoped_disks_at_one_physical_file(): void
+    {
+        $localRoot = (string) config('filesystems.disks.local.root');
+        config(['filesystems.disks.exports_parent' => ['driver' => 'local', 'root' => dirname($localRoot)]]);
+        config(['filesystems.disks.exports_scoped' => ['driver' => 'scoped', 'disk' => 'local', 'prefix' => 'reporting-exports']]);
+        [$ownerA, $shopA] = $this->shopWithCustomer('AlphaOnlyXR');
+        [$ownerB, $shopB] = $this->shopWithCustomer('BravoOnlyXR');
+        $viaLocal = $this->legacyRow($ownerA, $shopA, 'reporting-exports/customers-20260105-090000.csv');
+        $viaParent = $this->onDisk($this->legacyRow($ownerB, $shopB, 'x.csv'), $shopB, 'exports_parent',
+            basename($localRoot).'/reporting-exports/customers-20260105-090000.csv');
+        $viaScoped = $this->onDisk($this->legacyRow($ownerB, $shopB, 'y.csv'), $shopB, 'exports_scoped', 'customers-20260105-090000.csv');
+
+        $exit = \Illuminate\Support\Facades\Artisan::call('reporting:audit-export-files');
+        $out = \Illuminate\Support\Facades\Artisan::output();
+
+        $this->assertSame(1, $exit);
+        $this->assertStringContainsString('CROSS-SHOP: 1', $out);
+        foreach ([$viaLocal, $viaParent, $viaScoped] as $row) {
+            $this->assertStringContainsString("export {$row->id}  shop {$row->shop_id}", $out, 'all three names reach one physical file');
+        }
+    }
+
+    public function test_the_export_file_audit_tells_stores_apart_and_never_calls_unresolved_storage_clean(): void
+    {
+        $s3 = ['driver' => 's3', 'key' => 'k', 'secret' => 's', 'region' => 'ap-south-1', 'bucket' => 'exports'];
+        config(['filesystems.disks.s3_minio' => $s3 + ['endpoint' => 'https://minio.internal']]);
+        config(['filesystems.disks.s3_aws' => $s3]);   // same bucket name, another store
+        config(['filesystems.disks.exports_ftp' => ['driver' => 'ftp', 'host' => 'ftp.internal', 'root' => '/exports']]);
+        [$ownerA, $shopA] = $this->shopWithCustomer('AlphaOnlyXR');
+        [$ownerB, $shopB] = $this->shopWithCustomer('BravoOnlyXR');
+        $this->onDisk($this->legacyRow($ownerA, $shopA, 'a.csv'), $shopA, 's3_minio', 'reporting-exports/customers-20260106-090000.csv');
+        $this->onDisk($this->legacyRow($ownerB, $shopB, 'b.csv'), $shopB, 's3_aws', 'reporting-exports/customers-20260106-090000.csv');
+        $this->onDisk($this->legacyRow($ownerB, $shopB, 'c.csv'), $shopB, 'exports_ftp', 'reporting-exports/customers-20260106-090000.csv');
+
+        $exit = \Illuminate\Support\Facades\Artisan::call('reporting:audit-export-files');
+        $out = \Illuminate\Support\Facades\Artisan::output();
+
+        $this->assertSame(2, $exit, 'no cross-shop group among what resolved, but not clean: one row could not be resolved');
+        $this->assertStringContainsString('CROSS-SHOP: 0', $out, 'one bucket name on two endpoints is two stores');
+        $this->assertStringContainsString("UNRESOLVED (exports_ftp: adapter 'ftp' is not resolved by this command): 1 row(s)", $out);
+        $this->assertStringContainsString('UNKNOWN, not clean', $out);
+
+        // The same store under a second name does meet.
+        config(['filesystems.disks.s3_minio_alias' => $s3 + ['endpoint' => 'https://minio.internal']]);
+        $this->onDisk($this->legacyRow($ownerB, $shopB, 'd.csv'), $shopB, 's3_minio_alias', 'reporting-exports/customers-20260106-090000.csv');
+        $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call('reporting:audit-export-files'));
+        $this->assertStringContainsString('CROSS-SHOP: 1', \Illuminate\Support\Facades\Artisan::output());
+    }
+}

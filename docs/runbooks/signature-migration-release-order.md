@@ -88,12 +88,13 @@ loyalty expiry activates only by its own decision (handoff §0a, S3-16).
 | `2026_09_24_120000_create_notifications_table.php` | Laravel's `notifications` table (S3-17); skipped if one exists, and its `down()` never drops it |
 
 **Why after the code, not in Phase 1.** The baseline stores each queued export
-at a path any two exports finishing in the same second share (S3-18), and —
-when this table is absent — marks every queued export `failed` at its
-notification, after the file is written. A `failed` export is refused by the
-download route, so today the absent table keeps shared files from being
-served. Created while the baseline serves, the table would let those exports
-finish `done` and make S3-18's shared files downloadable in the window. The new
+at a path any two exports finishing in the same second share (S3-18). While no
+`notifications` table exists, the baseline marks each queued export `failed`
+at its notification, after the file is written, and the download route refuses
+a `failed` export — during the rollout window, that is what keeps a shared
+file from being served by the baseline. Created while the baseline serves, the
+table would let those exports finish `done` and make shared files downloadable
+in the window. The new
 code stores one directory per export and survives the missing table (the
 delivery failure is recorded and the export stays `done` —
 `ExportNotificationDeliveryTest`).
@@ -101,7 +102,11 @@ delivery failure is recorded and the export stays `done` —
 After applying: `php artisan reporting:notify-export` lists the unexpired
 finished exports not recorded as notified; `--send` delivers them, without
 regenerating anything. If D0 found a `notifications` table already present,
-S3-18 was reachable live — see handoff R10.
+the baseline's queued exports can finish `done` in the current configuration,
+so shared paths can be served now: record it with D0. What happened before —
+whether any file was shared, notified, downloaded or disclosed — is a separate
+set of questions with their own evidence (handoff R10); the table's presence
+answers none of them.
 
 ### Phase 3 — CONTRACT (only after Phase 2 is live everywhere and D2b is clean)
 

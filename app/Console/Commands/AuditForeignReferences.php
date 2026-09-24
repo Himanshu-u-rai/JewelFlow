@@ -80,12 +80,15 @@ class AuditForeignReferences extends Command
                 $refs[] = [$col->t, $col->c, $parent, 'implied'];
             }
         }
-        // Tables without shop_id owned through one parent (invoice_items through
-        // invoices): their other references must name the parent's shop.
-        foreach ($declared->filter(fn ($d) => ! isset($shopTables[$d->t]) && isset($shopTables[$d->p]))->groupBy('t') as $t => $keys) {
-            $owner = $keys->first();
+        // Tables without shop_id that reference two or more shop tables
+        // (invoice_items: invoice_id and item_id): every reference a row holds
+        // must name the same shop. The first column (by name) is compared with
+        // each of the others; the check is symmetric.
+        foreach ($declared->filter(fn ($d) => ! isset($shopTables[$d->t]) && isset($shopTables[$d->p]))->unique(fn ($d) => "{$d->t}.{$d->c}")
+            ->sortBy('c')->groupBy('t') as $t => $keys) {
+            $first = $keys->first();
             foreach ($keys->skip(1) as $d) {
-                $refs[] = [$t, $d->c, $d->p, 'through '.$owner->p.'.'.$owner->c];
+                $refs[] = [$t, $d->c, $d->p, 'through '.$first->p.'.'.$first->c];
             }
         }
         if ($this->option('table')) {
@@ -95,12 +98,16 @@ class AuditForeignReferences extends Command
         $crossing = 0;
         $total = 0;
         foreach ($refs as [$t, $c, $p, $how]) {
-            if (str_starts_with($how, 'through ')) {
+            $through = str_starts_with($how, 'through ');
+            if ($through) {
                 [$ownerTable, $ownerColumn] = explode('.', substr($how, 8), 2);
                 $from = "from \"{$t}\" x join \"{$ownerTable}\" a on a.id = x.\"{$ownerColumn}\" join \"{$p}\" b on b.id = x.\"{$c}\" "
                     .'where a.shop_id is not null and b.shop_id is not null and a.shop_id <> b.shop_id';
+                // The row's own identity is x.id — never the referenced parent's.
+                $select = 'x.id as id, a.id as parent_id, a.shop_id as parent_shop_id, b.id as ref_id, b.shop_id as ref_shop_id';
             } else {
                 $from = "from \"{$t}\" a join \"{$p}\" b on b.id = a.\"{$c}\" where a.shop_id is not null and b.shop_id is not null and a.shop_id <> b.shop_id";
+                $select = 'a.id as id, a.shop_id, b.id as ref_id, b.shop_id as ref_shop_id';
             }
             $n = (int) DB::selectOne("select count(*) as n {$from}")->n;
             if ($n === 0) {
@@ -108,9 +115,10 @@ class AuditForeignReferences extends Command
             }
             $crossing++;
             $total += $n;
-            $examples = collect(DB::select("select a.id, a.shop_id, b.id as ref_id, b.shop_id as ref_shop_id {$from} order by a.id limit ?",
-                [max(1, (int) $this->option('examples'))]))
-                ->map(fn ($r) => "{$t} {$r->id} (shop {$r->shop_id}) -> {$p} {$r->ref_id} (shop {$r->ref_shop_id})")->implode('; ');
+            $examples = collect(DB::select("select {$select} {$from} order by 1 limit ?", [max(1, (int) $this->option('examples'))]))
+                ->map(fn ($r) => $through
+                    ? "{$t} {$r->id}: {$ownerColumn} -> {$ownerTable} {$r->parent_id} (shop {$r->parent_shop_id}), {$c} -> {$p} {$r->ref_id} (shop {$r->ref_shop_id})"
+                    : "{$t} {$r->id} (shop {$r->shop_id}) -> {$p} {$r->ref_id} (shop {$r->ref_shop_id})")->implode('; ');
             $this->warn("{$t}.{$c} -> {$p} ({$how}): {$n} row(s) reference another shop — e.g. {$examples}");
         }
 

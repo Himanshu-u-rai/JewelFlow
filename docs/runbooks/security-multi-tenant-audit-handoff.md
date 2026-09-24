@@ -88,9 +88,9 @@ each with its own check — **all NOT RUN; server state unverified:**
 
 | Question | Read-only check | What it cannot tell |
 |---|---|---|
-| (a) Was a file overwritten by another export? | `php artisan reporting:audit-export-files` — rows grouped by the **physical** location (disk resolved to driver + root or bucket, so two disk names for one place count as one) and the normalized path; same-shop duplicates reported apart from **cross-shop** ones; exit 1 on any cross-shop group | whose bytes the file now holds; an overwrite by a job that crashed before recording its path leaves no row |
-| (b) Was a ready-notification stored? | D0's `to_regclass('notifications')`. NULL: none could be — every queued export ended `failed` at its notification. Present: the audit prints, per cross-shop row, how many notifications name that export | whether anyone opened it |
-| (c) Was the file downloaded, by whom? | the web server's access log for `/reporting/exports/{id}/download`, status 200. The application logs no downloads (since `cfda2a0` a download marks its notification read — new code only). A `failed` export is refused by the route | nothing, if the log is gone |
+| (a) Was a file overwritten by another export? | `php artisan reporting:audit-export-files` — each row resolved to a physical file on this host's storage configuration (local: canonical absolute path, so overlapping roots and alias disks meet; s3: endpoint + bucket + prefix; scoped disks through the disk they wrap); same-shop duplicates reported apart from **cross-shop** ones; exit 1 on any cross-shop group, **exit 2 when any row's storage cannot be resolved** (an unmodelled adapter, an undefined disk, a path above its root) — unknown is never reported clean | whose bytes the file now holds; an overwrite by a job that crashed before recording its path leaves no row; storage configured differently in the past or on another host |
+| (b) Was a ready-notification stored? | `notifications` rows naming the export — the audit prints the count per cross-shop row when the table exists. D0's `to_regclass('notifications')` shows the configuration **now** only: an absent table does not show that none was ever stored, and a present one shows neither delivery nor exposure | who opened it; rows deleted before the check |
+| (c) Was the file downloaded, by whom? | the web server's access log for `/reporting/exports/{id}/download`, status 200. The application logs no downloads (since `cfda2a0` a download marks its notification read — new code only). The current route refuses a `failed` export; whether a given export was `failed` when a request arrived is a question for its row history and the log together | nothing, if the log is gone |
 | (d) Actual exposure | (a) cross-shop **and** (c) a 200 to a user of a shop other than the one whose bytes the file held, after the overwrite (log time against `generated_at`) | not decidable from the database alone |
 
 Historical S3-14/S3-15 references, and every other stored reference between
@@ -227,9 +227,10 @@ guard the file is regenerated; without the re-check under the lock two
 notifications are stored.
 
 **Release order.** The table goes in **Phase 2b, after the code** — see
-`signature-migration-release-order.md`: with no table the baseline fails every
-queued export after writing it, which keeps S3-18's shared files from being
-downloaded; creating it under the baseline would open them.
+`signature-migration-release-order.md`: while the table is absent, the
+baseline marks each queued export `failed` after writing it and the route
+refuses `failed` exports; creating the table under the baseline would let
+shared files be served during the window.
 
 ### Part 5 — S3-16: an append-only expiry, and the decision it needs
 
@@ -645,8 +646,10 @@ channel kept. The original entry follows as the record.*
 * **Evidence:** the real worker harness, every run (`relation "notifications"
   does not exist`).
 * **Decision needed:** create the table (a migration) or change the channel.
-  Whether production has such a table was **not observed**; that decides
-  whether S3-18 was reachable live (R10).
+  Whether production has such a table was **not observed**. *Corrected
+  (review of `592d864`): the table's presence alone decides neither whether
+  S3-18 was reachable in the past nor whether anything was exposed — R10
+  keeps configuration, history, logs and disclosure apart.*
 
 ### S3-18 — two shops' queued exports could share one file — **FIXED locally, `11e91c3`**
 
@@ -2661,8 +2664,8 @@ triggers; whether idle devices should be logged out after 24 hours is a policy
 question. `App\Exports\FullShopExport` and its sheets are referenced nowhere.
 
 **NOT RUN:** Octane; a transaction-mode pooler; the production queue driver
-and whether production has a `notifications` table (both decide how S3-17 and
-S3-18 behaved live — see R10); web mutations on the production binding path
+and whether production has a `notifications` table (current configuration
+only; the history is the separate evidence of R10); web mutations on the production binding path
 (CSRF needs a session; GETs only there); admin and console expressions
 individually; any device run.
 
@@ -3790,7 +3793,7 @@ it is named as an approval **and** as the evidence that follows it.
 | R7 | KYC exposure | an approved package executed and its §6 verification output recorded. For the edge layer that means a unique probe path with **0 origin log lines**, next to a positive control; a 403 alone does not show the edge rule works (corrected). ORIGIN-ONLY leaves the edge-cache residual open until §3 and §5 run, and stays PARTIAL | S3-01, S3-01c |
 | R8 | Device verification | the §5 checks run on Android and iOS, with results recorded, for the inline signature and for S3-09c handling | S3-04, S3-09c |
 | R9 | Backup A in production | after deploy: `backup:scope-check` clean as `www-data`, and one `backup:run` whose archive listing shows the allowlist | backup A |
-| R10 | Tenant-isolation findings in production | read-only checks recorded before deploy (§0d Part 1): `tenant:audit-foreign-references` (every stored cross-shop reference, S3-14 and S3-15 included); `reporting:audit-export-files` (cross-shop candidates by physical file); `to_regclass('notifications')` and the queue driver (whether S3-18's files could be served); the access log for the download route (whether any was). Each answers its own question; none alone shows a disclosure. Any hit is a data question with its own decision — nothing is corrected by hand | S3-14, S3-15, S3-17, S3-18 |
+| R10 | Tenant-isolation findings in production | read-only checks recorded before deploy (§0d Part 1): `tenant:audit-foreign-references` (every stored cross-shop reference, S3-14 and S3-15 included); `reporting:audit-export-files` (cross-shop candidates by physical file; exit 2 = some storage unresolved, not clean); `to_regclass('notifications')` and the queue driver (the configuration now — whether shared files can be served now, not whether they were); `report_exports` history and `notifications` rows (what was recorded); the access log for the download route (what was served). Each answers its own question; none alone shows a disclosure. Any hit is a data question with its own decision — nothing is corrected by hand | S3-14, S3-15, S3-17, S3-18 |
 
 ### Open, and deliberately NOT conditions of this release
 

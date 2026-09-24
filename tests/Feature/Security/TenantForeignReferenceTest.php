@@ -306,13 +306,19 @@ class TenantForeignReferenceTest extends TestCase
             'shop_id' => $shopA->id, 'customer_id' => $customerA->id, 'gold_rate' => 7200, 'subtotal' => 1, 'gst' => 0, 'total' => 1,
             'status' => \App\Models\Invoice::STATUS_DRAFT,
         ]));
-        DB::table('invoice_items')->insert([
+        // Keep the line's own id well away from its invoice's, so a report that
+        // printed the parent's id as the line's would be caught.
+        DB::statement("select setval('invoice_items_id_seq', (select coalesce(max(id), 0) from invoice_items) + 5000)");
+        $lineId = (int) DB::table('invoice_items')->insertGetId([
             'invoice_id' => $draft->id, 'item_id' => $itemB->id, 'weight' => 1, 'rate' => 1, 'making_charges' => 0,
             'stone_amount' => 0, 'line_total' => 1, 'created_at' => now(), 'updated_at' => now(),
         ]);
+        $this->assertNotSame((int) $draft->id, $lineId);
 
         $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call('tenant:audit-foreign-references'));
-        $this->assertMatchesRegularExpression('/invoice_items\.(item_id -> items|invoice_id -> invoices) \(through [a-z_]+\.[a-z_]+\): 1 row\(s\)/',
-            \Illuminate\Support\Facades\Artisan::output());
+        $out = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('invoice_items.item_id -> items (through invoices.invoice_id): 1 row(s)', $out);
+        $this->assertStringContainsString(
+            "invoice_items {$lineId}: invoice_id -> invoices {$draft->id} (shop {$shopA->id}), item_id -> items {$itemB->id} (shop {$shopB->id})", $out);
     }
 }
