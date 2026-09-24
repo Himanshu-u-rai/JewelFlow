@@ -221,6 +221,33 @@ class ReturnsApiTest extends TestCase
             ->assertStatus(422);
     }
 
+    /**
+     * §7e, request-supplied related ids. lines.*.invoice_item_id is validated
+     * here only as an integer; ownership rests on ReturnService, which loads
+     * lines through the caller's own invoice. So: shop A's own invoice, shop
+     * B's line. Refused, and nothing moves in either shop.
+     */
+    public function test_create_return_cannot_include_another_shops_line_on_its_own_invoice(): void
+    {
+        [, , , $lineB] = $this->soldInvoice();
+        [$ownerA, $shopA, $invoiceA, $lineA] = $this->soldInvoice();
+        $this->configureReturnPolicy($shopA);
+
+        Sanctum::actingAs($ownerA);
+        TenantContext::set((int) $shopA->id);
+
+        $payload = $this->createPayload($lineA);
+        $payload['lines'][0]['invoice_item_id'] = $lineB->id;
+
+        $response = $this->withHeaders($this->idempotency('foreign-line'))
+            ->postJson('/api/mobile/v1/returns', $payload);
+
+        $this->assertContains($response->getStatusCode(), [409, 422], 'refused, not created');
+        $this->assertSame(0, ReturnOrder::withoutGlobalScopes()->where('shop_id', $shopA->id)->count(), 'no return for shop A');
+        $this->assertNull(InvoiceItem::withoutGlobalScopes()->whereKey($lineB->id)->value('returned_at'), "shop B's line is untouched");
+        $this->assertNull(InvoiceItem::withoutGlobalScopes()->whereKey($lineA->id)->value('returned_at'));
+    }
+
     public function test_create_return_requires_sales_create_permission(): void
     {
         [, $shop, , $line] = $this->soldInvoice();
