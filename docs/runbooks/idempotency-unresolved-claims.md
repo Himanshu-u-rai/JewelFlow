@@ -2,7 +2,7 @@
 
 **Status: PROPOSED.** The procedure and its tool (`mobile:idempotency-claims`)
 exist on branch `security/multi-tenant-audit` and are tested against synthetic
-data in `jewelflow_testing` only (`IdempotencyClaimReconciliationTest`, 9 tests; `tests/Concurrency/claim_release_race.php`, separate processes).
+data in `jewelflow_testing` only (`IdempotencyClaimReconciliationTest`, 9 tests; `tests/Concurrency/claim_release_race.php`, separate processes, intact and lost connection).
 Nothing here has been run on any server. Running `--confirm` on production is a
 production data change and needs its own approval.
 
