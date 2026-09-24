@@ -17,8 +17,11 @@ exposure: every production statement is as of that observation or earlier.
 Before executing any approved step, run that phase's drift check
 (`signature-migration-release-order.md` § Drift checks) and stop on drift.
 
-**Code answered in this round:** `9a3fec8` (full SHA in §8; the last commit
-that changes anything outside `docs/`). Two independent source reviews so far:
+**This round (tenant-isolation completion, §7e):** application code last
+changed at `11e91c3` (S3-14/15/18); tests and harnesses through `1089ba0`;
+full SHAs and measurements in §8. The reviewed candidate is
+`d37879b6c36991f17bafec50137adaaaba7c677b`; the packet carries the delta from
+it. **Previous round:** code answered at `9a3fec8`. Two independent source reviews so far:
 the first covered packet `7b1d709162109fe51f56d03d77c14e3e50d7b9ea` (seven
 findings, §0b); the second covered candidate
 `9aaf1af8f366cb1b3d038a383586d6cf9ae81112`, accepted XR-01, XR-04 and XR-06,
@@ -68,6 +71,7 @@ pre-existing skips, 0 failed) unless a row says otherwise.
 | 13 | Backup A+C | **A IMPLEMENTED locally** (allowlist, no traversal of `.git`/`.claude`/`output`, only `.env` archived). **C PROPOSED** (procedure text only) | A `3f1bd85`; C `2d0b5f5` | §7g; `BackupSourceExclusionTest` (11) + real `backup:run --only-files` | A needs a deploy. C needs the operator's procedure owner to apply it; its current step text was not visible here |
 | 14 | Migration / rollback | **REHEARSED on a populated synthetic database** — up, down newest-first and re-apply on the same data, outside any test transaction. Contract lock boundaries **MEASURED** with the real migrator (XR-04). Recovery keeps the schema and moves the code forward | `01f37a6`, `48981ff` | §6a: 26 checks pass, 17 measurements; `contract_migration_locks.php` (§0b) | Phase-1 rollback measured one-way; no rehearsal on production-sized data; serving `018b3d8` again is prohibited (runbook § Recovery) |
 | 15 | Device checks | **NOT RUN** | — | §5 | Android/iOS print and share, multiple copies, desktop browser print, CSP `data:`, S3-09c on a handset |
+| 16 | Tenant isolation — the §7e categories never inventoried | **Inventoried, every category** (§7e completion table). Five findings: **S3-14, S3-15, S3-18 FIXED locally**; **S3-16, S3-17 OPEN** (decisions) | `9f633e1`, `11e91c3`; evidence `7c242d7`, `4a4011a`, `7a9ffb0`, `f3b1eba`, `1089ba0` | `TenantForeignReferenceTest` (5), `QueuedExportIsolationTest` (2), `BackupWorkbookIsolationTest` (2), `TenantBackgroundExecutionTest` (1, characterization), `ReturnsApiTest` (+1); harnesses `queue_worker_tenant_reuse.php`, `production_binding_path.php`; sweeps `tests/Inventory/*` | Octane, transaction pooler, production queue driver and `notifications` table not observed; admin/console expressions not read individually |
 
 ## 0b. Independent source review of `7b1d709` — seven findings, answered
 
@@ -323,6 +327,80 @@ and the question is whether that is what the business wants.
   re-issue, which should re-state, or a correction, which should not. That is a
   billing-policy decision, not a code defect to fix by choosing one.
 * **Status:** OPEN. Policy question; not a condition of this release.
+
+### S3-14 — web retail POS accepted another shop's payment account — **FIXED locally, `9f633e1`**
+
+* **What went wrong.** `POST /pos/sell` (retail) validated
+  `payments.*.payment_method_id` only as an integer and wrote it to the
+  append-only `invoice_payments` row. Every sibling path checks the account's
+  shop; this one did not.
+* **Class:** demonstrated. Shop A's sale was accepted (200) with shop B's UPI
+  account on a ₹10,300 payment row. Shop B then **could not delete its own
+  account**: the foreign key's `ON DELETE SET NULL` must update A's row, and
+  the append-only guard refuses ("Append-only: invoice_payments rows cannot
+  be updated"). A's row can never be corrected, for the same reason.
+* **Repair:** `Rule::exists('shop_payment_methods','id')->where('shop_id', …)`.
+* **Release check (read-only, not run on any server; syntax checked on
+  `jewelflow_testing`):** whether production already holds such rows —
+  `select ip.id, ip.shop_id, spm.shop_id as account_shop_id from invoice_payments ip
+  join shop_payment_methods spm on spm.id = ip.payment_method_id where ip.shop_id <> spm.shop_id`.
+  Any row found is append-only and needs its own decision; nothing here
+  corrects it.
+
+### S3-15 — karigar invoice accepted another shop's job order — **FIXED locally, `9f633e1`**
+
+* **What went wrong.** `POST /karigar-invoices` validated `job_order_id` only
+  as an integer and stored it.
+* **Class:** demonstrated (stored). No confidentiality or cross-shop write
+  path was found: every reader goes through the scoped `jobOrder` relation.
+* **Repair:** the same shop-constrained `exists` rule.
+
+### S3-16 — scheduled loyalty expiry expires nothing — **OPEN (decision)**
+
+* **What goes wrong.** `loyalty:expire` (daily) calls a shop-scoped service
+  with no tenant context: every query is `AND 1 = 0`, nothing expires, and the
+  command reports success. No cross-shop effect — the scope fails closed.
+* **Why it is not repaired here.** Entering each shop's context was tried: the
+  service's `update(['expired' => true])` is then refused by
+  `loyalty_transactions_append_only_trigger`, which is constitutionally
+  protected (Article IX.A #9) and post-dates the expiry code. A repair needs an
+  append-only representation of expiry, and its first run would remove every
+  overdue balance at once — a product and accounting decision.
+* **Evidence:** `TenantBackgroundExecutionTest` pins the current behaviour
+  (characterization, to be inverted when decided).
+
+### S3-17 — every queued export fails after writing its file — **OPEN (decision)**
+
+* **What goes wrong.** `ExportReadyNotification` uses the `database` channel;
+  no migration creates a `notifications` table. The job stores the file, marks
+  the export done, then the notification insert fails, the export is marked
+  **failed**, and the user is never told. Reporting reliability, not isolation.
+* **Evidence:** the real worker harness, every run (`relation "notifications"
+  does not exist`).
+* **Decision needed:** create the table (a migration) or change the channel.
+  Whether production has such a table was **not observed**; that decides
+  whether S3-18 was reachable live (R10).
+
+### S3-18 — two shops' queued exports could share one file — **FIXED locally, `11e91c3`**
+
+* **What went wrong.** Files were stored at
+  `reporting-exports/{report}-{Ymd-His}.{ext}`: no shop, no export id. Two
+  exports of the same report and format finishing in the same second — any
+  shops — got one path; the second overwrote the first, and the first shop's
+  download served the second shop's data. The expiry sweep deletes by path, so
+  it could delete the other shop's file too.
+* **Class:** demonstrated twice — by a real queue worker (shops 5 and 6, one
+  second, one path, shop 5's file holding only shop 6's customer), and in
+  `QueuedExportIsolationTest` with the clock frozen, where shop A's owner
+  followed the signed link from its own ready-notification and received 200
+  with shop B's customer as the only row.
+* **Repair:** one directory per export, `reporting-exports/{shop}/{export}/`;
+  the file name users see is unchanged. Flat files already stored are left.
+* **Release check (read-only, not run on any server; syntax checked on
+  `jewelflow_testing`):** `select file_path, count(*) as n, array_agg(distinct shop_id)
+  as shops from report_exports where file_path is not null group by file_path
+  having count(*) > 1` — any row is a collision that already happened, naming
+  the shops whose exports shared a file.
 
 ### S3-02 — karigar invoice attachments on the public web path
 
@@ -2250,6 +2328,59 @@ unbound, in both the test and the resolver, rather than implied to be covered.**
 
 ## 7e. Tenant isolation — cross-shop queries, relationships, jobs, exports
 
+### Completion round — every category inventoried (code at `11e91c3`, tests at `f3b1eba`)
+
+The table below replaces the "Remaining gaps" column of the earlier table
+further down, which is kept as the record of what was open. Status words:
+**behavioural** — a test or real-process harness exercises it; **inspected** —
+read, not exercised; **absent** — the category has no such path; **NOT RUN** —
+named and not exercised. Nothing here declares the application secure: it
+covers the categories and paths named.
+
+Tools, re-runnable, read-only: `tests/Inventory/tenant_query_sweep.php`
+(every query the scope does not govern, classified **per expression** — the
+earlier 12/18-line window is withdrawn) and `tests/Inventory/request_id_sweep.php`
+(every id-bearing validation key and how ownership is enforced at validation).
+
+| Category | Entry points | Tenant authority | Enforcement | Evidence | Unresolved |
+|---|---|---|---|---|---|
+| Scoped models (95 with `BelongsToShop`) | route binding and queries in requests; datasets | production: `Auth::user()->shop_id` **during binding** (it runs after Authenticate, before `EnsureTenantUser`), then `TenantContext` | global scope, fail-closed on null | **behavioural**: 143 existing cross-shop tests in 84 files (reused); `TenantScopeFailClosedTest` (reused); **new** `production_binding_path.php` — the non-console path PHPUnit never takes: own 200, foreign 404, foreign PATCH changed nothing (7 cases) | the scope trusts any non-null context — see "context lifecycle" |
+| Models with `shop_id`, no trait (15) | tenant-facing bindings: `User` (staff ×4, device revoke), `PlatformInvoice` (billing), `StockPurchaseItem` (vault) | explicit | `guardStaffTarget`, shop checks in `destroyAllForUser`, `BillingController@show`; purchase-identity guard | **inspected** (all three read); **behavioural**: vault lines (reused `StockPurchaseLineOwnershipTest`), staff edit/terminate/reactivate/role and device disconnect across shops (5 existing tests in `StaffManagementTest`, `StaffTerminateRecoverTest`, reused), and — **new** — another shop's platform billing invoice is refused (403, number not shown) while the shop's own opens (`TenantForeignReferenceTest`) | `IdempotencyKey`, `InvoicePaymentClaim`, `ScanSession`, `PendingUpload`, `MetalRate`, `ShopCounter`: explicit shop filters, inspected only; 7 platform models behind the platform guard |
+| Ownership through a parent (8 tables without `shop_id`) | `invoice_items`, `catalog_collection_items`, `scan_events`, `role_permission`, `mobile_change_requests`, `platform_announcement_dismissals`, `personal_access_tokens`, `otps` | the parent row | web returns: `Rule::exists(...)->where('invoice_id')`; mobile returns: service loads lines through the caller's invoice; catalog: `validateItemsBelongToShop`; scan: token + shop (authenticated) or token only (public pairing, 48 chars); roles: scoped binding + global permission ids; the rest: own user/session | **behavioural (new)**: a mobile return naming another shop's line on the caller's own invoice is refused, nothing moves in either shop (`ReturnsApiTest`); **inspected**: the rest | `otps` carry no shop and are keyed by phone — by design |
+| Raw queries (`DB::table`, raw SQL) | services, controllers, reports | explicit | `shop_id` in the same expression, or keyed by an owned record's id | **inspected**, per expression: tenant-facing writes without `shop_id` in the expression are keyed by an owned instance (`where('id', $owned->id)`), the caller's own user/session, or a payload whose `shop_id` comes from an owned record; no defect | expressions under `Admin/` and `Console/` were **not read individually** (counts in §8) |
+| Scope removals | `withoutTenant()`, `withoutGlobalScope('shop')`, `withoutGlobalScopes()` | explicit | same-expression `shop_id`, token lookups (public catalog), or existence checks keyed by own ids | **inspected**, per expression; Dhiran's 3 scheduled commands enumerate shops then `runFor` each | Admin/Console as above |
+| Request-supplied foreign keys | 168 id-bearing validation keys | the caller's shop | 61 `exists`+shop, 3 `exists`+parent, `*ExistsRule($shopId)` factories, or a scoped lookup afterwards | **behavioural**: all shape-only tenant-facing keys traced to their use; **two defects found and fixed — S3-14, S3-15** (`TenantForeignReferenceTest`); 3 `exists`-only rules are existence oracles whose value is unused or looked up through a scope (low) | — |
+| Relationships and joins | eager loads, `whereHas`, raw joins | the parent's scope | related models' own scopes | **inspected**; S3-15 showed the edge: a stored foreign id was harmless only because every reader used the scoped relation | a future raw join on such a column would not be |
+| Queued jobs (10) and listeners (none queued) | database queue (config default; `.env.example` says `sync`) | payload or the record itself | `runFor` in every tenant job; platform jobs carry explicit ids | **behavioural**: `queue_worker_tenant_reuse.php`, one real `queue:work` process — shop A, a job throwing inside A's context, a payload naming B's export under A, shop B: context absent before and after every job, each export names only its own shop, the mismatched payload writes nothing; `QueuedExportIsolationTest` (mismatch). **Found S3-18 (fixed) and S3-17 (open)** | production queue driver **not observed** |
+| Scheduled and console work (19 scheduled) | `routes/console.php` | per-shop `runFor`, or explicit shop filters, or platform-level | — | **inspected** all 19; **behavioural**: `loyalty:expire` — **S3-16**, characterized | operator-run console commands not read individually |
+| Tenant-context lifecycle | `EnsureTenantUser` (set, clear in `finally`), `ResolveCatalogShop`, `runFor` (restore in `finally`), `PaymentRaceHarness` | — | — | **behavioural**: the worker harness measured that **the worker does not clear context between jobs** — a job that sets context and returns leaves it for the next job. Safe today only because no application job does that | recommendation, not implemented: clear context in `Queue::before`. Octane not installed, **NOT RUN** |
+| Files and downloads (13 serving actions) | attachments, KYC, imports, exports, backup | binding scope plus explicit shop checks | per action | **inspected** all 13; **behavioural**: reused suites for KYC, karigar/purchase attachments, export downloads; **new**: S3-18 and the backup workbook (`BackupWorkbookIsolationTest`, own rows present, nothing of the other shop; staff without `reports.export` 403; one mutation confirms the test can fail) | — |
+| Cache and memoized state | 44 cache call sites; static memo | key content | every shop-specific key carries the shop id or a globally unique id; `MetalRegistry` memo keyed by shop; `HistoricalLifecycle` and the idempotency pin restored in `finally` | **inspected** | `MetalRegistry`'s per-shop memo goes stale in a long-lived worker until restart — correctness, not isolation |
+
+**Defects found in this round** (details in §0a):
+
+| ID | What | Class | Status |
+|---|---|---|---|
+| S3-14 | Web retail POS stored another shop's payment account on an append-only payment row; that shop could then not delete its own account | cross-shop write | **FIXED** `9f633e1` |
+| S3-15 | Karigar invoice stored another shop's job order id | cross-shop reference | **FIXED** `9f633e1` |
+| S3-16 | Scheduled `loyalty:expire` expires nothing: no tenant context; with context, a protected append-only trigger refuses its update | background execution | **OPEN** — characterized; needs a product/accounting decision |
+| S3-17 | Every queued export fails after writing its file: the `database` notification channel has no `notifications` table | reporting reliability, not isolation | **OPEN** — needs a decision |
+| S3-18 | Queued export files named by report and second: two shops' exports in one second shared a file; one shop's download served the other shop's data | **cross-shop exposure** | **FIXED** `11e91c3` |
+
+**Also observed, not defects:** `MobileSessionSeatService` deletes every
+mobile token idle for more than 24 hours, across all shops, whenever any shop's
+user logs in on mobile — global housekeeping that another shop's action
+triggers; whether idle devices should be logged out after 24 hours is a policy
+question. `App\Exports\FullShopExport` and its sheets are referenced nowhere.
+
+**NOT RUN:** Octane; a transaction-mode pooler; the production queue driver
+and whether production has a `notifications` table (both decide how S3-17 and
+S3-18 behaved live — see R10); web mutations on the production binding path
+(CSRF needs a session; GETs only there); admin and console expressions
+individually; any device run.
+
+### Earlier state of this section (kept as the record)
+
 **Conclusion, at the strength the evidence supports: no defect found in the
 inspected candidate set; missing-context fail-closed behaviour now has
 regression coverage.** That is a statement about the candidates listed below,
@@ -3086,26 +3217,103 @@ RelocationNonDestructiveTest, 3 new tests: exit 0 where 1 expected (x2); ledger 
 No extra mutation run: in each case the before and after differ by the repair
 alone, so attribution needed none.
 
+### Tenant-isolation round — execution SHA `1089ba0afd4891e5eb54a19350a6fb4b51aa28de`
+
+Run 2026-09-24T12:06:40+05:30 to 12:12:50+05:30, in this order, alone on
+`jewelflow_testing`, with only this document modified.
+
+```
+# php tests/Concurrency/queue_worker_tenant_reuse.php   (one real queue:work process)
+worker exit 0; jobs left on the queue: 0
+context seen by each probe: {"before-A":null,"after-A":null,"after-failing-A":null,"after-B":null,"after-leaky":9}
+export A:  status failed; names AlphaOnlyXR: yes; names BravoOnlyXR: no
+export A!: status failed (a job that threw inside shop A's context)
+export B:  status failed; names BravoOnlyXR: yes; names AlphaOnlyXR: no
+mismatched payload (shop A, B's export row): B's row status queued, file none
+final status of exports A and B: failed, failed — S3-17: SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "notifications" does not ex
+runtime property — after a job that set context and did not restore it, the next job saw: 9 (NOT cleared by the worker)
+RESULT: SAFE — sequential shops in one worker, context restored after success and failure, each export only its own shop
+
+# php tests/Concurrency/production_binding_path.php     (APP_RUNNING_IN_CONSOLE=false, no TenantContext)
+mobile item, own             GET /api/mobile/v1/items/3                   -> 200 ok
+mobile item, foreign         GET /api/mobile/v1/items/4                   -> 404 ok
+mobile customer, own         GET /api/mobile/v1/customers/5               -> 200 ok
+mobile customer, foreign     GET /api/mobile/v1/customers/6               -> 404 ok
+web customer, own            GET /customers/5                             -> 200 ok
+web customer, foreign        GET /customers/6                             -> 404 ok
+mobile item PATCH, foreign   PATCH /api/mobile/v1/items/4                   -> 404 ok
+shop B's item price before/after the foreign PATCH: 5000.00 / 5000.00
+RESULT: SAFE — production binding path: own records 200, foreign refused, nothing changed
+
+# php tests/Inventory/tenant_query_sweep.php            (expressions the scope does not govern)
+  787 expressions: raw 233, scope-removed 150, unscoped-model 404
+  tenant-owned (or unknown table) with no shop_id in the expression: 228
+    tenant-facing 139 — each read; Admin/ 30 and Console/ 59 — not read individually
+
+# php tests/Inventory/request_id_sweep.php              (id-bearing validation keys)
+  168 keys: exists+shop 63 (61 before S3-14/S3-15), exists+parent 3, exists-only 7, shape-only 95
+
+# FULL — php artisan test
+  -> 3370 passed, 7 skipped, 0 failed (16432 assertions), 356.01 s
+     skipped: the same 7 pre-existing skips
+```
+
+Before-repair runs, recorded when each defect was reproduced:
+
+```
+TenantForeignReferenceTest (S3-14): "Expected response status code [422] but received 200."
+  consequence probe: the sale wrote invoice_payments id 1 (shop 2, Rs 10,300) naming shop 1's account;
+  shop 1 deleting its own account -> QueryException "Append-only: invoice_payments rows cannot be updated (id=1)"
+TenantForeignReferenceTest (S3-15): no job_order_id error; the invoice was created naming shop B's job order
+queue_worker_tenant_reuse.php (S3-18, second run): exports of shops 5 and 6 both at
+  reporting-exports/customers-20260924-082716.csv; shop 5's file named only shop 6's customer
+QueuedExportIsolationTest (S3-18, clock frozen): shop A's signed download (200) had one data row —
+  "BravoOnlyXR Customer", shop B's
+TenantBackgroundExecutionTest (S3-16): after loyalty:expire, shop A's 100 expired points remained;
+  with runFor added (reverted): "Append-only: loyalty_transactions rows cannot be updated (id=1)"
+BackupWorkbookIsolationTest, one mutation (CustomersDataset list query -> withoutTenant()):
+  fails on "nothing of shop B's is in shop A's backup"; reverted, tree clean
+```
+
+**A run discarded, recorded because it would otherwise be invisible.** The
+first final run of this round (at `f3b1eba`) was stopped: I started a PHPUnit
+run while it was executing, and both use `jewelflow_testing` —
+`RefreshDatabase` runs `migrate:fresh`. Stopping `php artisan test` left its
+PHPUnit child (`php8.4 … phpunit`) running; it was found by its open database
+session and stopped too, and one orphaned test session was checked before
+anything else ran. Its harness and sweep outputs had finished before the
+overlap; everything above is from the clean re-run at `1089ba0`.
+
+Harness artefacts found and fixed along the way, none of them results: a
+probe that read `null` through `??` counted as missing; export status was at
+first judged on the final status, which S3-17 always makes `failed`; the web
+guard needed the request bound before a user was set on it; a 4,000-character
+capture cut off the page body the check looked in.
+
 ## 9. Commits, diff, working tree
 
-**Measured at `9a3fec8`, not at HEAD — deliberately.** A diffstat recorded inside
+**Measured at `1089ba0`, not at HEAD — deliberately.** A diffstat recorded inside
 a tracked file changes the diffstat, so "the figure at HEAD" has no fixed point,
 and chasing it is exactly how the earlier revisions of this line came to be
 wrong. Pinning it to a named commit makes it rerunnable:
 
 ```
-$ git diff --shortstat 018b3d8..9a3fec8
- 108 files changed, 24649 insertions(+), 429 deletions(-)
+$ git diff --shortstat 018b3d8..1089ba0
+ 119 files changed, 25989 insertions(+), 432 deletions(-)
 
-$ git log --oneline 018b3d8..9a3fec8 | wc -l
-91
+$ git log --oneline 018b3d8..1089ba0 | wc -l
+100
 
-$ git diff --shortstat 9aaf1af..9a3fec8      # the second-review round, since the reviewed candidate
- 16 files changed, 780 insertions(+), 65 deletions(-)
+$ git diff --shortstat d37879b..1089ba0      # this round, since the reviewed candidate
+ 16 files changed, 1210 insertions(+), 27 deletions(-)
 ```
 
-`9a3fec8` is the last commit on the branch that touches anything outside
-`docs/`. Re-pinned from `751acc4` (105 files / +23,498 / −427, 84 commits),
+`1089ba0` is the last commit on the branch that touches anything outside
+`docs/`; application code last changed at `11e91c3`. Re-pinned from `9a3fec8`
+(108 files / +24,649 / −429, 91 commits), superseded by `c4730e2` (review
+acceptance and two corrections), the fixes `9f633e1` and `11e91c3`, and the
+evidence commits `7c242d7`, `4a4011a`, `7a9ffb0`, `f3b1eba`, `1089ba0`.
+Before that, re-pinned from `751acc4` (105 files / +23,498 / −427, 84 commits),
 superseded by three documentation commits (`96fb57d`, `603205f`, `9aaf1af`)
 and the four second-review commits `5e1bf88`, `412c8ea`, `a3de74d`, `9a3fec8`.
 Before that, re-pinned from `9d48331` (91 files / +21,371 / −398, 76 commits),
@@ -3181,8 +3389,9 @@ Local work that remains, none of it blocking the conditions in §11:
    seller's phone, WhatsApp and email as issued or as today (D-17).
 2. A mobile message for `idempotency_outcome_reconciled`. It currently falls
    into the generic 409 alert.
-3. The tenant categories marked "not inventoried" in §7e: parent-owned tables,
-   and foreign related ids outside stock purchases.
+3. Tenant isolation: every §7e category is inventoried. Left: clearing tenant
+   context in `Queue::before` (recommended), reading the admin and console
+   expressions individually, and S3-16/S3-17 once decided.
 4. Candidate-public asset classification: `products`, `shop-logos`,
    `catalog-heroes`, and the two upload writers (§7).
 5. S3-13, S3-06b and S3-06c, once their policy questions are answered.
@@ -3220,6 +3429,7 @@ it is named as an approval **and** as the evidence that follows it.
 | R7 | KYC exposure | an approved package executed and its §6 verification output recorded. For the edge layer that means a unique probe path with **0 origin log lines**, next to a positive control; a 403 alone does not show the edge rule works (corrected). ORIGIN-ONLY leaves the edge-cache residual open until §3 and §5 run, and stays PARTIAL | S3-01, S3-01c |
 | R8 | Device verification | the §5 checks run on Android and iOS, with results recorded, for the inline signature and for S3-09c handling | S3-04, S3-09c |
 | R9 | Backup A in production | after deploy: `backup:scope-check` clean as `www-data`, and one `backup:run` whose archive listing shows the allowlist | backup A |
+| R10 | Tenant-isolation findings in production | read-only checks recorded before deploy: payment rows naming another shop's account (S3-14), export rows sharing a file path (S3-18), whether a `notifications` table exists and which queue driver serves (S3-17/S3-18 reachability). Any hit is a data question with its own decision | S3-14, S3-17, S3-18 |
 
 ### Open, and deliberately NOT conditions of this release
 
@@ -3239,9 +3449,13 @@ acceptance.
   (`8d5a066`) is needed only to clear one, and each use needs approval.
 * **Backup C** — a procedure change for the operator's deploy runbook. It is
   independent of this code release.
-* **Tenant isolation beyond the inspected set** — the categories marked "not
-  inventoried" in §7e (parent-owned tables; foreign related ids outside stock
-  purchases) are unreviewed. No finding here covers them.
+* **S3-16** (loyalty expiry) and **S3-17** (queued-export notification) —
+  each needs a product or accounting decision before it can be repaired.
+* **Tenant isolation** — every §7e category is now inventoried; what remains is
+  named there (Octane, transaction pooling, production queue driver, admin and
+  console expressions not read individually). The worker does not clear tenant
+  context between jobs: safe only because every job uses `runFor`; clearing it
+  in `Queue::before` is recommended, not implemented.
 * **Device checks** (R8 above) and the **mobile message** for
   `idempotency_outcome_reconciled` — still not run and not built.
 * **KYC containment** (R7) stays a separate package, unexecuted, pending its
