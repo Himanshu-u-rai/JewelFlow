@@ -383,7 +383,7 @@ class EnsureIdempotency
             // Measured with the column really dropped in the rollback
             // rehearsal. Any other failure keeps the claim unresolved: a retry
             // is refused, never re-run.
-            if (! ($e instanceof QueryException && str_contains($e->getMessage(), 'response_headers'))) {
+            if (! self::headersColumnMissing($e)) {
                 Log::warning('EnsureIdempotency: failed to record claim completion', [
                     'error' => $e->getMessage(),
                     'shop_id' => $claim->shop_id,
@@ -406,6 +406,19 @@ class EnsureIdempotency
                 'key' => $claim->key,
             ]);
         }
+    }
+
+    /**
+     * XR-07 (second review). Recognised by PostgreSQL's own report — SQLSTATE
+     * 42703 (undefined_column) and its message naming this column — never by
+     * the exception text: Laravel appends the SQL to that, and the completion
+     * UPDATE always names response_headers, so ANY failure of it matched.
+     */
+    private static function headersColumnMissing(Throwable $e): bool
+    {
+        return $e instanceof QueryException
+            && ($e->errorInfo[0] ?? null) === '42703'
+            && str_contains((string) ($e->errorInfo[2] ?? ''), 'column "response_headers" of relation "idempotency_keys" does not exist');
     }
 
     /**

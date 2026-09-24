@@ -4,6 +4,8 @@ namespace Tests\Feature\Security;
 
 use App\Models\IdempotencyKey;
 use App\Support\TenantContext;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\Feature\Traits\CreatesTestTenant;
@@ -235,16 +237,17 @@ class MobileIdempotencyReplayFidelityTest extends TestCase
      * resolved and replays without them, rather than staying in flight and
      * refusing every retry.
      *
-     * SIMULATED: the write is refused by an `updating` listener, because a
-     * real failed statement would abort the RefreshDatabase transaction. The
-     * real column drop is measured in the migration rollback rehearsal.
+     * The exception is PostgreSQL's own: the column is really dropped and the
+     * claim's update really run, inside a savepoint (realFailure). It is
+     * raised from `updating` because a failed statement in the test's own
+     * transaction would abort it. The rollback rehearsal measures the same
+     * case with the column dropped for real, outside any test transaction.
      */
     public function test_a_failed_header_write_still_resolves_the_claim(): void
     {
         IdempotencyKey::updating(function (IdempotencyKey $claim) {
             if ($claim->isDirty('response_headers')) {
-                throw new \Illuminate\Database\QueryException('pgsql', 'update "idempotency_keys" ...', [],
-                    new \Exception('SQLSTATE[42703]: Undefined column: column "response_headers" of relation "idempotency_keys" does not exist'));
+                throw $this->realFailure($claim, 'alter table idempotency_keys drop column response_headers');
             }
         });
 
@@ -256,6 +259,52 @@ class MobileIdempotencyReplayFidelityTest extends TestCase
         $this->assertNull($replay->headers->get('ETag'), 'only the headers were lost');
         $this->assertSame(200, IdempotencyKey::withoutGlobalScopes()
             ->where('key', 'patch-replay-fidelity')->value('response_status'));
+    }
+
+    /**
+     * [XR-07, second review] Laravel appends the SQL to a QueryException's
+     * message, and the completion UPDATE always names response_headers. So
+     * matching the message took ANY failure of that statement for a missing
+     * column, and completed the claim without its headers.
+     *
+     * The failure here is real and unrelated: PostgreSQL refuses this exact
+     * UPDATE under a check constraint (23514), not for a missing column.
+     */
+    public function test_an_unrelated_failure_naming_the_column_leaves_the_claim_unresolved(): void
+    {
+        IdempotencyKey::updating(function (IdempotencyKey $claim) {
+            if ($claim->isDirty('response_headers')) {
+                throw $this->realFailure($claim,
+                    'alter table idempotency_keys add constraint xr07_probe check (response_headers is null) not valid');
+            }
+        });
+
+        [$first, $retry] = $this->patchTwiceUnderOneKey();
+
+        $first->assertOk();
+        $this->assertSame(0, (int) IdempotencyKey::withoutGlobalScopes()
+            ->where('key', 'patch-replay-fidelity')->value('response_status'),
+            'the claim must stay unresolved, not complete without its replay headers');
+        $retry->assertStatus(409);
+        $this->assertSame('idempotency_in_flight', $retry->json('errors.0.code'));
+    }
+
+    /**
+     * Run the claim's pending UPDATE for real after $ddl, inside a savepoint
+     * that undoes both, and return PostgreSQL's exception.
+     */
+    private function realFailure(IdempotencyKey $claim, string $ddl): QueryException
+    {
+        try {
+            DB::transaction(function () use ($claim, $ddl) {
+                DB::statement($ddl);
+                DB::table('idempotency_keys')->where('id', $claim->id)->update($claim->getDirty());
+            });
+        } catch (QueryException $e) {
+            return $e;
+        }
+
+        $this->fail('the probe statement was expected to fail');
     }
 
     /**
