@@ -81,7 +81,9 @@ class KarigarInvoiceController extends Controller
     {
         $validated = $request->validate([
             'karigar_id' => 'required|integer',
-            'job_order_id' => 'nullable|integer',
+            // S3-15: only this shop's job order may be linked.
+            'job_order_id' => ['nullable', 'integer',
+                \Illuminate\Validation\Rule::exists('job_orders', 'id')->where('shop_id', auth()->user()->shop_id)],
             'mode' => 'required|in:purchase,job_work',
             'karigar_invoice_number' => [
                 'required', 'string', 'max:100',

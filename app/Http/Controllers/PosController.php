@@ -314,7 +314,11 @@ class PosController extends Controller
 
             'payments'             => 'nullable|array|min:1',
             'payments.*.mode'              => 'required_with:payments|in:cash,upi,bank,wallet,old_gold,old_silver,other,emi',
-            'payments.*.payment_method_id' => 'nullable|integer',
+            // S3-14: the account must be this shop's. It is written to the
+            // append-only invoice_payments row, where another shop's id could
+            // never be corrected and would block that shop deleting its account.
+            'payments.*.payment_method_id' => ['nullable', 'integer',
+                Rule::exists('shop_payment_methods', 'id')->where('shop_id', (int) auth()->user()->shop_id)],
             'payments.*.amount'    => 'required_with:payments|numeric|min:0',
             'payments.*.reference' => 'nullable|string|max:100',
             'payments.*.metal_gross_weight'  => 'nullable|numeric|min:0',
