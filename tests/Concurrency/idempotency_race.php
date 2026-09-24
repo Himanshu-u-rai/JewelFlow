@@ -66,6 +66,13 @@ require __DIR__ . '/../../vendor/autoload.php';
 $app = require __DIR__ . '/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
+// Guards both entry points (the parent and every `fire` child): no fixture,
+// request or query runs against any other database.
+if (DB::connection()->getDatabaseName() !== 'jewelflow_testing') {
+    fwrite(STDERR, "REFUSED: not jewelflow_testing\n");
+    exit(2);
+}
+
 /** Fixture builder — reuses the same tenant helper the PHPUnit suite uses. */
 final class RaceFixture
 {

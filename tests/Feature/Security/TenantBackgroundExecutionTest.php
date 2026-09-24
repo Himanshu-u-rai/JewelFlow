@@ -81,4 +81,77 @@ class TenantBackgroundExecutionTest extends TestCase
         $this->assertSame(0, DB::table('loyalty_transactions')->where('description', 'Points expired')->count(),
             'and nothing is written in either shop');
     }
+
+    // ── Worker boundary (§7e hardening) ───────────────────────────────────
+    //
+    // TenantContext is cleared on the queue worker's Looping event, before
+    // each job is fetched (AppServiceProvider). These tests pin what that
+    // choice must NOT break: a job run synchronously inside a request, and
+    // nested runFor. The reused worker itself is exercised by
+    // tests/Concurrency/queue_worker_tenant_reuse.php.
+
+    /**
+     * A queued job run on the `sync` connection goes through SyncQueue, which
+     * raises JobProcessing/JobProcessed exactly as a worker does — the path a
+     * request takes when it dispatches with QUEUE_CONNECTION=sync. (A closure
+     * passed to dispatch_sync() is instead called directly, with no queue
+     * events, so it would test nothing here.)
+     */
+    private function runOnSyncQueue(\Closure $job): void
+    {
+        dispatch($job)->onConnection('sync');
+    }
+
+    /** Written by queued closures: they are serialized, so a by-reference capture is not. */
+    public static ?int $seenInsideJob = null;
+
+    public function test_a_job_run_on_the_sync_queue_keeps_its_callers_tenant_context(): void
+    {
+        self::$seenInsideJob = null;
+        $processing = 0;
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Queue\Events\JobProcessing::class, function () use (&$processing) { $processing++; });
+        TenantContext::set(101);
+
+        $this->runOnSyncQueue(function () {
+            TenantContext::runFor(202, function () { TenantBackgroundExecutionTest::$seenInsideJob = TenantContext::get(); });
+        });
+
+        $this->assertSame(1, $processing, 'the job went through the queue lifecycle');
+        $this->assertSame(202, self::$seenInsideJob, 'the job ran under its own shop');
+        $this->assertSame(101, TenantContext::get(), "the caller's context survives a synchronous job");
+    }
+
+    /**
+     * Control for the choice of event: JobProcessing (Queue::before) fires for
+     * a synchronous job too, so clearing there would have wiped the caller's
+     * context. Registered here only; the application clears on Looping.
+     */
+    public function test_control_a_clear_on_queue_before_would_wipe_a_synchronous_callers_context(): void
+    {
+        \Illuminate\Support\Facades\Queue::before(fn () => TenantContext::clear());
+        TenantContext::set(101);
+
+        $this->runOnSyncQueue(function () {});
+
+        $this->assertNull(TenantContext::get(), 'JobProcessing fired inside the caller and cleared its context');
+    }
+
+    public function test_nested_run_for_restores_each_level(): void
+    {
+        $trail = [];
+        TenantContext::runFor(1, function () use (&$trail) {
+            $trail[] = TenantContext::get();
+            TenantContext::runFor(2, function () use (&$trail) { $trail[] = TenantContext::get(); });
+            $trail[] = TenantContext::get();
+            try {
+                TenantContext::runFor(3, fn () => throw new \RuntimeException('inner failure'));
+            } catch (\RuntimeException) {
+                $trail[] = TenantContext::get();
+            }
+        });
+
+        $this->assertSame([1, 2, 1, 1], $trail);
+        $this->assertNull(TenantContext::get());
+    }
 }
+

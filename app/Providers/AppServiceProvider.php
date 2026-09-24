@@ -11,6 +11,8 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -260,6 +262,16 @@ class AppServiceProvider extends ServiceProvider
         // XR-02: a connection whose session holds an idempotency claim lock
         // may not be given a new session until the claim is resolved.
         Event::listen(ConnectionEstablished::class, [EnsureIdempotency::class, 'pinned']);
+
+        // §7e: a queue worker reuses one process — and TenantContext's static
+        // — across jobs for different shops. Clear it before each job is
+        // fetched. `Looping` fires only in the worker's daemon loop; unlike
+        // Queue::before (JobProcessing), it does not fire for a job run
+        // synchronously inside a request, whose tenant context must survive.
+        // Returns nothing: a `false` from a Looping listener pauses the worker.
+        Queue::looping(function (): void {
+            TenantContext::clear();
+        });
 
         Event::listen(Logout::class, function (Logout $event): void {
             if ($event->guard === 'platform_admin') {

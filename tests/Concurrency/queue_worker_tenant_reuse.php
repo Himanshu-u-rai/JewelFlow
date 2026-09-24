@@ -25,12 +25,17 @@
  * as ExportController::dispatchQueued(). The probes and the leaky job are
  * harness-owned closures.
  *
- * SAFE: the probes before `leaky` see no context; A's file names A's customer
- * and not B's, and B's the reverse; the throwing job is marked failed and
- * leaves no context behind; the mismatched job writes nothing and B's export
- * row is untouched. The probe after `leaky` measures a property of the
- * runtime, not a defect: whether the worker itself clears context between
- * jobs. Refuses any database not named jewelflow_testing.
+ * SAFE: every probe sees no context; A's file names A's customer and not
+ * B's, and B's the reverse; the throwing job is marked failed and leaves no
+ * context behind; the mismatched job writes nothing and B's export row is
+ * untouched.
+ *
+ * The `leaky` job is a DEFENSIVE-CONTROL test, not an application exploit:
+ * no application job sets context without restoring it. It checks the
+ * worker-level defence — TenantContext cleared on the Looping event, before
+ * each job is fetched (AppServiceProvider). Before that defence, the probe
+ * after it saw the leaked shop. Refuses any database not named
+ * jewelflow_testing.
  *
  * Each export is judged on the file it wrote (markFinished ran), not on its
  * final status: in this schema every queued export then fails at its
@@ -175,6 +180,7 @@ printf("mismatched payload (shop A, B's export row): B's row status %s, file %s\
 // array_key_exists, not ??: a probe that recorded null must count as null.
 $saw = fn (string $k) => array_key_exists($k, $probes) ? $probes[$k] : 'NOT RUN';
 $safe = $saw('before-A') === null && $saw('after-A') === null && $saw('after-failing-A') === null && $saw('after-B') === null
+    && $saw('after-leaky') === null
     && str_contains($contents($a), 'AlphaOnlyXR') && ! str_contains($contents($a), 'BravoOnlyXR')
     && str_contains($contents($b), 'BravoOnlyXR') && ! str_contains($contents($b), 'AlphaOnlyXR')
     && $a2?->status === ExportAuditService::STATUS_FAILED && ! $a2?->file_path
@@ -182,8 +188,8 @@ $safe = $saw('before-A') === null && $saw('after-A') === null && $saw('after-fai
 printf("final status of exports A and B: %s, %s%s\n", $a?->status, $b?->status,
     $a?->status === ExportAuditService::STATUS_FAILED ? ' — S3-17: '.mb_substr((string) $a->error, 0, 80) : '');
 
-echo 'runtime property — after a job that set context and did not restore it, the next job saw: ',
-    json_encode($saw('after-leaky')), $saw('after-leaky') === null ? ' (cleared by the worker)' : ' (NOT cleared by the worker)', "\n";
+echo 'defensive control — after a job that set context and did not restore it, the next job saw: ',
+    json_encode($saw('after-leaky')), $saw('after-leaky') === null ? ' (cleared on Looping)' : ' (NOT cleared)', "\n";
 
 foreach ([$a, $b] as $e) {
     if ($e?->file_path) {

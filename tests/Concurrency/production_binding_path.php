@@ -37,6 +37,12 @@ if (($argv[1] ?? null) === 'request') {
     $app = require __DIR__.'/../../bootstrap/app.php';
     $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
     $kernel->bootstrap();
+    // The child is its own entry point: refuse here, before any user lookup
+    // or request dispatch, not only in the parent.
+    if (DB::connection()->getDatabaseName() !== 'jewelflow_testing') {
+        fwrite(STDERR, "REFUSED: not jewelflow_testing\n");
+        exit(2);
+    }
     if ($app->runningInConsole() || App\Support\TenantContext::get() !== null) {
         echo json_encode(['status' => -1, 'err' => 'not on the production path']), "\n";
         exit(0);
