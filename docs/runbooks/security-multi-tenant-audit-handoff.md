@@ -17,28 +17,38 @@ exposure: every production statement is as of that observation or earlier.
 Before executing any approved step, run that phase's drift check
 (`signature-migration-release-order.md` § Drift checks) and stop on drift.
 
-**This round (§0e — answering the review of `592d864`):** web code through
-`4b53fb3e98a7ec1deea9ee82b44e3a941a73ce0f` (S3-17 deployment window `b2c1094`,
-S3-16 loyalty writers `0069839`, inventory trust rules and report joins
-`f6d3473`, audit tools and historical wording `4b53fb3`); mobile unchanged at
-`4f10a3b5df7d64c11b39b90713169155c713d233`. The reviewed candidate is
-`592d864f1f2003d104310c51af6903a705a83475`; the packet carries the delta from
-it. That review accepted the legacy-export download refusal, worker cleanup
-on `Looping`, the child-process database guard and the mobile "Already
-recorded" message; earlier acceptances stand; **it is not release approval.**
-**Rounds before:** §0d (review of `c9d30b0`: S3-14/S3-15 validation repairs
-and S3-18's protection for new exports accepted); §7e (candidate
-`d37879b6c36991f17bafec50137adaaaba7c677b`).
-Four independent source reviews so far: packet
+**This round (§0f — answering the review of `b8baf4e`):** web code through
+`c54dc45b53ed5238e4a2f01a99d41bdb5f262d1a`:
+- raw-SQL inventory correction `7f1afe3`;
+- loyalty harness premises `1d036af`;
+- **S3-19** legacy admin guard `ecbe77e`;
+- platform action controls and the bulk-unsuspend fix `254df10`;
+- **S3-20** backfill label `d105d4d`;
+- the tenant review `c54dc45`.
+
+Mobile is unchanged at `4f10a3b5df7d64c11b39b90713169155c713d233`. The
+reviewed candidate is `b8baf4e21da934f1bab9a765fa0b628988dafb30`, and the
+packet carries the delta from it. That review found the application repairs
+of §0e supported by the source. Earlier acceptances stand. **It is not
+release approval.**
+
+**Rounds before:**
+- §0e: review of `592d864`;
+- §0d: review of `c9d30b0`, which accepted the S3-14/S3-15 validation
+  repairs and S3-18's protection for new exports;
+- §7e: candidate `d37879b6c36991f17bafec50137adaaaba7c677b`.
+
+Five independent source reviews so far: packet
 `7b1d709162109fe51f56d03d77c14e3e50d7b9ea` (seven findings, §0b); candidate
 `9aaf1af8f366cb1b3d038a383586d6cf9ae81112` (XR-01, XR-04, XR-06 accepted;
 XR-02, XR-03, XR-05, XR-07 partial, §0c); candidate
 `d37879b6c36991f17bafec50137adaaaba7c677b` (**XR-02, XR-03, XR-05 and XR-07
 accepted**); candidate `c9d30b05da4c0c43362eb897bd0ca3aeaa893927` (§0d);
-candidate `592d864f1f2003d104310c51af6903a705a83475` (above).
+candidate `592d864f1f2003d104310c51af6903a705a83475` (§0e); candidate
+`b8baf4e21da934f1bab9a765fa0b628988dafb30` (above).
 Source-review acceptance is not deployment approval and does not certify the
-application as a whole. This document's own commit is later than `4b53fb3`
-and changes documentation, the resolved inventory and the packet builder only.
+application as a whole. This document's own commit is later than `c54dc45`
+and changes documentation and the packet builder only.
 
 Mobile repository `/home/himanshu/Desktop/jewelflowMobileApp`, branch
 `rebrand/jewelflows-mobile`. Audit baseline
@@ -56,7 +66,171 @@ not mine.
 
 ---
 
-## 0e. Review of `592d864` — this round
+## 0f. Review of `b8baf4e` — this round
+
+The reviewer found this round's application repairs supported by the source
+and asked for four verification gaps to be closed and the tenant review to be
+finished. **Not release approval.** Each item was reproduced or measured
+locally before it was changed. Everything is local to `jewelflow_testing`.
+Categories are kept apart below: confirmed defects, conditional risks, code
+read (no runtime claim), and measured scenarios.
+
+| Item | Reproduced / measured before | Change | Commit | Evidence after |
+|---|---|---|---|---|
+| Raw-SQL inventory misclassification (tooling) | **yes**: 14 of 31 fixture markers failed on the committed scanner. The five DetectStuckStates/ReconcileKarigarBalances statements scanned as table `now`, status `trusted`. `return_orders … LEFT JOIN customers` was recorded as `return_orders` only. A dynamic table with a context filter, a table not in the schema, a global table and a convention-owned table all printed `trusted` | raw SQL tokenized for every table it names; unplaced tables classified by hand; unknown stays unknown | `7f1afe3` | `TenantQuerySweepTrustRulesTest` — 33 markers, the new ones RED first |
+| Loyalty harness verdict (tooling) | **yes**: the committed harness with all three redemption workers exiting 1 printed scenario 2 **SAFE** (0 redemptions). Scenario 3 accepted any lock wait. Also: scenario 2 did not race — 60 redeemed / 0 refused, because `loyalty:expire` walks every leftover test shop first | SAFE requires every premise, printed one by one; scenario 3 attributes the wait by pid; `--break=` modes | `1d036af` | normal run SAFE; three break modes UNSAFE; lock-removed control UNSAFE (−70) |
+| **S3-19** legacy `/super-admin` URLs skipped the admin guard | **yes**: with a password-only session (second factor not cleared), `/super-admin/shops`, `/shops/{shop}`, `/users`, `/users/{user}` answered **200**; `PATCH …/users/{user}/password` **reset a shop user's password** (the new one verified); `PATCH …/shops/{shop}/status` **suspended a shop**. A session revoked by a password change answered 200 too | the legacy views and actions pass `admin` + `admin.password.fresh` + `admin.mfa` (+ `super_admin` for actions) | `ecbe77e` | `LegacyAdminRouteGuardTest` (2, RED first); 122 admin tests unchanged |
+| **S3-20** inconsistent stored references disclose another shop's data — the §0e report-join disclosures, now with an ID; persisted form found this round | **yes**: `accounting:backfill-snapshots` wrote shop B's UPI method label `BravoSecret (bravo@upi)` into shop A's quick-bill payment | the label comes only from a method of the row's own shop; otherwise from the mode | `d105d4d` (joins: `f6d3473`) | `BackfillSnapshotReferenceTest` (RED first); `ReportReferenceIntegrityTest` kept |
+| Platform action targets (controls) | measured, not assumed: impersonation through shop A with B's user 404s; a role from another shop is refused; a bulk action changes exactly the shops listed. **Functional defect found:** bulk unsuspend answered **500** (`42804` — a PHP `true` in a bulk `update()`) | `DB::raw('true'/'false')` (CLAUDE.md) | `254df10` | `PlatformActionTargetTest` (3) |
+| Tenant review | 314 rows unread after the correction (not 200) | every row read with its boundary | `c54dc45` | `reviewed.tsv`; resolved inventory: 0 UNREAD |
+
+### Part 1 — raw SQL, identified and classified
+
+**What the scanner does now.** A raw statement's text is rebuilt from the
+AST. Each dynamic part becomes `⟨?⟩`, and SQL held in a variable assigned once
+is followed. The text is tokenized: every table after FROM (lists included),
+JOIN, INTO, UPDATE, DELETE … USING and TRUNCATE/LOCK is recorded, in order,
+subqueries included. These are not tables: a function after FROM/JOIN
+(`NOW()`, `generate_series()`), the FROM inside EXTRACT/SUBSTRING/TRIM/OVERLAY,
+`IS [NOT] DISTINCT FROM`, `FOR UPDATE`, `DO UPDATE`, CTE names, literals and
+comments. A table position holding anything but a name is `?`. The ceiling is
+stated in the code: this is a tokenizer, not a grammar, and a new shape it
+misreads surfaces as `?` or an extra table, both of which are read.
+
+**Tables the schema cannot place — explicit, by hand.** *Global* means no
+shop's rows: migrations, plans, permissions, platform products, settings,
+feature flags, counters, backup log, platform staff, plus system catalogs and
+statements naming no table. *Convention* means rows owned through an untyped
+column: notifications, sessions, password-reset tokens, otps, cache, queue
+tables, platform audit logs and announcements. These are read, never assumed
+global. `shops` is the tenant registry, owned by its own id — **correction to
+my own classification:** earlier rounds excluded it, so 70 shop-row lookups
+were never read. Any other name is `?`: unknown, read, never global. A
+statement naming an unknown table, or more than one non-global table, is never
+trusted: one shop filter does not show which table it constrains. Status
+`global` is now separate from `trusted`.
+
+**Reconciliation, `b8baf4e` → `7f1afe3` (the correction) → `c54dc45` (the review):**
+
+| At | Expressions | trusted | global | read (verdict) | UNREAD |
+|---|---|---|---|---|---|
+| `b8baf4e` | 871 | 387 (of which **268** on tables the schema could not place, 5 of them `now`) | — | 284 | 200 (admin 61, console 139) |
+| `7f1afe3` | 874 | 126 | 154 | 280 | **314** (tenant 48, admin 98, console 168) |
+| `c54dc45` | 874 | 126 | 154 | 594 | **0** |
+
+Where the 268 went: 147 → `global`; 112 → UNREAD (65 shop-registry lookups,
+the convention tables, the five statements, now over items, job_orders,
+karigars, repairs and customers); 9 → `trusted` (keyed by the caller's own
+shop or id). Also: 2 tenant rows `trusted` → UNREAD (a table only a trait or
+instance knows is `?`); 3 new rows (admin joins to `shops`, never recorded
+before); 7 statements naming no table → `global` (`SET …`, `SELECT 1`,
+advisory locks — four of them carried `earlier` verdicts, since pruned). The
+correction raised the outstanding count from 200 to 314. All 314 are read.
+
+### Part 2 — the loyalty harness enforces its premises
+
+SAFE now requires, per scenario, and prints each premise that fails:
+- every worker exits 0 and answers every request it was given;
+- every answer is `redeemed` (redirect to the customer) or `refused`
+  (redirect with "Insufficient loyalty points"). A 500, or anything else, is
+  UNSAFE;
+- the transactions the scenario implies, and no others. Every customer
+  starts at 110 (100 due, 10 not due) and must end at 10 with exactly one
+  expiry: 100 if the redemption was refused, 40 if a redemption of 60 came
+  first. The redemptions recorded must equal those the workers reported. In
+  scenario 2 both orders must occur, or the race did not race.
+
+Scenario 3 attributes the lock wait. The child prints its backend pid before
+redeeming. The wait counts only when that backend waits on a lock and this
+process's backend is in its `pg_blocking_pids`. Scenario 2's expiry process
+runs loyalty:expire's per-shop step (`expireDue`) for the harness shop only.
+The command reached these customers after every redemption had finished (60
+redeemed / 0 refused), so the scenario was not racing.
+
+| Run | Result |
+|---|---|
+| normal (final) | **SAFE**: expiry 0 / 3 redeemers 0; 24 redeemed, 36 refused; 60 expired once; expiry total 4560 = 36×100 + 24×40; child backend blocked by the holder's backend, refused |
+| `--break=worker-exit` | **UNSAFE** (2, 3): "every worker exited 0…", "every request was answered", "the child reported its database backend"… |
+| `--break=http-500` | **UNSAFE** (2, 3): every balance consistent and 60 expired once — only "every request was answered redeemed or refused (no 500…)" caught it |
+| `--break=no-expiry` | **UNSAFE** (1, 2): "the expiry wrote one row, of 100", "every customer expired exactly once"… |
+| customer lock removed (control, restored after) | **UNSAFE** (2, 3): scenario 3 child blocked by the holder, answered `redeemed`, balance **−70**, ledger `redeem 80 → 30` — the deterministic evidence of §0e, reproduced; scenario 2 this time: 1 negative balance, 1 broken chain |
+
+### Part 3 — the tenant review, finished
+
+**Entry boundaries, from the source, with what was tested:**
+
+| Surface | Boundary | Scope | Tested |
+|---|---|---|---|
+| `/admin/*` | `platform_admin` guard (its own table and provider) → `admin` (active) → `admin.password.fresh` (not revoked by a password change) → `admin.mfa` (verified email, second factor this session); writes and sensitive views add `platform.role:super_admin` | every shop, by design | existing admin suites; S3-19 |
+| `/super-admin/*` (legacy) | **was `admin` only** — S3-19; now the same stack | every shop and user | `LegacyAdminRouteGuardTest` |
+| `/admin/register` | open only while no super admin exists; the model refuses to delete, demote or suspend the last active one | bootstrap | existing (`test_last_super_admin_cannot_be_deleted`) |
+| console | CLI or scheduler. The only HTTP-reachable command is `queue:retry` (super_admin + MFA). Per-shop writers run each shop under `TenantContext::runFor`, and in console without context the scope fails closed | every shop, by design | existing command suites |
+| jobs | tenant-data jobs run under `runFor` (import, export, reprice) or filter `shop_id` explicitly (push); admin-queued jobs act on the shops listed | per shop | §0d Part 3 worker harness |
+
+**The 314 rows, by verdict:** admin 97 `ok-platform` and 1 `ok-uniqueness`;
+console 156 `ok-platform` and 12 `ok-self`; tenant-facing 18 `ok-platform`,
+9 `ok-context`, 7 `ok-self`, 7 `latent`, 3 `ok-record`, 3 `ok-uniqueness`,
+1 `ok-token`. 38 of them are writes (console 21, admin 10, tenant 7). Each
+note names the route and guard or the caller, and the scope. The
+tenant-facing shop-registry lookups (25) are traced to the caller's shop
+(pricing, GST, dashboards, the write gate), the record's own shop (bills,
+imports, loyalty) or a public slug (catalog). OtpService has no caller, so
+its rows are `latent`. The console reports that join customers or karigars on
+a stored reference without shop equality print to the operator, who already
+sees every shop: attribution only, no tenant disclosure.
+
+**Outside the scanner — Blade views, read by hand.** The scanner parses
+`app/` only. A pattern search of `resources/views` (`DB::`, `withoutTenant`,
+`withoutGlobalScope`, `\App\Models\…::where|find|query|…`) finds 14
+expressions:
+- repair and audit-log lookups in `invoice_print`, `invoices/show` and
+  `invoices/index` filter `shop_id = auth()->user()->shop_id` on scoped models;
+- `website-tab` queries scoped `Item`;
+- `compliance-card` follows a route-bound customer's relation;
+- the announcement dismissal subqueries filter the authenticated user;
+- `super-admin/users/show` lists the viewed user's own shop's roles
+  (admin + MFA).
+All read; none crosses shops. The pattern search is bounded: a query written
+another way in a view is not found by it.
+
+**Confirmed defects (reproduced, repaired):**
+- **S3-19**: the legacy admin URLs lacked the guard stack.
+- **S3-20**, persisted form: the snapshot backfill copied another shop's
+  payment-method label.
+- Bulk unsuspend 500 (`42804`). Functional, not isolation.
+- The inventory and harness defects above. Tooling.
+
+**Conditional risks (not reproduced as reachable; each names its condition):**
+- **S3-20** needs inconsistent references to exist. Every current form
+  validates `exists + shop`, and how many old rows exist is unknown (R10:
+  `tenant:audit-foreign-references`, NOT RUN on production).
+- Two first registrations racing before any super admin exists could both
+  succeed. `lockForUpdate()->exists()` on zero rows locks nothing. Inferred
+  from the source; not measured; bootstrap window only.
+- The inline system notices in `layouts/app.blade.php` skip `isForShop` and
+  `isForRealm`. A notice aimed at one edition shows to every edition.
+  Platform-authored content, no shop's data: a targeting defect, not
+  isolation. Not changed.
+- The invoice-snapshot half of `accounting:backfill-snapshots` queries the
+  scoped `Invoice` model without context. Measured: one finalized invoice,
+  none processed. Fail-closed and functional. Not changed.
+- `invoice_payments` and `karigar_payments` are append-only (protected
+  triggers), so an unlabeled row there aborts the backfill (measured:
+  P0001). Not changed: the triggers are protected (Art. IX.A).
+
+**Code read, no runtime claim:** the 314 verdicts; the Blade supplement; job
+context handling.
+
+### Part 4 — what this round does not claim
+
+Tenant isolation is not declared complete. The inventory covers `app/` and
+the Blade pattern search. It does not cover Octane, a transaction-mode
+pooler, the production queue driver, or any production data. Production has
+not been observed since 2026-09-20T18:36:08+00:00.
+
+---
+
+## 0e. Review of `592d864`
 
 The reviewer accepted the bounded legacy-export download refusal, worker
 cleanup on `Looping`, the child-process database guard and the mobile "Already
@@ -151,7 +325,9 @@ unproven record (`record?`) are read. Tracing depth rose from 3 to 10 hops
 
 **Inspected.** 284 tenant-facing rows now carry verdicts (the 178 earlier
 plus 106 surfaced; 42 re-keyed by the join edits were re-read; 42 stale keys
-pruned). Admin 61 and console 139 rows are listed **UNREAD**. The resolved
+pruned). Admin 61 and console 139 rows are listed **UNREAD** (**corrected in
+§0f**: the raw-SQL and table-classification fix raised the count to 314, all
+since read). The resolved
 inventory — every expression with status, note, location and full text — is
 `docs/runbooks/tenant-inventory-resolved.tsv`.
 
@@ -183,7 +359,8 @@ turns an unknown into a clean result, and neither infers the past from the
 configuration of today.
 
 **Still no claim that tenant isolation is complete.** This round covers the
-paths and rules named; 200 admin and console rows are unread, production is
+paths and rules named; 200 admin and console rows are unread (314 after the
+§0f correction; all read in §0f), production is
 unobserved, and the test-family map is a heuristic.
 
 ---
@@ -812,6 +989,28 @@ channel kept. The original entry follows as the record.*
   a disclosure. Replaced by `reporting:audit-export-files` and the four
   questions of §0d Part 1.
 
+### S3-19 — the legacy `/super-admin` URLs skipped the admin guard — **FIXED locally, `ecbe77e`**
+
+`routes/admin.php` routed `/super-admin/shops`, `/shops/{shop}`, `/users`,
+`/users/{user}` and the super-admin PATCHes (shop status, user status, user
+**password**) to the same controllers as `/admin`, but behind `admin` only.
+Reproduced with a password-only platform-admin session: 200 on every view,
+a shop user's password reset (the new one verified), a shop suspended; a
+session revoked by a password change also got 200. Now the same stack as
+`/admin`. Exposure needs a platform admin's password; with it, the second
+factor protected nothing on these URLs. Whether they were used in production
+is a question for the access log (R10), not answered here.
+
+### S3-20 — inconsistent stored references disclose another shop's data — **repaired locally, `f6d3473` (reports), `d105d4d` (backfill)**
+
+Named in §0e Part 3 without an ID; numbered now, nothing renumbered. With a
+reference to another shop's row, 24 report joins named that shop's customer
+or user (repaired `f6d3473`), and `accounting:backfill-snapshots` copied that
+shop's payment-method label into this shop's payment rows for good (repaired
+`d105d4d`). Current forms validate `exists + shop`: the exposure depends on
+rows written before that or by a path that skipped it — counted by
+`tenant:audit-foreign-references` (R10, not run on production).
+
 ### S3-02 — karigar invoice attachments on the public web path
 
 * **What goes wrong.** Karigar invoice files uploaded by the deployed baseline
@@ -961,6 +1160,8 @@ renumbering.**
 | S3-11 | `ReturnService::approveReturn` cancels the pending header, then can fail | *(new — ID confirmed unused before assignment)* | §7c-2, FIXED |
 | S3-12 | `If-Match` validator is one-second granular (`updated_at` is `timestamp(0)`), so a concurrent write is silently lost | *(new — ID confirmed unused before assignment)* | §7c-6, characterized; since REPAIRED locally, `69b4439` (XR-05, §0b) |
 | S3-13 | Editing a quick bill re-captures `shop_snapshot` on the shared save path, so an edit to an unrelated field re-states the supply type on a bill that keeps its number. **Presentation only** — bill number and every stored figure verified unchanged | *(new — ID confirmed unused before assignment)* | §7d-1, CHARACTERIZED, NOT REPAIRED |
+| S3-19 | The legacy `/super-admin` URLs reached every shop and user, and reset passwords, without `admin.mfa` and `admin.password.fresh` | *(new — ID confirmed unused before assignment)* | §0f, **FIXED locally `ecbe77e`** |
+| S3-20 | An inconsistent stored reference brings another shop's data into this shop's output: report joins (§0e Part 3, repaired `f6d3473`) and, persisted, the payment-label backfill (`d105d4d`) | named in §0e without an ID — the same finding, now numbered; nothing renumbered | §0f; §0e Part 3 |
 | S3-04b | The settings page previews the current signature from `/storage/…`, broken for every signature stored on the private disk since S3-04 — a regression from this branch | *(new — ID confirmed unused before assignment)* | §0a, **REPAIRED locally `51ca987`** |
 
 Still visible and unclosed, listed explicitly so renumbering cannot bury them:
@@ -3003,6 +3204,38 @@ permissions; C removes a privilege concern and needs its own approval.
 
 ## 8. Commands actually run, and their results
 
+### Review of `b8baf4e` (§0f) — sequential, nothing else using `jewelflow_testing`
+
+```
+php tests/Inventory/tenant_query_sweep.php --path=tests/Inventory/Fixtures --all   (fixture comparison)
+  -> committed scanner: 14 of 31 markers failed (RawSqlFixtures 28, 40, 53, 66, 79, 92, 100, 116, 123, 133,
+     138, 143, 148, 154); after 7f1afe3: 0 of 33
+tests/Feature/Security/TenantQuerySweepTrustRulesTest.php          -> RED at 28 ("expected review", got trusted/now); after: passed (88 assertions)
+php tests/Inventory/tenant_query_sweep.php --resolved              -> 874 expressions, parse failures 0: 126 trusted, 154 global,
+                                                                     594 read, 0 UNREAD (at c54dc45; 314 UNREAD at 7f1afe3)
+
+php tests/Concurrency/loyalty_redeem_expiry_race.php (committed harness, redeem workers made to exit 1)
+  -> scenario 2 printed SAFE: 3 workers exit 1, 0 redemptions, 60 expiries; RESULT UNSAFE only via scenario 3's timeout
+php tests/Concurrency/loyalty_redeem_expiry_race.php (1d036af)
+  -> first run: SAFE but 60 redeemed / 0 refused (no race: loyalty:expire reached the shop last) — harness changed
+  -> final: SAFE; 24 redeemed / 36 refused; expiry 4560 = 36x100 + 24x40; child pid blocked by holder pid; refused
+  -> --break=worker-exit: UNSAFE (2, 3); --break=http-500: UNSAFE (2, 3; balances consistent, answers caught it);
+     --break=no-expiry: UNSAFE (1, 2); customer lock removed: UNSAFE (2, 3) — scenario 3 balance -70, "redeem 80 -> 30"
+
+tests/Feature/Security/LegacyAdminRouteGuardTest.php               -> before ecbe77e: 2 failed (200 at the first legacy URL);
+                                                                     probe: password reset and shop suspension succeeded; after: 2 passed
+tests/Feature/Security/PlatformActionTargetTest.php                -> bulk unsuspend 500 (42804 at the first error); after 254df10: 3 passed
+tests/Feature/Security/BackfillSnapshotReferenceTest.php           -> before d105d4d: failed (label "BravoSecret (bravo@upi)" on shop A's row);
+                                                                     after: passed; with SignatureImmutabilityEndToEndTest: 8 passed
+tests/Feature/Admin, tests/Feature/Security, PlatformAdminMfa, PlatformBoundaryHardening,
+PlatformAdminContactChange, AdminBillingTerm, ShopStatusSubscriptionGuard, AdminMessaging
+                                                                   -> 494 passed (2119 assertions), 49.76 s, at d105d4d
+```
+
+Not re-run this round, reused from §0e (code they exercise unchanged): the
+full suite (3411 passed at `4b53fb3`), the other eight concurrency harnesses,
+both rehearsals, `tenant:audit-foreign-references`.
+
 ### Review of `592d864` (§0e) — sequential, nothing else using `jewelflow_testing`
 
 ```
@@ -3918,11 +4151,13 @@ Local work that remains, none of it blocking the conditions in §11:
 
 1. S3-05 contact line — a product decision on whether a reprint shows the
    seller's phone, WhatsApp and email as issued or as today (D-17).
-2. A mobile message for `idempotency_outcome_reconciled`. It currently falls
-   into the generic 409 alert.
-3. Tenant isolation: every §7e category is inventoried. Left: clearing tenant
-   context in `Queue::before` (recommended), reading the admin and console
-   expressions individually, and S3-16/S3-17 once decided.
+2. ~~A mobile message for `idempotency_outcome_reconciled`~~ — **correction:**
+   built in mobile `4f10a3b` and accepted at `592d864`; this item was stale.
+3. Tenant isolation: every §7e category is inventoried and, since §0f, every
+   inventory row read. **Corrections:** worker context is cleared on
+   `Looping` (§0d Part 3, accepted), not "recommended"; S3-17 is repaired
+   (§0d Part 4, §0e). Left: Octane, a transaction-mode pooler and the
+   production queue driver (not run), and S3-16's activation decision.
 4. Candidate-public asset classification: `products`, `shop-logos`,
    `catalog-heroes`, and the two upload writers (§7).
 5. S3-13, S3-06b and S3-06c, once their policy questions are answered.
@@ -3938,9 +4173,10 @@ validation repairs and S3-18's protection for new exports accepted; answered
 further in §0d, locally only). Answering a finding is not a reviewer accepting
 the answer. **Nothing here establishes that the application as a whole is
 secure:** these results cover the named findings and routes; the
-tenant-isolation inventory (§7e, §0d Part 2) covers the forms and paths it
-names, lists 157 admin and console rows it has not read, and does not make
-isolation complete. Every production statement here
+tenant-isolation inventory (§7e, §0d Part 2, §0f) covers `app/` and a Blade
+pattern search, now with every row read (**corrected**: this paragraph said
+157 unread rows — stale since §0e, and the §0f correction showed the true
+outstanding count was 314), and does not make isolation complete. Every production statement here
 dates from the last observation of the server (2026-09-20T18:36:08+00:00), not
 from today.
 
@@ -3955,8 +4191,8 @@ it is named as an approval **and** as the evidence that follows it.
 
 | # | Condition | Closes when | Findings it carries |
 |---|---|---|---|
-| R1 | Independent source review | XR-01…07 **accepted** at source level (XR-01/04/06 at `9aaf1af`, XR-02/03/05/07 at `d37879b`); S3-14/S3-15 and S3-18 for new exports accepted at `c9d30b0`; the legacy-export refusal, `Looping` cleanup, child-process guard and mobile message accepted at `592d864`. Open for this round (§0e): closes when the reviewer re-reviews the packet regenerated with the delta from `592d864` | all |
-| R2 | Drift checks, one per phase | D0 before Phase 1, D1 before Phase 2, D2 before Phase 3, D3 after it, each recorded (`signature-migration-release-order.md` § Drift checks). **Corrected:** the single check "`HEAD` = `018b3d8` before any step" was wrong for Phase 3. On drift, stop and re-derive | all deploy steps |
+| R1 | Independent source review | XR-01…07 **accepted** at source level (XR-01/04/06 at `9aaf1af`, XR-02/03/05/07 at `d37879b`); S3-14/S3-15 and S3-18 for new exports accepted at `c9d30b0`; the legacy-export refusal, `Looping` cleanup, child-process guard and mobile message accepted at `592d864`; §0e's application repairs found supported at `b8baf4e`. Open for this round (§0f: S3-19, S3-20's backfill, the inventory correction and review, the harness): closes when the reviewer re-reviews the packet regenerated with the delta from `b8baf4e` | all |
+| R2 | Drift checks, one per phase | D0 before Phase 1, D1 before Phase 2, D2 before Phase 2b, D2b before Phase 3, D3 after it (**corrected**: this row said "D2 before Phase 3", stale since §0e), each recorded (`signature-migration-release-order.md` § Drift checks). **Corrected:** the single check "`HEAD` = `018b3d8` before any step" was wrong for Phase 3. On drift, stop and re-derive | all deploy steps |
 | R3 | Migration order | the eight Phase 1 migrations applied, one file per command; the `notifications` table only in Phase 2b, after the code is live everywhere and D2 shows no baseline export job ran after the switch (runbook D2/D2b); code deployed to every node, with the D1 connection check passed on the **effective** configuration — `DB_URL`, the pooler switch and any cached config resolved, pooler mode from the pooler's own configuration (XR-02, corrected in §0c); contract applied last; D3 shows all three constraints validated. Rehearsed in §6a; contract lock boundaries measured (XR-04) | S3-04, S3-07b, S3-09b, S3-09e, S3-02/S3-03 disk columns |
 | R4 | Karigar attachments off the public path | after R3: `karigar-invoices:relocate-attachments` dry run reviewed → approved `--execute` → `--verify` clean → separately approved `--purge-originals`. The manifest is kept. Until the purge, the public copy stays reachable at its URL | **S3-02** |
 | R5 | Purchase images off the public path | the same sequence with `purchases:relocate-invoice-images` (`9d48331`). The production count must be established first — it is not known here | **S3-03** |
@@ -3964,7 +4200,7 @@ it is named as an approval **and** as the evidence that follows it.
 | R7 | KYC exposure | an approved package executed and its §6 verification output recorded. For the edge layer that means a unique probe path with **0 origin log lines**, next to a positive control; a 403 alone does not show the edge rule works (corrected). ORIGIN-ONLY leaves the edge-cache residual open until §3 and §5 run, and stays PARTIAL | S3-01, S3-01c |
 | R8 | Device verification | the §5 checks run on Android and iOS, with results recorded, for the inline signature and for S3-09c handling | S3-04, S3-09c |
 | R9 | Backup A in production | after deploy: `backup:scope-check` clean as `www-data`, and one `backup:run` whose archive listing shows the allowlist | backup A |
-| R10 | Tenant-isolation findings in production | read-only checks recorded before deploy (§0d Part 1): `tenant:audit-foreign-references` (every stored cross-shop reference, S3-14 and S3-15 included); `reporting:audit-export-files` (cross-shop candidates by physical file; exit 2 = some storage unresolved, not clean); `to_regclass('notifications')` and the queue driver (the configuration now — whether shared files can be served now, not whether they were); `report_exports` history and `notifications` rows (what was recorded); the access log for the download route (what was served). Each answers its own question; none alone shows a disclosure. Any hit is a data question with its own decision — nothing is corrected by hand | S3-14, S3-15, S3-17, S3-18 |
+| R10 | Tenant-isolation findings in production | read-only checks recorded before deploy (§0d Part 1): `tenant:audit-foreign-references` (every stored cross-shop reference, S3-14, S3-15 and S3-20's precondition included); the web access log for `/super-admin/*` (whether S3-19's URLs were used, and by which admin); `reporting:audit-export-files` (cross-shop candidates by physical file; exit 2 = some storage unresolved, not clean); `to_regclass('notifications')` and the queue driver (the configuration now — whether shared files can be served now, not whether they were); `report_exports` history and `notifications` rows (what was recorded); the access log for the download route (what was served). Each answers its own question; none alone shows a disclosure. Any hit is a data question with its own decision — nothing is corrected by hand | S3-14, S3-15, S3-17, S3-18, S3-19, S3-20 |
 
 ### Open, and deliberately NOT conditions of this release
 
@@ -3987,14 +4223,20 @@ acceptance.
   (`8d5a066`) is needed only to clear one, and each use needs approval.
 * **Backup C** — a procedure change for the operator's deploy runbook. It is
   independent of this code release.
-* **S3-16** (loyalty expiry) and **S3-17** (queued-export notification) —
-  each needs a product or accounting decision before it can be repaired.
-* **Tenant isolation** — every §7e category is now inventoried; what remains is
-  named there (Octane, transaction pooling, production queue driver, admin and
-  console expressions not read individually). The worker does not clear tenant
-  context between jobs: safe only because every job uses `runFor`; clearing it
-  in `Queue::before` is recommended, not implemented.
-* **Device checks** (R8 above) and the **mobile message** for
-  `idempotency_outcome_reconciled` — still not run and not built.
+* **S3-16** (loyalty expiry) — the activation decision (above).
+  **Correction:** this item also listed S3-17 as needing a decision; it was
+  repaired (§0d Part 4, §0e).
+* **Tenant isolation** — every §7e category inventoried and, since §0f, every
+  row read. Not covered: Octane, a transaction-mode pooler, the production
+  queue driver, queries in views beyond the pattern search. **Corrections:**
+  the worker clears tenant context on `Looping` (§0d Part 3); this item said
+  it did not.
+* **Device checks** (R8 above) — still not run. **Correction:** the mobile
+  message for `idempotency_outcome_reconciled` was built (`4f10a3b`); this
+  item said it was not.
+* **Found in §0f, not isolation, not changed:** inline system notices ignore
+  edition/realm targeting; the invoice-snapshot backfill processes nothing in
+  console (fail-closed); an unlabeled append-only payment row aborts the
+  backfill.
 * **KYC containment** (R7) stays a separate package, unexecuted, pending its
   own approval; ORIGIN-ONLY is PARTIAL.
