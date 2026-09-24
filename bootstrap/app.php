@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Log;
 use Sentry\Laravel\Integration;
 
 return Application::configure(basePath: dirname(__DIR__))
+    // S3-07b's harness command uses test fixtures, so it lives with the tests
+    // and exists only where the dev autoloader does — never in production,
+    // where a command referencing test code would stop every artisan command.
+    ->withCommands(class_exists(\Tests\Concurrency\PaymentRaceHarness::class) ? [\Tests\Concurrency\PaymentRaceHarness::class] : [])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',

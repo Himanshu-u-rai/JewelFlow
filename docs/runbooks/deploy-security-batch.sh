@@ -111,6 +111,11 @@ ok "target $TARGET present, descends from the baseline, on the security branch"
 [ -z "$(git -C "$DIR" diff --name-only "$BASE" "$TARGET" -- composer.lock composer.json package.json package-lock.json vite.config.js resources/js resources/css)" ] \
   || fail "dependency or asset sources changed: this script does not rebuild them"
 ok "no dependency or asset change between the baseline and the target"
+# Production installs --no-dev: code that references test code fatals every
+# artisan command (it stopped the second staging attempt at config:clear).
+DEVREF=$(git -C "$DIR" grep -nE '(^|[^A-Za-z_])(Tests|Faker|PHPUnit)\\|Mockery|fake\(\)' "$TARGET" -- app bootstrap config routes database/migrations | grep -v 'class_exists(' || true)
+[ -z "$DEVREF" ] || fail "the target's production code references dev-only code: $DEVREF"
+ok "no production code references dev-only code (Tests, Faker, Mockery, PHPUnit)"
 
 # D0
 ART migrate:status --pending 2>&1 | grep -qi "no pending migrations" || fail "D0: a baseline migration is pending"

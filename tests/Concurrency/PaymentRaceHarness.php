@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Tests\Concurrency;
 
 use App\Models\Customer;
 use App\Models\Invoice;
