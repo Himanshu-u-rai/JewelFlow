@@ -194,15 +194,20 @@ Route::prefix('super-admin')->group(function () {
     Route::middleware(['admin'])->group(function () {
         Route::get('/', fn () => redirect()->route('admin.dashboard'))->name('superadmin.dashboard');
         Route::post('/logout', [AuthController::class, 'logout'])->name('superadmin.logout');
+    });
+
+    // Every shop and user: the same guard as /admin — a session a password
+    // change has not revoked, and a second factor cleared this session.
+    Route::middleware(['admin', 'admin.password.fresh', 'admin.mfa'])->group(function () {
         Route::get('/shops', [ShopManagementController::class, 'index'])->name('superadmin.shops.index');
         Route::get('/shops/{shop}', [ShopManagementController::class, 'show'])->name('superadmin.shops.show');
         Route::get('/users', [UserManagementController::class, 'index'])->name('superadmin.users.index');
         Route::get('/users/{user}', [UserManagementController::class, 'show'])->name('superadmin.users.show');
-    });
 
-    Route::middleware(['admin', 'platform.role:super_admin'])->group(function () {
-        Route::patch('/shops/{shop}/status', [ShopManagementController::class, 'updateStatus'])->name('superadmin.shops.status');
-        Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus'])->name('superadmin.users.status');
-        Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword'])->name('superadmin.users.password');
+        Route::middleware('platform.role:super_admin')->group(function () {
+            Route::patch('/shops/{shop}/status', [ShopManagementController::class, 'updateStatus'])->name('superadmin.shops.status');
+            Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus'])->name('superadmin.users.status');
+            Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword'])->name('superadmin.users.password');
+        });
     });
 });
