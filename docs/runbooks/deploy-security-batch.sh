@@ -167,7 +167,7 @@ OWNERDO env COMPOSER_ALLOW_SUPERUSER=1 composer -d "$DIR" install --no-dev --no-
 [ "${PIPESTATUS[0]}" = 0 ] || fail "composer install failed"
 ART package:discover --ansi >/dev/null || fail "package:discover failed"
 for cls in 'App\\Services\\SignatureStore' 'App\\Console\\Commands\\Reporting\\AuditExportFiles' 'App\\Services\\SignatureRelocationLedger'; do
-  grep -q "$cls" "$DIR/vendor/composer/autoload_classmap.php" || fail "class $cls missing from the optimized classmap"
+  grep -qF "'$cls'" "$DIR/vendor/composer/autoload_classmap.php" || fail "class $cls missing from the optimized classmap"
 done
 while IFS= read -r f; do
   [ -e "$DIR/$f" ] || continue
