@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Models\IdempotencyKey;
 use Closure;
+use Illuminate\Database\Events\ConnectionEstablished;
+use Illuminate\Database\LostConnectionException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -71,6 +73,14 @@ class EnsureIdempotency
      * be treated as in-flight.
      */
     private const STATUS_IN_FLIGHT = 0;
+
+    /**
+     * XR-02 (second review). Connection names whose session holds a claim lock
+     * right now, mapped to that lock's name. See pinned().
+     *
+     * @var array<string, string>
+     */
+    private static array $pinned = [];
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -203,6 +213,17 @@ class EnsureIdempotency
             return $this->inFlightResponse($shopId, $userId, $key);
         }
 
+        // The lock lives in this one database session, so the request must not
+        // outlive it. Laravel answers a lost connection outside a transaction
+        // by reconnecting and retrying on a NEW session — which would carry on
+        // without the lock while the operator tool, finding it free, releases
+        // the claim. Measured: tests/Concurrency/claim_release_race.php,
+        // scenario 2. While pinned, every re-establishment of this connection
+        // is refused (pinned()), so a lost session ends the request, and
+        // PostgreSQL has already discarded its uncommitted work.
+        $connectionName = DB::connection()->getName();
+        self::$pinned[$connectionName] = $lockKey;
+
         try {
             // ─── First time seeing this key: STAKE THE CLAIM, then run ────────
             //
@@ -297,6 +318,26 @@ class EnsureIdempotency
             return $response;
         } finally {
             self::unlockClaim($lockKey);
+            unset(self::$pinned[$connectionName]);
+        }
+    }
+
+    /**
+     * Listener for ConnectionEstablished (registered in AppServiceProvider).
+     * Every path that gives a connection a new physical session — Laravel's
+     * automatic reconnect, DB::reconnect(), a purge and re-create — goes
+     * through the DatabaseManager, which fires this event before the new
+     * session is used. For a pinned connection the new session is dropped
+     * unused and the attempt fails, every time, until the claim is resolved.
+     */
+    public static function pinned(ConnectionEstablished $event): void
+    {
+        if (isset(self::$pinned[$event->connectionName])) {
+            $event->connection->disconnect();
+
+            throw new LostConnectionException(
+                'Lost the database session holding '.self::$pinned[$event->connectionName].'; refusing to continue on a new one.'
+            );
         }
     }
 
@@ -396,9 +437,10 @@ class EnsureIdempotency
 
     /**
      * Session-level, so it outlives the business transaction and ends with the
-     * connection. A no-op off PostgreSQL. Requires a connection that stays with
-     * this session for the whole request: direct or session-pooled, never a
-     * transaction-mode pooler.
+     * connection. A no-op off PostgreSQL. A lost session is never replaced
+     * while the lock is held (pinned()). What code cannot see is a
+     * transaction-mode pooler, which moves statements between server sessions
+     * without any reconnect; release check D1 verifies there is none.
      */
     public static function tryLockClaim(string $lockKey): bool
     {
@@ -406,7 +448,9 @@ class EnsureIdempotency
             return true;
         }
 
-        return (bool) DB::selectOne('select pg_try_advisory_lock(hashtextextended(?, 0)) as locked', [$lockKey])->locked;
+        // The write connection explicitly: the lock must live in the session
+        // that commits the business writes.
+        return (bool) DB::selectOne('select pg_try_advisory_lock(hashtextextended(?, 0)) as locked', [$lockKey], false)->locked;
     }
 
     /**
@@ -422,7 +466,7 @@ class EnsureIdempotency
         }
 
         try {
-            DB::selectOne('select pg_advisory_unlock(hashtextextended(?, 0))', [$lockKey]);
+            DB::selectOne('select pg_advisory_unlock(hashtextextended(?, 0))', [$lockKey], false);
         } catch (Throwable $e) {
             Log::warning('EnsureIdempotency: could not release a claim lock', ['error' => $e->getMessage()]);
         }

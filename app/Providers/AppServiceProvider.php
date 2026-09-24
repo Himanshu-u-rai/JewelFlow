@@ -5,6 +5,8 @@ namespace App\Providers;
 use RuntimeException;
 use Illuminate\Http\Request;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Database\Events\ConnectionEstablished;
+use App\Http\Middleware\EnsureIdempotency;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -254,6 +256,10 @@ class AppServiceProvider extends ServiceProvider
                     ], 429, $headers);
                 });
         });
+
+        // XR-02: a connection whose session holds an idempotency claim lock
+        // may not be given a new session until the claim is resolved.
+        Event::listen(ConnectionEstablished::class, [EnsureIdempotency::class, 'pinned']);
 
         Event::listen(Logout::class, function (Logout $event): void {
             if ($event->guard === 'platform_admin') {

@@ -156,13 +156,58 @@ The seven branch migrations, for the queries below:
 | serving nodes' `HEAD` | still `018b3d8` — nothing else deployed meanwhile |
 | `select migration from migrations where migration in :seven` | exactly the six Phase 1 names; the contract absent |
 | `select conname from pg_constraint where conname in ('shop_billing_settings_digital_signature_disk_check', 'karigar_invoices_attachment_disk_check', 'stock_purchases_invoice_image_disk_check')` | 0 rows |
-| the database connection the application uses (XR-02): `grep -E '^DB_(HOST\|PORT\|PERSISTENT)=' .env`, then `sudo ss -ltnp` for that port | the listener is `postgres`, or a pooler in **session** mode — never transaction mode; `DB_PERSISTENT` unset or `false` |
+| the connection the application will **actually** use (XR-02) — see below | the effective endpoint is PostgreSQL itself, or a pooler whose mode is **session**; `persistent` is `false` |
 
-The connection check exists because the new idempotency middleware holds a
-session-level advisory lock for each claim it stakes. A transaction-mode pooler
-voids the proof the reconciliation tool relies on
-(`idempotency-unresolved-claims.md` §4.4). It is a precondition of the code,
-so it is checked before the code goes live.
+**The connection check, corrected (second review).** An earlier revision read
+`DB_HOST`, `DB_PORT` and `DB_PERSISTENT` from `.env`. The application does not
+necessarily use those: `config/database.php` switches host and port to
+`DB_POOLER_HOST` and `DB_POOLER_PORT` when `DB_USE_POOLER` is true; a `DB_URL`
+overrides host, port and database; and a cached configuration
+(`bootstrap/cache/config.php`) is used instead of `.env` altogether. So check
+the configuration as the release resolves it, from the release checkout, as
+the web user, printing no credentials:
+
+```bash
+cd <release checkout> && runuser -u www-data -- php -r '
+require "vendor/autoload.php"; $app = require "bootstrap/app.php";
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$c = Illuminate\Support\Facades\DB::connection();   // after DB_URL parsing; does not connect
+$o = $c->getConfig("options") ?? [];
+echo json_encode([
+  "connection" => $c->getName(), "driver" => $c->getDriverName(),
+  "config_cached" => $app->configurationIsCached(),
+  "url_set" => filled(config("database.connections.pgsql.url")),
+  "use_pooler" => (bool) env("DB_USE_POOLER", false),
+  "host" => $c->getConfig("host"), "port" => $c->getConfig("port"),
+  "persistent" => (bool) ($o[PDO::ATTR_PERSISTENT] ?? false),
+]), PHP_EOL;'
+```
+
+`env()` returns null under a cached configuration, so `use_pooler` is
+meaningful only when `config_cached` is false; `host` and `port` are what
+decide. Then establish what answers at that `host:port`:
+
+* On this machine: `sudo ss -ltnp "sport = :<port>"`. `postgres` means direct.
+* PgBouncer: its effective `pool_mode` — the `[pgbouncer]` default **and** any
+  `pool_mode=` override on the matching `[databases]` or `[users]` entry — from
+  `SHOW DATABASES` / `SHOW USERS` on its admin console, or its configuration
+  file. It must be `session`.
+* A managed pooler: the provider's mode for that exact host and port. Record
+  the setting as evidence.
+
+A behavioural probe (for example `pg_backend_pid()` across two statements)
+only corroborates: under light load a transaction pooler can hand back the same
+server session and pass it. The configuration decides.
+
+What this check is for has changed. Reconnection no longer needs it: while the
+middleware holds a claim lock, the connection may not be re-established
+(`idempotency-unresolved-claims.md` §4.4), measured whether the endpoint is
+direct or session-pooled. A transaction-mode pooler is different — it moves
+statements between server sessions with no reconnect the application could
+see — so it must be excluded here. `DB_PERSISTENT` is excluded because a
+persistent connection can keep a lock past a fatal error; the tool then
+refuses, which is safe but blocks reconciliation. Checked before the code goes
+live, because it is a precondition of the code.
 
 ### D2 — before Phase 3
 

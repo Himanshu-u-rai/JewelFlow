@@ -103,10 +103,25 @@ original request takes that lock before it stakes the claim and holds it until
 the claim is resolved, and PostgreSQL drops it if the process dies — along with
 any uncommitted work.
 
-* **Lock free:** the original writer has ended and can never commit. Evidence
-  gathered from now on is final.
+* **Lock free:** the session that held the lock has ended, and with it any
+  uncommitted work. The original request cannot continue on another session:
+  while it holds a claim lock, its connection may not be re-established
+  (second review, below). So it can never commit. Evidence gathered from now
+  on is final.
 * **Lock held:** the tool refuses and changes nothing. Wait. The request is
   still running, or the operator tool is already working on this claim.
+
+**Correction (XR-02, second review).** A free lock used to prove only that the
+lock-holding *session* had ended. Laravel answers a lost connection outside a
+transaction by reconnecting and retrying on a new session, so the request
+itself could carry on without its lock. Measured in
+`tests/Concurrency/claim_release_race.php`, scenario 2: the writer's session
+was terminated after it staked its claim; the tool found the lock free and
+released the claim; the writer reconnected, booked its entry, and the same key
+then booked a second. The middleware now refuses to re-establish the
+connection while it holds a claim lock, so the request fails instead of
+continuing. Same harness after the change: the writer ends with a 500 and no
+row, and the retry books exactly one.
 
 **Correction (XR-02).** An earlier revision used "older than PHP
 `max_execution_time` plus a margin" as the proof that the request had stopped.
@@ -118,9 +133,10 @@ inside its business transaction; the claim released under it; the writer
 committed; the same key then booked a second cash row. A timeout cannot replace
 the lock.
 
-The lock is session-level. It needs a database connection that stays with the
-request for the whole request: direct, or session-pooled. **A transaction-mode
-pooler (PgBouncer `pool_mode=transaction`) would void it.** If `DB_PERSISTENT`
+The lock is session-level. A reconnect cannot carry the request past it any
+more, but **a transaction-mode pooler (PgBouncer `pool_mode=transaction`)
+would still void it**: it moves statements between server sessions without
+any reconnect the application could see. If `DB_PERSISTENT`
 is ever enabled, a PHP fatal error can leave the lock held until the worker
 exits. The tool then refuses, which is safe but blocks reconciliation until the
 worker recycles. Release check D1 verifies both before the code goes live
