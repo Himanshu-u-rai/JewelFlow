@@ -30,12 +30,13 @@ use LogicException;
  *
  *     The row version is PostgreSQL's xmin: the id of the TRANSACTION that
  *     wrote this row version. It is not a per-update counter. Two updates in
- *     one transaction share it (no other session can see the first); a frozen
- *     row reports 2, so a tag can change once when vacuum freezes an
- *     unchanged row — a spurious 412, the safe direction; and xids are 32-bit,
- *     so a value recurs after wraparound. updated_at stays in the hash, which
- *     leaves only a theoretical collision: a writer that does not bump
- *     updated_at, combined with freezing or wraparound.
+ *     one transaction share it (no other session can see the first). Freezing
+ *     does not change it: a frozen row keeps its original xmin (measured on
+ *     PostgreSQL 16.15; reporting 2 for frozen rows is older-release
+ *     behaviour). xids are 32-bit, so a value can recur after wraparound;
+ *     updated_at stays in the hash, which leaves only a theoretical
+ *     collision: a writer that does not bump updated_at, combined with xid
+ *     wraparound.
  *
  *     The version must come from the SAME row image as the data the tag is
  *     sent with (second review): versioned() reads both in one statement,

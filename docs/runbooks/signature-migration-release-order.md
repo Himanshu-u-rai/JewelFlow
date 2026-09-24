@@ -199,10 +199,16 @@ A behavioural probe (for example `pg_backend_pid()` across two statements)
 only corroborates: under light load a transaction pooler can hand back the same
 server session and pass it. The configuration decides.
 
-What this check is for has changed. Reconnection no longer needs it: while the
+What this check is for has changed. Reconnection is handled in code: while the
 middleware holds a claim lock, the connection may not be re-established
-(`idempotency-unresolved-claims.md` §4.4), measured whether the endpoint is
-direct or session-pooled. A transaction-mode pooler is different — it moves
+(`idempotency-unresolved-claims.md` §4.4). That was measured with a **direct**
+connection only — PostgreSQL 16.15 on 127.0.0.1:5432, no pooler
+(`claim_release_race.php`, scenario 2). Behind a session-mode pooler the same
+result is an **inferred expectation, not a measurement**: the application
+would still see a lost connection and have to reconnect, which is what is
+refused, but no pooler was run. **Correction:** an earlier revision said it
+was measured "whether the endpoint is direct or session-pooled". A
+transaction-mode pooler is different — it moves
 statements between server sessions with no reconnect the application could
 see — so it must be excluded here. `DB_PERSISTENT` is excluded because a
 persistent connection can keep a lock past a fatal error; the tool then

@@ -22,8 +22,12 @@ that changes anything outside `docs/`). Two independent source reviews so far:
 the first covered packet `7b1d709162109fe51f56d03d77c14e3e50d7b9ea` (seven
 findings, §0b); the second covered candidate
 `9aaf1af8f366cb1b3d038a383586d6cf9ae81112`, accepted XR-01, XR-04 and XR-06,
-and found XR-02, XR-03, XR-05 and XR-07 partially resolved (§0c). This
-document's own commit is later than `9a3fec8` and changes documentation only.
+and found XR-02, XR-03, XR-05 and XR-07 partially resolved (§0c). A third
+review, of candidate `d37879b6c36991f17bafec50137adaaaba7c677b`, **accepted the
+bounded repairs for XR-02, XR-03, XR-05 and XR-07**. Source-review acceptance
+is not deployment approval and does not certify the application as a whole.
+This document's own commit is later than `9a3fec8` and changes documentation
+only.
 
 Mobile repository `/home/himanshu/Desktop/jewelflowMobileApp`, branch
 `rebrand/jewelflows-mobile`. Audit baseline
@@ -77,12 +81,12 @@ identities are kept; the XR ids map onto them.
 | XR | S3 | Disposition | Commit | Before the repair | After | Mutation |
 |---|---|---|---|---|---|---|
 | XR-01 | S3-09 | Confirmed. **REPAIRED locally** | `bf37898` | Resolved middleware order: idempotency before authorization on 15 of 16 routes. 4 defect tests RED — a stored success served after revocation or downgrade | `IdempotentReplayAuthorizationTest` 7 passed (36) | Priority entry removed → the 4 defect tests fail, the 3 controls pass |
-| XR-02 | S3-09b | Confirmed, both halves. **REPAIRED locally** — second review: partial, completed in §0c | `9d673a7` | `claim_release_race.php`: claim released under a live writer → **2 cash rows** for one key. A committed-reconciled claim pruned with age; statuses −1/99/700 pruned | Reconciler refused while the writer lived; **1 row**; retry replayed. `IdempotencyClaimReconciliationTest` 9 passed | Writer-side lock removed → UNSAFE again |
-| XR-03 | S3-02, S3-03, S3-04 (movers) | Confirmed. **REPAIRED locally** — second review: partial, completed in §0c | `cb5f983` | 5 of 7 RED: a different destination overwritten; another shop's private signature overwritten before the ledger refused. `relocation_race.php`: **UNSAFE 3/3** — rows recorded private with no file | 7 passed; race **SAFE 3/3**; relocation and immutability suites 45 passed (213) | — the old movers are the negative control |
+| XR-02 | S3-09b | Confirmed, both halves. **REPAIRED locally** — second review: partial, completed in §0c; **accepted at `d37879b`** | `9d673a7` | `claim_release_race.php`: claim released under a live writer → **2 cash rows** for one key. A committed-reconciled claim pruned with age; statuses −1/99/700 pruned | Reconciler refused while the writer lived; **1 row**; retry replayed. `IdempotencyClaimReconciliationTest` 9 passed | Writer-side lock removed → UNSAFE again |
+| XR-03 | S3-02, S3-03, S3-04 (movers) | Confirmed. **REPAIRED locally** — second review: partial, completed in §0c; **accepted at `d37879b`** | `cb5f983` | 5 of 7 RED: a different destination overwritten; another shop's private signature overwritten before the ledger refused. `relocation_race.php`: **UNSAFE 3/3** — rows recorded private with no file | 7 passed; race **SAFE 3/3**; relocation and immutability suites 45 passed (213) | — the old movers are the negative control |
 | XR-04 | S3-02, S3-03, S3-04 (contract migration) | Confirmed by measurement. **REPAIRED locally** | `48981ff` | `contract_migration_locks.php`: ACCESS EXCLUSIVE held to the end of the migration; finished tables unreadable and unwritable | A, B, C pass: locks only on the table in progress; only SHARE UPDATE EXCLUSIVE during VALIDATE, probe completed mid-VALIDATE; killed run leaves 2 validated + 1 untouched, re-run completes. `DiskColumnReleaseOrderTest` 8 passed | — the old migration is the negative control |
-| XR-05 | S3-12 | Confirmed. **REPAIRED locally, no migration** — second review: partial, completed in §0c | `69b4439` | `etag_race.php`, two workers, distinct keys, same starting tag: **[200, 200]**, one price lost | **[200, 412]**, stored price = the winner's | Locked re-check removed → UNSAFE |
+| XR-05 | S3-12 | Confirmed. **REPAIRED locally, no migration** — second review: partial, completed in §0c; **accepted at `d37879b`** | `69b4439` | `etag_race.php`, two workers, distinct keys, same starting tag: **[200, 200]**, one price lost | **[200, 412]**, stored price = the winner's | Locked re-check removed → UNSAFE |
 | XR-06 | S3-05 | Confirmed. Identity **REPAIRED locally**; contact line **UNRESOLVED** (product decision) | `d31ab16` | D-14 seller, D-15 recipient, D-16 recorded-null vs missing key: RED | Drift file 20 passed (129); every print-related test: 258 passed, 1 skipped | `array_key_exists` → null check: D-16 fails alone |
-| XR-07 | S3-09e | Confirmed. **REPAIRED locally** — second review: partial, completed in §0c | `751acc4` | Boundary test RED: between the two writes, a resolved claim without its headers | Replay fidelity 9 passed; idempotency suites 42 passed (237); rehearsal with the column really dropped: claim resolves, status 200 | — |
+| XR-07 | S3-09e | Confirmed. **REPAIRED locally** — second review: partial, completed in §0c; **accepted at `d37879b`** | `751acc4` | Boundary test RED: between the two writes, a resolved claim without its headers | Replay fidelity 9 passed; idempotency suites 42 passed (237); rehearsal with the column really dropped: claim resolves, status 200 | — |
 
 Final-SHA figures for the harnesses, the rehearsal and the full suite are in §8.
 
@@ -160,7 +164,14 @@ price of the window XR-07 found.
 | KYC edge check | "Cloudflare block (403), not a 404 from origin" — once the origin deny exists, it passes whichever layer answered | Unique probe path; **0 origin log lines** is decisive, alongside a positive control proving the log records a probe that reached the origin; edge verified before the origin deny in Option B; bodies corroborate only. KYC stays **unexecuted**; ORIGIN-ONLY stays **PARTIAL** |
 | Superseded signatures | Residual named in §7; no option | Residual stated after R6, and an unexecuted origin-deny option for `/storage/signatures/` (§7) |
 
-## 0c. Second review of `9aaf1af` — four partial findings, answered
+## 0c. Second review of `9aaf1af` — four partial findings, answered; accepted at `d37879b`
+
+**Disposition.** The review of candidate `d37879b` accepted the bounded
+repairs for XR-02, XR-03, XR-05 and XR-07. Their evidence below is preserved
+and the investigations are not reopened. Two documentation corrections it
+asked for are applied: freezing preserves `xmin` on PostgreSQL 16 (XR-05
+paragraph), and the reconnection repair was measured on a direct connection
+only (release-order runbook, D1).
 
 The review accepted the bounded repairs for XR-01 (authorization order), XR-04
 (migration transaction boundaries) and XR-06 (the specified invoice identity
@@ -205,10 +216,13 @@ reads the written image under its own lock, before commit. Return and job-order
 `show()` tag their root row the same way; only items and customers are sent
 back with `If-Match` (mobile manifest). **Corrected claim:** `xmin` is the id
 of the transaction that wrote the row version, not a per-update counter —
-several updates in one transaction share it, a frozen row reports 2 (one
-spurious 412), and xids recur after wraparound. `updated_at` stays in the hash;
-the residual is a writer that does not bump `updated_at`, combined with
-freezing or wraparound.
+several updates in one transaction share it, and xids recur after wraparound.
+Freezing does not change it: measured on PostgreSQL 16.15, a row's xmin was
+3487483 before and after `VACUUM (FREEZE)`, with `relfrozenxid` advanced to
+3487484 past it. **Correction:** this paragraph said a frozen row reports 2
+and causes one spurious 412 — older-release behaviour, withdrawn. `updated_at`
+stays in the hash; the residual is a writer that does not bump `updated_at`,
+combined with xid wraparound.
 
 **XR-07 — recognised by PostgreSQL's report.** SQLSTATE 42703 and its message
 naming column `response_headers` of relation `idempotency_keys`, never the
@@ -227,8 +241,9 @@ naming bytes other than those at the path — not a demonstrated upload exploit.
 **NOT RUN in this round:** a transaction-mode pooler (none available here); a
 real network partition or database failover (the harness terminates one
 backend); Octane or other long-lived workers (the pin is cleared in `finally`,
-not exercised across requests in one worker); a vacuum freeze or xid
-wraparound against a held tag; the signature mover over S3 or any non-local
+not exercised across requests in one worker); a session-mode pooler (the
+reconnection repair was measured on a direct connection only); xid wraparound
+against a held tag (freezing itself was measured: xmin preserved); the signature mover over S3 or any non-local
 disk; any device run.
 
 ## 0a. Remaining findings — actionable
@@ -3196,7 +3211,7 @@ it is named as an approval **and** as the evidence that follows it.
 
 | # | Condition | Closes when | Findings it carries |
 |---|---|---|---|
-| R1 | Independent source review | Second-review findings answered (§0c) and the packet regenerated with the delta from `9aaf1af` — **done locally**. Closes when the reviewer re-reviews it and raises nothing further | all |
+| R1 | Independent source review | XR-01…07 **accepted** at source level (XR-01/04/06 at `9aaf1af`, XR-02/03/05/07 at `d37879b`). Open for this round's tenant-isolation work (§7e): closes when the reviewer re-reviews the packet regenerated with the delta from `d37879b` | all |
 | R2 | Drift checks, one per phase | D0 before Phase 1, D1 before Phase 2, D2 before Phase 3, D3 after it, each recorded (`signature-migration-release-order.md` § Drift checks). **Corrected:** the single check "`HEAD` = `018b3d8` before any step" was wrong for Phase 3. On drift, stop and re-derive | all deploy steps |
 | R3 | Migration order | the six Phase 1 migrations applied, one file per command; code deployed to every node, with the D1 connection check passed on the **effective** configuration — `DB_URL`, the pooler switch and any cached config resolved, pooler mode from the pooler's own configuration (XR-02, corrected in §0c); contract applied last; D3 shows all three constraints validated. Rehearsed in §6a; contract lock boundaries measured (XR-04) | S3-04, S3-07b, S3-09b, S3-09e, S3-02/S3-03 disk columns |
 | R4 | Karigar attachments off the public path | after R3: `karigar-invoices:relocate-attachments` dry run reviewed → approved `--execute` → `--verify` clean → separately approved `--purge-originals`. The manifest is kept. Until the purge, the public copy stays reachable at its URL | **S3-02** |

@@ -121,7 +121,9 @@ released the claim; the writer reconnected, booked its entry, and the same key
 then booked a second. The middleware now refuses to re-establish the
 connection while it holds a claim lock, so the request fails instead of
 continuing. Same harness after the change: the writer ends with a 500 and no
-row, and the retry books exactly one.
+row, and the retry books exactly one. Measured on a direct connection
+(PostgreSQL 16.15, no pooler); behind a session-mode pooler this is expected,
+not measured.
 
 **Correction (XR-02).** An earlier revision used "older than PHP
 `max_execution_time` plus a margin" as the proof that the request had stopped.
