@@ -73,6 +73,8 @@ const CONTRACT = '2026_09_20_130000_add_disk_column_check_constraints';
 const OUTCOME = '2026_09_24_120100_add_notification_outcome_to_report_exports';
 const EXPIRY_LOT = '2026_09_24_130000_add_expires_lot_id_to_loyalty_transactions';
 const NOTIFICATIONS = '2026_09_24_120000_create_notifications_table';
+// The layout the release writes: one directory per shop and export.
+const NEW_LAYOUT = '^reporting-exports/[0-9]+/[0-9]+/[^/]+$';
 
 $failures = 0;
 function result(bool $ok, string $label, string $detail = ''): void
@@ -184,7 +186,14 @@ function queued_export($owner, $shop): array
     });
 }
 
+/** Flat-layout export rows: the before/after comparison of runbook D2 (no clock involved). */
+function flat_exports(): int
+{
+    return (int) DB::selectOne('select count(*) n from report_exports where file_path is not null and file_path !~ ?', [NEW_LAYOUT])->n;
+}
+
 $exportDirs = [];
+$flatFiles = [];
 try {
     // ─────────────────────────────────────────────────────────────────────
     section('A. Baseline schema from the 018b3d8 migration set');
@@ -343,6 +352,54 @@ try {
     $expireCode = Artisan::call('loyalty:expire');
     result($expireCode === 0 && str_contains(Artisan::output(), 'NOT ACTIVATED')
         && DB::table('loyalty_transactions')->whereNotNull('expires_lot_id')->count() === 0, 'loyalty:expire with activation unset writes nothing');
+
+    // ─────────────────────────────────────────────────────────────────────
+    section('C3. D2 — a baseline worker still running after the switch');
+
+    // An export queued BEFORE the switch, written AFTER it by a worker that was
+    // never restarted: 018b3d8's own GenerateQueuedExportJob, loaded from git
+    // under another namespace (its dependencies are unchanged since). It
+    // stores a flat-layout file, marks the row done, fails at the missing
+    // notifications table and marks it failed — as the baseline does.
+    [$lateId, $latePayload] = queued_export($ownerA, $shopA);
+    $appExports++;
+    sleep(1);
+    $switch = now()->toDateTimeString();   // the application's clock and timezone: how the runbook records :switch
+    $flatBefore = flat_exports();
+    sleep(1);
+    $baselineJob = shell_exec('git -C '.escapeshellarg(base_path()).' show '.BASELINE.':app/Jobs/Reporting/GenerateQueuedExportJob.php');
+    eval(str_replace(['<?php', 'namespace App\\Jobs\\Reporting;'], ['', 'namespace JewelflowBaseline;'], (string) $baselineJob));
+    $baselineError = '';
+    try {
+        JewelflowBaseline\GenerateQueuedExportJob::dispatchSync($latePayload);
+    } catch (Throwable $e) {
+        $baselineError = get_class($e);
+    }
+    $late = App\Models\Reporting\ReportExport::withoutGlobalScopes()->find($lateId);
+    $flatFiles[] = (string) $late->file_path;
+    measured('D2: the baseline worker\'s record', "created_at {$late->created_at} < :switch {$switch} < finished_at {$late->finished_at}; "
+        ."status {$late->status}; file_path {$late->file_path}; the job threw {$baselineError}");
+    result($late->created_at->toDateTimeString() < $switch && $late->finished_at->toDateTimeString() > $switch
+        && ! preg_match('#'.NEW_LAYOUT.'#', (string) $late->file_path) && Illuminate\Support\Facades\Storage::disk('local')->exists((string) $late->file_path),
+        'reproduced: queued before the switch, a flat-layout file written after it');
+    $byCreation = (int) DB::selectOne('select count(*) n from report_exports where created_at > ? and file_path is not null and file_path !~ ?', [$switch, NEW_LAYOUT])->n;
+    $byCompletion = fn () => (int) DB::selectOne('select count(*) n from report_exports where finished_at > ? and file_path is not null and file_path !~ ?', [$switch, NEW_LAYOUT])->n;
+    result($byCreation === 0, 'the former D2 check (created_at > :switch) misses it', "count {$byCreation}");
+    result($byCompletion() === 1, 'the corrected D2 check (finished_at > :switch) catches it', 'count '.$byCompletion());
+    result(flat_exports() === $flatBefore + 1, 'the before/after flat-layout count catches it too', $flatBefore.' -> '.flat_exports());
+    $switchTs = Illuminate\Support\Carbon::parse($switch)->getTimestamp();
+    $newFlatFiles = array_values(array_filter(Illuminate\Support\Facades\Storage::disk('local')->files('reporting-exports'),
+        fn ($f) => Illuminate\Support\Facades\Storage::disk('local')->lastModified($f) > $switchTs));
+    result($newFlatFiles === [(string) $late->file_path], 'the storage listing (flat files newer than :switch) catches it — it reads the files, not the rows',
+        implode(', ', $newFlatFiles));
+    // Control: the release's own job finishing after the switch is not flagged.
+    [$controlId, $controlPayload] = queued_export($ownerA, $shopA);
+    $appExports++;
+    App\Jobs\Reporting\GenerateQueuedExportJob::dispatchSync($controlPayload);
+    $control = App\Models\Reporting\ReportExport::withoutGlobalScopes()->find($controlId);
+    $exportDirs[] = $control->storageDirectory();
+    result($control->finished_at->toDateTimeString() > $switch && $byCompletion() === 1,
+        'control: an export the release finished after the switch is not counted', (string) $control->file_path);
 
     // ─────────────────────────────────────────────────────────────────────
     section('D. The window between expand and contract, then contract');
@@ -509,6 +566,11 @@ try {
         Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory($dir);
     }
     Illuminate\Support\Facades\Storage::disk('local')->delete('reporting-exports/customers-rehearsal-legacy.csv');
+    foreach ($flatFiles as $file) {
+        if ($file !== '') {
+            Illuminate\Support\Facades\Storage::disk('local')->delete($file);
+        }
+    }
     foreach (glob(sys_get_temp_dir().'/jf-rehearsal-baseline-'.getmypid().'/*') ?: [] as $link) {
         unlink($link);
     }

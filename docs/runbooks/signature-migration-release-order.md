@@ -81,6 +81,16 @@ Deploy the new application code to every serving node. Until this completes,
 Phase 2b and Phase 3 must not run. `LOYALTY_EXPIRY_ACTIVE_FROM` stays unset:
 loyalty expiry activates only by its own decision (handoff §0a, S3-16).
 
+**Record `:switch` when Phase 2 is complete.** That is the moment when every
+serving node runs the release and every PHP-FPM pool, queue worker and
+scheduler has been restarted on it. D2 and D2b measure from it.
+- Read the time from the application's own clock, in its timezone.
+  Timestamps are written in `config('app.timezone')` (`Asia/Kolkata`),
+  without a zone. From the release checkout, as the web user:
+  `php artisan tinker --execute='echo now()->toDateTimeString();'`.
+- At the same moment, record the flat-layout baseline:
+  `select count(*), max(id) from report_exports where file_path is not null and file_path !~ '^reporting-exports/[0-9]+/[0-9]+/[^/]+$'`.
+
 ### Phase 2b — NOTIFICATIONS TABLE (only after Phase 2 is live everywhere and D2 is clean)
 
 | Migration | Adds |
@@ -262,8 +272,14 @@ Phase 3. It is the gate for Phase 2b; D2b below is the gate for Phase 3.
 | PHP-FPM pool workers (`ps -eo lstart,cmd \| grep 'php-fpm: pool'`) and any queue worker or scheduler daemon | every one started **after** the code switch. Opcache and long-running workers otherwise keep executing baseline code — and a baseline **queue worker** is exactly what Phase 2b must not meet |
 | migrations and constraints | as D1: eight applied, notifications and contract absent, 0 constraints |
 | `php artisan config:show loyalty.expiry_active_from` (release checkout, as the web user) | empty — or the date the S3-16 decision approved, recorded with that approval |
-| queued exports written since the switch in the old flat layout: `select count(*) from report_exports where created_at > :switch and file_path is not null and file_path !~ '^reporting-exports/[0-9]+/[0-9]+/[^/]+$'` | 0. Any row means a baseline export job still ran after the switch; creating the notifications table would let such exports finish `done` |
-| baseline-shaped rows written since the switch, per table: `select count(*) from karigar_invoices where updated_at > :switch and ((invoice_file_path is not null and invoice_file_disk is null) or (invoice_file_path is null and invoice_file_disk is not null))`, and the same for `stock_purchases` (`invoice_image`, `invoice_image_disk`) and `shop_billing_settings` (`digital_signature_path`, `digital_signature_disk`) | 0 on all three. The release always writes both columns, so any such row since the switch shows a baseline writer still serving somewhere |
+| queued exports **written** since the switch in the old flat layout — by completion, not creation: `select count(*) from report_exports where finished_at > :switch and file_path is not null and file_path !~ '^reporting-exports/[0-9]+/[0-9]+/[^/]+$'` | 0. Any row means a baseline export job still ran after the switch, and creating the notifications table would let such exports finish `done`. The baseline sets `finished_at` when it records the file (`markFinished`), and again when the notification fails (`markFailed`); `file_path` stays set. **Corrected:** this check used `created_at > :switch`, which misses an export queued before the switch and written afterwards by a baseline worker that was never restarted. Reproduced with 018b3d8's own job (handoff §8, rehearsal C3): created 04:30:38, `:switch` 04:30:39, finished 04:30:40; `created_at` counted 0, `finished_at` counted 1 |
+| the flat-layout count recorded with `:switch`, re-run | unchanged. An increase means a flat-layout path was recorded after the switch. This comparison involves no clock |
+| flat files on the queue disk newer than `:switch`. Local disk: `TZ=Asia/Kolkata find "<queue disk root>/reporting-exports" -maxdepth 1 -type f -newermt '<:switch>'`, where the root comes from `php artisan tinker --execute="echo Storage::disk(config('reporting.queue_disk','local'))->path('reporting-exports');"`. An s3 queue disk: the objects directly under `reporting-exports/` with LastModified after `:switch` | none. The release writes only into `reporting-exports/<shop>/<export>/`. This catches a file whose job died before recording its path, which no row shows |
+| baseline-shaped rows written since the switch, per table (every baseline writer of these columns saves through Eloquent, which sets `updated_at` at the write — `KarigarInvoiceService`, `StockPurchaseController`, `SettingsController` at 018b3d8): `select count(*) from karigar_invoices where updated_at > :switch and ((invoice_file_path is not null and invoice_file_disk is null) or (invoice_file_path is null and invoice_file_disk is not null))`, and the same for `stock_purchases` (`invoice_image`, `invoice_image_disk`) and `shop_billing_settings` (`digital_signature_path`, `digital_signature_disk`) | 0 on all three. The release always writes both columns, so any such row since the switch shows a baseline writer still serving somewhere |
+
+The process check and the record checks are independent. The process check
+shows that no baseline process runs now. The record, count and file checks
+show that none ran since `:switch`. Both must be clean.
 
 The new code serves the export panel and authorized downloads without the
 table (rehearsed: handoff §8, section C2; `ExportNotificationDeliveryTest`);
@@ -278,7 +294,7 @@ Phase 2b.
 | `select to_regclass('notifications')` | not NULL |
 | `select conname from pg_constraint where conname in (…the three…)` | 0 rows |
 | `php artisan reporting:notify-export` | the list of unexpired finished exports not recorded as notified, recorded; `--send` only as approved |
-| the flat-layout export count and the baseline-shaped row counts from D2, re-run | still 0 — the contract must not meet a baseline writer either |
+| the three export checks and the baseline-shaped row counts from D2, re-run against the same `:switch` and the same recorded flat-layout count; the process check re-run | 0, unchanged, none, and every process started after `:switch`. From Phase 2b on, a baseline worker would finish its export `done` and make a shared file downloadable. This re-run is what shows none ran between D2 and Phase 2b, and the contract must not meet a baseline writer either |
 
 ### D3 — after Phase 3
 
