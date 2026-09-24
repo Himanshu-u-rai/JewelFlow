@@ -169,4 +169,38 @@ class TenantForeignReferenceTest extends TestCase
 
         $this->assertSame($jobA, (int) KarigarInvoice::withoutGlobalScopes()->where('shop_id', $shopA->id)->value('job_order_id'));
     }
+
+    // ── Unscoped binding: the shop's platform billing invoice ─────────────
+    //
+    // PlatformInvoice has shop_id but no BelongsToShop, so /billing/{invoice}
+    // binds any shop's invoice; BillingController@show checks the shop. Read
+    // in §7e, not previously exercised across shops.
+
+    private function platformInvoice(int $shopId, string $number): \App\Models\Platform\PlatformInvoice
+    {
+        $sub = \App\Models\Platform\ShopSubscription::query()->where('shop_id', $shopId)->firstOrFail();
+
+        return \App\Models\Platform\PlatformInvoice::create([
+            'shop_id' => $shopId, 'shop_subscription_id' => $sub->id, 'plan_id' => $sub->plan_id,
+            'invoice_number' => $number, 'invoice_sequence' => 1, 'billing_cycle' => 'monthly',
+            'billing_period_start' => now()->subMonth()->toDateString(), 'billing_period_end' => now()->toDateString(),
+            'amount_before_tax' => 999, 'gst_rate' => 18, 'gst_amount' => 179.82, 'total_amount' => 1178.82,
+            'status' => 'paid', 'issued_at' => now(),
+            'created_by_admin_id' => \App\Models\Platform\PlatformAdmin::query()->value('id'),
+        ]);
+    }
+
+    public function test_a_shop_cannot_read_another_shops_platform_billing_invoice(): void
+    {
+        [, $shopB] = $this->createRetailerTenant();
+        $invoiceB = $this->platformInvoice((int) $shopB->id, 'PLT-SHOP-B-0001');
+        [$ownerA, $shopA] = $this->createRetailerTenant();
+        $invoiceA = $this->platformInvoice((int) $shopA->id, 'PLT-SHOP-A-0001');
+
+        TenantContext::runFor((int) $shopA->id, fn () => $this->actingAs($ownerA)->get(self::ERP.'/billing/'.$invoiceB->id))
+            ->assertForbidden()->assertDontSee('PLT-SHOP-B-0001');
+
+        TenantContext::runFor((int) $shopA->id, fn () => $this->actingAs($ownerA)->get(self::ERP.'/billing/'.$invoiceA->id))
+            ->assertOk()->assertSee('PLT-SHOP-A-0001');
+    }
 }
