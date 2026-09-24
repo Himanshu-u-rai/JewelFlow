@@ -407,6 +407,34 @@ there.
 
 ---
 
+## Not part of this release
+
+**`php artisan accounting:backfill-snapshots` — do not run.** This release
+does not depend on it. No phase, drift check, scheduler entry or deploy step
+calls it. It could not do its job correctly, and one of its parts must not be
+done at all:
+
+- **The invoice phase processes nothing.** It queries the tenant-scoped
+  `Invoice` model with no `TenantContext`, and in console the scope fails
+  closed. Measured: one finalized invoice, no line "processed invoices".
+  Giving it context would make it worse. `captureForInvoice()` records
+  *today's* shop settings and signature, so every pre-release invoice would
+  get an "as issued" presentation it never had. The snapshot contract allows
+  only a recorded presentation. Invoices finalized before S3-04's capture
+  existed fall back to live settings, a stated limitation (handoff §7d).
+- **The payment-label phase stamps today's labels.** It fills a missing
+  `payment_method_label_snapshot` from the method's current name. On
+  `invoice_payments` and `karigar_payments` the protected append-only triggers
+  refuse the update, and the command aborts (measured: P0001). On
+  `quick_bill_payments` it would record current names as historical.
+  Since `d105d4d` it at least never takes another shop's method (S3-20).
+
+Tracked separately as a functional issue (handoff, FUNC-01). Whether pre-S3-04
+invoices should ever get a snapshot, and from which evidence, is a product
+decision. Nothing in this release makes it.
+
+---
+
 ## Recorded limitations
 
 - **S3-02b (new, open).** The signature and purchase constraints also restrict
