@@ -39,7 +39,7 @@ class ShopBulkActionController extends Controller
                     ->whereIn('id', $shopIds)
                     ->update([
                         'access_mode'  => 'suspended',
-                        'is_active'    => '0',
+                        'is_active'    => DB::raw('false'),
                         'suspended_at' => now(),
                         'suspended_by' => $adminId,
                         'updated_at'   => now(),
@@ -63,7 +63,7 @@ class ShopBulkActionController extends Controller
                     ->whereIn('id', $shopIds)
                     ->update([
                         'access_mode'        => 'active',
-                        'is_active'          => true,
+                        'is_active'          => DB::raw('true'),   // a PHP bool binds as integer 1: 42804 on PostgreSQL
                         'suspended_at'       => null,
                         'suspended_by'       => null,
                         'suspension_reason'  => null,
