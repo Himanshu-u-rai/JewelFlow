@@ -253,5 +253,66 @@ class TenantForeignReferenceTest extends TestCase
         $this->assertSame([$foreign], array_map(fn ($r) => (int) $r->id, $rows));
         $this->assertSame((int) $shopB->id, (int) $rows[0]->job_order_shop_id);
     }
-}
+    /**
+     * The same class of row, for every reference between shop-owned tables:
+     * the audit must name exactly the two injected references, count one row
+     * each, and write nothing. A control with both shops' own references only
+     * must pass.
+     */
+    public function test_the_foreign_reference_audit_finds_every_injected_cross_shop_reference_and_writes_nothing(): void
+    {
+        [$ownerB, $shopB] = $this->createRetailerTenant();
+        $accountB = $this->account($shopB->id, 'ShopBUpi');
+        $jobB = $this->jobOrder($shopB->id, $this->karigar($shopB->id, 'KarigarB'), $ownerB->id, 'JO-B-7');
+        [$ownerA, $shopA, $customerA, $itemA] = $this->retailShopReadyToSell();
+        $this->sell($ownerA, $shopA, $customerA->id, $itemA->id, $this->account($shopA->id, 'ShopAUpi')->id)->assertOk();
+        $karigarA = $this->karigar($shopA->id, 'KarigarA');
+        $this->karigarInvoice($ownerA, $shopA, $karigarA, $this->jobOrder($shopA->id, $karigarA, $ownerA->id, 'JO-A-7'), 'KI-A-OWN7')
+            ->assertSessionHasNoErrors();
 
+        $this->assertSame(0, \Illuminate\Support\Facades\Artisan::call('tenant:audit-foreign-references'), 'control: own references only');
+
+        $invoiceId = (int) DB::table('invoices')->where('shop_id', $shopA->id)->value('id');
+        DB::table('invoice_payments')->insert([   // as the pre-S3-14 route wrote it
+            'invoice_id' => $invoiceId, 'shop_id' => $shopA->id, 'mode' => 'upi', 'amount' => 1,
+            'payment_method_id' => $accountB->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('karigar_invoices')->insert([   // as the pre-S3-15 route wrote it
+            'shop_id' => $shopA->id, 'karigar_id' => $karigarA, 'job_order_id' => $jobB, 'karigar_invoice_number' => 'KI-A-OLD7',
+            'karigar_invoice_date' => now()->toDateString(), 'payment_status' => 'unpaid', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $counts = fn () => [DB::table('invoice_payments')->count(), DB::table('karigar_invoices')->count(), DB::table('job_orders')->count()];
+        $before = $counts();
+
+        $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call('tenant:audit-foreign-references'));
+        $out = \Illuminate\Support\Facades\Artisan::output();
+
+        $this->assertStringContainsString('invoice_payments.payment_method_id -> shop_payment_methods (declared): 1 row(s)', $out);
+        $this->assertStringContainsString('karigar_invoices.job_order_id -> job_orders (declared): 1 row(s)', $out);
+        $this->assertStringContainsString('crossing shops: 2, rows: 2', $out);
+        $this->assertSame($before, $counts(), 'read-only');
+    }
+    /** A table without shop_id, owned through its parent: a line on shop A's invoice naming shop B's item. */
+    public function test_the_foreign_reference_audit_checks_references_of_rows_owned_through_a_parent(): void
+    {
+        [, $shopB] = $this->createRetailerTenant();
+        $itemB = $this->createItem((int) $shopB->id, null, ['design' => 'BravoLineItem']);
+        [$ownerA, $shopA, $customerA, $itemA] = $this->retailShopReadyToSell();
+        $this->sell($ownerA, $shopA, $customerA->id, $itemA->id, $this->account($shopA->id, 'ShopAUpi2')->id)->assertOk();
+        $this->assertSame(0, \Illuminate\Support\Facades\Artisan::call('tenant:audit-foreign-references'), 'control: the sale\'s own line');
+
+        // A draft: lines of a finalized invoice are immutable (trigger).
+        $draft = TenantContext::runFor((int) $shopA->id, fn () => \App\Models\Invoice::issue([
+            'shop_id' => $shopA->id, 'customer_id' => $customerA->id, 'gold_rate' => 7200, 'subtotal' => 1, 'gst' => 0, 'total' => 1,
+            'status' => \App\Models\Invoice::STATUS_DRAFT,
+        ]));
+        DB::table('invoice_items')->insert([
+            'invoice_id' => $draft->id, 'item_id' => $itemB->id, 'weight' => 1, 'rate' => 1, 'making_charges' => 0,
+            'stone_amount' => 0, 'line_total' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call('tenant:audit-foreign-references'));
+        $this->assertMatchesRegularExpression('/invoice_items\.(item_id -> items|invoice_id -> invoices) \(through [a-z_]+\.[a-z_]+\): 1 row\(s\)/',
+            \Illuminate\Support\Facades\Artisan::output());
+    }
+}

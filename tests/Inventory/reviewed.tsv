@@ -1,0 +1,184 @@
+# tests/Inventory/reviewed.tsv — verdicts for rows tests/Inventory/tenant_query_sweep.php lists to read.
+# key <TAB> verdict <TAB> note. Keys hash file + method + expression: an edited expression needs reading again.
+# Verdicts: ok-context (the caller's shop, traced), ok-record (an owned record's shop or key), ok-fk-join,
+# ok-platform (platform-level by design; caller named), latent (no caller; unsafe if called as noted), earlier
+# (read in the 11e91c3 round, file unchanged since; that round kept no per-row note).
+35373ed527	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+54551bc662	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+0161953bbf	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+d82fe745a7	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+b0c283f6e0	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+432c458009	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+5ce6021e62	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+41a2364978	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+1d7adc9bd4	ok-platform	writes the platform feed's global rates (shop_id null by design)
+ab84999847	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+7b1a89f338	ok-platform	called only by console DetectFraud; cross-shop aggregation by design, flags read only by Admin/FraudFlagController (observation: the full PAN is copied into flag_data)
+74e98b4032	ok-platform	called only by console DetectFraud; cross-shop aggregation by design, flags read only by Admin/FraudFlagController (observation: the full PAN is copied into flag_data)
+2c98dc567d	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+2bb83432b1	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+9beb8ef770	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+c0ab48818c	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+c79b97dddf	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+00af39e76c	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+42790586f5	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+8ce30d0775	ok-platform	records an unmatched payment event with no shop (shop_id null); platform billing
+4f760336d3	ok-platform	records an unmatched webhook event with no shop (shop_id null); platform billing
+449c907921	ok-platform	records an unmatched webhook event with no shop (shop_id null); platform billing
+db270523d1	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+a1d84b7c5a	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+a28848085b	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+db0fbc5504	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+160670035a	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+0b0037e709	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+4c57f8fad3	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+1a3cc514a9	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+939c04b0bf	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+5e6e8eb678	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+7ca0bd2caa	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+197eb8e572	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+d627d0be12	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+8a3f193cbb	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+dc1668f877	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+16b18aa7a6	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+49be5bf599	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+c9016396be	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+06c98ff387	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+a6137f17f1	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+2401bc1cb8	latent	latestFor() has no caller; called without a shopId it would return the newest rate of any shop — remove or require the shop
+2123dcc365	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+f69ffa4cb7	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+1d715804d4	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+c53971c0c8	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+a01be154b9	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+8939d284b3	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+a38ace4ffc	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+2664073328	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+bdcc54f5d2	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+a2c9e620e9	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+adbcfbae36	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+a39ee36ba0	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+1fcf2acd10	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+a40219771d	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+7b08032623	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+b6f2e1c31c	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+5c9fa65f05	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+bdfe374788	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+b4ad04869b	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+0561ec43fb	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+3af89159c8	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+0271269886	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+5ebc4776b8	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+fdf7138a63	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+478d6db4f3	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+92673912cd	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+065b7875c4	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+88805bb679	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+a23b9618b6	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+e62732c6c3	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+3272c3c486	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+66e5a83347	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+7a1a3d501e	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+7b117c9518	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+dd8a2c245e	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+c1bd0d6007	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+fa711cadc8	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+5d11107750	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+15865159ad	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+1f1520bf8b	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+0724b33b9d	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+9d85fb241f	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+9ee46fab59	ok-context	the subquery filters its own shop_id by the same shopId (reporting shopId note applies)
+67b3341173	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+e713185a9e	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+b2093585ee	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+13a96b9572	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+649dc95ea2	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+131e39c60a	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+85204fd013	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+aa3ad49973	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+7d59b2c621	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+e05b2f409c	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+77311207d1	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+bfe93a7cab	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+2d91875f5f	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+f916adb081	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+1af4b9c692	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+0d8b9c6f5d	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+f02c495eab	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+44742f5569	ok-context	shopId traced: ReportRequest built from the authenticated user's shop (ReportScreen/SalesRegister/Export controllers), the queued-export payload (set at dispatch from that shop; a mismatched payload writes nothing — QueuedExportIsolationTest), or ValidateReportTotals looping over shops (console); TaxService::liability has no caller
+46f1a9454c	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+b626014314	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+0a72306ec2	ok-context	$this->shopId comes from StoreItemRequest: the authenticated user's shop
+16c1e40326	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+99f2cb2e2e	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+a4ad91a621	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+366a1732ee	ok-record	shopId is the rendered invoice's own shop; the "other" callers listed are different resolve() methods (name collision)
+61feb703a5	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+46a028c5b4	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+cb89720f74	ok-context	callers: web and mobile dashboards with the user's shop; console WarmShopCache looping over shops
+f1e1324449	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+05dd55d822	ok-context	callers: web and mobile dashboards with the user's shop; console WarmShopCache looping over shops
+1c365d160d	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+389658be52	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+fe7a9cb6ef	ok-context	callers: web and mobile dashboards with the user's shop; console WarmShopCache looping over shops
+f07bd67d1c	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+e33beebedf	ok-platform	called only by console DetectFraud; cross-shop aggregation by design, flags read only by Admin/FraudFlagController (observation: the full PAN is copied into flag_data)
+b7cf179a00	ok-platform	called only by console DetectFraud; cross-shop aggregation by design, flags read only by Admin/FraudFlagController (observation: the full PAN is copied into flag_data)
+b37a79888a	ok-platform	called only by console DetectFraud; cross-shop aggregation by design, flags read only by Admin/FraudFlagController (observation: the full PAN is copied into flag_data)
+4f8c276762	ok-platform	called only by console DetectFraud; cross-shop aggregation by design, flags read only by Admin/FraudFlagController (observation: the full PAN is copied into flag_data)
+7d9ba325f8	ok-platform	called only by console DetectFraud; cross-shop aggregation by design, flags read only by Admin/FraudFlagController (observation: the full PAN is copied into flag_data)
+eabeefeb0e	ok-platform	called only by console DetectFraud; cross-shop aggregation by design, flags read only by Admin/FraudFlagController (observation: the full PAN is copied into flag_data)
+2826efbab8	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+98bfae670c	ok-context	createFinalized() callers (web and mobile RepairController) pass auth()->user()->shop_id
+caf4e28da8	ok-record	shopId is the rendered invoice's own shop; "other" callers are different resolve() methods (name collision)
+e92ac8f517	ok-context	callers: the user's shop, IsEnabledMetal (constructed in StoreItemRequest with the request user's shop), record shops
+95c0f1c31b	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+56e0940e1f	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+5f22a116e1	ok-record	SendPushNotificationJob's shopId is set by PushNotificationService::send callers from the record's shop
+0ebd32942c	latent	overrideStats() has no caller; filters by its shopId parameter
+942b8c9d7f	latent	overrideStats() has no caller; filters by its shopId parameter
+a432684f72	latent	weeklyOverrideReport() has no caller; filters by its shopId parameter
+4f86194bdf	ok-platform	called only by console EvaluatePlatformAlerts
+36cf02a3a3	ok-platform	called only by console EvaluatePlatformAlerts
+015379388c	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+dd14052489	ok-context	callers: the user's shop, or a console loop over shops
+ac2656a650	ok-context	the dataset's ReportRequest shop (see reporting note)
+d29e2a335c	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+57f9a34344	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+1809446e06	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+a7c890ef51	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+ae683cce61	ok-context	every caller passes the authenticated user's shop, or a record's shop
+2a655bf5c5	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+a8939adcf3	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+66e737d0ea	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+19d99233cd	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+9f70c1f210	ok-record	targetFor() is called by InvoiceSignatureRenderer::build with the invoice's shop
+25daae853c	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+70a9f03159	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+4b3d0b9aac	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+3fc9ec6d4c	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+15c289797a	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+e410950db5	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+2435e4782e	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+33f8d05727	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+b3bbaa4989	ok-platform	trial eligibility: shop_id OR user_id grouped in one closure, both the caller's own; matches nothing when neither is given
+4c85e3dfa8	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+15bfbfeee1	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+9d260ec72e	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+6bfbc8feee	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+ea964fbd31	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+e7329bd743	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
+21b4c2fe77	ok-platform	called only by Admin/TenantActivityController; per-shop counts across shops by design
+cc81bf9740	ok-platform	called only by Admin/TenantActivityController; per-shop counts across shops by design
+1d57467267	ok-platform	called only by Admin/TenantActivityController; per-shop counts across shops by design
+22ca15489d	ok-platform	called only by Admin/TenantActivityController; per-shop counts across shops by design
+b1db5606e6	ok-platform	called only by Admin/TenantActivityController; per-shop counts across shops by design
+affdcba35c	ok-platform	called only by Admin/TenantActivityController; per-shop counts across shops by design
+b9d43f1206	ok-platform	called only by Admin/TenantActivityController; per-shop counts across shops by design
+adce005828	ok-platform	called by console CheckShopHealthAlerts and the super-admin.dashboard view composer only
+35cdfadce6	ok-platform	called by console CheckShopHealthAlerts and the super-admin.dashboard view composer only
+84ebf88a76	ok-platform	called by console CheckShopHealthAlerts and the super-admin.dashboard view composer only
+bb00f6e4d7	ok-platform	called by console CheckShopHealthAlerts and the super-admin.dashboard view composer only
+aeb08462f9	ok-fk-join	joined through a foreign key from a shop-filtered row; reaches another shop only if that key names one — tenant:audit-foreign-references (238 references; 0 crossing in jewelflow_testing; production NOT RUN)
+29698f2217	earlier	read in the 11e91c3 round (handoff §7e); file unchanged since
