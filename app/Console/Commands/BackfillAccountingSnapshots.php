@@ -99,6 +99,11 @@ class BackfillAccountingSnapshots extends Command
                 $method = null;
                 if (! empty($row->payment_method_id)) {
                     $method = $methodsById->get((int) $row->payment_method_id);
+                    // Only a method of the row's own shop labels it: an inconsistent
+                    // reference would copy another shop's account into this one (§7e).
+                    if ($method !== null && (int) $method->shop_id !== (int) $row->shop_id) {
+                        $method = null;
+                    }
                 }
 
                 $label = PaymentMethodLabel::resolve($method, $row->{$modeColumn} ?? null);
