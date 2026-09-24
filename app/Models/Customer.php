@@ -8,6 +8,7 @@ use App\Models\Concerns\CanonicalisesMobileNumbers;
 use App\Services\BusinessIdentifierService;
 use App\Support\Mobile;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Customer extends Model
 {
@@ -292,33 +293,47 @@ class Customer extends Model
 
     public function addLoyaltyPoints(int $points, ?int $invoiceId = null, string $description = 'Points earned', $expiresAt = null): LoyaltyTransaction
     {
-        $this->increment('loyalty_points', $points);
-
-        return $this->loyaltyTransactions()->create([
+        return $this->writeLoyalty($points, [
             'invoice_id' => $invoiceId,
             'type' => 'earn',
             'points' => $points,
             'description' => $description,
-            'balance_after' => $this->loyalty_points,
             'expires_at' => $expiresAt,
         ]);
     }
 
     public function redeemLoyaltyPoints(int $points, ?int $invoiceId = null, string $description = 'Points redeemed'): LoyaltyTransaction
     {
-        if ($points > $this->loyalty_points) {
-            throw new \LogicException('Insufficient loyalty points');
-        }
-
-        $this->decrement('loyalty_points', $points);
-
-        return $this->loyaltyTransactions()->create([
+        return $this->writeLoyalty(-$points, [
             'invoice_id' => $invoiceId,
             'type' => 'redeem',
             'points' => $points,
             'description' => $description,
-            'balance_after' => $this->loyalty_points,
         ]);
+    }
+
+    /**
+     * S3-16. One loyalty movement: under the customer's row lock — the lock
+     * expiry and reversal take — check the balance as it is now (not as this
+     * model was loaded), then change it and append its ledger row as one unit.
+     * A savepoint inside a caller's transaction. This model's balance follows
+     * only once both are written.
+     */
+    private function writeLoyalty(int $delta, array $row): LoyaltyTransaction
+    {
+        $txn = DB::transaction(function () use ($delta, $row) {
+            $locked = static::query()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
+            if ($delta < 0 && -$delta > $locked->loyalty_points) {
+                throw new \LogicException('Insufficient loyalty points');
+            }
+            $locked->increment('loyalty_points', $delta);
+
+            return [$locked->loyaltyTransactions()->create($row + ['balance_after' => $locked->loyalty_points]), $locked->loyalty_points];
+        });
+        $this->loyalty_points = $txn[1];
+        $this->syncOriginalAttribute('loyalty_points');
+
+        return $txn[0];
     }
 
     public function upcomingOccasions(int $daysAhead = 30): array

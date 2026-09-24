@@ -71,12 +71,17 @@ class LoyaltyController extends Controller
             'description' => 'required|string|max:255',
         ]);
 
-        $this->loyaltyService->adjustPoints(
-            $customer,
-            $data['points'],
-            $data['type'],
-            $data['description']
-        );
+        try {
+            $this->loyaltyService->adjustPoints(
+                $customer,
+                $data['points'],
+                $data['type'],
+                $data['description']
+            );
+        } catch (\LogicException $e) {
+            // Checked against the balance as it is at the write, under its lock (S3-16).
+            return back()->withErrors(['points' => $e->getMessage()])->withInput();
+        }
 
         return redirect()->route('customers.show', $customer)
             ->with('success', 'Points adjusted successfully.');
