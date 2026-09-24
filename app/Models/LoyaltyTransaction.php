@@ -18,6 +18,7 @@ class LoyaltyTransaction extends Model
         'balance_after',
         'expires_at',
         'expired',
+        'expires_lot_id',
     ];
 
     protected $casts = [

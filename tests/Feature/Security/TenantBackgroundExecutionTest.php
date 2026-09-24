@@ -46,35 +46,30 @@ class TenantBackgroundExecutionTest extends TestCase
     }
 
     /**
-     * S3-16 — CHARACTERIZATION of a reproduced defect, not a fix. Invert it
-     * when S3-16 is decided.
-     *
-     * `loyalty:expire` (scheduled daily) iterates active shops and calls
-     * LoyaltyService::expirePoints() with no tenant context, so every
-     * LoyaltyTransaction query is `... AND 1 = 0`: nothing expires, and the
-     * command reports success. There is no cross-shop effect — the scope
-     * fails closed.
-     *
-     * Entering each shop's context does not repair it. Reproduced with
-     * TenantContext::runFor around the call: the service's
-     * `$txn->update(['expired' => true])` is then refused by
-     * loyalty_transactions_append_only_trigger — constitutionally protected,
-     * Article IX.A #9, added after the expiry code — so the command fails
-     * for every shop instead. A repair needs an append-only representation
-     * of expiry, which changes customer balances on its first run: a
-     * product and accounting decision, not made here.
+     * S3-16. `loyalty:expire` (scheduled daily) used to call the expiry with
+     * no tenant context, so every LoyaltyTransaction query was `... AND 1 = 0`:
+     * nothing expired and the command reported success. Entering each shop's
+     * context then hit the append-only trigger (Art. IX.A #9) on the old
+     * `expired` update. Expiry is now append-only and starts only at
+     * loyalty.expiry_active_from (LoyaltyExpiryTest); unset, as here, the run
+     * must still reach each shop's ledger — and report it — while writing
+     * nothing.
      */
-    public function test_s3_16_characterization_scheduled_loyalty_expiry_expires_nothing(): void
+    public function test_s3_16_scheduled_loyalty_expiry_reaches_each_shop_and_writes_nothing_until_activated(): void
     {
         [, $shopA] = $this->createRetailerTenant();
         [, $shopB] = $this->createRetailerTenant();
         [$customerA, $txnA] = $this->pointsHolder($shopA->id, 100, now()->subDay()->toDateTimeString());
         [$customerB, $txnB] = $this->pointsHolder($shopB->id, 70, now()->subDay()->toDateTimeString());
+        config(['loyalty.expiry_active_from' => null]);
         $this->assertNull(TenantContext::get(), 'run as the scheduler does: no tenant context');
 
-        $this->artisan('loyalty:expire')->assertExitCode(0);
+        $this->artisan('loyalty:expire')
+            ->expectsOutputToContain("Shop #{$shopA->id}: nothing written; overdue, kept: 1 lot(s) / 100 pts")
+            ->expectsOutputToContain("Shop #{$shopB->id}: nothing written; overdue, kept: 1 lot(s) / 70 pts")
+            ->assertExitCode(0);
 
-        $this->assertSame(100, $this->points($customerA), 'S3-16: expired points are NOT removed');
+        $this->assertSame(100, $this->points($customerA));
         $this->assertSame(70, $this->points($customerB));
         $this->assertFalse((bool) DB::table('loyalty_transactions')->where('id', $txnA)->value('expired'));
         $this->assertFalse((bool) DB::table('loyalty_transactions')->where('id', $txnB)->value('expired'));
