@@ -41,7 +41,7 @@ class TaxService
             ->salesIn($period)
             ->whereNotNull('invoices.buyer_gstin')
             ->whereRaw("TRIM(invoices.buyer_gstin) <> ''")
-            ->leftJoin('customers', 'customers.id', '=', 'invoices.customer_id')
+            ->leftJoin('customers', fn ($j) => $j->on('customers.id', '=', 'invoices.customer_id')->on('customers.shop_id', '=', 'invoices.shop_id'))
             ->select(
                 'invoices.invoice_number',
                 DB::raw("{$dateExpr} as doc_date"),
@@ -139,8 +139,8 @@ class TaxService
         $rows = CreditNote::withoutTenant()
             ->where('credit_notes.shop_id', $shopId)
             ->whereBetween('credit_notes.issued_at', [$start, $end])
-            ->leftJoin('invoices', 'invoices.id', '=', 'credit_notes.invoice_id')
-            ->leftJoin('customers', 'customers.id', '=', 'credit_notes.customer_id')
+            ->leftJoin('invoices', fn ($j) => $j->on('invoices.id', '=', 'credit_notes.invoice_id')->on('invoices.shop_id', '=', 'credit_notes.shop_id'))
+            ->leftJoin('customers', fn ($j) => $j->on('customers.id', '=', 'credit_notes.customer_id')->on('customers.shop_id', '=', 'credit_notes.shop_id'))
             ->select(
                 'credit_notes.credit_note_number',
                 'credit_notes.issued_at',

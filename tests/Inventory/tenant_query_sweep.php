@@ -81,6 +81,13 @@ if (DB::connection()->getDatabaseName() !== 'jewelflow_testing') {
 }
 
 $all = in_array('--all', $argv, true);
+// --resolved: every expression as one TSV line with its status — the verdict
+// and note for a row that was read, `trusted` with the constraint that made it
+// so, or UNREAD — and the full expression, for review without the key hashes.
+$resolved = in_array('--resolved', $argv, true);
+// --path=<dir>: scan another directory instead of app/ (the scanner's own fixtures).
+$scanPath = collect($argv)->first(fn ($a) => str_starts_with($a, '--path='));
+$scanPath = $scanPath ? substr($scanPath, 7) : 'app';
 // --trace=<method>: print every call site the parameter trace visits for that method.
 $traceMethod = collect($argv)->first(fn ($a) => str_starts_with($a, '--trace='));
 $traceMethod = $traceMethod ? substr($traceMethod, 8) : null;
@@ -171,7 +178,7 @@ $callSites = [];    // method => list of [call, caller class, caller method, tar
 $newSites = [];     // class => list of [new node, caller class, caller method, value classifier]
 $pending = [];      // row index => constraint positions whose value is a parameter, resolved once every file is parsed
 
-foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/app')) as $f) {
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/'.$scanPath)) as $f) {
     if ($f->getExtension() !== 'php') {
         continue;
     }
@@ -259,7 +266,8 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/ap
 
     // Where a value comes from:
     //   context | record | param:$x | dto:Class::prop | property | loop | REQUEST | other | ?
-    $valueClass = function (Node\Expr $v, ?Node $at, int $depth = 0) use (&$valueClass, $print, $finder, $fnOf, $up, $paramType, $isHttp): string {
+    $constraintsOf = null;
+    $valueClass = function (Node\Expr $v, ?Node $at, int $depth = 0) use (&$valueClass, &$constraintsOf, $print, $finder, $fnOf, $up, $paramType, $isHttp): string {
         if ($v instanceof Node\Expr\Cast) {
             return $valueClass($v->expr, $at, $depth);
         }
@@ -285,16 +293,40 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/ap
             || $root instanceof Node\Expr\NullsafeMethodCall || $root instanceof Node\Expr\ArrayDimFetch) {
             $root = $root->var;
         }
+        // A record obtained by a query: owned when the model is scoped and the
+        // scope is kept, or when the query carries a trusted shop filter.
+        if ($root instanceof Node\Expr\StaticCall && $root->class instanceof Node\Name && ! $root->class->isSpecialClassName()
+            && ($v instanceof Node\Expr\MethodCall || $v instanceof Node\Expr\StaticCall) && $depth < 9) {
+            $cls = $root->class->toString();
+            if (in_array($cls, ['DB', 'Illuminate\\Support\\Facades\\DB'], true) || is_subclass_of($cls, Illuminate\Database\Eloquent\Model::class)) {
+                $removed = (bool) preg_match('/withoutTenant|withoutGlobalScope|newQueryWithoutScopes|newModelQuery/', $src);
+                if (! $removed && is_subclass_of($cls, Illuminate\Database\Eloquent\Model::class)
+                    && in_array(App\Models\Concerns\BelongsToShop::class, class_uses_recursive($cls), true)) {
+                    return 'owned';
+                }
+                foreach ($constraintsOf($v, false, $depth + 1) as [$kind, $from, $weak]) {
+                    // A trusted shop filter, or a key taken from the caller's own
+                    // identity or an owned record's own id (User::find(auth()->id())).
+                    if (in_array($kind, ['where', 'raw', 'key'], true) && ! $weak && in_array($from, ['context', 'record', 'owned'], true)) {
+                        return 'owned';
+                    }
+                }
+
+                return 'unowned';
+            }
+        }
         if ($root !== $v && $root instanceof Node\Expr\Variable && is_string($root->name)) {
             if ($root->name === 'this' && $v instanceof Node\Expr\PropertyFetch && $v->var === $root && $v->name instanceof Node\Identifier
                 && preg_match('/^(id|shop_id|[a-z0-9_]+_id)$/', $v->name->toString())
                 && ($cls = $up($v, Node\Stmt\Class_::class)) && $cls->namespacedName
                 && is_subclass_of($cls->namespacedName->toString(), Illuminate\Database\Eloquent\Model::class)) {
-                return 'record';   // a model's own key: the record itself
+                // A model's own key: whose record this is depends on how the
+                // caller obtained it, which this method cannot see.
+                return 'self';
             }
             if ($root->name === 'this') {
                 // $this->method(…): what that method returns, same class.
-                if ($v instanceof Node\Expr\MethodCall && $v->var === $root && $v->name instanceof Node\Identifier && $depth < 3
+                if ($v instanceof Node\Expr\MethodCall && $v->var === $root && $v->name instanceof Node\Identifier && $depth < 5
                     && ($cls = $up($v, Node\Stmt\Class_::class, Node\Stmt\Trait_::class)) && ($m = $cls->getMethod($v->name->toString())) && $m->stmts) {
                     $rets = array_filter($finder->findInstanceOf($m->stmts, Node\Stmt\Return_::class), fn ($r) => $r->expr !== null);
                     $classes = array_values(array_unique(array_map(fn ($r) => $valueClass($r->expr, $r, $depth + 1), $rets)));
@@ -314,20 +346,34 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/ap
                 && ! is_subclass_of($type, Illuminate\Database\Eloquent\Model::class)) {
                 return 'dto:'.$type.'::'.$last;   // resolved from its constructor calls, after parsing
             }
-            if ($depth < 3 && ($v instanceof Node\Expr\ArrayDimFetch || ($last !== null && preg_match('/^(id|shop_id|[a-z0-9_]+_id|shop|getKey|pluck|modelKeys|keys)$/', $last)))) {
+            if ($depth < 10 && ($v instanceof Node\Expr\ArrayDimFetch || ($last !== null && preg_match('/^(id|shop_id|[a-z0-9_]+_id|shop|getKey|pluck|modelKeys|keys)$/', $last)))) {
                 // A key (or the shop) of something in hand: a record, unless the
                 // thing itself is request data; the caller's own shop stays context.
                 $rc = $valueClass($root, $at, $depth + 1);
                 if (str_contains($rc, 'REQUEST')) {
                     return 'REQUEST';
                 }
+                if ($v instanceof Node\Expr\ArrayDimFetch || $rc === 'context' || str_starts_with($rc, 'param:')) {
+                    return $rc;
+                }
+                // A record's own identity (id, getKey(), shop_id) is trusted only when
+                // the record's ownership was established where it was obtained (a
+                // scoped lookup, a trusted filter, a scoped route binding). A key it
+                // holds to ANOTHER record (customer_id…), or one reached through a
+                // relation, follows a stored reference: record-fk, not trusted.
+                if (! in_array($rc, ['owned', 'record'], true)) {
+                    return 'record?';
+                }
+                $plucked = $last === 'pluck' && $v instanceof Node\Expr\MethodCall && ($v->args[0]->value ?? null) instanceof Node\Scalar\String_
+                    ? $v->args[0]->value->value : null;
+                $ownIdentity = in_array($last, ['id', 'getKey', 'shop_id', 'shop', 'modelKeys', 'keys'], true) || in_array($plucked, ['id', 'shop_id'], true);
 
-                return $v instanceof Node\Expr\ArrayDimFetch || $rc === 'context' ? $rc : 'record';
+                return $v->var === $root && $ownIdentity ? 'record' : 'record-fk';
             }
 
             return 'other';
         }
-        if (! $v instanceof Node\Expr\Variable || ! is_string($v->name) || $depth >= 3 || $at === null) {
+        if (! $v instanceof Node\Expr\Variable || ! is_string($v->name) || $depth >= 10 || $at === null) {
             return $v instanceof Node\Expr\Variable ? '?' : 'other';
         }
         if ($isHttp($paramType($v->name, $at))) {
@@ -337,8 +383,11 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/ap
         for ($fn = $fnOf($at); $fn !== null; $fn = $fnOf($fn)) {
             foreach ($fn->getParams() as $param) {
                 if ($param->var instanceof Node\Expr\Variable && $param->var->name === $v->name) {
-                    if ($param->type instanceof Node\Name && is_subclass_of($param->type->toString(), Illuminate\Database\Eloquent\Model::class)) {
-                        return 'record';   // a bound or passed model instance
+                    if ($param->type instanceof Node\Name && is_subclass_of($param->type->toString(), Illuminate\Database\Eloquent\Model::class)
+                        && $fn instanceof Node\Stmt\ClassMethod && ($cls = $up($fn, Node\Stmt\Class_::class)) && $cls->namespacedName
+                        && str_starts_with($cls->namespacedName->toString(), 'App\\Http\\Controllers\\')
+                        && in_array(App\Models\Concerns\BelongsToShop::class, class_uses_recursive($param->type->toString()), true)) {
+                        return 'record';   // route-bound through the shop scope
                     }
 
                     return $fn instanceof Node\Stmt\ClassMethod || $fn instanceof Node\Stmt\Function_ ? 'param:'.$v->name : '?';
@@ -369,7 +418,7 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/ap
     // Every constraint in one expression: [kind, value class, is-or]. Kinds:
     // where/insert/raw/colEq on shop_id; key — an id or *_id column, find(),
     // whereKey(); token — a token/slug/uuid/hash/code column.
-    $constraintsOf = function (Node $top, bool $isWrite) use ($finder, $print, $valueClass): array {
+    $constraintsOf = function (Node $top, bool $isWrite, int $depth = 0) use ($finder, $print, $valueClass): array {
         $found = [];
         $col = fn ($e) => $e instanceof Node\Scalar\String_ ? $e->value : null;
         $kindOf = fn (?string $c) => match (true) {
@@ -387,17 +436,21 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/ap
             $a0 = $args[0]->value ?? null;
             if (preg_match('/^(or)?(where|whereIn|whereNot|whereNotIn|firstWhere)$/i', $name) && ($k = $kindOf($col($a0)))) {
                 $val = $args[count($args) === 2 ? 1 : 2]->value ?? null;
-                $found[] = [$k, $val ? $valueClass($val, $call) : '?', $or || str_contains(strtolower($name), 'not')];
+                // Only equality (or IN) constrains to a value: `<>`, `!=`, `>`… and
+                // whereNot/whereNotIn select everything else.
+                $op = count($args) === 3 && $args[1]->value instanceof Node\Scalar\String_ ? trim(strtolower($args[1]->value->value)) : '=';
+                $negative = str_contains(strtolower($name), 'not') || ! in_array($op, ['=', '=='], true);
+                $found[] = [$negative && $k === 'where' ? 'where-not' : $k, $val ? $valueClass($val, $call, $depth) : '?', $or || $negative];
             } elseif (preg_match('/^(or)?where$/i', $name) && $a0 instanceof Node\Expr\Array_) {
                 foreach ($a0->items as $item) {
                     if ($item && ($k = $kindOf($col($item->key)))) {
-                        $found[] = [$k, $valueClass($item->value, $call), $or];
+                        $found[] = [$k, $valueClass($item->value, $call, $depth), $or];
                     }
                 }
             } elseif (preg_match('/^(or)?whereShopId$/i', $name) && $a0) {
-                $found[] = ['where', $valueClass($a0, $call), $or];
+                $found[] = ['where', $valueClass($a0, $call, $depth), $or];
             } elseif (in_array($name, ['find', 'findOrFail', 'findMany', 'findOrNew', 'whereKey', 'sole'], true) && $a0 && ! $a0 instanceof Node\Expr\Closure) {
-                $found[] = ['key', $valueClass($a0, $call), false];
+                $found[] = ['key', $valueClass($a0, $call, $depth), false];
             } elseif (preg_match('/^(or)?whereColumn$/i', $name) && str_contains($print($call), 'shop_id')) {
                 $found[] = ['colEq', '-', $or];
             } elseif (in_array($name, ['whereRaw', 'orWhereRaw', 'select', 'selectOne', 'statement', 'update', 'delete', 'insert', 'scalar', 'cursor'], true)
@@ -405,14 +458,29 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/ap
                 && preg_match('/shop_id\s*(=|in\b)/i', $print($a0))) {
                 $bindings = $args[1]->value ?? null;
                 $classes = $bindings instanceof Node\Expr\Array_
-                    ? array_values(array_unique(array_map(fn ($i) => $valueClass($i->value, $call), array_filter($bindings->items))))
+                    ? array_values(array_unique(array_map(fn ($i) => $valueClass($i->value, $call, $depth), array_filter($bindings->items))))
                     : ['?'];
                 $found[] = ['raw', count($classes) === 1 ? $classes[0] : 'mixed('.implode(',', $classes).')', $or];
             }
         }
         if ($isWrite) {
             foreach ($finder->find($top, fn (Node $n) => $n instanceof Node\ArrayItem && $n->key instanceof Node\Scalar\String_ && $n->key->value === 'shop_id') as $item) {
-                $found[] = ['insert', $valueClass($item->value, $item), false];
+                // What the array is an argument of decides what shop_id means in it.
+                $arg = $item->getAttribute('parent')?->getAttribute('parent');
+                $call = $arg?->getAttribute('parent');
+                $name = $call && ($call instanceof Node\Expr\MethodCall || $call instanceof Node\Expr\StaticCall) && $call->name instanceof Node\Identifier
+                    ? $call->name->toString() : '';
+                $first = $call && $arg instanceof Node\Arg && ($call->args[0] ?? null) === $arg;
+                $value = $valueClass($item->value, $item, $depth);
+                if (in_array($name, ['firstOrCreate', 'updateOrCreate', 'firstOrNew', 'updateOrInsert', 'createOrFirst'], true) && $first) {
+                    $found[] = ['where', $value, false];   // the attributes matched: a filter, and the new row's shop
+                } elseif (in_array($name, ['create', 'insert', 'insertGetId', 'insertOrIgnore', 'forceCreate', 'record', 'createMany', 'createOrFirst', 'upsert'], true)) {
+                    $found[] = ['insert', $value, false];
+                } else {
+                    // update(), fill(), the values of updateOrCreate(): an assignment
+                    // to the rows the query selects — it constrains none of them.
+                    $found[] = ['assign', $value, true];
+                }
             }
         }
 
@@ -461,6 +529,7 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/ap
             'request' => preg_match('/\$request\b|request\(\)|\$validated\b|->input\(|->validated\(\)|\$payload\b/', $src) ? 'request' : '',
             'key' => substr(sha1($path.'|'.$methodName($at).'|'.$kind.'|'.$table.'|'.$src), 0, 10),
             'src' => mb_substr($src, 0, 260),
+            'full' => $src,
         ];
         foreach ($constraints as $i => $c) {
             if (preg_match('/(^|[(,])(param:|dto:)/', $c[1])) {
@@ -677,11 +746,11 @@ $trustedFrom = function (string $from): bool {
     $from = preg_replace('/^via>/', '', $from);
     $parts = preg_match('/^mixed\((.*)\)$/', $from, $m) ? explode(',', $m[1]) : [$from];
 
-    return array_diff($parts, ['context', 'record']) === [];
+    return array_diff($parts, ['context', 'record', 'owned']) === [];
 };
 foreach ($rows as &$r) {
     $cs = $r['constraints'];
-    $shopKinds = ['where', 'insert', 'raw'];
+    $shopKinds = ['where', 'insert', 'raw', 'assign', 'where-not'];   // assign/where-not are weak: never trusted
     // A shop_id taken from request data is never excused by another filter.
     $badShop = array_filter($cs, fn ($c) => in_array($c[0], $shopKinds, true) && str_contains($c[1], 'REQUEST'));
     $goodShop = array_filter($cs, fn ($c) => in_array($c[0], $shopKinds, true) && ! $c[2] && $trustedFrom($c[1]));
@@ -693,7 +762,8 @@ foreach ($rows as &$r) {
     // An orWhere in the chain breaks the conjunction.
     $r['trusted'] = $badShop === [] && ! $r['or'] && ($goodShop !== [] || $goodKey !== []);
     $show = $badShop ? reset($badShop) : ($goodShop ? reset($goodShop) : ($requestKey ? reset($requestKey) : ($goodKey ? reset($goodKey) : ($cs ? reset($cs) : null))));
-    $r['shop'] = $show ? ($show[2] ? 'or' : '').$show[0] : ($r['mention'] ? 'mention' : 'none');
+    // `or` marks a constraint applied through orWhere; where-not/assign are weak by kind.
+    $r['shop'] = $show ? ($show[2] && ! in_array($show[0], ['where-not', 'assign'], true) ? 'or' : '').$show[0] : ($r['mention'] ? 'mention' : 'none');
     $r['from'] = $show ? $show[1] : '-';
     $r['shop'] .= $r['or'] && $show && ! $show[2] ? '+or' : '';
 }
@@ -717,6 +787,19 @@ foreach (file(__DIR__.'/reviewed.tsv', FILE_IGNORE_NEW_LINES) ?: [] as $line) {
 }
 $toRead = fn ($r) => $r['owned'] !== '' && ! $r['trusted'];
 
+if ($resolved) {
+    echo "# files parsed: {$files}; parse failures: ".count($parseFailures).($parseFailures ? ' — NOT INVENTORIED: '.implode('; ', $parseFailures) : '')."\n";
+    echo implode("\t", ['status', 'note', 'area', 'location', 'kind', 'op', 'table', 'owned', 'constraint', 'key', 'expression']), "\n";
+    usort($rows, fn ($a, $b) => [$a['file'], $a['line'], $a['kind'], $a['table']] <=> [$b['file'], $b['line'], $b['kind'], $b['table']]);
+    foreach ($rows as $r) {
+        [$verdict, $note] = $toRead($r)
+            ? (isset($reviewed[$r['key']]) ? array_pad(explode(' — ', $reviewed[$r['key']], 2), 2, '') : ['UNREAD', ''])
+            : ['trusted', 'constraint from '.$r['from']];
+        echo implode("\t", [$verdict, $note, $r['area'], $r['file'].':'.$r['line'], $r['kind'], $r['op'], $r['table'], $r['owned'] ?: '-',
+            $r['shop'].':'.$r['from'], $r['key'], str_replace("\t", ' ', $r['full'])]), "\n";
+    }
+    exit($parseFailures === [] ? 0 : 3);
+}
 // ── report ────────────────────────────────────────────────────────────────
 echo "== parse ==\nfiles parsed: {$files}; parse failures: ".count($parseFailures)."\n";
 foreach ($parseFailures as $p) {
@@ -762,7 +845,7 @@ foreach (['tenant', 'admin', 'console'] as $a) {
 echo "\n";
 foreach ($list as $r) {
     echo implode("\t", [$r['key'], $r['area'], $r['file'].':'.$r['line'], $r['kind'], $r['op'], $r['table'], $r['owned'] ?: '-',
-        $r['shop'].':'.$r['from'], $r['request'], $reviewed[$r['key']] ?? 'UNREAD', $r['src']]), "\n";
+        $r['shop'].':'.$r['from'], $r['request'], $toRead($r) ? ($reviewed[$r['key']] ?? 'UNREAD') : 'trusted', $r['src']]), "\n";
 }
 
 exit($parseFailures === [] ? 0 : 3);

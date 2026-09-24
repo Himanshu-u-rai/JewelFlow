@@ -31,7 +31,7 @@ class LedgerService
         $sales = Invoice::withoutTenant()
             ->where('invoices.shop_id', $shopId)
             ->salesIn($period)
-            ->leftJoin('customers', 'customers.id', '=', 'invoices.customer_id')
+            ->leftJoin('customers', fn ($j) => $j->on('customers.id', '=', 'invoices.customer_id')->on('customers.shop_id', '=', 'invoices.shop_id'))
             ->select(
                 DB::raw('COALESCE(invoices.finalized_at, invoices.created_at) as occurred_at'),
                 'invoices.invoice_number as reference',
@@ -49,7 +49,7 @@ class LedgerService
         $cns = CreditNote::withoutTenant()
             ->where('credit_notes.shop_id', $shopId)
             ->whereBetween('credit_notes.issued_at', [$start, $end])
-            ->leftJoin('customers', 'customers.id', '=', 'credit_notes.customer_id')
+            ->leftJoin('customers', fn ($j) => $j->on('customers.id', '=', 'credit_notes.customer_id')->on('customers.shop_id', '=', 'credit_notes.shop_id'))
             ->select(
                 'credit_notes.issued_at as occurred_at',
                 'credit_notes.credit_note_number as reference',
@@ -169,7 +169,7 @@ class LedgerService
             ->value('net'), 2);
 
         $txns = DB::table('cash_transactions as c')
-            ->leftJoin('users as u', 'u.id', '=', 'c.user_id')
+            ->leftJoin('users as u', fn ($j) => $j->on('u.id', '=', 'c.user_id')->on('u.shop_id', '=', 'c.shop_id'))
             ->where('c.shop_id', $shopId)
             ->whereBetween('c.created_at', [$start, $end])
             ->whereRaw('c.is_opening IS NOT TRUE') // opening never a period movement

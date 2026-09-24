@@ -141,7 +141,7 @@ class InventoryService
     public function purchaseEfficiency(int $shopId, ReportPeriod $period): PurchaseEffData
     {
         $lines = DB::table('stock_purchase_items as li')
-            ->join('stock_purchases as p', 'p.id', '=', 'li.stock_purchase_id')
+            ->join('stock_purchases as p', fn ($j) => $j->on('p.id', '=', 'li.stock_purchase_id')->on('p.shop_id', '=', 'li.shop_id'))
             ->where('li.shop_id', $shopId)
             ->whereIn('p.status', ['confirmed', 'stocked'])
             ->whereBetween('p.purchase_date', [$period->start()->toDateString(), $period->end()->toDateString()])

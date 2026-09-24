@@ -94,8 +94,8 @@ class AuditService
         $alerts = DB::table('compliance_alerts as a')
             ->where('a.shop_id', $shopId)
             ->whereBetween('a.created_at', [$period->start(), $period->end()])
-            ->leftJoin('invoices as i', 'i.id', '=', 'a.invoice_id')
-            ->leftJoin('customers as c', 'c.id', '=', 'a.customer_id')
+            ->leftJoin('invoices as i', fn ($j) => $j->on('i.id', '=', 'a.invoice_id')->on('i.shop_id', '=', 'a.shop_id'))
+            ->leftJoin('customers as c', fn ($j) => $j->on('c.id', '=', 'a.customer_id')->on('c.shop_id', '=', 'a.shop_id'))
             ->select(
                 'a.alert_type', 'a.alert_data', 'a.resolved', 'a.created_at',
                 'i.invoice_number',

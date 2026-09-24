@@ -103,7 +103,7 @@ class RetailerReportService
         $since = now()->subDays((int) $period);
 
         $byCategory = InvoiceItem::join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
-            ->join('items', 'items.id', '=', 'invoice_items.item_id')
+            ->join('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
             ->where('invoices.created_at', '>=', $since)
             ->select('items.category', DB::raw('COUNT(*) as sold_count'), DB::raw('SUM(invoice_items.line_total) as total_revenue'))
@@ -114,7 +114,7 @@ class RetailerReportService
             ->toArray();
 
         $bySubCategory = InvoiceItem::join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
-            ->join('items', 'items.id', '=', 'invoice_items.item_id')
+            ->join('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
             ->where('invoices.created_at', '>=', $since)
             ->select('items.category', 'items.sub_category', DB::raw('COUNT(*) as sold_count'), DB::raw('SUM(invoice_items.line_total) as total_revenue'))
@@ -143,7 +143,7 @@ class RetailerReportService
         $since = now()->subDays((int) $period);
 
         $byCategory = InvoiceItem::join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
-            ->join('items', 'items.id', '=', 'invoice_items.item_id')
+            ->join('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
             ->where('invoices.created_at', '>=', $since)
             ->select('items.category', DB::raw('COUNT(*) as sold_count'), DB::raw('SUM(invoice_items.line_total) as total_revenue'))

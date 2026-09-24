@@ -25,7 +25,7 @@ class SalesService
         $invoices = Invoice::withoutTenant()
             ->where('invoices.shop_id', $shopId)
             ->salesIn($period)
-            ->leftJoin('customers', 'customers.id', '=', 'invoices.customer_id')
+            ->leftJoin('customers', fn ($j) => $j->on('customers.id', '=', 'invoices.customer_id')->on('customers.shop_id', '=', 'invoices.shop_id'))
             ->select(
                 'invoices.id',
                 'invoices.invoice_number',

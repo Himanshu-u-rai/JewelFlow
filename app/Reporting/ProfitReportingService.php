@@ -61,7 +61,7 @@ class ProfitReportingService
         // Line-level composition + COGS. Join invoice_items → items for cost.
         $lines = DB::table('invoice_items')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
-            ->leftJoin('items', 'items.id', '=', 'invoice_items.item_id')
+            ->leftJoin('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
             ->where('invoices.status', Invoice::STATUS_FINALIZED)
             ->whereRaw('COALESCE(invoices.finalized_at, invoices.created_at) BETWEEN ? AND ?', [$start, $end])

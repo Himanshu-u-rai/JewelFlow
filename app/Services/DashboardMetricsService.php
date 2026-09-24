@@ -78,7 +78,7 @@ class DashboardMetricsService
 
         $profitTrend = DB::table('invoice_items')
             ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
-            ->leftJoin('items', 'items.id', '=', 'invoice_items.item_id')
+            ->leftJoin('items', fn ($j) => $j->on('items.id', '=', 'invoice_items.item_id')->on('items.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
             ->where('invoices.status', Invoice::STATUS_FINALIZED)
             ->where('invoices.created_at', '>=', now()->subDays(6)->startOfDay())
@@ -133,7 +133,7 @@ class DashboardMetricsService
             ->get(['id', 'item_description', 'status', 'created_at']);
 
         $topCustomers = DB::table('invoices')
-            ->join('customers', 'customers.id', '=', 'invoices.customer_id')
+            ->join('customers', fn ($j) => $j->on('customers.id', '=', 'invoices.customer_id')->on('customers.shop_id', '=', 'invoices.shop_id'))
             ->where('invoices.shop_id', $shopId)
             ->where('invoices.status', Invoice::STATUS_FINALIZED)
             ->where('invoices.created_at', '>=', now()->subDays(30)->startOfDay())

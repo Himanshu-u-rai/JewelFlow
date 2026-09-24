@@ -9,12 +9,15 @@
  *
  * A test file counts as CROSS-SHOP when it creates two or more tenants (two
  * calls to createRetailerTenant / createManufacturerTenant / createShop, or a
- * mix) or names a second shop (shopA/shopB, otherShop, foreignShop). A family
+ * mix) or names a second shop (shopA/shopB, otherShop, foreignShop, "another
+ * shop", a Bravo fixture). A family
  * is a tenant model (its class name or table) or a route prefix (the first
  * literal URI segment; four for api/ routes), matched by URI or route name. A file "references" a family when its text names
  * it. That is a pointer to where coverage may be, not proof of it: a reference
- * says nothing about which operations were exercised. Families no cross-shop
- * file references are listed — those have no cross-shop test at all.
+ * says nothing about which operations were exercised. Families with no match
+ * are listed as exactly that — no heuristic match. Whether they lack
+ * behavioural coverage was NOT independently checked: a test can exercise a
+ * family without naming its class, table or route.
  */
 
 require __DIR__.'/../../vendor/autoload.php';
@@ -32,7 +35,9 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/te
     }
     $src = file_get_contents($f->getPathname());
     $tenants = preg_match_all('/create(Retailer|Manufacturer)Tenant\(|->createShop\(/', $src);
-    if ($tenants >= 2 || preg_match('/\$shop[AB]\b|\$(other|foreign)Shop\b/', $src)) {
+    // Two tenant creations, a second shop's variable, or a test naming another shop
+    // (tests that build both shops through one helper call it once).
+    if ($tenants >= 2 || preg_match('/\$shop[AB]\b|\$(other|foreign)Shop\b|another shop|other shop\b|Bravo/i', $src)) {
         $tests[substr($f->getPathname(), strlen($root) + 1)] = $src;
     }
 }
@@ -85,8 +90,8 @@ foreach ($families as $name => [$pattern, $kind]) {
 echo 'cross-shop test files: '.count($tests).'; families: '.count($families).' ('
     .count(array_filter($families, fn ($f) => $f[1] !== 'route')).' tenant models, '
     .count(array_filter($families, fn ($f) => $f[1] === 'route')).' route prefixes)'."\n";
-echo 'families referenced by at least one cross-shop test: '.count($covered).'; by none: '.count($uncovered)."\n";
-echo "\n== referenced by NO cross-shop test ==\n";
+echo 'families with a heuristic match in at least one cross-shop test: '.count($covered).'; with none: '.count($uncovered)."\n";
+echo "\n== no heuristic match (absence of behavioural coverage NOT independently checked) ==\n";
 foreach ($uncovered as $u) {
     echo "  {$u}\n";
 }

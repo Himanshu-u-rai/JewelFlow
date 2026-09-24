@@ -30,7 +30,7 @@ class ReceivablesService
         $invoices = Invoice::withoutTenant()
             ->where('invoices.shop_id', $shopId)
             ->finalizedSale()
-            ->leftJoin('customers', 'customers.id', '=', 'invoices.customer_id')
+            ->leftJoin('customers', fn ($j) => $j->on('customers.id', '=', 'invoices.customer_id')->on('customers.shop_id', '=', 'invoices.shop_id'))
             ->select(
                 'invoices.id',
                 'invoices.customer_id',
@@ -304,8 +304,8 @@ class ReceivablesService
         $plans = DB::table('installment_plans as p')
             ->where('p.shop_id', $shopId)
             ->where('p.status', 'active')
-            ->leftJoin('customers as c', 'c.id', '=', 'p.customer_id')
-            ->leftJoin('invoices as i', 'i.id', '=', 'p.invoice_id')
+            ->leftJoin('customers as c', fn ($j) => $j->on('c.id', '=', 'p.customer_id')->on('c.shop_id', '=', 'p.shop_id'))
+            ->leftJoin('invoices as i', fn ($j) => $j->on('i.id', '=', 'p.invoice_id')->on('i.shop_id', '=', 'p.shop_id'))
             ->select(
                 'p.id', 'p.total_payable', 'p.remaining_amount', 'p.emis_paid', 'p.total_emis',
                 'p.next_due_date',
@@ -384,8 +384,8 @@ class ReceivablesService
         $enrollments = DB::table('scheme_enrollments as se')
             ->where('se.shop_id', $shopId)
             ->whereIn('se.status', ['active', 'matured'])
-            ->leftJoin('schemes as s', 's.id', '=', 'se.scheme_id')
-            ->leftJoin('customers as c', 'c.id', '=', 'se.customer_id')
+            ->leftJoin('schemes as s', fn ($j) => $j->on('s.id', '=', 'se.scheme_id')->on('s.shop_id', '=', 'se.shop_id'))
+            ->leftJoin('customers as c', fn ($j) => $j->on('c.id', '=', 'se.customer_id')->on('c.shop_id', '=', 'se.shop_id'))
             ->select(
                 'se.id', 'se.status', 'se.total_paid', 'se.bonus_amount', 'se.is_bonus_accrued',
                 'se.maturity_date', 's.name as scheme_name',
@@ -448,7 +448,7 @@ class ReceivablesService
         $deposits = DB::table('customer_gold_transactions as t')
             ->where('t.shop_id', $shopId)
             ->where('t.type', 'advance')
-            ->leftJoin('customers as c', 'c.id', '=', 't.customer_id')
+            ->leftJoin('customers as c', fn ($j) => $j->on('c.id', '=', 't.customer_id')->on('c.shop_id', '=', 't.shop_id'))
             ->groupBy('t.customer_id', 'c.first_name', 'c.last_name')
             ->select(
                 DB::raw("COALESCE(NULLIF(TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), ''), 'Walk-in') as customer_name"),
