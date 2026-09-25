@@ -33,7 +33,7 @@ MOBILE_BASELINE="d8a07819ac41291bd3a7e4ba27d31261d96aef28"
 
 # The packet the last independent review covered. A re-review starts from the
 # delta since then (diffs/15-*). Override: REVIEWED_SHA=<sha> bash ...
-REVIEWED_SHA="${REVIEWED_SHA:-b8baf4e21da934f1bab9a765fa0b628988dafb30}"
+REVIEWED_SHA="${REVIEWED_SHA:-209db46b60742e441b8ffeaaa28b73966ef777c1}"
 
 cd "$(git rev-parse --show-toplevel)"
 
@@ -138,7 +138,10 @@ for f in kyc-public-exposure-containment.md \
          backup-and-restore.md \
          deploy-claude-ownership.md \
          known-pre-existing-test-debt.md \
-         tenant-inventory-resolved.tsv; do
+         tenant-inventory-resolved.tsv \
+         deploy-security-batch.sh \
+         deploy-forward.sh \
+         operator-steps-security-batch.sh; do
     git show "${EXPORT_SHA}:docs/runbooks/$f" > "$OUT/runbooks/$f"
 done
 

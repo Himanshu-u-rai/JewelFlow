@@ -1,6 +1,12 @@
 # KYC public-exposure containment (S3-01)
 
-**Status: PROPOSED — awaiting explicit approval. Nothing in this file has been executed.**
+**Status: PREPARED as an operator step — NOT executed.** The release went live
+2026-09-25 (handoff §0g); 2 KYC files remain on the public tree (count only).
+ORIGIN-ONLY is `operator-steps-security-batch.sh kyc-origin-deny` — PARTIAL
+until the edge rule and purge run, which need Cloudflare access. One
+verification change after the release: the application now answers an
+unmatched `/storage/` path itself (production 404), so a deny is proven by
+nginx's own 403 page, not by the status alone.
 
 This procedure is deliberately independent of the application release on
 `security/multi-tenant-audit`. It contains the exposure at the edge and at the

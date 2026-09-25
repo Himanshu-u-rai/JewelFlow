@@ -17,7 +17,13 @@ exposure: every production statement is as of that observation or earlier.
 Before executing any approved step, run that phase's drift check
 (`signature-migration-release-order.md` § Drift checks) and stop on drift.
 
-**This round (§0f — answering the review of `b8baf4e`):** web code through
+**This batch (§0g, 2026-09-24/25 — deployed):** production and staging run
+`2dd517a31a2335b178e79849bbbba61e2509fef7` (release `e7faf9b0a5efcfc7aebe811ec6121ff2dde60e68`
+plus a code-only forward fix). Pushed to `origin/security/multi-tenant-audit`.
+Deployed and verified; **not closed** — operator steps, device checks and
+product decisions remain (§11). Last reviewed candidate: `209db46`.
+
+**Round before (§0f — answering the review of `b8baf4e`):** web code through
 `c54dc45b53ed5238e4a2f01a99d41bdb5f262d1a`:
 - raw-SQL inventory correction `7f1afe3`;
 - loyalty harness premises `1d036af`;
@@ -66,7 +72,141 @@ not mine.
 
 ---
 
-## 0f. Review of `b8baf4e` — this round
+## 0g. The batch, end to end — local, staging, production (2026-09-24/25)
+
+Authorized by the directive that superseded the earlier no-push/no-deploy
+boundary for this batch. Last reviewed candidate `209db46`. **Deployed and
+verified; not closed** — the conditions that remain are listed at the end,
+each with the reason it is open.
+
+### What runs where
+
+| | Commit | Deployed | How |
+|---|---|---|---|
+| production `/var/www/jewelflow` | `2dd517a31a2335b178e79849bbbba61e2509fef7` | release `e7faf9b0a5efcfc7aebe811ec6121ff2dde60e68` at 02:37:28–02:37:41Z (13 s maintenance), forward `2dd517a` at 02:53:13–02:53:16Z | `deploy-security-batch.sh`, `deploy-forward.sh` |
+| staging `/var/www/jewelflow-staging` | `2dd517a31a2335b178e79849bbbba61e2509fef7` | release `e7faf9b` (Phase 2 at 23:52Z, up 23:54:26Z on 2026-09-24), forward at 02:52:36–02:52:40Z | same |
+| local branch `security/multi-tenant-audit` | pushed to `origin`; this document's commit is later | — | — |
+
+`e7faf9b` → `2dd517a` changes the foreign-reference audit, the backup scope
+list and scripts only. Application behaviour served to tenants is `e7faf9b`'s,
+verified on staging before production.
+
+### The server, as found (read-only, before any change)
+
+* One VPS; production and staging each have their own tree, database
+  (`jewelflow` / `jewelflow_staging`) and database role; separate APP_KEYs
+  (compared by hash); file cache per tree; `QUEUE_CONNECTION=sync`, plus one
+  `ops-alerts` database-queue worker per environment (systemd); the scheduler
+  cron is production's only; staging runs only a payment-reconcile cron.
+* **Both sites are served by one php8.2-fpm pool** — a reload touches both.
+  CLI and FPM run **PHP 8.2.30**; the database is **PostgreSQL 14.24**. Every
+  local result before this batch was PHP 8.4 / PostgreSQL 16.
+* Both trees were at `018b3d8`, detached, with no tracked change (untracked
+  `.env` backups and notes only). No drift from the 2026-09-20 observation.
+* Shared cookie namespace: both environments set `SESSION_DOMAIN=.jewelflows.com`
+  and the same cookie name `jewelflows-session`, so signing in to one signs
+  the browser out of the other. Different keys and session tables, so no
+  session crosses — an isolation weakness, recorded, not changed.
+* Production's `.env` is `dev:dev 640`: **www-data cannot read it**, and
+  production serves only from a config cache built by a user who can
+  (staging's is www-data-readable). This drove two of the findings below.
+
+### Local work (committed, then deployed)
+
+| Item | Result |
+|---|---|
+| **S3-21** first-admin bootstrap | Reproduced with separate processes and distinct valid mobiles: a held first registration and a second one both became super admin; 4 at once → 2 super admins; the configured GET answered 500 (`showRegister(): View` returned a redirect). Fixed with `pg_advisory_xact_lock('platform_admin_bootstrap')` before the check; return type `View\|RedirectResponse`. After: the second waited on the first's lock and was refused; 1 of 4; GET 302; the management flow still adds super admins. `fb285d7`; `admin_bootstrap_race.php` (SAFE, `--break=worker-exit` UNSAFE), `AdminBootstrapTest` (RED on the old controller). Scope: only before any super admin exists |
+| D2/D2b export drift | Reproduced with `018b3d8`'s own job: queued 04:30:38, `:switch` :39, written :40 — `created_at > :switch` counted 0. Now `finished_at > :switch`, the flat count recorded at `:switch`, and a storage listing; `:switch` defined (end of Phase 2, the app clock). Rehearsal section C3 (50 PASS / 0 FAIL / 24 MEASURED). `c5fd312` |
+| Snapshot backfill (FUNC-01) | Not a release dependency (no phase, check, cron or step calls it). Excluded in the runbook: its invoice phase processes nothing without tenant context and would, with context, record today's settings as history; its payment phase stamps current labels and aborts on append-only rows. `157588e` |
+| Public-disk writers | `shop-logos`, `catalog-heroes`: public by design (shopfront). Mobile item uploads: item images (§7a). `products`: unlisted, low-sensitivity, authenticated consumers only — no relocation; publication stays a product decision |
+| **Release blocker** found at deploy | `PaymentRaceHarness` (a harness command in `app/`) used a test trait: under `--no-dev` every artisan command fataled. Moved to `tests/Concurrency/`, registered only where the dev autoloader exists; `ProductionAutoloadTest`; a preflight gate. `5271eb1` |
+| Audit tool false positive | Production's first run reported `shop_notifications` 17/18 as naming shop 1's invoices; both are quick bills of their own shop (`invoice_type`). A `*_id` beside a `*_type` is now polymorphic, not a key by name. `b60178e` |
+| Backup scope | Six server-only entries in production's tree classified `NOT_ARCHIVED`. `2dd517a` |
+
+### Verification — measured, with where
+
+| Check | Result |
+|---|---|
+| Full suite, local PHP 8.4, at `5271eb1` / at `2dd517a` | 3421 / 3422 passed, 7 skipped (the known seven), 0 failed |
+| Full suite, local PHP 8.2 (same extensions as the server), at `5271eb1` | 3421 passed, 7 skipped, 0 failed |
+| Full suite **on the server** (PG 14.24, PHP 8.2.30), scratch `jewelflow_testing` owned by a scratch role, at `8a00615` | 3417 passed, 9 skipped, 1 failed — the failure and two extra skips are root-run filesystem-permission artefacts (chmod 0555 does not stop root); **rerun as www-data: 3 passed** |
+| Rehearsals and all 10 harnesses **on the server** at `ef6b386` (= release code) | migration rehearsal 50 PASS / 0 FAIL; contract locks passed; every harness SAFE — `idempotency_race` read per scenario: A 1×201 + 3 refused, A2 replay, B 1×201 + 1 refused, C 4×201, D 500 — all one row each where expected |
+| Production-shaped boot (`composer install --no-dev`, `artisan list`) | `e95781b` fataled (the blocker); fixed tree exit 0 |
+| Staging verifier (`tests/Staging/verify_security_batch.php`, synthetic tenants, one rolled-back transaction, nothing sent) on `e7faf9b` and again on `2dd517a` | all 22 checks passed: cross-shop web/mobile reads and writes; an inconsistent reference; staff grant/revoke; S3-19 legacy URLs and a revoked session; S3-21 refusal; payment replay/conflict/distinct key; export delivery and download isolation; signature snapshot; tenant context; loyalty inactive; nginx probes. Its premise shown locally: with the pre-S3-19 routes and pre-S3-21 controller it fails exactly those three checks |
+| Deploy gates, both environments | D0 → Phase 1 (eight, one per command, pretend-gated) → D1 (direct connection) → Phase 2 → D2 → 2b → D2b → 3 → D3 (ten applied, three constraints validated) → smoke; equal row counts; no new error; the other environment untouched |
+| Production after go-live (read-only) | `tenant:audit-foreign-references` 237 checked, **0 crossing**; `reporting:audit-export-files` clean (11 exports, all sync, none stored); `backup:scope-check` clean; `loyalty.expiry_active_from` null; worker restarted on the release; errors since go-live: one — my R9 `backup:run` (below) |
+
+### What went wrong on the way, and what it cost
+
+Every stop was a fail-closed gate; none ran a migration it should not have.
+
+| Run | Stopped at | Cause (mine unless said) | State and recovery |
+|---|---|---|---|
+| staging 1 | checkout | the script's `umask 077` made the checkout's files root-only | restored to baseline; `e95781b` |
+| staging 2 | checkout (`config:clear`) | **release blocker**: `PaymentRaceHarness` under `--no-dev` | restored; `5271eb1` |
+| staging 3 | classmap gate | the gate's grep missed escaped backslashes | restored; `e7faf9b` |
+| staging 4 | D2 (after Phase 1 and 2) | staging's worker exits between runs; the gate wanted a process | `continue` from D2 → passed; `18bf442` |
+| production 1 | checkout (`package:discover`) | production's `.env` unreadable by www-data; `config:clear` as www-data removed the only readable config; the boot guard threw | **02:32:57–02:35:15Z: maintenance, with application errors instead of the maintenance page for part of it (30 logged, 02:33–02:35Z)**; restored to the baseline serving state with a root-built config cache; no schema or data changed; `605a8dd` |
+| production 2 | — | — | passed; 13 s maintenance |
+
+Staging was in maintenance 23:43:25–23:54:26Z across its attempts.
+
+### Findings from this batch
+
+* **S3-21** (above) — FIXED, deployed, verified on staging.
+* **S3-22 — production's database password is the one committed in
+  `phpunit.xml`** (hash comparison; never printed). PostgreSQL listens on
+  localhost only, `pg_hba` requires scram-sha-256, the firewall admits 22/80/443:
+  usable only by someone already running code on the VPS. **OPEN — operator
+  step** `rotate-prod-db-password`.
+* **R9 — production backups.** The release's backup is an allowlist that must
+  archive `.env`; www-data cannot read production's, so `backup:run` fails
+  ("ZipArchive::close(): Can't open file: Permission denied"). `.env` is the
+  only allowlisted path affected (measured). **The newest successful app
+  backup is 2026-09-14 00:00 IST** — the baseline's backups had already
+  stopped. Database dumps taken by the deploy runs today are in
+  `/root/security-batch/*/` (root-only, read end to end). **OPEN — operator
+  step** `env-readable-for-backup` (dev:www-data 640, then one verified run).
+* FUNC-01 — the snapshot backfill; excluded; tracked.
+
+### S3-19 history — what the logs can and cannot say
+
+The access log is nginx `combined`, one file for both sites: time, IP,
+request line, status, user agent — no host, no session, no identity;
+retained from 2026-09-10 00:03Z. In that window: **2** requests to
+`/super-admin/*` — `/super-admin/login` (302) and `/super-admin/dashboard`
+(404); **none** to the vulnerable views or actions. The audit log records
+admin actions (actor, IP, user agent) and MFA success/failure, not
+successful password logins or page views: 2 tenant-user password resets and
+1 status change, 2026-09-07/08 — before the retained access log, so their
+URL is unknown; each was preceded within 12 hours by an MFA success of the
+same admin. **A request to a legacy URL would not by itself show an MFA
+bypass (an admin with MFA cleared may use it too), and missing logs cannot
+show that nothing happened** — before 2026-09-10 nothing here is observable.
+
+### Relocation and containment (R4–R7)
+
+Dry runs on production: current signatures, karigar attachments and purchase
+images — **0 candidates**; nothing to execute and nothing to purge. Remaining
+on the public tree (counts only): **2 KYC files** and **1 superseded signature
+version** (named by no row). Both need nginx denies — operator steps
+`kyc-origin-deny` (R7, ORIGIN-ONLY, **PARTIAL**: the Cloudflare edge is not
+covered; no Cloudflare access) and `signatures-origin-deny` (SIG-ORIGIN,
+PARTIAL). KYC containment remains its own package, unexecuted.
+
+### Why some steps are operator steps
+
+They change web-server security configuration, rotate a credential, alter a
+secrets file's permissions, or delete files — which my operating rules
+reserve for a human even with authorization. Each is scripted in
+`docs/runbooks/operator-steps-security-batch.sh` (interactive only; backup,
+gate, verify, rollback printed). Two defects of mine in that script were
+fixed before anyone ran it: the rotation rebuilt config as www-data (would
+have emptied production's config), and the deny verification expected a 404
+the application no longer gives.
+---
+
+## 0f. Review of `b8baf4e`
 
 The reviewer found this round's application repairs supported by the source
 and asked for four verification gaps to be closed and the tenant review to be
@@ -1011,6 +1151,21 @@ shop's payment-method label into this shop's payment rows for good (repaired
 rows written before that or by a path that skipped it — counted by
 `tenant:audit-foreign-references` (R10, not run on production).
 
+### S3-21 — first-admin bootstrap race — **FIXED, deployed (`fb285d7`)**
+
+Reproduced with separate processes (§0g): both of two first registrations
+became super admin when one passed the empty-table check while the other
+was mid-transaction; the configured GET answered 500. The bootstrap now
+takes a transaction advisory lock; the management flow is unchanged. Only
+the window before any super admin exists — not a claim about a configured
+instance.
+
+### S3-22 — production database password committed in phpunit.xml — **OPEN (operator)**
+
+Measured by hash comparison. Reachable only from the VPS itself
+(localhost-only PostgreSQL, scram-sha-256, firewall 22/80/443). Rotation is
+`operator-steps-security-batch.sh rotate-prod-db-password`.
+
 ### S3-02 — karigar invoice attachments on the public web path
 
 * **What goes wrong.** Karigar invoice files uploaded by the deployed baseline
@@ -1162,6 +1317,8 @@ renumbering.**
 | S3-13 | Editing a quick bill re-captures `shop_snapshot` on the shared save path, so an edit to an unrelated field re-states the supply type on a bill that keeps its number. **Presentation only** — bill number and every stored figure verified unchanged | *(new — ID confirmed unused before assignment)* | §7d-1, CHARACTERIZED, NOT REPAIRED |
 | S3-19 | The legacy `/super-admin` URLs reached every shop and user, and reset passwords, without `admin.mfa` and `admin.password.fresh` | *(new — ID confirmed unused before assignment)* | §0f, **FIXED locally `ecbe77e`** |
 | S3-20 | An inconsistent stored reference brings another shop's data into this shop's output: report joins (§0e Part 3, repaired `f6d3473`) and, persisted, the payment-label backfill (`d105d4d`) | named in §0e without an ID — the same finding, now numbered; nothing renumbered | §0f; §0e Part 3 |
+| S3-21 | Two first-admin registrations racing on an empty table could both become super admin (`lockForUpdate()` locks no row); the configured GET answered 500 | *(new — ID confirmed unused before assignment)* | §0g, **FIXED `fb285d7`, deployed** |
+| S3-22 | Production's database password is the one committed in `phpunit.xml` | *(new — ID confirmed unused before assignment)* | §0g, **OPEN — operator rotation** |
 | S3-04b | The settings page previews the current signature from `/storage/…`, broken for every signature stored on the private disk since S3-04 — a regression from this branch | *(new — ID confirmed unused before assignment)* | §0a, **REPAIRED locally `51ca987`** |
 
 Still visible and unclosed, listed explicitly so renumbering cannot bury them:
@@ -4166,7 +4323,22 @@ Local work that remains, none of it blocking the conditions in §11:
 
 ## 11. Release readiness
 
-**Not ready.** Independent reviews: `7b1d709` (seven findings, §0b),
+### Status after deployment (2026-09-25) — see §0g
+
+| # | Status | Evidence / what is left |
+|---|---|---|
+| R1 | OPEN | review of the delta from `209db46`, including this deployment |
+| R2 | **DONE** | D0–D3 recorded by `deploy-security-batch.sh` in both environments (`/root/security-batch/*/run.log`) |
+| R3 | **DONE** | ten migrations in order, one file per command, both environments; D3: three constraints validated |
+| R4, R5 | **DONE — nothing to move** | production dry runs: 0 karigar attachments, 0 purchase images on the public disk; no purge needed |
+| R6 | OPEN (operator) | 0 current signatures to move; **1 superseded version** public — `operator-steps … signatures-origin-deny` (PARTIAL) or accept the residual |
+| R7 | OPEN (operator; edge blocked) | 2 KYC files public — `operator-steps … kyc-origin-deny` (ORIGIN-ONLY, PARTIAL); the Cloudflare rule and purge need access I do not have |
+| R8 | NOT RUN | no device access |
+| R9 | OPEN (operator) | `backup:scope-check` clean; `backup:run` fails until www-data can read `.env` — `operator-steps … env-readable-for-backup`; newest successful app backup 2026-09-14 |
+| R10 | **DONE** | 0 crossing references (237 checked); exports clean; access-log and audit-log facts in §0g |
+| S3-22 | OPEN (operator) | `operator-steps … rotate-prod-db-password` |
+
+**Before deployment the verdict was: not ready.** Independent reviews: `7b1d709` (seven findings, §0b),
 `9aaf1af` (XR-01, XR-04, XR-06 accepted; XR-02, XR-03, XR-05, XR-07 partial —
 answered in §0c), `d37879b` (those four accepted) and `c9d30b0` (S3-14/S3-15
 validation repairs and S3-18's protection for new exports accepted; answered

@@ -2,9 +2,10 @@
 
 Findings S3-02, S3-03, S3-04 (attachment/signature disk recording).
 
-**Status: PROPOSED. Nothing here has been executed.** No migration in this set
-has run anywhere but the local `jewelflow_testing` database. Applying any of it
-to production or staging needs explicit approval.
+**Status: EXECUTED (approved for this batch).** Staging: Phase 2 at
+2026-09-24T23:52Z, up 23:54:26Z. Production: 2026-09-25T02:37:28–02:37:41Z,
+`:switch` 08:07:39 IST, D0–D3 clean, by `deploy-security-batch.sh` (handoff
+§0g). The procedure below is the record of what ran.
 
 Last observed deployed baseline: `018b3d810e37d534f498033ab582ee41f3197c27` (observed on the server 2026-09-20T18:36:08+00:00; not re-observed since)
 (authored 2026-09-15, subject "Stop the read-only KPI calling a lapsed shop
