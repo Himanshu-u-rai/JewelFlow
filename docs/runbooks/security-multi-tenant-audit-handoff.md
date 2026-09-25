@@ -84,7 +84,7 @@ each with the reason it is open.
 | | Commit | Deployed | How |
 |---|---|---|---|
 | production `/var/www/jewelflow` | `2dd517a31a2335b178e79849bbbba61e2509fef7` | release `e7faf9b0a5efcfc7aebe811ec6121ff2dde60e68` at 02:37:28–02:37:41Z (13 s maintenance), forward `2dd517a` at 02:53:13–02:53:16Z | `deploy-security-batch.sh`, `deploy-forward.sh` |
-| staging `/var/www/jewelflow-staging` | `2dd517a31a2335b178e79849bbbba61e2509fef7` | release `e7faf9b` (Phase 2 at 23:52Z, up 23:54:26Z on 2026-09-24), forward at 02:52:36–02:52:40Z | same |
+| staging `/var/www/jewelflow-staging` | `0626082d28613562ed93f413611ce3fc48026975` (application code identical to `2dd517a`; runbooks only) | release `e7faf9b` (Phase 2 at 23:52Z, up 23:54:26Z on 2026-09-24), forward `2dd517a` at 02:52:36–02:52:40Z, forward `0626082` at 03:10:52–03:10:54Z to exercise the corrected error gate on the server | same |
 | local branch `security/multi-tenant-audit` | pushed to `origin`; this document's commit is later | — | — |
 
 `e7faf9b` → `2dd517a` changes the foreign-reference audit, the backup scope
@@ -164,7 +164,11 @@ Staging was in maintenance 23:43:25–23:54:26Z across its attempts.
   ("ZipArchive::close(): Can't open file: Permission denied"). `.env` is the
   only allowlisted path affected (measured). **The newest successful app
   backup is 2026-09-14 00:00 IST** — the baseline's backups had already
-  stopped. Database dumps taken by the deploy runs today are in
+  stopped: every nightly run from 2026-09-15 to 2026-09-25 failed walking a
+  server-only `.claude/` directory in production's tree (measured in the daily
+  logs), which the release's allowlist no longer walks. The next scheduled run
+  (00:00 IST, 18:30Z) fails on `.env` instead unless the operator step runs
+  first. Database dumps taken by the deploy runs today are in
   `/root/security-batch/*/` (root-only, read end to end). **OPEN — operator
   step** `env-readable-for-backup` (dev:www-data 640, then one verified run).
 * FUNC-01 — the snapshot backfill; excluded; tracked.
@@ -4343,7 +4347,7 @@ Local work that remains, none of it blocking the conditions in §11:
 | R6 | OPEN (operator) | 0 current signatures to move; **1 superseded version** public — `operator-steps … signatures-origin-deny` (PARTIAL) or accept the residual |
 | R7 | OPEN (operator; edge blocked) | 2 KYC files public — `operator-steps … kyc-origin-deny` (ORIGIN-ONLY, PARTIAL); the Cloudflare rule and purge need access I do not have |
 | R8 | NOT RUN | no device access |
-| R9 | OPEN (operator) | `backup:scope-check` clean; `backup:run` fails until www-data can read `.env` — `operator-steps … env-readable-for-backup`; newest successful app backup 2026-09-14 |
+| R9 | OPEN (operator) | `backup:scope-check` clean; `backup:run` fails until www-data can read `.env` — `operator-steps … env-readable-for-backup`; newest successful app backup 2026-09-14 (every nightly run since 2026-09-15 failed on a server-only `.claude/` directory; the next fails on `.env` unless the step runs first) |
 | R10 | **DONE** | 0 crossing references (237 checked); exports clean; access-log and audit-log facts in §0g |
 | S3-22 | OPEN (operator) | `operator-steps … rotate-prod-db-password` |
 
