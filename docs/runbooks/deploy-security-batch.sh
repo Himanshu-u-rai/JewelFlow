@@ -67,6 +67,14 @@ umask 022
 
 PHASE=preflight
 ART() { ( cd "$DIR" && sudo -u www-data php artisan "$@" ); }
+# Config caching reads .env. Production's .env is not readable by www-data
+# (dev:dev 640): that tree has always served from a cache built by a user who
+# can read it, and a cache built - or cleared - as www-data leaves every
+# setting empty (the first production attempt stopped on exactly that, at
+# the platform.enforce_subscriptions boot guard). So the config cache is
+# built by root wherever www-data cannot read .env; the rest runs as www-data.
+CFG() { if sudo -u www-data test -r "$DIR/.env"; then ART "$@"; else ( cd "$DIR" && umask 022 && php artisan "$@" ); fi; }
+cache_ok() { sudo -u www-data php -r '$c = require "bootstrap/cache/config.php"; exit($c["app"]["key"] && $c["database"]["connections"]["pgsql"]["password"] !== null ? 0 : 1);'; }
 PSQL() { sudo -u postgres psql -X -A -t -q -v ON_ERROR_STOP=1 -d "$DB" -c "$1"; }
 OWNERDO() { if [ "$OWNER" = root ]; then "$@"; else sudo -u "$OWNER" env HOME="$(getent passwd "$OWNER" | cut -d: -f6)" "$@"; fi; }
 ok() { echo "ok    $*"; }
@@ -108,6 +116,8 @@ HEAD_NOW=$(git -C "$DIR" rev-parse HEAD)
 [ "$HEAD_NOW" = "$BASE" ] || fail "HEAD is $HEAD_NOW, expected the baseline $BASE"
 [ -z "$(git -C "$DIR" status --porcelain --untracked-files=no)" ] || fail "tracked tree is dirty"
 ok "serving tree at the baseline, tracked tree clean"
+if sudo -u www-data test -r "$DIR/.env"; then note ".env readable by www-data: the config cache is built as www-data"; else
+  note ".env not readable by www-data: the config cache is built as root, as the existing cache was"; fi
 OTHER_HEAD_BEFORE=$(git -C "$OTHER" rev-parse HEAD)
 note "other environment $OTHER at $OTHER_HEAD_BEFORE (must be unchanged by this run)"
 
@@ -182,7 +192,8 @@ PHASE=checkout
 OWNERDO git -C "$DIR" checkout --quiet --detach "$TARGET" || fail "checkout failed"
 [ "$(git -C "$DIR" rev-parse HEAD)" = "$TARGET" ] || fail "HEAD is not the target after checkout"
 [ -z "$(git -C "$DIR" status --porcelain --untracked-files=no)" ] || fail "tracked tree dirty after checkout"
-ART config:clear >/dev/null || fail "config:clear failed"
+CFG config:cache >/dev/null || fail "config:cache failed"
+cache_ok || fail "the rebuilt config cache has no application key or database password (was .env read?)"
 OWNERDO env COMPOSER_ALLOW_SUPERUSER=1 composer -d "$DIR" install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts 2>&1 | tail -3
 [ "${PIPESTATUS[0]}" = 0 ] || fail "composer install failed"
 ART package:discover --ansi >/dev/null || fail "package:discover failed"
@@ -219,8 +230,13 @@ ok "D1 clean: eight applied, contract and notifications absent, direct PostgreSQ
 
 # ── PHASE 2 — APPLICATION ────────────────────────────────────────────────────
 PHASE=phase2
-ART optimize:clear >/dev/null || fail "optimize:clear failed"
-ART config:cache >/dev/null && ART route:cache >/dev/null && ART view:cache >/dev/null || fail "caching failed"
+# No optimize:clear: it would leave the app with no config cache between the
+# clear and the rebuild. config:cache and route:cache replace their files.
+ART view:clear >/dev/null || fail "view:clear failed"
+CFG config:cache >/dev/null && ART route:cache >/dev/null && ART view:cache >/dev/null || fail "caching failed"
+cache_ok || fail "the config cache has no application key or database password"
+[ -z "$(find "$DIR/storage" "$DIR/bootstrap/cache" -user root ! -path "$DIR/bootstrap/cache/config.php" 2>/dev/null | head -1)" ] \
+  || fail "a root-owned file appeared under storage or bootstrap/cache"
 [ -L "$DIR/public/storage" ] || fail "public/storage link missing"
 [ -z "$(ART tinker --execute='echo config("loyalty.expiry_active_from");' 2>/dev/null | tail -1)" ] || fail "loyalty expiry activation is set"
 RELOAD_EPOCH=$(date +%s)
