@@ -200,8 +200,10 @@ step_backup() {
     printf '%s\n' "$entries" | grep -q "^$want" || stop "the archive lacks $want" "the archive exists" "check config/backup.php and App\\Support\\BackupScope"
   done
   printf '%s\n' "$entries" | grep -qE '^db-dumps/[^/]+\.sql$' || stop "the archive has no database dump" "the archive exists" "check the backup output"
-  if printf '%s\n' "$entries" | grep -qE '^(\.git/|\.claude/|vendor/|node_modules/|bootstrap/cache/|storage/logs/|storage/framework/|storage/app/private/JewelFlows?/|storage/app/backup-temp/|tests/|docs/|output/|\.mcp\.json|\.env\.)'; then
-    stop "the archive contains an excluded path: $(printf '%s\n' "$entries" | grep -E '^(\.git/|\.claude/|vendor/|node_modules/|bootstrap/cache/|storage/logs/|storage/framework/|storage/app/private/JewelFlows?/|storage/app/backup-temp/|tests/|docs/|output/|\.mcp\.json|\.env\.)' | head -3 | tr '\n' ' ')" \
+  # Files only: an empty directory entry (spatie archives storage/app/backup-temp/
+  # empty, its temp/ subdirectory excluded) carries no data.
+  if printf '%s\n' "$entries" | grep -v '/$' | grep -qE '^(\.git/|\.claude/|vendor/|node_modules/|bootstrap/cache/|storage/logs/|storage/framework/|storage/app/private/JewelFlows?/|storage/app/backup-temp/|tests/|docs/|output/|\.mcp\.json|\.env\.)'; then
+    stop "the archive contains an excluded path: $(printf '%s\n' "$entries" | grep -v '/$' | grep -E '^(\.git/|\.claude/|vendor/|node_modules/|bootstrap/cache/|storage/logs/|storage/framework/|storage/app/private/JewelFlows?/|storage/app/backup-temp/|tests/|docs/|output/|\.mcp\.json|\.env\.)' | head -3 | tr '\n' ' ')" \
       "the archive exists" "check App\\Support\\BackupScope"
   fi
   [ "$(unzip -p "$zip" "$rel.env" | sha)" = "$(sha < "$PROD/.env")" ] || stop "the archived .env differs from the live one" "the archive exists" "run backup:run again after step rotate"

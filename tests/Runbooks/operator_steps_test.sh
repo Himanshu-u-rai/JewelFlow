@@ -217,6 +217,12 @@ check "backup: backup:run failing is a failure with no archive claimed" '[ "$RC"
 export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/" bootstrap/cache/config.php'
 setup step_backup
 check "backup: an archive holding bootstrap/cache (plaintext secrets) is refused" '[ "$RC" = 1 ] && out_has "excluded path"'
+export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/" storage/app/backup-temp/'
+setup step_backup
+check "backup: an EMPTY excluded directory entry (storage/app/backup-temp/, as on production 2026-09-26) is not content" '[ "$RC" = 0 ]'
+export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/" storage/app/backup-temp/temp/db.sql'
+setup step_backup
+check "backup: a FILE under an excluded directory is refused" '[ "$RC" = 1 ] && out_has "excluded path: storage/app/backup-temp/temp/db.sql"'
 export MAKE_ZIP='printf "DB_PASSWORD=other\n" > "$S/other.env"; mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$S/other.env" "${PROD#/}/"'
 setup step_backup
 check "backup: an archived .env different from the live one is refused" '[ "$RC" = 1 ] && out_has "differs from the live one"'
