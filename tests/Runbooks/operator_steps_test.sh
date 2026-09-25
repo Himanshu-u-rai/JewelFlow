@@ -114,15 +114,18 @@ NG
         *) return 0 ;;
       esac; }
     nginx() { rec nginx "$@"; case "$1" in -t) [ -z "${NGINX_T_FAIL:-}" ] ;; -T) command cat "$S/running.conf" ;; esac; }
+    stale() { [ -n "${RACE:-}" ] && [ "$(command cat "$S/race" 2>/dev/null || echo 0)" -lt "$RACE" ]; }   # old workers still answering
     code() { rec code "$@"
       case "$2" in
-        /storage/kyc/*|/storage/signatures/*) if [ -n "${PROBE_OPEN:-}" ]; then echo 404; else
+        /storage/kyc/*|/storage/signatures/*) if [ -n "${PROBE_OPEN:-}" ] || stale; then echo 404; else
             printf 'access forbidden by rule, request: "GET %s"\n' "$2" >> "$NGINX_ERRLOG"; echo 403; fi ;;
         /storage/*) echo 404 ;;
         /login) [ -n "${LOGIN_FAIL:-}" ] && grep -q "ART up" "$S/events.log" && echo 500 || echo 200 ;;
         /health) [ "$1" = staging.jewelflows.com ] && [ -n "${STAGING_FAIL:-}" ] && echo 502 || echo 200 ;;
       esac; }
-    who() { case "$2" in /storage/kyc/*|/storage/signatures/*) [ -n "${PROBE_OPEN:-}" ] && echo app || echo nginx ;; *) echo app ;; esac; }
+    who() { case "$2" in /storage/kyc/*|/storage/signatures/*)
+        if stale; then echo $(( $(command cat "$S/race" 2>/dev/null || echo 0) + 1 )) > "$S/race"; echo app
+        elif [ -n "${PROBE_OPEN:-}" ]; then echo app; else echo nginx; fi ;; *) echo app ;; esac; }
     [ -n "${PGLOG_FAILS:-}" ] && ART() { rec ART "$@"; ev "ART $1"; [ "$1" = up ] && printf 'FATAL:  password authentication failed for user "jewelflow"\n' >> "$PGLOG"; return 0; }
     eval "$1"
   ) > "$S/out" 2>&1 < /dev/null
@@ -191,11 +194,20 @@ setup '(step_origin) >/dev/null; : > "$NGINX_ERRLOG"; PROBE_OPEN=1; step_origin'
 check "origin: marker already present but probes show the origin open -> failure, denies kept" \
   '[ "$RC" = 1 ] && out_has "already denies" && out_has "did not answer as expected" && grep -qF "location ^~ /storage/kyc/ {" "$S/vhost"'
 setup '(step_origin) >/dev/null; sed "/storage\/kyc\/ {/,+2d" "$VHOST" > "$S/running.conf"; RELOAD_NOOP=1; step_origin'
-check "origin: marker in the file but not in the RUNNING config (reload not effective) -> failure" \
-  '[ "$RC" = 1 ] && out_has "running configuration lacks"'
+check "origin: marker in the file but not in the configuration nginx loads (reload not effective) -> failure" \
+  '[ "$RC" = 1 ] && out_has "the configuration it loads lacks"'
 export NGINX_T_FAIL=1; setup 'cp "$VHOST" "$S/vhost.before"; step_origin'; unset NGINX_T_FAIL
+
 check "origin: nginx -t rejecting the change restores the file byte for byte and never reloads" \
   '[ "$RC" = 1 ] && cmp -s "$S/vhost" "$S/vhost.before" && ! grep -q "reload nginx" "$S/events.log" && out_has "not yet protected"'
+export RACE=3; setup step_origin; unset RACE
+check "origin: nginx's asynchronous reload (old workers answer the first requests) is waited out, not misread" \
+  '[ "$RC" = 0 ] && out_has "ORIGIN:" && [ "$(cat "$S/race")" = 3 ]'
+setup 'run_steps origin <<< YES'
+check "run: from a step, YES runs it and ends with the Cloudflare package and ALL STEPS PASSED" \
+  '[ "$RC" = 0 ] && out_has "CLOUDFLARE (zone jewelflows.com)" && out_has "ALL STEPS PASSED (origin)"'
+setup 'run_steps origin <<< yes'
+check "run: anything but YES changes nothing" '[ "$RC" = 1 ] && out_has "Stopped. Nothing changed." && ! grep -q "reload nginx" "$S/events.log"'
 
 # ── backup ──────────────────────────────────────────────────────────────────
 mkzip() { python3 - "$@" <<'PY'

@@ -234,7 +234,9 @@ step_backup() {
 
 # ── 4  origin: nginx denies the two private prefixes ────────────────────────
 # Exit 0 when every :443 server block that serves jewelflows.com denies every
-# prefix in the RUNNING configuration (nginx -T), not merely in the file.
+# prefix in the configuration nginx loads (nginx -T: the enabled files as a
+# reload applies them), not merely in one file. What the running workers do
+# is proven only by the probes.
 effective_ok() {
   nginx -T 2>/dev/null | awk -v prefixes="$PREFIXES" '
     BEGIN { n = split(prefixes, want, " ") }
@@ -271,9 +273,9 @@ step_origin() {
   STEP=origin
   local before=$WORK/jewelflow.vhost.before-origin protected=$WORK/jewelflow.vhost.protected new missing p n
   if missing=$(effective_ok); then
-    ok "the running nginx configuration already denies /storage/{${PREFIXES// /,}}/ for jewelflows.com"
+    ok "the configuration nginx loads already denies /storage/{${PREFIXES// /,}}/ for jewelflows.com"
   else
-    say "the running configuration: ${missing:-unreadable}"
+    say "the configuration nginx loads: ${missing:-unreadable}"
     keep "$VHOST" "$before"
     new=$(cat "$VHOST")
     for p in $PREFIXES; do
@@ -296,7 +298,12 @@ step_origin() {
     if ! { systemctl reload nginx && systemctl is-active --quiet nginx; }; then
       stop "nginx reload failed" "the file has the denies and passes nginx -t; nginx did not reload" "systemctl status nginx; systemctl reload nginx; then run origin (it verifies)"
     fi
-    missing=$(effective_ok) || stop "nginx reloaded but the running configuration lacks: $missing" "the file has the denies" "nginx -T | grep -n 'storage/'; systemctl reload nginx"
+    missing=$(effective_ok) || stop "nginx reloaded but the configuration it loads lacks: $missing" "the file has the denies" "nginx -T | grep -n 'storage/'; systemctl reload nginx"
+    # A reload is asynchronous: for a moment old workers still answer with the
+    # old configuration (2026-09-25 22:24Z: the first host probed right after
+    # the reload got the application). Wait, at most 10 s, until nginx itself
+    # refuses a random path, then judge every host.
+    n=0; until [ "$(who "${HOSTS%% *}" "/storage/${PREFIXES%% *}/probe-$STAMP-wait-$n.jpg")" = nginx ] || [ "$n" -ge 10 ]; do sleep 1; n=$((n + 1)); done
   fi
   local mark; mark=$(stat -c %s "$NGINX_ERRLOG" 2>/dev/null || echo 0)
   say "   probes (nothing real is fetched; every path is a random name):"
@@ -307,7 +314,7 @@ step_origin() {
   [ "$n" -ge "$(( $(wc -w <<< "$HOSTS") * $(wc -w <<< "$PREFIXES") ))" ] || stop "nginx logged $n denied probe(s) in $NGINX_ERRLOG" \
     "the denies answer 403 but the log does not show nginx refusing them" "grep 'access forbidden' $NGINX_ERRLOG"
   keep "$VHOST" "$protected"
-  ok "ORIGIN: /storage/kyc/ and /storage/signatures/ denied on $HOSTS (running config, 403 from nginx, $n refusals logged; /login 200; unmatched /storage/ still reaches the application)"
+  ok "ORIGIN: /storage/kyc/ and /storage/signatures/ denied on $HOSTS (loaded config; the running workers answer 403 from nginx, $n refusals logged; /login 200; unmatched /storage/ still reaches the application)"
   say "      rollback point that KEEPS the denies: cat $protected > $VHOST && nginx -t && systemctl reload nginx"
   say "      never restore ${before##*/} or an older copy: it serves those prefixes again"
 }
@@ -358,20 +365,14 @@ verify_all() {
   say "== 3 backup: newest $(ls -t "$PROD/storage/app/private/JewelFlows/"*.zip 2>/dev/null | head -1 | xargs -r -I{} sh -c 'basename {}; stat -c " %y" {}' | tr '\n' ' '); directory $(stat -c '%U:%G %a' "$PROD/storage/app/private/JewelFlows")"
   say "      scheduler: $(grep -hE 'www-data .*/var/www/jewelflow/artisan schedule:run' /etc/cron.d/* 2>/dev/null | head -1 | cut -c1-80)"
   say "      schedule: $(ART schedule:list 2>/dev/null | grep -oE '0 +0 \* \* \* +php artisan backup:run' | head -1)"
-  if missing=$(effective_ok); then say "== 4 origin: running config denies /storage/{${PREFIXES// /,}}/"; probe_origin || rc=1
+  if missing=$(effective_ok); then say "== 4 origin: loaded config denies /storage/{${PREFIXES// /,}}/; probes:"; probe_origin || rc=1
   else say "== 4 origin: NOT DONE ($missing)"; rc=1; fi
   say "== edge:"; verify_edge || true
   return "$rc"
 }
 
-[ "${OPS_LIB:-}" = 1 ] && return 0 2>/dev/null   # sourced by the tests: functions only
-[ "$(id -u)" = 0 ] || { echo "REFUSED: run as root."; exit 64; }
-mkdir -p -m 700 /root/security-batch && mkdir -m 700 "$WORK" || { echo "cannot create $WORK"; exit 1; }
-case "${1:-}" in
-  run)
-    [ -t 0 ] || { echo "REFUSED: run this from an interactive terminal."; exit 64; }
-    exec > >(tee -a "$WORK/run.log") 2>&1
-    STEPS="env-read rotate backup origin"; [ -n "${2:-}" ] && STEPS=${STEPS#*"${2}"} && STEPS="$2$STEPS"
+run_steps() {   # $1 = the step to start from (optional)
+    STEPS="env-read rotate backup origin"; [ -n "${1:-}" ] && STEPS=${STEPS#*"${1}"} && STEPS="$1$STEPS"
     say "security batch operator run $STAMP (UTC); steps: $STEPS; evidence: $WORK"
     read -r -p "Run these steps? 'rotate' puts production in maintenance for about a minute and reloads php8.2-fpm (staging too). Type YES: " a
     [ "$a" = YES ] || { say "Stopped. Nothing changed."; exit 1; }
@@ -380,7 +381,20 @@ case "${1:-}" in
       *) stop "unknown step $s" "nothing further changed" "use: env-read rotate backup origin" ;;
     esac; done
     edge_package
-    say "ALL STEPS PASSED ($STEPS). Edge: PARTIAL until the Cloudflare package above is applied." ;;
+    say "ALL STEPS PASSED ($STEPS). Edge: PARTIAL until the Cloudflare package above is applied."
+}
+
+[ "${OPS_LIB:-}" = 1 ] && return 0 2>/dev/null   # sourced by the tests: functions only
+[ "$(id -u)" = 0 ] || { echo "REFUSED: run as root."; exit 64; }
+mkdir -p -m 700 /root/security-batch && mkdir -m 700 "$WORK" || { echo "cannot create $WORK"; exit 1; }
+case "${1:-}" in
+  run)
+    [ -t 0 ] || { echo "REFUSED: run this from an interactive terminal."; exit 64; }
+    # A pipeline, not exec > >(tee): tee must finish writing before the script
+    # exits, or the last lines (the failure and its recovery) never reach the
+    # terminal or the log once ssh closes the session (2026-09-25 22:24Z).
+    run_steps "${2:-}" 2>&1 | tee -a "$WORK/run.log"
+    exit "${PIPESTATUS[0]}" ;;
   verify)      verify_all ;;
   verify-edge) verify_edge ;;
   *) sed -n '2,38p' "$0"; exit 64 ;;
