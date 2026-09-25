@@ -2,6 +2,16 @@
 
 use Illuminate\Support\Str;
 
+// Each environment has its own cookie namespace. Staging shares the parent
+// domain with production, and with one set of names a single staging page load
+// replaced production's session cookie in the same browser (different APP_KEYs
+// do not stop a browser overwriting by name, domain and path). Production keeps
+// the names its users already hold; every other environment appends its
+// APP_ENV to each name, even one copied from production's .env, and its
+// cookies are host-only (see 'domain').
+$production = env('APP_ENV') === 'production';
+$namespace = static fn (string $name): string => $production ? $name : $name.'-'.Str::slug((string) env('APP_ENV', 'local'));
+
 return [
 
     /*
@@ -127,29 +137,29 @@ return [
     |
     */
 
-    'cookie' => env(
+    'cookie' => $namespace(env(
         'SESSION_COOKIE',
         Str::slug((string) env('APP_NAME', 'laravel')).'-session'
-    ),
+    )),
 
-    'tenant_cookie' => env(
+    'tenant_cookie' => $namespace(env(
         'TENANT_SESSION_COOKIE',
         env('SESSION_COOKIE', Str::slug((string) env('APP_NAME', 'laravel')).'-session')
-    ),
+    )),
 
-    'platform_admin_cookie' => env(
+    'platform_admin_cookie' => $namespace(env(
         'PLATFORM_ADMIN_SESSION_COOKIE',
         Str::slug((string) env('APP_NAME', 'laravel')).'-platform-admin-session'
-    ),
+    )),
 
     // Dhiran (dhiran.* subdomain) uses its own session cookie so a Dhiran login
     // and an ERP login can coexist in the same browser without overwriting each
     // other (SESSION_DOMAIN is shared across subdomains). Selected at runtime by
     // UseRouteScopedSessionCookie when the host is dhiran.*.
-    'dhiran_cookie' => env(
+    'dhiran_cookie' => $namespace(env(
         'DHIRAN_SESSION_COOKIE',
         Str::slug((string) env('APP_NAME', 'laravel')).'-dhiran-session'
-    ),
+    )),
 
     /*
     |--------------------------------------------------------------------------
@@ -175,7 +185,11 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    // Honoured in production only (production's hosts share one login across
+    // jewelflows.com, www and dhiran). Elsewhere cookies are host-only: a
+    // parent-domain cookie from staging would also reach production, and
+    // XSRF-TOKEN and remember_* have fixed names that no namespace changes.
+    'domain' => $production ? env('SESSION_DOMAIN') : null,
 
     /*
     |--------------------------------------------------------------------------

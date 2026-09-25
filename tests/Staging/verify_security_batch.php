@@ -77,6 +77,7 @@ function http(string $method, string $uri, array $data = [], ?array $as = null, 
 {
     global $kernel;
     Auth::forgetGuards();
+    Auth::shouldUse('web');   // a fresh process starts on the default guard; an earlier API request left sanctum
     TenantContext::clear();
     // Each request is its own browser process in real life: start it with no
     // session state in memory (the array handler keeps each jar's session by id).
@@ -208,6 +209,38 @@ try {
     $admin->forceFill(['password_changed_at' => now()->addMinute()])->save();
     $revokedLegacy = http('GET', "/super-admin/users/{$a['owner']->id}", [], null, $jarAdmin);
     check(location($revokedLegacy) === '/admin/login', 'admin: a session revoked by a password change is signed out on a legacy URL', location($revokedLegacy));
+    // ── cookies: this environment's own names, host-only ────────────────────
+    // Staging shares the parent domain with production; one set of names let a
+    // staging page load replace production's session cookie in the browser.
+    $productionNames = ['jewelflows-session', 'jewelflows-platform-admin-session', 'jewelflows-dhiran-session'];
+    $cookieProblems = function ($response) use ($productionNames, $onStaging): array {
+        $bad = [];
+        foreach ($response->headers->getCookies() as $c) {
+            if ($c->getDomain() !== null) {
+                $bad[] = $c->getName().' domain='.$c->getDomain();
+            }
+            if ($onStaging && in_array($c->getName(), $productionNames, true)) {
+                $bad[] = $c->getName().' is a production name';
+            }
+        }
+
+        return $bad;
+    };
+    $tenantPassword = Str::random(24);
+    $a['owner']->forceFill(['password' => Hash::make($tenantPassword)])->save();
+    $jarTenant = [];
+    $in = http('POST', '/login', ['mobile_number' => $a['owner']->mobile_number, 'password' => $tenantPassword], null, $jarTenant);
+    $out = http('POST', '/logout', [], null, $jarTenant);
+    $bad = array_merge($cookieProblems($login), $cookieProblems($in), $cookieProblems($out));
+    // One long-lived process keeps one session store, so the per-route cookie
+    // NAME is not observable here (RealmAuthHardeningTest and the real-HTTP
+    // probe cover it); scope, and the absence of production's names, are.
+    $names = array_unique(array_map(fn ($c) => $c->getName(), array_merge($login->headers->getCookies(), $in->headers->getCookies(), $out->headers->getCookies())));
+    $ownNames = [config('session.tenant_cookie'), config('session.platform_admin_cookie'), config('session.dhiran_cookie')];
+    check($bad === [] && $in->getStatusCode() === 302 && ! in_array(location($in), ['/login', ''], true) && $out->getStatusCode() === 302
+        && (! $onStaging || count(array_filter($ownNames, fn ($n) => str_ends_with($n, '-staging'))) === 3),
+        'cookies: tenant login/logout and admin login set no production cookie name and nothing scoped to a parent domain',
+        $bad ? implode('; ', $bad) : implode(',', $names).' | login '.$in->getStatusCode().'->'.location($in).' | own: '.implode(',', $ownNames));
     $supers = PlatformAdmin::where('role', 'super_admin')->count();
     $form = http('GET', '/admin/register');
     $post = http('POST', '/admin/register', ['first_name' => 'Late', 'last_name' => 'Boot', 'mobile_number' => $mobile(), 'password' => 'Late-Boot-Pass-1', 'password_confirmation' => 'Late-Boot-Pass-1']);
