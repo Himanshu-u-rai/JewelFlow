@@ -301,7 +301,7 @@ scan() {
     hits="$(grep -rInIE "$pattern" "$OUT" 2>/dev/null \
         | grep -vE "$SCAN_ALLOWLIST" \
         | awk -v reviewed="docs/runbooks/packet-scan-reviewed.tsv" '
-            BEGIN { while ((getline l < reviewed) > 0) if (l !~ /^#/ && index(l, "\t")) ok[substr(l, index(l, "\t") + 1)] = 1 }
+            BEGIN { while ((getline l < reviewed) > 0) if (l !~ /^#/ && index(l, "\t")) { ok[substr(l, index(l, "\t") + 1)] = 1; ok[l] = 1 } }   # the line, and the list'"'"'s own row
             { file = substr($0, 1, index($0, ":") - 1); rest = substr($0, length(file) + 2)
               line = substr(rest, index(rest, ":") + 1)
               if (file ~ /\.patch$/) line = substr(line, 2)   # a diff line: drop its +, - or space
