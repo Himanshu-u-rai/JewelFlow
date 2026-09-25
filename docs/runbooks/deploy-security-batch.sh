@@ -81,9 +81,27 @@ ok() { echo "ok    $*"; }
 note() { echo "note  $*"; }
 fail() {
   echo "!!!!! GATE FAILED [$PHASE]: $*"
-  if [ "$PHASE" = preflight ]; then echo "Nothing that serves was changed."; else
-    echo "The site is LEFT IN MAINTENANCE. State: $WORK. Recovery per runbook § Recovery."; fi
+  case "$PHASE" in
+    preflight) echo "Nothing that serves was changed." ;;
+    smoke) echo "The site is UP on the target (maintenance had ended); nothing was rolled back. Inspect now. State: $WORK." ;;
+    *) echo "The site is LEFT IN MAINTENANCE. State: $WORK. Recovery per runbook § Recovery." ;;
+  esac
   exit 2
+}
+# Both environments log through the `daily` channel (laravel-YYYY-MM-DD.log,
+# a new file at midnight); laravel.log is written only when the config is
+# broken. So mark EVERY laravel*.log at its size and count error lines written
+# after the mark, including files created during the window. (The first
+# version read laravel.log alone, which the application was not writing.)
+log_mark() { local f; for f in "$DIR"/storage/logs/laravel*.log; do [ -e "$f" ] && echo "$f $(stat -c %s "$f")"; done; true; }
+new_errors() {
+  local f start n=0
+  for f in "$DIR"/storage/logs/laravel*.log; do
+    [ -e "$f" ] || continue
+    start=$(printf '%s\n' "$LOG_MARK" | awk -v f="$f" '$1 == f { print $2 }')
+    n=$((n + $(tail -c +"$((${start:-0} + 1))" "$f" | grep -cE '\.(ERROR|CRITICAL|EMERGENCY|ALERT):')))
+  done
+  echo "$n"
 }
 now_app() { ART tinker --execute='echo now()->toDateTimeString();' 2>/dev/null | tail -1; }
 counts() { for t in "${COUNTED[@]}"; do printf '%s=%s ' "$t" "$(PSQL "select count(*) from $t")"; done; }
@@ -101,8 +119,8 @@ if [ "$ACTION" = continue ]; then
   RELOAD_EPOCH=${RELOAD_EPOCH:-$((SWITCH_EPOCH - 4))}   # runs before this field was recorded: reload preceded the switch by ~4 s
   COUNTS_BEFORE=$(cat "$PREV/counts.before")
   OTHER_HEAD_BEFORE=$(git -C "$OTHER" rev-parse HEAD)
-  LOGF=$DIR/storage/logs/laravel.log
-  LOG_MARK=$(stat -c %s "$LOGF" 2>/dev/null || echo 0)
+  LOG_MARK=$(log_mark)
+  echo "$LOG_MARK" > "$WORK/log.mark"
   ok "resuming from D2: :switch $SWITCH (from $PREV); new errors are counted from now"
 fi
 
@@ -183,8 +201,8 @@ if [ "$ACTION" = preflight ]; then echo "PREFLIGHT PASSED — nothing that serve
 
 # ── MAINTENANCE, CHECKOUT ────────────────────────────────────────────────────
 PHASE=down
-LOGF=$DIR/storage/logs/laravel.log
-LOG_MARK=$(stat -c %s "$LOGF" 2>/dev/null || echo 0)
+LOG_MARK=$(log_mark)
+echo "$LOG_MARK" > "$WORK/log.mark"
 ART down --retry=60 || fail "artisan down failed"
 ok "maintenance on at $(date -u +%H:%M:%SZ)"
 
@@ -331,12 +349,12 @@ else
   note "no super admin exists here: /admin/register serves the bootstrap form ($(code /admin/register))"
 fi
 ok "smoke: /health 200, /admin/login 200, legacy and admin views redirect to login, /admin/register redirects"
-NEWERR=$(tail -c +"$((LOG_MARK + 1))" "$LOGF" 2>/dev/null | grep -cE '\.(ERROR|CRITICAL|EMERGENCY|ALERT):' || true)
-[ "${NEWERR:-0}" = 0 ] || fail "smoke: $NEWERR new error line(s) in laravel.log (see the log after byte $LOG_MARK)"
+NEWERR=$(new_errors)
+[ "$NEWERR" = 0 ] || fail "smoke: $NEWERR new error line(s) in storage/logs/laravel*.log since the mark ($WORK/log.mark: file and byte offset)"
 COUNTS_AFTER=$(counts)
 echo "$COUNTS_AFTER" > "$WORK/counts.after"
 [ "$COUNTS_AFTER" = "$COUNTS_BEFORE" ] || fail "row counts changed across the window: before [$COUNTS_BEFORE] after [$COUNTS_AFTER]"
-ok "no row added or lost across the window; no new error in laravel.log"
+ok "no row added or lost across the window; no new error in storage/logs/laravel*.log"
 [ "$(git -C "$OTHER" rev-parse HEAD)" = "$OTHER_HEAD_BEFORE" ] || fail "the other environment's HEAD changed"
 ok "other environment untouched ($OTHER at $OTHER_HEAD_BEFORE)"
 echo "DEPLOY PASSED: $ENVN at $TARGET; :switch $SWITCH; evidence in $WORK"

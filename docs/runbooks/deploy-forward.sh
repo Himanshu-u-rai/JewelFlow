@@ -16,8 +16,9 @@
 # pg_dump read end to end; the owner able to write every changed path; the
 # config cache built by a user that can read .env; the classmap; every
 # changed file readable by www-data; the FPM reload and the environment's
-# worker restart; smoke checks; equal row counts; the other environment
-# untouched. Fail-closed: after `down`, a failed gate leaves maintenance on.
+# worker restart; smoke checks, including no new error in any laravel*.log;
+# equal row counts; the other environment untouched. Fail-closed: after
+# `down`, a failed gate leaves maintenance on (after `up`, it says so).
 # ============================================================================
 set -u -o pipefail
 
@@ -47,8 +48,27 @@ OWNERDO() { if [ "$OWNER" = root ]; then "$@"; else sudo -u "$OWNER" env HOME="$
 ok() { echo "ok    $*"; }
 fail() {
   echo "!!!!! GATE FAILED [$PHASE]: $*"
-  if [ "$PHASE" = preflight ]; then echo "Nothing that serves was changed."; else echo "The site is LEFT IN MAINTENANCE. State: $WORK."; fi
+  case "$PHASE" in
+    preflight) echo "Nothing that serves was changed." ;;
+    smoke) echo "The site is UP on the target (maintenance had ended); nothing was rolled back. Inspect now. State: $WORK." ;;
+    *) echo "The site is LEFT IN MAINTENANCE. State: $WORK." ;;
+  esac
   exit 2
+}
+# Both environments log through the `daily` channel (laravel-YYYY-MM-DD.log,
+# a new file at midnight); laravel.log is written only when the config is
+# broken. So mark EVERY laravel*.log at its size and count error lines written
+# after the mark, including files created during the window. (The first
+# version read laravel.log alone, which the application was not writing.)
+log_mark() { local f; for f in "$DIR"/storage/logs/laravel*.log; do [ -e "$f" ] && echo "$f $(stat -c %s "$f")"; done; true; }
+new_errors() {
+  local f start n=0
+  for f in "$DIR"/storage/logs/laravel*.log; do
+    [ -e "$f" ] || continue
+    start=$(printf '%s\n' "$LOG_MARK" | awk -v f="$f" '$1 == f { print $2 }')
+    n=$((n + $(tail -c +"$((${start:-0} + 1))" "$f" | grep -cE '\.(ERROR|CRITICAL|EMERGENCY|ALERT):')))
+  done
+  echo "$n"
 }
 counts() { for t in "${COUNTED[@]}"; do printf '%s=%s ' "$t" "$(PSQL "select count(*) from $t")"; done; }
 echo "########## forward release: $ENVN $FROM -> $TARGET at $STAMP (UTC) ##########"
@@ -88,8 +108,8 @@ done < <(git diff --name-only "$FROM" "$TARGET")
 [ "$UNWRITABLE" = 0 ] || fail "$UNWRITABLE changed path(s) not writable by $OWNER"
 
 PHASE=down
-LOGF=$DIR/storage/logs/laravel.log
-LOG_MARK=$(stat -c %s "$LOGF" 2>/dev/null || echo 0)
+LOG_MARK=$(log_mark)
+echo "$LOG_MARK" > "$WORK/log.mark"
 ART down --retry=30 >/dev/null || fail "artisan down failed"
 ok "maintenance on at $(date -u +%H:%M:%SZ)"
 PHASE=checkout
@@ -110,8 +130,8 @@ PHASE=smoke
 code() { curl -sk -o /dev/null -w '%{http_code}' -m 20 --resolve "$HOSTN:443:127.0.0.1" "https://$HOSTN$1"; }
 [ "$(code /health)" = 200 ] && [ "$(code /admin/login)" = 200 ] || fail "smoke: /health or /admin/login not 200"
 for u in /super-admin/shops /admin/shops; do [ "$(code $u)" = 302 ] || fail "smoke: $u did not redirect"; done
-NEWERR=$(tail -c +"$((LOG_MARK + 1))" "$LOGF" 2>/dev/null | grep -cE '\.(ERROR|CRITICAL|EMERGENCY|ALERT):' || true)
-[ "${NEWERR:-0}" = 0 ] || fail "smoke: $NEWERR new error line(s) in laravel.log"
+NEWERR=$(new_errors)
+[ "$NEWERR" = 0 ] || fail "smoke: $NEWERR new error line(s) in storage/logs/laravel*.log since the mark ($WORK/log.mark)"
 [ "$(counts)" = "$COUNTS_BEFORE" ] || fail "row counts changed across the window"
 [ "$(git -C "$OTHER" rev-parse HEAD)" = "$OTHER_HEAD_BEFORE" ] || fail "the other environment's HEAD changed"
 ok "smoke passed; no row added or lost; no new error; other environment untouched"
