@@ -241,8 +241,9 @@ done
 # assignment there -- so this is a VALUE check: redact that exact value (read
 # from phpunit.xml, never written here) from every packet file, then require
 # that no file still contains it. Redacted patches are for reading, not `git am`.
-TESTPW=$(sed -n 's/.*name="DB_PASSWORD" value="\([^"]*\)".*/\1/p' phpunit.xml)
-[ -n "$TESTPW" ] || { echo "FATAL: cannot read DB_PASSWORD from phpunit.xml" >&2; exit 2; }
+# phpunit.xml no longer carries it; the baseline commit's copy still does.
+TESTPW=$(git show 018b3d810e37d534f498033ab582ee41f3197c27:phpunit.xml | sed -n 's/.*name="DB_PASSWORD" value="\([^"]*\)".*/\1/p')
+[ -n "$TESTPW" ] || { echo "FATAL: cannot read DB_PASSWORD from the baseline's phpunit.xml" >&2; exit 2; }
 REDACTED="$(grep -rlF -- "$TESTPW" "$OUT" 2>/dev/null || true)"
 if [ -n "$REDACTED" ]; then
     echo "$REDACTED" | while IFS= read -r f; do

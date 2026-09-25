@@ -31,7 +31,9 @@
              Create once: sudo -u postgres createdb -O jewelflow jewelflow_testing -->
         <env name="DB_DATABASE" value="jewelflow_testing"/>
         <env name="DB_USERNAME" value="jewelflow"/>
-        <env name="DB_PASSWORD" value="StrongPassword123"/>
+        <!-- No DB_PASSWORD here: tests read it from your untracked .env (or .env.testing).
+             The value this file carried until 2026-09-25 was also production's database
+             password (S3-22, rotated); never commit one. -->
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="database"/>
