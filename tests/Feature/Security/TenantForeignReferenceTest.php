@@ -321,4 +321,32 @@ class TenantForeignReferenceTest extends TestCase
         $this->assertStringContainsString(
             "invoice_items {$lineId}: invoice_id -> invoices {$draft->id} (shop {$shopA->id}), item_id -> items {$itemB->id} (shop {$shopB->id})", $out);
     }
+
+    /**
+     * Production, 2026-09-25: the audit reported two shop_notifications rows
+     * naming another shop's invoice. Both had invoice_type = quick_bill, and
+     * their invoice_id was a quick bill of their own shop: the column is
+     * polymorphic by invoice_type, so reading it as a key to `invoices`
+     * because of its name was wrong. It is listed as not covered instead.
+     */
+    public function test_the_foreign_reference_audit_does_not_read_a_polymorphic_id_by_its_name(): void
+    {
+        [, $shopA] = $this->createRetailerTenant();
+        [$ownerB, $shopB] = $this->createRetailerTenant();
+        $invoiceA = TenantContext::runFor((int) $shopA->id, fn () => Invoice::issue([
+            'shop_id' => $shopA->id, 'customer_id' => $this->createCustomer((int) $shopA->id)->id, 'gold_rate' => 7200, 'subtotal' => 1,
+            'gst' => 0, 'total' => 1, 'status' => Invoice::STATUS_DRAFT,
+        ]));
+        // Shop B's own quick bill, with the same id as shop A's invoice, and B's sale notification for it.
+        DB::table('quick_bills')->insert(['id' => $invoiceA->id, 'shop_id' => $shopB->id, 'bill_sequence' => 1, 'bill_number' => 'QB-POLY-1',
+            'bill_date' => now()->toDateString(), 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('shop_notifications')->insert(['shop_id' => $shopB->id, 'recipient_user_id' => $ownerB->id, 'type' => 'sale', 'counter_type' => 'quick_bill',
+            'actor_name' => 'B', 'amount' => 1, 'invoice_id' => $invoiceA->id, 'invoice_type' => 'quick_bill', 'created_at' => now(), 'updated_at' => now()]);
+
+        $code = \Illuminate\Support\Facades\Artisan::call('tenant:audit-foreign-references');
+        $out = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertSame(0, $code, $out);
+        $this->assertStringNotContainsString('shop_notifications.invoice_id -> invoices', $out);
+        $this->assertStringContainsString('shop_notifications.invoice_id (polymorphic by invoice_type)', $out);
+    }
 }

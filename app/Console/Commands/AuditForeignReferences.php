@@ -63,6 +63,11 @@ class AuditForeignReferences extends Command
             where tc.constraint_type = 'FOREIGN KEY' and tc.table_schema = current_schema() and ccu.column_name = 'id'"));
         $idColumns = collect(DB::select("select table_name t, column_name c from information_schema.columns
             where table_schema = current_schema() and column_name like '%\\_id' and column_name <> 'shop_id'"));
+        // A *_id beside a *_type names a row in a table the type column chooses
+        // (shop_notifications.invoice_id with invoice_type 'invoice' or
+        // 'quick_bill'): reading it by its name would compare the wrong table.
+        $typeColumns = collect(DB::select("select table_name t, column_name c from information_schema.columns
+            where table_schema = current_schema() and column_name like '%\\_type'"))->map(fn ($r) => "{$r->t}.{$r->c}")->flip();
 
         // Every declared key between shop tables, whatever the column is called
         // (created_by, finalized_by, …), then *_id columns with no declared key.
@@ -71,6 +76,11 @@ class AuditForeignReferences extends Command
         $uncovered = [];
         foreach ($idColumns as $col) {
             if (! isset($shopTables[$col->t]) || $declared->contains(fn ($d) => $d->t === $col->t && $d->c === $col->c)) {
+                continue;
+            }
+            if (isset($typeColumns[$col->t.'.'.substr($col->c, 0, -3).'_type'])) {
+                $uncovered[] = "{$col->t}.{$col->c} (polymorphic by ".substr($col->c, 0, -3).'_type)';
+
                 continue;
             }
             $parent = collect([substr($col->c, 0, -3).'s', substr($col->c, 0, -3).'es'])->first(fn ($t) => isset($shopTables[$t]));
