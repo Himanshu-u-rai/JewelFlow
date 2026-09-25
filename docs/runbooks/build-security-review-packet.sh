@@ -276,12 +276,14 @@ SCAN_HITS=0
 # vendor as a non-credential. A shape, prefix or wildcard must never be added --
 # that would be relaxing the gate wearing an allowlist's clothes.
 #
-# One exception to the vendor bar, by exact string: the operator script's
-# rotation line `sed ... "s#^DB_PASSWORD=.*#DB_PASSWORD=$NEW#"`. Its "value" is
-# `$NEW`, a password generated at run time and never written anywhere; the
-# line is in pushed, deployed history's patches, so it cannot be rewritten away. The real
-# credential it replaces is caught by the value check below, not by this shape.
-SCAN_ALLOWLIST='AKIAIOSFODNN7EXAMPLE|s#\^DB_PASSWORD=\.\*#DB_PASSWORD=\$NEW#'
+# One exception to the vendor bar, by exact token: `DB_PASSWORD=$NEW`, the
+# operator script's rotation line (`sed ... "s#^DB_PASSWORD=.*#DB_PASSWORD=$NEW#"`)
+# and the prose and commit messages that describe it. `$NEW` is a password
+# generated at run time and never written anywhere; the token is in pushed,
+# deployed history, so it cannot be rewritten away. Word-bounded: a longer
+# value such as `$NEWPASS` is still flagged. The real credential the rotation
+# replaces is caught by the value check below, not by this shape.
+SCAN_ALLOWLIST='AKIAIOSFODNN7EXAMPLE|DB_PASSWORD=\$NEW\b'
 
 scan() {
     local label="$1" pattern="$2"
