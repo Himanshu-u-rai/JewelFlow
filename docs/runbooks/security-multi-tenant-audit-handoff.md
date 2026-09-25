@@ -203,7 +203,16 @@ reserve for a human even with authorization. Each is scripted in
 gate, verify, rollback printed). Two defects of mine in that script were
 fixed before anyone ran it: the rotation rebuilt config as www-data (would
 have emptied production's config), and the deny verification expected a 404
-the application no longer gives.
+the application no longer gives. A third: from `28e8449` to `e45e83e` its
+rotation step tested "is production still on the committed password?" against
+that password written out literally. It now reads the value from
+`phpunit.xml` at run time (checked on production, read-only: the test still
+answers "the committed one", so S3-22 stays open). The value was already in
+`phpunit.xml` in the same repository, so this added no new exposure, but a
+review packet must not carry it: the packet builder now redacts that exact
+value from every file and fails if any copy remains. The builder's shape scan
+had flagged only the rotation line `DB_PASSWORD=$NEW` (a run-time variable);
+the literal itself, not written as an assignment, was invisible to it.
 ---
 
 ## 0f. Review of `b8baf4e`

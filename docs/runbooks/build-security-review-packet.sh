@@ -234,6 +234,31 @@ done
 #    Deliberately NOT a secret-detection product. It catches the specific ways
 #    this repository's own secrets are written, which is what is actually at
 #    risk here.
+# S3-22: the phpunit.xml DB_PASSWORD value was also production's database
+# password, and the operator script carried it literally from 28e8449 until
+# the commit after e45e83e (the rotation step's "is it still the committed
+# one?" test). The shape scan below cannot see it -- it is not written as an
+# assignment there -- so this is a VALUE check: redact that exact value (read
+# from phpunit.xml, never written here) from every packet file, then require
+# that no file still contains it. Redacted patches are for reading, not `git am`.
+TESTPW=$(sed -n 's/.*name="DB_PASSWORD" value="\([^"]*\)".*/\1/p' phpunit.xml)
+[ -n "$TESTPW" ] || { echo "FATAL: cannot read DB_PASSWORD from phpunit.xml" >&2; exit 2; }
+REDACTED="$(grep -rlF -- "$TESTPW" "$OUT" 2>/dev/null || true)"
+if [ -n "$REDACTED" ]; then
+    echo "$REDACTED" | while IFS= read -r f; do
+        TESTPW="$TESTPW" perl -pi -e 's/\Q$ENV{TESTPW}\E/<redacted: phpunit.xml DB_PASSWORD value, S3-22>/g' "$f"
+    done
+    {
+        echo
+        echo "## Redacted"
+        echo
+        echo "The phpunit.xml DB_PASSWORD value (S3-22: also production's database password"
+        echo "until rotated) was replaced by \`<redacted: ...>\` in these files:"
+        echo
+        echo "$REDACTED" | sed "s#^$OUT/#- #"
+    } >> "$OUT/MANIFEST.md"
+fi
+
 echo "Scanning packet for secrets and customer data..."
 SCAN_HITS=0
 # Known-public documentation literals, excluded by EXACT value.
@@ -250,7 +275,13 @@ SCAN_HITS=0
 # The bar for adding a line here: the exact string must be published by its
 # vendor as a non-credential. A shape, prefix or wildcard must never be added --
 # that would be relaxing the gate wearing an allowlist's clothes.
-SCAN_ALLOWLIST='AKIAIOSFODNN7EXAMPLE'
+#
+# One exception to the vendor bar, by exact string: the operator script's
+# rotation line `sed ... "s#^DB_PASSWORD=.*#DB_PASSWORD=$NEW#"`. Its "value" is
+# `$NEW`, a password generated at run time and never written anywhere; the
+# line is in pushed, deployed history's patches, so it cannot be rewritten away. The real
+# credential it replaces is caught by the value check below, not by this shape.
+SCAN_ALLOWLIST='AKIAIOSFODNN7EXAMPLE|s#\^DB_PASSWORD=\.\*#DB_PASSWORD=\$NEW#'
 
 scan() {
     local label="$1" pattern="$2"
@@ -302,6 +333,14 @@ scan "private key"       'BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY'
 scan "Razorpay live key" 'rzp_live_[A-Za-z0-9]+'
 scan "SMTP credential"   'MAIL_PASSWORD[[:space:]]*=[[:space:]]*[^[:space:]]'
 
+# Value check (S3-22, above): the redaction must have left no copy.
+if grep -rqF -- "$TESTPW" "$OUT" 2>/dev/null; then
+    echo "  COMMITTED DB PASSWORD VALUE still present:" >&2
+    grep -rlF -- "$TESTPW" "$OUT" | sed 's/^/    /' >&2
+    SCAN_HITS=$((SCAN_HITS + 1))
+fi
+unset TESTPW
+
 # Structural check: nothing may have arrived from these trees at all.
 BANNED="$(find "$OUT" -type f \( -name '.env*' -o -name '*.sql' -o -name '*.dump' \
     -o -name '*.sqlite' -o -name '*.pem' -o -name '*.key' -o -name '*.p12' \) 2>/dev/null || true)"
@@ -316,7 +355,7 @@ if [ "$SCAN_HITS" -ne 0 ]; then
     echo "       ZIP NOT WRITTEN. Inspect $OUT before distributing anything." >&2
     exit 2
 fi
-echo "  clean — 0 findings across 8 categories"
+echo "  clean — 0 findings across 9 categories (8 shapes and file types, 1 exact value)"
 
 # 7. The attachable artifact itself. A /tmp path is not a deliverable.
 ZIP_DIR="${PACKET_ZIP_DIR:-$HOME/Desktop}"

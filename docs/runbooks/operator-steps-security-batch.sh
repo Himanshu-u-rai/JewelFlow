@@ -97,7 +97,9 @@ case "${1:-}" in
     origin_deny signatures SIG-ORIGIN ;;
   rotate-prod-db-password)
     current=$(grep -E '^DB_PASSWORD=' "$PROD/.env" | cut -d= -f2- | sed -E 's/^"(.*)"$/\1/')
-    [ "$(printf %s "$current" | sha256sum)" = "$(printf %s StrongPassword123 | sha256sum)" ] \
+    # The committed value is read from the tracked phpunit.xml, never written here.
+    committed=$(sed -n 's/.*name="DB_PASSWORD" value="\([^"]*\)".*/\1/p' "$PROD/phpunit.xml")
+    [ -n "$committed" ] && [ "$(printf %s "$current" | sha256sum)" = "$(printf %s "$committed" | sha256sum)" ] \
       || { echo "The production password is no longer the committed one — nothing to do."; exit 0; }
     install -d -m 0700 /root/env-backups
     cp -a "$PROD/.env" "/root/env-backups/jewelflow.env.$STAMP"
@@ -108,7 +110,7 @@ case "${1:-}" in
     sudo -u postgres psql -X -q -v ON_ERROR_STOP=1 -c "ALTER ROLE jewelflow PASSWORD '$NEW'" \
       || { ART up; echo "ALTER ROLE failed — nothing changed."; exit 1; }
     sed -i -E "s#^DB_PASSWORD=.*#DB_PASSWORD=$NEW#" "$PROD/.env"
-    unset NEW current
+    unset NEW current committed
     CFG config:cache >/dev/null && systemctl reload php8.2-fpm && systemctl restart jewelflow-production-ops-alerts
     if ART migrate:status >/dev/null 2>&1; then ART up; else
       echo "The application cannot connect. It stays in maintenance. The previous .env is /root/env-backups/jewelflow.env.$STAMP;"
