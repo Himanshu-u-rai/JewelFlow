@@ -6,8 +6,9 @@ Branch `security/multi-tenant-audit`, worktree
 **Current state (2026-09-25, 22:35Z):** production and staging run
 `a7f32b4daf97bade765049d94c1d3ace9eb8558b` — release `e7faf9b` plus code-only
 forward releases (§0g, §0h). The operator run is done: S3-22 rotated, R9
-backups working and verified, R7/R6 origin denies verified. **Not closed:** the
-Cloudflare edge package, the R8 device checks, one signed-in browser check,
+backups working and verified, R7/R6 origin denies verified, Cloudflare's cached
+copies purged (all 9 addresses 403 through the edge). **Not closed:** the R8
+device checks, one signed-in browser check, the optional Cloudflare WAF rule,
 and the product decisions (§11).
 Sections before §0g describe local evidence from before anything was pushed.
 
@@ -181,7 +182,7 @@ Run by the user from their laptop (`ssh -t jewelflow '… run'`); evidence in
 | rotate (S3-22) | **rotated**; maintenance 22:20:59–22:21:01Z; config cache, php8.2-fpm, the worker and a fresh CLI use the new password; `/login` and `/health` 200, staging `/health` 200; **0 failed logins** for the role since the switch (checked again ≈22:35Z); 0 application errors |
 | backup (R9) | first run 22:21Z: `backup:run` as www-data **succeeded** (`2026-09-26-03-51-07.zip`, 36 MB — the first since 2026-09-14), then the check stopped on a **false positive** of mine: one empty directory entry `storage/app/backup-temp/` (0 bytes). Fixed (`250e76c`: files only). Second run 22:24Z: `2026-09-26-03-54-46.zip` **verified** — required paths present, excluded paths absent, archived `.env` equal to the live one, dump restored into a scratch database: 14/14 row counts, 42 triggers; scratch removed. Directory `www-data 700` |
 | origin (R7, R6) | denies applied 22:24:56Z (`nginx -t` ok). The first probes, right after the reload, reached the application on jewelflows.com (old workers still answering; www and dhiran, a second later, got nginx's 403); a direct probe then got 403. The run's last lines were lost (`exec > >(tee)` + ssh closing). Both fixed (`a7f32b4`: wait out the reload; a pipeline that finishes writing). Re-verified 22:31Z: **403 from nginx on all three hosts for both prefixes, 12 refusals logged**, `/login` 200, unmatched `/storage/` still reaches the application. Rollback point that keeps the denies: `operator-20260925T223134Z/jewelflow.vhost.protected` |
-| edge | **PARTIAL** — the WAF rule and the 9-URL purge (list root-only on the server) are for the Cloudflare dashboard |
+| edge | **cached copies purged** ≈22:45Z: Custom Purge by URL of the 9 addresses (3 files × 3 hosts) in the Cloudflare dashboard, done by Claude in the user's signed-in Chrome with the user's explicit "yes purge"; Cloudflare: "Purge request successfully received". Checked from outside, header-only (no content fetched): all 9 answer **403** through Cloudflare, `cf-cache-status: BYPASS` (nothing served from cache). The WAF block rule is **not** added: an extra lock (it would hold if the origin deny ever regressed); a security setting, so the user's to add |
 
 Releases for those fixes (code-only, docs and scripts): `250e76c` (22:23Z) and
 `a7f32b4` (22:31Z) on both environments.
@@ -4539,8 +4540,8 @@ Local work that remains, none of it blocking the conditions in §11:
 | R2 | **DONE** | D0–D3 recorded by `deploy-security-batch.sh` in both environments (`/root/security-batch/*/run.log`) |
 | R3 | **DONE** | ten migrations in order, one file per command, both environments; D3: three constraints validated |
 | R4, R5 | **DONE — nothing to move** | production dry runs: 0 karigar attachments, 0 purchase images on the public disk; no purge needed |
-| R6 | **ORIGIN DONE**; edge PARTIAL | 0 current signatures to move; the 1 superseded version refused by nginx on all three hosts since 2026-09-25 22:24Z; Cloudflare rule and purge pending |
-| R7 | **ORIGIN DONE**; edge PARTIAL | 2 KYC files refused by nginx on all three hosts since 2026-09-25 22:24Z; the WAF rule and purge list are printed by the run; no Cloudflare access here |
+| R6 | **DONE** (origin + purge) | the 1 superseded signature: refused by nginx on all three hosts since 2026-09-25 22:24Z; its cached copies purged ≈22:45Z, 403 through Cloudflare; optional WAF rule not added |
+| R7 | **DONE** (origin + purge) | 2 KYC files: refused by nginx on all three hosts since 2026-09-25 22:24Z; cached copies purged ≈22:45Z, 403 through Cloudflare (`BYPASS`); optional WAF rule not added |
 | R8 | NOT RUN | iOS: no Mac/iPhone. Android (emulator `jf_test` exists) and the desktop print check: every check starts with a sign-in, a reserved action (§0h) |
 | R9 | **DONE** | www-data reads `.env`; `backup:run` as the scheduler's user succeeded twice (22:21Z, 22:24Z); the second archive verified end to end incl. a scratch restore; the nightly 00:00 IST run is unblocked |
 | R10 | **DONE (bounded)** | 237 references checked, 0 crossing; 21 columns not covered (11 polymorphic, 10 naming no shop table); `shop_notifications` by type: 38 resolved, 0 crossing; the other 10 polymorphic columns **not verified**; exports clean; logs in §0g |
