@@ -2,7 +2,7 @@
 
 **Status: PREPARED as an operator step — NOT executed.** The release went live
 2026-09-25 (handoff §0g); 2 KYC files remain on the public tree (count only).
-ORIGIN-ONLY is `operator-steps-security-batch.sh kyc-origin-deny` — PARTIAL
+ORIGIN-ONLY is step `origin` of `operator-steps-security-batch.sh run` (with the superseded signature) — PARTIAL
 until the edge rule and purge run, which need Cloudflare access. One
 verification change after the release: the application now answers an
 unmatched `/storage/` path itself (production 404), so a deny is proven by

@@ -103,6 +103,10 @@ git diff "${BASELINE}..${EXPORT_SHA}" -- tests/          > "$OUT/diffs/14-tests.
 #     reads the answers to its own findings rather than the whole branch again.
 git diff "${REVIEWED_SHA}..${EXPORT_SHA}"                > "$OUT/diffs/15-since-reviewed-${REVIEWED_SHA:0:7}.patch"
 git diff "${REVIEWED_SHA}..${EXPORT_SHA}" --stat         > "$OUT/diffs/15-since-reviewed-${REVIEWED_SHA:0:7}.stat"
+# The operator script was reviewed again at a07344c; its answer is this delta.
+OPS_REVIEWED_SHA=a07344c816877fc520faa1b4d03df13d669e3ef1
+git diff "${OPS_REVIEWED_SHA}..${EXPORT_SHA}"            > "$OUT/diffs/16-since-operator-review-a07344c.patch"
+git diff "${OPS_REVIEWED_SHA}..${EXPORT_SHA}" --stat     > "$OUT/diffs/16-since-operator-review-a07344c.stat"
 
 # 2b. Mobile, commit-to-commit. That tree carries a pre-existing dirty file
 #     unrelated to the audit; reading from commits keeps it out by construction.
@@ -155,6 +159,7 @@ done
     echo "Baseline:      ${BASELINE}"
     echo "Candidate:     ${EXPORT_SHA}"
     echo "Last reviewed: ${REVIEWED_SHA}  (delta: diffs/15-since-reviewed-${REVIEWED_SHA:0:7}.patch)"
+    echo "Operator script reviewed at: a07344c  (delta: diffs/16-since-operator-review-a07344c.patch)"
     echo
     echo "Mobile repo:   ${MOBILE_REPO} (${MOBILE_BRANCH})"
     echo "Mobile base:   ${MOBILE_BASELINE}"

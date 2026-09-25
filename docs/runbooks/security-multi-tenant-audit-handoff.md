@@ -3,25 +3,22 @@
 Branch `security/multi-tenant-audit`, worktree
 `/home/himanshu/Desktop/jewelflow-worktrees/security-multi-tenant-audit`.
 
-**Nothing in this branch has been pushed, deployed, or applied to any
-environment other than the local `jewelflow_testing` database.** Every number
-below is local evidence. Production exposure status is tracked separately and is
-not improved by any of it.
+**Current state (2026-09-25, 11:45Z):** production and staging run
+`0c69da379c2afd70ecd09ebfe15f2f9180cdab40` — release `e7faf9b` plus the
+code-only forward releases `2dd517a` and `0c69da3` (§0g, §0h). **Not closed:**
+one operator run (S3-22 rotation, R9 backups, R7/R6 origin denies), the
+Cloudflare edge package, the R8 device checks and the product decisions (§11).
+Sections before §0g describe local evidence from before anything was pushed.
 
-**Last observed deployed baseline:** `018b3d810e37d534f498033ab582ee41f3197c27`,
-observed on the production server at **2026-09-20T18:36:08+00:00** by a
-read-only `git rev-parse HEAD` in `/var/www/jewelflow`
-(`kyc-public-exposure-containment.md` §1). **It has not been re-observed since.**
-Nothing in this document describes the server's current state or current
-exposure: every production statement is as of that observation or earlier.
-Before executing any approved step, run that phase's drift check
-(`signature-migration-release-order.md` § Drift checks) and stop on drift.
+**Pre-batch baseline:** `018b3d810e37d534f498033ab582ee41f3197c27`, observed
+on production on 2026-09-20 and again, unchanged, before the deployment
+(§0g). Production statements in sections before §0g are as of that baseline.
 
-**This batch (§0g, 2026-09-24/25 — deployed):** production and staging run
-`2dd517a31a2335b178e79849bbbba61e2509fef7` (release `e7faf9b0a5efcfc7aebe811ec6121ff2dde60e68`
-plus a code-only forward fix). Pushed to `origin/security/multi-tenant-audit`.
-Deployed and verified; **not closed** — operator steps, device checks and
-product decisions remain (§11). Last reviewed candidate: `209db46`.
+**This batch (§0g–§0h, 2026-09-24/25 — deployed):** release `e7faf9b0a5efcfc7aebe811ec6121ff2dde60e68`,
+forward `2dd517a`, then `0c69da3` (cookie isolation, the leaked-password
+literal, the corrected operator procedure). Pushed to
+`origin/security/multi-tenant-audit`. Last reviewed candidate: `209db46`; the
+operator script was reviewed again at `a07344c` (answered in §0h).
 
 **Round before (§0f — answering the review of `b8baf4e`):** web code through
 `c54dc45b53ed5238e4a2f01a99d41bdb5f262d1a`:
@@ -69,6 +66,187 @@ stale after `ffcd034`. The repository carries one pre-existing dirty file,
 web-preview fallback from SecureStore to `localStorage`) — unrelated, not
 reviewed, and excluded from the packet — plus untracked scratch files that are
 not mine.
+
+---
+
+## 0h. Closure work, 2026-09-25 (after §0g)
+
+### Which rule reserves steps for a human — named
+
+The Claude session that prepared this batch runs under the safety rules in
+its **system prompt** (the Claude desktop app's Code session), section
+"Action categories → Prohibited (never perform; direct the user to do it
+themselves)". It is not a CLAUDE.md rule, a hook or a tool permission: the
+tools (root SSH) would allow every step. The items that apply here:
+
+* "Modifying system or security settings" — nginx access rules, the owner and
+  mode of production's `.env`, a database role's password, a Cloudflare WAF rule;
+* "Entering … passwords, API keys, or tokens into any field" and "entering
+  passwords to authenticate" — the new role password, a Cloudflare API token,
+  signing in to the app for the device and browser checks;
+* and its closing clause: "These actions stay prohibited when the user
+  explicitly asks for them, supplies all the details, or says they authorize
+  it. State the rule and ask the user to perform the action themselves."
+
+Not treated as covered, and therefore done here: code and configuration
+shipped through the release (including the cookie namespace below), read-only
+verification, a scratch-database restore check, synthetic data inside
+rolled-back transactions.
+
+### Operator procedure, corrected (`docs/runbooks/operator-steps-security-batch.sh`)
+
+Reviewer's findings on `a07344c`, each fixed and each with a local check in
+`tests/Runbooks/operator_steps_test.sh` (28 checks; sources the script's
+functions into a sandbox, stubs every side effect, records every argv):
+
+| Finding | Now |
+|---|---|
+| new password interpolated into `psql -c` (visible in process arguments) | the role is set from a **SCRAM-SHA-256 verifier** computed client-side (what `psql \password` does) and sent on **stdin**; the password is in no argv, no statement a server log could record (`log_min_error_statement=error` logs a failed statement's text), and no trace (`set +x` for the step, whatever the caller set). Check: neither password in any recorded argv, psql input, output or trace; the verifier checked by an independent implementation that itself reproduces RFC 7677's vector |
+| config-cache / FPM / worker chain could fail and continue | each boundary is gated; a failure stops with the exact state (maintenance on; role and `.env` carry the new password) and the recovery. Checks: config:cache, stale cache, FPM reload, worker restart each fail closed |
+| a failed final health check only warned | `/login` (DB-backed session) and `/health` on production, `/health` on staging after the shared FPM reload, and no failed login for the role in PostgreSQL's log after the switch — any failure is exit 1; after `up`, a failed `/login` puts maintenance back on. Checks for each |
+| an existing nginx marker returned success unverified | success requires the **running** config (`nginx -T`) to deny both prefixes in every :443 block for jewelflows.com **and** harmless probes (random names) to be refused by nginx on all three hosts, with the refusals in nginx's error log and positive controls (`/login` 200; an unmatched `/storage/` path still reaches the application). Checks: marker in the file but not running; marker running but probes open — both exit 1 |
+| the printed rollback removed the deny | after verification the protected vhost is kept as the rollback point and the pre-change copy is marked never-restore; a failed check never removes a deny. Check |
+| backup copies' claimed owner/mode did not match | copies are made by the runner under umask 077 and the printed owner/mode is read back with `stat` (and required to be `root:root 600`). Check |
+
+Found by those checks in my own new version before anyone ran it: `env_value`
+returned a trailing newline, so the rotation's `.env` check would have failed
+and rolled every rotation back. Fixed. Each of three reviewer defects,
+re-introduced one at a time, fails the intended checks (3, 1 and 2 checks).
+
+Also measured before the operator runs it: the backup step's restore
+procedure on the real server — a plain `pg_dump` of production restored into
+a scratch database with `ON_ERROR_STOP`: 14/14 row counts equal, 42/42
+triggers, 144/144 tables; scratch database and extracted dump removed.
+
+### S3-22 — facts measured (nothing printed)
+
+* Role `jewelflow` (production): SCRAM, login, not superuser. Its password is
+  the one `018b3d8`'s `phpunit.xml` carried (hash comparison). Staging's role
+  `jewelflow_staging` has a different password.
+* PostgreSQL: `listen_addresses=localhost`; `pg_hba`: peer on the socket,
+  scram-sha-256 on 127.0.0.1/::1; `password_encryption=scram-sha-256`.
+* Legitimate consumers: production's `.env` only → its config cache →
+  php8.2-fpm, the scheduler (`/etc/cron.d/jewelflow-scheduler`, www-data),
+  `jewelflow-production-ops-alerts` (systemd, www-data). No `.pgpass`, no
+  systemd or cron file carries a database password.
+* Other copies of the value (root-only, not consumers): old `.env` and
+  config-cache backups under `/root/production-deploy-backups`,
+  `/root/backup-fix-deploy-manifests`, `/root/rollback`,
+  `/root/jewelflow-env-before-mail-update`, and AI-tool session logs under
+  `/root/.codex` and `/root/.claude` (including `/root/.claude/settings.json`).
+  Rotation makes all of them useless; any old `.env` restored later needs the
+  new DB_PASSWORD.
+* Tracked files: `phpunit.xml` no longer sets DB_PASSWORD (tests read it from
+  the untracked `.env`); `TrackedCredentialLiteralTest` fails if it returns or
+  if the leaked value appears in any tracked file. Git history keeps the old
+  value: only the rotation makes it harmless.
+
+### R9 — backups
+
+* Every nightly `backup:run` from 2026-09-15 to 2026-09-25 failed walking a
+  server-only `.claude/` directory; the release's allowlist no longer walks it
+  but must read `.env`, which www-data cannot. Newest archive: 2026-09-14.
+* Scheduler: `* * * * * www-data … artisan schedule:run`; `backup:run` daily
+  00:00 Asia/Kolkata (18:30Z), `backup:clean` 01:00.
+* Access control: the archive directory `storage/app/private/JewelFlows` is
+  `www-data 700` (the files inside are 664, reachable only through it);
+  archives are not password-encrypted (`backup.password` unset) — they carry
+  `.env` and a full database dump, so the directory mode is the control.
+  Notifications go to an `example.com` address (nobody receives them).
+
+### Origin and edge (R7 KYC, R6 superseded signature)
+
+* On production's public disk: 2 KYC images (`kyc/<shop>/…jpg`) and 1
+  superseded signature (`signatures/…png`); staging has none. The application
+  never builds a `/storage/kyc/` URL: KYC documents are streamed by
+  `KycDocumentController` through `Storage::disk(...)->response()` — the
+  origin deny cannot affect authenticated viewing (Dhiran included).
+* jewelflows.com, www and dhiran are proxied by Cloudflare (`server:
+  cloudflare`, `cf-ray`); staging.jewelflows.com is DNS-only (no edge cache).
+  No Cloudflare token or CLI exists on this machine.
+* The edge package (printed by the operator run): a WAF custom rule blocking
+  `/storage/kyc/` and `/storage/signatures/` on the three hosts (runs before
+  the cache), and a custom purge of the exact URLs (3 files × 3 hosts, written
+  root-only on the server, never into this repository or a packet).
+
+### Reference audit — the bounded result
+
+`tenant:audit-foreign-references` on production (read-only, re-run
+2026-09-25 ≈11:45Z): **237 references checked** (232 declared, 1 implied by
+name, 4 through a parent), **0 crossing**. **Not covered by it: 21 columns** —
+11 polymorphic (`*_id` beside `*_type`: shop_notifications, orchestration_events,
+entity_events, dhiran_attachments, pending_uploads, customer_gold_transactions,
+cash_transactions ×2, metal_movements, store_credit_movements, audit_logs) and
+10 that name no shop table (UPI, Razorpay, device-install, quote and
+certificate identifiers). Of the polymorphic ones, only `shop_notifications`
+is checked separately, by type: 38 references (28 invoices, 10 quick bills),
+all resolved, 0 crossing. The other ten polymorphic columns are **not
+verified** by any check here.
+
+### Cookie isolation — fixed, deployed, verified
+
+Before (live, one cookie jar standing for one browser, guest page loads only —
+`tests/Staging/cookie_isolation_probe.sh`): one staging page load **replaced**
+production's tenant and platform-admin sessions; staging set
+`jewelflows-session`, `jewelflows-platform-admin-session` and `XSRF-TOKEN`
+on `.jewelflows.com`. Both environments had the same three names (derived
+from `APP_NAME`) and `SESSION_DOMAIN=.jewelflows.com`.
+
+Fix (`3898fea`, config only): outside production every session cookie name
+(tenant, platform-admin, Dhiran) carries `APP_ENV`, even a name copied from
+production's `.env`; `SESSION_DOMAIN` is honoured in production only, so every
+staging cookie — including `XSRF-TOKEN` and `remember_*`, whose names no
+namespace changes — is host-only. Production's names and domain are
+unchanged: nobody there was signed out. `SessionCookieNamespaceTest` (4) was
+RED on the old config.
+
+After both releases (same probe): all three production sessions **survived**
+a staging visit; staging sets `jewelflows-session-staging` /
+`jewelflows-platform-admin-session-staging` and `XSRF-TOKEN`, all without a
+Domain attribute. Cross-presentation: each environment's session cookie, sent
+twice to its own environment, keeps one session; sent to the other under that
+one's name, it is not a session there (a new one each request) — both
+directions. The staging verifier (23/23 on staging) adds: tenant login and
+logout and admin login set no production cookie name and nothing scoped to a
+parent domain. Not verified here: an **authenticated** production session in a
+real browser across a staging login/logout (needs a sign-in — see below).
+
+Observed, not changed: `SESSION_SECURE_COOKIE=false` on both. Mitigated by the
+HTTP→HTTPS redirects on every host and HSTS (`max-age=31536000;
+includeSubDomains`); worth turning on separately.
+
+### Releases (code-only, `deploy-forward.sh`)
+
+| | From | To | Maintenance (UTC) |
+|---|---|---|---|
+| staging | `0626082` | `0c69da379c2afd70ecd09ebfe15f2f9180cdab40` | 11:43:28–11:43:32Z |
+| production | `2dd517a` | `0c69da379c2afd70ecd09ebfe15f2f9180cdab40` | 11:45:16–11:45:19Z |
+
+Effective configuration changes: staging's session cookie names and scope (as
+above); nothing else. Both runs: gates passed, backup read end to end, equal
+row counts, no new error, the other environment untouched. After: all four
+hosts `/health` and `/login` 200; both workers active; production 0 errors
+since the release; no tracked file at production's HEAD carries the leaked
+value. Suites before release: PHP 8.4 and PHP 8.2 each 3428 passed, 7 skipped
+(the known seven), 0 failed.
+
+### Device and browser checks (R8) — NOT RUN
+
+Not marked passed. Exactly what blocks them here: the iOS checks need a Mac
+and a physical iPhone (none attached; no `xcrun`); the Android checks can use
+this machine's emulator (`jf_test`, Pixel 5, API 34, `~/android-sdk`) or a
+phone, but every check starts by signing in to the app, and the desktop print
+check needs a signed-in browser session — entering a password is one of the
+reserved actions above. What remains is the table in §5 ("NOT RUN — exact
+remaining checks") and S3-09c on a handset.
+
+### Current state, read by the procedure's own `verify` (after the releases)
+
+`.env` not readable by www-data; rotation not done; newest archive 2026-09-14
+(directory `www-data 700`; cron and the 00:00 `backup:run` present); origin
+denies missing (read from the running `nginx -T`); edge probes not blocked.
+All of it is one operator run: `operator-steps-security-batch.sh run`, then
+the Cloudflare package it prints.
 
 ---
 
@@ -134,7 +312,7 @@ verified on staging before production.
 | Production-shaped boot (`composer install --no-dev`, `artisan list`) | `e95781b` fataled (the blocker); fixed tree exit 0 |
 | Staging verifier (`tests/Staging/verify_security_batch.php`, synthetic tenants, one rolled-back transaction, nothing sent) on `e7faf9b` and again on `2dd517a` | all 22 checks passed: cross-shop web/mobile reads and writes; an inconsistent reference; staff grant/revoke; S3-19 legacy URLs and a revoked session; S3-21 refusal; payment replay/conflict/distinct key; export delivery and download isolation; signature snapshot; tenant context; loyalty inactive; nginx probes. Its premise shown locally: with the pre-S3-19 routes and pre-S3-21 controller it fails exactly those three checks |
 | Deploy gates, both environments | D0 → Phase 1 (eight, one per command, pretend-gated) → D1 (direct connection) → Phase 2 → D2 → 2b → D2b → 3 → D3 (ten applied, three constraints validated) → smoke; equal row counts; the other environment untouched. **The "no new error" gate proved nothing as run**: it read `laravel.log`, and both environments log to daily files (`laravel.log` is written only when the config is broken). Re-read afterwards from every log by timestamp: **0 error lines inside each passing window** — production 02:37:25–02:37:42Z and 02:53:12–02:53:17Z, staging 23:54:24–23:54:27Z and 02:52:32–02:52:41Z. The gate now reads every `laravel*.log` from a mark (self-test across a midnight rollover: 0, 0, 3 as expected; the old gate saw 1 of the 3) |
-| Production after go-live (read-only) | `tenant:audit-foreign-references` 237 checked, **0 crossing**; `reporting:audit-export-files` clean (11 exports, all sync, none stored); `backup:scope-check` clean; `loyalty.expiry_active_from` null; worker restarted on the release; errors since go-live: one — my R9 `backup:run` (below) |
+| Production after go-live (read-only) | `tenant:audit-foreign-references` 237 references checked, **0 crossing** (21 columns not covered by it, 11 of them polymorphic — §0h; `shop_notifications` checked separately by type, 0 crossing); `reporting:audit-export-files` clean (11 exports, all sync, none stored); `backup:scope-check` clean; `loyalty.expiry_active_from` null; worker restarted on the release; errors since go-live: one — my R9 `backup:run` (below) |
 
 ### What went wrong on the way, and what it cost
 
@@ -158,7 +336,7 @@ Staging was in maintenance 23:43:25–23:54:26Z across its attempts.
   `phpunit.xml`** (hash comparison; never printed). PostgreSQL listens on
   localhost only, `pg_hba` requires scram-sha-256, the firewall admits 22/80/443:
   usable only by someone already running code on the VPS. **OPEN — operator
-  step** `rotate-prod-db-password`.
+  step** `rotate-prod-db-password` (now step `rotate` of the single `run`, §0h).
 * **R9 — production backups.** The release's backup is an allowlist that must
   archive `.env`; www-data cannot read production's, so `backup:run` fails
   ("ZipArchive::close(): Can't open file: Permission denied"). `.env` is the
@@ -170,7 +348,7 @@ Staging was in maintenance 23:43:25–23:54:26Z across its attempts.
   (00:00 IST, 18:30Z) fails on `.env` instead unless the operator step runs
   first. Database dumps taken by the deploy runs today are in
   `/root/security-batch/*/` (root-only, read end to end). **OPEN — operator
-  step** `env-readable-for-backup` (dev:www-data 640, then one verified run).
+  step** `env-readable-for-backup` (dev:www-data 640, then one verified run; now steps `env-read` and `backup` of the single `run`, §0h).
 * FUNC-01 — the snapshot backfill; excluded; tracked.
 
 ### S3-19 history — what the logs can and cannot say
@@ -194,7 +372,7 @@ Dry runs on production: current signatures, karigar attachments and purchase
 images — **0 candidates**; nothing to execute and nothing to purge. Remaining
 on the public tree (counts only): **2 KYC files** and **1 superseded signature
 version** (named by no row). Both need nginx denies — operator steps
-`kyc-origin-deny` (R7, ORIGIN-ONLY, **PARTIAL**: the Cloudflare edge is not
+`kyc-origin-deny` (now step `origin`, §0h) (R7, ORIGIN-ONLY, **PARTIAL**: the Cloudflare edge is not
 covered; no Cloudflare access) and `signatures-origin-deny` (SIG-ORIGIN,
 PARTIAL). KYC containment remains its own package, unexecuted.
 
@@ -1177,7 +1355,7 @@ instance.
 
 Measured by hash comparison. Reachable only from the VPS itself
 (localhost-only PostgreSQL, scram-sha-256, firewall 22/80/443). Rotation is
-`operator-steps-security-batch.sh rotate-prod-db-password`.
+`operator-steps-security-batch.sh rotate-prod-db-password` (now `run`, step `rotate`, §0h).
 
 ### S3-02 — karigar invoice attachments on the public web path
 
@@ -4344,12 +4522,13 @@ Local work that remains, none of it blocking the conditions in §11:
 | R2 | **DONE** | D0–D3 recorded by `deploy-security-batch.sh` in both environments (`/root/security-batch/*/run.log`) |
 | R3 | **DONE** | ten migrations in order, one file per command, both environments; D3: three constraints validated |
 | R4, R5 | **DONE — nothing to move** | production dry runs: 0 karigar attachments, 0 purchase images on the public disk; no purge needed |
-| R6 | OPEN (operator) | 0 current signatures to move; **1 superseded version** public — `operator-steps … signatures-origin-deny` (PARTIAL) or accept the residual |
-| R7 | OPEN (operator; edge blocked) | 2 KYC files public — `operator-steps … kyc-origin-deny` (ORIGIN-ONLY, PARTIAL); the Cloudflare rule and purge need access I do not have |
-| R8 | NOT RUN | no device access |
-| R9 | OPEN (operator) | `backup:scope-check` clean; `backup:run` fails until www-data can read `.env` — `operator-steps … env-readable-for-backup`; newest successful app backup 2026-09-14 (every nightly run since 2026-09-15 failed on a server-only `.claude/` directory; the next fails on `.env` unless the step runs first) |
-| R10 | **DONE** | 0 crossing references (237 checked); exports clean; access-log and audit-log facts in §0g |
-| S3-22 | OPEN (operator) | `operator-steps … rotate-prod-db-password` |
+| R6 | OPEN (operator run) | 0 current signatures to move; **1 superseded version** public — step `origin` of `operator-steps-security-batch.sh run` (origin; PARTIAL until the Cloudflare package) |
+| R7 | OPEN (operator run; edge needs Cloudflare) | 2 KYC files public — step `origin` (ORIGIN-ONLY, PARTIAL); the WAF rule and purge list are printed by the run; no Cloudflare access here (§0h) |
+| R8 | NOT RUN | iOS: no Mac/iPhone. Android (emulator `jf_test` exists) and the desktop print check: every check starts with a sign-in, a reserved action (§0h) |
+| R9 | OPEN (operator run) | steps `env-read` (dev:www-data 640) and `backup` (backup:run as www-data, archive verified, dump restored into a scratch database); before 18:30Z, the next scheduled run. Newest archive 2026-09-14 (every nightly run since 2026-09-15 failed on a server-only `.claude/` directory) |
+| R10 | **DONE (bounded)** | 237 references checked, 0 crossing; 21 columns not covered (11 polymorphic, 10 naming no shop table); `shop_notifications` by type: 38 resolved, 0 crossing; the other 10 polymorphic columns **not verified**; exports clean; logs in §0g |
+| S3-22 | OPEN (operator run) | step `rotate` (SCRAM verifier on stdin; gated); `phpunit.xml` no longer carries the value (`f6424af`); git history does — only rotation makes it harmless |
+| Cookies | **FIXED, deployed, verified** | staging namespaced and host-only; production unchanged; one-jar and cross-presentation probes pass both ways (§0h); authenticated browser check needs a sign-in |
 
 **Before deployment the verdict was: not ready.** Independent reviews: `7b1d709` (seven findings, §0b),
 `9aaf1af` (XR-01, XR-04, XR-06 accepted; XR-02, XR-03, XR-05, XR-07 partial —
