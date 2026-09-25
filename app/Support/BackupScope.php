@@ -51,6 +51,11 @@ final class BackupScope
         // Not needed to restore the running application.
         'tests', 'docs', 'bin', 'deploy', '.github', '*.md', 'phpunit.xml',
         '.editorconfig', '.gitattributes', '.gitignore', '.phpunit.result.cache',
+
+        // Server-only tooling and test artefacts found in the production tree
+        // by backup:scope-check (2026-09-25). None is needed to restore; .mcp.json
+        // may hold tool credentials and must never be archived.
+        '.agents', '.augment', '.mcp.json', '.npm', 'skills-lock.json', 'test-results',
     ];
 
     /** @return list<string> */

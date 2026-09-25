@@ -19,6 +19,14 @@
 #       S3-22. Production's database role uses the password committed in
 #       phpunit.xml. Rotates it inside a short maintenance window. The new
 #       password is generated here and never printed.
+#   operator-steps-security-batch.sh env-readable-for-backup
+#       R9. Production's .env is dev:dev 640 (rewritten 2026-08-13), so
+#       www-data — which runs the scheduled backup:run — cannot read it, and the
+#       release's allowlist backup (which must archive .env: APP_KEY decrypts
+#       encrypted columns) fails with "ZipArchive::close(): Can't open file:
+#       Permission denied". The newest successful app backup is 2026-09-14.
+#       Makes it dev:www-data 640 (www-data may read, not write), then runs one
+#       backup as www-data and lists what the archive holds.
 #   operator-steps-security-batch.sh purge-originals <signatures|karigar|purchases>
 #       R4–R6, last step. Deletes public-disk originals whose private copy
 #       verifies. The command itself refuses rows with no ledger evidence and
@@ -35,6 +43,12 @@ STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 ART() { ( cd "$PROD" && sudo -u www-data php artisan "$@" ); }
 confirm() { read -r -p "$1 Type YES to continue: " a; [ "$a" = YES ] || { echo "Stopped. Nothing further changed."; exit 1; }; }
 code() { curl -sk -o /dev/null -w '%{http_code}' -m 15 --resolve "$1:443:127.0.0.1" "https://$1$2"; }
+# Who answered: nginx's own error page carries its "<center>nginx" footer; the
+# application answers an unmatched /storage/ path itself (404 on production,
+# 403 on staging), with its own page. A deny is proven only by nginx's 403.
+who() { curl -sk -m 15 --resolve "$1:443:127.0.0.1" "https://$1$2" | grep -qi '<center>nginx' && echo nginx || echo app; }
+# Config caching reads .env; production's is not readable by www-data.
+CFG() { if sudo -u www-data test -r "$PROD/.env"; then ART "$@"; else ( cd "$PROD" && umask 022 && php artisan "$@" ); fi; }
 
 origin_deny() {   # $1 = prefix under /storage, $2 = label
   local prefix=$1 label=$2 marker="location ^~ /storage/$1/"
@@ -64,10 +78,10 @@ origin_deny() {   # $1 = prefix under /storage, $2 = label
   systemctl reload nginx && systemctl is-active --quiet nginx || { echo "reload failed — restore with: cat $backup > $VHOST && nginx -t && systemctl reload nginx"; exit 1; }
   local probe="probe-$STAMP-$RANDOM" failed=0
   for h in jewelflows.com www.jewelflows.com dhiran.jewelflows.com; do
-    local deny; deny=$(code "$h" "/storage/$prefix/$probe.jpg")
-    local ctrl; ctrl=$(code "$h" "/storage/not-$prefix-$probe.jpg")
-    echo "$h: /storage/$prefix/<probe> -> $deny (expect 403); control /storage/<other probe> -> $ctrl (expect 404)"
-    [ "$deny" = 403 ] && [ "$ctrl" = 404 ] || failed=1
+    local deny; deny="$(code "$h" "/storage/$prefix/$probe.jpg") $(who "$h" "/storage/$prefix/$probe.jpg")"
+    local ctrl; ctrl="$(code "$h" "/storage/not-$prefix-$probe.jpg") $(who "$h" "/storage/not-$prefix-$probe.jpg")"
+    echo "$h: /storage/$prefix/<probe> -> $deny (expect 403 nginx); control /storage/<other probe> -> $ctrl (expect the application)"
+    [ "$deny" = "403 nginx" ] && [ "${ctrl##* }" = app ] || failed=1
   done
   [ "$(code jewelflows.com /health)" = 200 ] || failed=1
   if [ "$failed" = 0 ]; then echo "VERIFIED at the origin. The edge is NOT covered (PARTIAL)."; else
@@ -95,13 +109,29 @@ case "${1:-}" in
       || { ART up; echo "ALTER ROLE failed — nothing changed."; exit 1; }
     sed -i -E "s#^DB_PASSWORD=.*#DB_PASSWORD=$NEW#" "$PROD/.env"
     unset NEW current
-    ART config:cache >/dev/null && systemctl reload php8.2-fpm && systemctl restart jewelflow-production-ops-alerts
+    CFG config:cache >/dev/null && systemctl reload php8.2-fpm && systemctl restart jewelflow-production-ops-alerts
     if ART migrate:status >/dev/null 2>&1; then ART up; else
       echo "The application cannot connect. It stays in maintenance. The previous .env is /root/env-backups/jewelflow.env.$STAMP;"
       echo "fix DB_PASSWORD in $PROD/.env to match the role, then: config:cache, reload php8.2-fpm, artisan up."; exit 1; fi
     [ "$(code jewelflows.com /health)" = 200 ] && echo "ROTATED: the application connects with the new password; /health 200." \
       || echo "WARNING: /health did not answer 200 — check before walking away."
     echo "The committed phpunit.xml value is now a local test password only." ;;
+  env-readable-for-backup)
+    f=$PROD/.env
+    echo "Now: $(stat -c '%U:%G %a' "$f"); www-data can read: $(sudo -u www-data test -r "$f" && echo yes || echo no)"
+    sudo -u www-data test -r "$f" && { echo "Already readable by www-data — nothing to change."; }
+    if ! sudo -u www-data test -r "$f"; then
+      echo "Rollback, if ever needed: chown $(stat -c '%U:%G' "$f") $f && chmod $(stat -c '%a' "$f") $f"
+      confirm "Let group www-data read $f (dev:www-data 640)?"
+      chgrp www-data "$f" && chmod 640 "$f" || exit 1
+      sudo -u www-data test -r "$f" || { echo "www-data still cannot read it."; exit 1; }
+    fi
+    echo "== backup:run as www-data (as the scheduler runs it)"
+    ART backup:run || { echo "The backup still fails — see above."; exit 1; }
+    newest=$(ls -t "$PROD/storage/app/private/JewelFlows/"*.zip | head -1)
+    echo "Newest archive: $newest ($(du -h "$newest" | cut -f1))"
+    echo "Top-level entries archived (expect .env, app, bootstrap, config, database, lang, public, resources, routes, storage, db-dumps and the listed files — no .git, .claude, output, vendor):"
+    unzip -Z1 "$newest" | sed -E 's#^var/www/jewelflow/##' | cut -d/ -f1 | sort -u | tr '\n' ' '; echo ;;
   purge-originals)
     case "${2:-}" in
       signatures) CMD=signatures:relocate ;;
