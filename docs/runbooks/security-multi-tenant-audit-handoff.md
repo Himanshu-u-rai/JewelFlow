@@ -3,11 +3,12 @@
 Branch `security/multi-tenant-audit`, worktree
 `/home/himanshu/Desktop/jewelflow-worktrees/security-multi-tenant-audit`.
 
-**Current state (2026-09-25, 11:45Z):** production and staging run
-`0c69da379c2afd70ecd09ebfe15f2f9180cdab40` — release `e7faf9b` plus the
-code-only forward releases `2dd517a` and `0c69da3` (§0g, §0h). **Not closed:**
-one operator run (S3-22 rotation, R9 backups, R7/R6 origin denies), the
-Cloudflare edge package, the R8 device checks and the product decisions (§11).
+**Current state (2026-09-25, 22:35Z):** production and staging run
+`a7f32b4daf97bade765049d94c1d3ace9eb8558b` — release `e7faf9b` plus code-only
+forward releases (§0g, §0h). The operator run is done: S3-22 rotated, R9
+backups working and verified, R7/R6 origin denies verified. **Not closed:** the
+Cloudflare edge package, the R8 device checks, one signed-in browser check,
+and the product decisions (§11).
 Sections before §0g describe local evidence from before anything was pushed.
 
 **Pre-batch baseline:** `018b3d810e37d534f498033ab582ee41f3197c27`, observed
@@ -104,7 +105,7 @@ functions into a sandbox, stubs every side effect, records every argv):
 | new password interpolated into `psql -c` (visible in process arguments) | the role is set from a **SCRAM-SHA-256 verifier** computed client-side (what `psql \password` does) and sent on **stdin**; the password is in no argv, no statement a server log could record (`log_min_error_statement=error` logs a failed statement's text), and no trace (`set +x` for the step, whatever the caller set). Check: neither password in any recorded argv, psql input, output or trace; the verifier checked by an independent implementation that itself reproduces RFC 7677's vector |
 | config-cache / FPM / worker chain could fail and continue | each boundary is gated; a failure stops with the exact state (maintenance on; role and `.env` carry the new password) and the recovery. Checks: config:cache, stale cache, FPM reload, worker restart each fail closed |
 | a failed final health check only warned | `/login` (DB-backed session) and `/health` on production, `/health` on staging after the shared FPM reload, and no failed login for the role in PostgreSQL's log after the switch — any failure is exit 1; after `up`, a failed `/login` puts maintenance back on. Checks for each |
-| an existing nginx marker returned success unverified | success requires the **running** config (`nginx -T`) to deny both prefixes in every :443 block for jewelflows.com **and** harmless probes (random names) to be refused by nginx on all three hosts, with the refusals in nginx's error log and positive controls (`/login` 200; an unmatched `/storage/` path still reaches the application). Checks: marker in the file but not running; marker running but probes open — both exit 1 |
+| an existing nginx marker returned success unverified | success requires the configuration nginx **loads** (`nginx -T`) to deny both prefixes in every :443 block for jewelflows.com **and** harmless probes (which alone show what the running workers do) (random names) to be refused by nginx on all three hosts, with the refusals in nginx's error log and positive controls (`/login` 200; an unmatched `/storage/` path still reaches the application). Checks: marker in the file but not running; marker running but probes open — both exit 1 |
 | the printed rollback removed the deny | after verification the protected vhost is kept as the rollback point and the pre-change copy is marked never-restore; a failed check never removes a deny. Check |
 | backup copies' claimed owner/mode did not match | copies are made by the runner under umask 077 and the printed owner/mode is read back with `stat` (and required to be `root:root 600`). Check |
 
@@ -168,6 +169,22 @@ triggers, 144/144 tables; scratch database and extracted dump removed.
   `/storage/kyc/` and `/storage/signatures/` on the three hosts (runs before
   the cache), and a custom purge of the exact URLs (3 files × 3 hosts, written
   root-only on the server, never into this repository or a packet).
+
+### The operator run, 2026-09-25 22:20–22:31Z (UTC)
+
+Run by the user from their laptop (`ssh -t jewelflow '… run'`); evidence in
+`/root/security-batch/operator-20260925T2220*Z`, `…T2224*Z`, `…T2231*Z`.
+
+| Step | Result |
+|---|---|
+| env-read | `.env` dev:dev 640 → **dev:www-data 640**; www-data reads, cannot write |
+| rotate (S3-22) | **rotated**; maintenance 22:20:59–22:21:01Z; config cache, php8.2-fpm, the worker and a fresh CLI use the new password; `/login` and `/health` 200, staging `/health` 200; **0 failed logins** for the role since the switch (checked again ≈22:35Z); 0 application errors |
+| backup (R9) | first run 22:21Z: `backup:run` as www-data **succeeded** (`2026-09-26-03-51-07.zip`, 36 MB — the first since 2026-09-14), then the check stopped on a **false positive** of mine: one empty directory entry `storage/app/backup-temp/` (0 bytes). Fixed (`250e76c`: files only). Second run 22:24Z: `2026-09-26-03-54-46.zip` **verified** — required paths present, excluded paths absent, archived `.env` equal to the live one, dump restored into a scratch database: 14/14 row counts, 42 triggers; scratch removed. Directory `www-data 700` |
+| origin (R7, R6) | denies applied 22:24:56Z (`nginx -t` ok). The first probes, right after the reload, reached the application on jewelflows.com (old workers still answering; www and dhiran, a second later, got nginx's 403); a direct probe then got 403. The run's last lines were lost (`exec > >(tee)` + ssh closing). Both fixed (`a7f32b4`: wait out the reload; a pipeline that finishes writing). Re-verified 22:31Z: **403 from nginx on all three hosts for both prefixes, 12 refusals logged**, `/login` 200, unmatched `/storage/` still reaches the application. Rollback point that keeps the denies: `operator-20260925T223134Z/jewelflow.vhost.protected` |
+| edge | **PARTIAL** — the WAF rule and the 9-URL purge (list root-only on the server) are for the Cloudflare dashboard |
+
+Releases for those fixes (code-only, docs and scripts): `250e76c` (22:23Z) and
+`a7f32b4` (22:31Z) on both environments.
 
 ### Reference audit — the bounded result
 
@@ -4522,12 +4539,12 @@ Local work that remains, none of it blocking the conditions in §11:
 | R2 | **DONE** | D0–D3 recorded by `deploy-security-batch.sh` in both environments (`/root/security-batch/*/run.log`) |
 | R3 | **DONE** | ten migrations in order, one file per command, both environments; D3: three constraints validated |
 | R4, R5 | **DONE — nothing to move** | production dry runs: 0 karigar attachments, 0 purchase images on the public disk; no purge needed |
-| R6 | OPEN (operator run) | 0 current signatures to move; **1 superseded version** public — step `origin` of `operator-steps-security-batch.sh run` (origin; PARTIAL until the Cloudflare package) |
-| R7 | OPEN (operator run; edge needs Cloudflare) | 2 KYC files public — step `origin` (ORIGIN-ONLY, PARTIAL); the WAF rule and purge list are printed by the run; no Cloudflare access here (§0h) |
+| R6 | **ORIGIN DONE**; edge PARTIAL | 0 current signatures to move; the 1 superseded version refused by nginx on all three hosts since 2026-09-25 22:24Z; Cloudflare rule and purge pending |
+| R7 | **ORIGIN DONE**; edge PARTIAL | 2 KYC files refused by nginx on all three hosts since 2026-09-25 22:24Z; the WAF rule and purge list are printed by the run; no Cloudflare access here |
 | R8 | NOT RUN | iOS: no Mac/iPhone. Android (emulator `jf_test` exists) and the desktop print check: every check starts with a sign-in, a reserved action (§0h) |
-| R9 | OPEN (operator run) | steps `env-read` (dev:www-data 640) and `backup` (backup:run as www-data, archive verified, dump restored into a scratch database); before 18:30Z, the next scheduled run. Newest archive 2026-09-14 (every nightly run since 2026-09-15 failed on a server-only `.claude/` directory) |
+| R9 | **DONE** | www-data reads `.env`; `backup:run` as the scheduler's user succeeded twice (22:21Z, 22:24Z); the second archive verified end to end incl. a scratch restore; the nightly 00:00 IST run is unblocked |
 | R10 | **DONE (bounded)** | 237 references checked, 0 crossing; 21 columns not covered (11 polymorphic, 10 naming no shop table); `shop_notifications` by type: 38 resolved, 0 crossing; the other 10 polymorphic columns **not verified**; exports clean; logs in §0g |
-| S3-22 | OPEN (operator run) | step `rotate` (SCRAM verifier on stdin; gated); `phpunit.xml` no longer carries the value (`f6424af`); git history does — only rotation makes it harmless |
+| S3-22 | **DONE** | rotated 2026-09-25 22:21Z (SCRAM verifier on stdin); 0 failed logins since; `phpunit.xml` no longer carries the old value (`f6424af`); git history does, now harmless |
 | Cookies | **FIXED, deployed, verified** | staging namespaced and host-only; production unchanged; one-jar and cross-presentation probes pass both ways (§0h); authenticated browser check needs a sign-in |
 
 **Before deployment the verdict was: not ready.** Independent reviews: `7b1d709` (seven findings, §0b),
