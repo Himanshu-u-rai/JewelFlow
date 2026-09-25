@@ -290,6 +290,7 @@ SCAN_HITS=0
 # value such as `$NEWPASS` is still flagged. The real credential the rotation
 # replaces is caught by the value check below, not by this shape.
 SCAN_ALLOWLIST='AKIAIOSFODNN7EXAMPLE|DB_PASSWORD=\$NEW\b'
+# Beyond these tokens, whole lines reviewed one by one: docs/runbooks/packet-scan-reviewed.tsv.
 
 scan() {
     local label="$1" pattern="$2"
@@ -299,7 +300,13 @@ scan() {
     # finding elsewhere in the same file.
     hits="$(grep -rInIE "$pattern" "$OUT" 2>/dev/null \
         | grep -vE "$SCAN_ALLOWLIST" \
-        | cut -d: -f1 | sort -u || true)"
+        | awk -v reviewed="docs/runbooks/packet-scan-reviewed.tsv" '
+            BEGIN { while ((getline l < reviewed) > 0) if (l !~ /^#/ && index(l, "\t")) ok[substr(l, index(l, "\t") + 1)] = 1 }
+            { file = substr($0, 1, index($0, ":") - 1); rest = substr($0, length(file) + 2)
+              line = substr(rest, index(rest, ":") + 1)
+              if (file ~ /\.patch$/) line = substr(line, 2)   # a diff line: drop its +, - or space
+              if (!(line in ok)) print file }' \
+        | sort -u || true)"
     if [ -n "$hits" ]; then
         echo "  POSSIBLE ${label}:" >&2
         echo "$hits" | sed 's/^/    /' >&2

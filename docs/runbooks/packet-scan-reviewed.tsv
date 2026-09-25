@@ -1,0 +1,11 @@
+# Lines the review packet's secret scan matches that were REVIEWED as not credentials.
+# <reason> TAB <the whole source line, exactly>. build-security-review-packet.sh drops a
+# hit only when its entire line equals one listed here (a diff's leading +, - or space
+# ignored): a secret added to such a line changes the line and is scanned again. Never
+# a pattern, never a partial line. Each entry names why the value is not a credential.
+code: the awk program that rewrites the DB_PASSWORD line; the value comes from ENVIRON, never the text	  content=$(NEWPW=$new awk '/^DB_PASSWORD=/ { print "DB_PASSWORD=" ENVIRON["NEWPW"]; n++; next } { print } END { exit n == 1 ? 0 : 3 }' "$env") \
+test fixture: a sandbox .env; APP_KEY is base64 of the word 'test', the password is a %s format	  printf 'APP_KEY=base64:dGVzdA==\nDB_HOST=127.0.0.1\nDB_PORT=5432\nDB_DATABASE=jewelflow\nDB_USERNAME=jewelflow\nDB_PASSWORD=%s\n' "$OLDPW" > "$S/prod/.env"
+test assertion: compares the sandbox .env with the harness's variable	  '[ "$(grep ^DB_PASSWORD= "$S/prod/.env")" = "DB_PASSWORD=$NEWPW" ] && [ "$(stat -c %a "$S/prod/.env")" = 640 ]'
+test assertion: compares the sandbox .env with the harness's variable	   && grep -q "^DB_PASSWORD=$OLDPW\$" "$S/prod/.env" && [ "$(tail -1 "$S/events.log")" = "ART up" ] && no_secret_anywhere'
+test assertion: compares the sandbox .env with the harness's variable	  '[ "$RC" = 1 ] && out_has "ALTER ROLE failed" && grep -q "^DB_PASSWORD=$OLDPW\$" "$S/prod/.env"'
+test fixture: a deliberately different sandbox .env ('other')	export MAKE_ZIP='printf "DB_PASSWORD=other\n" > "$S/other.env"; mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$S/other.env" "${PROD#/}/"'
