@@ -107,6 +107,10 @@ git diff "${REVIEWED_SHA}..${EXPORT_SHA}" --stat         > "$OUT/diffs/15-since-
 OPS_REVIEWED_SHA=a07344c816877fc520faa1b4d03df13d669e3ef1
 git diff "${OPS_REVIEWED_SHA}..${EXPORT_SHA}"            > "$OUT/diffs/16-since-operator-review-a07344c.patch"
 git diff "${OPS_REVIEWED_SHA}..${EXPORT_SHA}" --stat     > "$OUT/diffs/16-since-operator-review-a07344c.stat"
+# The independent agent review (handoff §0i) covered 209db46..a029f2f; its fixes are this delta.
+AGENT_REVIEWED_SHA=a029f2f7644fa87487ea736b349c5bf803e9de74
+git diff "${AGENT_REVIEWED_SHA}..${EXPORT_SHA}"          > "$OUT/diffs/17-since-agent-review-a029f2f.patch"
+git diff "${AGENT_REVIEWED_SHA}..${EXPORT_SHA}" --stat   > "$OUT/diffs/17-since-agent-review-a029f2f.stat"
 
 # 2b. Mobile, commit-to-commit. That tree carries a pre-existing dirty file
 #     unrelated to the audit; reading from commits keeps it out by construction.
@@ -160,6 +164,7 @@ done
     echo "Candidate:     ${EXPORT_SHA}"
     echo "Last reviewed: ${REVIEWED_SHA}  (delta: diffs/15-since-reviewed-${REVIEWED_SHA:0:7}.patch)"
     echo "Operator script reviewed at: a07344c  (delta: diffs/16-since-operator-review-a07344c.patch)"
+    echo "Agent review (§0i) covered: 209db46..a029f2f  (fixes: diffs/17-since-agent-review-a029f2f.patch)"
     echo
     echo "Mobile repo:   ${MOBILE_REPO} (${MOBILE_BRANCH})"
     echo "Mobile base:   ${MOBILE_BASELINE}"
