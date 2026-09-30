@@ -70,7 +70,7 @@ env_value() { local v; v=$(grep -E "^$1=" "$2" | tail -1 | cut -d= -f2- | sed -E
 
 # Commands with side effects go through these, so the tests can replace them.
 ART()  { ( cd "$PROD" && sudo -u www-data php artisan "$@" ); }
-CFG()  { if sudo -u www-data test -r "$PROD/.env"; then ART "$@"; else ( cd "$PROD" && umask 022 && php artisan "$@" ); fi; }
+CFG()  { if sudo -u www-data test -r "$PROD/.env"; then ART "$@"; else echo "www-data cannot read $PROD/.env: refusing to run artisan as root (it would execute www-data-writable bootstrap/cache and write a world-readable config cache)" >&2; return 1; fi; }
 PGSU() { sudo -u postgres psql -X -A -t -q -v ON_ERROR_STOP=1 "$@"; }   # secrets only ever on stdin
 code() { curl -sk -o /dev/null -w '%{http_code}' -m 15 --resolve "$1:443:127.0.0.1" "https://$1$2"; }
 # Who answered: nginx's own error page has its "<center>nginx" footer; the
@@ -212,10 +212,24 @@ step_backup() {
   scratch="jf_backup_verify_$(date -u +%Y%m%d%H%M%S)"
   case "$scratch" in jf_backup_verify_[0-9]*) ;; *) stop "bad scratch name" "the archive exists" "-" ;; esac
   dump=$(printf '%s\n' "$entries" | grep -E '^db-dumps/[^/]+\.sql$' | head -1)
+  # Whatever happens next, the scratch copy goes (a partial dump included).
+  trap 'sudo -u postgres dropdb --if-exists "$scratch" >/dev/null 2>&1; rm -rf "$WORK/restore"' EXIT INT TERM
   mkdir -m 700 "$WORK/restore" && unzip -p "$zip" "$dump" > "$WORK/restore/dump.sql" \
-    || stop "could not extract the dump" "the archive exists" "check disk space"
-  sudo -u postgres createdb "$scratch" || { rm -f "$WORK/restore/dump.sql"; stop "createdb $scratch failed" "the archive exists" "-"; }
-  if ! PGSU -d "$scratch" < "$WORK/restore/dump.sql" >/dev/null; then
+    || stop "could not extract the dump" "the archive exists; the partial dump is removed on exit" "check disk space"
+  # www-data wrote this file, so it is untrusted input to psql. Refuse psql
+  # meta-commands (\! runs a shell as postgres) other than pg_dump's own
+  # \. and \restrict markers, and anything that could regain privilege; then
+  # run it as the app role (SET ROLE), never as superuser. Extensions are
+  # pre-created from production's catalog, not from the dump.
+  if grep -nE '^\\' "$WORK/restore/dump.sql" | grep -qvE '^[0-9]+:\\(\.|restrict |unrestrict )' \
+     || grep -qiE '^\s*COPY\b.*\b(TO|FROM)\s+PROGRAM\b|^\s*(SET|RESET)\s+ROLE|SESSION\s+AUTHORIZATION|^\s*(ALTER|CREATE|DROP)\s+(ROLE|USER)\b' "$WORK/restore/dump.sql"; then
+    stop "the dump contains psql meta-commands or privilege statements a genuine pg_dump never writes" "the archive exists; nothing was restored" "treat the archive as tampered; investigate www-data"
+  fi
+  sudo -u postgres createdb -O "$ROLE" "$scratch" || stop "createdb $scratch failed" "the archive exists" "-"
+  for x in $(PGSU -d jewelflow -c "select extname from pg_extension where extname <> 'plpgsql'"); do
+    PGSU -d "$scratch" -c "create extension if not exists \"$x\" with schema public" >/dev/null || stop "could not create extension $x in the scratch database" "the archive exists" "-"
+  done
+  if ! { echo "SET ROLE $ROLE;"; grep -vE '^(CREATE EXTENSION|COMMENT ON EXTENSION) ' "$WORK/restore/dump.sql"; } | PGSU -d "$scratch" >/dev/null; then
     sudo -u postgres dropdb "$scratch"; rm -f "$WORK/restore/dump.sql"
     stop "the dump does not restore into a scratch database" "the archive exists; scratch database dropped" "inspect the dump"
   fi
@@ -342,7 +356,7 @@ verify_edge() {
   for h in $HOSTS; do for p in $PREFIXES; do
     u="https://$h/storage/$p/probe-$(date -u +%s)-$RANDOM.jpg"
     body=$(curl -s -m 20 -D "$WORK/edge.hdr" "$u" 2>/dev/null); hdr=$(tr -d '\r' < "$WORK/edge.hdr" 2>/dev/null); rm -f "$WORK/edge.hdr"
-    if grep -qi '^server: cloudflare' <<< "$hdr" && grep -qiE 'you have been blocked|error code: 1020|Cloudflare Ray ID' <<< "$body" && ! grep -qi '<center>nginx' <<< "$body"; then
+    if grep -qE '^HTTP/[0-9.]+ 403' <<< "$hdr" && grep -qi '^server: cloudflare' <<< "$hdr" && grep -qiE 'you have been blocked|error code: 1020' <<< "$body" && ! grep -qi '<center>nginx' <<< "$body"; then
       say "   $h /storage/$p/<random> -> blocked at the edge"
     elif grep -qi '<center>nginx' <<< "$body"; then say "   $h /storage/$p/<random> -> 403 from the origin through the edge (edge rule not active)"; origin=1
     else say "   $h /storage/$p/<random> -> $(head -1 <<< "$hdr") (NOT blocked)"; fails=1; fi

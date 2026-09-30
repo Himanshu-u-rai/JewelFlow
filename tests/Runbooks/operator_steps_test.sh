@@ -211,14 +211,14 @@ check "run: anything but YES changes nothing" '[ "$RC" = 1 ] && out_has "Stopped
 
 # ── backup ──────────────────────────────────────────────────────────────────
 mkzip() { python3 - "$@" <<'PY'
-import sys, zipfile
+import os, sys, zipfile
 z = zipfile.ZipFile(sys.argv[1], "w")
 base = "var/www/jewelflow/" if len(sys.argv) < 4 else sys.argv[3]
 for n in ["artisan", "composer.lock", "app/X.php", "bootstrap/app.php", "config/app.php", "database/migrations/m.php",
           "lang/en.json", "public/index.php", "resources/v.blade.php", "routes/web.php", "storage/app/public/x"]:
     z.writestr(base + n, "x")
 z.writestr(base + ".env", open(sys.argv[2]).read())
-z.writestr("db-dumps/postgresql-jewelflow.sql", "select 1;\n")
+z.writestr("db-dumps/postgresql-jewelflow.sql", os.environ.get("DUMP", "select 1;\n"))
 for extra in sys.argv[4:]:
     z.writestr(base + extra, "x")
 z.close()
@@ -244,6 +244,16 @@ setup step_backup
 check "backup: a complete archive passes: restored into a scratch database, compared, scratch removed" \
   '[ "$RC" = 0 ] && out_has "row counts of 14 tables match production" && grep -q createdb "$S/events.log" && grep -q dropdb "$S/events.log" && [ ! -e "$S/work/restore" ]'
 unset MAKE_ZIP
+export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/"'
+export DUMP=$'select 1;\n\\! id > /tmp/pwned\n'; setup step_backup
+check "backup: a dump carrying a psql shell escape is refused and never restored (SEC-001)" \
+  '[ "$RC" = 1 ] && out_has "psql meta-commands" && ! grep -q "SET ROLE" "$S/pgsu.stdin" && ! grep -q createdb "$S/events.log"'
+export DUMP=$'COPY public.t (a) TO PROGRAM \'id\';\n'; setup step_backup
+check "backup: a dump running COPY ... TO PROGRAM is refused (SEC-001)" '[ "$RC" = 1 ] && out_has "psql meta-commands"'
+export DUMP=$'COPY public.notes (body) FROM stdin;\nthe gold savings program\n\\.\n'; setup step_backup
+check "backup: a genuine dump (COPY data mentioning a program, the \\. terminator) restores as the app role" \
+  '[ "$RC" = 0 ] && grep -q "^SET ROLE jewelflow;" "$S/pgsu.stdin" && grep -q "createdb" "$S/events.log"'
+unset DUMP
 setup 'mkdir -p "$PROD/storage/app/public/kyc/1" "$PROD/storage/app/public/signatures"; : > "$PROD/storage/app/public/kyc/1/a.jpg"; : > "$PROD/storage/app/public/signatures/s.png"; edge_package'
 check "edge: the package lists every public private-prefix file on every host, and the WAF expression" \
   '[ "$(wc -l < "$S/work/edge-purge-urls.txt")" = 6 ] && grep -qx "https://dhiran.jewelflows.com/storage/kyc/1/a.jpg" "$S/work/edge-purge-urls.txt" && out_has "contains \"/storage/signatures/\""'

@@ -37,11 +37,12 @@ STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 WORK=/root/security-batch/$ENVN-forward-$STAMP
 mkdir -p "$WORK" && chmod 700 /root/security-batch "$WORK"
 exec > >(tee -a "$WORK/run.log") 2>&1
+TEE=$!; trap 'exec >&- 2>&-; wait "$TEE"' EXIT   # tee writes the last lines before the script exits
 umask 022
 
 PHASE=preflight
 ART() { ( cd "$DIR" && sudo -u www-data php artisan "$@" ); }
-CFG() { if sudo -u www-data test -r "$DIR/.env"; then ART "$@"; else ( cd "$DIR" && umask 022 && php artisan "$@" ); fi; }
+CFG() { if sudo -u www-data test -r "$DIR/.env"; then ART "$@"; else echo "www-data cannot read $DIR/.env: refusing to run artisan as root (it would execute www-data-writable bootstrap/cache and write a world-readable config cache)" >&2; return 1; fi; }
 cache_ok() { sudo -u www-data php -r '$c = require "bootstrap/cache/config.php"; exit($c["app"]["key"] && $c["database"]["connections"]["pgsql"]["password"] !== null ? 0 : 1);'; }
 PSQL() { sudo -u postgres psql -X -A -t -q -v ON_ERROR_STOP=1 -d "$DB" -c "$1"; }
 OWNERDO() { if [ "$OWNER" = root ]; then "$@"; else sudo -u "$OWNER" env HOME="$(getent passwd "$OWNER" | cut -d: -f6)" "$@"; fi; }
