@@ -41,6 +41,14 @@ class AuthController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
+        // Refuse before validating: the unique rule below would otherwise tell an
+        // anonymous caller which numbers belong to platform admins. The locked
+        // check inside the transaction still settles two first registrations.
+        if (PlatformAdmin::where('role', 'super_admin')->exists()) {
+            return redirect()->route('admin.login')
+                ->withErrors(['mobile_number' => 'Super admin is already configured.']);
+        }
+
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],

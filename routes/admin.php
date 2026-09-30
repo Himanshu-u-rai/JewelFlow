@@ -37,7 +37,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [AuthController::class, 'login'])->name('login.store');
         Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-        Route::post('/register', [AuthController::class, 'register'])->name('register.store');
+        Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('register.store');
 
         // Self-service password recovery (verified email only; generic responses).
         Route::get('/forgot-password', [PasswordResetController::class, 'showLinkRequest'])->name('password.request');
@@ -182,7 +182,7 @@ Route::prefix('super-admin')->group(function () {
         Route::get('/login', fn () => redirect('/admin/login'))->name('superadmin.login');
         Route::post('/login', [AuthController::class, 'login'])->name('superadmin.login.store');
         Route::get('/register', fn () => redirect('/admin/register'))->name('superadmin.register');
-        Route::post('/register', [AuthController::class, 'register'])->name('superadmin.register.store');
+        Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('superadmin.register.store');
     });
 
     Route::middleware(['admin'])->group(function () {

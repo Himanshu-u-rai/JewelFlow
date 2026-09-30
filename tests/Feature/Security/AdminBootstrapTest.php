@@ -73,4 +73,18 @@ class AdminBootstrapTest extends TestCase
 
         $this->assertSame(2, PlatformAdmin::where('role', 'super_admin')->count());
     }
+
+    public function test_a_configured_instance_does_not_reveal_which_mobiles_are_admins(): void
+    {
+        // Review SEC-008: validation ran before the refusal, so "already taken"
+        // versus "already configured" told an anonymous caller which number
+        // belongs to a platform admin.
+        $this->superAdmin();
+
+        foreach (['9876500100', '9876500199'] as $mobile) {   // the admin's, and a stranger's
+            $this->post('/admin/register', $this->registration($mobile))
+                ->assertRedirect(route('admin.login'))
+                ->assertSessionHasErrors(['mobile_number' => 'Super admin is already configured.']);
+        }
+    }
 }
