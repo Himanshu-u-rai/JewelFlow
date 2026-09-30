@@ -3,13 +3,14 @@
 Branch `security/multi-tenant-audit`, worktree
 `/home/himanshu/Desktop/jewelflow-worktrees/security-multi-tenant-audit`.
 
-**Current state (2026-09-25, 22:35Z):** production and staging run
-`a7f32b4daf97bade765049d94c1d3ace9eb8558b` — release `e7faf9b` plus code-only
-forward releases (§0g, §0h). The operator run is done: S3-22 rotated, R9
-backups working and verified, R7/R6 origin denies verified, Cloudflare's cached
-copies purged (all 9 addresses 403 through the edge). **Not closed:** the R8
-device checks, one signed-in browser check, the optional Cloudflare WAF rule,
-and the product decisions (§11).
+**Current state (2026-10-01, 03:45 IST):** production and staging run
+`250950fa7739085fb1240f1c321711df336bc31c`. Done: the operator run (S3-22
+rotated, R9 backups nightly again, R7/R6 origin denies), Cloudflare cache purge,
+cookie isolation, Android device checks, the ten polymorphic columns, and an
+independent review whose medium findings are fixed (§0i). **Not closed:** iOS
+device checks, one signed-in browser check (a password only the owner may
+enter), the staging demo account with the seeder's password, the optional
+Cloudflare WAF rule, four low review items (§0i), and the product decisions (§11).
 Sections before §0g describe local evidence from before anything was pushed.
 
 **Pre-batch baseline:** `018b3d810e37d534f498033ab582ee41f3197c27`, observed
@@ -68,6 +69,92 @@ stale after `ffcd034`. The repository carries one pre-existing dirty file,
 web-preview fallback from SecureStore to `localStorage`) — unrelated, not
 reviewed, and excluded from the packet — plus untracked scratch files that are
 not mine.
+
+---
+
+## 0i. Device checks, the independent review and its fixes (2026-09-30 – 10-01)
+
+### Incident: a test sign-in reached staging (contained)
+
+On 2026-09-26 04:49 IST the emulator's app signed in to **staging** with the
+PilotDemoSeeder owner account (mobile 9000000111, the seeder's documented
+demo password), not to the local backend it was meant for. Cause: in dev,
+`expo/virtual/env` layers the `.env` files **over** `process.env`, so the
+mobile repo's `.env` (staging) beat the command-line override; the pre-sign-in
+check read the losing layer. Effects: read-only calls only (login, bootstrap,
+pricing, dashboard); no writes by that user on staging. Containment: the app's
+Log Out on 2026-09-30 revoked the token (id 44; the demo owner has no tokens
+left). Production was never involved (no such account there). Afterwards the
+emulator ran with **airplane mode on** (only adb-forwarded localhost works), a
+temporary `.env.local` pointing at localhost, and a wrong-password probe that
+had to appear in the local backend's log before the real sign-in.
+
+**Finding:** staging has a demo owner whose password is the default written in
+`database/seeders/PilotDemoSeeder.php`, on an internet-facing host. Owner
+action: change or remove that account on staging.
+
+### Device checks (R8), Android emulator (`jf_test`, API 34), Expo Go 54, local backend at this branch
+
+| Check | Result |
+|---|---|
+| Invoice Share (Print.printToFileAsync) | PASS — 1-page PDF, one 360×120 image = the uploaded signature (pixel bands #CC2301/#0044CC/#239A44 vs drawn #CC2200/#0044CC/#229944) |
+| Invoice Print → Android print dialog → Save as PDF | PASS — PrintSpooler output (Skia/PDF) carries the signature image |
+| `copy_count` = 2 | PASS — 2 pages (Customer Copy, Shop Copy), each with the signature, 113 KB |
+| "Signature unavailable" (signature file moved aside) | PASS — PDF has no image and the marker on both copies; the app shows the "Signature unavailable" alert |
+| S3-09c retry key, reply lost after commit (local proxy dropped the first response) | PASS — same `X-Idempotency-Key` retried, server replayed (`X-Idempotent-Replay: true`); exactly one cash entry and one key in the database |
+| Quick bill Share | PASS on 2026-10-01 (2 pages, signature on each, no marker). One earlier run (09-30 22:38) showed the unavailable banner and a 0-byte PDF; **not reproducible, unexplained** |
+| iOS | **NOT RUN** — needs a Mac and an iPhone |
+
+### Reference audit — the ten polymorphic columns, now checked by type
+
+Type→table map read from the writers in `app/`; production, read-only. Every
+resolvable reference stays in its shop (0 crossing) across cash_transactions
+(both pairs), customer_gold_transactions, dhiran_attachments, entity_events,
+metal_movements and audit_logs; `ShopPreferences` audit rows carry the shop id
+itself (same shop); 28 audit rows point at scan records the daily
+`scan:cleanup` deleted (nothing left to cross into); orchestration_events,
+pending_uploads and store_credit_movements hold no references. Note:
+`cash_transactions.source_type='scheme_payment'` stores an **enrollment** id.
+
+### Independent review (separate agent, fresh context) — 12 findings
+
+| # | Sev | Status |
+|---|---|---|
+| SEC-001 backup dump restored as superuser | M | **Fixed** `7d23e96`: pre-scan + restore as the app role (tested on the real schema) |
+| SEC-002 artisan as root when www-data can't read .env | M | **Fixed** `7d23e96`: refuses |
+| SEC-003 packet scan misses real secret formats; whole-line exceptions | M | **Fixed** (packet-scan commit): 9/9 real shapes flagged, 0/8 placeholders |
+| SEC-004 Route::bind() dropped by route:cache (admin edition approve/deny 404 in production; Dhiran route hijacked in tests) | L (functional) | **Fixed** `b77418c`, verified with routes cached |
+| SEC-005 rotation revert states unchecked | L | Open — the rotation already ran; for a future rotation |
+| SEC-006 nginx check ignores dhiran-only / IPv6-only blocks | L | Open — production has one block for all three hosts |
+| SEC-007 no cleanup trap; verify ignores stale backups | L | **Fixed**: trap on the restore; `verify` fails after 26 h without an archive |
+| SEC-008 admin register reveals admin mobiles; no throttle | L | **Fixed** `5d30426` |
+| SEC-009 audit command skips polymorphic columns | L | Open in the command; the manual type-aware check above covers today's data |
+| SEC-010 unset APP_ENV production in app, not in session | L | **Fixed** |
+| SEC-011 checks that could pass vacuously | L | **Fixed**: probe (no-token, and a subshell that swallowed failures — mine), verifier cookie check, credential test; open: ProductionAutoloadTest dev-namespace coverage, race-harness scenario 2 barrier |
+| SEC-012 deploy scripts lose final lines | L | **Fixed**: wait for tee on exit |
+
+### Release of the fixes
+
+Both environments at `250950fa7739085fb1240f1c321711df336bc31c` (code-only
+forward release from `a7f32b4`): staging 2026-09-30 22:13:59–22:14:05Z,
+production 22:14:08–22:14:13Z. Before: full suite on PHP 8.4 and 8.2, 3429
+passed and 3 failed — `PerModeBalanceTest`, a date bug in the test (fixtures at
+startOfMonth()+1..3 days fall in the future on the 1st–3rd; same failure at
+`dbdce37`), fixed by pinning its clock; 4/4 after. After: production with routes
+cached has the `platformEditionRequest` binder and the throttled register
+route; the staging verifier passes every check; the cookie probe passes; all
+four hosts `/health` and `/login` 200; `verify` shows the nightly backups
+running again (newest `2026-10-01-00-00-02.zip`); no application error (the one
+logged line is my own bootless inspection at 03:44:28 IST).
+
+### Also found
+
+* POS sale of a retailer item with no `selling_price` inserts a null rate and
+  returns **500** instead of a validation error.
+* PilotDemoSeeder: items without `metal_type`/`selling_price` and no purity
+  profiles — the demo shop cannot sell through the POS.
+* Production database has the `pageinspect` extension (owner postgres), which
+  no migration creates.
 
 ---
 
@@ -4536,13 +4623,13 @@ Local work that remains, none of it blocking the conditions in §11:
 
 | # | Status | Evidence / what is left |
 |---|---|---|
-| R1 | OPEN | review of the delta from `209db46`, including this deployment |
+| R1 | **DONE** (independent agent) | 12 findings; mediums fixed, lows mostly fixed (§0i) |
 | R2 | **DONE** | D0–D3 recorded by `deploy-security-batch.sh` in both environments (`/root/security-batch/*/run.log`) |
 | R3 | **DONE** | ten migrations in order, one file per command, both environments; D3: three constraints validated |
 | R4, R5 | **DONE — nothing to move** | production dry runs: 0 karigar attachments, 0 purchase images on the public disk; no purge needed |
 | R6 | **DONE** (origin + purge) | the 1 superseded signature: refused by nginx on all three hosts since 2026-09-25 22:24Z; its cached copies purged ≈22:45Z, 403 through Cloudflare; optional WAF rule not added |
 | R7 | **DONE** (origin + purge) | 2 KYC files: refused by nginx on all three hosts since 2026-09-25 22:24Z; cached copies purged ≈22:45Z, 403 through Cloudflare (`BYPASS`); optional WAF rule not added |
-| R8 | NOT RUN | iOS: no Mac/iPhone. Android (emulator `jf_test` exists) and the desktop print check: every check starts with a sign-in, a reserved action (§0h) |
+| R8 | **Android DONE**; iOS NOT RUN | emulator: share/print PDFs carry the signature, 2 copies, the unavailable warning, the S3-09c lost-reply retry (one row); iOS needs a Mac and an iPhone (§0i) |
 | R9 | **DONE** | www-data reads `.env`; `backup:run` as the scheduler's user succeeded twice (22:21Z, 22:24Z); the second archive verified end to end incl. a scratch restore; the nightly 00:00 IST run is unblocked |
 | R10 | **DONE (bounded)** | 237 references checked, 0 crossing; 21 columns not covered (11 polymorphic, 10 naming no shop table); `shop_notifications` by type: 38 resolved, 0 crossing; the other 10 polymorphic columns **not verified**; exports clean; logs in §0g |
 | S3-22 | **DONE** | rotated 2026-09-25 22:21Z (SCRAM verifier on stdin); 0 failed logins since; `phpunit.xml` no longer carries the old value (`f6424af`); git history does, now harmless |
