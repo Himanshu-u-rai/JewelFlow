@@ -32,11 +32,6 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::prefix('admin')->name('admin.')->group(function () {
-    // Route model binding for {user} must bypass BelongsToShop global scope —
-    // platform admins are authenticated on the platform_admin guard, not the web
-    // guard, so Auth::user() returns null and the scope collapses to 1=0.
-    Route::bind('user', fn ($value) => \App\Models\User::withoutGlobalScope('shop')->findOrFail($value));
-    Route::bind('editionRequest', fn ($value) => \App\Models\ShopEditionRequest::withoutGlobalScope('shop')->findOrFail($value));
 
     Route::middleware('guest:platform_admin')->group(function () {
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -115,8 +110,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/shops/{shop}/impersonate', [ImpersonationController::class, 'start'])->name('shops.impersonate');
 
             Route::get('/edition-requests', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'index'])->name('edition-requests.index');
-            Route::post('/edition-requests/{editionRequest}/approve', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'approve'])->name('edition-requests.approve');
-            Route::post('/edition-requests/{editionRequest}/deny', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'deny'])->name('edition-requests.deny');
+            Route::post('/edition-requests/{platformEditionRequest}/approve', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'approve'])->name('edition-requests.approve');
+            Route::post('/edition-requests/{platformEditionRequest}/deny', [\App\Http\Controllers\Admin\ShopEditionRequestController::class, 'deny'])->name('edition-requests.deny');
 
             Route::patch('/users/{user}/status', [UserManagementController::class, 'updateStatus'])->name('users.status');
             Route::patch('/users/{user}/password', [UserManagementController::class, 'resetPassword'])->name('users.password');
@@ -182,7 +177,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('super-admin')->group(function () {
-    Route::bind('user', fn ($value) => \App\Models\User::withoutGlobalScope('shop')->findOrFail($value));
 
     Route::middleware('guest:platform_admin')->group(function () {
         Route::get('/login', fn () => redirect('/admin/login'))->name('superadmin.login');

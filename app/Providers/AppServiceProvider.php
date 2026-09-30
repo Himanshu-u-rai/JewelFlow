@@ -80,6 +80,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Platform admins act across shops and are not on the web guard, so the
+        // BelongsToShop scope would collapse to 1=0. A provider binder (route
+        // files' Route::bind() is dropped by route:cache) under its own name, so
+        // the tenant route's {editionRequest} keeps its shop scope.
+        \Illuminate\Support\Facades\Route::bind('platformEditionRequest', fn ($value) => \App\Models\ShopEditionRequest::withoutGlobalScope('shop')->findOrFail($value));
+
         if (app()->environment('production')) {
             URL::forceScheme('https');
         }

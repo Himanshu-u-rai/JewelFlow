@@ -179,4 +179,20 @@ class HistoricalImportBatch extends Model
     {
         return $this->belongsTo(User::class, 'published_by');
     }
+
+    /**
+     * Route model binding, scoped to the signed-in user's shop. Lives on the
+     * model, not as Route::bind() in routes/web.php: production caches routes,
+     * which drops binders declared in route files. Does not lean on TenantContext
+     * (SubstituteBindings runs before EnsureTenantUser) nor on the BelongsToShop
+     * Auth fallback (disabled under runningInConsole()): a wrong-shop or missing
+     * id can only 404, live and under `artisan test`.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return static::withoutGlobalScope('shop')
+            ->where('shop_id', auth()->user()?->shop_id)
+            ->where($field ?? $this->getRouteKeyName(), $value)
+            ->firstOrFail();
+    }
 }
