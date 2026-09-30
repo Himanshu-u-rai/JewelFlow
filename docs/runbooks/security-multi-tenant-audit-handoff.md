@@ -23,6 +23,10 @@ literal, the corrected operator procedure). Pushed to
 `origin/security/multi-tenant-audit`. Last reviewed candidate: `209db46`; the
 operator script was reviewed again at `a07344c` (answered in §0h).
 
+**After (§0h–§0i):** forward `a7f32b4` (2026-09-25 22:31Z, operator-procedure
+fixes), then `250950f` (2026-09-30 22:14Z, fixes for the independent review of
+`209db46..a029f2f`, §0i).
+
 **Round before (§0f — answering the review of `b8baf4e`):** web code through
 `c54dc45b53ed5238e4a2f01a99d41bdb5f262d1a`:
 - raw-SQL inventory correction `7f1afe3`;
@@ -116,22 +120,22 @@ itself (same shop); 28 audit rows point at scan records the daily
 pending_uploads and store_credit_movements hold no references. Note:
 `cash_transactions.source_type='scheme_payment'` stores an **enrollment** id.
 
-### Independent review (separate agent, fresh context) — 12 findings
+### Independent review of `209db46..a029f2f` (separate agent, fresh context) — 12 findings
 
 | # | Sev | Status |
 |---|---|---|
 | SEC-001 backup dump restored as superuser | M | **Fixed** `7d23e96`: pre-scan + restore as the app role (tested on the real schema) |
 | SEC-002 artisan as root when www-data can't read .env | M | **Fixed** `7d23e96`: refuses |
-| SEC-003 packet scan misses real secret formats; whole-line exceptions | M | **Fixed** (packet-scan commit): 9/9 real shapes flagged, 0/8 placeholders |
+| SEC-003 packet scan misses real secret formats; whole-line exceptions | M | **Fixed** `e157850`: 9/9 real shapes flagged, 0/8 placeholders |
 | SEC-004 Route::bind() dropped by route:cache (admin edition approve/deny 404 in production; Dhiran route hijacked in tests) | L (functional) | **Fixed** `b77418c`, verified with routes cached |
 | SEC-005 rotation revert states unchecked | L | Open — the rotation already ran; for a future rotation |
 | SEC-006 nginx check ignores dhiran-only / IPv6-only blocks | L | Open — production has one block for all three hosts |
-| SEC-007 no cleanup trap; verify ignores stale backups | L | **Fixed**: trap on the restore; `verify` fails after 26 h without an archive |
+| SEC-007 no cleanup trap; verify ignores stale backups | L | **Fixed** `7d23e96`, `ddf61b5`: trap on the restore; `verify` fails after 26 h without an archive |
 | SEC-008 admin register reveals admin mobiles; no throttle | L | **Fixed** `5d30426` |
 | SEC-009 audit command skips polymorphic columns | L | Open in the command; the manual type-aware check above covers today's data |
-| SEC-010 unset APP_ENV production in app, not in session | L | **Fixed** |
-| SEC-011 checks that could pass vacuously | L | **Fixed**: probe (no-token, and a subshell that swallowed failures — mine), verifier cookie check, credential test; open: ProductionAutoloadTest dev-namespace coverage, race-harness scenario 2 barrier |
-| SEC-012 deploy scripts lose final lines | L | **Fixed**: wait for tee on exit |
+| SEC-010 unset APP_ENV production in app, not in session | L | **Fixed** `ddf61b5` |
+| SEC-011 checks that could pass vacuously | L | **Fixed** `ddf61b5`: probe (no-token, and a subshell that swallowed failures — mine), verifier cookie check, credential test; open: ProductionAutoloadTest dev-namespace coverage, race-harness scenario 2 barrier |
+| SEC-012 deploy scripts lose final lines | L | **Fixed** `7d23e96`: wait for tee on exit |
 
 ### Release of the fixes
 
