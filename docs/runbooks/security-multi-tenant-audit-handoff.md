@@ -3,14 +3,11 @@
 Branch `security/multi-tenant-audit`, worktree
 `/home/himanshu/Desktop/jewelflow-worktrees/security-multi-tenant-audit`.
 
-**Current state (2026-10-01, 03:45 IST):** production and staging run
-`250950fa7739085fb1240f1c321711df336bc31c`. Done: the operator run (S3-22
-rotated, R9 backups nightly again, R7/R6 origin denies), Cloudflare cache purge,
-cookie isolation, Android device checks, the ten polymorphic columns, and an
-independent review whose medium findings are fixed (§0i). **Not closed:** iOS
-device checks, one signed-in browser check (a password only the owner may
-enter), the staging demo account with the seeder's password, the optional
-Cloudflare WAF rule, four low review items (§0i), and the product decisions (§11).
+**Current state: §0j is authoritative (2026-10-01, 04:20 IST).** Production and
+staging run `250950fa7739085fb1240f1c321711df336bc31c`; later commits touch only
+docs, runbook scripts and their tests. Not closed: signed-in browser isolation,
+iOS device checks, and the mobile audit commits (local only, no build). §0j lists
+the optional items and the earlier paragraphs it supersedes.
 Sections before §0g describe local evidence from before anything was pushed.
 
 **Pre-batch baseline:** `018b3d810e37d534f498033ab582ee41f3197c27`, observed
@@ -73,6 +70,186 @@ stale after `ffcd034`. The repository carries one pre-existing dirty file,
 web-preview fallback from SecureStore to `localStorage`) — unrelated, not
 reviewed, and excluded from the packet — plus untracked scratch files that are
 not mine.
+
+---
+
+## 0j. Catch-up from `c68114e` — authoritative current state (2026-10-01, 04:20 IST)
+
+For a reviewer whose last baseline was `c68114e744680ac152b94a0932391d644028c14f`
+(deployed then: `0c69da3`). Everything marked *observed* was checked read-only on
+2026-09-30 between 22:36Z and 22:48Z; *recorded* means an earlier observation, with
+its section. "Operator" is the owner's own hands on the VPS; "Claude" is mine.
+**This section supersedes every earlier status line in this file**; the stale ones
+are listed at its end.
+
+### Current state
+
+| Item | State | Evidence |
+|---|---|---|
+| Production | `250950fa7739085fb1240f1c321711df336bc31c`, tracked tree clean | observed: `git rev-parse HEAD` on the server |
+| Staging | `250950fa7739085fb1240f1c321711df336bc31c`, tracked tree clean | observed: same |
+| Web branch | `security/multi-tenant-audit`, local = GitHub; commits after `250950f` touch only docs, runbook scripts and their tests (nothing the application runs) | observed: `git ls-remote` |
+| `main` | `bc4323f`, **does not contain the batch**; the branch is 0 behind it (fast-forward possible) | observed: `git rev-list` |
+| Other web branches | none with commits after 09-20 outside production | observed: sweep of all local and remote branches |
+| Mobile, local | `rebrand/jewelflows-mobile` at `4f10a3b5df7d64c11b39b90713169155c713d233` — unchanged since the baseline; owner's uncommitted `src/utils/storage.ts` (+20/−1, preserved) and 19 untracked QA files | observed: `git status` |
+| Mobile, GitHub | `rebrand/jewelflows-mobile` at `a987e99845b29d55cc12be2a35eed436cdcc4998` | observed: `git ls-remote` |
+| Mobile divergence | local only: `ffcd034456ce60fcff344d8923003c5e40884e2d` (S3-04 signature warning), `2cad553b50e77890088488a43b72a2e7bd4f68ef` (S3-09c uncertain outcome), `4f10a3b` (reconciled-request message); remote only: `c877312c35530899d9153dd67464cd731d1dc639`, `a987e99` (both 2026-07-18; no file overlap; `storage.ts` untouched). **Not pushed; no build distributed** | observed: `git log` |
+| Health | `/health` and `/login` 200 on jewelflows.com, www, dhiran and staging | observed: curl, 22:39Z |
+| Errors since the release | production: one line, 03:44:28 IST — Claude's bootless `php -r` inspection, not traffic; staging: none | observed: daily logs |
+
+### Every change since `c68114e`
+
+| Commit | Finding | Change | Evidence |
+|---|---|---|---|
+| `250e76ca8e789f2fcc3514eb038f69d4c8e69cd5` | R9 | backup check: an empty directory entry (`storage/app/backup-temp/`) is not archived content | the operator's first `run backup` stopped on it; harness check; the second run passed (§0h) |
+| `a7f32b4daf97bade765049d94c1d3ace9eb8558b` | R6/R7 | origin step waits out nginx's asynchronous reload; `tee` keeps the final lines | harness check; deployed to both 09-25 22:31Z |
+| `dca6a32c2ece87b2aa36c1841537af9e1cd80312`, `a029f2f7644fa87487ea736b349c5bf803e9de74` | S3-22, R9, R6/R7 | handoff: the operator run; the purge | §0h |
+| `dbdce379d4a12e1139089487b3e7674dc48ee10b` | cookies | the previously uncommitted cookie-probe change (cross-presentation), committed | §0h; live run today, exit 0 |
+| `b77418c5a8d145a94b5e56197ccf791039c68784` | SEC-004 | route binders survive `route:cache` | `RouteBindingPlacementTest`; production with routes cached has the binder (§0i) |
+| `5d304260cec58e6da6761ae2170c7a6f25a93c22` | SEC-008 | admin register refuses before validating; throttled | `AdminBootstrapTest` |
+| `7d23e96ceb5ae1b55a06f34859120933e7c59d62` | SEC-001/002/012, verifier finding 3 | restore only after a pre-scan and as the app role; no root artisan; wait for `tee`; edge check needs a 403 | harness |
+| `e1578503f7ff937e2d500927ab53c480bc070405` | SEC-003 | packet scan: real secret formats; exceptions only at the match | 9/9 real shapes flagged, 0/8 placeholders |
+| `ddf61b5aeccc173622291e7437232c8da8818743` | SEC-007/010/011, verifier findings 1–2 (part) | `verify` fails after 26 h without an archive; unset `APP_ENV` is production in session config; probe: no token proves nothing | tests; harness |
+| `250950fa7739085fb1240f1c321711df336bc31c` | test defect | `PerModeBalanceTest` clock pinned (its fixtures fell in the future on the 1st–3rd) | 4/4; failed the same way at `dbdce37` |
+| `61a3f11e7b88ff1191eaab716f66e6568b506c83`, `edab2964d8e7f124b608b493f2658ed3c3c9c892`, `8681a1c9839ccc6b43ffddc374e75624c895c48b` | — | handoff §0i; packet delta since the agent review | — |
+| `393aae2f6e23b2976fb2e5ffa1eedced68bfa334` | verifier findings 1, 2, 4 | below | harness 51/51 (13 new, 10 of them failed before); probe test 3/3 |
+
+Deployments since the baseline: `a7f32b4` (both, 09-25 22:31Z) and `250950f`
+(staging 09-30 22:13:59–22:14:05Z, production 22:14:08–22:14:13Z, code-only
+`deploy-forward.sh`). Measured (recorded, §0i): the full suite at `ddf61b5` on
+PHP 8.4 and 8.2 — 3429 passed, 3 failed (all `PerModeBalanceTest`), 7 skipped;
+after `250950f` that file passes 4/4; the full suite was not re-run after the pin
+(a test-only change). After the release: staging verifier all checks passed;
+production with routes cached has the binder and the throttled register route.
+
+Manual actions: the operator ran `operator-steps-security-batch.sh run` on the
+VPS on 2026-09-25 (env-read, rotate, backup, origin; times and output in §0h).
+Claude purged the 9 URLs in the Cloudflare dashboard, in the owner's signed-in
+Chrome, on the owner's "yes purge" (≈22:45Z), and made both releases. Unrelated
+project work affecting this release: none — every other branch active after
+09-20 is already inside `250950f`.
+
+### Operator work, re-verified today
+
+* **S3-22 rotation.** `verify` (the fixed script streamed over ssh, 22:46Z,
+  exit 0): the password is not the committed one (hashes compared), the config
+  cache carries it, a fresh connection works. The old value is absent from the
+  packet (exact-value scan).
+* **R9 backups.** `.env` is `dev:www-data 640`. `/etc/cron.d/jewelflow-scheduler`
+  runs `schedule:run` as www-data every minute; `schedule:list` has `backup:run`
+  at 00:00 and `backup:clean` at 01:00 IST. Outcomes: the 09-26 00:00 run
+  **failed** (`ZipArchive::close(): Permission denied` — before the fix); every
+  scheduled run since succeeded: 09-27, 09-28, 09-29, 09-30 and 10-01 at 00:00,
+  ≈37.4 MB each. All seven archives since 09-26 (two operator runs, five nightly)
+  re-read in full: CRC ok, 2415 entries, 12/12 required paths, 0 excluded paths,
+  a database dump ending in pg_dump's completion line, 0 disallowed psql
+  meta-commands. Only the operator's second archive was restore-tested (§0h).
+  **Limitation:** backups are local only (`backup.destination.disks` =
+  `["local"]`; off-site stays off until credentials exist), so losing the server
+  loses them too.
+* **R6/R7 origin.** The loaded configuration (`nginx -T`) has
+  `location ^~ /storage/kyc/` and `^~ /storage/signatures/` with `deny all` in
+  the one :443 block serving jewelflows.com, www and dhiran; it is the first
+  :443 block, so it also answers a bare IP or an unknown Host; there is no IPv6
+  listener. Random-name probes (no real file requested): 403 from nginx on all
+  three hosts and both prefixes; control path 404 from the application; `/login`
+  200. The access log (kept since 09-16) has **no 200 under either prefix**: three
+  404s on 09-16, 403/404 during the 09-24/25 rollout, only 403 since.
+* **The nine purged URLs.** The purge list
+  (`/root/security-batch/operator-20260925T223134Z/edge-purge-urls.txt`) is
+  3 files × 3 proxied hosts. Those 3 files are every file under the two prefixes
+  today (newest modified 2026-05-11): 2 KYC documents (R7) and 1 superseded
+  signature (R6). staging.jewelflows.com is DNS-only (no Cloudflare cache) and
+  has no files there. Through the edge today: 403 from the origin,
+  `cf-cache-status: BYPASS`.
+* **Why the WAF rule is optional, and what it would still close.** Cloudflare
+  can serve only what it cached from an origin 200, and it does not cache these
+  403s. The origin has refused the paths since 09-25 22:24Z and served no 200
+  under them since at least 09-16. The canonical URLs were purged and answer
+  403. What stays unverifiable is a cached *variant* — the same file with a
+  query string, a separate cache key — fetched before 09-16. The origin sends no
+  `Cache-Control` or `Expires` for these files, so Cloudflare's documented default
+  edge TTL for such a 200 (2 h) applied and any such copy is long expired, **unless a zone Cache Rule
+  sets a longer Edge TTL: NOT VERIFIED** (the zone's rules were not re-read).
+  The WAF rule (evaluated before the cache) or a Purge Everything closes that
+  without having to know, and keeps the edge closed if the origin rule is ever
+  lost. R7's condition in §11 ("a unique probe path with 0 origin log lines")
+  was written for an edge rule; it does not apply to the origin-plus-purge path
+  that was taken.
+* **Residual exposure.** The three files still sit on the public disk
+  (relocation not executed), so the nginx rule is the only control; copies
+  anyone downloaded before 09-25 are out of reach; SEC-006 (the check assumes
+  one server block) holds today but is not enforced.
+
+### The four verifier findings raised against `c68114e`
+
+| # | Finding | Disposition | Evidence |
+|---|---|---|---|
+| 1 | `verify_all` succeeds despite backup/scheduler problems; swallows edge failures | **Fixed.** Staleness in `ddf61b5`; the rest in `393aae2`: `verify_edge` returns 1 when a probe is not blocked (3 = the origin refuses and there is no edge rule, which `verify` accepts); a missing cron line, a missing 00:00 `backup:run` or an empty newest archive fail `verify` | harness: 6 `verify` checks, 4 failed before `393aae2`; production `verify` with the fixed script today: exit 0, cron line and schedule found |
+| 2 | Cookie probe reports success on HTTP 503 with no valid session | **Fixed.** `ddf61b5`: no token proves nothing; `393aae2`: a page counts only when it is HTTP 200 | `tests/Staging/cookie_isolation_probe_test.sh` (fake curl): the probe at `c68114e` fails 2 of 3 (claims survival on 503 pages), at `ddf61b5` 1 of 3 (a 503 repeating one token), at `393aae2` 3 of 3; live run today exit 0. **Signed-in sessions: NOT VERIFIED** — the probe is guest-only by design |
+| 3 | Edge verification accepts a Cloudflare-branded 502 | **Fixed** in `7d23e96`: a 403 and Cloudflare's block text are required; "Cloudflare Ray ID" no longer counts | harness: a 502 with block-page text returns 1 |
+| 4 | `grep -q` under `pipefail` misclassifies long listings | **Fixed** in `393aae2`: no `producer \| grep -q` decides a check in the runbook scripts | measured before: a forbidden entry at the top of a long listing went unreported 3 of 3 times; harness: a 6000-entry archive passes, a forbidden entry at its top is refused, a shell escape followed by 20000 pg_dump terminators is refused (all three failed before), plus a lint check. The real listings are 125 KB, above the 64 KB pipe buffer, so the operator's run was exposed: re-read in full, 0 excluded paths — its verdict stands |
+| — | The previously uncommitted cookie-probe change | committed in `dbdce37`; the failure its subshell swallowed fixed in `ddf61b5` | — |
+
+No sensitive operator step was repeated to test these: only `verify` (read-only)
+ran on the server.
+
+### What closes the batch
+
+**Blockers:**
+
+1. Signed-in browser isolation: production and staging in one browser, both
+   signed in. Needs the owner's credentials; NOT VERIFIED.
+2. iOS device checks (R8): needs a Mac and an iPhone; NOT RUN. The Android run
+   used the local working tree, i.e. `4f10a3b` plus the owner's uncommitted
+   `storage.ts`.
+3. Mobile, for S3-04 and S3-09c on the client: the three commits exist only
+   locally, and no build carrying them is distributed. (The server side of
+   both is live.)
+
+**Optional or separate (not blocking tenant isolation):**
+
+* Fast-forward `main` to the release, so a deploy from `main` cannot roll the
+  batch back.
+* Cloudflare WAF rule or Purge Everything (the unverifiable variant residual,
+  above).
+* Relocate the three files off the public disk.
+* Off-site backups (credentials needed).
+* Staging demo owner still has the seeder's default password on an
+  internet-facing host.
+* `SESSION_SECURE_COOKIE=true` on both; `pageinspect` on production (owner's
+  call).
+* Open lows: SEC-005, SEC-006, SEC-009 (the command; the manual type-aware
+  check in §0i covers today's data), SEC-011 remainder.
+* Product decisions (§11): S3-16 activation (loyalty expiry stays inactive),
+  S3-05 contact line, S3-13, S3-06b/c; FUNC-01 stays excluded and tracked.
+* Found today, unrelated to the batch: `platform:archive-audit-logs` fails
+  every month (copies `created_at` into an archive table without that column;
+  pre-existing since 2026-05-10; failed 10-01 00:00); Razorpay rate limit in
+  `subscription:reconcile-payments` (09-29, both environments); POS 500 on a
+  null `selling_price`.
+
+### Stale or contradictory paragraphs (superseded by this section)
+
+* The header's "Current state (2026-10-01, 03:45 IST)" — true then.
+* §0 table rows 12 ("KYC containment … OPEN — nothing executed"), 15 ("Device
+  checks NOT RUN") and 21 ("NOT RUN on production"; it ran, bounded: 237 on
+  production's schema, 238 on the test schema — not a contradiction), and the
+  paragraph after the table ("KYC containment is unchanged … unexecuted").
+* §0d/§0e lines saying `tenant:audit-foreign-references` is NOT RUN on
+  production.
+* §1 matrix: S3-01 "not executed" (origin deny and purge executed; relocation
+  not), S3-01c "needs the deploy" (deployed 09-24/25).
+* §2's title, "awaiting explicit approval, not executed".
+* §5's NOT RUN rows for Android print/share, copies and the unavailable warning
+  (done, §0i). iOS, desktop browser print and CSP `data:` stay NOT RUN.
+* §7 SIG-ORIGIN "not executed, PARTIAL" (executed with R7 on 09-25).
+* §11 "Status after deployment": R9 "the nightly run is unblocked" (five
+  scheduled runs now verified) and R10 "the other 10 polymorphic columns not
+  verified" (verified, §0i) — both rows corrected in place; the "Open" list's
+  "Device checks — still not run" and "KYC containment (R7) … unexecuted"; and
+  "Every production statement here dates from … 2026-09-20".
+* §11 R7's edge-rule test — see "Why the WAF rule is optional" above.
 
 ---
 
@@ -4634,8 +4811,8 @@ Local work that remains, none of it blocking the conditions in §11:
 | R6 | **DONE** (origin + purge) | the 1 superseded signature: refused by nginx on all three hosts since 2026-09-25 22:24Z; its cached copies purged ≈22:45Z, 403 through Cloudflare; optional WAF rule not added |
 | R7 | **DONE** (origin + purge) | 2 KYC files: refused by nginx on all three hosts since 2026-09-25 22:24Z; cached copies purged ≈22:45Z, 403 through Cloudflare (`BYPASS`); optional WAF rule not added |
 | R8 | **Android DONE**; iOS NOT RUN | emulator: share/print PDFs carry the signature, 2 copies, the unavailable warning, the S3-09c lost-reply retry (one row); iOS needs a Mac and an iPhone (§0i) |
-| R9 | **DONE** | www-data reads `.env`; `backup:run` as the scheduler's user succeeded twice (22:21Z, 22:24Z); the second archive verified end to end incl. a scratch restore; the nightly 00:00 IST run is unblocked |
-| R10 | **DONE (bounded)** | 237 references checked, 0 crossing; 21 columns not covered (11 polymorphic, 10 naming no shop table); `shop_notifications` by type: 38 resolved, 0 crossing; the other 10 polymorphic columns **not verified**; exports clean; logs in §0g |
+| R9 | **DONE** | www-data reads `.env`; `backup:run` as the scheduler's user succeeded twice (22:21Z, 22:24Z); the second archive verified end to end incl. a scratch restore; scheduled nightly runs succeeded 09-27 → 10-01, every archive re-read in full (§0j) |
+| R10 | **DONE (bounded)** | 237 references checked, 0 crossing; 21 columns not covered (11 polymorphic, 10 naming no shop table); `shop_notifications` by type: 38 resolved, 0 crossing; the other 10 polymorphic columns verified by type in §0i, 0 crossing; exports clean; logs in §0g |
 | S3-22 | **DONE** | rotated 2026-09-25 22:21Z (SCRAM verifier on stdin); 0 failed logins since; `phpunit.xml` no longer carries the old value (`f6424af`); git history does, now harmless |
 | Cookies | **FIXED, deployed, verified** | staging namespaced and host-only; production unchanged; one-jar and cross-presentation probes pass both ways (§0h); authenticated browser check needs a sign-in |
 
