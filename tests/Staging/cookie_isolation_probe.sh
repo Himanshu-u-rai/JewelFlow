@@ -26,4 +26,25 @@ for pair in "https://jewelflows.com/login|https://staging.jewelflows.com/login|t
   echo "[$label] production session across a staging visit: $verdict (token hashes $p1 $p2 -> $p3)"
   echo "$sc" | sed 's/^/    staging set: /'
 done
+
+# Cross-presentation: a session cookie taken from one environment and sent to
+# the other under that one's own cookie name must not be a session there. At
+# home the same cookie, sent twice, keeps one session (same token); away, each
+# request starts a new session (tokens differ). Values are never printed.
+val() { awk -v n="$1" '$6 == n { v = $7 } END { print v }' "$JAR"; }
+tok_with() { curl -sS -m 20 -H "Cookie: $2=$3" "$1" \
+  | grep -oE 'name="csrf-token" content="[^"]+"|name="_token" value="[^"]+"' | head -1 | sha256sum | cut -c1-12; }
+: > "$JAR"; tok https://jewelflows.com/login >/dev/null; vp=$(val jewelflows-session)
+: > "$JAR"; tok https://staging.jewelflows.com/login >/dev/null; vs=$(val jewelflows-session-staging)
+for c in "production|https://jewelflows.com/login|jewelflows-session|$vp|home" \
+         "staging|https://staging.jewelflows.com/login|jewelflows-session-staging|$vs|home" \
+         "production cookie -> staging|https://staging.jewelflows.com/login|jewelflows-session-staging|$vp|away" \
+         "staging cookie -> production|https://jewelflows.com/login|jewelflows-session|$vs|away"; do
+  IFS='|' read -r label url name value where <<< "$c"
+  [ -n "$value" ] || { echo "[$label] no cookie captured"; fail=1; continue; }
+  t1=$(tok_with "$url" "$name" "$value"); t2=$(tok_with "$url" "$name" "$value")
+  if [ "$where" = home ]; then r=$([ "$t1" = "$t2" ] && echo "one session (as expected)" || { fail=1; echo "NOT a session at home"; })
+  else r=$([ "$t1" != "$t2" ] && echo "not a session there (as expected)" || { fail=1; echo "ACCEPTED as a session"; }); fi
+  echo "[$label] same cookie twice -> $t1 / $t2: $r"
+done
 exit $fail
