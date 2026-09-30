@@ -24,6 +24,9 @@ class PerModeBalanceTest extends TestCase
     {
         $this->skipIfNotPostgres();
         parent::setUp();
+        // The fixtures sit at startOfMonth()+1..3 days: pin mid-month, or on the 1st-3rd
+        // they are in the future and the month-to-date window drops them.
+        $this->travelTo(now()->startOfMonth()->addDays(14)->setTime(12, 0));
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
     }
 
