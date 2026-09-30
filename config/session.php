@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 // the names its users already hold; every other environment appends its
 // APP_ENV to each name, even one copied from production's .env, and its
 // cookies are host-only (see 'domain').
-$production = env('APP_ENV') === 'production';
+$production = env('APP_ENV', 'production') === 'production';   // unset counts as production, as in config/app.php
 $namespace = static fn (string $name): string => $production ? $name : $name.'-'.Str::slug((string) env('APP_ENV', 'local'));
 
 return [

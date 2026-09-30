@@ -18,10 +18,13 @@ class TrackedCredentialLiteralTest extends TestCase
     public function test_phpunit_config_sets_no_database_password(): void
     {
         // A boolean, so a failure never prints the file (and the value) to a log.
-        $this->assertSame(0, preg_match(
-            '/name="DB_PASSWORD"\s+value="[^"]+"/',
-            file_get_contents(base_path('phpunit.xml')),
-        ), 'phpunit.xml sets DB_PASSWORD to a value');
+        // Any phpunit*.xml, any attribute order or quoting, force="true" or not.
+        foreach (glob(base_path('phpunit*.xml')) as $file) {
+            $this->assertSame(0, preg_match(
+                '/<env\b(?=[^>]*\bname\s*=\s*["\']DB_PASSWORD["\'])(?=[^>]*\bvalue\s*=\s*["\'][^"\']+["\'])[^>]*>/i',
+                file_get_contents($file),
+            ), basename($file).' sets DB_PASSWORD to a value');
+        }
     }
 
     public function test_the_leaked_value_is_in_no_tracked_file(): void

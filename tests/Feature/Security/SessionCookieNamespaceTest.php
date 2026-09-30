@@ -90,4 +90,12 @@ class SessionCookieNamespaceTest extends TestCase
         $this->assertContains(config('session.tenant_cookie'), $names);
         $this->assertStringEndsWith('-'.app()->environment(), config('session.tenant_cookie'));
     }
+
+    public function test_an_unset_app_env_is_production_here_as_in_app_config(): void
+    {
+        $c = $this->sessionConfig(['APP_ENV' => false, 'SESSION_DOMAIN' => '.jewelflows.com']);
+
+        $this->assertSame('jewelflows-session', $c['tenant_cookie']);
+        $this->assertSame('.jewelflows.com', $c['domain']);
+    }
 }

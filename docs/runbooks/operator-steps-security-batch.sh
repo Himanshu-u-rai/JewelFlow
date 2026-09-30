@@ -377,6 +377,10 @@ verify_all() {
   else say "== 2 rotate: NOT DONE or not consistent"; rc=1; fi
   committed=
   say "== 3 backup: newest $(ls -t "$PROD/storage/app/private/JewelFlows/"*.zip 2>/dev/null | head -1 | xargs -r -I{} sh -c 'basename {}; stat -c " %y" {}' | tr '\n' ' '); directory $(stat -c '%U:%G %a' "$PROD/storage/app/private/JewelFlows")"
+  local newest; newest=$(ls -t "$PROD/storage/app/private/JewelFlows/"*.zip 2>/dev/null | head -1)
+  if [ -z "$newest" ] || [ $(( $(date +%s) - $(stat -c %Y "$newest") )) -gt $((26 * 3600)) ]; then
+    say "      STALE: no archive in the last 26 hours — nightly backups are not running"; rc=1   # 09-15..09-25 went unnoticed
+  fi
   say "      scheduler: $(grep -hE 'www-data .*/var/www/jewelflow/artisan schedule:run' /etc/cron.d/* 2>/dev/null | head -1 | cut -c1-80)"
   say "      schedule: $(ART schedule:list 2>/dev/null | grep -oE '0 +0 \* \* \* +php artisan backup:run' | head -1)"
   if missing=$(effective_ok); then say "== 4 origin: loaded config denies /storage/{${PREFIXES// /,}}/; probes:"; probe_origin || rc=1

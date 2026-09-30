@@ -237,7 +237,7 @@ try {
     // probe cover it); scope, and the absence of production's names, are.
     $names = array_unique(array_map(fn ($c) => $c->getName(), array_merge($login->headers->getCookies(), $in->headers->getCookies(), $out->headers->getCookies())));
     $ownNames = [config('session.tenant_cookie'), config('session.platform_admin_cookie'), config('session.dhiran_cookie')];
-    check($bad === [] && $in->getStatusCode() === 302 && ! in_array(location($in), ['/login', ''], true) && $out->getStatusCode() === 302
+    check($bad === [] && $names !== [] && $in->getStatusCode() === 302 && ! in_array(location($in), ['/login', ''], true) && $out->getStatusCode() === 302
         && (! $onStaging || count(array_filter($ownNames, fn ($n) => str_ends_with($n, '-staging'))) === 3),
         'cookies: tenant login/logout and admin login set no production cookie name and nothing scoped to a parent domain',
         $bad ? implode('; ', $bad) : implode(',', $names).' | login '.$in->getStatusCode().'->'.location($in).' | own: '.implode(',', $ownNames));
@@ -329,7 +329,7 @@ try {
     // ── nginx: probe paths only, never a real customer file ──────────────────
     foreach ($onStaging ? ['/storage/kyc/'.Str::random(12).'.jpg', '/storage/reporting-exports/'.Str::random(12).'.csv', '/storage/signatures/'.Str::random(12).'.webp'] : [] as $path) {
         $code = probe($path);
-        check(in_array($code, ['403', '404'], true), "nginx: probe {$path} is not served", $code);
+        check(in_array($code, ['403', '404'], true), "nginx: a made-up {$path} is not served (no file there: this is not a deny test)", $code);
     }
 } catch (Throwable $e) {
     check(false, 'verification aborted', get_class($e).': '.$e->getMessage().' @ '.basename($e->getFile()).':'.$e->getLine());

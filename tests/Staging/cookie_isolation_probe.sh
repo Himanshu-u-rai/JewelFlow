@@ -7,8 +7,9 @@
 # Exit 0 = every production session survived; 1 = a staging visit replaced one.
 set -u -o pipefail
 JAR=$(mktemp); trap 'rm -f "$JAR" "$JAR.h"' EXIT
-tok() { curl -sS -m 20 -b "$JAR" -c "$JAR" -D "$JAR.h" "$1" \
-  | grep -oE 'name="csrf-token" content="[^"]+"|name="_token" value="[^"]+"' | head -1 | sha256sum | cut -c1-12; }
+h() { local t; t=$(grep -oE 'name="csrf-token" content="[^"]+"|name="_token" value="[^"]+"' | head -1)
+  if [ -n "$t" ]; then printf %s "$t" | sha256sum | cut -c1-12; else echo NO-TOKEN; fi; }   # no token = proves nothing
+tok() { curl -sS -m 20 -b "$JAR" -c "$JAR" -D "$JAR.h" "$1" | h; }
 set_cookies() { tr -d '\r' < "$JAR.h" | grep -i '^set-cookie:' \
   | sed -E 's/^[Ss]et-[Cc]ookie: ([^=]+)=[^;]*(.*)/\1\2/; s/; ?expires=[^;]*//I; s/; ?max-age=[^;]*//I' | sort -u; }
 fail=0
@@ -22,6 +23,7 @@ for pair in "https://jewelflows.com/login|https://staging.jewelflows.com/login|t
   p3=$(tok "$prod")
   verdict=$([ "$p1" = "$p2" ] && [ "$p2" = "$p3" ] && echo SURVIVED || echo REPLACED)
   [ "$p1" = "$p2" ] || verdict="NO-BASELINE (production token changed without staging)"
+  case " $p1 $p2 $p3 " in *" NO-TOKEN "*) verdict="NO TOKEN on a page (challenge, error or redirect): proves nothing" ;; esac
   [ "$verdict" = SURVIVED ] || fail=1
   echo "[$label] production session across a staging visit: $verdict (token hashes $p1 $p2 -> $p3)"
   echo "$sc" | sed 's/^/    staging set: /'
@@ -32,8 +34,7 @@ done
 # home the same cookie, sent twice, keeps one session (same token); away, each
 # request starts a new session (tokens differ). Values are never printed.
 val() { awk -v n="$1" '$6 == n { v = $7 } END { print v }' "$JAR"; }
-tok_with() { curl -sS -m 20 -H "Cookie: $2=$3" "$1" \
-  | grep -oE 'name="csrf-token" content="[^"]+"|name="_token" value="[^"]+"' | head -1 | sha256sum | cut -c1-12; }
+tok_with() { curl -sS -m 20 -H "Cookie: $2=$3" "$1" | h; }
 : > "$JAR"; tok https://jewelflows.com/login >/dev/null; vp=$(val jewelflows-session)
 : > "$JAR"; tok https://staging.jewelflows.com/login >/dev/null; vs=$(val jewelflows-session-staging)
 for c in "production|https://jewelflows.com/login|jewelflows-session|$vp|home" \
@@ -43,8 +44,9 @@ for c in "production|https://jewelflows.com/login|jewelflows-session|$vp|home" \
   IFS='|' read -r label url name value where <<< "$c"
   [ -n "$value" ] || { echo "[$label] no cookie captured"; fail=1; continue; }
   t1=$(tok_with "$url" "$name" "$value"); t2=$(tok_with "$url" "$name" "$value")
-  if [ "$where" = home ]; then r=$([ "$t1" = "$t2" ] && echo "one session (as expected)" || { fail=1; echo "NOT a session at home"; })
-  else r=$([ "$t1" != "$t2" ] && echo "not a session there (as expected)" || { fail=1; echo "ACCEPTED as a session"; }); fi
+  if [ "$t1" = NO-TOKEN ] || [ "$t2" = NO-TOKEN ]; then r="NO TOKEN on the page: proves nothing"; fail=1
+  elif [ "$where" = home ]; then if [ "$t1" = "$t2" ]; then r="one session (as expected)"; else r="NOT a session at home"; fail=1; fi
+  elif [ "$t1" != "$t2" ]; then r="not a session there (as expected)"; else r="ACCEPTED as a session"; fail=1; fi
   echo "[$label] same cookie twice -> $t1 / $t2: $r"
 done
 exit $fail
