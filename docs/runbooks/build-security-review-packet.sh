@@ -249,7 +249,7 @@ done
 # phpunit.xml no longer carries it; the baseline commit's copy still does.
 TESTPW=$(git show 018b3d810e37d534f498033ab582ee41f3197c27:phpunit.xml | sed -n 's/.*name="DB_PASSWORD" value="\([^"]*\)".*/\1/p')
 [ -n "$TESTPW" ] || { echo "FATAL: cannot read DB_PASSWORD from the baseline's phpunit.xml" >&2; exit 2; }
-REDACTED="$(grep -rlF -- "$TESTPW" "$OUT" 2>/dev/null || true)"
+REDACTED="$(printf '%s\n' "$TESTPW" | grep -rlF -f - "$OUT" 2>/dev/null || true)"
 if [ -n "$REDACTED" ]; then
     echo "$REDACTED" | while IFS= read -r f; do
         TESTPW="$TESTPW" perl -pi -e 's/\Q$ENV{TESTPW}\E/<redacted: phpunit.xml DB_PASSWORD value, S3-22>/g' "$f"
@@ -292,21 +292,43 @@ SCAN_HITS=0
 SCAN_ALLOWLIST='AKIAIOSFODNN7EXAMPLE|DB_PASSWORD=\$NEW\b'
 # Beyond these tokens, whole lines reviewed one by one: docs/runbooks/packet-scan-reviewed.tsv.
 
+# The reviewed list comes from the exported commit, not the working tree.
+REVIEWED_TSV="$(mktemp)"; trap 'rm -f "$REVIEWED_TSV"' EXIT
+git show "${EXPORT_SHA}:docs/runbooks/packet-scan-reviewed.tsv" > "$REVIEWED_TSV"
+
 scan() {
     local label="$1" pattern="$2"
     local hits
-    # -I skips binaries; the allowlist filter runs per MATCHING LINE, then the
-    # filenames are recovered, so one allowlisted line cannot suppress a real
-    # finding elsewhere in the same file.
-    hits="$(grep -rInIE "$pattern" "$OUT" 2>/dev/null \
-        | grep -vE "$SCAN_ALLOWLIST" \
-        | awk -v reviewed="docs/runbooks/packet-scan-reviewed.tsv" '
-            BEGIN { while ((getline l < reviewed) > 0) if (l !~ /^#/ && index(l, "\t")) { ok[substr(l, index(l, "\t") + 1)] = 1; ok[l] = 1 } }   # the line, and the list'"'"'s own row
-            { file = substr($0, 1, index($0, ":") - 1); rest = substr($0, length(file) + 2)
-              line = substr(rest, index(rest, ":") + 1)
-              if (file ~ /\.patch$/) line = substr(line, 2)   # a diff line: drop its +, - or space
-              if (!(line in ok)) print file }' \
-        | sort -u || true)"
+    # Scans file CONTENTS (never "path:line" text). A match is excused only
+    # when an allowlisted token starts exactly at it, so a token elsewhere on
+    # the line, or in a file name, cannot hide a real finding. A whole line
+    # listed in the reviewed TSV is skipped (a diff's +, - or space ignored).
+    hits="$(SCAN_PATTERN="$pattern" SCAN_TOKENS="$SCAN_ALLOWLIST" python3 - "$OUT" "$REVIEWED_TSV" <<'PY'
+import os, re, sys
+out, reviewed = sys.argv[1], sys.argv[2]
+pat = re.compile(os.environ['SCAN_PATTERN'].replace('[:space:]', r'\s'))   # POSIX class -> Python
+tokens = re.compile(os.environ['SCAN_TOKENS'])
+ok = set()
+for l in open(reviewed, encoding='utf-8'):
+    l = l.rstrip('\n')
+    if l and not l.startswith('#') and '\t' in l:
+        ok.update((l, l.split('\t', 1)[1]))
+hits = set()
+for root, _, files in os.walk(out):
+    for name in files:
+        path = os.path.join(root, name)
+        data = open(path, 'rb').read()
+        if b'\0' in data[:8192]:
+            continue
+        for line in data.decode('utf-8', 'replace').split('\n'):
+            body = line[1:] if path.endswith('.patch') and line[:1] in '+- ' else line
+            if line in ok or body in ok:
+                continue
+            if any(not (tokens.match(line, m.start()) or tokens.match(line, m.end() - 1)) for m in pat.finditer(line)):   # token at the name or at the value
+                hits.add(path)
+print('\n'.join(sorted(hits)))
+PY
+)"
     if [ -n "$hits" ]; then
         echo "  POSSIBLE ${label}:" >&2
         echo "$hits" | sed 's/^/    /' >&2
@@ -323,7 +345,14 @@ scan() {
 # code as a leak is how a scanner gets switched off, so the pattern was
 # narrowed to key material and assignments rather than the gate being relaxed.
 scan "APP_KEY"           '(APP_KEY[[:space:]]*=[[:space:]]*[^[:space:]"'"'"']|base64:[A-Za-z0-9+/]{40,})'
-scan "DB password"       '(DB_PASSWORD|PGPASSWORD)[[:space:]]*=[[:space:]]*[^[:space:]"'"'"']'
+scan "DB password"       '(DB_PASSWORD|PGPASSWORD)[[:space:]]*=[[:space:]]*["'"'"']?[^[:space:]"'"'"'$%<{.\\]'
+# The exact S3-22 leak shape (phpunit.xml), either attribute order.
+scan "XML env secret"    '<env[^>]*name="[A-Z0-9_]*(PASSWORD|SECRET|TOKEN|_KEY|DSN)[A-Z0-9_]*"[^>]*value="[^"$%<{.]|<env[^>]*value="[^"$%<{.][^"]*"[^>]*name="[A-Z0-9_]*(PASSWORD|SECRET|TOKEN|_KEY|DSN)'
+# Any other secret-named assignment (RAZORPAY_KEY_SECRET, REDIS_PASSWORD, SENTRY_LARAVEL_DSN,
+# AWS_SECRET_ACCESS_KEY, ...), quoted or not. Not a value: empty, null, a
+# placeholder (REPLACE_WITH_…, __set_me__, <…>, ...) or a reference ($VAR, ${VAR}, %s,
+# env(…), an escaped regex); `=>` and `::` are not assignments.
+scan "secret assignment" '\b[A-Z][A-Z0-9_]*(SECRET|TOKEN|PASSWORD|PASSWD|_KEY|DSN)[A-Z0-9_]*[[:space:]]*[=:](?![=>:])[[:space:]]*["'"'"']?(?!null\b|REPLACE_WITH_|env\(|__)[^[:space:]"'"'"'$%<{(),;.\\]'
 # Same narrowing as APP_KEY above, and for the same reason -- this one caught
 # the scanner red-handed matching ITSELF. Once this script became part of the
 # packet, its own `scan "AWS credential" '(...|aws_secret_access_key)'` line
@@ -349,9 +378,9 @@ scan "Razorpay live key" 'rzp_live_[A-Za-z0-9]+'
 scan "SMTP credential"   'MAIL_PASSWORD[[:space:]]*=[[:space:]]*[^[:space:]]'
 
 # Value check (S3-22, above): the redaction must have left no copy.
-if grep -rqF -- "$TESTPW" "$OUT" 2>/dev/null; then
+if printf '%s\n' "$TESTPW" | grep -rqF -f - "$OUT" 2>/dev/null; then
     echo "  COMMITTED DB PASSWORD VALUE still present:" >&2
-    grep -rlF -- "$TESTPW" "$OUT" | sed 's/^/    /' >&2
+    printf '%s\n' "$TESTPW" | grep -rlF -f - "$OUT" | sed 's/^/    /' >&2
     SCAN_HITS=$((SCAN_HITS + 1))
 fi
 unset TESTPW

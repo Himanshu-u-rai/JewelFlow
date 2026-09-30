@@ -9,3 +9,4 @@ test assertion: compares the sandbox .env with the harness's variable	  '[ "$(gr
 test assertion: compares the sandbox .env with the harness's variable	   && grep -q "^DB_PASSWORD=$OLDPW\$" "$S/prod/.env" && [ "$(tail -1 "$S/events.log")" = "ART up" ] && no_secret_anywhere'
 test assertion: compares the sandbox .env with the harness's variable	  '[ "$RC" = 1 ] && out_has "ALTER ROLE failed" && grep -q "^DB_PASSWORD=$OLDPW\$" "$S/prod/.env"'
 test fixture: a deliberately different sandbox .env ('other')	export MAKE_ZIP='printf "DB_PASSWORD=other\n" > "$S/other.env"; mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$S/other.env" "${PROD#/}/"'
+test code: a cache-key format constant named *_KEY, not a credential	    private const LEGACY_KEY = 'invoice_payment_idempotency:%d:%s';
