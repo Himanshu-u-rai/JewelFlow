@@ -167,7 +167,7 @@ DEVREF=$(git -C "$DIR" grep -nE '(^|[^A-Za-z_])(Tests|Faker|PHPUnit)\\|Mockery|f
 ok "no production code references dev-only code (Tests, Faker, Mockery, PHPUnit)"
 
 # D0
-ART migrate:status --pending 2>&1 | grep -qi "no pending migrations" || fail "D0: a baseline migration is pending"
+grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "D0: a baseline migration is pending"
 [ "$(PSQL "select count(*) from migrations where migration in ($TEN)")" = 0 ] || fail "D0: some of the ten are already recorded"
 [ "$(PSQL "select coalesce(to_regclass('signature_relocations')::text,'') || coalesce(to_regclass('invoice_payment_claims')::text,'')")" = "" ] || fail "D0: a Phase 1 table already exists"
 [ "$(PSQL "select count(*) from information_schema.columns where table_schema = current_schema() and (table_name, column_name) in (('karigar_invoices','invoice_file_disk'),('stock_purchases','invoice_image_disk'),('shop_billing_settings','digital_signature_disk'),('idempotency_keys','response_headers'),('report_exports','notified_at'),('report_exports','notification_error'),('loyalty_transactions','expires_lot_id'))")" = 0 ] \
@@ -230,8 +230,8 @@ PHASE=phase1
 for m in "${EXPAND[@]}"; do
   P=$(ART migrate --pretend --force --path="database/migrations/$m.php" 2>&1)
   echo "$P" > "$WORK/pretend-$m.sql"
-  echo "$P" | grep -q "$m" || fail "pretend for $m did not name it"
-  echo "$P" | grep -qiE 'drop (table|column)|truncate|delete from' && fail "destructive SQL in the pretend of $m"
+  grep -q "$m" <<< "$P" || fail "pretend for $m did not name it"
+  grep -qiE 'drop (table|column)|truncate|delete from' <<< "$P" && fail "destructive SQL in the pretend of $m"
   ART migrate --force --path="database/migrations/$m.php" >/dev/null 2>&1 || fail "migration $m failed"
   [ "$(PSQL "select count(*) from migrations where migration = '$m'")" = 1 ] || fail "$m not recorded"
   ok "Phase 1: $m"
@@ -244,7 +244,7 @@ PHASE=d1
 [ "$(PSQL "select count(*) from pg_constraint where conname in ($CONSTRAINTS)")" = 0 ] || fail "D1: a contract constraint exists"
 CONN=$(cd "$DIR" && sudo -u www-data php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); $c = config("database.connections.pgsql"); echo ($c["host"] ?? "?").":".($c["port"] ?? "?")."|pooler=".(env("DB_USE_POOLER") ? "yes" : "no")."|url=".(filled($c["url"] ?? null) ? "set" : "unset")."|persistent=".(($c["options"][PDO::ATTR_PERSISTENT] ?? false) ? "yes" : "no");')
 [ "$CONN" = "127.0.0.1:5432|pooler=no|url=unset|persistent=no" ] || fail "D1: effective connection is '$CONN'"
-ss -ltnp 'sport = :5432' 2>/dev/null | grep -q postgres || fail "D1: 127.0.0.1:5432 is not PostgreSQL itself"
+grep -q postgres <<< "$(ss -ltnp 'sport = :5432' 2>/dev/null)" || fail "D1: 127.0.0.1:5432 is not PostgreSQL itself"
 ok "D1 clean: eight applied, contract and notifications absent, direct PostgreSQL connection ($CONN)"
 
 # ── PHASE 2 — APPLICATION ────────────────────────────────────────────────────
@@ -307,7 +307,7 @@ d2_checks D2
 # ── PHASE 2b — NOTIFICATIONS ─────────────────────────────────────────────────
 PHASE=phase2b
 P=$(ART migrate --pretend --force --path="database/migrations/$NOTIF.php" 2>&1); echo "$P" > "$WORK/pretend-$NOTIF.sql"
-echo "$P" | grep -qiE 'drop (table|column)|truncate|delete from' && fail "destructive SQL in the pretend of $NOTIF"
+grep -qiE 'drop (table|column)|truncate|delete from' <<< "$P" && fail "destructive SQL in the pretend of $NOTIF"
 ART migrate --force --path="database/migrations/$NOTIF.php" >/dev/null 2>&1 || fail "migration $NOTIF failed"
 [ -n "$(PSQL "select coalesce(to_regclass('notifications')::text,'')")" ] || fail "notifications table absent after Phase 2b"
 ok "Phase 2b: $NOTIF"
@@ -322,14 +322,14 @@ d2_checks D2b
 # ── PHASE 3 — CONTRACT ───────────────────────────────────────────────────────
 PHASE=phase3
 P=$(ART migrate --pretend --force --path="database/migrations/$CONTRACT.php" 2>&1); echo "$P" > "$WORK/pretend-$CONTRACT.sql"
-echo "$P" | grep -qiE 'drop (table|column)|truncate|delete from' && fail "destructive SQL in the pretend of $CONTRACT"
+grep -qiE 'drop (table|column)|truncate|delete from' <<< "$P" && fail "destructive SQL in the pretend of $CONTRACT"
 ART migrate --force --path="database/migrations/$CONTRACT.php" > "$WORK/contract.out" 2>&1 || fail "migration $CONTRACT failed (see $WORK/contract.out)"
 ok "Phase 3: $CONTRACT"
 
 PHASE=d3
 [ "$(PSQL "select count(*) from migrations where migration in ($TEN)")" = 10 ] || fail "D3: expected all ten"
 [ "$(PSQL "select count(*) from pg_constraint where conname in ($CONSTRAINTS) and convalidated")" = 3 ] || fail "D3: the three constraints are not all validated"
-ART migrate:status --pending 2>&1 | grep -qi "no pending migrations" || fail "D3: a migration is pending"
+grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "D3: a migration is pending"
 ok "D3 clean: ten applied, three constraints validated, nothing pending"
 
 # ── UP, SMOKE, ROW COUNTS ────────────────────────────────────────────────────
@@ -342,7 +342,7 @@ loc() { curl -sk -o /dev/null -w '%{redirect_url}' -m 20 --resolve "$HOSTN:443:1
 [ "$(code /health)" = 200 ] || fail "smoke: /health is $(code /health)"
 [ "$(code /admin/login)" = 200 ] || fail "smoke: /admin/login is $(code /admin/login)"
 for u in /super-admin/shops /super-admin/users /admin/shops; do
-  [ "$(code $u)" = 302 ] && loc "$u" | grep -q '/admin/login' || fail "smoke: unauthenticated $u did not redirect to /admin/login"
+  [ "$(code $u)" = 302 ] && grep -q '/admin/login' <<< "$(loc "$u")" || fail "smoke: unauthenticated $u did not redirect to /admin/login"
 done
 if [ "$(PSQL "select count(*) from platform_admins where role = 'super_admin'")" -gt 0 ]; then
   [ "$(code /admin/register)" = 302 ] || fail "smoke: /admin/register answered $(code /admin/register) on a configured instance (S3-21: it redirects)"

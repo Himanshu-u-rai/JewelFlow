@@ -221,6 +221,8 @@ z.writestr(base + ".env", open(sys.argv[2]).read())
 z.writestr("db-dumps/postgresql-jewelflow.sql", os.environ.get("DUMP", "select 1;\n"))
 for extra in sys.argv[4:]:
     z.writestr(base + extra, "x")
+for i in range(int(os.environ.get("LONG", "0"))):   # a listing longer than a pipe buffer
+    z.writestr(base + "storage/app/public/f%d" % i, "x")
 z.close()
 PY
 }
@@ -257,6 +259,55 @@ unset DUMP
 setup 'mkdir -p "$PROD/storage/app/public/kyc/1" "$PROD/storage/app/public/signatures"; : > "$PROD/storage/app/public/kyc/1/a.jpg"; : > "$PROD/storage/app/public/signatures/s.png"; edge_package'
 check "edge: the package lists every public private-prefix file on every host, and the WAF expression" \
   '[ "$(wc -l < "$S/work/edge-purge-urls.txt")" = 6 ] && grep -qx "https://dhiran.jewelflows.com/storage/kyc/1/a.jpg" "$S/work/edge-purge-urls.txt" && out_has "contains \"/storage/signatures/\""'
+
+# ── pipefail: an early-exiting grep -q must not decide a check ──────────────
+# Under pipefail, `producer | grep -q X` exits 141 when grep stops reading while
+# the producer still writes (a long archive listing, a big dump): a match reads
+# as "absent". Measured 2026-10-01 before the fix: a forbidden entry at the top
+# of a long listing went unreported in 3 of 3 runs.
+export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/"'
+export LONG=6000; setup step_backup
+check "backup: a complete archive with a 6000-entry listing passes (no false 'lacks' from SIGPIPE)" '[ "$RC" = 0 ]'
+export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/" .claude/settings.json'
+setup step_backup
+check "backup: a forbidden file at the top of a 6000-entry listing is refused (missed under pipefail)" \
+  '[ "$RC" = 1 ] && out_has "excluded path: .claude/settings.json"'
+unset LONG
+export MAKE_ZIP='mkzip "$PROD/storage/app/private/JewelFlows/b.zip" "$PROD/.env" "${PROD#/}/"'
+export DUMP=$'select 1;\n\\! id > /tmp/pwned\n'"$(printf '\\.\n%.0s' {1..20000})"; setup step_backup
+check "backup: a shell escape followed by 20000 pg_dump terminators is refused, never restored (missed under pipefail)" \
+  '[ "$RC" = 1 ] && out_has "psql meta-commands" && ! grep -q createdb "$S/events.log"'
+unset DUMP MAKE_ZIP
+check "no runbook or staging script decides a check with 'producer | grep -q' (pipefail + SIGPIPE)" \
+  '[ -z "$(grep -nE "(^|[^|])\|[[:space:]]*grep -[a-zA-Z]*q" docs/runbooks/*.sh tests/Staging/*.sh | grep -v -- "-f -")" ]'
+
+# ── verify (read-only) ──────────────────────────────────────────────────────
+# Healthy unless a test breaks one thing: rotated .env, a fresh non-empty
+# archive, the scheduler's cron line and the 00:00 backup:run, origin denies.
+VOK='command sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$NEWPW/" "$PROD/.env"; db_connects() { command cat >/dev/null; }
+  echo x > "$PROD/storage/app/private/JewelFlows/b.zip"; CRON=$S/cron.d; mkdir -p "$CRON"
+  echo "* * * * * www-data /usr/bin/php $PROD/artisan schedule:run >> /dev/null 2>&1" > "$CRON/jewelflow-scheduler"
+  ART() { [ "$1" = schedule:list ] && echo "  0    0 * * *  php artisan backup:run ........... Next Due: 19 hours from now"; return 0; }
+  effective_ok() { :; }; probe_origin() { :; }; verify_edge() { return 3; }'
+setup "$VOK; verify_all"
+check "verify: healthy, edge PARTIAL (origin refuses, no WAF rule) -> exit 0" '[ "$RC" = 0 ]'
+setup "$VOK; verify_edge() { return 1; }; verify_all"
+check "verify: an edge probe that is NOT blocked fails verify (was swallowed by || true)" '[ "$RC" = 1 ]'
+setup "$VOK; rm \"\$CRON/jewelflow-scheduler\"; verify_all"
+check "verify: no cron line running schedule:run as www-data fails verify (was printed only)" '[ "$RC" = 1 ] && out_has "scheduler: MISSING"'
+setup "$VOK; ART() { return 0; }; verify_all"
+check "verify: backup:run missing from the schedule fails verify (was printed only)" '[ "$RC" = 1 ] && out_has "schedule: MISSING"'
+setup "$VOK; : > \"\$PROD/storage/app/private/JewelFlows/b.zip\"; verify_all"
+check "verify: an EMPTY newest archive fails verify" '[ "$RC" = 1 ] && out_has "STALE"'
+setup "$VOK; touch -d \"-27 hours\" \"\$PROD/storage/app/private/JewelFlows/b.zip\"; verify_all"
+check "verify: a newest archive older than 26 h fails verify" '[ "$RC" = 1 ] && out_has "STALE"'
+EDGE='curl() { while [ $# -gt 0 ]; do [ "$1" = -D ] && { printf "HTTP/2 %s\r\nserver: cloudflare\r\n\r\n" "$ES" > "$2"; shift; }; shift; done; printf %s "$EB"; }'
+setup "$EDGE; ES=404 EB=\"<title>Not Found</title>\"; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: a probe the application answers (not blocked) returns 1, not PARTIAL" 'out_has "edge-rc=1" && out_has "NOT blocked"'
+setup "$EDGE; ES=502 EB=\"error code: 1020 Cloudflare Ray ID\"; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: a Cloudflare-branded 502 is not protection (returns 1)" 'out_has "edge-rc=1"'
+setup "$EDGE; ES=403 EB=\"<center>nginx</center>\"; verify_edge; echo \"edge-rc=\$?\""
+check "verify-edge: 403 from the origin through the edge (no WAF rule) is PARTIAL, 3" 'out_has "edge-rc=3" && out_has "EDGE: PARTIAL"'
 
 echo "== $PASS passed, $FAILN failed"
 [ "$FAILN" = 0 ]

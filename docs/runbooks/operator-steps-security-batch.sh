@@ -14,7 +14,7 @@
 #
 #   operator-steps-security-batch.sh run [from-step]   steps 1-4 in order, gated
 #   operator-steps-security-batch.sh verify            read-only re-check of all of them
-#   operator-steps-security-batch.sh verify-edge       read-only: the Cloudflare side
+#   operator-steps-security-batch.sh verify-edge       read-only: the Cloudflare side (0 edge rule, 3 origin only, 1 NOT blocked)
 #
 #   1 env-read  R9     .env dev:dev 640 -> dev:www-data 640: the scheduler's user
 #                      (www-data) may read it, not write it; others still nothing.
@@ -46,6 +46,7 @@ PROD=/var/www/jewelflow
 VHOST=/etc/nginx/sites-available/jewelflow
 PGLOG=/var/log/postgresql/postgresql-14-main.log
 NGINX_ERRLOG=/var/log/nginx/error.log
+CRON=/etc/cron.d
 WORKER=jewelflow-production-ops-alerts
 ROLE=jewelflow
 WEB=www-data        # the user of the scheduler, PHP-FPM and the worker
@@ -75,7 +76,7 @@ PGSU() { sudo -u postgres psql -X -A -t -q -v ON_ERROR_STOP=1 "$@"; }   # secret
 code() { curl -sk -o /dev/null -w '%{http_code}' -m 15 --resolve "$1:443:127.0.0.1" "https://$1$2"; }
 # Who answered: nginx's own error page has its "<center>nginx" footer; the
 # application answers an unmatched /storage/ path itself (404 page).
-who()  { curl -sk -m 15 --resolve "$1:443:127.0.0.1" "https://$1$2" | grep -qi '<center>nginx' && echo nginx || echo app; }
+who()  { grep -qi '<center>nginx' <<< "$(curl -sk -m 15 --resolve "$1:443:127.0.0.1" "https://$1$2")" && echo nginx || echo app; }
 cached_password_sha() { ( cd "$PROD" && sudo -u www-data php -r '$c = require "bootstrap/cache/config.php"; echo hash("sha256", (string) $c["database"]["connections"]["pgsql"]["password"]);' ); }
 
 # SCRAM-SHA-256 verifier for the password on stdin (what psql's \password
@@ -184,7 +185,7 @@ step_rotate() {
 # ── 3  a backup by the scheduler's user, verified ───────────────────────────
 step_backup() {
   STEP=backup
-  local dir=$PROD/storage/app/private/JewelFlows start zip rel entries before after scratch dump t c b a want
+  local dir=$PROD/storage/app/private/JewelFlows start zip rel entries before after scratch dump t c b a want bad
   sudo -u www-data test -r "$PROD/.env" || stop "www-data cannot read .env" "no backup taken" "run step env-read"
   start=$(date +%s); before=$(counts jewelflow)
   ART backup:run || stop "backup:run failed as www-data (the scheduler's user)" "no new archive; production unchanged" "read the output above"
@@ -197,13 +198,16 @@ step_backup() {
   rel="${PROD#/}/"
   entries=$(unzip -Z1 "$zip" | sed "s#^$rel##")
   for want in .env artisan composer.lock app/ bootstrap/app.php config/ database/migrations/ lang/ public/ resources/ routes/ storage/app/; do
-    printf '%s\n' "$entries" | grep -q "^$want" || stop "the archive lacks $want" "the archive exists" "check config/backup.php and App\\Support\\BackupScope"
+    grep -q "^$want" <<< "$entries" || stop "the archive lacks $want" "the archive exists" "check config/backup.php and App\\Support\\BackupScope"
   done
-  printf '%s\n' "$entries" | grep -qE '^db-dumps/[^/]+\.sql$' || stop "the archive has no database dump" "the archive exists" "check the backup output"
+  grep -qE '^db-dumps/[^/]+\.sql$' <<< "$entries" || stop "the archive has no database dump" "the archive exists" "check the backup output"
   # Files only: an empty directory entry (spatie archives storage/app/backup-temp/
   # empty, its temp/ subdirectory excluded) carries no data.
-  if printf '%s\n' "$entries" | grep -v '/$' | grep -qE '^(\.git/|\.claude/|vendor/|node_modules/|bootstrap/cache/|storage/logs/|storage/framework/|storage/app/private/JewelFlows?/|storage/app/backup-temp/|tests/|docs/|output/|\.mcp\.json|\.env\.)'; then
-    stop "the archive contains an excluded path: $(printf '%s\n' "$entries" | grep -v '/$' | grep -E '^(\.git/|\.claude/|vendor/|node_modules/|bootstrap/cache/|storage/logs/|storage/framework/|storage/app/private/JewelFlows?/|storage/app/backup-temp/|tests/|docs/|output/|\.mcp\.json|\.env\.)' | head -3 | tr '\n' ' ')" \
+  # Never pipe into an early-exiting grep -q here or below: under pipefail it
+  # SIGPIPEs the writer and a match on a long listing reads as "absent" (2026-10-01).
+  bad=$(grep -v '/$' <<< "$entries" | grep -E '^(\.git/|\.claude/|vendor/|node_modules/|bootstrap/cache/|storage/logs/|storage/framework/|storage/app/private/JewelFlows?/|storage/app/backup-temp/|tests/|docs/|output/|\.mcp\.json|\.env\.)')
+  if [ -n "$bad" ]; then
+    stop "the archive contains an excluded path: $(head -3 <<< "$bad" | tr '\n' ' ')" \
       "the archive exists" "check App\\Support\\BackupScope"
   fi
   [ "$(unzip -p "$zip" "$rel.env" | sha)" = "$(sha < "$PROD/.env")" ] || stop "the archived .env differs from the live one" "the archive exists" "run backup:run again after step rotate"
@@ -221,7 +225,7 @@ step_backup() {
   # \. and \restrict markers, and anything that could regain privilege; then
   # run it as the app role (SET ROLE), never as superuser. Extensions are
   # pre-created from production's catalog, not from the dump.
-  if grep -nE '^\\' "$WORK/restore/dump.sql" | grep -qvE '^[0-9]+:\\(\.|restrict |unrestrict )' \
+  if [ -n "$(grep -nE '^\\' "$WORK/restore/dump.sql" | grep -vE '^[0-9]+:\\(\.|restrict |unrestrict )')" ] \
      || grep -qiE '^\s*COPY\b.*\b(TO|FROM)\s+PROGRAM\b|^\s*(SET|RESET)\s+ROLE|SESSION\s+AUTHORIZATION|^\s*(ALTER|CREATE|DROP)\s+(ROLE|USER)\b' "$WORK/restore/dump.sql"; then
     stop "the dump contains psql meta-commands or privilege statements a genuine pg_dump never writes" "the archive exists; nothing was restored" "treat the archive as tampered; investigate www-data"
   fi
@@ -241,7 +245,7 @@ step_backup() {
   c=$(PGSU -d "$scratch" -c "select count(*) from pg_trigger where not tgisinternal"); b=$(PGSU -d jewelflow -c "select count(*) from pg_trigger where not tgisinternal")
   sudo -u postgres dropdb "$scratch"; rm -f "$WORK/restore/dump.sql"; rmdir "$WORK/restore"
   [ "$c" = "$b" ] || stop "restored $c triggers, production has $b" "the archive exists; scratch dropped" "inspect the dump"
-  ! PGSU -c "select 1 from pg_database where datname = '$scratch'" | grep -q 1 && [ ! -e "$WORK/restore" ] \
+  ! grep -q 1 <<< "$(PGSU -c "select 1 from pg_database where datname = '$scratch'")" && [ ! -e "$WORK/restore" ] \
     || stop "the scratch copy was not removed" "the archive exists" "sudo -u postgres dropdb $scratch; rm -rf $WORK/restore"
   ok "the dump restored into a scratch database: row counts of $(printf '%s' "$COUNTED" | wc -w) tables match production; $c triggers; scratch database and extracted dump removed"
 }
@@ -362,7 +366,8 @@ verify_edge() {
     else say "   $h /storage/$p/<random> -> $(head -1 <<< "$hdr") (NOT blocked)"; fails=1; fi
   done; done
   [ "$fails" = 0 ] && [ "$origin" = 0 ] && { say "EDGE: blocked on every host and prefix (confirm the purge completed in Cloudflare)"; return 0; }
-  say "EDGE: PARTIAL"; return 3
+  [ "$fails" = 0 ] && { say "EDGE: PARTIAL (the origin refuses every probe; no edge rule)"; return 3; }
+  say "EDGE: NOT BLOCKED on at least one host and prefix"; return 1
 }
 
 verify_all() {
@@ -377,15 +382,17 @@ verify_all() {
   else say "== 2 rotate: NOT DONE or not consistent"; rc=1; fi
   committed=
   say "== 3 backup: newest $(ls -t "$PROD/storage/app/private/JewelFlows/"*.zip 2>/dev/null | head -1 | xargs -r -I{} sh -c 'basename {}; stat -c " %y" {}' | tr '\n' ' '); directory $(stat -c '%U:%G %a' "$PROD/storage/app/private/JewelFlows")"
-  local newest; newest=$(ls -t "$PROD/storage/app/private/JewelFlows/"*.zip 2>/dev/null | head -1)
-  if [ -z "$newest" ] || [ $(( $(date +%s) - $(stat -c %Y "$newest") )) -gt $((26 * 3600)) ]; then
-    say "      STALE: no archive in the last 26 hours — nightly backups are not running"; rc=1   # 09-15..09-25 went unnoticed
+  local newest cron sched; newest=$(ls -t "$PROD/storage/app/private/JewelFlows/"*.zip 2>/dev/null | head -1)
+  if [ -z "$newest" ] || [ ! -s "$newest" ] || [ $(( $(date +%s) - $(stat -c %Y "$newest") )) -gt $((26 * 3600)) ]; then
+    say "      STALE: no non-empty archive in the last 26 hours — nightly backups are not running"; rc=1   # 09-15..09-25 went unnoticed
   fi
-  say "      scheduler: $(grep -hE 'www-data .*/var/www/jewelflow/artisan schedule:run' /etc/cron.d/* 2>/dev/null | head -1 | cut -c1-80)"
-  say "      schedule: $(ART schedule:list 2>/dev/null | grep -oE '0 +0 \* \* \* +php artisan backup:run' | head -1)"
+  cron=$(grep -hE "^[^#]*www-data .*$PROD/artisan schedule:run" "$CRON"/* 2>/dev/null | head -1)
+  say "      scheduler: ${cron:-MISSING (no cron line runs $PROD/artisan schedule:run as www-data)}"; [ -n "$cron" ] || rc=1
+  sched=$(ART schedule:list 2>/dev/null | grep -oE '0 +0 \* \* \* +php artisan backup:run' | head -1)
+  say "      schedule: ${sched:-MISSING (backup:run is not scheduled daily at 00:00)}"; [ -n "$sched" ] || rc=1
   if missing=$(effective_ok); then say "== 4 origin: loaded config denies /storage/{${PREFIXES// /,}}/; probes:"; probe_origin || rc=1
   else say "== 4 origin: NOT DONE ($missing)"; rc=1; fi
-  say "== edge:"; verify_edge || true
+  say "== edge:"; verify_edge; case $? in 0|3) ;; *) rc=1 ;; esac   # 3 = the origin refuses, no edge rule (accepted); 1 = not blocked
   return "$rc"
 }
 

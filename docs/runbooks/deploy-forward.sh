@@ -94,7 +94,7 @@ git merge-base --is-ancestor "$FROM" "$TARGET" || fail "target does not descend 
 git merge-base --is-ancestor "$TARGET" "$BRANCH_REF" || fail "target is not on the security branch"
 [ -z "$(git diff --name-only "$FROM" "$TARGET" -- database/migrations composer.lock composer.json package.json package-lock.json vite.config.js resources/js resources/css)" ] \
   || fail "the target changes migrations, dependencies or built assets — use deploy-security-batch.sh"
-ART migrate:status --pending 2>&1 | grep -qi "no pending migrations" || fail "a migration is pending"
+grep -qi "no pending migrations" <<< "$(ART migrate:status --pending 2>&1)" || fail "a migration is pending"
 DEVREF=$(git grep -nE '(^|[^A-Za-z_])(Tests|Faker|PHPUnit)\\|Mockery|fake\(\)' "$TARGET" -- app bootstrap config routes database/migrations | grep -v 'class_exists(' || true)
 [ -z "$DEVREF" ] || fail "the target's production code references dev-only code: $DEVREF"
 ok "target $TARGET: code only, on the branch, no dev-only references; changes: $(git diff --name-only "$FROM" "$TARGET" | tr '\n' ' ')"

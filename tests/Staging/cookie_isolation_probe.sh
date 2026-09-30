@@ -4,12 +4,15 @@
 # production page. A session survives when the page's CSRF token (bound to the
 # session) is unchanged; only a hash of it is printed. Also prints, for every
 # cookie staging sets, its name and scope (never its value).
+# A page counts only when it is HTTP 200 and carries a token. Guest sessions
+# only: a signed-in session is the manual browser check, not this probe.
 # Exit 0 = every production session survived; 1 = a staging visit replaced one.
 set -u -o pipefail
 JAR=$(mktemp); trap 'rm -f "$JAR" "$JAR.h"' EXIT
 h() { local t; t=$(grep -oE 'name="csrf-token" content="[^"]+"|name="_token" value="[^"]+"' | head -1)
   if [ -n "$t" ]; then printf %s "$t" | sha256sum | cut -c1-12; else echo NO-TOKEN; fi; }   # no token = proves nothing
-tok() { curl -sS -m 20 -b "$JAR" -c "$JAR" -D "$JAR.h" "$1" | h; }
+ok200() { [[ $(head -c 20 "$JAR.h" 2>/dev/null) =~ ^HTTP/[0-9.]+\ 200 ]]; }   # a 503/403/302 page proves nothing
+tok() { local b; b=$(curl -sS -m 20 -b "$JAR" -c "$JAR" -D "$JAR.h" "$1"); if ok200; then h <<< "$b"; else echo NO-TOKEN; fi; }
 set_cookies() { tr -d '\r' < "$JAR.h" | grep -i '^set-cookie:' \
   | sed -E 's/^[Ss]et-[Cc]ookie: ([^=]+)=[^;]*(.*)/\1\2/; s/; ?expires=[^;]*//I; s/; ?max-age=[^;]*//I' | sort -u; }
 fail=0
@@ -34,7 +37,7 @@ done
 # home the same cookie, sent twice, keeps one session (same token); away, each
 # request starts a new session (tokens differ). Values are never printed.
 val() { awk -v n="$1" '$6 == n { v = $7 } END { print v }' "$JAR"; }
-tok_with() { curl -sS -m 20 -H "Cookie: $2=$3" "$1" | h; }
+tok_with() { local b; b=$(curl -sS -m 20 -D "$JAR.h" -H "Cookie: $2=$3" "$1"); if ok200; then h <<< "$b"; else echo NO-TOKEN; fi; }
 : > "$JAR"; tok https://jewelflows.com/login >/dev/null; vp=$(val jewelflows-session)
 : > "$JAR"; tok https://staging.jewelflows.com/login >/dev/null; vs=$(val jewelflows-session-staging)
 for c in "production|https://jewelflows.com/login|jewelflows-session|$vp|home" \
