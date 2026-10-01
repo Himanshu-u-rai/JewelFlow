@@ -3,15 +3,15 @@
 Branch `security/multi-tenant-audit`, worktree
 `/home/himanshu/Desktop/jewelflow-worktrees/security-multi-tenant-audit`.
 
-**Current state: §0l is authoritative (2026-10-01).** Production and staging
-are at `31282713bafdd072732839e69f0e846fc739c2f4`, and `main` follows; later
-commits are documentation. Not closed: the human-only checklist in §0l (three
-origin denies as a second layer, the signed-in browser check, device checks on
-real staging and real hardware, the mobile release to users, iOS, repository
-visibility). §0k stays as the review of packet `04e36e1`; §0l supersedes its
-state table, its checklist and its follow-up list. §0j stays as the catch-up
-from `c68114e`. Sections before §0g describe local evidence from before
-anything was pushed.
+**Current state: §0m is authoritative (2026-10-01, scope frozen).** Production
+and staging are at `31282713bafdd072732839e69f0e846fc739c2f4`, and `main`
+follows; later commits are documentation. **Not closed: one gate is left** —
+the physical Android check on real staging, after which build 25 is handed
+over (§0m). The origin denies and the signed-in browser check in §0l's
+checklist are done (§0m 1, 2). iOS is not run and not part of this batch.
+§0l stays as the evidence for the closure pass, §0k as the review of packet
+`04e36e1`, §0j as the catch-up from `c68114e`. Sections before §0g describe
+local evidence from before anything was pushed.
 
 **Pre-batch baseline:** `018b3d810e37d534f498033ab582ee41f3197c27`, observed
 on production on 2026-09-20 and again, unchanged, before the deployment
@@ -76,6 +76,177 @@ not mine.
 
 ---
 
+## 0m. Scope freeze and the closure gates (2026-10-01, 16:25–18:30Z)
+
+The owner froze the scope on 2026-10-01: four items, then the batch closes and
+nothing else is started. Constraints that hold through closure: no update is
+published to the shared runtime while versionCode 16 is unresolved; no iOS
+release is started for this batch (iOS: **NOT RUN**, nothing claimed); the
+quick-bill idempotency defect stays in the backlog, and nothing here claims
+that every financial endpoint is idempotent. Times are UTC. §0l stays as the
+evidence for everything before this point.
+
+**Status: NOT CLOSED — one gate is left** (3: the physical Android check on
+real staging; 4 follows it).
+
+| # | Gate | State | Evidence |
+|---|---|---|---|
+| 1 | Origin denies for all five private prefixes | **DONE and verified** | applied by the owner 18:16:11Z; `verify` exit 0 at 18:19:23Z; controls at 18:20:47Z. Detail 1 |
+| 2 | Signed-in browser isolation | **DONE**, both orders and the admin pair | the owner's own browser, signed in by the owner. Detail 2 |
+| 3 | Physical Android, real staging, `preview` build 24 | **NOT RUN** (the owner's; no phone is attached to the test machine, and staging shows no app activity) | Detail 3 |
+| 4 | Hand-over of build 25 by the direct-install APK path | **READY, held until 3 passes**; upgrade from the installed production build confirmed | Detail 4 |
+
+### 1. The origin denies
+
+The owner ran `operator-steps-security-batch.sh run origin` at 18:16:11Z. It
+added three `location ^~ /storage/<name>/ { deny all; }` blocks
+(`karigar-invoices`, `purchases`, `repairs`) beside the two from 2026-09-25,
+`nginx -t` passed, and nginx reloaded at 18:16:15Z. **That run's own log ends
+in `FAILED [origin]`**: its probes started at once and two of them, on the
+first host, were still answered by workers running the old configuration (a
+404 from the application instead of nginx's 403). The script left the denies
+in place, as it says it does. The cause is in the script: after a reload it
+waits until nginx refuses a path under the *first* prefix, which was already
+denied before this run, so it did not wait for the new ones (backlog).
+
+What was checked afterwards, all read-only:
+
+* `verify`, by the owner at 18:17:04Z (reported: exit 0) and by this session
+  at 18:19:23Z: **exit 0**. All five prefixes on all three hosts answer 403
+  from nginx (its error log records each refusal); an unmatched `/storage/`
+  path still reaches the application; `/login` 200. Through the edge every
+  probe is refused by the origin's rule (no edge rule is in front: the
+  accepted state).
+* Controls at 18:20:47Z: `nginx -t` passes; the loaded configuration has the
+  five locations; on the three hosts `/login`, `/health` and a public
+  catalogue file answer 200 at the origin and through the edge; staging
+  `/login` and `/health` 200; the signed repair-photo link still answers 200
+  (changed or missing signature 403; the web route without a session 302 to
+  `/login`); the ten files that used to be public answer 403 for the plain
+  URL and a query-string form on every host, origin and edge (120 requests,
+  0 exceptions).
+* No ERROR line in either environment's log and nothing but refusals in
+  nginx's error log since the reload; the four services are active.
+
+Because the run stopped before its last step, it saved no rollback copy; this
+session copied the live vhost (five denies) to
+`/root/security-batch/operator-20261001T181611Z/jewelflow.vhost.protected`.
+Never restore `jewelflow.vhost.before-origin` or the 2026-09-25 copies: they
+lack the three new denies. The configuration change was not repeated.
+
+### 2. Signed-in browser isolation
+
+Run in the owner's Chrome, in one profile. The owner signed in everywhere;
+this session entered no password, took no screenshot and only read pages,
+except for submitting each page's own sign-out form where a row says so. A
+session is identified by a hash of the page's CSRF token, which changes only
+when the session does.
+
+| Step | Result |
+|---|---|
+| Production and staging signed in at once; each reloaded | PASS — both dashboards, each session unchanged |
+| Sign out of staging; reload production | PASS — staging asks for sign-in; production signed in, same session |
+| Guest visits to staging `/login` and both `/admin/login` pages; reload production | PASS — same session |
+| Owner signs in to staging again | PASS — production session unchanged by it |
+| Reverse order: sign out of production (with the owner's leave); reload staging | PASS — production asks for sign-in; staging signed in, same session |
+| Owner signs in to production again | PASS — staging session unchanged by it |
+| Admin pair: both consoles signed in (staging after its second factor); sign out of staging's; check production's | PASS — staging's console asks for sign-in; production's still answers, same session |
+| After that: the tenant sessions on both environments | PASS — both unchanged |
+
+Observed and left as is: on a staging page the browser holds two cookies named
+`XSRF-TOKEN`, production's (scoped to the parent domain) and staging's own
+(backlog; staging only).
+
+### 3. The physical Android check (the owner's)
+
+Install `preview` build 24 (EAS build `5caceada-4f5a-46a4-8265-7c6855e21a7f`;
+its link expires 2026-10-15) on a phone and sign in with a staging account.
+It shares the package id and signing key with the production app, so it
+replaces that app on the phone until build 25 is installed over it.
+
+| # | Step | Expect | Result |
+|---|---|---|---|
+| a | Staging web, Settings → Billing: upload a signature, switch it on | saved | not run |
+| b | Issue a quick bill; Share Original, then Print Original | the bill with the signature; no alert | not run |
+| c | A finalized invoice: Share, Print | the same | not run |
+| d | Switch the signature off; issue another quick bill; Share | no signature, no alert | not run |
+| e | Optional: the signature file moved aside on staging; Share the first bill | "Signature unavailable" on the PDF and as an alert | not run |
+| f | Cash Book → Add entry → Cash In ₹137; Save and airplane mode on within a second; airplane off; Save again | saved; exactly one ₹137 entry | not run |
+
+What stands in for it until then is §0l detail 4: the same flows on the
+release APKs (builds 22 and 24) on the emulator against a local stand-in.
+
+### 4. Build 25 and the supported release scope
+
+**Scope, as it exists.** Android only: EAS lists 31 Android builds and no iOS
+build. The app is handed out as a direct-install APK built with the
+`production-apk` profile (the owner's commit says so, and the owner's machine
+holds the downloaded versionCode 21 APK of 2026-07-18). `production` AABs
+exist too, but the public Play listing for the package answers 404; whether a
+non-public track holds a build cannot be seen without the Play Console. EAS
+keeps artifacts for a limited time: versionCode 21's are gone, build 25's
+expire 2026-10-31, so a hand-over means downloading the file.
+
+**Chosen path: the APK** (build `df961cb8-052d-4a44-bdb5-b1cdbf5e3d3f`,
+versionCode 25, from `b266c2c`, sha256
+`1079077c0ff62dbfb4e9e1e985a5917cf92e74ae97f17c9b4c7537605a7048c8`,
+production backend only — §0l detail 4). No update is published.
+
+**Upgrade compatibility**, emulator (API 34), offline, the production host
+name resolved to a local stand-in with synthetic data:
+
+* The owner's versionCode 21 production APK (sha256 `f6f2459c…0b53`; its
+  bundle holds the production backend and none of this batch's code)
+  installed, signed in, cash book opened.
+* Build 25's APK installed over it: success, versionCode 21 → 25, the same
+  signing certificate, the install date kept.
+* Relaunched: still signed in, dashboard loaded, no crash. The new code is
+  running (the refusal alert reads "Outcome unknown"), and a cash entry was
+  then saved once under one key.
+* Earlier the same APK also installed over `preview` build 24.
+* The real servers' access log holds no mobile API request from the test
+  machine during the run. (This time the airplane-mode flag alone left Wi-Fi
+  up; it was switched off and the device verified offline before any app was
+  installed.)
+
+Not covered: a phone still on versionCode 16 (no such file exists any more;
+an APK install over it needs only the same key and a higher versionCode, but
+that was not run).
+
+### SHAs
+
+| What | SHA / id |
+|---|---|
+| Web source, `main` and `security/multi-tenant-audit` | this section's commit (documentation; code and runbooks unchanged since `31282713bafdd072732839e69f0e846fc739c2f4`) |
+| Deployed, staging and production | `31282713bafdd072732839e69f0e846fc739c2f4` |
+| Mobile source, `rebrand/jewelflows-mobile` | `b266c2c11ab6718d88987dd37cad804c26fd212a` |
+| `preview` build 24 | `5caceada-4f5a-46a4-8265-7c6855e21a7f`, from `5e85628826430a2ff2969f1a2f23c6f2593b3ee8` |
+| `production-apk` build 25 | `df961cb8-052d-4a44-bdb5-b1cdbf5e3d3f`, from `b266c2c` |
+| `production` (AAB) build 25 | `99bf783b-9af9-4264-a6d3-6e8a2cd396d1`, from `b266c2c` |
+
+The owner's mobile checkout is untouched (`4f10a3b`, its uncommitted
+`storage.ts` in place); the release source is the clean worktree.
+
+### Backlog, outside this batch
+
+* **Quick-bill creation is not idempotent.** `POST /api/mobile/quick-bills`
+  ignores the `X-Idempotency-Key` the app sends: the same request sent twice
+  with one key answered 201 twice and made two bills and two payment rows
+  (local test database, synthetic data). Impact: a reply lost after the save,
+  followed by a second tap on Save, books the bill and its payment twice. The
+  POS sale and the v1 cash-book routes do refuse or replay a repeated key;
+  the other financial endpoints were not surveyed for this.
+* The operator script's wait after an nginx reload (detail 1).
+* The mobile `runtimeVersion` policy gives every build one runtime, so an
+  update reaches builds with different native layers (versionCode 16).
+* Two `XSRF-TOKEN` cookies on staging pages when production's are present.
+* Unchanged from §0l: repository visibility; off-site backups;
+  `SESSION_SECURE_COOKIE`; the three files behind the `kyc/` and
+  `signatures/` denies; review lows; `platform:archive-audit-logs`, the
+  Razorpay rate limit, POS 500 on an unpriced item.
+
+---
+
 ## 0l. Closure pass: the public PDFs, the staging demo accounts, repair photos, the mobile release path (2026-10-01, 05:10–09:25Z)
 
 Started from `b8e5465fec3026054995187c2d20cf0a421d2d6c`, the packet the reviewer
@@ -88,12 +259,12 @@ checklist and its follow-up list.** Times are UTC.
 
 | # | Item | State | Evidence | Left for a human |
 |---|---|---|---|---|
-| 1 | The three PDFs under `karigar-invoices/` and `purchases/` | **CONTAINED.** Out of the web root since 05:22:34Z, byte for byte in a private quarantine; nothing deleted | `quarantine-public-orphans.sh verify`, exit 0, right after the move and again at 08:49:11Z: 404 on the three hosts for the plain URL and a query-string form, at the origin and through the edge; controls hold (`/login` 200, a catalogue file 200, `kyc/` and `signatures/` 403). Edge: detail 1 | The nginx deny for the two (now empty) directories: checklist 1 |
+| 1 | The three PDFs under `karigar-invoices/` and `purchases/` | **CONTAINED.** Out of the web root since 05:22:34Z, byte for byte in a private quarantine; nothing deleted | `quarantine-public-orphans.sh verify`, exit 0, right after the move and again at 08:49:11Z: 404 on the three hosts for the plain URL and a query-string form, at the origin and through the edge; controls hold (`/login` 200, a catalogue file 200, `kyc/` and `signatures/` 403). Edge: detail 1 | The nginx deny for the two (now empty) directories: checklist 1 (**done 18:16Z, §0m 1**) |
 | 2 | The three staging demo accounts | **SECURED** at 05:16:27Z | `secure_demo_accounts.php apply`: before, the published password signed in on the web and on the mobile API; after, the same session is sent to `/login` and the same token gets 401. `verify` exit 0 at 05:20:23Z and at 08:51:19Z. Detail 2 | none |
-| 3 | Repair photos | **FIXED, DEPLOYED, VERIFIED.** Private attachments: private disk, authorized delivery; production's seven files moved at 08:13:47Z | `69a68ee`; 14 feature tests; staging verifier; real-HTTP checks on both environments. Detail 3 | The nginx deny for the (now empty) directory: checklist 1 |
+| 3 | Repair photos | **FIXED, DEPLOYED, VERIFIED.** Private attachments: private disk, authorized delivery; production's seven files moved at 08:13:47Z | `69a68ee`; 14 feature tests; staging verifier; real-HTTP checks on both environments. Detail 3 | The nginx deny for the (now empty) directory: checklist 1 (**done 18:16Z, §0m 1**) |
 | 4a | Build 22's backend | **VERIFIED in the artifact and in a request** | APK sha256 `a10c25de…cd1d`: its bundle holds `https://staging.jewelflows.com`; the installed app's sign-in attempt arrived at staging's origin. Detail 4 | none |
 | 4b | Print, share, signature warning, signatures off, lost-reply retry on the release artifact | **RUN on build 22**, on the emulator, against a local stand-in for staging (synthetic data). **One defect found, fixed, re-run on build 24.** | Detail 4, table | The same on real staging, signed in, on a physical device: checklist 3 |
-| 4c | Signed-in browser isolation | **NOT RUN** | No signed-in browser session was available to this session (the browser extension reported no connected browser), and it may not sign in. What was run instead: the guest cookie probe (exit 0 after the release) and the staging verifier's cookie checks | checklist 2 |
+| 4c | Signed-in browser isolation | **NOT RUN** in this pass (**done later the same day: §0m 2**) | No signed-in browser session was available to this session (the browser extension reported no connected browser), and it may not sign in. What was run instead: the guest cookie probe (exit 0 after the release) and the staging verifier's cookie checks | checklist 2 |
 | 4d | A release path that pins the production backend | **FIXED and VERIFIED.** The OTA publisher pins and checks the backend per channel; every release build profile names its EAS environment | mobile `1ba7c85`, `b266c2c`, `1554521`, `0e6fe3e`; dry runs for both channels; production builds of versionCode 25 hold the production backend and not staging's. Detail 4 | Publishing to users: checklist 4 |
 | 4e | iOS | **NOT RUN, not waived.** EAS lists 31 Android builds and no iOS build | `eas build:list` | checklist 5 |
 | 5 | `STAGING_DEPLOY.md` recovery | **FIXED** (`58dddc7`): one rule — move the code forward, keep the schema and the data; no `migrate:rollback` of a migration that holds data; a backup restore only if the site stayed in maintenance since that backup | the file, §15 | none |
